@@ -6,13 +6,11 @@ Compiling typeerrors/Examples/HighlyTrustedReported.hs
  term             : f
    type           : [String] -> [[String]]       -> [String]              
    does not match : [String] -> ([[a]] -> [[a]]) -> [[String]] -> [String]
- because          : too many arguments are given
 
 (7,9): Type error in application
  expression       : f lijst transpose (tail (transpose table))
  term             : f
    type           : [String] -> [[String]]       -> [String]              
    does not match : [String] -> ([[a]] -> [[a]]) -> [[String]] -> [String]
- probable fix     : remove second argument
 
 Compilation failed with 2 errors
