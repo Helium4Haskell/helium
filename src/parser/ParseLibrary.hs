@@ -60,13 +60,13 @@ name :: HParser String -> HParser Name
 name p = addRange $
     do 
         n <- p
-        return (\r -> Name_Identifier r [] n)
+        return (\r -> Name_Identifier r [] n) -- !!!Name
 
 opName :: HParser String -> HParser Name
 opName p = addRange $
     do 
         n <- p
-        return (\r -> Name_Operator r [] n)
+        return (\r -> Name_Operator r [] n) -- !!!Name
 
 addRange :: HParser (Range -> a) -> HParser a
 addRange p =

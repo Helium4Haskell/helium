@@ -95,7 +95,7 @@ walkSpine t =
         _ -> internalError "StaticAnalysis" "walkSpine" "unexpected type"
 
 checkKind :: Name -> FiniteMap Name Int -> Int -> Names -> [Error]
-checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity namesInScope =
+checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity namesInScope = -- !!!Name
     if expected == useArity then
         []
     else

@@ -54,7 +54,7 @@ fixModuleName :: Module -> String -> Module
 fixModuleName original@(Module_Module r name es b) baseName =
     case name of
         MaybeName_Nothing ->
-            Module_Module r (MaybeName_Just (Name_Identifier noRange [] baseName)) es b
+            Module_Module r (MaybeName_Just (Name_Identifier noRange [] baseName)) es b -- !!!Name
         _ -> original
 
 

@@ -72,5 +72,5 @@ SEM Module
                                           else [ WrongFileName @lhs.baseName moduleString moduleRange ]
                 . moduleName     = case @name.self of 
                                       MaybeName_Just name -> name 
-                                      MaybeName_Nothing   -> Name_Identifier noRange [] ""                                    
-                . fileName       = Name_Identifier noRange [] @lhs.baseName 
+                                      MaybeName_Nothing   -> Name_Identifier noRange [] ""  -- !!!Name
+                . fileName       = Name_Identifier noRange [] @lhs.baseName -- !!!Name

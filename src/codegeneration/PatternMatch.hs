@@ -152,12 +152,12 @@ patternToCore' (name, pat) continue nr =
 -- [1, 2, 3] ==> 1 : (2 : (3 : [] ) )
 expandPatList :: [Pattern] -> Pattern
 expandPatList [] = 
-    Pattern_Constructor noRange (Name_Special noRange [] "[]") []
+    Pattern_Constructor noRange (Name_Special noRange [] "[]") [] -- !!!Name
 expandPatList (p:ps) =
     Pattern_InfixConstructor 
         noRange 
         p
-        (Name_Identifier noRange [] ":") 
+        (Name_Identifier noRange [] ":")  -- !!!Name
         (expandPatList ps)
     
 isSimple :: Pattern -> Bool

@@ -9,7 +9,7 @@ import Utils
 import Types
 
 nameOfShowFunction :: UHA.Name -> UHA.Name
-nameOfShowFunction (UHA.Name_Identifier r m n) = UHA.Name_Identifier r m ("show" ++ n)
+nameOfShowFunction (UHA.Name_Identifier r m n) = UHA.Name_Identifier r m ("show" ++ n) -- !!!Name
 nameOfShowFunction _ = internalError "DerivingShow" "nameOfShowFunction" "name of type must be an identifier"
 
 typeOfShowFunction :: UHA.Name -> UHA.Names -> TpScheme
@@ -101,8 +101,8 @@ showFunctionOfType isMainType t =
             
         -- show Strings not as List of Char but using showString
         UHA.Type_Application _ _ 
-                    ( UHA.Type_Constructor _ (UHA.Name_Special    _ _ "[]") ) 
-                    [ UHA.Type_Constructor _ (UHA.Name_Identifier _ _ "Char") ] ->
+                    ( UHA.Type_Constructor _ (UHA.Name_Special    _ _ "[]") ) -- !!!Name
+                    [ UHA.Type_Constructor _ (UHA.Name_Identifier _ _ "Char") ] -> -- !!!Name
             var "showString"
             
         UHA.Type_Constructor _ n -> 

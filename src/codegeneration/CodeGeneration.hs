@@ -54,10 +54,10 @@ interpreterMain = "interpreter_main"
 insertedMain :: TypeEnvironment -> CoreDecl
 insertedMain toplevelTypes =
     let maybeWrapMainAndType = 
-            case lookupFM toplevelTypes (Name_Identifier noRange [] "main")  of
+            case lookupFM toplevelTypes (Name_Identifier noRange [] "main")  of -- !!!Name
                 Just t -> Just ("main", t)
                 Nothing ->
-                    case lookupFM toplevelTypes (Name_Identifier noRange [] interpreterMain) of
+                    case lookupFM toplevelTypes (Name_Identifier noRange [] interpreterMain) of -- !!!Name
                         Just t -> Just (interpreterMain, t)
                         Nothing -> Nothing
     in

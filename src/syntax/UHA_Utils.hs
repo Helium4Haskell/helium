@@ -36,12 +36,12 @@ instance Ord NameWithRange where
       
 --------------------------------------------------------------
 
-getNameName :: Name -> String
+getNameName :: Name -> String -- !!!Name
 getNameName (Name_Identifier _ _ name) = name
 getNameName (Name_Operator   _ _ name) = name
 getNameName (Name_Special    _ _ name) = name
 
-idFromName :: Name -> Id
+idFromName :: Name -> Id -- !!!Name
 idFromName (Name_Special _ _ s) = idFromString s
 idFromName (Name_Identifier _ _ s) = idFromString s
 idFromName (Name_Operator _ _ s) = idFromString s
@@ -49,7 +49,7 @@ idFromName (Name_Operator _ _ s) = idFromString s
 nameFromId :: Id -> Name
 nameFromId = nameFromString . stringFromId
 
-nameFromString :: String -> Name
+nameFromString :: String -> Name -- !!!Name
 nameFromString str@(first:_) 
     | isAlpha first = Name_Identifier noRange [] str 
     | str == "[]" || isTupleConstructor str || str == "->" 
@@ -57,11 +57,11 @@ nameFromString str@(first:_)
     | otherwise     = Name_Operator noRange [] str
 nameFromString _ = internalError "UHA_Utils" "nameFromString" "empty string"
 
-isOperatorName :: Name -> Bool
+isOperatorName :: Name -> Bool -- !!!Name
 isOperatorName (Name_Operator _ _ _) = True
 isOperatorName _ = False
 
-isConstructor :: Name -> Bool
+isConstructor :: Name -> Bool -- !!!Name
 isConstructor name = 
     case name of
         Name_Operator   _ _ (':':_)   -> True
@@ -70,7 +70,7 @@ isConstructor name =
         Name_Special    _ _ "[]"      -> True
         _                             -> False
         
-isIdentifierName :: Name -> Bool
+isIdentifierName :: Name -> Bool -- !!!Name
 isIdentifierName (Name_Identifier _ _ _) = True
 isIdentifierName _ = False
 

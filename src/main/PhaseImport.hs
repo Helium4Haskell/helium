@@ -67,7 +67,7 @@ addImplicitImports m@(Module_Module moduleRange maybeName exports
         ImportDeclaration_Import
             noRange
             False
-            (Name_Identifier noRange [] moduleName)
+            (Name_Identifier noRange [] moduleName) -- !!!Name
             MaybeName_Nothing
             MaybeImportSpecification_Nothing
 

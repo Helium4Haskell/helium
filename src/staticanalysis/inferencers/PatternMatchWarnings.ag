@@ -137,7 +137,7 @@ SEM Expression
                                                                        (take (length @patterns.self) . fst . functionSpine)
                                                                        [(concat @patterns.elementss, False)]
                                                                        @range
-                                                                       (Just $ Name_Special noRange [] "\\")
+                                                                       (Just $ Name_Special noRange [] "\\") -- !!!Name
                                                                        True
                                                                        []
                                                                        "lambda expression"
@@ -219,8 +219,8 @@ SEM GuardedExpressions
 
 SEM GuardedExpression
   | GuardedExpression lhs . fallthrough = case @guard.self
-                                          of Expression_Variable    _ (Name_Identifier _ _ "otherwise") -> False
-                                             Expression_Constructor _ (Name_Identifier _ _ "True"     ) -> False
+                                          of Expression_Variable    _ (Name_Identifier _ _ "otherwise") -> False -- !!!Name
+                                             Expression_Constructor _ (Name_Identifier _ _ "True"     ) -> False -- !!!Name
                                              _                                                          -> True
                       lhs . unrwar = UnreachableGuard @range @guard.self
 {
@@ -347,12 +347,12 @@ nicePattern b env = map (parensPattern b) . nice
           name = nameFromString con
           n    = nrOfArguments env con
       in case name 
-         of Name_Identifier _ _ _                          -> Pattern_Constructor noRange name (take n rest) : drop n rest
-            Name_Operator   _ _ _ | con == ":"             -> case head $ tail rest
+         of Name_Identifier _ _ _                          -> Pattern_Constructor noRange name (take n rest) : drop n rest -- !!!Name
+            Name_Operator   _ _ _ | con == ":"             -> case head $ tail rest -- !!!Name
                                                               of Pattern_List _ ps -> Pattern_List noRange (head rest:ps) : (tail $ tail rest)
                                                                  _ -> Pattern_InfixConstructor noRange (head rest) name (head $ tail rest) : (tail $ tail rest)
                                   | otherwise              -> Pattern_InfixConstructor noRange (head rest) name (head $ tail rest) : (tail $ tail rest)
-            Name_Special    _ _ _ | isTupleConstructor con -> Pattern_Tuple noRange (take n rest) : drop n rest
+            Name_Special    _ _ _ | isTupleConstructor con -> Pattern_Tuple noRange (take n rest) : drop n rest -- !!!Name
                                   | con == "[]"            -> Pattern_List  noRange [] : rest
                                   | otherwise              -> Pattern_Constructor noRange name (take n rest) : drop n rest
 
