@@ -38,6 +38,36 @@ import LvmLang
 import LvmIO(stdin, inputChar)
 import LvmException(error, errorPacked {- hack -}, catch )
 
+custom infix (+)  : public [6,"left"]
+custom infix (-)  : public [6,"left"]
+custom infix (*)  : public [7,"left"]
+custom infix div  : public [7,"left"]
+custom infix mod  : public [7,"left"]
+custom infix quot : public [7,"left"]
+custom infix rem  : public [7,"left"]
+
+custom infix (==) : public [4,"none"]
+custom infix (/=) : public [4,"none"]
+custom infix (<)  : public [4,"none"]
+custom infix (>)  : public [4,"none"]
+custom infix (<=) : public [4,"none"]
+custom infix (>=) : public [4,"none"]
+
+custom infix (+.) : public [6,"left"]
+custom infix (-.) : public [6,"left"]
+custom infix (*.) : public [7,"left"]
+custom infix (/.) : public [7,"left"]
+
+custom infix (==.) : public [4,"none"]
+custom infix (/=.) : public [4,"none"]
+custom infix (<.)  : public [4,"none"]
+custom infix (>.)  : public [4,"none"]
+custom infix (<=.) : public [4,"none"]
+custom infix (>=.) : public [4,"none"]
+
+custom infix (**.) : public [8,"right"]
+custom infix ($!)  : public [0,"right"]
+
 ord :: Char -> Int
 ord x = x
 

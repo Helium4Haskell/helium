@@ -6,15 +6,15 @@ import PreludePrim
 
 infixr 9  .
 infixl 9  !!
-infixr 8  ^, ^., **.
-infixl 7  *, *., `quot`, `rem`, `div`, `mod`, /., /
-infixl 6  +, -, +., -.
+infixr 8  ^, ^. -- , **.
+-- infixl 7  *, *., `quot`, `rem`, `div`, `mod`, /., /         [PreludePrim]
+-- infixl 6  +, -, +., -.                                      [PreludePrim]
 infixr 5  ++
--- infixr 5 :    -- see HeliumLang.core
-infix  4  ==, /=, <=, <, >, >=, ==., /=., <=., <., >., >=.
+-- infixr 5 :                                                  [HeliumLang]
+-- infix  4  ==, /=, <=, <, >, >=, ==., /=., <=., <., >., >=.  [PreludePrim]
 infixr 3  &&
 infixr 2  ||
-infixr 0  $, $!
+infixr 0  $ --, $!                                             [PreludePrim]
 
 ------------------------------------------------
 -- Int
