@@ -72,8 +72,13 @@ checkType typeConstructors namesInScope t =
         xsErrors
         ++
         case f of
-            Type_Constructor _ c ->
+            Type_Constructor r c ->
                 checkKind c typeConstructors (length xs) namesInScope
+             ++ [ TupleTooBig r
+                | let nameAsString = show c
+                , isTupleConstructor nameAsString
+                , length nameAsString - 1 > 10
+                ]
             Type_Variable _ v ->
                 if length xs /= 0 then
                     [ TypeVarApplication v ]
@@ -5907,6 +5912,12 @@ sem_Expression_Tuple (range_) (expressions_) =
                 (range_ )
             ( _expressionsIcollectInstances,_expressionsIcollectScopeInfos,_expressionsIkindErrors,_expressionsImiscerrors,_expressionsIself,_expressionsIunboundNames,_expressionsIwarnings) =
                 (expressions_ (_expressionsOallTypeConstructors) (_expressionsOallValueConstructors) (_expressionsOclassEnvironment) (_expressionsOcollectScopeInfos) (_expressionsOkindErrors) (_expressionsOmiscerrors) (_expressionsOnamesInScope) (_expressionsOoptions) (_expressionsOorderedTypeSynonyms) (_expressionsOtypeConstructors) (_expressionsOvalueConstructors) (_expressionsOwarnings))
+            (_tupleTooBigErrors@_) =
+                [ TupleTooBig _rangeIself
+                | length _expressionsIself > 10
+                ]
+            (_lhsOmiscerrors@_) =
+                _tupleTooBigErrors ++ _expressionsImiscerrors
             (_lhsOcollectInstances@_) =
                 _expressionsIcollectInstances
             (_lhsOunboundNames@_) =
@@ -5919,8 +5930,6 @@ sem_Expression_Tuple (range_) (expressions_) =
                 _expressionsIcollectScopeInfos
             (_lhsOkindErrors@_) =
                 _expressionsIkindErrors
-            (_lhsOmiscerrors@_) =
-                _expressionsImiscerrors
             (_lhsOwarnings@_) =
                 _expressionsIwarnings
             (_expressionsOallTypeConstructors@_) =

@@ -1,0 +1,4 @@
+Compiling staticerrors/TupleTooBig1.hs
+(1,8): Tuples can have up to 10 elements
+(1,37): Tuples can have up to 10 elements
+Compilation failed with 2 errors

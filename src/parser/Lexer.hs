@@ -314,7 +314,7 @@ symbols = "!#$%&*+./<=>?@^|-~:\\"
 keywords :: [String]
 keywords = 
     [ "let", "in", "do", "where", "case", "of", "if"
-    , "then", "else", "data", "type", "module", "import"
+    , "then", "else", "data", "type", "module", "import", "hiding"
     , "infix", "infixl", "infixr", "_", "deriving"
     , "class", "instance", "default", "newtype" -- not supported
     ]

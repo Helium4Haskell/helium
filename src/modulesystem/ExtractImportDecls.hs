@@ -6,16 +6,6 @@ import UHA_Utils
 import Id
 import qualified Core
 import Utils (internalError)
-
-
-isImported :: [(Id,Core.DeclKind)] -> Core.CoreDecl -> Bool
-isImported imps decl
-  = let name = stringFromId (Core.declName decl) in
-    if (not (null name) && head name == '$')  -- always import specials: negate, dictionaries etc.
-     then True
-     else case lookup (Core.declName decl) imps of
-            Nothing     -> False
-            Just dkind  -> (Core.declKindFromDecl decl == dkind)
 -- Alternative -------------------------------------------------
 -- semantic domain
 type T_Alternative = ( (Alternative))
@@ -149,7 +139,7 @@ sem_AnnotatedTypes_Nil  =
     in  ( _lhsOself)
 -- Body --------------------------------------------------------
 -- semantic domain
-type T_Body = ( ( [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] ),(Body))
+type T_Body = ( ( [(Core.CoreDecl,[Id])] ),(Body))
 -- cata
 sem_Body :: (Body) ->
             (T_Body)
@@ -160,10 +150,10 @@ sem_Body_Body :: (T_Range) ->
                  (T_Declarations) ->
                  (T_Body)
 sem_Body_Body (range_) (importdeclarations_) (declarations_) =
-    let _lhsOcoreImportDecls :: ( [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] )
+    let _lhsOcoreImportDecls :: ( [(Core.CoreDecl,[Id])] )
         _lhsOself :: (Body)
         _rangeIself :: (Range)
-        _importdeclarationsIcoreImportDecls :: ( [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] )
+        _importdeclarationsIcoreImportDecls :: ( [(Core.CoreDecl,[Id])] )
         _importdeclarationsIself :: (ImportDeclarations)
         _declarationsIself :: (Declarations)
         ( _rangeIself) =
@@ -1460,7 +1450,7 @@ sem_GuardedExpressions_Nil  =
     in  ( _lhsOself)
 -- Import ------------------------------------------------------
 -- semantic domain
-type T_Import = ( ([(Id, Core.DeclKind)]),(Import))
+type T_Import = ( ([Id]),(Import))
 -- cata
 sem_Import :: (Import) ->
               (T_Import)
@@ -1475,7 +1465,7 @@ sem_Import_TypeOrClass :: (T_Range) ->
                           (T_MaybeNames) ->
                           (T_Import)
 sem_Import_TypeOrClass (range_) (name_) (names_) =
-    let _lhsOimps :: ([(Id, Core.DeclKind)])
+    let _lhsOimps :: ([Id])
         _lhsOself :: (Import)
         _rangeIself :: (Range)
         _nameIself :: (Name)
@@ -1488,8 +1478,7 @@ sem_Import_TypeOrClass (range_) (name_) (names_) =
         ( _namesInames,_namesIself) =
             (names_ )
         (_lhsOimps@_) =
-            (idFromName  _nameIself, Core.DeclKindCustom (idFromString "data")) :
-            zip (maybe [] (map idFromName) _namesInames) (repeat Core.DeclKindCon)
+            internalError "ExtractImportDecls.ag" "ImportSpecification.Import" "only variables can be hidden"
         (_self@_) =
             Import_TypeOrClass _rangeIself _nameIself _namesIself
         (_lhsOself@_) =
@@ -1499,7 +1488,7 @@ sem_Import_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Import)
 sem_Import_TypeOrClassComplete (range_) (name_) =
-    let _lhsOimps :: ([(Id, Core.DeclKind)])
+    let _lhsOimps :: ([Id])
         _lhsOself :: (Import)
         _rangeIself :: (Range)
         _nameIself :: (Name)
@@ -1508,7 +1497,7 @@ sem_Import_TypeOrClassComplete (range_) (name_) =
         ( _nameIself) =
             (name_ )
         (_lhsOimps@_) =
-            internalError "ExtractImportDecls.ag" "Import.TypeOrClassComplete" "unsupported"
+            internalError "ExtractImportDecls.ag" "ImportSpecification.Import" "only variables can be hidden"
         (_self@_) =
             Import_TypeOrClassComplete _rangeIself _nameIself
         (_lhsOself@_) =
@@ -1518,7 +1507,7 @@ sem_Import_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Import)
 sem_Import_Variable (range_) (name_) =
-    let _lhsOimps :: ([(Id, Core.DeclKind)])
+    let _lhsOimps :: ([Id])
         _lhsOself :: (Import)
         _rangeIself :: (Range)
         _nameIself :: (Name)
@@ -1527,7 +1516,7 @@ sem_Import_Variable (range_) (name_) =
         ( _nameIself) =
             (name_ )
         (_lhsOimps@_) =
-            [(idFromName _nameIself, Core.DeclKindValue)]
+            [idFromName _nameIself]
         (_self@_) =
             Import_Variable _rangeIself _nameIself
         (_lhsOself@_) =
@@ -1535,7 +1524,7 @@ sem_Import_Variable (range_) (name_) =
     in  ( _lhsOimps,_lhsOself)
 -- ImportDeclaration -------------------------------------------
 -- semantic domain
-type T_ImportDeclaration = ( ( [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] ),(ImportDeclaration))
+type T_ImportDeclaration = ( ( [(Core.CoreDecl,[Id])] ),(ImportDeclaration))
 -- cata
 sem_ImportDeclaration :: (ImportDeclaration) ->
                          (T_ImportDeclaration)
@@ -1546,7 +1535,7 @@ sem_ImportDeclaration ((ImportDeclaration_Import (_range) (_qualified) (_name) (
 sem_ImportDeclaration_Empty :: (T_Range) ->
                                (T_ImportDeclaration)
 sem_ImportDeclaration_Empty (range_) =
-    let _lhsOcoreImportDecls :: ( [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] )
+    let _lhsOcoreImportDecls :: ( [(Core.CoreDecl,[Id])] )
         _lhsOself :: (ImportDeclaration)
         _rangeIself :: (Range)
         ( _rangeIself) =
@@ -1565,14 +1554,14 @@ sem_ImportDeclaration_Import :: (T_Range) ->
                                 (T_MaybeImportSpecification) ->
                                 (T_ImportDeclaration)
 sem_ImportDeclaration_Import (range_) (qualified_) (name_) (asname_) (importspecification_) =
-    let _lhsOcoreImportDecls :: ( [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] )
+    let _lhsOcoreImportDecls :: ( [(Core.CoreDecl,[Id])] )
         _lhsOself :: (ImportDeclaration)
         _rangeIself :: (Range)
         _nameIself :: (Name)
         _asnameIisNothing :: (Bool)
         _asnameIname :: ( Maybe Name )
         _asnameIself :: (MaybeName)
-        _importspecificationIimps :: (Maybe [(Id, Core.DeclKind)])
+        _importspecificationIimps :: ([Id])
         _importspecificationIself :: (MaybeImportSpecification)
         ( _rangeIself) =
             (range_ )
@@ -1582,29 +1571,27 @@ sem_ImportDeclaration_Import (range_) (qualified_) (name_) (asname_) (importspec
             (asname_ )
         ( _importspecificationIimps,_importspecificationIself) =
             (importspecification_ )
-        (_filterFun@_) =
-            case _importspecificationIimps of
-              Nothing    -> id
-              Just imps  -> \decls -> [decl | decl <- decls, isImported imps decl]
+        (_hidings@_) =
+            _importspecificationIimps
         (_importDecls@_) =
             if qualified_ || not _asnameIisNothing then
                 internalError "ExtractImportDecls.ag" "ImportDeclaration.Import" "qualified and as-imports not supported yet"
             else
-                    Core.DeclImport
-                        { Core.declName = idFromName _nameIself
-                        , Core.declAccess =
-                            Core.Imported
-                                { Core.accessPublic   = False
-                                , Core.importModule   = idFromName _nameIself
-                                , Core.importName     = dummyId
-                                , Core.importKind     = Core.DeclKindModule
-                                , Core.importMajorVer = 0
-                                , Core.importMinorVer = 0
-                                }
-                        , Core.declCustoms = []
-                        }
+                Core.DeclImport
+                    { Core.declName = idFromName _nameIself
+                    , Core.declAccess =
+                        Core.Imported
+                            { Core.accessPublic   = False
+                            , Core.importModule   = idFromName _nameIself
+                            , Core.importName     = dummyId
+                            , Core.importKind     = Core.DeclKindModule
+                            , Core.importMajorVer = 0
+                            , Core.importMinorVer = 0
+                            }
+                    , Core.declCustoms = []
+                    }
         (_lhsOcoreImportDecls@_) =
-            [(_importDecls    ,_filterFun    )]
+            [(_importDecls    ,_hidings    )]
         (_self@_) =
             ImportDeclaration_Import _rangeIself qualified_ _nameIself _asnameIself _importspecificationIself
         (_lhsOself@_) =
@@ -1612,7 +1599,7 @@ sem_ImportDeclaration_Import (range_) (qualified_) (name_) (asname_) (importspec
     in  ( _lhsOcoreImportDecls,_lhsOself)
 -- ImportDeclarations ------------------------------------------
 -- semantic domain
-type T_ImportDeclarations = ( ( [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] ),(ImportDeclarations))
+type T_ImportDeclarations = ( ( [(Core.CoreDecl,[Id])] ),(ImportDeclarations))
 -- cata
 sem_ImportDeclarations :: (ImportDeclarations) ->
                           (T_ImportDeclarations)
@@ -1622,11 +1609,11 @@ sem_ImportDeclarations_Cons :: (T_ImportDeclaration) ->
                                (T_ImportDeclarations) ->
                                (T_ImportDeclarations)
 sem_ImportDeclarations_Cons (hd_) (tl_) =
-    let _lhsOcoreImportDecls :: ( [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] )
+    let _lhsOcoreImportDecls :: ( [(Core.CoreDecl,[Id])] )
         _lhsOself :: (ImportDeclarations)
-        _hdIcoreImportDecls :: ( [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] )
+        _hdIcoreImportDecls :: ( [(Core.CoreDecl,[Id])] )
         _hdIself :: (ImportDeclaration)
-        _tlIcoreImportDecls :: ( [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] )
+        _tlIcoreImportDecls :: ( [(Core.CoreDecl,[Id])] )
         _tlIself :: (ImportDeclarations)
         ( _hdIcoreImportDecls,_hdIself) =
             (hd_ )
@@ -1641,7 +1628,7 @@ sem_ImportDeclarations_Cons (hd_) (tl_) =
     in  ( _lhsOcoreImportDecls,_lhsOself)
 sem_ImportDeclarations_Nil :: (T_ImportDeclarations)
 sem_ImportDeclarations_Nil  =
-    let _lhsOcoreImportDecls :: ( [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] )
+    let _lhsOcoreImportDecls :: ( [(Core.CoreDecl,[Id])] )
         _lhsOself :: (ImportDeclarations)
         (_lhsOcoreImportDecls@_) =
             []
@@ -1652,7 +1639,7 @@ sem_ImportDeclarations_Nil  =
     in  ( _lhsOcoreImportDecls,_lhsOself)
 -- ImportSpecification -----------------------------------------
 -- semantic domain
-type T_ImportSpecification = ( ([(Id, Core.DeclKind)]),(ImportSpecification))
+type T_ImportSpecification = ( ([Id]),(ImportSpecification))
 -- cata
 sem_ImportSpecification :: (ImportSpecification) ->
                            (T_ImportSpecification)
@@ -1663,18 +1650,18 @@ sem_ImportSpecification_Import :: (T_Range) ->
                                   (T_Imports) ->
                                   (T_ImportSpecification)
 sem_ImportSpecification_Import (range_) (hiding_) (imports_) =
-    let _lhsOimps :: ([(Id, Core.DeclKind)])
+    let _lhsOimps :: ([Id])
         _lhsOself :: (ImportSpecification)
         _rangeIself :: (Range)
-        _importsIimps :: ([(Id, Core.DeclKind)])
+        _importsIimps :: ([Id])
         _importsIself :: (Imports)
         ( _rangeIself) =
             (range_ )
         ( _importsIimps,_importsIself) =
             (imports_ )
         (_lhsOimps@_) =
-            if hiding_ then
-                internalError "ExtractImportDecls.ag" "ImportSpecification.Import" "hiding is currently unsupported"
+            if not hiding_ then
+                internalError "ExtractImportDecls.ag" "ImportSpecification.Import" "import lists are not supported"
             else
                 _importsIimps
         (_self@_) =
@@ -1684,7 +1671,7 @@ sem_ImportSpecification_Import (range_) (hiding_) (imports_) =
     in  ( _lhsOimps,_lhsOself)
 -- Imports -----------------------------------------------------
 -- semantic domain
-type T_Imports = ( ([(Id, Core.DeclKind)]),(Imports))
+type T_Imports = ( ([Id]),(Imports))
 -- cata
 sem_Imports :: (Imports) ->
                (T_Imports)
@@ -1694,11 +1681,11 @@ sem_Imports_Cons :: (T_Import) ->
                     (T_Imports) ->
                     (T_Imports)
 sem_Imports_Cons (hd_) (tl_) =
-    let _lhsOimps :: ([(Id, Core.DeclKind)])
+    let _lhsOimps :: ([Id])
         _lhsOself :: (Imports)
-        _hdIimps :: ([(Id, Core.DeclKind)])
+        _hdIimps :: ([Id])
         _hdIself :: (Import)
-        _tlIimps :: ([(Id, Core.DeclKind)])
+        _tlIimps :: ([Id])
         _tlIself :: (Imports)
         ( _hdIimps,_hdIself) =
             (hd_ )
@@ -1713,7 +1700,7 @@ sem_Imports_Cons (hd_) (tl_) =
     in  ( _lhsOimps,_lhsOself)
 sem_Imports_Nil :: (T_Imports)
 sem_Imports_Nil  =
-    let _lhsOimps :: ([(Id, Core.DeclKind)])
+    let _lhsOimps :: ([Id])
         _lhsOself :: (Imports)
         (_lhsOimps@_) =
             []
@@ -1966,7 +1953,7 @@ sem_MaybeExpression_Nothing  =
     in  ( _lhsOself)
 -- MaybeImportSpecification ------------------------------------
 -- semantic domain
-type T_MaybeImportSpecification = ( (Maybe [(Id, Core.DeclKind)]),(MaybeImportSpecification))
+type T_MaybeImportSpecification = ( ([Id]),(MaybeImportSpecification))
 -- cata
 sem_MaybeImportSpecification :: (MaybeImportSpecification) ->
                                 (T_MaybeImportSpecification)
@@ -1977,14 +1964,14 @@ sem_MaybeImportSpecification ((MaybeImportSpecification_Nothing )) =
 sem_MaybeImportSpecification_Just :: (T_ImportSpecification) ->
                                      (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Just (importspecification_) =
-    let _lhsOimps :: (Maybe [(Id, Core.DeclKind)])
+    let _lhsOimps :: ([Id])
         _lhsOself :: (MaybeImportSpecification)
-        _importspecificationIimps :: ([(Id, Core.DeclKind)])
+        _importspecificationIimps :: ([Id])
         _importspecificationIself :: (ImportSpecification)
         ( _importspecificationIimps,_importspecificationIself) =
             (importspecification_ )
         (_lhsOimps@_) =
-            Just _importspecificationIimps
+            _importspecificationIimps
         (_self@_) =
             MaybeImportSpecification_Just _importspecificationIself
         (_lhsOself@_) =
@@ -1992,10 +1979,10 @@ sem_MaybeImportSpecification_Just (importspecification_) =
     in  ( _lhsOimps,_lhsOself)
 sem_MaybeImportSpecification_Nothing :: (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Nothing  =
-    let _lhsOimps :: (Maybe [(Id, Core.DeclKind)])
+    let _lhsOimps :: ([Id])
         _lhsOself :: (MaybeImportSpecification)
         (_lhsOimps@_) =
-            Nothing
+            []
         (_self@_) =
             MaybeImportSpecification_Nothing
         (_lhsOself@_) =
@@ -2109,7 +2096,7 @@ sem_MaybeNames_Nothing  =
     in  ( _lhsOnames,_lhsOself)
 -- Module ------------------------------------------------------
 -- semantic domain
-type T_Module = ( ( [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] ),(Module))
+type T_Module = ( ( [(Core.CoreDecl,[Id])] ),(Module))
 -- cata
 sem_Module :: (Module) ->
               (T_Module)
@@ -2121,14 +2108,14 @@ sem_Module_Module :: (T_Range) ->
                      (T_Body) ->
                      (T_Module)
 sem_Module_Module (range_) (name_) (exports_) (body_) =
-    let _lhsOcoreImportDecls :: ( [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] )
+    let _lhsOcoreImportDecls :: ( [(Core.CoreDecl,[Id])] )
         _lhsOself :: (Module)
         _rangeIself :: (Range)
         _nameIisNothing :: (Bool)
         _nameIname :: ( Maybe Name )
         _nameIself :: (MaybeName)
         _exportsIself :: (MaybeExports)
-        _bodyIcoreImportDecls :: ( [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] )
+        _bodyIcoreImportDecls :: ( [(Core.CoreDecl,[Id])] )
         _bodyIself :: (Body)
         ( _rangeIself) =
             (range_ )

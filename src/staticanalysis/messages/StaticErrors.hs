@@ -41,6 +41,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | UnknownClass Name
             | NonDerivableClass Name
             | CannotDerive Name Tps
+            | TupleTooBig Range
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -65,6 +66,7 @@ instance HasMessage Error where
       UnknownClass name           -> [getNameRange name]
       NonDerivableClass name      -> [getNameRange name]
       CannotDerive name _         -> [getNameRange name]
+      TupleTooBig r               -> [r]
       _                           -> internalError "StaticErrors.hs" 
                                                    "instance IsMessage Error" 
                                                    "unknown type of Error"
@@ -218,6 +220,11 @@ showError anError = case anError of
             ]
            ]
       )      
+    
+   TupleTooBig r ->
+    ( MessageString "Tuples can have up to 10 elements"
+    , []
+    )
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -273,6 +280,7 @@ errorLogCode anError = case anError of
           UnknownClass _          -> "uc"
           NonDerivableClass _     -> "nd"
           CannotDerive _ _        -> "cd"
+          TupleTooBig _           -> "tt"
           _                       -> "??"
    where code entity = maybe "??" id
                      . lookup entity 

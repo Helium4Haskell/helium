@@ -10,7 +10,6 @@ HELIUM
 	bijvoorbeeld showUnit of data Unit = ... proberen te definieren
 - :t in geval van typeringsfout
 - compilerondersteuning voor interpreter (expressie uitrekenen, type bepalen)
-- class, instance
 
 LIBRARIES
 - show implementeren met shows, ShowS; efficienter

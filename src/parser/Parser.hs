@@ -20,7 +20,7 @@ Absent:
 - n+k patterns
 - [] and (,) and (,,,) etc as (type) constructor
 - empty declarations, qualifiers, alternatives or statements
-- hiding, qualified, as in imports
+- "qualified", "as" in imports
 - import and export lists
 
 Simplified:
@@ -270,7 +270,9 @@ constr = addRange $
 
 {-
 Simplified import:
-impdecl -> "import" modid
+impdecl -> "import" modid impspec?
+impspec -> "hiding" "(" import "," ... ")"
+import  -> var
 -}
 
 impdecl :: HParser ImportDeclaration
@@ -280,9 +282,25 @@ impdecl = addRange (
         let q = False
         m <- modid
         let a = MaybeName_Nothing
-            i = MaybeImportSpecification_Nothing 
+        i <- option MaybeImportSpecification_Nothing $
+                do{ is <- impspec
+                  ; return (MaybeImportSpecification_Just is)
+                  }
         return $ \r -> ImportDeclaration_Import r q m a i
     ) <?> Texts.parserImportDeclaration
+
+impspec :: HParser ImportSpecification
+impspec = addRange $
+    do  
+        h <- do { lexHIDING; return True }
+        is <- parens (commas import_)
+        return $ \r -> ImportSpecification_Import r h is
+
+import_ :: HParser Import
+import_ = addRange $
+    do
+        n <- var
+        return $ \r -> Import_Variable r n
     
 {-
 decls   ->  "{" decl1 ";" ... ";" decln "}"    (n>=0)  

@@ -9,7 +9,7 @@ HELIUM=@HELIUM@
 CORESRC = LvmLang.core LvmIO.core LvmException.core \
           HeliumLang.core PreludePrim.core
 
-HELIUMSRC = Prelude.hs List.hs Maybe.hs
+HELIUMSRC = Prelude.hs List.hs Maybe.hs Char.hs
 
 LIBRARIES = $(patsubst %.core,%.lvm,$(CORESRC)) \
             $(patsubst %.hs,%.o,$(HELIUMSRC))

@@ -1,5 +1,5 @@
 Compiling parser/ImportListError.hs
 (1,9): Syntax error: 
     unexpected '('
-    expecting ';' or next in block (based on layout)
+    expecting keyword 'hiding', ';' or next in block (based on layout)
 Compilation failed with 1 error

@@ -1,3 +1,3 @@
-Compiling thompson/Thompson39.hs
+Compiling staticerrors/TupleTooBig4.hs
 (1,8): Tuples can have up to 10 elements
 Compilation failed with 1 error

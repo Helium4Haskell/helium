@@ -1,7 +1,7 @@
 module PreludePrim
     ( 
     -- Conversion
-      ord, chr, intToFloat, ceiling, floor, truncate, round
+      primOrd, primChr, intToFloat, ceiling, floor, truncate, round
     
     -- Num
     , (+), (-), (*), negate, fromInt
@@ -134,11 +134,11 @@ custom infix (/)  : public [7,"left"]
 custom infix (**.) : public [8,"right"]
 custom infix ($!)  : public [0,"right"]
 
-ord :: Char -> Int
-ord x = x
+primOrd :: Char -> Int
+primOrd x = x
 
-chr :: Int -> Char
-chr x = x
+primChr :: Int -> Char
+primChr x = x
 
 {--------------------------------------------------------------------------
   IO
@@ -707,16 +707,16 @@ enumFromVoid _ = [()]
 enumFromThenVoid _ _ = [()]
 	  
 ''$dictEnumChar'' :: "DictEnumChar"
-''$dictEnumChar'' = makeEnumDict chr ord enumFromChar enumFromThenChar
+''$dictEnumChar'' = makeEnumDict primChr primOrd enumFromChar enumFromThenChar
 
-enumFromChar x = enumCharWithSteps 1 (ord x)
-enumFromThenChar x y = enumCharWithSteps ((-#) (ord y) (ord x)) (ord x)
+enumFromChar x = enumCharWithSteps 1 (primOrd x)
+enumFromThenChar x y = enumCharWithSteps ((-#) (primOrd y) (primOrd x)) (primOrd x)
 enumCharWithSteps d x =
    case (<#) x 0 of
       True -> [] ;
 	  _ -> case (>#) x 255 of
 	          True -> [] ;
-			  _ -> (:) (chr x) (enumCharWithSteps d ((+#) d x))
+			  _ -> (:) (primChr x) (enumCharWithSteps d ((+#) d x))
 
 ''$dictEnumBool'' :: "DictEnumBool"
 ''$dictEnumBool'' = makeEnumDict toEnumBool fromEnumBool enumFromBool enumFromThenBool

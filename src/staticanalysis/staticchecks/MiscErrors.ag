@@ -136,6 +136,12 @@ SEM Expression
                  loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
                  loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
 
+  | Tuple        lhs . miscerrors = @tupleTooBigErrors ++ @expressions.miscerrors
+                 loc . tupleTooBigErrors =
+                        [ TupleTooBig @range.self
+                        | length @expressions.self > 10
+                        ]
+
 -----------------------------------------
 -- Pattern
 

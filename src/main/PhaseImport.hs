@@ -10,6 +10,7 @@ module PhaseImport(phaseImport) where
 
 import CompileUtils
 import qualified Core
+import Id(Id)
 import UHA_Syntax
 import UHA_Utils
 import UHA_Range(noRange)
@@ -19,6 +20,7 @@ import Id(stringFromId)
 import CoreToImportEnv(getImportEnvironment)
 import qualified ExtractImportDecls(sem_Module)
 import CorePretty
+import Data.List(isPrefixOf)
 
 phaseImport :: String -> Module -> [String] -> [Option] -> 
                     IO ([Core.CoreDecl], [ImportEnvironment])
@@ -43,10 +45,14 @@ chaseImports :: [String] -> Module -> IO [[Core.CoreDecl]]
 chaseImports lvmPath mod = 
     let (coreImports,_)   = ExtractImportDecls.sem_Module mod -- Expand imports
         findModule    = searchPath lvmPath ".lvm" . stringFromId
-        doImport :: (Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl]) -> IO [Core.CoreDecl]
-        doImport (importDecl,filterDecls)
+        doImport :: (Core.CoreDecl,[Id]) -> IO [Core.CoreDecl]
+        doImport (importDecl,hidings)
           = do decls <- lvmImportDecls findModule [importDecl]
-               return (filterDecls (concat decls))
+               return [ d
+                      | d <- concat decls
+                      , let name = Core.declName d
+                      , "show" `isPrefixOf` stringFromId name || name `notElem` hidings
+                      ]
 
     in mapM doImport coreImports
         -- zipWith ($) filterImports (lvmImportDecls findModule coreImportDecls)

@@ -278,6 +278,23 @@ unzip3 = foldr (\(a,b,c) (as,bs,cs) -> (a:as,b:bs,c:cs)) ([],[],[])
  -- List
  -----------------------------------------------}
 
+-- We can't import Char here because that would mean we couldn't import
+-- it elsewhere. Therefore, we make local copies of the two functions 
+-- from that module
+localIsSpace :: Char -> Bool
+localIsSpace c =
+    i == primOrd ' '  || i == primOrd '\t' || i == primOrd '\n' ||
+    i == primOrd '\r' || i == primOrd '\f' || i == primOrd '\v'
+  where
+    i = primOrd c
+
+localIsDigit :: Char -> Bool
+localIsDigit c = primOrd c >= primOrd '0' && primOrd c <= primOrd '9'
+
+{-----------------------------------------------
+ -- List
+ -----------------------------------------------}
+
 head :: [a] -> a
 head (x:_) = x
 head _ = error "Prelude.head: empty list"
@@ -451,11 +468,11 @@ lines s    = let l,s' :: String
 
 words :: String -> [String]
 words s =
-    case dropWhile isSpace s of
+    case dropWhile localIsSpace s of
         "" -> []
         s' -> w : words s''
               where w,s'' :: String
-                    (w,s'') = break isSpace s'
+                    (w,s'') = break localIsSpace s'
 
 unlines :: [String] -> String
 unlines [] = []
@@ -485,48 +502,6 @@ concatMap :: (a -> [b]) -> [a] -> [b]
 concatMap f = concat . map f
 
 {-----------------------------------------------
- -- Char
- -----------------------------------------------}
-
-isSpace :: Char -> Bool
-isSpace c =
-    let
-        i :: Int
-        i = ord c
-    in
-        i == ord ' '  ||
-        i == ord '\t' ||
-        i == ord '\n' ||
-        i == ord '\r' ||
-        i == ord '\f' ||
-        i == ord '\v'
-        
-isUpper :: Char -> Bool
-isUpper c = ord c >= ord 'A' && ord c <= ord 'Z' 
-
-isLower :: Char -> Bool
-isLower c = ord c >= ord 'a' && ord c <= ord 'z'
-
-isDigit :: Char -> Bool
-isDigit c = ord c >= ord '0' && ord c <= ord '9'
-
-isAlpha :: Char -> Bool
-isAlpha c = isUpper c || isLower c
-
-isAlphaNum :: Char -> Bool
-isAlphaNum c =  isAlpha c || isDigit c
-
-toUpper :: Char -> Char
-toUpper c
-    | isLower c = chr ( ord c - ord 'a' + ord 'A' )
-    | otherwise = c
-
-toLower :: Char -> Char
-toLower c
-    | isUpper c = chr ( ord c - ord 'A' + ord 'a' )
-    | otherwise = c
-
-{-----------------------------------------------
  -- Conversion
  -----------------------------------------------}
 
@@ -534,8 +509,8 @@ toLower c
 
 {- imported from PreludePrim
 
-ord :: Char -> Int
-chr :: Int -> Char
+primOrd :: Char -> Int
+primChr :: Int -> Char
 
 intToFloat :: Int -> Float
 round      :: Float -> Int
@@ -664,6 +639,6 @@ readUnsigned :: String -> Int
 readUnsigned = 
     foldl (\a b -> a * 10 + b) 0
     .
-    map (\c -> ord c - ord '0')
+    map (\c -> primOrd c - primOrd '0')
     .
-    takeWhile isDigit
+    takeWhile localIsDigit
