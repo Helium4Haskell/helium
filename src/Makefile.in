@@ -64,6 +64,7 @@ PARSER	= \
 
 MODULESYSTEM = \
 	modulesystem/ImportEnvironment.hs \
+	modulesystem/DictionaryEnvironment.hs \
 	modulesystem/CoreToImportEnv.hs modulesystem/ExtractImportDecls.hs
 
 STATICANALYSIS = \

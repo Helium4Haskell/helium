@@ -1,8 +1,7 @@
 ATTR Module
    [   additionalDecls  : { [Core.CoreDecl] }
+       dictionaryEnv    : DictionaryEnvironment
        importEnv        : ImportEnvironment
-       inferredTypes    : { FiniteMap NameWithRange TpScheme } -- == LocalTypes
-       overloadedVars   : { FiniteMap NameWithRange (NameWithRange, QType) } -- = OverloadedVariables
        toplevelTypes    : TypeEnvironment
    |
    |   core             : { Core.CoreModule }
@@ -13,9 +12,8 @@ ATTR Body Declarations Declaration Expressions Expression Statements Statement
      Alternatives Alternative FunctionBindings FunctionBinding
      RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
      RecordExpressionBindings Constructors Constructor
-    [ inferredTypes    : { FiniteMap NameWithRange TpScheme } -- == LocalTypes
-      overloadedVars   : { FiniteMap NameWithRange (NameWithRange, QType) } -- = OverloadedVariables
-      importEnv        : ImportEnvironment -- onnodig als unificatie eerder gedaan wordt !!! zie ToCoreExpr.Var
+    [ importEnv     : ImportEnvironment 
+      dictionaryEnv : DictionaryEnvironment
     |
     |
     ]
@@ -36,6 +34,7 @@ import UHA_Utils
 import UHA_Range 
 import List (union)
 import ImportEnvironment
+import DictionaryEnvironment
 import Data.FiniteMap
 import TypeConversion
 import Char (ord)

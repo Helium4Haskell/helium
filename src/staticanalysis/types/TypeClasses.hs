@@ -137,6 +137,9 @@ associatedContextReduction synonyms classes ps =
           where entailed = scEntail classes (map fst (rs++ps)) (fst p)                      
                            
    in (loop [] predicates, errors)
+
+---------------------------------------------------------------------- 
+-- Standard Class Environment
                              
 ---------------------------------------------------------------------- 
 -- Standard Class Environment

@@ -6,6 +6,7 @@ import UHA_Utils
 import UHA_Range 
 import List (union)
 import ImportEnvironment
+import DictionaryEnvironment
 import Data.FiniteMap
 import TypeConversion
 import Char (ord)
@@ -80,8 +81,28 @@ insertedMain toplevelTypes =
         unsafePIO = var "primUnsafePerformIO"    
                 
 
+predicateToId :: Predicate -> Id
 predicateToId (Predicate class_ tp) =
     idFromString $ "$dict" ++ class_ ++ show tp
+    
+dictionaryTreeToCore :: DictionaryTree -> Core.Expr
+dictionaryTreeToCore tree = 
+   case tree of
+      ByPredicate predicate -> 
+         Core.Var (predicateToId predicate)
+      ByInstance className instanceName trees ->
+         foldl Core.Ap
+               (Core.Var (idFromString ("dict"++className++instanceName)))
+               (map dictionaryTreeToCore trees)
+      BySuperClass subClass superClass tree -> 
+         Core.Ap (Core.Var (idFromString ("get" ++ superClass ++ "From" ++ subClass)))          
+                 (dictionaryTreeToCore tree)
+
+insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr
+insertDictionaries name dictionaryEnv = 
+   foldl Core.Ap
+         (Core.Var (idFromName name))
+         (map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv))
 
 toplevelType :: Name -> ImportEnvironment -> Bool -> [Core.Custom]
 toplevelType name ie isTopLevel
@@ -105,52 +126,6 @@ constructorCustoms dataTypeName name env =
             ]
         )
         (lookupFM env name)
-
-getDictionaries :: OrderedTypeSynonyms -> Predicates -> Predicates -> [Core.Expr]
-getDictionaries synonyms ps = map (getDictionary synonyms ps)
-
-getDictionary :: OrderedTypeSynonyms -> Predicates -> Predicate -> Core.Expr
-getDictionary synonyms availablePredicates p@(Predicate className tp) =      
-   case tp of
-      TVar i | p `elem` availablePredicates -> Core.Var (predicateToId p)
-             | otherwise -> case [ (path, availablePredicate)
-                                 | availablePredicate@(Predicate c t) <- availablePredicates
-                                 , t == tp
-                                 , path <- superclassPaths c className standardClasses
-                                 ] of
-                             []     -> internalError "ToCoreExpr" "getDictionary" "no path"
-                             (path,fromPredicate):_ -> 
-                                foldr Core.Ap 
-                                      (Core.Var (predicateToId fromPredicate)) 
-                                      [ Core.Var . idFromString $ "get" ++ super ++ "From" ++ sub 
-                                      | (sub, super) <- reverse (zip path (tail path))
-                                      ]
-      _      -> case byInstance synonyms standardClasses p of
-                   Nothing -> internalError "ToCoreExpr" "getDictionary" "reduction error"
-                   Just predicates -> 
-                      let dictInstance = Core.Var . idFromString $ "dict"++className++s
-                          (TCon s, _)  = leftSpine tp
-                      in foldl Core.Ap
-                            dictInstance
-                            (getDictionaries synonyms availablePredicates predicates)
-
-insertDictionaries predicates importEnv overloadedVars inferredTypes name =
-    case lookupFM overloadedVars (NameWithRange name) of
-        Nothing -> Core.Var (idFromName name)
-        Just (defName, _ :=> useType) ->
-            case lookupFM inferredTypes defName of
-                Nothing -> internalError "ToCoreExpr" "Expression.Variable" ("can't find: " ++ show defName ++ " in " ++ show (fmToList inferredTypes))
-                Just defType -> 
-                    let i  = maximum (0 : ftv useType) + 1
-                        (_, instantiatedPreds, instantiatedType) = instantiate i defType
-                        synonyms = getOrderedTypeSynonyms importEnv
-                    in -- one-way unification is necessary!
-                       case mguWithTypeSynonyms synonyms instantiatedType useType of
-                          Left _ -> internalError "ToCoreExpr" "Expression.Variable" ("unify: " ++ show useType ++ " with " ++ show instantiatedType)
-                          Right (_, sub) ->
-                             foldl Core.Ap (Core.Var (idFromName name))
-                                           (getDictionaries synonyms predicates (sub |-> instantiatedPreds))
-
 
 
 -- Function "bind" is used in the translation of do-expressions
@@ -190,10 +165,8 @@ patternMatchFail nodeDescription range =
         start = getRangeStart range
 -- Alternative -------------------------------------------------
 -- semantic domain
-type T_Alternative = (ImportEnvironment) ->
-                     ( FiniteMap NameWithRange TpScheme ) ->
-                     ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                     ( Predicates ) ->
+type T_Alternative = (DictionaryEnvironment) ->
+                     (ImportEnvironment) ->
                      ( ( Core.Expr -> Core.Expr ),(Alternative))
 -- cata
 sem_Alternative :: (Alternative) ->
@@ -206,7 +179,7 @@ sem_Alternative_Alternative :: (T_Range) ->
                                (T_Pattern) ->
                                (T_RightHandSide) ->
                                (T_Alternative)
-sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Alternative_Alternative _range_self _pattern_self _righthandside_self
         ( _range_self) =
@@ -214,7 +187,7 @@ sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_importEnv
         ( _pattern_self,_pattern_vars) =
             (_pattern )
         ( _righthandside_core,_righthandside_isGuarded,_righthandside_self) =
-            (_righthandside (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_righthandside (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( \nextCase  ->
              let thisCase =
                      patternToCore
@@ -226,7 +199,7 @@ sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_importEnv
          )
 sem_Alternative_Empty :: (T_Range) ->
                          (T_Alternative)
-sem_Alternative_Empty (_range) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Alternative_Empty (_range) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Alternative_Empty _range_self
         ( _range_self) =
@@ -235,10 +208,8 @@ sem_Alternative_Empty (_range) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overl
 -- Alternatives ------------------------------------------------
 -- semantic domain
 type T_Alternatives = (Range) ->
+                      (DictionaryEnvironment) ->
                       (ImportEnvironment) ->
-                      ( FiniteMap NameWithRange TpScheme ) ->
-                      ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                      ( Predicates ) ->
                       ( ( Core.Expr ),(Alternatives))
 -- cata
 sem_Alternatives :: (Alternatives) ->
@@ -248,16 +219,16 @@ sem_Alternatives (list) =
 sem_Alternatives_Cons :: (T_Alternative) ->
                          (T_Alternatives) ->
                          (T_Alternatives)
-sem_Alternatives_Cons (_hd) (_tl) (_lhs_caseRange) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Alternatives_Cons (_hd) (_tl) (_lhs_caseRange) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             (:) _hd_self _tl_self
         ( _hd_core,_hd_self) =
-            (_hd (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_hd (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _tl_core,_tl_self) =
-            (_tl (_lhs_caseRange) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_tl (_lhs_caseRange) (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( _hd_core _tl_core,_self)
 sem_Alternatives_Nil :: (T_Alternatives)
-sem_Alternatives_Nil (_lhs_caseRange) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Alternatives_Nil (_lhs_caseRange) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             []
     in  ( patternMatchFail "case expression" _lhs_caseRange,_self)
@@ -307,9 +278,8 @@ sem_AnnotatedTypes_Nil  =
     in  ( 0,_self)
 -- Body --------------------------------------------------------
 -- semantic domain
-type T_Body = (ImportEnvironment) ->
-              ( FiniteMap NameWithRange TpScheme ) ->
-              ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
+type T_Body = (DictionaryEnvironment) ->
+              (ImportEnvironment) ->
               ( ( [CoreDecl] ),(Body))
 -- cata
 sem_Body :: (Body) ->
@@ -320,7 +290,7 @@ sem_Body_Body :: (T_Range) ->
                  (T_ImportDeclarations) ->
                  (T_Declarations) ->
                  (T_Body)
-sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) =
+sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Body_Body _range_self _importdeclarations_self _declarations_self
         ( _range_self) =
@@ -328,14 +298,13 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_importEnv) (_
         ( _importdeclarations_self) =
             (_importdeclarations )
         ( _declarations_decls,_declarations_patBindNr,_declarations_self) =
-            (_declarations (_lhs_importEnv) (_lhs_inferredTypes) (True) (_lhs_overloadedVars) (0) ([]))
+            (_declarations (_lhs_dictionaryEnv) (_lhs_importEnv) (True) (0))
     in  ( _declarations_decls,_self)
 -- Constructor -------------------------------------------------
 -- semantic domain
 type T_Constructor = (Name) ->
+                     (DictionaryEnvironment) ->
                      (ImportEnvironment) ->
-                     ( FiniteMap NameWithRange TpScheme ) ->
-                     ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
                      (Int) ->
                      ( ( [(Id, CoreDecl)] ),(Constructor))
 -- cata
@@ -351,7 +320,7 @@ sem_Constructor_Constructor :: (T_Range) ->
                                (T_Name) ->
                                (T_AnnotatedTypes) ->
                                (T_Constructor)
-sem_Constructor_Constructor (_range) (_constructor) (_types) (_lhs_dataTypeName) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_tag) =
+sem_Constructor_Constructor (_range) (_constructor) (_types) (_lhs_dataTypeName) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_tag) =
     let (_self) =
             Constructor_Constructor _range_self _constructor_self _types_self
         ( _range_self) =
@@ -379,7 +348,7 @@ sem_Constructor_Infix :: (T_Range) ->
                          (T_Name) ->
                          (T_AnnotatedType) ->
                          (T_Constructor)
-sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) (_lhs_dataTypeName) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_tag) =
+sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) (_lhs_dataTypeName) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_tag) =
     let (_self) =
             Constructor_Infix _range_self _leftType_self _constructorOperator_self _rightType_self
         ( _range_self) =
@@ -408,7 +377,7 @@ sem_Constructor_Record :: (T_Range) ->
                           (T_Name) ->
                           (T_FieldDeclarations) ->
                           (T_Constructor)
-sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) (_lhs_dataTypeName) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_tag) =
+sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) (_lhs_dataTypeName) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_tag) =
     let (_self) =
             Constructor_Record _range_self _constructor_self _fieldDeclarations_self
         ( _range_self) =
@@ -421,9 +390,8 @@ sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) (_lhs_dataTy
 -- Constructors ------------------------------------------------
 -- semantic domain
 type T_Constructors = (Name) ->
+                      (DictionaryEnvironment) ->
                       (ImportEnvironment) ->
-                      ( FiniteMap NameWithRange TpScheme ) ->
-                      ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
                       (Int) ->
                       ( ( [(Id, CoreDecl)] ),(Constructors))
 -- cata
@@ -434,16 +402,16 @@ sem_Constructors (list) =
 sem_Constructors_Cons :: (T_Constructor) ->
                          (T_Constructors) ->
                          (T_Constructors)
-sem_Constructors_Cons (_hd) (_tl) (_lhs_dataTypeName) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_tag) =
+sem_Constructors_Cons (_hd) (_tl) (_lhs_dataTypeName) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_tag) =
     let (_self) =
             (:) _hd_self _tl_self
         ( _hd_cons,_hd_self) =
-            (_hd (_lhs_dataTypeName) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_tag))
+            (_hd (_lhs_dataTypeName) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_tag))
         ( _tl_cons,_tl_self) =
-            (_tl (_lhs_dataTypeName) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_tag + 1))
+            (_tl (_lhs_dataTypeName) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_tag + 1))
     in  ( _hd_cons  ++  _tl_cons,_self)
 sem_Constructors_Nil :: (T_Constructors)
-sem_Constructors_Nil (_lhs_dataTypeName) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_tag) =
+sem_Constructors_Nil (_lhs_dataTypeName) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_tag) =
     let (_self) =
             []
     in  ( [],_self)
@@ -495,12 +463,10 @@ sem_ContextItems_Nil  =
     in  ( _self)
 -- Declaration -------------------------------------------------
 -- semantic domain
-type T_Declaration = (ImportEnvironment) ->
-                     ( FiniteMap NameWithRange TpScheme ) ->
+type T_Declaration = (DictionaryEnvironment) ->
+                     (ImportEnvironment) ->
                      (Bool) ->
-                     ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
                      (Int) ->
-                     ( Predicates ) ->
                      ( ( [CoreDecl] ),(Int),(Declaration))
 -- cata
 sem_Declaration :: (Declaration) ->
@@ -532,7 +498,7 @@ sem_Declaration_Class :: (T_Range) ->
                          (T_SimpleType) ->
                          (T_MaybeDeclarations) ->
                          (T_Declaration)
-sem_Declaration_Class (_range) (_context) (_simpletype) (_where) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_lhs_patBindNr) (_lhs_predicates) =
+sem_Declaration_Class (_range) (_context) (_simpletype) (_where) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
     let (_self) =
             Declaration_Class _range_self _context_self _simpletype_self _where_self
         ( _range_self) =
@@ -542,7 +508,7 @@ sem_Declaration_Class (_range) (_context) (_simpletype) (_where) (_lhs_importEnv
         ( _simpletype_name,_simpletype_self,_simpletype_typevariables) =
             (_simpletype )
         ( _where_core,_where_self) =
-            (_where (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_where (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( internalError "ToCoreDecl" "Declaration" "'class' not supported",_lhs_patBindNr,_self)
 sem_Declaration_Data :: (T_Range) ->
                         (T_ContextItems) ->
@@ -550,7 +516,7 @@ sem_Declaration_Data :: (T_Range) ->
                         (T_Constructors) ->
                         (T_Names) ->
                         (T_Declaration)
-sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivings) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_lhs_patBindNr) (_lhs_predicates) =
+sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivings) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
     let (_self) =
             Declaration_Data _range_self _context_self _simpletype_self _constructors_self _derivings_self
         ( _range_self) =
@@ -560,7 +526,7 @@ sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivin
         ( _simpletype_name,_simpletype_self,_simpletype_typevariables) =
             (_simpletype )
         ( _constructors_cons,_constructors_self) =
-            (_constructors (_simpletype_name) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (0))
+            (_constructors (_simpletype_name) (_lhs_dictionaryEnv) (_lhs_importEnv) (0))
         ( _derivings_names,_derivings_self) =
             (_derivings )
     in  ( map snd _constructors_cons
@@ -580,7 +546,7 @@ sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivin
 sem_Declaration_Default :: (T_Range) ->
                            (T_Types) ->
                            (T_Declaration)
-sem_Declaration_Default (_range) (_types) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_lhs_patBindNr) (_lhs_predicates) =
+sem_Declaration_Default (_range) (_types) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
     let (_self) =
             Declaration_Default _range_self _types_self
         ( _range_self) =
@@ -590,7 +556,7 @@ sem_Declaration_Default (_range) (_types) (_lhs_importEnv) (_lhs_inferredTypes) 
     in  ( internalError "ToCoreDecl" "Declaration" "'default' not supported",_lhs_patBindNr,_self)
 sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
-sem_Declaration_Empty (_range) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_lhs_patBindNr) (_lhs_predicates) =
+sem_Declaration_Empty (_range) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
     let (_self) =
             Declaration_Empty _range_self
         ( _range_self) =
@@ -601,7 +567,7 @@ sem_Declaration_Fixity :: (T_Range) ->
                           (T_MaybeInt) ->
                           (T_Names) ->
                           (T_Declaration)
-sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_lhs_patBindNr) (_lhs_predicates) =
+sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
     let (_self) =
             Declaration_Fixity _range_self _fixity_self _priority_self _operators_self
         ( _range_self) =
@@ -646,21 +612,18 @@ sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) (_lhs_importE
 sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)
-sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_lhs_patBindNr) (_lhs_predicates) =
+sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
     let (_self) =
             Declaration_FunctionBindings _range_self _bindings_self
         (_ids) =
             freshIds "u$" _bindings_arity
         (_dictionaries) =
-            map predicateToId _predicates
-        (_predicates) =
-            case lookupFM _lhs_inferredTypes (NameWithRange _bindings_name) of
-             Nothing -> internalError "ToCoreDecl" "FunctionBinding.core" ("can't find: " ++ show _bindings_name ++ " in " ++ show (fmToList _lhs_inferredTypes))
-             Just t -> case getQualifiedType t of (predicates :=> _) -> predicates
+            map predicateToId
+               (getPredicateForDecl _bindings_name _lhs_dictionaryEnv)
         ( _range_self) =
             (_range )
         ( _bindings_arity,_bindings_core,_bindings_name,_bindings_self) =
-            (_bindings (_ids) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates ++ _predicates) (_range_self))
+            (_bindings (_lhs_dictionaryEnv) (_ids) (_lhs_importEnv) (_range_self))
     in  ( [ Core.DeclValue
               { Core.declName    = idFromName _bindings_name
               , Core.declAccess  = Core.private
@@ -678,7 +641,7 @@ sem_Declaration_Instance :: (T_Range) ->
                             (T_Types) ->
                             (T_MaybeDeclarations) ->
                             (T_Declaration)
-sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_lhs_patBindNr) (_lhs_predicates) =
+sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
     let (_self) =
             Declaration_Instance _range_self _context_self _name_self _types_self _where_self
         ( _range_self) =
@@ -690,7 +653,7 @@ sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) (_lhs_imp
         ( _types_self) =
             (_types )
         ( _where_core,_where_self) =
-            (_where (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_where (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( internalError "ToCoreDecl" "Declaration" "'instance' not supported",_lhs_patBindNr,_self)
 sem_Declaration_Newtype :: (T_Range) ->
                            (T_ContextItems) ->
@@ -698,7 +661,7 @@ sem_Declaration_Newtype :: (T_Range) ->
                            (T_Constructor) ->
                            (T_Names) ->
                            (T_Declaration)
-sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_derivings) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_lhs_patBindNr) (_lhs_predicates) =
+sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_derivings) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
     let (_self) =
             Declaration_Newtype _range_self _context_self _simpletype_self _constructor_self _derivings_self
         ( _range_self) =
@@ -708,7 +671,7 @@ sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_deriv
         ( _simpletype_name,_simpletype_self,_simpletype_typevariables) =
             (_simpletype )
         ( _constructor_cons,_constructor_self) =
-            (_constructor (_simpletype_name) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (0))
+            (_constructor (_simpletype_name) (_lhs_dictionaryEnv) (_lhs_importEnv) (0))
         ( _derivings_names,_derivings_self) =
             (_derivings )
     in  ( internalError "ToCoreDecl" "Declaration" "'newType' not supported",_lhs_patBindNr,_self)
@@ -716,24 +679,21 @@ sem_Declaration_PatternBinding :: (T_Range) ->
                                   (T_Pattern) ->
                                   (T_RightHandSide) ->
                                   (T_Declaration)
-sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_lhs_patBindNr) (_lhs_predicates) =
+sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
     let (_self) =
             Declaration_PatternBinding _range_self _pattern_self _righthandside_self
         (_dictionaries) =
-            map predicateToId _predicates
-        (_predicates) =
             case _pattern_self of
                 Pattern_Variable _ n ->
-                    case lookupFM _lhs_inferredTypes (NameWithRange n) of
-                          Nothing -> internalError "ToCoreDecl" "PatternBinding" ("can't find: " ++ show n)
-                          Just t -> case getQualifiedType t of (predicates :=> _) -> predicates
+                   map predicateToId
+                      (getPredicateForDecl n _lhs_dictionaryEnv)
                 _ -> []
         ( _range_self) =
             (_range )
         ( _pattern_self,_pattern_vars) =
             (_pattern )
         ( _righthandside_core,_righthandside_isGuarded,_righthandside_self) =
-            (_righthandside (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates ++ _predicates))
+            (_righthandside (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( case _pattern_self of
               Pattern_Variable _ n ->
                   [ Core.DeclValue
@@ -783,7 +743,7 @@ sem_Declaration_Type :: (T_Range) ->
                         (T_SimpleType) ->
                         (T_Type) ->
                         (T_Declaration)
-sem_Declaration_Type (_range) (_simpletype) (_type) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_lhs_patBindNr) (_lhs_predicates) =
+sem_Declaration_Type (_range) (_simpletype) (_type) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
     let (_self) =
             Declaration_Type _range_self _simpletype_self _type_self
         ( _range_self) =
@@ -823,7 +783,7 @@ sem_Declaration_TypeSignature :: (T_Range) ->
                                  (T_Names) ->
                                  (T_Type) ->
                                  (T_Declaration)
-sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_lhs_patBindNr) (_lhs_predicates) =
+sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
     let (_self) =
             Declaration_TypeSignature _range_self _names_self _type_self
         ( _range_self) =
@@ -835,12 +795,10 @@ sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_importEnv) (_lhs_i
     in  ( [],_lhs_patBindNr,_self)
 -- Declarations ------------------------------------------------
 -- semantic domain
-type T_Declarations = (ImportEnvironment) ->
-                      ( FiniteMap NameWithRange TpScheme ) ->
+type T_Declarations = (DictionaryEnvironment) ->
+                      (ImportEnvironment) ->
                       (Bool) ->
-                      ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
                       (Int) ->
-                      ( Predicates ) ->
                       ( ( [CoreDecl] ),(Int),(Declarations))
 -- cata
 sem_Declarations :: (Declarations) ->
@@ -850,16 +808,16 @@ sem_Declarations (list) =
 sem_Declarations_Cons :: (T_Declaration) ->
                          (T_Declarations) ->
                          (T_Declarations)
-sem_Declarations_Cons (_hd) (_tl) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_lhs_patBindNr) (_lhs_predicates) =
+sem_Declarations_Cons (_hd) (_tl) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
     let (_self) =
             (:) _hd_self _tl_self
         ( _hd_decls,_hd_patBindNr,_hd_self) =
-            (_hd (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_lhs_patBindNr) (_lhs_predicates))
+            (_hd (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr))
         ( _tl_decls,_tl_patBindNr,_tl_self) =
-            (_tl (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_hd_patBindNr) (_lhs_predicates))
+            (_tl (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_hd_patBindNr))
     in  ( _hd_decls  ++  _tl_decls,_tl_patBindNr,_self)
 sem_Declarations_Nil :: (T_Declarations)
-sem_Declarations_Nil (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_isTopLevel) (_lhs_overloadedVars) (_lhs_patBindNr) (_lhs_predicates) =
+sem_Declarations_Nil (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
     let (_self) =
             []
     in  ( [],_lhs_patBindNr,_self)
@@ -950,10 +908,8 @@ sem_Exports_Nil  =
     in  ( emptySet,emptySet,_self,emptySet,emptySet)
 -- Expression --------------------------------------------------
 -- semantic domain
-type T_Expression = (ImportEnvironment) ->
-                    ( FiniteMap NameWithRange TpScheme ) ->
-                    ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                    ( Predicates ) ->
+type T_Expression = (DictionaryEnvironment) ->
+                    (ImportEnvironment) ->
                     ( ( Core.Expr ),(Expression))
 -- cata
 sem_Expression :: (Expression) ->
@@ -1002,29 +958,29 @@ sem_Expression_Case :: (T_Range) ->
                        (T_Expression) ->
                        (T_Alternatives) ->
                        (T_Expression)
-sem_Expression_Case (_range) (_expression) (_alternatives) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_Case (_range) (_expression) (_alternatives) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_Case _range_self _expression_self _alternatives_self
         ( _range_self) =
             (_range )
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _alternatives_core,_alternatives_self) =
-            (_alternatives (_range_self) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_alternatives (_range_self) (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( let_ caseExprId _expression_core _alternatives_core,_self)
 sem_Expression_Comprehension :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Qualifiers) ->
                                 (T_Expression)
-sem_Expression_Comprehension (_range) (_expression) (_qualifiers) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_Comprehension (_range) (_expression) (_qualifiers) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_Comprehension _range_self _expression_self _qualifiers_self
         ( _range_self) =
             (_range )
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _qualifiers_core,_qualifiers_self) =
-            (_qualifiers (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_qualifiers (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( let singleton x = cons x nil
           in foldr ($) (singleton _expression_core) _qualifiers_core
          ,_self
@@ -1032,7 +988,7 @@ sem_Expression_Comprehension (_range) (_expression) (_qualifiers) (_lhs_importEn
 sem_Expression_Constructor :: (T_Range) ->
                               (T_Name) ->
                               (T_Expression)
-sem_Expression_Constructor (_range) (_name) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_Constructor (_range) (_name) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_Constructor _range_self _name_self
         ( _range_self) =
@@ -1043,30 +999,30 @@ sem_Expression_Constructor (_range) (_name) (_lhs_importEnv) (_lhs_inferredTypes
 sem_Expression_Do :: (T_Range) ->
                      (T_Statements) ->
                      (T_Expression)
-sem_Expression_Do (_range) (_statements) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_Do (_range) (_statements) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_Do _range_self _statements_self
         ( _range_self) =
             (_range )
         ( _statements_core,_statements_self) =
-            (_statements (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_statements (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( chainCode _statements_core,_self)
 sem_Expression_Enum :: (T_Range) ->
                        (T_Expression) ->
                        (T_MaybeExpression) ->
                        (T_MaybeExpression) ->
                        (T_Expression)
-sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_Enum _range_self _from_self _then_self _to_self
         ( _range_self) =
             (_range )
         ( _from_core,_from_self) =
-            (_from (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_from (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _then_core,_then_self) =
-            (_then (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_then (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _to_core,_to_self) =
-            (_to (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_to (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( case (_then_core, _to_core) of
               (Just then_, Just to) ->
                   var "primEnumFromThenTo" `app_` _from_core `app_` then_ `app_` to
@@ -1083,34 +1039,34 @@ sem_Expression_If :: (T_Range) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression)
-sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_If _range_self _guardExpression_self _thenExpression_self _elseExpression_self
         ( _range_self) =
             (_range )
         ( _guardExpression_core,_guardExpression_self) =
-            (_guardExpression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_guardExpression (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _thenExpression_core,_thenExpression_self) =
-            (_thenExpression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_thenExpression (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _elseExpression_core,_elseExpression_self) =
-            (_elseExpression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_elseExpression (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( if_ _guardExpression_core _thenExpression_core _elseExpression_core,_self)
 sem_Expression_InfixApplication :: (T_Range) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression)
-sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightExpression) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightExpression) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_InfixApplication _range_self _leftExpression_self _operator_self _rightExpression_self
         ( _range_self) =
             (_range )
         ( _leftExpression_core,_leftExpression_self) =
-            (_leftExpression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_leftExpression (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _operator_core,_operator_self) =
-            (_operator (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_operator (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _rightExpression_core,_rightExpression_self) =
-            (_rightExpression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_rightExpression (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( case (_leftExpression_core, _rightExpression_core) of
               (Nothing, Nothing) -> _operator_core
               (Just l , Nothing) -> Core.Ap _operator_core l
@@ -1123,7 +1079,7 @@ sem_Expression_Lambda :: (T_Range) ->
                          (T_Patterns) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_Lambda _range_self _patterns_self _expression_self
         ( _range_self) =
@@ -1131,7 +1087,7 @@ sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_importEnv) (_lhs_
         ( _patterns_length,_patterns_self,_patterns_vars) =
             (_patterns )
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( let ids = freshIds "u$" _patterns_length
           in let_ nextClauseId (patternMatchFail "lambda expression" _range_self)
               (foldr
@@ -1148,7 +1104,7 @@ sem_Expression_Let :: (T_Range) ->
                       (T_Declarations) ->
                       (T_Expression) ->
                       (T_Expression)
-sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_Let _range_self _declarations_self _expression_self
         (_importEnv) =
@@ -1156,25 +1112,25 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_importEnv) (_lhs
         ( _range_self) =
             (_range )
         ( _declarations_decls,_declarations_patBindNr,_declarations_self) =
-            (_declarations (_importEnv) (_lhs_inferredTypes) (False) (_lhs_overloadedVars) (0) (_lhs_predicates))
+            (_declarations (_lhs_dictionaryEnv) (_importEnv) (False) (0))
         ( _expression_core,_expression_self) =
-            (_expression (_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_importEnv))
     in  ( letrec_ _declarations_decls _expression_core,_self)
 sem_Expression_List :: (T_Range) ->
                        (T_Expressions) ->
                        (T_Expression)
-sem_Expression_List (_range) (_expressions) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_List (_range) (_expressions) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_List _range_self _expressions_self
         ( _range_self) =
             (_range )
         ( _expressions_core,_expressions_self) =
-            (_expressions (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expressions (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( coreList _expressions_core,_self)
 sem_Expression_Literal :: (T_Range) ->
                           (T_Literal) ->
                           (T_Expression)
-sem_Expression_Literal (_range) (_literal) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_Literal (_range) (_literal) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_Literal _range_self _literal_self
         ( _range_self) =
@@ -1185,60 +1141,58 @@ sem_Expression_Literal (_range) (_literal) (_lhs_importEnv) (_lhs_inferredTypes)
 sem_Expression_Negate :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Negate (_range) (_expression) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_Negate (_range) (_expression) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_Negate _range_self _expression_self
         ( _range_self) =
             (_range )
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
-    in  ( insertDictionaries _lhs_predicates _lhs_importEnv
-                             _lhs_overloadedVars _lhs_inferredTypes
-                             (setNameRange intUnaryMinusName _range_self)
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
+    in  ( insertDictionaries (setNameRange intUnaryMinusName _range_self) _lhs_dictionaryEnv
           `app_` _expression_core
          ,_self
          )
 sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
-sem_Expression_NegateFloat (_range) (_expression) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_NegateFloat (_range) (_expression) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_NegateFloat _range_self _expression_self
         ( _range_self) =
             (_range )
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( var "primNegFloat" `app_` _expression_core,_self)
 sem_Expression_NormalApplication :: (T_Range) ->
                                     (T_Expression) ->
                                     (T_Expressions) ->
                                     (T_Expression)
-sem_Expression_NormalApplication (_range) (_function) (_arguments) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_NormalApplication (_range) (_function) (_arguments) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_NormalApplication _range_self _function_self _arguments_self
         ( _range_self) =
             (_range )
         ( _function_core,_function_self) =
-            (_function (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_function (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _arguments_core,_arguments_self) =
-            (_arguments (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_arguments (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( foldl Core.Ap _function_core _arguments_core,_self)
 sem_Expression_Parenthesized :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Expression)
-sem_Expression_Parenthesized (_range) (_expression) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_Parenthesized (_range) (_expression) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_Parenthesized _range_self _expression_self
         ( _range_self) =
             (_range )
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( _expression_core,_self)
 sem_Expression_RecordConstruction :: (T_Range) ->
                                      (T_Name) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_Expression)
-sem_Expression_RecordConstruction (_range) (_name) (_recordExpressionBindings) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_RecordConstruction (_range) (_name) (_recordExpressionBindings) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_RecordConstruction _range_self _name_self _recordExpressionBindings_self
         ( _range_self) =
@@ -1246,32 +1200,32 @@ sem_Expression_RecordConstruction (_range) (_name) (_recordExpressionBindings) (
         ( _name_self) =
             (_name )
         ( _recordExpressionBindings_self) =
-            (_recordExpressionBindings (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_recordExpressionBindings (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( internalError "ToCoreExpr" "Expression" "records not supported",_self)
 sem_Expression_RecordUpdate :: (T_Range) ->
                                (T_Expression) ->
                                (T_RecordExpressionBindings) ->
                                (T_Expression)
-sem_Expression_RecordUpdate (_range) (_expression) (_recordExpressionBindings) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_RecordUpdate (_range) (_expression) (_recordExpressionBindings) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_RecordUpdate _range_self _expression_self _recordExpressionBindings_self
         ( _range_self) =
             (_range )
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _recordExpressionBindings_self) =
-            (_recordExpressionBindings (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_recordExpressionBindings (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( internalError "ToCoreExpr" "Expression" "records not supported",_self)
 sem_Expression_Tuple :: (T_Range) ->
                         (T_Expressions) ->
                         (T_Expression)
-sem_Expression_Tuple (_range) (_expressions) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_Tuple (_range) (_expressions) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_Tuple _range_self _expressions_self
         ( _range_self) =
             (_range )
         ( _expressions_core,_expressions_self) =
-            (_expressions (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expressions (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( foldl
               Core.Ap
               (Core.Con
@@ -1287,36 +1241,31 @@ sem_Expression_Typed :: (T_Range) ->
                         (T_Expression) ->
                         (T_Type) ->
                         (T_Expression)
-sem_Expression_Typed (_range) (_expression) (_type) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_Typed (_range) (_expression) (_type) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_Typed _range_self _expression_self _type_self
         ( _range_self) =
             (_range )
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _type_self) =
             (_type )
     in  ( _expression_core,_self)
 sem_Expression_Variable :: (T_Range) ->
                            (T_Name) ->
                            (T_Expression)
-sem_Expression_Variable (_range) (_name) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expression_Variable (_range) (_name) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Expression_Variable _range_self _name_self
         ( _range_self) =
             (_range )
         ( _name_self) =
             (_name )
-    in  ( insertDictionaries _lhs_predicates _lhs_importEnv
-                             _lhs_overloadedVars _lhs_inferredTypes _name_self
-         ,_self
-         )
+    in  ( insertDictionaries _name_self _lhs_dictionaryEnv,_self)
 -- Expressions -------------------------------------------------
 -- semantic domain
-type T_Expressions = (ImportEnvironment) ->
-                     ( FiniteMap NameWithRange TpScheme ) ->
-                     ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                     ( Predicates ) ->
+type T_Expressions = (DictionaryEnvironment) ->
+                     (ImportEnvironment) ->
                      ( ( [Core.Expr] ),(Expressions))
 -- cata
 sem_Expressions :: (Expressions) ->
@@ -1326,16 +1275,16 @@ sem_Expressions (list) =
 sem_Expressions_Cons :: (T_Expression) ->
                         (T_Expressions) ->
                         (T_Expressions)
-sem_Expressions_Cons (_hd) (_tl) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expressions_Cons (_hd) (_tl) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             (:) _hd_self _tl_self
         ( _hd_core,_hd_self) =
-            (_hd (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_hd (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _tl_core,_tl_self) =
-            (_tl (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_tl (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( _hd_core  :  _tl_core,_self)
 sem_Expressions_Nil :: (T_Expressions)
-sem_Expressions_Nil (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Expressions_Nil (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             []
     in  ( [],_self)
@@ -1423,11 +1372,9 @@ sem_Fixity_Infixr (_range) =
     in  ( _self)
 -- FunctionBinding ---------------------------------------------
 -- semantic domain
-type T_FunctionBinding = ( [Id] ) ->
+type T_FunctionBinding = (DictionaryEnvironment) ->
+                         ( [Id] ) ->
                          (ImportEnvironment) ->
-                         ( FiniteMap NameWithRange TpScheme ) ->
-                         ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                         ( Predicates ) ->
                          ( (Int),( Core.Expr -> Core.Expr ),(Name),(FunctionBinding))
 -- cata
 sem_FunctionBinding :: (FunctionBinding) ->
@@ -1438,7 +1385,7 @@ sem_FunctionBinding_FunctionBinding :: (T_Range) ->
                                        (T_LeftHandSide) ->
                                        (T_RightHandSide) ->
                                        (T_FunctionBinding)
-sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_lhs_ids) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_lhs_dictionaryEnv) (_lhs_ids) (_lhs_importEnv) =
     let (_self) =
             FunctionBinding_FunctionBinding _range_self _lefthandside_self _righthandside_self
         ( _range_self) =
@@ -1446,7 +1393,7 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_
         ( _lefthandside_arity,_lefthandside_name,_lefthandside_patterns,_lefthandside_self) =
             (_lefthandside )
         ( _righthandside_core,_righthandside_isGuarded,_righthandside_self) =
-            (_righthandside (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_righthandside (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( _lefthandside_arity
          ,\nextClause ->
               let thisClause =
@@ -1465,11 +1412,9 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_
          )
 -- FunctionBindings --------------------------------------------
 -- semantic domain
-type T_FunctionBindings = ( [Id] ) ->
+type T_FunctionBindings = (DictionaryEnvironment) ->
+                          ( [Id] ) ->
                           (ImportEnvironment) ->
-                          ( FiniteMap NameWithRange TpScheme ) ->
-                          ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                          ( Predicates ) ->
                           (Range) ->
                           ( (Int),(Core.Expr),(Name),(FunctionBindings))
 -- cata
@@ -1480,25 +1425,23 @@ sem_FunctionBindings (list) =
 sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
                              (T_FunctionBindings) ->
                              (T_FunctionBindings)
-sem_FunctionBindings_Cons (_hd) (_tl) (_lhs_ids) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) (_lhs_range) =
+sem_FunctionBindings_Cons (_hd) (_tl) (_lhs_dictionaryEnv) (_lhs_ids) (_lhs_importEnv) (_lhs_range) =
     let (_self) =
             (:) _hd_self _tl_self
         ( _hd_arity,_hd_core,_hd_name,_hd_self) =
-            (_hd (_lhs_ids) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_hd (_lhs_dictionaryEnv) (_lhs_ids) (_lhs_importEnv))
         ( _tl_arity,_tl_core,_tl_name,_tl_self) =
-            (_tl (_lhs_ids) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) (_lhs_range))
+            (_tl (_lhs_dictionaryEnv) (_lhs_ids) (_lhs_importEnv) (_lhs_range))
     in  ( _hd_arity,_hd_core _tl_core,_hd_name,_self)
 sem_FunctionBindings_Nil :: (T_FunctionBindings)
-sem_FunctionBindings_Nil (_lhs_ids) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) (_lhs_range) =
+sem_FunctionBindings_Nil (_lhs_dictionaryEnv) (_lhs_ids) (_lhs_importEnv) (_lhs_range) =
     let (_self) =
             []
     in  ( internalError "ToCoreDecl" "FunctionBindings" "arity: empty list of function bindings",patternMatchFail "function bindings" _lhs_range,internalError "ToCoreName.ag" "n/a" "empty FunctionBindings",_self)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
-type T_GuardedExpression = (ImportEnvironment) ->
-                           ( FiniteMap NameWithRange TpScheme ) ->
-                           ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                           ( Predicates ) ->
+type T_GuardedExpression = (DictionaryEnvironment) ->
+                           (ImportEnvironment) ->
                            ( ( Core.Expr -> Core.Expr ),(GuardedExpression))
 -- cata
 sem_GuardedExpression :: (GuardedExpression) ->
@@ -1509,22 +1452,20 @@ sem_GuardedExpression_GuardedExpression :: (T_Range) ->
                                            (T_Expression) ->
                                            (T_Expression) ->
                                            (T_GuardedExpression)
-sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             GuardedExpression_GuardedExpression _range_self _guard_self _expression_self
         ( _range_self) =
             (_range )
         ( _guard_core,_guard_self) =
-            (_guard (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_guard (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( \fail -> if_ _guard_core _expression_core fail,_self)
 -- GuardedExpressions ------------------------------------------
 -- semantic domain
-type T_GuardedExpressions = (ImportEnvironment) ->
-                            ( FiniteMap NameWithRange TpScheme ) ->
-                            ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                            ( Predicates ) ->
+type T_GuardedExpressions = (DictionaryEnvironment) ->
+                            (ImportEnvironment) ->
                             ( ( [Core.Expr -> Core.Expr] ),(GuardedExpressions))
 -- cata
 sem_GuardedExpressions :: (GuardedExpressions) ->
@@ -1534,16 +1475,16 @@ sem_GuardedExpressions (list) =
 sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
                                (T_GuardedExpressions) ->
                                (T_GuardedExpressions)
-sem_GuardedExpressions_Cons (_hd) (_tl) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_GuardedExpressions_Cons (_hd) (_tl) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             (:) _hd_self _tl_self
         ( _hd_core,_hd_self) =
-            (_hd (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_hd (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _tl_core,_tl_self) =
-            (_tl (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_tl (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( _hd_core  :  _tl_core,_self)
 sem_GuardedExpressions_Nil :: (T_GuardedExpressions)
-sem_GuardedExpressions_Nil (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_GuardedExpressions_Nil (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             []
     in  ( [],_self)
@@ -1814,10 +1755,8 @@ sem_Literal_String (_range) (_value) =
          )
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
-type T_MaybeDeclarations = (ImportEnvironment) ->
-                           ( FiniteMap NameWithRange TpScheme ) ->
-                           ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                           ( Predicates ) ->
+type T_MaybeDeclarations = (DictionaryEnvironment) ->
+                           (ImportEnvironment) ->
                            ( ( Core.Expr -> Core.Expr ),(MaybeDeclarations))
 -- cata
 sem_MaybeDeclarations :: (MaybeDeclarations) ->
@@ -1828,16 +1767,16 @@ sem_MaybeDeclarations ((MaybeDeclarations_Nothing )) =
     (sem_MaybeDeclarations_Nothing )
 sem_MaybeDeclarations_Just :: (T_Declarations) ->
                               (T_MaybeDeclarations)
-sem_MaybeDeclarations_Just (_declarations) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_MaybeDeclarations_Just (_declarations) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             MaybeDeclarations_Just _declarations_self
         (_importEnv) =
             internalError "CodeGeneration.ag" "MaybeDeclarations.Just" ""
         ( _declarations_decls,_declarations_patBindNr,_declarations_self) =
-            (_declarations (_importEnv) (_lhs_inferredTypes) (False) (_lhs_overloadedVars) (0) (_lhs_predicates))
+            (_declarations (_lhs_dictionaryEnv) (_importEnv) (False) (0))
     in  ( \continue -> letrec_ _declarations_decls continue,_self)
 sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
-sem_MaybeDeclarations_Nothing (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_MaybeDeclarations_Nothing (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             MaybeDeclarations_Nothing
     in  ( \continue -> continue,_self)
@@ -1866,10 +1805,8 @@ sem_MaybeExports_Nothing  =
     in  ( emptySet,emptySet,_self,emptySet,emptySet)
 -- MaybeExpression ---------------------------------------------
 -- semantic domain
-type T_MaybeExpression = (ImportEnvironment) ->
-                         ( FiniteMap NameWithRange TpScheme ) ->
-                         ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                         ( Predicates ) ->
+type T_MaybeExpression = (DictionaryEnvironment) ->
+                         (ImportEnvironment) ->
                          ( ( Maybe Core.Expr ),(MaybeExpression))
 -- cata
 sem_MaybeExpression :: (MaybeExpression) ->
@@ -1880,14 +1817,14 @@ sem_MaybeExpression ((MaybeExpression_Nothing )) =
     (sem_MaybeExpression_Nothing )
 sem_MaybeExpression_Just :: (T_Expression) ->
                             (T_MaybeExpression)
-sem_MaybeExpression_Just (_expression) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_MaybeExpression_Just (_expression) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             MaybeExpression_Just _expression_self
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( Just _expression_core,_self)
 sem_MaybeExpression_Nothing :: (T_MaybeExpression)
-sem_MaybeExpression_Nothing (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_MaybeExpression_Nothing (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             MaybeExpression_Nothing
     in  ( Nothing,_self)
@@ -1984,9 +1921,8 @@ sem_MaybeNames_Nothing  =
 -- Module ------------------------------------------------------
 -- semantic domain
 type T_Module = ( [Core.CoreDecl] ) ->
+                (DictionaryEnvironment) ->
                 (ImportEnvironment) ->
-                ( FiniteMap NameWithRange TpScheme ) ->
-                ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
                 (TypeEnvironment) ->
                 ( ( Core.CoreModule ),(Module))
 -- cata
@@ -1999,7 +1935,7 @@ sem_Module_Module :: (T_Range) ->
                      (T_MaybeExports) ->
                      (T_Body) ->
                      (T_Module)
-sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_additionalDecls) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_toplevelTypes) =
+sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_additionalDecls) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_toplevelTypes) =
     let (_self) =
             Module_Module _range_self _name_self _exports_self _body_self
         (_module_) =
@@ -2024,7 +1960,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_additionalDecls) (_l
         ( _exports_cons,_exports_mods,_exports_self,_exports_types,_exports_values) =
             (_exports )
         ( _body_decls,_body_self) =
-            (_body (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars))
+            (_body (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( _module_ { Module.moduleDecls =
                insertedMain _lhs_toplevelTypes : Module.moduleDecls _module_ }
          ,_self
@@ -2353,10 +2289,8 @@ sem_Position_Unknown  =
     in  ( _self)
 -- Qualifier ---------------------------------------------------
 -- semantic domain
-type T_Qualifier = (ImportEnvironment) ->
-                   ( FiniteMap NameWithRange TpScheme ) ->
-                   ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                   ( Predicates ) ->
+type T_Qualifier = (DictionaryEnvironment) ->
+                   (ImportEnvironment) ->
                    ( ( Core.Expr -> Core.Expr ),(Qualifier))
 -- cata
 sem_Qualifier :: (Qualifier) ->
@@ -2371,7 +2305,7 @@ sem_Qualifier ((Qualifier_Let (_range) (_declarations))) =
     (sem_Qualifier_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Qualifier_Empty :: (T_Range) ->
                        (T_Qualifier)
-sem_Qualifier_Empty (_range) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Qualifier_Empty (_range) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Qualifier_Empty _range_self
         ( _range_self) =
@@ -2381,7 +2315,7 @@ sem_Qualifier_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Qualifier)
-sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Qualifier_Generator _range_self _pattern_self _expression_self
         ( _range_self) =
@@ -2389,7 +2323,7 @@ sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_importEnv) (_lhs
         ( _pattern_self,_pattern_vars) =
             (_pattern )
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( \continue ->
               let_ nextClauseId nil
                   (let_
@@ -2407,18 +2341,18 @@ sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_importEnv) (_lhs
 sem_Qualifier_Guard :: (T_Range) ->
                        (T_Expression) ->
                        (T_Qualifier)
-sem_Qualifier_Guard (_range) (_guard) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Qualifier_Guard (_range) (_guard) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Qualifier_Guard _range_self _guard_self
         ( _range_self) =
             (_range )
         ( _guard_core,_guard_self) =
-            (_guard (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_guard (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( \continue -> if_ _guard_core continue nil,_self)
 sem_Qualifier_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Qualifier)
-sem_Qualifier_Let (_range) (_declarations) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Qualifier_Let (_range) (_declarations) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Qualifier_Let _range_self _declarations_self
         (_importEnv) =
@@ -2426,14 +2360,12 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_importEnv) (_lhs_inferredTypes)
         ( _range_self) =
             (_range )
         ( _declarations_decls,_declarations_patBindNr,_declarations_self) =
-            (_declarations (_importEnv) (_lhs_inferredTypes) (False) (_lhs_overloadedVars) (0) (_lhs_predicates))
+            (_declarations (_lhs_dictionaryEnv) (_importEnv) (False) (0))
     in  ( \continue -> letrec_ _declarations_decls continue,_self)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
-type T_Qualifiers = (ImportEnvironment) ->
-                    ( FiniteMap NameWithRange TpScheme ) ->
-                    ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                    ( Predicates ) ->
+type T_Qualifiers = (DictionaryEnvironment) ->
+                    (ImportEnvironment) ->
                     ( ( [Core.Expr -> Core.Expr] ),(Qualifiers))
 -- cata
 sem_Qualifiers :: (Qualifiers) ->
@@ -2443,16 +2375,16 @@ sem_Qualifiers (list) =
 sem_Qualifiers_Cons :: (T_Qualifier) ->
                        (T_Qualifiers) ->
                        (T_Qualifiers)
-sem_Qualifiers_Cons (_hd) (_tl) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Qualifiers_Cons (_hd) (_tl) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             (:) _hd_self _tl_self
         ( _hd_core,_hd_self) =
-            (_hd (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_hd (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _tl_core,_tl_self) =
-            (_tl (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_tl (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( _hd_core  :  _tl_core,_self)
 sem_Qualifiers_Nil :: (T_Qualifiers)
-sem_Qualifiers_Nil (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Qualifiers_Nil (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             []
     in  ( [],_self)
@@ -2477,10 +2409,8 @@ sem_Range_Range (_start) (_stop) =
     in  ( _self)
 -- RecordExpressionBinding -------------------------------------
 -- semantic domain
-type T_RecordExpressionBinding = (ImportEnvironment) ->
-                                 ( FiniteMap NameWithRange TpScheme ) ->
-                                 ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                                 ( Predicates ) ->
+type T_RecordExpressionBinding = (DictionaryEnvironment) ->
+                                 (ImportEnvironment) ->
                                  ( (RecordExpressionBinding))
 -- cata
 sem_RecordExpressionBinding :: (RecordExpressionBinding) ->
@@ -2491,7 +2421,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
                                                        (T_Name) ->
                                                        (T_Expression) ->
                                                        (T_RecordExpressionBinding)
-sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expression) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expression) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             RecordExpressionBinding_RecordExpressionBinding _range_self _name_self _expression_self
         ( _range_self) =
@@ -2499,14 +2429,12 @@ sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expressio
         ( _name_self) =
             (_name )
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( _self)
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
-type T_RecordExpressionBindings = (ImportEnvironment) ->
-                                  ( FiniteMap NameWithRange TpScheme ) ->
-                                  ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                                  ( Predicates ) ->
+type T_RecordExpressionBindings = (DictionaryEnvironment) ->
+                                  (ImportEnvironment) ->
                                   ( (RecordExpressionBindings))
 -- cata
 sem_RecordExpressionBindings :: (RecordExpressionBindings) ->
@@ -2516,16 +2444,16 @@ sem_RecordExpressionBindings (list) =
 sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_RecordExpressionBindings)
-sem_RecordExpressionBindings_Cons (_hd) (_tl) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_RecordExpressionBindings_Cons (_hd) (_tl) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             (:) _hd_self _tl_self
         ( _hd_self) =
-            (_hd (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_hd (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _tl_self) =
-            (_tl (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_tl (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( _self)
 sem_RecordExpressionBindings_Nil :: (T_RecordExpressionBindings)
-sem_RecordExpressionBindings_Nil (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_RecordExpressionBindings_Nil (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             []
     in  ( _self)
@@ -2577,10 +2505,8 @@ sem_RecordPatternBindings_Nil  =
     in  ( _self)
 -- RightHandSide -----------------------------------------------
 -- semantic domain
-type T_RightHandSide = (ImportEnvironment) ->
-                       ( FiniteMap NameWithRange TpScheme ) ->
-                       ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                       ( Predicates ) ->
+type T_RightHandSide = (DictionaryEnvironment) ->
+                       (ImportEnvironment) ->
                        ( ( Core.Expr ),(Bool),(RightHandSide))
 -- cata
 sem_RightHandSide :: (RightHandSide) ->
@@ -2593,29 +2519,29 @@ sem_RightHandSide_Expression :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_MaybeDeclarations) ->
                                 (T_RightHandSide)
-sem_RightHandSide_Expression (_range) (_expression) (_where) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_RightHandSide_Expression (_range) (_expression) (_where) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             RightHandSide_Expression _range_self _expression_self _where_self
         ( _range_self) =
             (_range )
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _where_core,_where_self) =
-            (_where (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_where (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( _where_core _expression_core,False,_self)
 sem_RightHandSide_Guarded :: (T_Range) ->
                              (T_GuardedExpressions) ->
                              (T_MaybeDeclarations) ->
                              (T_RightHandSide)
-sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             RightHandSide_Guarded _range_self _guardedexpressions_self _where_self
         ( _range_self) =
             (_range )
         ( _guardedexpressions_core,_guardedexpressions_self) =
-            (_guardedexpressions (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_guardedexpressions (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _where_core,_where_self) =
-            (_where (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_where (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( _where_core (foldr ($) (Core.Var nextClauseId) _guardedexpressions_core),True,_self)
 -- SimpleType --------------------------------------------------
 -- semantic domain
@@ -2641,10 +2567,8 @@ sem_SimpleType_SimpleType (_range) (_name) (_typevariables) =
     in  ( _name_self,_self,_typevariables_self)
 -- Statement ---------------------------------------------------
 -- semantic domain
-type T_Statement = (ImportEnvironment) ->
-                   ( FiniteMap NameWithRange TpScheme ) ->
-                   ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                   ( Predicates ) ->
+type T_Statement = (DictionaryEnvironment) ->
+                   (ImportEnvironment) ->
                    ( ( Maybe Core.Expr -> Core.Expr ),(Statement))
 -- cata
 sem_Statement :: (Statement) ->
@@ -2659,7 +2583,7 @@ sem_Statement ((Statement_Let (_range) (_declarations))) =
     (sem_Statement_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Statement_Empty :: (T_Range) ->
                        (T_Statement)
-sem_Statement_Empty (_range) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Statement_Empty (_range) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Statement_Empty _range_self
         ( _range_self) =
@@ -2673,13 +2597,13 @@ sem_Statement_Empty (_range) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloa
 sem_Statement_Expression :: (T_Range) ->
                             (T_Expression) ->
                             (T_Statement)
-sem_Statement_Expression (_range) (_expression) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Statement_Expression (_range) (_expression) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Statement_Expression _range_self _expression_self
         ( _range_self) =
             (_range )
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( \rest ->
               case rest of
                   Nothing   -> _expression_core
@@ -2690,7 +2614,7 @@ sem_Statement_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Statement)
-sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Statement_Generator _range_self _pattern_self _expression_self
         ( _range_self) =
@@ -2698,7 +2622,7 @@ sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_importEnv) (_lhs
         ( _pattern_self,_pattern_vars) =
             (_pattern )
         ( _expression_core,_expression_self) =
-            (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_expression (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( \rest -> case rest of
               Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
               Just rest ->
@@ -2715,7 +2639,7 @@ sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_importEnv) (_lhs
 sem_Statement_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Statement)
-sem_Statement_Let (_range) (_declarations) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Statement_Let (_range) (_declarations) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             Statement_Let _range_self _declarations_self
         (_importEnv) =
@@ -2723,7 +2647,7 @@ sem_Statement_Let (_range) (_declarations) (_lhs_importEnv) (_lhs_inferredTypes)
         ( _range_self) =
             (_range )
         ( _declarations_decls,_declarations_patBindNr,_declarations_self) =
-            (_declarations (_importEnv) (_lhs_inferredTypes) (False) (_lhs_overloadedVars) (0) (_lhs_predicates))
+            (_declarations (_lhs_dictionaryEnv) (_importEnv) (False) (0))
     in  ( \rest ->
               case rest of
                   Nothing   -> internalError "ToCoreExpr" "Statement" "'let' can't be last in 'do'"
@@ -2732,10 +2656,8 @@ sem_Statement_Let (_range) (_declarations) (_lhs_importEnv) (_lhs_inferredTypes)
          )
 -- Statements --------------------------------------------------
 -- semantic domain
-type T_Statements = (ImportEnvironment) ->
-                    ( FiniteMap NameWithRange TpScheme ) ->
-                    ( FiniteMap NameWithRange (NameWithRange, QType) ) ->
-                    ( Predicates ) ->
+type T_Statements = (DictionaryEnvironment) ->
+                    (ImportEnvironment) ->
                     ( ( [Maybe Core.Expr -> Core.Expr] ),(Statements))
 -- cata
 sem_Statements :: (Statements) ->
@@ -2745,16 +2667,16 @@ sem_Statements (list) =
 sem_Statements_Cons :: (T_Statement) ->
                        (T_Statements) ->
                        (T_Statements)
-sem_Statements_Cons (_hd) (_tl) (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Statements_Cons (_hd) (_tl) (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             (:) _hd_self _tl_self
         ( _hd_core,_hd_self) =
-            (_hd (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_hd (_lhs_dictionaryEnv) (_lhs_importEnv))
         ( _tl_core,_tl_self) =
-            (_tl (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
+            (_tl (_lhs_dictionaryEnv) (_lhs_importEnv))
     in  ( _hd_core  :  _tl_core,_self)
 sem_Statements_Nil :: (T_Statements)
-sem_Statements_Nil (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates) =
+sem_Statements_Nil (_lhs_dictionaryEnv) (_lhs_importEnv) =
     let (_self) =
             []
     in  ( [],_self)

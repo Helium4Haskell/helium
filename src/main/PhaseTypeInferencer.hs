@@ -3,6 +3,7 @@ module PhaseTypeInferencer (phaseTypeInferencer) where
 import CompileUtils
 import Warnings(Warning)
 import qualified TypeInferencing(sem_Module)
+import DictionaryEnvironment (DictionaryEnvironment)
 import Types
 import Data.FiniteMap
 import UHA_Utils
@@ -11,8 +12,9 @@ import UHA_Syntax
 phaseTypeInferencer :: 
     String -> Module -> [String] -> ImportEnvironment ->
         ImportEnvironment -> [Option] -> 
-           IO (ImportEnvironment, FiniteMap NameWithRange TpScheme  {- == LocalTypes -}, 
-               FiniteMap NameWithRange (NameWithRange, QType) {- OverloadedVariables -}, TypeEnvironment, [Warning])
+           IO ( DictionaryEnvironment,
+               ImportEnvironment, 
+               TypeEnvironment, [Warning])
 phaseTypeInferencer fullName module_ doneModules localEnv completeEnv options = do
     enterNewPhase "Type inferencing" options
 
@@ -25,7 +27,7 @@ phaseTypeInferencer fullName module_ doneModules localEnv completeEnv options = 
                         else id)
                    $ options
     
-        (debugIO, localTypes, overloadedVars, _, toplevelTypes, typeErrors, warnings) =
+        (debugIO, dictionaryEnv, localTypes, _, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_
                 completeEnv
                 newOptions        
@@ -35,7 +37,7 @@ phaseTypeInferencer fullName module_ doneModules localEnv completeEnv options = 
         inferredTypes = addListToFM localTypes 
                 [ (NameWithRange name, ts) | (name, ts) <- fmToList (typeEnvironment finalEnv) ]
     
-    when (DumpTypeDebug `elem` options) debugIO  
+    when (DumpTypeDebug `elem` options) debugIO      
     
 {-
     putStrLn (unlines ("" : "toplevelTypes: " : map (\(n,ts) -> show (NameWithRange n) ++ " :: "++show (getQualifiedType ts)) (fmToList toplevelTypes)))
@@ -60,7 +62,7 @@ phaseTypeInferencer fullName module_ doneModules localEnv completeEnv options = 
              else
                 return ()
 
-    return (finalEnv, inferredTypes, overloadedVars, toplevelTypes, warnings)
+    return (dictionaryEnv, finalEnv, toplevelTypes, warnings)
 
 maximumNumberOfTypeErrors :: Int
 maximumNumberOfTypeErrors = 3

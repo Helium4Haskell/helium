@@ -41,3 +41,93 @@ SEM Expression
                                                              subtp  = @lhs.substitution |->  @expression.beta .->. @beta
                                                          in addToFM @expression.overloadedVars myName (NameWithRange nameImport, qtype)
                                          _            -> @expression.overloadedVars
+
+
+ATTR Declarations Declaration Expressions Expression Statements Statement
+     Qualifiers Qualifier GuardedExpressions GuardedExpression 
+     Alternatives Alternative FunctionBindings FunctionBinding
+     RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
+     RecordExpressionBindings
+     [ availablePredicates : Predicates 
+     | dictionaryEnvironment : DictionaryEnvironment
+     | 
+     ]
+     
+ATTR Module Body [ | | dictionaryEnvironment : DictionaryEnvironment ]
+     
+SEM Body
+  | Body   
+       declarations . availablePredicates   = []
+                    . dictionaryEnvironment = emptyDictionaryEnvironment
+
+SEM Declaration   
+ 
+  | FunctionBindings
+       loc           . inferredType = let monos' = ftv (@lhs.substitution |-> @lhs.monos)  
+                                          tp'    = @lhs.substitution |-> @beta
+                                      in generalize monos' @lhs.predicates tp'
+                     . declPredicates = let (predicates :=> _) = getQualifiedType @inferredType   
+                                        in predicates      
+       bindings      . availablePredicates = @declPredicates ++ @lhs.availablePredicates
+       lhs           . dictionaryEnvironment = addForDeclaration @bindings.name @declPredicates @bindings.dictionaryEnvironment
+       
+  | PatternBinding 
+       loc           . declPredicates = case @pattern.self of
+                                          Pattern_Variable _ n -> 
+                                             case fmToList @pattern.environment of
+                                                [(name, tp)] ->
+                                                   let monos' = ftv (@lhs.substitution |-> @lhs.monos)  
+                                                       tp'    = @lhs.substitution |-> tp
+                                                       scheme = generalize monos' @lhs.predicates tp'
+                                                       (predicates :=> _) = getQualifiedType scheme
+                                                   in Just (name, predicates)
+                                                _            -> internalError "TypeInferenceOverloading.ag" "n/a" ""
+                                          _                  -> Nothing
+       righthandside . availablePredicates = case @declPredicates of
+                                                Just (n, ps) -> ps ++ @lhs.availablePredicates
+                                                Nothing      -> @lhs.availablePredicates
+       lhs           . dictionaryEnvironment = case @declPredicates of
+                                                  Just (n, ps) -> addForDeclaration n ps @righthandside.dictionaryEnvironment
+                                                  Nothing      -> @righthandside.dictionaryEnvironment
+       
+SEM Expression 
+
+  | Variable   lhs . dictionaryEnvironment = addForVariable @name.self @lhs.availablePredicates @requiredDictionaries @lhs.dictionaryEnvironment                                             
+               loc . nameInScope          = case filter (@name.self==) @lhs.namesInScope of 
+                                               [name] -> name
+                                               _      -> internalError "TypeInferenceOverloading.ag" "n/a" "name not in scope"
+                   . inferredTypeScheme   = case lookupFM @lhs.inferredTypes (NameWithRange @nameInScope) of
+                                               Just scheme -> Just scheme
+                                               Nothing     -> 
+                                                  case lookupFM (typeEnvironment @lhs.importEnvironment) @nameInScope of 
+                                                     Just scheme -> Just scheme
+                                                     Nothing     -> Nothing
+                   . requiredDictionaries = case @inferredTypeScheme of
+                                               Nothing -> []
+                                               Just scheme -> 
+                                                  getRequiredDictionaries 
+                                                     (getOrderedTypeSynonyms @lhs.importEnvironment) 
+                                                     (@lhs.substitution |-> @beta)
+                                                     scheme
+
+  | Negate     loc . localName = setNameRange intUnaryMinusName @range.self
+                   . negateTypeScheme = case lookupFM (typeEnvironment @lhs.importEnvironment) @localName of 
+                                           Just scheme -> scheme
+                                           Nothing     -> internalError "TypeInferenceOverloading.ag" "n/a" "type of negate unknown"
+               loc . requiredDictionaries = getRequiredDictionaries 
+                                               (getOrderedTypeSynonyms @lhs.importEnvironment) 
+                                               (@lhs.substitution |-> (@expression.beta .->. @beta))
+                                               @negateTypeScheme
+               lhs . dictionaryEnvironment = addForVariable @localName @lhs.availablePredicates @requiredDictionaries @expression.dictionaryEnvironment
+                            
+{         
+getRequiredDictionaries :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
+getRequiredDictionaries synonyms useType defType = 
+   let i  = maximum (0 : ftv useType) + 1
+       (_, instantiatedPreds, instantiatedType) = instantiate i defType
+   in -- one-way unification is necessary!
+      case mguWithTypeSynonyms synonyms instantiatedType useType of
+         Left _ -> internalError "TypeInferenceOverloading.ag" "getRequiredDictionaries" "no unification"
+         Right (_, sub) -> 
+            (sub |-> instantiatedPreds)
+}         

@@ -7,15 +7,17 @@ import CoreRemoveDead( coreRemoveDead ) -- remove dead (import) declarations
 import UHA_Syntax(Module(..), Name(..), MaybeName(..))
 import UHA_Range(noRange)
 import ImportEnvironment(TypeEnvironment, ImportEnvironment)
+import DictionaryEnvironment (DictionaryEnvironment)
 import qualified CodeGeneration(sem_Module)
 import Types
 import UHA_Utils
 import Data.FiniteMap
 
-phaseDesugarer :: String -> Module -> [CoreDecl] -> 
-                    ImportEnvironment -> FiniteMap NameWithRange TpScheme {- == LocalTypes -} -> 
-                    FiniteMap NameWithRange (NameWithRange, QType) -> TypeEnvironment -> [Option] -> IO CoreModule
-phaseDesugarer fullName module_ extraDecls finalEnv inferredTypes overloadedVars toplevelTypes options = do
+phaseDesugarer :: DictionaryEnvironment -> 
+                  String -> Module -> [CoreDecl] -> 
+                    ImportEnvironment ->
+                    TypeEnvironment -> [Option] -> IO CoreModule
+phaseDesugarer dictionaryEnv fullName module_ extraDecls finalEnv toplevelTypes options = do
     enterNewPhase "Desugaring" options
 
     let (path, baseName, _) = splitFilePath fullName
@@ -24,12 +26,11 @@ phaseDesugarer fullName module_ extraDecls finalEnv inferredTypes overloadedVars
         moduleWithName = fixModuleName module_ baseName
 
         coreModule = fst $
-            CodeGeneration.sem_Module moduleWithName
+            CodeGeneration.sem_Module moduleWithName                
                 extraDecls
+                dictionaryEnv
                 finalEnv
-                inferredTypes
-                overloadedVars
-                toplevelTypes
+                toplevelTypes            
 
         strippedCoreModule = coreRemoveDead coreModule
 

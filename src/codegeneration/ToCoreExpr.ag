@@ -10,61 +10,12 @@ SEM MaybeExpression [ | | core : { Maybe Core.Expr } ]
 
 ATTR Expressions [ | | core USE { : } { [] } : { [Core.Expr] } ]
 
-{
-getDictionaries :: OrderedTypeSynonyms -> Predicates -> Predicates -> [Core.Expr]
-getDictionaries synonyms ps = map (getDictionary synonyms ps)
-
-getDictionary :: OrderedTypeSynonyms -> Predicates -> Predicate -> Core.Expr
-getDictionary synonyms availablePredicates p@(Predicate className tp) =      
-   case tp of
-      TVar i | p `elem` availablePredicates -> Core.Var (predicateToId p)
-             | otherwise -> case [ (path, availablePredicate)
-                                 | availablePredicate@(Predicate c t) <- availablePredicates
-                                 , t == tp
-                                 , path <- superclassPaths c className standardClasses
-                                 ] of
-                             []     -> internalError "ToCoreExpr" "getDictionary" "no path"
-                             (path,fromPredicate):_ -> 
-                                foldr Core.Ap 
-                                      (Core.Var (predicateToId fromPredicate)) 
-                                      [ Core.Var . idFromString $ "get" ++ super ++ "From" ++ sub 
-                                      | (sub, super) <- reverse (zip path (tail path))
-                                      ]
-      _      -> case byInstance synonyms standardClasses p of
-                   Nothing -> internalError "ToCoreExpr" "getDictionary" "reduction error"
-                   Just predicates -> 
-                      let dictInstance = Core.Var . idFromString $ "dict"++className++s
-                          (TCon s, _)  = leftSpine tp
-                      in foldl Core.Ap
-                            dictInstance
-                            (getDictionaries synonyms availablePredicates predicates)
-
-insertDictionaries predicates importEnv overloadedVars inferredTypes name =
-    case lookupFM overloadedVars (NameWithRange name) of
-        Nothing -> Core.Var (idFromName name)
-        Just (defName, _ :=> useType) ->
-            case lookupFM inferredTypes defName of
-                Nothing -> internalError "ToCoreExpr" "Expression.Variable" ("can't find: " ++ show defName ++ " in " ++ show (fmToList inferredTypes))
-                Just defType -> 
-                    let i  = maximum (0 : ftv useType) + 1
-                        (_, instantiatedPreds, instantiatedType) = instantiate i defType
-                        synonyms = getOrderedTypeSynonyms importEnv
-                    in -- one-way unification is necessary!
-                       case mguWithTypeSynonyms synonyms instantiatedType useType of
-                          Left _ -> internalError "ToCoreExpr" "Expression.Variable" ("unify: " ++ show useType ++ " with " ++ show instantiatedType)
-                          Right (_, sub) ->
-                             foldl Core.Ap (Core.Var (idFromName name))
-                                           (getDictionaries synonyms predicates (sub |-> instantiatedPreds))
-
-}
-
 SEM Expression [ | | core : { Core.Expr } ]
     | Literal            lhs.core = @literal.core      
     --  range                    : Range
     --  literal                  : Literal
 
-    | Variable           lhs.core = insertDictionaries @lhs.predicates @lhs.importEnv
-                                                       @lhs.overloadedVars @lhs.inferredTypes @name.self                        
+    | Variable           lhs.core = insertDictionaries @name.self @lhs.dictionaryEnv                     
     --  range                    : Range
     --  name                     : Name
 
@@ -167,9 +118,9 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  type                     : Type
 
     -- negate is overloaded and we need to insert a dictionary argument
-    | Negate             lhs.core = insertDictionaries @lhs.predicates @lhs.importEnv
-                                                       @lhs.overloadedVars @lhs.inferredTypes 
-                                                       (setNameRange intUnaryMinusName @range.self)
+    | Negate             lhs.core = insertDictionaries (setNameRange intUnaryMinusName @range.self) @lhs.dictionaryEnv
+                                                       
+                                                       
                                     `app_` @expression.core 
     --  range                    : Range
     --  expression               : Expression

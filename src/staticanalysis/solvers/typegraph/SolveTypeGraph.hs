@@ -96,8 +96,8 @@ instance IsTypeGraph (TypeGraph info) info => IsSolver (TypeGraph info) info whe
       do consistent <- isConsistent
          if consistent 
            then 
-             do getReducedPredicates
-                checkErrors
+             do getReducedPredicates               
+                return ()  -- checkErrors
            else 
              do (edges, errors) <- getHeuristics                         
                 mapM_ addError errors               

@@ -6,9 +6,14 @@ ATTR Expression Expressions MaybeExpression Patterns Pattern Alternative Alterna
         [ importEnvironment : ImportEnvironment 
           substitution      : FixpointSubstitution  
           predicates        : Predicates 
+          inferredTypes     : {FiniteMap NameWithRange TpScheme}
         | 
         | 
         ]
+
+SEM Module
+  | Module
+       loc . inferredTypes = addListToFM @body.localTypes [ (NameWithRange n, ts) | (n, ts) <- fmToList @body.toplevelTypes]
 
 -------------------------------------------
 -- Collecting Type Signatures

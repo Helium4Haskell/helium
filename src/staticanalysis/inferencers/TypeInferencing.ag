@@ -7,7 +7,6 @@ ATTR Module
    |
    | debugIO               : {IO ()}
      localTypes            : {FiniteMap NameWithRange TpScheme}
-     overloadedVars        : OverloadedVariables
      toplevelTypes         : TypeEnvironment
      typeErrors            : TypeErrors
      warnings              : Warnings
@@ -76,6 +75,7 @@ import Utils                     (internalError)
 import DerivingShow              (typeOfShowFunction, nameOfShowFunction) 
 import TopSort                   (topSort)
 import ImportEnvironment
+import DictionaryEnvironment
 import Args
 
 -- standard

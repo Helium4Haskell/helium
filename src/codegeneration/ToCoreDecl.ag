@@ -61,11 +61,8 @@ SEM Declaration
     | FunctionBindings  loc.ids      = freshIds "u$" @bindings.arity
                         bindings.ids = @loc.ids
                         bindings.range = @range.self
-                        loc.dictionaries = map predicateToId @predicates
-                        loc.predicates = case lookupFM @lhs.inferredTypes (NameWithRange @bindings.name) of
-                                          Nothing -> internalError "ToCoreDecl" "FunctionBinding.core" ("can't find: " ++ show @bindings.name ++ " in " ++ show (fmToList @lhs.inferredTypes))
-                                          Just t -> case getQualifiedType t of (predicates :=> _) -> predicates
-                        bindings.predicates = @lhs.predicates ++ @predicates                                         
+                        loc.dictionaries = map predicateToId 
+                                              (getPredicateForDecl @bindings.name @lhs.dictionaryEnv)
                         lhs.decls    =
         [ Core.DeclValue
             { Core.declName    = idFromName @bindings.name
@@ -79,17 +76,12 @@ SEM Declaration
     --  bindings                 : FunctionBindings -- should all be for the same function
     
     | PatternBinding    lhs.patBindNr = @lhs.patBindNr + 1
-                        loc.dictionaries = map predicateToId @predicates
-                        
-                        loc.predicates = 
+                        loc.dictionaries = 
                             case @pattern.self of
                                 Pattern_Variable _ n ->
-                                    case lookupFM @lhs.inferredTypes (NameWithRange n) of
-                                          Nothing -> internalError "ToCoreDecl" "PatternBinding" ("can't find: " ++ show n)
-                                          Just t -> case getQualifiedType t of (predicates :=> _) -> predicates
-                                _ -> []
-                        righthandside.predicates = @lhs.predicates ++ @predicates
-                        
+                                   map predicateToId 
+                                      (getPredicateForDecl n @lhs.dictionaryEnv)
+                                _ -> []                        
                         lhs.decls     =
         case @pattern.self of
             Pattern_Variable _ n ->
@@ -208,22 +200,6 @@ SEM Declaration
     | Empty             lhs.decls    = internalError "ToCoreDecl" "Declaration" "empty declarations not supported"
     --  range                    : Range
 
-
-ATTR Declarations Declaration Expressions Expression Statements Statement
-     Qualifiers Qualifier GuardedExpressions GuardedExpression 
-     Alternatives Alternative FunctionBindings FunctionBinding
-     RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
-     RecordExpressionBindings
-     [ predicates : { Predicates }
-     |
-     |
-     ]
-     
-SEM Body
-    | Body declarations.predicates = []
-
-
-
 ATTR FunctionBinding FunctionBindings 
     [   ids : { [Id] }
     | 
@@ -257,8 +233,28 @@ SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
     --  righthandside            : RightHandSide
 
 {
+predicateToId :: Predicate -> Id
 predicateToId (Predicate class_ tp) =
     idFromString $ "$dict" ++ class_ ++ show tp
+    
+dictionaryTreeToCore :: DictionaryTree -> Core.Expr
+dictionaryTreeToCore tree = 
+   case tree of
+      ByPredicate predicate -> 
+         Core.Var (predicateToId predicate)
+      ByInstance className instanceName trees ->
+         foldl Core.Ap
+               (Core.Var (idFromString ("dict"++className++instanceName)))
+               (map dictionaryTreeToCore trees)
+      BySuperClass subClass superClass tree -> 
+         Core.Ap (Core.Var (idFromString ("get" ++ superClass ++ "From" ++ subClass)))          
+                 (dictionaryTreeToCore tree)
+
+insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr
+insertDictionaries name dictionaryEnv = 
+   foldl Core.Ap
+         (Core.Var (idFromName name))
+         (map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv))
 }
 
 ATTR LeftHandSide 
