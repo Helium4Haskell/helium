@@ -79,7 +79,7 @@ makeDictionaryTree classEnv availablePredicates p@(Predicate className tp) =
                                 in Just tree 
                                 
       _      -> case byInstance noOrderedTypeSynonyms classEnv p of
-                   Nothing -> internalError "ToCoreExpr" "getDictionary" "reduction error"
+                   Nothing -> internalError "DictionaryEnvironment" "makeDictionaryTree" ("reduction error" ++ show (fmToList $ classEnv))
                    Just predicates -> 
                       do let (TCon instanceName, _) = leftSpine tp
                          trees <- makeDictionaryTrees classEnv availablePredicates predicates

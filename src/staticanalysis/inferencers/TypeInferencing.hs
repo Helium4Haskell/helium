@@ -4779,7 +4779,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             (_fromObetaUnique@_) =
                 _lhsIbetaUnique + (if _overloaded then 2 else 1)
             (_newDEnv@_) =
-                resolveOverloading (classEnvironment _lhsIimportEnvironment)  _localName
+                resolveOverloading (createClassEnvironment _lhsIimportEnvironment)  _localName
                                    (_lhsIsubstitution |-> _lhsIavailablePredicates)
                                    (_lhsIsubstitution |-> _requiredDictionaries)
                                    _toIdictionaryEnvironment
@@ -6751,7 +6751,7 @@ sem_Expression_Negate (range_) (expression_) =
             (_expressionObetaUnique@_) =
                 _lhsIbetaUnique + 1
             (_newDEnv@_) =
-                resolveOverloading (classEnvironment _lhsIimportEnvironment)  _localName
+                resolveOverloading (createClassEnvironment _lhsIimportEnvironment)  _localName
                                    (_lhsIsubstitution |-> _lhsIavailablePredicates)
                                    (_lhsIsubstitution |-> _requiredDictionaries)
                                    _expressionIdictionaryEnvironment
@@ -8302,7 +8302,7 @@ sem_Expression_Variable (range_) (name_) =
             (_usedAsType@_) =
                 _lhsIsubstitution |-> _beta
             (_newDEnv@_) =
-                resolveOverloading (classEnvironment _lhsIimportEnvironment)
+                resolveOverloading (createClassEnvironment _lhsIimportEnvironment)
                                    _nameIself
                                    (_lhsIsubstitution |-> _lhsIavailablePredicates)
                                    (_lhsIsubstitution |-> _requiredDictionaries)
@@ -11527,7 +11527,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                    []   -> _bodyIcollectErrors
                    errs -> errs
             (_classEnv@_) =
-                classEnvironment _lhsIimportEnvironment
+                createClassEnvironment _lhsIimportEnvironment
             (_orderedTypeSynonyms@_) =
                 getOrderedTypeSynonyms _lhsIimportEnvironment
             ((SolveResult (_betaUniqueAtTheEnd@_)(_substitution@_)(_typeschemeMap@_)(_solveErrors@_)(_debugString@_)(_tooSpecificWarnings@_))) =

@@ -774,7 +774,7 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
                     }
                 ]
                 ++
-                [derivingShow _self]
+                derivingShow _self
             (_constructorsOdataTypeName@_) =
                 _simpletypeIname
             (_constructorsOtag@_) =
@@ -1178,7 +1178,7 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
                     }
                 ]
                 ++
-                [derivingShow _self]
+                derivingShow _self
             (_self@_) =
                 Declaration_Type _rangeIself _simpletypeIself _typeIself
             (_lhsOself@_) =

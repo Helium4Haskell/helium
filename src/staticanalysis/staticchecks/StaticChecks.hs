@@ -8016,13 +8016,21 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                     g (n,(i,_)) = f (n,i)
                 in map f _bodyIcollectTypeConstructors ++
                    map g _bodyIcollectTypeSynonyms
+            (_derivedInstances@_) =
+                let f (n,i) = makeShowInstance i (show n)
+                    g (n,(i,_)) = f (n,i)
+                in unitFM "Show"
+                      ( []
+                      , map f _bodyIcollectTypeConstructors ++
+                        map g _bodyIcollectTypeSynonyms
+                      )
             (_collectEnvironment@_) =
                 setValueConstructors   (listToFM _bodyIcollectValueConstructors)
                 . setTypeConstructors  (listToFM _bodyIcollectTypeConstructors)
                 . setTypeSynonyms      (listToFM _bodyIcollectTypeSynonyms)
                 . setOperatorTable     (listToFM _bodyIoperatorFixities)
                 . addToTypeEnvironment (listToFM _derivedFunctions)
-                . setClassEnvironment  standardClasses
+                . setClassEnvironment  _derivedInstances
                 $ emptyEnvironment
             (_bodyOcollectTypeConstructors@_) =
                 []

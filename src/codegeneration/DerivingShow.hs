@@ -28,15 +28,18 @@ typeOfShowFunction name names =
         types = vars ++ [foldl TApp (TCon (getNameName name)) vars]
     in generalizeAll ([] .=>. foldr1 (.->.) (map (.->. stringType) types))
 
-derivingShow :: UHA.Declaration -> CoreDecl
+derivingShow :: UHA.Declaration -> [CoreDecl]
 derivingShow (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
     let typeString = show (typeOfShowFunction name names)
+        nameId     = idFromString ("show" ++ getNameName name)
+        valueId    = idFromString "value$"
     in
-    DeclValue 
-        { declName = idFromString ("show" ++ getNameName name)
-        , declAccess = public
-        , valueEnc = Nothing
-        , valueValue = foldr Lam 
+       [ -- derive the show function 
+         DeclValue 
+          { declName    = nameId
+          , declAccess  = public
+          , valueEnc    = Nothing
+          , valueValue  = foldr Lam 
                 (Let 
                     (Strict (Bind valueId (Var valueId)))
                     (Match valueId
@@ -44,11 +47,18 @@ derivingShow (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) 
                     )
                 )    
                 (map idFromName names ++ [valueId])
-        , declCustoms = [ custom "type" typeString ] 
-        }
-    where
-        valueId = idFromString "value$"
-
+          , declCustoms = [ custom "type" typeString ] 
+          }
+       , -- derive the dictionary
+         DeclValue 
+          { declName    = idFromString ("dictShow" ++ getNameName name)
+          , declAccess  = public
+          , valueEnc    = Nothing
+          , valueValue  = makeShowDictionary (length names) nameId
+          , declCustoms = [ custom "type" ("DictShow" ++ getNameName name) ] 
+          }
+       ]
+       
 -- type T a b = (b, a) 
 --   ===>
 -- showT :: (a -> String) -> (b -> String) -> T a b -> String
@@ -56,16 +66,24 @@ derivingShow (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) 
 derivingShow decl@(UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names) type_) =
     let typeString = show (typeOfShowFunction name names)
     in
-    DeclValue 
-        { declName = idFromString ("show" ++ getNameName name)
-        , declAccess = public
-        , valueEnc = Nothing
-        , valueValue = foldr Lam 
+       [ DeclValue 
+          { declName    = idFromString ("show" ++ getNameName name)
+          , declAccess  = public
+          , valueEnc    = Nothing
+          , valueValue  = foldr Lam 
                 (showFunctionOfType False type_)
                 (map idFromName names)
-        , declCustoms = [ custom "type" typeString ] 
-        }
+          , declCustoms = [ custom "type" typeString ] 
+          }
+       ]
 
+makeShowDictionary :: Int -> Id -> Expr
+makeShowDictionary nrOfArgs nameId =
+   let ids  = take nrOfArgs [ idFromString ("d" ++ show i) | i <- [1..] ]
+       con  = Con (ConTag (Lit (LitInt 0)) 1)
+       list = [ Ap (Var (idFromString "show")) (Var id) | id <- ids ]
+       body = Ap con (foldl Ap (Var nameId) list)
+   in foldr Lam body ids
 
 makeAlt :: UHA.Constructor -> Alt
 makeAlt c =

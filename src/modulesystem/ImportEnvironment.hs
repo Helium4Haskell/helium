@@ -9,6 +9,7 @@
 module ImportEnvironment where
 
 import Data.FiniteMap
+import Utils (internalError)
 import UHA_Syntax  ( Names, Name )
 import UHA_Utils
 import Top.Types
@@ -129,9 +130,42 @@ combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 xs1) (Im
       (te1  `plusFM` te2 )
       (vcs1 `plusFM` vcs2)
       (ot1  `plusFM` ot2)
-      (ce1  `plusFM` ce2) 
+      (plusFM_C combineClassDecls ce1 ce2) 
       (xs1 ++ xs2)
-      
+
+-- Bastiaan:
+-- For the moment, this function combines class-environments.
+-- The only instances that are added to the standard instances 
+-- are the derived Show instances (Show has no superclasses).
+-- If other instances are added too, then the class environment
+-- should be split into a class declaration environment, and an
+-- instance environment.
+combineClassDecls :: ([[Char]],[(Predicate,[Predicate])]) -> 
+                     ([[Char]],[(Predicate,[Predicate])]) ->
+                     ([[Char]],[(Predicate,[Predicate])])
+combineClassDecls (super1, inst1) (super2, inst2)
+   | super1 == super2 = (super1, inst1 ++ inst2)
+   | otherwise        = internalError "ImportEnvironment.hs" "combineClassDecls" "cannot combine class environments"
+
+-- Bastiaan:
+-- Create a standard class environment, extended with "Show" instances for the type constructors that 
+-- are present in the import environment
+createClassEnvironment :: ImportEnvironment -> ClassEnvironment
+createClassEnvironment importenv = 
+   let donts = [ "IO", "IOMode", "Handle", "->" ] -- not in Show
+       stds  = [ "()", "Int", "Float", "Bool", "Char", "[]" ] -- standard in Show
+       fm    = delListFromFM (typeConstructors importenv)
+             $ keysFM (typeSynonyms importenv) ++ map nameFromString (donts ++ stds)
+       extraShowInstances = [ makeShowInstance nrOfArgs (show name) | (name, nrOfArgs) <- fmToList fm ]
+   in addToFM_C combineClassDecls standardClasses "Show" ([], extraShowInstances)
+
+makeShowInstance :: Int -> String -> (Predicate, Predicates)
+makeShowInstance nrOfArgs tp =
+   let tps = take nrOfArgs [ TVar i | i <- [0..] ] 
+   in ( Predicate "Show" (foldl TApp (TCon tp) tps)
+      , [ Predicate "Show" x | x <- tps ] 
+      )
+
 instance Show ImportEnvironment where
    show (ImportEnvironment tcs tss te vcs ot ce _) = 
       unlines (concat [ fixities

@@ -38,7 +38,7 @@ SEM Declaration
             }
         ]
         ++
-        [derivingShow @self]
+        derivingShow @self
     
     | Data    constructors.tag = 0
               constructors.dataTypeName = @simpletype.name
@@ -53,7 +53,7 @@ SEM Declaration
             }
         ]
         ++
-        [derivingShow @self]
+        derivingShow @self
     --  range                    : Range        
     --  context                  : ContextItems
     --  simpletype               : SimpleType

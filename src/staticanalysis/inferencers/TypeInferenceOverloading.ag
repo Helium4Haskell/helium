@@ -71,7 +71,7 @@ SEM Expression
                                                                   (getOrderedTypeSynonyms @lhs.importEnvironment) 
                                                                   (@lhs.substitution |-> @usedAsType)
                                                                   (@lhs.substitution |-> scheme)
-                   . newDEnv               = resolveOverloading (classEnvironment @lhs.importEnvironment)
+                   . newDEnv               = resolveOverloading (createClassEnvironment @lhs.importEnvironment)
                                                                 @name.self 
                                                                 (@lhs.substitution |-> @lhs.availablePredicates)
                                                                 (@lhs.substitution |-> @requiredDictionaries)
@@ -86,7 +86,7 @@ SEM Expression
                                               (True , False) -> enumFromToName 
                                               (True , True ) -> enumFromName 
                  . requiredDictionaries  = if @overloaded then @lhs.substitution |-> [Predicate "Enum" @elementType] else []
-                 . newDEnv               = resolveOverloading (classEnvironment @lhs.importEnvironment)  @localName 
+                 . newDEnv               = resolveOverloading (createClassEnvironment @lhs.importEnvironment)  @localName 
                                                               (@lhs.substitution |-> @lhs.availablePredicates) 
                                                               (@lhs.substitution |-> @requiredDictionaries) 
                                                               @to.dictionaryEnvironment 
@@ -102,7 +102,7 @@ SEM Expression
                                               (@lhs.substitution |-> @usedAsType)
                                               (@lhs.substitution |-> @negateTypeScheme)
                  . usedAsType            = @lhs.substitution |-> (@expression.beta .->. @beta)
-                 . newDEnv               = resolveOverloading (classEnvironment @lhs.importEnvironment)  @localName 
+                 . newDEnv               = resolveOverloading (createClassEnvironment @lhs.importEnvironment)  @localName 
                                                               (@lhs.substitution |-> @lhs.availablePredicates) 
                                                               (@lhs.substitution |-> @requiredDictionaries)
                                                               @expression.dictionaryEnvironment                                              
