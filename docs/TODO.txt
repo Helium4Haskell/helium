@@ -1,27 +1,23 @@
-Documentatie todo's
--------------------
+DOCUMENTATIE
 
-! User manual hi A4
+! User manual hint A4
 ! User manual helium A4
 ! User manual lvmrun A5
 ! Alle mogelijke fouten/warnings/hints uitleggen adhv voorbeeldje (DICTAAT?)
 ! Tour of Haskell syntax controleren
 ! commentaar over List en Maybe
 
-Helium to do lijst
-------------------
-
 INTERPRETER
 * springen naar internet browser bij :i map http://www.cs.uu.nl/~afie/helium/tourofprelude.html#map
 * interpreter gooit temp files weg a/h begin na iedere expressie
-* hi opties doorspelen naar Helium
+* hint opties doorspelen naar Helium
 * foutmeldingen over Interpreter.hs afvangen
 * interpreter kan module die Main heet niet inlezen?! "module imports itself"
-* hi met .hs file
-* hi parameter mag ook .hs bevatten, maar geen pad (of wel?) 
+* hint met .hs file
+* hint parameter mag ook .hs bevatten, maar geen pad (of wel?) 
   :l ook; pad van meegegeven file vooraan LVMPATH
 * testen of TEMP schrijfbaar is
-* Ctrl-C stopt niet alleen lvmrun maar ook hi
+* Ctrl-C stopt niet alleen lvmrun maar ook hint
 * JCreator: Rijk-Jan
 * Wat voor een voorzieningen nodig in de compiler?
 
@@ -30,11 +26,10 @@ DAAN
 ! strictheid van error
 
 COMPILER
-
+! XML uitvoer van errors en warnings t.b.v. interpreter
 ! parse error tests (zie Thompson)
 ! installer voor Windows
 ! environment vars weg
-
 * bij chasing niet de hele module parsen
 * operator definitie in pp haakjes er omheen
 * read functies voor andere types dan Int
@@ -50,18 +45,15 @@ COMPILER
 * ParseCommon.literal: "Daan moet eigenlijk niet interpreteren" (by Arjan)
 * import SomeModule(SomeDataType(..)) is impossible in core
 
-LIBRARIES
-
-* show implementeren met shows, ShowS; efficienter
-
 ---- ONBELANGRIJK ----
                 
+* show implementeren met shows, ShowS; efficienter
 * HeliumCompatibility module voor Hugs/GHC
-* pretty printer voor foutmeldingen
 * domein kopen
 
----- DONE ----
+---- DONE ----================================================================================
 
+* pretty printer voor foutmeldingen
 * lvmrun compileren met -O
 ! pattern-match failure beter presenteren (niet alleen begin)
 DONE infix constructoren infix tonen
@@ -75,7 +67,7 @@ DONE Sections
 
 * Directory structuur
 helium +- src   +- main (Main.hs, Args.hs, Version.hs, Compile.hs)
-       |- lib   |- hi
+       |- lib   |- hint
        |- bin   |- staticanalysis
        |- test  |- codegeneration
        |- demo  |- uha

@@ -111,7 +111,7 @@ make fullName searchPath chain options doneRef =
                     compile fullName options (map fst newDone)
                     return True
                   else do
-                    when (Interpreter `notElem` options) $ putStrLn (moduleName ++ " is up to date")
+                    putStrLn (moduleName ++ " is up to date")
                     return False
             
             -- Remember the fact that we have already been at this module

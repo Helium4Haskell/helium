@@ -60,8 +60,7 @@ import TS_Parser
 compile :: String -> [Option] -> [String] -> IO ()
 compile fullName options doneModules =
     do
-        when (Interpreter `notElem` options) $ 
-           putStrLn ("Compiling " ++ fullName)
+        putStrLn ("Compiling " ++ fullName)
            
         -- Split file name
         -- e.g. /docs/haskell/Hello.hs =>
@@ -124,8 +123,7 @@ compile fullName options doneModules =
               putStr . sortAndShowMessages $ errors
               unless (NoLogging `elem` options) $ logger ("S"++errorsLogCode errors) Nothing
               let number = length errors
-              when (Interpreter `notElem` options) $ 
-                 putStrLn ("Compilation failed with " ++ show number ++ " error" ++ if number == 1 then "" else "s")
+              putStrLn ("Compilation failed with " ++ show number ++ " error" ++ if number == 1 then "" else "s")
 
         stopCompilingIf (StopAfterStaticAnalysis `elem` options || not (null errors)) 
 
@@ -177,8 +175,7 @@ compile fullName options doneModules =
               unless (NoLogging `elem` options) $ logger "T" (Just (doneModules,fullName))
               let number = length typeErrors
               when (number > maximumNumberOfTypeErrors) $ putStrLn "(...)\n" 
-              when (Interpreter `notElem` options) $ 
-                 putStrLn ("Compilation failed with " ++ show number ++ " type error" ++ if number == 1 then "" else "s")
+              putStrLn ("Compilation failed with " ++ show number ++ " type error" ++ if number == 1 then "" else "s")
 
         -- Dump inferred top-level types
         when (DumpTypes `elem` options) $
@@ -229,15 +226,14 @@ compile fullName options doneModules =
         unless (NoLogging `elem` options) $ logger "C" Nothing
 
         let number = length warnings
-        when (Interpreter `notElem` options) $ 
-           putStrLn $ "Compilation successful" ++ 
+        putStrLn $ "Compilation successful" ++ 
                       if number == 0 || (NoWarnings `elem` options)   
                         then "" 
                         else " with " ++ show number ++ " warning" ++ if number == 1 then "" else "s"          
 
 enterNewPhase :: String -> [Option] -> IO ()
 enterNewPhase phase options = 
-   when (Interpreter `notElem` options && Verbose `elem` options) $
+   when (Verbose `elem` options) $
       putStrLn (phase ++ "...")
 
 stopCompilingIf :: Bool -> IO ()

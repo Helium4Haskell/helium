@@ -20,7 +20,6 @@ processArgs args =
             ,   Option "b" ["build"] (NoArg Build) "recompile even if files are up to date"
             ,   Option "l" ["no-logging"] (NoArg NoLogging) "do not send log information"
             ,   Option "t" ["dump-types"] (NoArg DumpTypes) "show types of top-level functions"
-            ,   Option "i" ["interpreter"] (NoArg Interpreter) "interpreter mode (less output)"
 
 #ifndef RELEASE
             ,   Option "u" ["dump-uha"] (NoArg DumpUHA) "pretty print abstract syntax tree"
@@ -63,5 +62,4 @@ data Option
         
     | Verbose --
     | Build --
-    | Interpreter
     deriving Eq

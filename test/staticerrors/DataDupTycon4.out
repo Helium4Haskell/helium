@@ -1,6 +1,6 @@
 Compiling staticerrors/DataDupTycon4.hs
 (5,6), (9,6): Definition "showInt" clashes with definition in imported module HeliumLang
 (5,6), (9,6): Type constructor "Int" clashes with definition in imported module HeliumLang
-(9,6): Recursive Type Synonym "Int"
-  HINT: use "data" to write a recursive data type
+(9,6): Recursive Type Synonyms "Int"
+  HINT - use "data" to write a recursive data type
 Compilation failed with 3 errors

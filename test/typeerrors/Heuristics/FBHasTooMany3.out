@@ -4,6 +4,7 @@ Compiling typeerrors/Heuristics/FBHasTooMany3.hs
 *** Term           : max3
 *** Type           : Int -> Int -> Int       
 *** Does not match : Int -> Int -> Int -> Int
-*** Because        : the function binding has 3 patterns, but its type signature allows at most 2
+*** Because        : the function binding has 3 patterns, but its type
+                     signature allows at most 2
 
 Compilation failed with 1 type error

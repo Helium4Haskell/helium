@@ -2,7 +2,7 @@ Compiling typeerrors/Examples/TooGenTypeSig.hs
 
 (3,14): Declared type is too general
 *** Expression     : f
-*** Declared type  : a -> [a]
+*** Declared type  : a  -> [a ]
 *** Inferred type  : _1 -> [_1]
 *** Hint           : Try removing the type signature
 

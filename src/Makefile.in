@@ -170,7 +170,7 @@ ifdef STRIP
 	$(STRIP) $(HELIUMBINDIR)/$(MAIN)$(EXE)
 endif
 
-all: ag compiler coreasm lvmrun libraries hi status
+all: ag compiler coreasm lvmrun libraries hint status
 
 coreasm:
 	# make core assembler
@@ -190,10 +190,10 @@ libraries:
 	# Building libraries
 	cd ../lib; $(MAKE) 
 
-hi: interpreter/Main.hs utils/OSSpecific.hs
+hint: interpreter/Main.hs utils/OSSpecific.hs
 	# GHC HeliumInterpreter
-	$(HC) --make -iutils -o $(HELIUMBINDIR)/hi$(EXE) interpreter/Main.hs 
-	$(STRIP) $(HELIUMBINDIR)/hi$(EXE)
+	$(HC) --make -iutils -o $(HELIUMBINDIR)/hint$(EXE) interpreter/Main.hs 
+	$(STRIP) $(HELIUMBINDIR)/hint$(EXE)
 
 # AG sources
 
@@ -306,7 +306,7 @@ clean:
 	$(RM) `find . -name "*.class" -print`
 	$(RM) ../lib/*.lvm
 	$(RM) $(HELIUMBINDIR)/$(MAIN)$(EXE)
-	$(RM) $(HELIUMBINDIR)/hi$(EXE)	
+	$(RM) $(HELIUMBINDIR)/hint$(EXE)	
 	$(RM) $(PARSECDIR)/*.o
 	$(RM) $(PARSECDIR)/*.hi
 	cd $(LVMLIBDIR); $(MAKE) clean
@@ -320,14 +320,14 @@ depend :
 # UTRECHT ONLY
 
 newVersion: 
-	echo "module Version where version=\"`date`\"" >Version.hs
+	echo "module Version where version=\"`date`\"" >main/Version.hs
 
 smaller:
-	# *** UPX helium, hi & lvmrun
+	# *** UPX helium, hint & lvmrun
 ifdef UPX
 	$(UPX) -q $(HELIUMBINDIR)/$(MAIN)$(EXE) 
 	cd $(LVMRUNTIMEDIR); $(UPX) -q lvmrun$(EXE)
-	$(UPX) -q $(HELIUMBINDIR)/hi$(EXE)
+	$(UPX) -q $(HELIUMBINDIR)/hint$(EXE)
 endif
 
 install : smaller
@@ -336,7 +336,7 @@ install : smaller
 	$(INSTALL) -m 644 ../lib/Prelude.hs ../lib/List.hs ../lib/Maybe.hs $(libdir)
 	$(INSTALL) -m 755 $(HELIUMBINDIR)/$(MAIN)$(EXE) $(bindir)
 	$(INSTALL) -m 755 $(LVMRUNTIMEDIR)/lvmrun$(EXE) $(bindir)
-	$(INSTALL) -m 755 $(HELIUMBINDIR)/hi$(EXE) $(bindir)
+	$(INSTALL) -m 755 $(HELIUMBINDIR)/hint$(EXE) $(bindir)
 	# *** Copying demos to demo directory
 	$(INSTALL) -m 644 ../demo/Calendar.hs ../demo/ParserLibrary.hs ../demo/ParserDemo.hs ../demo/TicTacToe.hs $(demodir)
 	# *** Copy generated lvms and touch them
@@ -349,7 +349,7 @@ movetohome: smaller
 	# *** Copying executables to projects directory
 	cp $(HELIUMBINDIR)/$(MAIN)$(EXE) helium/bin
 	cp $(LVMRUNTIMEDIR)/lvmrun$(EXE) helium/bin
-	cp hi$(EXE) helium/bin
+	cp hint$(EXE) helium/bin
 	# *** Copying demos to projects directory
 	cp demo/Calendar.hs demo/ParserLibrary.hs demo/ParserDemo.hs demo/TicTacToe.hs helium/demo
 	# *** Copy generated lvms and touch them
@@ -362,7 +362,7 @@ movetobbl: smaller
 	# *** Copying executables to projects directory
 	cp $(MAIN).exe //p/helium/bin
 	cp $(LVMRUNTIMEDIR)/lvmrun.exe //p/helium/bin
-	cp hi.exe //p/helium/bin
+	cp hint.exe //p/helium/bin
 	# *** Copying demos to projects directory
 	cp demo/Calendar.hs demo/ParserLibrary.hs demo/ParserDemo.hs demo/TicTacToe.hs //p/helium/demo
 	# *** Copy generated lvms and touch them

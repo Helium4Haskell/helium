@@ -2,7 +2,7 @@ Compiling typeerrors/Examples/TooGenTyped.hs
 
 (3,10): Declared type is too general
 *** Expression     : (\y -> [x,y])
-*** Declared type  : a -> [a]
+*** Declared type  : a  -> [a ]
 *** Inferred type  : _1 -> [_1]
 *** Hint           : Try removing the type signature
 
