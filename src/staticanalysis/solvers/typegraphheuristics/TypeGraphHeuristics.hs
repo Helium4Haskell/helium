@@ -350,7 +350,7 @@ applicationEdge edge@(EdgeID v1 v2) info =
                              (_,[i]) | i < length tuplesForArguments
                                   -> do expfulltp <- applySubst t1                                   
                                         let (oneLiner,tp) = tuplesForArguments !! i
-                                            typeError     = makeTypeErrorForTerm oneLiner (tp,expargtp) info
+                                            typeError     = makeTypeErrorForTerm isBinary i oneLiner (tp,expargtp) info
                                             expargtp      = fst (functionSpine expfulltp) !! i
                                         return (ConcreteHeuristic 3 [SetTypeError typeError] ("incorrect argument of application="++show i))
                              _   -> return NotApplicableHeuristic

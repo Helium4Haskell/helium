@@ -37,7 +37,7 @@ findDuplicates = filter (not . isSingleton) . group . sort
      
 standardConstraintInfo :: (Tp, Tp) -> HeliumConstraintInfo
 standardConstraintInfo tppair =
-   CInfo { info       = (NTBody, AltBody, "  Strategy, user constraint")
+   CInfo { info       = (NTBody, AltBody, (-1), "  Strategy, user constraint")
          , location   = "Typing Strategy" -- !!!!!
          , errorrange = noRange
          , sources    = [ ]

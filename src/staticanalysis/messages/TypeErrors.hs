@@ -27,7 +27,7 @@ data TypeError  = TypeError
                      Message
 
 data TypeErrorTable = UnificationErrorTable
-                         [(String, Tree)]     -- sources to be reported
+                         [(String, MessageBlock)]     -- sources to be reported
                          (Either Tp TpScheme) -- type or typescheme of n.t. or subterm of n.t.
                          (Either Tp TpScheme) -- conflicting type or expected type
                          
@@ -39,6 +39,7 @@ data TypeErrorTable = UnificationErrorTable
 type TypeErrorInfos = [TypeErrorInfo]
 data TypeErrorInfo  = TypeErrorHint String MessageBlock
                     | IsFolkloreTypeError
+                    | HasDocumentationLink String
                         
 instance HasMessage TypeError where
 
@@ -51,9 +52,10 @@ instance HasMessage TypeError where
    
    getMessage (CustomTypeError ranges message) = message ++ [MessageOneLiner (MessageString "")]
       
-   getRanges (TypeError range oneliner table infos) = [range]
-      
+   getRanges (TypeError range oneliner table infos) = [range]      
    getRanges (CustomTypeError ranges message) = ranges      
+   
+   getDocumentationLink = documentationLinkForTypeError
 
 instance Substitutable TypeError where
 
@@ -94,7 +96,7 @@ makeMessageTable isFolklore typeErrorTable =
    case typeErrorTable of 
    
       UnificationErrorTable sources type1 type2 ->  
-         let sourcePart = [ (MessageString s, MessageOneLineTree t) | (s, t) <- sources ]  
+         let sourcePart = [ (MessageString s, t) | (s, t) <- sources ]  
              typePart   = [ (MessageString "Type", makeType type1)
                           , (MessageString reason, makeType type2)
                           ]
@@ -140,3 +142,13 @@ makeNotGeneralEnoughTypeError range tree tpscheme1 tpscheme2 =
                     then [] 
                     else [TypeErrorHint "Hint" (MessageString "Try removing the type signature")]
    in TypeError range oneliner table hints
+
+documentationLinkForTypeError :: TypeError -> Maybe String
+documentationLinkForTypeError typeError = 
+   case typeError of
+      TypeError _ _ _ infos -> 
+         case [ s | HasDocumentationLink s <- infos ] of
+            x:_ -> Just x
+            _   -> Nothing
+      _                     -> Nothing
+   

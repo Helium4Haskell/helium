@@ -38,7 +38,7 @@ instance Show MessageBlock where
    show (MessageTypeScheme ts) = show ts
    show (MessageOneLineTree t) =  -- see tableWidthRight
                                  OneLiner.showOneLine 59 t
-   show (MessageInfoLink s   ) = "<a link=" ++ s ++ ">[?]</a>"
+   show (MessageInfoLink s   ) = "" -- "<a link=" ++ s ++ ">[?]</a>"
    show (MessageCompose ms   ) = concatMap show ms
 
 showMessage :: HasMessage message => message -> String

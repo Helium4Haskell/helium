@@ -11,14 +11,6 @@ import ConstraintInfo
 import Constraints
 import List
 
-{-
-instance Substitutable HeliumConstraintInfo where
-   sub |-> cinfo = let f (WithTypeError te) = WithTypeError (sub |-> te)
-                       f p = p
-                   in cinfo {typepair = sub |-> typepair cinfo , properties = map f (properties cinfo)}
-   ftv cinfo = ftv (typepair cinfo) `union` ftv [ te | WithTypeError te <- properties cinfo ]
--}
-
 data HeliumConstraintInfo = 
    CInfo { info       :: InfoSource
          , location   :: String
@@ -79,7 +71,7 @@ instance TypeGraphConstraintInfo HeliumConstraintInfo where
                         | otherwise                     = Nothing
        where isHighlyTrusted      = not (null [ () |      HighlyTrusted <- properties cinfo ])
              isSuperHighlyTrusted = not (null [ () | SuperHighlyTrusted <- properties cinfo ])
-             (nt,_,_) = info cinfo
+             (nt,_,_,_) = info cinfo
     
    isFolkloreConstraint   cinfo = not . null $ [ () | FolkloreConstraint   <- properties cinfo ]
    isExplicitTypedBinding cinfo = not . null $ [ () | ExplicitTypedBinding <- properties cinfo ]
@@ -113,8 +105,8 @@ instance TypeGraphConstraintInfo HeliumConstraintInfo where
    maybeOriginalTypeScheme cinfo = case [ s | OriginalTypeScheme s <- properties cinfo ] of   
              []  -> Nothing
              t:_ -> Just (b,t)
-        where b = not (x1 == NTExpression && x2 == AltTyped && x3 == "expression")
-              (x1,x2,x3) = getInfoSource cinfo  
+        where b = not (x1 == NTExpression && x2 == AltTyped && x3 == 0)
+              (x1, x2, x3, x4) = getInfoSource cinfo  
    setFolkloreConstraint = addProperty FolkloreConstraint
    
 
@@ -128,13 +120,25 @@ instance TypeGraphConstraintInfo HeliumConstraintInfo where
            Nothing     -> (Left t1, Left t2)
            Just (b,ts) 
                 | b    -> (Right ts, Left t2)
-                | True -> (Left t2, Right ts)   
-        table    = UnificationErrorTable (sources cinfo) msgtp1 msgtp2
-        info =  [ hint | WithHint hint <- properties cinfo ] 
+                | True -> (Left t2, Right ts)
+        oneliners = [ (s, MessageOneLineTree tree) | (s, tree) <- sources cinfo]   
+        table = UnificationErrorTable oneliners msgtp1 msgtp2
+        extra = documentationLink (info cinfo)
+              : [ hint | WithHint hint <- properties cinfo ] 
              ++ [ IsFolkloreTypeError | isFolkloreConstraint cinfo ] 
     in case [t | WithTypeError t <- properties cinfo] of
          typeError : _ -> typeError
-         _             -> TypeError (errorrange cinfo) oneliner table info   
+         _             -> TypeError (errorrange cinfo) oneliner table extra   
+
+documentationLink :: InfoSource -> TypeErrorInfo
+documentationLink (nt, alt, nr, _) = 
+   HasDocumentationLink . concat $
+      [ drop 2 (show nt)
+      , "-"
+      , drop 3 (show alt)
+      , "-"
+      , show nr
+      ]
    
 addProperty :: Property -> HeliumConstraintInfo -> HeliumConstraintInfo
 addProperty property info = let old = properties info
@@ -148,3 +152,5 @@ setPosition i c = case c of
                     _                       -> c
    where f info = addProperty (PositionInTreeWalk i) info
          f' a = \(t1,t2) -> f (a (t1,t2))
+
+

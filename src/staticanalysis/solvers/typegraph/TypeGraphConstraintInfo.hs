@@ -15,25 +15,7 @@ import ConstraintInfo
 import OneLiner
 import TypeErrors
 import Messages
-
-type InfoSource = (InfoNT,InfoAlt,String) 
-           
-data InfoNT = NTBody              | NTDeclaration  | NTFunctionBinding | NTExpression 
-            | NTGuardedExpression | NTPattern      | NTAlternative     | NTStatement  
-            | NTQualifier         | NTBindingGroup
-   deriving (Show,Eq)
-   
-data InfoAlt = AltBody             | AltFunctionBindings | AltPatternBinding    | AltFunctionBinding 
-             | AltLiteral          | AltConstructor      | AltLet               | AltCase
-             | AltLambda           | AltInfixApplication | AltDo                | AltIf 
-             | AltEnum             | AltNegate           | AltTyped             | AltList 
-             | AltComprehension    | AltTuple            | AltNormalApplication | AltGuardedExpression 
-             | AltInfixConstructor | AltAs               | AltAlternative       | AltExpression             
-             | AltGenerator        | AltGuard            | AltBindingGroup      | AltNegateFloat
-   deriving (Show,Eq)
-   
-
-
+ 
 class (Show constraintinfo,ConstraintInfo constraintinfo) => 
          TypeGraphConstraintInfo constraintinfo where 
              
@@ -60,13 +42,38 @@ class (Show constraintinfo,ConstraintInfo constraintinfo) =>
    makeTypeError           :: constraintinfo -> TypeError
   
 -- not a nice solution!  
-makeTypeErrorForTerm :: TypeGraphConstraintInfo constraintinfo => Tree -> (Tp,Tp) -> constraintinfo -> TypeError
-makeTypeErrorForTerm termOneLiner (t1, t2) cinfo = 
+makeTypeErrorForTerm :: TypeGraphConstraintInfo constraintinfo => Bool -> Int -> Tree -> (Tp,Tp) -> constraintinfo -> TypeError
+makeTypeErrorForTerm isInfixApplication argumentNumber termOneLiner (t1, t2) cinfo = 
    case makeTypeError cinfo of
    
       TypeError range oneliner (UnificationErrorTable sources _ _) infos -> 
-         let newSources = filter onlyExpression sources ++ [("Term", termOneLiner)]
+         let newSources = filter onlyExpression sources ++ [ -- (function, functionPretty)
+                                                             -- , ("Type", Text "???")
+                                                             (subterm, MessageOneLineTree termOneLiner)
+                                                           ]
              onlyExpression = ("Expression"==) . fst
+             functionPretty = snd (head (filter (("Term"==) . fst) sources))
+             function = if isInfixApplication then "Operator" else "Function"
+             subterm = "Term" {-
+                | isInfixApplication = if argumentNumber == 0 then "Left operand" else "Right operand"
+                | otherwise          = "Argument #"++show (argumentNumber + 1) -}
          in TypeError range oneliner (UnificationErrorTable newSources (Left t1) (Left t2)) infos 
          
       typeError -> typeError
+
+-- Info source
+type InfoSource = (InfoNT, InfoAlt, Int, String) 
+           
+data InfoNT = NTBody              | NTDeclaration  | NTFunctionBinding | NTExpression 
+            | NTGuardedExpression | NTPattern      | NTAlternative     | NTStatement  
+            | NTQualifier         | NTBindingGroup
+   deriving (Show,Eq)
+   
+data InfoAlt = AltBody             | AltFunctionBindings | AltPatternBinding    | AltFunctionBinding 
+             | AltLiteral          | AltConstructor      | AltLet               | AltCase
+             | AltLambda           | AltInfixApplication | AltDo                | AltIf 
+             | AltEnum             | AltNegate           | AltTyped             | AltList 
+             | AltComprehension    | AltTuple            | AltNormalApplication | AltGuardedExpression 
+             | AltInfixConstructor | AltAs               | AltAlternative       | AltExpression             
+             | AltGenerator        | AltGuard            | AltBindingGroup      | AltNegateFloat
+   deriving (Show,Eq)

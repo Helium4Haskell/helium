@@ -122,7 +122,7 @@ findMono n = let p = elem n . fst
 cinfoBindingGroupExplicitTypedBinding :: Name -> (Tp,Tp) -> HeliumConstraintInfo
 cinfoBindingGroupExplicitTypedBinding =
   \name tppair ->
-  CInfo { info       = (NTBindingGroup,AltBindingGroup,"explicit typed binding, "++show name)
+  CInfo { info       = (NTBindingGroup,AltBindingGroup,3, "explicit typed binding, "++show name)
         , location   = "explicitly typed binding"
         , errorrange = getNameRange name
         , sources    = [ sourceTerm (Text (show name))]
@@ -133,9 +133,9 @@ cinfoBindingGroupExplicitTypedBinding =
                        , Size 1 ]  
         }
 
-variableBindingCInfo :: (InfoNT,InfoAlt) -> Name -> (Tp,Tp) -> HeliumConstraintInfo
-variableBindingCInfo (infoNT,infoAlt) var tppair =
-  CInfo { info       = (infoNT,infoAlt,show var) 
+variableBindingCInfo :: (InfoNT, InfoAlt, Int) -> Name -> (Tp,Tp) -> HeliumConstraintInfo
+variableBindingCInfo (infoNT,infoAlt,i) var tppair =
+  CInfo { info       = (infoNT,infoAlt,i,show var) 
         , location   = "variable"
         , errorrange = getNameRange var
         , sources    = [ sourceExpression (Text (show var)) ]
@@ -145,12 +145,12 @@ variableBindingCInfo (infoNT,infoAlt) var tppair =
         }
         
 cinfoSameBindingGroup :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoSameBindingGroup var = variableBindingCInfo (NTBindingGroup,AltBindingGroup) var
+cinfoSameBindingGroup var = variableBindingCInfo (NTBindingGroup,AltBindingGroup,0) var
 
 cinfoBindingGroupImplicit :: Name -> (Tp,Tp) -> HeliumConstraintInfo
 cinfoBindingGroupImplicit =
   \var tppair ->   
-  CInfo { info       = (NTBindingGroup,AltBindingGroup,"implicit, "++show var)
+  CInfo { info       = (NTBindingGroup,AltBindingGroup,1,"implicit, "++show var)
         , location   = "variable"
         , errorrange = getNameRange var
         , sources    = [ sourceExpression (Text (show var)) ]
@@ -163,7 +163,7 @@ cinfoBindingGroupImplicit =
 cinfoBindingGroupExplicit :: Name -> (Tp,Tp) -> HeliumConstraintInfo
 cinfoBindingGroupExplicit =
   \var tppair ->
-  CInfo { info       = (NTBindingGroup,AltBindingGroup,"explicit, "++show var)
+  CInfo { info       = (NTBindingGroup,AltBindingGroup,2, "explicit, "++show var)
         , location   = "variable"
         , errorrange = getNameRange var
         , sources    = [ sourceExpression (Text (show var)) ]
@@ -362,11 +362,9 @@ sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_allPatter
             [ (_pattern_beta .==. _lhs_betaLeft) _cinfoLeft ]
         (_conRight) =
             [ (_righthandside_beta .==. _lhs_betaRight) _cinfoRight ]
-        (_cinfoBind) =
-            variableBindingCInfo (NTAlternative,AltAlternative)
         (_cinfoLeft) =
             \tppair ->
-            CInfo { info       = (NTAlternative,AltAlternative,"left")
+            CInfo { info       = (NTAlternative, AltAlternative, 0, "left")
                   , location   = "case pattern"
                   , errorrange = _range_self
                   , sources    = [ sourcePattern _pattern_oneLineTree ]
@@ -375,13 +373,15 @@ sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_allPatter
                   }
         (_cinfoRight) =
             \tppair ->
-            CInfo { info       = (NTAlternative,AltAlternative,"right")
+            CInfo { info       = (NTAlternative, AltAlternative, 1, "right")
                   , location   = "right-hand side of case alternative"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression (_righthandside_oneLineTree "") ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
+        (_cinfoBind) =
+            variableBindingCInfo (NTAlternative, AltAlternative, 2)
         (_size) =
             _pattern_size + _righthandside_size
         (_oneLineTree) =
@@ -526,7 +526,7 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_allPatterns) 
             findTypeAnnotations True [] _declarations_typeSignatures _declarations_bindingGroups
         (_cinfo) =
             \var tppair ->
-            CInfo { info       = (NTBody,AltBody,show var)
+            CInfo { info       = (NTBody, AltBody, 0, show var)
                   , location   = "variable"
                   , errorrange = getNameRange var
                   , sources    = [ sourceExpression (Text (show var)) ]
@@ -831,7 +831,7 @@ sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_allPatterns) (_lhs_b
             )
         (_cinfo) =
             \tppair ->
-            CInfo { info       = (NTDeclaration,AltFunctionBindings,show _bindings_name)
+            CInfo { info       = (NTDeclaration, AltFunctionBindings, 0, show _bindings_name)
                   , location   = "function bindings (INTERNAL ERROR)"
                   , errorrange = _range_self
                   , sources    = [ ]
@@ -918,7 +918,7 @@ sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_allPat
             )
         (_cinfo) =
             \tppair ->
-            CInfo { info       = (NTDeclaration,AltPatternBinding,"")
+            CInfo { info       = (NTDeclaration, AltPatternBinding, 0, "")
                   , location   = "right hand side"
                   , errorrange = getRHSRange _righthandside_self
                   , sources    = [ sourceExpression (_righthandside_oneLineTree "") ]
@@ -1171,7 +1171,7 @@ sem_Expression_Case (_range) (_expression) (_alternatives) (_lhs_allPatterns) (_
             [ (_expression_beta .==. _beta') _cinfo ]
         (_cinfo) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltCase,"")
+            CInfo { info       = (NTExpression, AltCase, 0, "")
                   , location   = "scrutinee of case expression"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
@@ -1211,7 +1211,7 @@ sem_Expression_Comprehension (_range) (_expression) (_qualifiers) (_lhs_allPatte
             [ (listType _expression_beta .==. _beta) _cinfo ]
         (_cinfo) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltComprehension,"")
+            CInfo { info       = (NTExpression, AltComprehension, 0, "")
                   , location   = "list comprehension"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree  ]
@@ -1254,7 +1254,7 @@ sem_Expression_Constructor (_range) (_name) (_lhs_allPatterns) (_lhs_betaUnique)
                Just ctp -> [ (_beta .::. ctp) _cinfo ]
         (_cinfo) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltConstructor,"")
+            CInfo { info       = (NTExpression, AltConstructor, 0, "")
                   , location   = "constructor"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _name_oneLineTree ]
@@ -1296,7 +1296,7 @@ sem_Expression_Do (_range) (_statements) (_lhs_allPatterns) (_lhs_betaUnique) (_
                Just b  -> [ (ioType b .==. _beta) _cinfo ]
         (_cinfo) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltDo,"")
+            CInfo { info       = (NTExpression, AltDo, 0, "")
                   , location   = "do-expression"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree  ]
@@ -1342,7 +1342,7 @@ sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_allPatterns) (_lhs_beta
             [ (_to_beta   .==. intType) _cinfoTo   ]
         (_cinfoFrom) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltEnum,"from")
+            CInfo { info       = (NTExpression, AltEnum, 0, "from")
                   , location   = "enumeration"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm _from_oneLineTree ]
@@ -1351,7 +1351,7 @@ sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_allPatterns) (_lhs_beta
                   }
         (_cinfoThen) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltEnum,"then")
+            CInfo { info       = (NTExpression, AltEnum, 1, "then")
                   , location   = "enumeration"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm (convertMaybeOneLineTree _then_oneLineTree) ]
@@ -1360,7 +1360,7 @@ sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_allPatterns) (_lhs_beta
                   }
         (_cinfoTo) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltEnum,"to")
+            CInfo { info       = (NTExpression, AltEnum, 2, "to")
                   , location   = "enumeration"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm (convertMaybeOneLineTree _to_oneLineTree) ]
@@ -1369,7 +1369,7 @@ sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_allPatterns) (_lhs_beta
                   }
         (_cinfoResult) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltEnum,"result")
+            CInfo { info       = (NTExpression, AltEnum, 3, "result")
                   , location   = "enumeration"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree  ]
@@ -1432,7 +1432,7 @@ sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression
             [ (_elseExpression_beta  .==. _beta   ) _cinfoElse  ]
         (_cinfoGuard) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltIf,"guard")
+            CInfo { info       = (NTExpression, AltIf, 0, "guard")
                   , location   = "conditional"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm _guardExpression_oneLineTree  ]
@@ -1441,7 +1441,7 @@ sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression
                   }
         (_cinfoThen) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltIf,"then")
+            CInfo { info       = (NTExpression, AltIf, 1, "then")
                   , location   = "then branch of conditional"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm _thenExpression_oneLineTree ]
@@ -1450,7 +1450,7 @@ sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression
                   }
         (_cinfoElse) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltIf,"else")
+            CInfo { info       = (NTExpression, AltIf,2, "else")
                   , location   = "else branch of conditional"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm _elseExpression_oneLineTree ]
@@ -1510,49 +1510,9 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
                    (True ,True ) -> [               (_operator_beta .==. _beta)                        _cinfoEmpty        ]
                    (False,True ) -> [ _conOperator, (_rightExpression_beta .->. _betaResOp .==. _beta) _cinfoRightSection ]
                    (True ,False) -> [ _conOperator, (_leftExpression_beta  .->. _betaResOp .==. _beta) _cinfoLeftSection  ]
-        (_cinfoComplete) =
-            \tppair ->
-            CInfo { info       = (NTExpression,AltInfixApplication,"")
-                  , location   = "infix application (INTERNAL ERROR)"
-                  , errorrange = _range_self
-                  , sources    = [ ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , SuperHighlyTrusted
-                                 , Size _size ]
-                  }
-        (_cinfoEmpty) =
-            \tppair ->
-            CInfo { info       = (NTExpression,AltInfixApplication,"empty")
-                  , location   = "infix application"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , HighlyTrusted
-                                 , Size _size ]
-                  }
-        (_cinfoLeftSection) =
-            \tppair ->
-            CInfo { info       = (NTExpression,AltInfixApplication,"left")
-                  , location   = "left section"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ Size _size ]
-                  }
-        (_cinfoRightSection) =
-            \tppair ->
-            CInfo { info       = (NTExpression,AltInfixApplication,"right")
-                  , location   = "right section"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ Size _size ]
-                  }
         (_cinfoOperator) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltInfixApplication,"operator")
+            CInfo { info       = (NTExpression, AltInfixApplication, 0, "operator")
                   , location   = "infix application"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm (_operator_oneLineTree)]
@@ -1565,6 +1525,46 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
                                                    ] ])
                                  ++
                                  [ Size _size ]
+                  }
+        (_cinfoComplete) =
+            \tppair ->
+            CInfo { info       = (NTExpression, AltInfixApplication, 1, "")
+                  , location   = "infix application (INTERNAL ERROR)"
+                  , errorrange = _range_self
+                  , sources    = [ ]
+                  , typepair   = tppair
+                  , properties = [ FolkloreConstraint
+                                 , SuperHighlyTrusted
+                                 , Size _size ]
+                  }
+        (_cinfoLeftSection) =
+            \tppair ->
+            CInfo { info       = (NTExpression, AltInfixApplication, 2, "left")
+                  , location   = "left section"
+                  , errorrange = _range_self
+                  , sources    = [ sourceExpression _oneLineTree ]
+                  , typepair   = tppair
+                  , properties = [ Size _size ]
+                  }
+        (_cinfoRightSection) =
+            \tppair ->
+            CInfo { info       = (NTExpression, AltInfixApplication, 3, "right")
+                  , location   = "right section"
+                  , errorrange = _range_self
+                  , sources    = [ sourceExpression _oneLineTree ]
+                  , typepair   = tppair
+                  , properties = [ Size _size ]
+                  }
+        (_cinfoEmpty) =
+            \tppair ->
+            CInfo { info       = (NTExpression, AltInfixApplication, 4, "empty")
+                  , location   = "infix application"
+                  , errorrange = _range_self
+                  , sources    = [ sourceExpression _oneLineTree ]
+                  , typepair   = tppair
+                  , properties = [ FolkloreConstraint
+                                 , HighlyTrusted
+                                 , Size _size ]
                   }
         (_size) =
             1 + _leftExpression_size + _rightExpression_size
@@ -1616,10 +1616,10 @@ sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_allPatterns) (_lh
         (_newcon) =
             [ (foldr (.->.) _expression_beta _patterns_betas .==. _beta) _cinfoType ]
         (_cinfoBind) =
-            variableBindingCInfo (NTExpression,AltLambda)
+            variableBindingCInfo (NTExpression, AltLambda, 0)
         (_cinfoType) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltLambda,"type")
+            CInfo { info       = (NTExpression, AltLambda, 1, "type")
                   , location   = "lambda abstraction"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree  ]
@@ -1663,7 +1663,7 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_allPatterns) (_l
             findTypeAnnotations False _lhs_monos _declarations_typeSignatures (_mybdggroup : _declarations_bindingGroups)
         (_cinfoType) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltLet,"")
+            CInfo { info       = (NTExpression, AltLet, 0, "")
                   , location   = "let expression (INTERNAL ERROR)"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
@@ -1709,24 +1709,24 @@ sem_Expression_List (_range) (_expressions) (_lhs_allPatterns) (_lhs_betaUnique)
             [ (listType _beta' .==. _beta) _cinfoResult ]
         (_zipf) =
             \tp txt ctree -> [ (tp .==. _beta') (_cinfoElem txt) ] .<. ctree
+        (_cinfoElem) =
+            \elemtext tppair ->
+            CInfo { info       = (NTExpression, AltList, 0, "element")
+                  , location   = "element of list"
+                  , errorrange = _range_self
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm elemtext ]
+                  , typepair   = tppair
+                  , properties = [ Size _size ]
+                  }
         (_cinfoResult) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltList,"result")
+            CInfo { info       = (NTExpression, AltList, 1, "result")
                   , location   = "list"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ Size _size
                                  , FolkloreConstraint ]
-                  }
-        (_cinfoElem) =
-            \elemtext tppair ->
-            CInfo { info       = (NTExpression,AltList,"element")
-                  , location   = "element of list"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm elemtext ]
-                  , typepair   = tppair
-                  , properties = [ Size _size ]
                   }
         (_size) =
             1 + _expressions_size
@@ -1756,7 +1756,7 @@ sem_Expression_Literal (_range) (_literal) (_lhs_allPatterns) (_lhs_betaUnique) 
             TVar _lhs_betaUnique
         (_cinfo) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltLiteral,"")
+            CInfo { info       = (NTExpression, AltLiteral, 0, "")
                   , location   = "literal"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree ]
@@ -1796,9 +1796,19 @@ sem_Expression_Negate (_range) (_expression) (_lhs_allPatterns) (_lhs_betaUnique
             [ (intType .==. _beta) _cinfoResult ]
         (_conExpr) =
             [ (_expression_beta .==. intType) _cinfoExpr]
+        (_cinfoExpr) =
+            \tppair ->
+            CInfo { info       = (NTExpression, AltNegate, 0, "expression")
+                  , location   = "negation"
+                  , errorrange = _range_self
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
+                  , typepair   = tppair
+                  , properties = [ Size _size
+                                 , Negation (tpToInt _beta) ]
+                  }
         (_cinfoResult) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltNegate,"result")
+            CInfo { info       = (NTExpression, AltNegate, 1, "result")
                   , location   = "negation"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree  ]
@@ -1806,16 +1816,6 @@ sem_Expression_Negate (_range) (_expression) (_lhs_allPatterns) (_lhs_betaUnique
                   , properties = [ FolkloreConstraint
                                  , Size _size
                                  , NegationResult ]
-                  }
-        (_cinfoExpr) =
-            \tppair ->
-            CInfo { info       = (NTExpression,AltNegate,"expression")
-                  , location   = "negation"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ Size _size
-                                 , Negation (tpToInt _beta) ]
                   }
         (_size) =
             1 + _expression_size
@@ -1847,9 +1847,19 @@ sem_Expression_NegateFloat (_range) (_expression) (_lhs_allPatterns) (_lhs_betaU
             [ (floatType .==. _beta) _cinfoResult ]
         (_conExpr) =
             [ (_expression_beta .==. floatType) _cinfoExpr]
+        (_cinfoExpr) =
+            \tppair ->
+            CInfo { info       = (NTExpression, AltNegateFloat, 0, "expression")
+                  , location   = "negation"
+                  , errorrange = _range_self
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
+                  , typepair   = tppair
+                  , properties = [ Size _size
+                                 , Negation (tpToInt _beta) ]
+                  }
         (_cinfoResult) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltNegateFloat,"result")
+            CInfo { info       = (NTExpression, AltNegateFloat, 1, "result")
                   , location   = "negation"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree  ]
@@ -1857,16 +1867,6 @@ sem_Expression_NegateFloat (_range) (_expression) (_lhs_allPatterns) (_lhs_betaU
                   , properties = [ FolkloreConstraint
                                  , Size _size
                                  , NegationResult ]
-                  }
-        (_cinfoExpr) =
-            \tppair ->
-            CInfo { info       = (NTExpression,AltNegateFloat,"expression")
-                  , location   = "negation"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ Size _size
-                                 , Negation (tpToInt _beta) ]
                   }
         (_size) =
             1 + _expression_size
@@ -1902,7 +1902,7 @@ sem_Expression_NormalApplication (_range) (_function) (_arguments) (_lhs_allPatt
             [ (_function_beta .==. foldr (.->.) _beta _arguments_betas) _cinfo ]
         (_cinfo) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltNormalApplication,"")
+            CInfo { info       = (NTExpression, AltNormalApplication, 0, "")
                   , location   = "application"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm _function_oneLineTree ]
@@ -1995,7 +1995,7 @@ sem_Expression_Tuple (_range) (_expressions) (_lhs_allPatterns) (_lhs_betaUnique
             [ (tupleType _expressions_betas .==. _beta) _cinfo ]
         (_cinfo) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltTuple,"")
+            CInfo { info       = (NTExpression, AltTuple, 0, "")
                   , location   = "tuple"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree  ]
@@ -2040,7 +2040,7 @@ sem_Expression_Typed (_range) (_expression) (_type) (_lhs_allPatterns) (_lhs_bet
             [ (_expression_beta .::. _typeScheme) _cinfoExpr   ]
         (_cinfoExpr) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltTyped,"expression")
+            CInfo { info       = (NTExpression, AltTyped, 0, "expression")
                   , location   = "type annotation"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree  ]
@@ -2049,7 +2049,7 @@ sem_Expression_Typed (_range) (_expression) (_type) (_lhs_allPatterns) (_lhs_bet
                   }
         (_cinfoResult) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltTyped,"result")
+            CInfo { info       = (NTExpression, AltTyped, 1, "result")
                   , location   = "type annotation"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree  ]
@@ -2251,26 +2251,26 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_
             zipWith4 (\t1 t2 txt nr -> (t1 .==. t2) (_cinfoLeft nr txt)) _lefthandside_betas _lhs_betasLeft _lefthandside_patternTrees [0..]
         (_conRight) =
             [ (_righthandside_beta .==. _lhs_betaRight) _cinfoRight ]
-        (_cinfoBind) =
-            variableBindingCInfo (NTFunctionBinding,AltFunctionBinding)
-        (_cinfoRight) =
-            \tppair ->
-            CInfo { info       = (NTFunctionBinding,AltFunctionBinding,"right")
-                  , location   = "right hand side"
-                  , errorrange = _range_self
-                  , sources    = [ sourceTerm (_righthandside_oneLineTree "") ]
-                  , typepair   = tppair
-                  , properties = [ Size _size ]
-                  }
         (_cinfoLeft) =
             \num txt tppair ->
-            CInfo { info       = (NTFunctionBinding,AltFunctionBinding,"left "++show num)
+            CInfo { info       = (NTFunctionBinding, AltFunctionBinding, 0, "left "++show num)
                   , location   = "pattern of function binding"
                   , errorrange = _range_self
                   , sources    = [ sourcePattern txt ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
+        (_cinfoRight) =
+            \tppair ->
+            CInfo { info       = (NTFunctionBinding, AltFunctionBinding, 1, "right")
+                  , location   = "right hand side"
+                  , errorrange = _range_self
+                  , sources    = [ sourceTerm (_righthandside_oneLineTree "") ]
+                  , typepair   = tppair
+                  , properties = [ Size _size ]
+                  }
+        (_cinfoBind) =
+            variableBindingCInfo (NTFunctionBinding, AltFunctionBinding, 2)
         (_size) =
             _lefthandside_size + _righthandside_size
         (_oneLineTree) =
@@ -2361,7 +2361,7 @@ sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_al
             [ (_expression_beta .==. _lhs_rightBeta) _cinfoExpr ]
         (_cinfoGuard) =
             \tppair ->
-            CInfo { info       = (NTGuardedExpression,AltGuardedExpression,"guard")
+            CInfo { info       = (NTGuardedExpression, AltGuardedExpression, 0, "guard")
                   , location   = "guard"
                   , errorrange = getExprRange _guard_self
                   , sources    = [ sourceExpression _guard_oneLineTree ]
@@ -2370,7 +2370,7 @@ sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_al
                   }
         (_cinfoExpr) =
             \tppair ->
-            CInfo { info       = (NTGuardedExpression,AltGuardedExpression,"expression")
+            CInfo { info       = (NTGuardedExpression, AltGuardedExpression, 1, "expression")
                   , location   = "guarded expression"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _expression_oneLineTree ]
@@ -3148,7 +3148,7 @@ sem_Pattern_As (_range) (_name) (_pattern) (_lhs_betaUnique) (_lhs_importEnviron
             [ (_beta .==. _pattern_beta) _cinfo ]
         (_cinfo) =
             \tppair ->
-            CInfo { info       = (NTPattern,AltAs,"")
+            CInfo { info       = (NTPattern, AltAs, 0, "")
                   , location   = "as pattern"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm (Text (show _name_self)) ]
@@ -3199,7 +3199,7 @@ sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_imp
                Just ctp -> [ (_betaCon .::. ctp) _cinfoConstructor ]
         (_cinfoConstructor) =
             \tppair ->
-            CInfo { info       = (NTPattern,AltConstructor,"")
+            CInfo { info       = (NTPattern, AltConstructor, 0, "")
                   , location   = "pattern constructor"
                   , errorrange = getNameRange _name_self
                   , sources    = [ sourcePattern _oneLineTree ]
@@ -3209,7 +3209,7 @@ sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_imp
                   }
         (_cinfoApply) =
             \tppair ->
-            CInfo { info       = (NTPattern,AltConstructor,"apply")
+            CInfo { info       = (NTPattern, AltConstructor, 1, "apply")
                   , location   = if _patterns_numberOfPatterns == 0
                                    then "pattern constructor"
                                    else "pattern application"
@@ -3277,7 +3277,7 @@ sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_ri
                Just ctp -> [ (_betaCon .::. ctp) _cinfoConstructor ]
         (_cinfoConstructor) =
             \tppair ->
-            CInfo { info       = (NTPattern,AltInfixConstructor,"")
+            CInfo { info       = (NTPattern, AltInfixConstructor, 0, "")
                   , location   = "pattern constructor"
                   , errorrange = getNameRange _constructorOperator_self
                   , sources    = [ sourcePattern _constructorOperator_oneLineTree ]
@@ -3288,7 +3288,7 @@ sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_ri
                   }
         (_cinfoApply) =
             \tppair ->
-            CInfo { info       = (NTPattern,AltInfixConstructor,"apply")
+            CInfo { info       = (NTPattern, AltInfixConstructor, 1, "apply")
                   , location   = "infix pattern application"
                   , errorrange = _range_self
                   , sources    = [ sourcePattern _oneLineTree, sourceTerm (Text (show _constructorOperator_self))]
@@ -3352,25 +3352,25 @@ sem_Pattern_List (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment)
             [ (listType _beta' .==. _beta) _cinfoResult ]
         (_zipf) =
             \tp txt ctree -> [ (tp .==. _beta') (_cinfoElem txt) ] .<. ctree
-        (_cinfoResult) =
-            \tppair ->
-            CInfo { info       = (NTPattern,AltList,"result")
-                  , location   = "pattern list"
-                  , errorrange = _range_self
-                  , sources    = [ sourcePattern _oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , Size _patterns_size ]
-                  }
         (_cinfoElem) =
             \elemtext tppair ->
-            CInfo { info       = (NTPattern,AltList,"element")
+            CInfo { info       = (NTPattern, AltList, 0, "element")
                   , location   = "element of pattern list"
                   , errorrange = _range_self
                   , sources    = [ sourcePattern _oneLineTree, sourceTerm elemtext ]
                   , typepair   = tppair
                   , properties = [ Size _patterns_size
                                  ]
+                  }
+        (_cinfoResult) =
+            \tppair ->
+            CInfo { info       = (NTPattern, AltList, 1, "result")
+                  , location   = "pattern list"
+                  , errorrange = _range_self
+                  , sources    = [ sourcePattern _oneLineTree  ]
+                  , typepair   = tppair
+                  , properties = [ FolkloreConstraint
+                                 , Size _patterns_size ]
                   }
         (_oneLineTree) =
             encloseSep "[" "," "]" _patterns_oneLineTree
@@ -3397,7 +3397,7 @@ sem_Pattern_Literal (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironmen
             TVar _lhs_betaUnique
         (_cinfo) =
             \tppair ->
-            CInfo { info       = (NTPattern,AltLiteral,"")
+            CInfo { info       = (NTPattern, AltLiteral, 0, "")
                   , location   = "literal pattern"
                   , errorrange = _range_self
                   , sources    = [ sourcePattern _oneLineTree ]
@@ -3430,7 +3430,7 @@ sem_Pattern_Negate (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment
             [ (_literal_literalType .==. intType) _cinfoPat ]
         (_cinfoResult) =
             \tppair ->
-            CInfo { info       = (NTPattern,AltNegate,"result")
+            CInfo { info       = (NTPattern, AltNegate, 0, "result")
                   , location   = "pattern negation"
                   , errorrange = _range_self
                   , sources    = [ sourcePattern _oneLineTree  ]
@@ -3441,7 +3441,7 @@ sem_Pattern_Negate (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment
                   }
         (_cinfoPat) =
             \tppair ->
-             CInfo { info       = (NTPattern,AltNegate,"pattern")
+             CInfo { info       = (NTPattern, AltNegate, 1, "pattern")
                   , location   = "pattern negation "
                   , errorrange = _range_self
                   , sources    = [ sourcePattern _oneLineTree, sourceTerm _literal_oneLineTree ]
@@ -3472,7 +3472,7 @@ sem_Pattern_NegateFloat (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnviro
             [ (_literal_literalType .==. floatType) _cinfoPat ]
         (_cinfoResult) =
             \tppair ->
-            CInfo { info       = (NTPattern,AltNegateFloat,"result")
+            CInfo { info       = (NTPattern, AltNegateFloat, 0, "result")
                   , location   = "pattern negation"
                   , errorrange = _range_self
                   , sources    = [ sourcePattern _oneLineTree  ]
@@ -3483,7 +3483,7 @@ sem_Pattern_NegateFloat (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnviro
                   }
         (_cinfoPat) =
             \tppair ->
-             CInfo { info       = (NTPattern,AltNegateFloat,"pattern")
+            CInfo { info       = (NTPattern, AltNegateFloat, 1, "pattern")
                   , location   = "pattern negation "
                   , errorrange = _range_self
                   , sources    = [ sourcePattern _oneLineTree, sourceTerm _literal_oneLineTree ]
@@ -3565,7 +3565,7 @@ sem_Pattern_Tuple (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment
             [ (tupleType _patterns_betas .==. _beta) _cinfo ]
         (_cinfo) =
             \tppair ->
-            CInfo { info       = (NTPattern,AltTuple,"result")
+            CInfo { info       = (NTPattern, AltTuple, 0, "result")
                   , location   = "pattern tuple"
                   , errorrange = _range_self
                   , sources    = [ sourcePattern _oneLineTree  ]
@@ -3710,7 +3710,7 @@ sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_l
             [ (_expression_beta .==. listType _pattern_beta) _cinfoResult ]
         (_cinfoResult) =
             \tppair ->
-            CInfo { info       = (NTQualifier,AltGenerator,"result")
+            CInfo { info       = (NTQualifier,AltGenerator,0, "result")
                   , location   = "generator"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
@@ -3718,7 +3718,7 @@ sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_l
                   , properties = [ Size _size ]
                   }
         (_cinfoBind) =
-            variableBindingCInfo (NTQualifier,AltGenerator)
+            variableBindingCInfo (NTQualifier,AltGenerator,1 )
         (_size) =
             _pattern_size + _expression_size
         (_oneLineTree) =
@@ -3755,7 +3755,7 @@ sem_Qualifier_Guard (_range) (_guard) (_lhs_allPatterns) (_lhs_assumptions) (_lh
             [ (_guard_beta .==. boolType) _cinfo ]
         (_cinfo) =
             \tppair ->
-            CInfo { info       = (NTQualifier,AltGuard,"")
+            CInfo { info       = (NTQualifier,AltGuard,0, "")
                   , location   = "boolean qualifier"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree  ]
@@ -4095,7 +4095,7 @@ sem_Statement_Expression (_range) (_expression) (_lhs_allPatterns) (_lhs_assumpt
             [ (_expression_beta .==. ioType _beta) _cinfo ]
         (_cinfo) =
             \tppair ->
-            CInfo { info       = (NTStatement,AltExpression,"")
+            CInfo { info       = (NTStatement,AltExpression,0, "")
                   , location   = "generator"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree ]
@@ -4136,7 +4136,7 @@ sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_l
             [ (_expression_beta .==. ioType _pattern_beta) _cinfoResult ]
         (_cinfoResult) =
             \tppair ->
-            CInfo { info       = (NTStatement,AltGenerator,"result")
+            CInfo { info       = (NTStatement, AltGenerator, 0, "result")
                   , location   = "generator"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
@@ -4144,7 +4144,7 @@ sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_l
                   , properties = [ Size _size ]
                   }
         (_cinfoBind) =
-            variableBindingCInfo (NTStatement,AltGenerator)
+            variableBindingCInfo (NTStatement, AltGenerator, 1)
         (_size) =
             _pattern_size + _expression_size
         (_oneLineTree) =

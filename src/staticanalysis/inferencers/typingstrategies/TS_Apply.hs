@@ -45,7 +45,7 @@ expressionParser operatorTable string =
 
 standardConstraintInfo :: (Int, Int) -> (Tp, Tp) -> HeliumConstraintInfo
 standardConstraintInfo pos tppair =
-   CInfo { info       = (NTBody, AltBody, "Strategy, user constraint, "++show pos)
+   CInfo { info       = (NTBody, AltBody, (-1), "Strategy, user constraint, "++show pos)
          , location   = "Typing Strategy"
          , errorrange = noRange
          , sources    = [ ]
@@ -56,7 +56,7 @@ standardConstraintInfo pos tppair =
 typeRuleCInfo :: String -> MetaVariableInfo -> (Tp, Tp) -> HeliumConstraintInfo
 typeRuleCInfo = 
    \string (tp1,tree,range) tppair ->
-      CInfo { info       = (NTBody, AltBody, "Typing Strategy, meta-typevariable " ++ string)
+      CInfo { info       = (NTBody, AltBody, (-1), "Typing Strategy, meta-typevariable " ++ string)
             , location   = "Typing Strategy"
             , errorrange = noRange
             , sources    = [ ]
