@@ -1,0 +1,12 @@
+Compiling correct/Andres.hs
+(3,16): Warning: Variable "+" shadows the one at Prelude
+(5,15): Warning: Variable "+" shadows the one at Prelude
+(5,18): Warning: Definition "xs" is not used
+(7,16): Warning: Variable "x" is not used
+(3,1): Warning: Missing type signature: test1 :: Int
+(5,1): Warning: Missing type signature: test2 :: Int
+(7,1): Warning: Missing type signature: test3 :: Int
+(9,1): Warning: Missing type signature: test4 :: IO ()
+(11,1): Warning: Missing type signature: main :: (Int, Int, Int)
+Compilation successful with 9 warnings
+((-2),2,(-5))
