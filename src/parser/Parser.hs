@@ -657,7 +657,7 @@ aexp = addRange (
     do 
         lexLPAREN
         ( -- dit haakje is nodig (snap niet waarom). Arjan
-            do 
+            try (do  -- de try vanwege (-) DEZE PARSER MOET OPNIEUW GESCHREVEN WORDEN !!!
                 ue <- do
                     u <- unaryMinus
                     es <- exprChain
@@ -668,7 +668,7 @@ aexp = addRange (
                     if null es then
                         \r -> Expression_Parenthesized r ue
                     else 
-                        \r -> Expression_Tuple r (ue:es)
+                        \r -> Expression_Tuple r (ue:es))
             <|>                
             do      -- operator followed by optional expression
                     -- either full section (if there is no expression) or 

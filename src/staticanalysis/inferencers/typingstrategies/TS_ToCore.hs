@@ -539,7 +539,11 @@ sem_Declaration_TypeSignature (_range) (_names) (_type) =
     let (_self) =
             Declaration_TypeSignature _range_self _names_self _type_self
         (_oneLineTree) =
-            intErr "Declaration" "type signature"
+            Node
+                 [ Text (concat . intersperse "," . map show $ _names_self)
+                 , Text " :: "
+                 , Text (show (makeTpSchemeFromType _type_self))
+                 ]
         ( _range_self) =
             (_range )
         ( _names_isIdentifier,_names_isOperator,_names_isSpecial,_names_oneLineTree,_names_self) =

@@ -1,3 +1,6 @@
+* Compiler: warning bij "--++ xs" (bedoel je commentaar of een operator?)
+* Compiler: '\128' e.d. ondersteunen
+* Compiler: bij \n\r (of zo) op Unix maar 1 regelovergang tellen
 * Doc: commentaar over List en Maybe
 * Doc: tutorial
 * Hint: functies definieren? 

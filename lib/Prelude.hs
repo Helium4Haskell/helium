@@ -451,10 +451,6 @@ minimum = foldl1 min
 concatMap :: (a -> [b]) -> [a] -> [b]
 concatMap f = concat . map f
 
-index :: Int -> [a] -> a
-index 0 (x:_) = x
-index n (_:xs) = index (n-1) xs
-
 {-----------------------------------------------
  -- Char
  -----------------------------------------------}
