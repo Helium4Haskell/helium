@@ -9,8 +9,9 @@
 * Compiler: hint bij "abs -42" (Bastiaan)
 * Compiler: Als duplicated en undefined met hint dan dubbelen in hint, maybe you meant +! or +!
 * Compiler: x = 1111111111111111111111   wordt geparst...
-* Compiler, TextHint, lvmrun, coreasm, Hint: paden via command-line
-
+* Compiler: TextHint, lvmrun, coreasm, Hint: paden via command-line
+* Compiler: extra keywords voor lexer parametriseren!!!
+ 
 ---- ONBELANGRIJK ----
                 
 * bij het exporteren van een functie moeten ook de types geexporteerd worden. Hoe?
