@@ -96,14 +96,15 @@ compile fullName options doneModules =
                | AlgorithmM `elem` options = (algM,False)
                | otherwise                 = (algW,True ) -- default algorithm W + TypeGraphs
             
-            importEnvironment = tempConverter importConstructorEnv importTyConEnv importTypeEnv importTypeSynEnv
+            importEnvironment = temporaryConverter {- should have been the result of getImportInfo -}
+                                    importConstructorEnv importTyConEnv importTypeEnv importTypeSynEnv
             
             -- Tree traversal with the attribute grammar
             (collectEnvironment, errors, warnings1) = 
                 {-# SCC "StaticAnalysis" #-} 
                 StaticChecks.sem_Module module_ 
                     baseName 
-                    importEnvironment
+                    importEnvironment                        
             
             completeEnvironment = collectEnvironment `combineImportEnvironments` importEnvironment
                      
