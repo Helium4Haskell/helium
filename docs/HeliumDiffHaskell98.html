@@ -1,0 +1,39 @@
+<HTML>
+
+<HEAD>
+ <TITLE>
+  Helium, differences when compared to Haskell 98
+ </TITLE>
+</HEAD>
+
+<BODY>
+
+<H1>Helium, differences when compared to Haskell 98</H1>
+
+
+<UL>
+
+<LI>Data type, show function
+<LI>The module system is very simple:
+	<UL>
+	<LI>Everything is always exported: data types, functions, synonyms, instances.
+	<LI>It is not allowed to import something via two different import declarations.
+	    This means that if you have a module A and both B and C import A and then a fourth
+	    module D imports both B and C that you will get clashes for all the names
+	    from module A.
+	<LI>You can hide functions in an import declaration with <TT>hiding</TT>; you cannot
+	    hide the show... functions that are generated for each data type. Hiding other
+	    things like types and constructors is not possible.
+	<LI><TT>qualified</TT> imports and imports with <TT>as</TT>
+	</UL>
+<LI>The following character sequences are supported in characters and strings:
+		\\, \n, \a, \b, \f, \r, \t, \v, \", \'.
+	Other escape sequences like the ones with numbers are not supported.
+<LI>Numeric literals are not overloaded. <TT>3</TT> is of type <TT>Int</TT> and
+    <TT>3.0</TT> is of type <TT>Float</TT>
+
+</UL>
+
+</BODY>
+
+</HTML>
