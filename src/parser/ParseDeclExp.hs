@@ -317,6 +317,8 @@ aexp    ->  var  (variable)
          |  literal  
 
          |  () 
+         |  (op fexp) (left section)
+         |  (fexp op) (right section)
          |  ( exp )  (parenthesized expression)  
          |  ( exp1 , ... , expk )  (tuple, k>=2)  
 
@@ -328,31 +330,49 @@ aexp    ->  var  (variable)
 
 aexp :: HParser Expression    
 aexp = addRange (
-    parens (
-        do
-            es <- commas1 exp_
-            return $ \r -> case es of
-                [e] -> Expression_Parenthesized r e
-                _ -> Expression_Tuple r es
-        <|>
-        do
-            n <- varop
-            return $ \r ->
-                Expression_InfixApplication r
-                    MaybeExpression_Nothing
-                    (Expression_Variable r n)
-                    MaybeExpression_Nothing
-        <|>
-        do
-            n <- conop
-            return $ \r ->
-                --Expression_InfixApplication r
-                --    MaybeExpression_Nothing
-                    (Expression_Constructor r n)
-                --    MaybeExpression_Nothing
-        <|>
-        return (\r -> Expression_Constructor r (Name_Special r [] "()"))
-    )
+    do 
+        special "("
+        ( -- dit haakje is nodig (snap niet waarom). Arjan
+            do
+                opExpr <- try (fmap (\(n, r) -> Expression_Variable r n) (withRange varop))
+                          <|>
+                          fmap ((\(n, r) -> Expression_Constructor r n)) (withRange conop)
+                me <- option Nothing (fmap Just fexp)
+                special ")"
+                return $ \r -> case me of
+                    Nothing -> 
+                        Expression_InfixApplication r
+                            MaybeExpression_Nothing
+                            opExpr
+                            MaybeExpression_Nothing
+                    Just e -> 
+                        Expression_InfixApplication r
+                            MaybeExpression_Nothing
+                            opExpr
+                            (MaybeExpression_Just e)
+            <|>
+            try (do
+                e <- fexp
+                o <- op
+                special ")"
+                return $ \r ->
+                    Expression_InfixApplication r
+                        (MaybeExpression_Just e)
+                        (Expression_Variable r o)
+                        MaybeExpression_Nothing
+                )
+            <|>
+            do
+                es <- commas1 exp_
+                special ")"
+                return $ \r -> case es of
+                    [e] -> Expression_Parenthesized r e
+                    _ -> Expression_Tuple r es
+            <|>
+            do
+                special ")"
+                return (\r -> Expression_Constructor r (Name_Special r [] "()"))
+         )
     <|>
     do
         n <- varid
