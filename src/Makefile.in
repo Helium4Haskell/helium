@@ -403,12 +403,11 @@ clean:
 	$(RM) `find . -name "*.hi" -print`
 	$(RM) `find . -name "*.class" -print`
 	$(RM) ../lib/*.lvm
+	$(RM) ../lib/simple/*.lvm
 	$(RM) $(HELIUMBINDIR)/$(MAIN)$(EXE)
 	$(RM) $(HELIUMBINDIR)/texthint$(EXE)	
-	$(RM) -r $(PARSECIMPDIR)/*.o
-	$(RM) -r $(PARSECIMPDIR)/*.hi
-	$(RM) -r $(PARSECIMPDIR)/Parsec/*.o
-	$(RM) -r $(PARSECIMPDIR)/Parsec/*.hi
+	cd $(PARSECIMPDIR); $(RM) `find . -name "*.o" -print`
+	cd $(PARSECIMPDIR); $(RM) `find . -name "*.hi" -print`
 	cd $(LVMLIBDIR); $(MAKE) clean
 	cd $(LVMRUNTIMEDIR); $(MAKE) clean
 
