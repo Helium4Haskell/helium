@@ -188,10 +188,11 @@ tpToInt tp = case ftv tp of
                _   -> (-1)
 
 sourceTerm, sourceExpression, sourcePattern, sourceOperator :: Tree -> (String, Tree)
-sourceTerm       = (,) "term"
-sourceExpression = (,) "expression"
-sourcePattern    = (,) "pattern"
-sourceOperator   = (,) "operator"
+sourceTerm        = (,) "term"
+sourceExpression  = (,) "expression"
+sourcePattern     = (,) "pattern"
+sourceOperator    = (,) "operator"
+sourceConstructor = (,) "constructor"
 
 
 encloseSep :: String -> String -> String -> [Tree] -> Tree
@@ -3129,9 +3130,15 @@ sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_imp
                   , errorrange = _range_self
                   , sources    = if _patterns_numberOfPatterns == 0
                                    then [ sourcePattern _oneLineTree                            ]
-                                   else [ sourcePattern _oneLineTree, sourceTerm _name_oneLineTree ]
+                                   else [ sourcePattern _oneLineTree, sourceConstructor _name_oneLineTree ]
                   , typepair   = tppair
-                  , properties = [ SubTermRange (getNameRange _name_self) ]
+                  , properties = [ SubTermRange (getNameRange _name_self) ] ++
+                                 if _patterns_numberOfPatterns == 0
+                                   then [HighlyTrusted]
+                                   else [ ApplicationEdge False (zip3 _patterns_oneLineTree
+                                                                      _patterns_betas
+                                                                      (map getPatRange (_patterns_self))
+                                                                )]
                   }
         (_operatorName) =
             if _name_isOperator
@@ -3190,9 +3197,14 @@ sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_ri
             CInfo { info       = (NTPattern, AltInfixConstructor, 1, "apply")
                   , location   = "infix pattern application"
                   , errorrange = _range_self
-                  , sources    = [ sourcePattern _oneLineTree, sourceOperator (Text (showNameAsOperator _constructorOperator_self))]
+                  , sources    = [ sourcePattern _oneLineTree, sourceConstructor (Text (showNameAsOperator _constructorOperator_self))]
                   , typepair   = tppair
-                  , properties = [ SubTermRange (getNameRange _constructorOperator_self) ]
+                  , properties = [ SubTermRange (getNameRange _constructorOperator_self)
+                                 , ApplicationEdge True
+                                                   [ (_leftPattern_oneLineTree ,_leftPattern_beta ,getPatRange (_leftPattern_self))
+                                                   , (_rightPattern_oneLineTree,_rightPattern_beta,getPatRange (_rightPattern_self))
+                                                   ]
+                                 ]
                   }
         (_operatorName) =
             Text (showNameAsOperator _constructorOperator_self)

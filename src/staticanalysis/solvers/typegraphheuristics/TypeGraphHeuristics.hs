@@ -265,11 +265,17 @@ similarNegation edge@(EdgeID v1 v2) info =
                      | not intNegation && floatNegation && intNegationEdge
                         -> let hint = SetHint (fixHint "use float negation (-.) instead")
                            in return $ ConcreteHeuristic 6 [hint] "float negation should be used"
-
+                     
+                     | errorInResult  
+                        -> return (ModifierHeuristic 0.000001 "negation: only result is incorrect")
+                     
                     where intNegation       = unifiable synonyms tp (intType .->. intType)
                           floatNegation     = unifiable synonyms tp (floatType .->. floatType)
                           intNegationEdge   = isIntNegation
                           floatNegationEdge = not isIntNegation
+                          errorInResult     = let newtvar = TVar (maximum (0 : ftv tp) + 1)
+                                                  testtp = (if isIntNegation then intType else floatType) .->. newtvar
+                                              in unifiable synonyms tp testtp                                              
 
                   _ -> return NotApplicableHeuristic
 
@@ -299,13 +305,14 @@ applicationEdge edge@(EdgeID v1 v2) info =
                                 . unzip
                                 . ((resFunction,resExpected):)
                       onlyArgumentsMatch = unifiable synonyms (tupleType ftps) (tupleType etps)
+                      isPatternApplication = isPattern info 
                   in case compare (length ftps) (length etps) of
 
-                        LT | null ftps && not isBinary -> -- the expression to which arguments are given does not have a function type
+                        LT | null ftps && not isBinary && not isPatternApplication -> -- the expression to which arguments are given does not have a function type
                                 let hint = SetHint (becauseHint "it is not a function")
                                 in return (ConcreteHeuristic 6 [hint] "no function")
 
-                           | length ftps < 2 && isBinary -> --function used as infix that expects < 2 arguments
+                           | length ftps < 2 && isBinary && not isPatternApplication -> --function used as infix that expects < 2 arguments
                                 let hint = SetHint (becauseHint "it is not a binary function")
                                 in return (ConcreteHeuristic 6 [hint] "no binary function")
 
@@ -333,7 +340,7 @@ applicationEdge edge@(EdgeID v1 v2) info =
                              (_,[i]) | i < length tuplesForArguments
                                   -> do expfulltp <- applySubst t1
                                         let (oneLiner,tp,range) = tuplesForArguments !! i
-                                            typeError     = makeTypeErrorForTerm isBinary i oneLiner (tp,expargtp) range info
+                                            typeError     = makeTypeErrorForTerm (isBinary,isPatternApplication) i oneLiner (tp,expargtp) range info
                                             expargtp      = fst (functionSpine expfulltp) !! i
                                         return (ConcreteHeuristic 3 [SetTypeError typeError] ("incorrect argument of application="++show i))
                              _    -> return NotApplicableHeuristic
@@ -341,19 +348,19 @@ applicationEdge edge@(EdgeID v1 v2) info =
                         ordering -> -- the number of arguments is incorrect. (LT -> too many ; GT -> not enough)
                            case ( [ is | (is,zl) <- take heuristics_MAX (zipWithHoles ftps etps), predicate zl ] , ordering ) of
 
-                             ([is],LT) | not isBinary && maximum is < length tuplesForArguments
+                             ([is],LT) | not isBinary && not isPatternApplication && maximum is < length tuplesForArguments
                                 -> let hint = SetHint (fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" argument"))
                                    in return (ConcreteHeuristic 4 [hint] ("too many arguments are given: "++show is))
 
-                             (_:_ ,LT)
+                             (_ ,LT) | not isPatternApplication
                                 -> let hint = SetHint (becauseHint "too many arguments are given")
                                    in return (ConcreteHeuristic 2 [hint] "too many arguments are given")
 
-                             ([is],GT) | not isBinary
+                             ([is],GT) | not isBinary && not isPatternApplication
                                 -> let hint = SetHint (fixHint ("insert a "++prettyAndList (map (ordinal True . (+1)) is)++" argument"))
                                    in return (ConcreteHeuristic 4 [hint] ("not enough arguments are given"++show is))
 
-                             (_:_ ,GT)
+                             (_ ,GT) | not isPatternApplication
                                 -> let hint = SetHint (becauseHint "not enough arguments are given")
                                    in return (ConcreteHeuristic 2 [hint] "not enough arguments are given")
  

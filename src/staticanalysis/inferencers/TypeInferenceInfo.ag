@@ -460,9 +460,16 @@ SEM Pattern | Constructor loc . cinfoApply =
         , errorrange = @range.self
         , sources    = if @patterns.numberOfPatterns == 0
                          then [ sourcePattern @oneLineTree                            ]
-                         else [ sourcePattern @oneLineTree, sourceTerm @name.oneLineTree ]
+                         else [ sourcePattern @oneLineTree, sourceConstructor @name.oneLineTree ]
         , typepair   = tppair
-        , properties = [ SubTermRange (getNameRange @name.self) ]
+        , properties = [ SubTermRange (getNameRange @name.self) ] ++
+                       if @patterns.numberOfPatterns == 0
+                         then [HighlyTrusted]          
+                         else [ ApplicationEdge False (zip3 @patterns.oneLineTree 
+                                                            @patterns.betas
+                                                            (map getPatRange (@patterns.self))
+                                                      )]
+                           
         }
 
 -- Pattern.InfixConstructor
@@ -484,9 +491,14 @@ SEM Pattern | InfixConstructor loc . cinfoApply =
   CInfo { info       = (NTPattern, AltInfixConstructor, 1, "apply")
         , location   = "infix pattern application"
         , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree, sourceOperator (Text (showNameAsOperator @constructorOperator.self))]
+        , sources    = [ sourcePattern @oneLineTree, sourceConstructor (Text (showNameAsOperator @constructorOperator.self))]
         , typepair   = tppair
-        , properties = [ SubTermRange (getNameRange @constructorOperator.self) ]
+        , properties = [ SubTermRange (getNameRange @constructorOperator.self)
+                       , ApplicationEdge True
+                                         [ (@leftPattern.oneLineTree ,@leftPattern.beta ,getPatRange (@leftPattern.self))
+                                         , (@rightPattern.oneLineTree,@rightPattern.beta,getPatRange (@rightPattern.self))
+                                         ]
+                       ]  
         }
 
 -- Pattern.List
@@ -718,8 +730,9 @@ tpToInt tp = case ftv tp of
                _   -> (-1)
 
 sourceTerm, sourceExpression, sourcePattern, sourceOperator :: Tree -> (String, Tree)
-sourceTerm       = (,) "term"
-sourceExpression = (,) "expression"
-sourcePattern    = (,) "pattern"
-sourceOperator   = (,) "operator"
+sourceTerm        = (,) "term"
+sourceExpression  = (,) "expression"
+sourcePattern     = (,) "pattern"
+sourceOperator    = (,) "operator"
+sourceConstructor = (,) "constructor"
 }

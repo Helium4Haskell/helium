@@ -42,9 +42,13 @@ class (Show constraintinfo,ConstraintInfo constraintinfo) =>
    makeTypeError           :: constraintinfo -> TypeError
    getErrorRange           :: constraintinfo -> Range
 
+   isPattern               :: constraintinfo -> Bool
+   isPattern cinfo = let (nt, _, _, _) = getInfoSource cinfo 
+                     in nt == NTPattern
+
 -- not a nice solution!
-makeTypeErrorForTerm :: TypeGraphConstraintInfo constraintinfo => Bool -> Int -> Tree -> (Tp,Tp) -> Range -> constraintinfo -> TypeError
-makeTypeErrorForTerm isInfixApplication argumentNumber termOneLiner (t1, t2) range cinfo =
+makeTypeErrorForTerm :: TypeGraphConstraintInfo constraintinfo => (Bool,Bool) -> Int -> Tree -> (Tp,Tp) -> Range -> constraintinfo -> TypeError
+makeTypeErrorForTerm (isInfixApplication,isPatternApplication) argumentNumber termOneLiner (t1, t2) range cinfo =
    case makeTypeError cinfo of
 
       TypeError _ oneliner (UnificationErrorTable sources ftype _) infos ->
@@ -52,9 +56,10 @@ makeTypeErrorForTerm isInfixApplication argumentNumber termOneLiner (t1, t2) ran
                                                            , ("type", functionType)
                                                            , (subterm, MessageOneLineTree termOneLiner)
                                                            ]
-             onlyExpression = ("expression"==) . fst
-             function = if isInfixApplication then "operator" else "function"
-             functionPretty = case filter (\(x, _) -> x=="term" || x=="operator") sources of
+             onlyExpression = (\x -> x=="expression" || x=="pattern") . fst
+             function | isPatternApplication = "constructor"
+                      | otherwise            = if isInfixApplication then "operator" else "function"
+             functionPretty = case filter (\(x, _) -> x=="term" || x=="operator" || x=="constructor") sources of
                                  (_, x):_ -> x
                                  _        -> internalError "TypeGraphConstraintInfo.hs"
                                                            "makeTypeErrorForTerm"
