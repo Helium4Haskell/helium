@@ -37,7 +37,6 @@ data TypeErrorTable = UnificationErrorTable
 type TypeErrorInfos = [TypeErrorInfo]
 data TypeErrorInfo  = TypeErrorHint String MessageBlock
                     | IsFolkloreTypeError
-                    | HasDocumentationLink String
 
 instance HasMessage TypeError where
 
@@ -52,8 +51,6 @@ instance HasMessage TypeError where
 
    getRanges (TypeError range oneliner table infos) = [range]
    getRanges (CustomTypeError ranges message) = ranges
-
-   getDocumentationLink = documentationLinkForTypeError
 
 instance Substitutable TypeError where
 
@@ -176,7 +173,7 @@ makeReductionError source (scheme, tp) classEnvironment predicate@(Predicate cla
                    xs  -> "  hint: valid instances of "++className++" are "++andList valids
          
          andList :: [String] -> String
-         andList [x,y]    = x++" and "++y
+         andList [x,y]  = x++" and "++y
          andList (x:xs) = x++", "++andList xs
          
          valids :: [String]
@@ -188,12 +185,3 @@ makeReductionError source (scheme, tp) classEnvironment predicate@(Predicate cla
                   in if length tuples > 4 -- magic number!
                        then map (show . f) others ++ ["tuples"]
                        else map (show . f) tps
-
-documentationLinkForTypeError :: TypeError -> Maybe String
-documentationLinkForTypeError typeError =
-   case typeError of
-      TypeError _ _ _ infos ->
-         case [ s | HasDocumentationLink s <- infos ] of
-            x:_ -> Just x
-            _   -> Nothing
-      _                     -> Nothing

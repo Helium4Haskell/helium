@@ -5,7 +5,7 @@ import Top.States.TIState
 import Top.Types
 import OneLiner (OneLineTree)
 import UHA_Syntax (Range)
-
+      
 -----------------------------------------------------------------------------
 
 class MaybeApplication a where
