@@ -1,0 +1,11 @@
+Helium is a user-friendly compiler designed especially for learning the functional programming language Haskell. 
+The quality of the error messages has been the main concern both in the choice of the language features and in the 
+implementation of the compiler. 
+Helium implements almost full Haskell, where the most notable difference is the 
+absence of type classes. Our goal is to let students learn functional programming more quickly and with more fun. 
+The compiler has been successfully employed in two introductory programming courses at Utrecht University.
+
+* The Helium homepage: <http://www.cs.uu.nl/helium/>   
+
+* An overview paper: <http://doi.acm.org/10.1145/871895.871902>
+

@@ -400,13 +400,14 @@ endif
 	$(AG) -a $<
 
 
-# Documentation target (use Haddock 0.5 in combination with GHC 6.0.1) Ê
+# Documentation target (with Haddock) Ê
 doc:
 	haddock +RTS -K8M -RTS \
-		-h -o ../docs/haddock --lib /usr/local/lib/haddock-0.5 \
-		--read-interface http://www.haskell.org/ghc/docs/6.0.1/html/base/,../../base.haddock \
+	    --title="The Helium Compiler" \
+		--prologue=prologue.txt \
+		-h -o ../docs/haddock \
 		$(PARSER) $(STATICANALYSIS) $(UHA) $(CODEGENERATION) $(UTILS) \
-		$(MAINFILES) $(MODULESYSTEM) 
+		$(MAINFILES) $(MODULESYSTEM)
 
 # Clean	up
 clean:
