@@ -1,0 +1,1 @@
+type Table a = IO
