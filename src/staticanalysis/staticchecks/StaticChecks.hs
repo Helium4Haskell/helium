@@ -33,25 +33,6 @@ filterDerivedNames ranges err =
       Duplicated Definition names -> any (`notElem` ranges) (map getNameRange names) 
       _                           -> True
 
-checkRecursionTypeSynonyms :: [(Name,(Int,Tps -> Tp))] -> ([(Name,(Int,Tps -> Tp))],[Names])
-checkRecursionTypeSynonyms unordered =
-    let synonyms  = unordered
-        nameTable = zip (map fst synonyms) [0..]
-        synTable  = zip [0..] synonyms 
-        edges = concat [ let Just i1 = lookup n1 nameTable
-                         in maybe [] (\i2 -> [(i2,i1)]) (lookup n2 nameTable)
-                       | (n1,(_,f)) <- synonyms
-                       , s2         <- constantsInType (f (map TVar [0..]))
-               , let n2 = Name_Identifier noRange [] s2
-                       ]
-        list = topSort (length synonyms-1) edges  
-        op [i] (as,bs)
-           | (i,i) `elem` edges = (as,[ n | (n,i') <- nameTable, i==i' ] : bs)
-           | otherwise          = let Just (name,(arity,tf)) = lookup i synTable
-                                  in ((name,(arity,tf)):as,bs)
-        op is  (as,bs) = (as,[ n | i <- is, (n,i') <- nameTable, i==i'] : bs)
-    in foldr op ([],[]) list
-
 uniqueKeys :: Ord key => [(key,a)] -> ([(key,a)],[[key]])
 uniqueKeys = let comp (x,_) (y,_) = compare x y
                  eq   (x,_) (y,_) = x == y
@@ -2060,7 +2041,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
         (_collectEnvironment) =
             setValueConstructors  _valueConstructors
             . setTypeConstructors _typeConstructors
-            . setTypeSynonyms     (listToFM _orderedTypeSynonyms)
+            . setTypeSynonyms     (listToFM _body_collectTypeSynonyms)
             . setTypeEnvironment  (listToFM _body_typeSignatures)
             $ emptyEnvironment
         (_derivedFunctions) =
@@ -2087,8 +2068,6 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
             map fst _uniqueTypeConstructors ++ map head _duplicatedTypeConstructors
         (_typeConstructors) =
             listToFM _uniqueTypeConstructors
-        ((_orderedTypeSynonyms,_recursiveTypeSynonyms)) =
-            checkRecursionTypeSynonyms _body_collectTypeSynonyms
         (_self) =
             Module_Module _range_self _name_self _exports_self _body_self
         (_initialNames) =
@@ -2121,7 +2100,15 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
             let list = nub (_body_declVarNames ++ _allValueConstructors)
             in makeNoFunDef Fixity (filter (`notElem` list) _correctFixities) list
         (_recursiveTypeSynonymErrors) =
-            map RecursiveTypeSynonyms _recursiveTypeSynonyms
+            let converted  = map (\(name, tuple) -> (show name, tuple)) _body_collectTypeSynonyms
+                recursives = snd . getTypeSynonymOrdering . listToFM $ converted
+                makeError = let f = foldr add (Just [])
+                                add s ml = case (g s, ml) of
+                                              ([n], Just ns) -> Just (n:ns)
+                                              _              -> Nothing
+                                g s = [ n | n <- map fst _body_collectTypeSynonyms, show n == s ]
+                            in maybe [] (\x -> [RecursiveTypeSynonyms x]) . f
+            in concatMap makeError recursives
         (_wrongFileNameErrors) =
             let moduleString = getNameName  _moduleName
                 moduleRange  = getNameRange _moduleName

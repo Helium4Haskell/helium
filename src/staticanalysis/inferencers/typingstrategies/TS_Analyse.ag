@@ -67,7 +67,7 @@ SEM TypingStrategy
                                                                   extendedEnvironment
                                                                   extendedExpression
                            inferredTpScheme = generalizeAll (unsafeInstantiate monoTpScheme)                                                                   
-                           synonyms = [ (show n,i,f) | (n,(i,f)) <- fmToList (typeSynonyms @lhs.importEnvironment) ]
+                           synonyms = getOrderedTypeSynonyms @lhs.importEnvironment
                        in if not (null inferredTypeErrors) 
                             then map (TypeErrorTS @name) inferredTypeErrors
                             else if genericInstanceOf synonyms inferredTpScheme constraintsTpScheme 

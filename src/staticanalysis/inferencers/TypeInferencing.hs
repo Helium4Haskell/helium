@@ -2990,7 +2990,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
         (_constraints) =
             zipWith setPosition [0..] (ctRoot _body_constraints _lhs_strategy)
         (_orderedTypeSynonyms) =
-            [ (show n,i,f) | (n,(i,f)) <- fmToList (typeSynonyms _lhs_importEnvironment) ]
+            getOrderedTypeSynonyms _lhs_importEnvironment
         ((_betaUniqueAtTheEnd,_substitution,_solveErrors,_solveDebug)) =
             (if _lhs_useTypeGraph then solveEquivalenceGroups else solveGreedy)
                _body_betaUnique [ SolveWithTypeSynonyms _orderedTypeSynonyms

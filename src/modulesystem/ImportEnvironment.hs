@@ -4,6 +4,7 @@ import FiniteMap
 import UHA_Syntax  ( Names, Name )
 import Types
 import OperatorTable
+import Messages -- instance Show Name
 
 type TypeEnvironment             = FiniteMap Name TpScheme
 type ValueConstructorEnvironment = FiniteMap Name TpScheme
@@ -71,6 +72,13 @@ setTypeEnvironment new importenv = importenv {typeEnvironment = new}
 
 setOperatorTable :: OperatorTable -> ImportEnvironment -> ImportEnvironment 
 setOperatorTable new importenv = importenv {operatorTable = new}
+
+getOrderedTypeSynonyms :: ImportEnvironment -> OrderedTypeSynonyms
+getOrderedTypeSynonyms importEnvironment = 
+   let synonyms = let insert name tuple fm = addToFM fm (show name) tuple
+                  in foldFM insert emptyFM (typeSynonyms importEnvironment)
+       ordering = fst (getTypeSynonymOrdering synonyms)
+   in (ordering, synonyms)
 
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
 combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2) = 

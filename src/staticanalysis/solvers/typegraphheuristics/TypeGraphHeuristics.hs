@@ -480,7 +480,7 @@ fbHasTooManyArguments edge info
 
       do options <- getSolverOptions
          let (t1,t2)         = getTwoTypes info
-             maximumExplicit = arityOfTp (expandType synonyms t1)
+             maximumExplicit = arityOfTp (expandType (snd synonyms) t1)
              synonyms        = getTypeSynonyms options
          maybeNumberOfPatterns <- useSolver 
             (\groups -> do let tvar = head (ftv t2)

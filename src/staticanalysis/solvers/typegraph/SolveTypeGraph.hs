@@ -156,7 +156,7 @@ makeTermGraph tp = case leftSpine tp of
                                        is <- mapM makeTermGraph ts
                                        let synonyms = getTypeSynonyms options
                                            tp'      = foldl TApp (TCon s) $ map TVar is
-                                       case leftSpine (expandTypeConstructor synonyms tp') of
+                                       case leftSpine (expandTypeConstructor (snd synonyms) tp') of
                                           (TVar i,[])   -> do return i
                                           (TCon s',ts') -> do is' <- mapM makeTermGraph ts'
                                                               let expand | s == s'   = Nothing

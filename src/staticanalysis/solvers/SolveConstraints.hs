@@ -97,4 +97,4 @@ runSolver buildSubstitution unique options constraints =
     where substitute :: (ConstraintSolver solver info,Substitutable info) => info -> SolveState solver info info
           substitute scheme = do let vs = ftv scheme
                                  ts <- mapM findSubstForVar vs
-                                 return $ CSubstAssocList (zip vs ts) |-> scheme
+                                 return $ listToSubstitution (zip vs ts) |-> scheme

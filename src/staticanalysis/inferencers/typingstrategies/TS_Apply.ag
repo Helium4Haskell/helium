@@ -34,7 +34,10 @@ ATTR TypingStrategy [ localInfo         : {(ConstraintSet, MetaVariableInfo)}
             
 SEM TypingStrategy 
   | TypingStrategy     
-       lhs . constraintSet = reverse @constraints.userConstraints .>. @typeruleConstraints .>. ctNode @metaVariableConstraints
+       lhs . constraintSet = ctNode ( ctPhased 2 (reverse @constraints.userConstraints)
+                                    : ctPhased 1 (reverse @typeruleConstraints)
+                                    : @metaVariableConstraints
+                                    )
            . unique        = length @uniqueTypevariables + @lhs.unique
            . debugIO       = putStrLn ("applying typing strategy " ++ @name)
        loc . metaVariableConstraints = [ cs | (s,(cs,_)) <- @lhs.metaVariableTable, s /= "?toplevel?" ]  

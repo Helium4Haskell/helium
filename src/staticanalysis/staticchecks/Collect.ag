@@ -19,7 +19,7 @@
 SEM Module
   | Module   loc . collectEnvironment = setValueConstructors  @valueConstructors
                                         . setTypeConstructors @typeConstructors
-                                        . setTypeSynonyms     (listToFM @orderedTypeSynonyms)
+                                        . setTypeSynonyms     (listToFM @body.collectTypeSynonyms)
                                         . setTypeEnvironment  (listToFM @body.typeSignatures)
                                         $ emptyEnvironment 
                                         
@@ -115,35 +115,7 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      GuardedExpressions GuardedExpression FunctionBinding FunctionBindings     
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression AnnotatedType AnnotatedTypes
      [ typeConstructors : {FiniteMap Name Int} allTypeConstructors : Names | | ]
-
-------------------------------------------------------------------------------
---  Check and order type synonyms 
-
-SEM Module
-  | Module   loc . (orderedTypeSynonyms,recursiveTypeSynonyms) = 
-                       checkRecursionTypeSynonyms @body.collectTypeSynonyms
-                                              
-{
-checkRecursionTypeSynonyms :: [(Name,(Int,Tps -> Tp))] -> ([(Name,(Int,Tps -> Tp))],[Names])
-checkRecursionTypeSynonyms unordered =
-    let synonyms  = unordered
-        nameTable = zip (map fst synonyms) [0..]
-        synTable  = zip [0..] synonyms 
-        edges = concat [ let Just i1 = lookup n1 nameTable
-                         in maybe [] (\i2 -> [(i2,i1)]) (lookup n2 nameTable)
-                       | (n1,(_,f)) <- synonyms
-                       , s2         <- constantsInType (f (map TVar [0..]))
-               , let n2 = Name_Identifier noRange [] s2
-                       ]
-        list = topSort (length synonyms-1) edges  
-        op [i] (as,bs)
-           | (i,i) `elem` edges = (as,[ n | (n,i') <- nameTable, i==i' ] : bs)
-           | otherwise          = let Just (name,(arity,tf)) = lookup i synTable
-                                  in ((name,(arity,tf)):as,bs)
-        op is  (as,bs) = (as,[ n | i <- is, (n,i') <- nameTable, i==i'] : bs)
-    in foldr op ([],[]) list
-}
-
+                                             
 -------------------------------------------------------
 -- utility attributes for types and constructors
 

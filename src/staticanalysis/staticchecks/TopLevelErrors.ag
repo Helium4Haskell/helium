@@ -57,7 +57,16 @@ SEM Module
 -- recursive type synonyms
 
 SEM Module
-  | Module   loc . recursiveTypeSynonymErrors = map RecursiveTypeSynonyms @recursiveTypeSynonyms
+  | Module   loc . recursiveTypeSynonymErrors = 
+                      let converted  = map (\(name, tuple) -> (show name, tuple)) @body.collectTypeSynonyms
+                          recursives = snd . getTypeSynonymOrdering . listToFM $ converted
+                          makeError = let f = foldr add (Just [])
+                                          add s ml = case (g s, ml) of
+                                                        ([n], Just ns) -> Just (n:ns)
+                                                        _              -> Nothing
+                                          g s = [ n | n <- map fst @body.collectTypeSynonyms, show n == s ] 
+                                      in maybe [] (\x -> [RecursiveTypeSynonyms x]) . f
+                      in concatMap makeError recursives
 
 ------------------------------------------------------------------------------
 -- wrong file name (does not match the module name)

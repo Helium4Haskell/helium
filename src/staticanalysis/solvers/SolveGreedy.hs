@@ -85,7 +85,7 @@ writeExpandedType synonyms starray = writeTypeType where
         
       ((TVar i,[]),_)                    -> writeIntType i utp
       ((TCon s,as),(TCon t,bs)) | s == t -> mapM_ (uncurry writeTypeType) (zip as bs)                             
-      ((TCon s,as),_) -> case expandTypeConstructorOneStep synonyms atp of
+      ((TCon s,as),_) -> case expandTypeConstructorOneStep (snd synonyms) atp of
                             Just atp' -> do writeTypeType atp' utp
                             Nothing   -> internalError "SolveGreedy.hs" "writeTypeType" "inconsistent types(1)"      
       _                                  -> internalError "SolveGreedy.hs" "writeTypeType" "inconsistent types(2)"
@@ -102,7 +102,7 @@ writeExpandedType synonyms starray = writeTypeType where
                 case (leftSpine atp,leftSpine utp) of
                     ((TVar j,[]),_) -> writeIntType j utp
                     ((TCon s,as),(TCon t,bs)) | s == t -> mapM_ (uncurry writeTypeType) (zip as bs)
-                    ((TCon s,as),_) -> case expandTypeConstructorOneStep synonyms atp of
+                    ((TCon s,as),_) -> case expandTypeConstructorOneStep (snd synonyms) atp of
                                           Just atp' -> do writeSTArray starray i (Just atp')
                                                           writeIntType i utp
                                           Nothing   -> internalError "SolveGreedy.hs" "writeIntType" "inconsistent types(1)"

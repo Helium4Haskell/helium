@@ -2477,7 +2477,13 @@ sem_TypingStrategy_TypingStrategy (_name) (_typerule) (_constraints) (_lhs_local
             (_typerule (_nameMap) ([]))
         ( _constraints_typevariables,_constraints_userConstraints) =
             (_constraints (_nameMap) ([]))
-    in  (reverse _constraints_userConstraints .>. _typeruleConstraints .>. ctNode _metaVariableConstraints,putStrLn ("applying typing strategy " ++ _name),length _uniqueTypevariables + _lhs_unique)
+    in  (ctNode ( ctPhased 2 (reverse _constraints_userConstraints)
+                : ctPhased 1 (reverse _typeruleConstraints)
+                : _metaVariableConstraints
+                )
+        ,putStrLn ("applying typing strategy " ++ _name)
+        ,length _uniqueTypevariables + _lhs_unique
+        )
 -- UserConstraint ----------------------------------------------
 -- semantic domain
 type T_UserConstraint = ([(Name,Tp)]) ->

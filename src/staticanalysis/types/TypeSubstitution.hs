@@ -13,6 +13,7 @@ module TypeSubstitution where
 import Array
 import List                 ( (\\), union )
 import TypeRepresentation
+import FiniteMap
 import Utils                ( internalError )
 
 ----------------------------------------------------------------------
@@ -35,33 +36,34 @@ class Substitutable a where
 ----------------------------------------------------------------------
 -- Substitution instances 
 
-newtype SubstAssocList = CSubstAssocList [(Int,Tp)]
+type FiniteMapSubstitution = FiniteMap Int Tp
 
-instance Substitution SubstAssocList where
+instance Substitution FiniteMapSubstitution where
 
-   lookupInt   i  (CSubstAssocList xs) = lookup i xs
-   removeDom   is (CSubstAssocList xs) = CSubstAssocList (filter ((`notElem` is).fst) xs)
-   restrictDom is (CSubstAssocList xs) = CSubstAssocList (filter ((`elem`    is).fst) xs)
+   lookupInt      = flip lookupFM 
+   removeDom      = flip delListFromFM
+   restrictDom is = filterFM (\i _ -> i `elem` is)
    
-   dom (CSubstAssocList xs) = map fst xs
-   cod (CSubstAssocList xs) = map snd xs
+   dom = keysFM
+   cod = eltsFM 
 
-emptySubst :: SubstAssocList
-emptySubst = CSubstAssocList []
+emptySubst :: FiniteMapSubstitution
+emptySubst = emptyFM
 
 -- compose two substitutions: safe
-(@@) :: SubstAssocList -> SubstAssocList -> SubstAssocList
-s1@(CSubstAssocList xs1) @@ (CSubstAssocList xs2) = CSubstAssocList ([(u,s1 |-> t) | (u,t) <- xs2]++xs1)
+-- Note for `plusFM`: Bindings in right argument shadow those in the left
+(@@) :: FiniteMapSubstitution -> FiniteMapSubstitution -> FiniteMapSubstitution
+fm1 @@ fm2 = fm1 `plusFM` mapFM (\_ t -> fm1 |-> t) fm2  
 
 -- compose two substitutions: quick and dirty!
-(@@@) :: SubstAssocList -> SubstAssocList -> SubstAssocList
-(CSubstAssocList s1) @@@ (CSubstAssocList s2) = CSubstAssocList (s1++s2)
+(@@@) :: FiniteMapSubstitution -> FiniteMapSubstitution -> FiniteMapSubstitution
+(@@@) = plusFM 
 
-singleSubstitution :: Int -> Tp -> SubstAssocList
-singleSubstitution i tp = CSubstAssocList [(i,tp)]
+singleSubstitution :: Int -> Tp -> FiniteMapSubstitution
+singleSubstitution = unitFM
 
-listToSubstitution :: [(Int,Tp)] -> SubstAssocList
-listToSubstitution = CSubstAssocList
+listToSubstitution :: [(Int,Tp)] -> FiniteMapSubstitution
+listToSubstitution = listToFM
 
 -- An array as a substitution
 

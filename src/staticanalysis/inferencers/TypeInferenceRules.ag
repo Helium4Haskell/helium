@@ -28,7 +28,7 @@ SEM Module
                               @solveDebug
                                 
       loc  . constraints = zipWith setPosition [0..] (ctRoot @body.constraints @lhs.strategy)
-           . orderedTypeSynonyms = [ (show n,i,f) | (n,(i,f)) <- fmToList (typeSynonyms @lhs.importEnvironment) ]
+           . orderedTypeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment
            . (betaUniqueAtTheEnd,substitution,solveErrors,solveDebug) 
                   = -- choose your algorithm to solve the type constraints
                     (if @lhs.useTypeGraph then solveEquivalenceGroups else solveGreedy) 

@@ -16,7 +16,10 @@ data SolverOption  = SolveWithTypeSynonyms      OrderedTypeSynonyms
                    | SolveWithTypeSignatures    [(String, TpScheme)]
 
 getTypeSynonyms :: SolverOptions -> OrderedTypeSynonyms
-getTypeSynonyms options = concat [ s | SolveWithTypeSynonyms s <- options ]
+getTypeSynonyms options = 
+   case [ s | SolveWithTypeSynonyms s <- options ] of
+      x:_ -> x
+      _   -> noOrderedTypeSynonyms
 
 getTypeSignatures :: SolverOptions -> [(String, TpScheme)]
 getTypeSignatures options = concat [ xs | SolveWithTypeSignatures xs <- options ]

@@ -2486,7 +2486,7 @@ sem_TypingStrategy_TypingStrategy (_name) (_typerule) (_constraints) (_lhs_impor
                                                               extendedEnvironment
                                                               extendedExpression
                        inferredTpScheme = generalizeAll (unsafeInstantiate monoTpScheme)
-                       synonyms = [ (show n,i,f) | (n,(i,f)) <- fmToList (typeSynonyms _lhs_importEnvironment) ]
+                       synonyms = getOrderedTypeSynonyms _lhs_importEnvironment
                    in if not (null inferredTypeErrors)
                         then map (TypeErrorTS _name) inferredTypeErrors
                         else if genericInstanceOf synonyms inferredTpScheme constraintsTpScheme
