@@ -87,7 +87,7 @@ SEM TypingStrategy
                   then []
                   else let premiseTypes = reverse (map snd @typerule.simpleJudgements) 
                            constraintsTpScheme = makeScheme [] [] (@substitution |-> tupleType (premiseTypes ++ [@typerule.conclusionType]))
-                           extendedEnvironment = let op (s, i) = addType (nameFromString s) (noQuantifiers ([] .=>. TVar i))
+                           extendedEnvironment = let op (s, i) = addType (nameFromString s) (toTpScheme (TVar i))
                                                  in foldr op @lhs.importEnvironment (zip @allMetaVariables [0..])
                            extendedExpression  = let premiseVars = reverse (map (Expression_Variable noRange . nameFromString . fst) @typerule.simpleJudgements)
                                                  in Expression_Tuple noRange (premiseVars ++ [@typerule.conclusionExpression])

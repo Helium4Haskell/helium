@@ -10,7 +10,7 @@ import OnlyResultHeuristics
 import Data.List
 import Data.Maybe
 import TypeErrors
-import Messages (ordinal, prettyAndList)
+import Messages (showNumber, ordinal, prettyAndList)
 import OneLiner (OneLineTree)
 import UHA_Syntax (Range)
 
@@ -467,11 +467,6 @@ considerUnifierVertices xs =
                          
                      in return result
 -}             
-showNumber :: Int -> String
-showNumber i | i <= 10 && i >=0 = list !! i
-             | otherwise        = show i
-   where list = [ "zero", "one", "two", "three", "four", "five"
-                , "six", "seven", "eight", "nine", "ten" ]      
 
 heuristics_MAX        =    120 :: Int
 

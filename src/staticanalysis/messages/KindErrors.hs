@@ -37,8 +37,8 @@ instance HasMessage KindError where
             [ MessageOneLiner (MessageString $ "Illegal type in "++s)
             , MessageTable
                  [ (MessageString "type"         , MessageString (show d)) 
-                 , (MessageString "kind"         , MessageKind k)
-                 , (MessageString "expected kind", MessageKind star)
+                 , (MessageString "kind"         , MessageType (toTpScheme k))
+                 , (MessageString "expected kind", MessageType (toTpScheme star))
                  ]
             ] 
             
@@ -47,8 +47,8 @@ instance HasMessage KindError where
             , MessageTable
                  [ (MessageString "type"            , MessageString (show d1)) 
                  , (MessageString "type constructor", MessageString (show d2)) 
-                 , (MessageString "kind"            , MessageKind k1)
-                 , (MessageString "does not match"  , MessageKind k2)
+                 , (MessageString "kind"            , MessageType (toTpScheme k1))
+                 , (MessageString "does not match"  , MessageType (toTpScheme k2))
                  ]
             ]          
          

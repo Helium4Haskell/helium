@@ -15,10 +15,10 @@ import UHA_Source
 
 type TypeErrors = [TypeError]
 data TypeError  = TypeError
-                     Range                    -- range of the error
-                     MessageBlock             -- oneliner-message
+                     [Range]                  -- range(s) of the error
+                     MessageLine              -- oneliner-message
                      TypeErrorTable           -- Hugs-like table
-                     TypeErrorInfos           -- extra info (e.g. hints)
+                     TypeErrorInfo            -- extra info (e.g. hints)
 
                 | CustomTypeError
                      [Range]
@@ -26,66 +26,56 @@ data TypeError  = TypeError
 
 data TypeErrorTable = UnificationErrorTable
                          [(String, MessageBlock)]     -- sources to be reported
-                         (Either Tp TpScheme)         -- type or typescheme of n.t. or subterm of n.t.
-                         (Either Tp TpScheme)         -- conflicting type or expected type
+                         TpScheme                     -- type of n.t. or subterm of n.t.
+                         TpScheme                     -- conflicting type or expected type
                          
                     | NotGeneralEnoughTable           
-                         OneLineTree          -- expression
+                         MessageBlock         -- expression
                          TpScheme             -- declared type
                          TpScheme             -- inferred type
 
-type TypeErrorInfos = [TypeErrorInfo]
-data TypeErrorInfo  = TypeErrorHint String MessageBlock
-                    | IsFolkloreTypeError
+type TypeErrorInfo = ([TypeErrorHint], Bool {- isFolklore -})
+type TypeErrorHint = (String, MessageBlock)
 
 instance HasMessage TypeError where
 
-   getMessage (TypeError range oneliner table infos) =
+   getMessage (TypeError range oneliner table (hints, isFolklore)) =
       let MessageTable newtable = makeMessageTable isFolklore table
-          isFolklore = length [ () | IsFolkloreTypeError <- infos ] > 0
-          hints      = [ (MessageString s, b) | TypeErrorHint s b <- infos ]
-          emptyLine  = MessageOneLiner (MessageString "")
-      in [MessageOneLiner oneliner, MessageTable (newtable ++ hints), emptyLine]
+          hints'    = [ (MessageString s, b) | (s, b) <- hints ]
+          emptyLine = MessageOneLiner (MessageString "")
+      in [oneliner, MessageTable (newtable ++ hints'), emptyLine]
 
    getMessage (CustomTypeError ranges message) = message ++ [MessageOneLiner (MessageString "")]
 
-   getRanges (TypeError range oneliner table infos) = [range]
+   getRanges (TypeError ranges oneliner table infos) = ranges
    getRanges (CustomTypeError ranges message) = ranges
 
 instance Substitutable TypeError where
 
-   sub |-> (TypeError range oneliner table hints) =
-      TypeError range (sub |-> oneliner) (sub |-> table) (sub |-> hints)
+   sub |-> (TypeError ranges oneliner table (hints, isFolklore)) =
+      let hints' = [ (s, sub |-> b) | (s, b) <- hints ] 
+      in TypeError ranges (sub |-> oneliner) (sub |-> table) (hints', isFolklore)
 
    sub |-> (CustomTypeError ranges message) =
       CustomTypeError ranges (sub |-> message)
 
-   ftv (TypeError range oneliner table hints) =
-      ftv oneliner `union` ftv table `union` ftv hints
+   ftv (TypeError _ oneliner table (hints, _)) =
+      ftv oneliner `union` ftv table `union` ftv (map snd hints)
 
-   ftv (CustomTypeError ranges message) =
+   ftv (CustomTypeError _ message) =
       ftv message
 
 instance Substitutable TypeErrorTable where
    sub |-> (UnificationErrorTable sources type1 type2) =
-      let type1'   = either (Left . (sub |->)) (Right . f) type1
-          type2'   = either (Left . (sub |->)) (Right . f) type2
-          sources' = [ (s, sub |-> mb) | (s, mb) <- sources ]
-          f ts     = listToSubstitution [ (i, sub |-> TVar i) | i <- ftv ts ] |-> ts
-      in (UnificationErrorTable sources' type1' type2') -- niet fraai
+      let sources' = [ (s, sub |-> mb) | (s, mb) <- sources ]
+      in UnificationErrorTable sources' (sub |-> type1) (sub |-> type2)
    sub |-> (NotGeneralEnoughTable tree tpscheme1 tpscheme2) =
-      let sub' = listToSubstitution [ (i, sub |-> TVar i) | i <- ftv [tpscheme1, tpscheme2] ] -- niet fraai
-      in (NotGeneralEnoughTable tree (sub' |-> tpscheme1) (sub' |-> tpscheme2))
+      NotGeneralEnoughTable tree (sub |-> tpscheme1) (sub |-> tpscheme2)
 
-   ftv (UnificationErrorTable sources type1 type2) = ftv (map snd sources) `union` ftv type1 `union` ftv type2
-   ftv (NotGeneralEnoughTable tree tpscheme1 tpscheme2) = ftv tpscheme1 `union` ftv tpscheme2
-
-instance Substitutable TypeErrorInfo where
-   sub |-> (TypeErrorHint s mb) = TypeErrorHint s (sub |-> mb)
-   sub |-> x                    = x
-
-   ftv     (TypeErrorHint s mb) = ftv mb
-   ftv _                        = []
+   ftv (UnificationErrorTable sources type1 type2) = 
+      ftv (map snd sources) `union` ftv type1 `union` ftv type2
+   ftv (NotGeneralEnoughTable tree tpscheme1 tpscheme2) = 
+      ftv tpscheme1 `union` ftv tpscheme2
 
 makeMessageTable :: Bool -> TypeErrorTable -> MessageLine
 makeMessageTable isFolklore typeErrorTable =
@@ -93,40 +83,36 @@ makeMessageTable isFolklore typeErrorTable =
 
       UnificationErrorTable sources type1 type2 ->
          let sourcePart = [ (MessageString s, t) | (s, t) <- sources ]
-             typePart   = [ (MessageString "type", makeType type1)
-                          , (MessageString reason, makeType type2)
+             typePart   = [ (MessageString "type", MessageType type1)
+                          , (MessageString reason, MessageType type2)
                           ]
              reason     = if isFolklore
                             then "expected type"
                             else "does not match"
-             makeType   = either (\tp -> MessageType ([] .=>. tp)) MessageTypeScheme
          in MessageTable (sourcePart ++ typePart)
 
       NotGeneralEnoughTable tree tpscheme1 tpscheme2 ->
-         MessageTable [ (MessageString "expression"   , MessageOneLineTree tree)
-                      , (MessageString "declared type", MessageTypeScheme tpscheme1)
-                      , (MessageString "inferred type", MessageTypeScheme tpscheme2)
+         MessageTable [ (MessageString "expression"   , tree)
+                      , (MessageString "declared type", MessageType tpscheme1)
+                      , (MessageString "inferred type", MessageType tpscheme2)
                       ]
-
 
 -- not a nice solution!
 checkTypeError :: OrderedTypeSynonyms -> TypeError -> Maybe TypeError
-checkTypeError synonyms typeError@(TypeError r o table h) =
+checkTypeError synonyms typeError@(TypeError r o table (hints, isFolklore)) =
    case table of
       UnificationErrorTable sources type1 type2 ->
-         let becauseHint = TypeErrorHint "because" . MessageString
-             fun i     = unqualify . snd . instantiate i
-             unique    = nextFTV [type1, type2]
-             t1        = either id (fun unique) type1
-             unique'   = maximum (0 : ftv t1 ++ ftv type2) + 1
-             t2        = either id (fun unique') type2
-         in
-            case mguWithTypeSynonyms synonyms t1 t2 of
-               Left InfiniteType  -> let hint = TypeErrorHint "because" (MessageString "unification would give infinite type")
-                                     in Just (TypeError r o table (hint:h))
-               Left ConstantClash -> Just typeError
-               Right _            -> Nothing
-               _        -> Just typeError
+         let fun i   = unqualify . snd . instantiate i
+             unique  = nextFTV [type1, type2]
+             t1      = fun unique type1
+             unique' = maximum (0 : ftv t1 ++ ftv type2) + 1
+             t2      = fun unique' type2
+         in case mguWithTypeSynonyms synonyms t1 t2 of
+               Left (InfiniteType _) -> 
+	          let hint = ("because", MessageString "unification would give infinite type")
+                  in Just (TypeError r o table (hint:hints, isFolklore))
+               Left _  -> Just typeError
+               Right _ -> Nothing
       _  -> Just typeError
 checkTypeError synonyms typeError = Just typeError
 
@@ -135,12 +121,10 @@ makeNotGeneralEnoughTypeError source tpscheme1 tpscheme2 =
    let sub      = listToSubstitution (zip (ftv [tpscheme1, tpscheme2]) [ TVar i | i <- [1..] ])
        ts1      = skolemizeFTV (sub |-> tpscheme1)
        ts2      = skolemizeFTV (sub |-> tpscheme2)
-       oneliner = MessageString "Declared type is too general"
-       table    = NotGeneralEnoughTable (oneLinerSource source) ts2 ts1
-       hints    = if null (ftv tpscheme1)
-                    then []
-                    else [TypeErrorHint "hint" (MessageString "try removing the type signature")]
-   in TypeError (rangeOfSource source) oneliner table hints
+       oneliner = MessageOneLiner (MessageString "Declared type is too general")
+       table    = NotGeneralEnoughTable (MessageOneLineTree (oneLinerSource source)) ts2 ts1
+       hints    = [ ("hint", MessageString "try removing the type signature") | not (null (ftv tpscheme1)) ] 
+   in TypeError [rangeOfSource source] oneliner table (hints, False)
    
 makeUnresolvedOverloadingError :: UHA_Source -> Predicate -> TypeError
 makeUnresolvedOverloadingError source predicate =
@@ -158,10 +142,11 @@ makeReductionError source (scheme, tp) classEnvironment predicate@(Predicate cla
       [ MessageOneLiner (MessageString "Type error in overloaded function")
       , MessageTable 
            [ (MessageString "function", MessageOneLineTree (oneLinerSource source)) 
-           , (MessageString "type"    , MessageTypeScheme scheme)
-           , (MessageString "used as" , MessageType ([] .=>. tp))
-           , (MessageString "problem" , MessageCompose [ MessageType ([] .=>. predicateTp)
-                                                       , MessageString (" is not an instance of class "++className)])
+           , (MessageString "type"    , MessageType scheme)
+           , (MessageString "used as" , MessageType (toTpScheme tp))
+           , (MessageString "problem" , MessageCompose [ MessageType (toTpScheme predicateTp)
+                                                       , MessageString (" is not an instance of class "++className)
+						       ])
            ]
       , MessageOneLiner (MessageString hint)
       ]
@@ -170,11 +155,7 @@ makeReductionError source (scheme, tp) classEnvironment predicate@(Predicate cla
          hint = case valids of
                    []  -> "  hint: there are no valid instances of "++className
                    [x] -> "  hint: valid instance of "++className++" is "++show x
-                   xs  -> "  hint: valid instances of "++className++" are "++andList valids
-         
-         andList :: [String] -> String
-         andList [x,y]  = x++" and "++y
-         andList (x:xs) = x++", "++andList xs
+                   xs  -> "  hint: valid instances of "++className++" are "++prettyAndList valids
          
          valids :: [String]
          valids = let tps              = [ tp | (Predicate _ tp, _) <- instances className classEnvironment ]

@@ -29,24 +29,18 @@ data MessageLine   = MessageOneLiner  MessageBlock
 type MessageBlocks = [MessageBlock]               
 data MessageBlock  = MessageString       String
                    | MessageRange        Range
-                   | MessageType         QType
-                   | MessageTypeScheme   TpScheme
-                   | MessageKind         Kind
+                   | MessageType         TpScheme
                    | MessagePredicate    Predicate                                      
-                   | MessageInfoLink     String
                    | MessageOneLineTree  OneLineTree
                    | MessageCompose      MessageBlocks                   
 
 class HasMessage a where
    getRanges            :: a -> [Range]
-   getDocumentationLink :: a -> Maybe String
    getMessage           :: a -> Message  
    
    -- default definitions
    getRanges            _ = []
-   getDocumentationLink _ = Nothing
    
-
 instance Substitutable MessageLine where
 
    sub |-> ml = case ml of   
@@ -63,17 +57,12 @@ instance Substitutable MessageBlock where
 
    sub |-> mb = case mb of
                    MessageType tp       -> MessageType (sub |-> tp)
-                   MessageTypeScheme ts -> let sub' = listToSubstitution [ (i, sub |-> TVar i) | i <- ftv ts ]
-                                           in MessageTypeScheme (sub' |-> ts)
-                   MessageKind kind     -> MessageKind (sub |-> kind)
                    MessagePredicate p   -> MessagePredicate (sub |-> p)
                    MessageCompose mbs   -> MessageCompose (sub |-> mbs) 
                    _                    -> mb
 
    ftv mb = case mb of         
                MessageType tp       -> ftv tp
-               MessageTypeScheme ts -> ftv ts
-               MessageKind kind     -> ftv kind
                MessagePredicate p   -> ftv p           
                MessageCompose mbs   -> ftv mbs
                _                    -> []       
@@ -96,8 +85,7 @@ data Entity = TypeSignature
     deriving Eq
 
 sortMessages :: HasMessage a => [a] -> [a]
-sortMessages = let f x y = compare (getRanges x)
-                                   (getRanges y)
+sortMessages = let f x y = compare (getRanges x) (getRanges y)
                in sortBy f
                
 sortNamesByRange :: Names -> Names
@@ -126,7 +114,14 @@ ordinal b i
             | i `mod` 10 == 2 = "nd"
             | i `mod` 10 == 3 = "rd"
             | otherwise       = "th"
-
+	    
+showNumber :: Int -> String
+showNumber i | i <= 10 && i >=0 = list !! i
+             | otherwise        = show i
+   where list = [ "zero", "one", "two", "three", "four", "five"
+                , "six", "seven", "eight", "nine", "ten" 
+		]
+	    
 prettyOrList :: [String] -> String
 prettyOrList []  = ""
 prettyOrList [s] = s

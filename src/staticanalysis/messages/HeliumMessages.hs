@@ -35,12 +35,9 @@ instance Show MessageBlock where
    show (MessageString s     ) = s
    show (MessageRange r      ) = show r
    show (MessageType tp      ) = show tp
-   show (MessageTypeScheme ts) = show ts
-   show (MessageKind kind    ) = showKind kind
    show (MessagePredicate p  ) = show p
    show (MessageOneLineTree t) =  -- see tableWidthRight
                                  OneLiner.showOneLine 58 t
-   show (MessageInfoLink s   ) = "" -- "<a link=" ++ s ++ ">[?]</a>"
    show (MessageCompose ms   ) = concatMap show ms
 
 showMessage :: HasMessage message => message -> String
@@ -48,10 +45,9 @@ showMessage x =
     let rangePart = MessageString $ case filter (not . isImportRange) (getRanges x) of
                        [] -> ""
                        xs -> showRanges xs ++ ": "
-        documentationLinkPart = maybe (MessageString "") MessageInfoLink (getDocumentationLink x)
         list = case getMessage x of
-                  MessageOneLiner m:rest -> MessageOneLiner (MessageCompose [rangePart, documentationLinkPart, m]) : rest
-                  xs                     -> MessageOneLiner (MessageCompose [rangePart, documentationLinkPart]) : xs
+                  MessageOneLiner m:rest -> MessageOneLiner (MessageCompose [rangePart, m]) : rest
+                  xs                     -> MessageOneLiner rangePart : xs
     in concatMap show list
 
 showHints :: String -> MessageBlocks -> String
@@ -73,26 +69,24 @@ showTable :: [(MessageBlock, MessageBlock)] -> String
 showTable = let leftStars = " "
                 middleSep = " : "
                 showTuple (x, y) =
-                   let tableWidthLeft'| isTypeOrTypeSchemeMessage y = tableWidthLeft - 2
-                                      | otherwise                   = tableWidthLeft
+                   let tableWidthLeft'| indentThisBlock y = tableWidthLeft - 2
+                                      | otherwise         = tableWidthLeft
                        zipf a b c d = a ++ b ++ c ++ d
                        xs  = splitString tableWidthLeft  (show x)
                        ys  = splitString tableWidthRight (show y)
                        i   = length xs `max` length ys
                        xs' = map (\s -> take tableWidthLeft' (s++repeat ' ')) (xs ++ repeat "")
                        ys' = ys ++ repeat (replicate tableWidthRight ' ')
-                       left   | isTypeOrTypeSchemeMessage y = repeat (replicate (length leftStars + 2) ' ')
-                              | otherwise                   = leftStars : repeat (replicate (length leftStars) ' ')
+                       left   | indentThisBlock y = repeat (replicate (length leftStars + 2) ' ')
+                              | otherwise         = leftStars : repeat (replicate (length leftStars) ' ')
                        middle = middleSep : repeat "   "
                    in unlines (take i (zipWith4 zipf left xs' middle ys'))
             in concatMap showTuple . renderTypesInRight tableWidthRight
 
-isTypeOrTypeSchemeMessage :: MessageBlock -> Bool
-isTypeOrTypeSchemeMessage mb =
+indentThisBlock :: MessageBlock -> Bool
+indentThisBlock mb =
    case mb of
       MessageType _       -> True
-      MessageTypeScheme _ -> True
-      MessageKind _       -> True
       MessagePredicate _  -> True
       _                   -> False
 
@@ -105,16 +99,15 @@ renderTypesInRight width table =
         -> case (maybeQType r1, maybeQType r2) of
               (Just tp1, Just tp2) -> let [doc1, doc2] = qualifiedTypesToAlignedDocs [tp1, tp2]
                                           render = flip PPrint.displayS [] . PPrint.renderPretty 1.0 width
-                                      in (l1, MessageType ([] .=>. TCon (render doc1)))
-                                       : (l2, MessageType ([] .=>. TCon (render doc2)))
+                                      in (l1, MessageType (toTpScheme (TCon (render doc1))))
+                                       : (l2, MessageType (toTpScheme (TCon (render doc2))))
                                        : renderTypesInRight width rest
               _                    -> (l1, r1) : renderTypesInRight width ((l2, r2) : rest)
       _ -> table
 
   where maybeQType :: MessageBlock -> Maybe QType
-        maybeQType (MessageType qtype   ) = Just qtype
-        maybeQType (MessageTypeScheme ts) = Just (unquantify ts) -- unsafe?
-        maybeQType _                      = Nothing
+        maybeQType (MessageType qtype) = Just (unquantify qtype) -- unsafe?
+        maybeQType _                   = Nothing
 
 -- make sure that a string does not exceed a certain width.
 -- Two extra features:
@@ -185,8 +178,8 @@ prepareTypesAndTypeSchemes messageLine = newMessageLine
     f_MessageBlock :: Int -> MessageBlock -> (MessageBlock, Int, [String])
     f_MessageBlock unique messageBlock = 
         case messageBlock of
-           MessageCompose mbs   -> let (r, i, ns) = f_MessageBlocks unique mbs
-                                   in (MessageCompose r, i, ns)
-           MessageTypeScheme ts -> let (unique', ps, its) = instantiateWithNameMap unique ts
-                                   in (MessageType (ps .=>. its), unique', constantsInType its)
-           _                    -> (messageBlock, unique, [])
+           MessageCompose mbs -> let (r, i, ns) = f_MessageBlocks unique mbs
+                                 in (MessageCompose r, i, ns)
+           MessageType ts     -> let (unique', ps, its) = instantiateWithNameMap unique ts
+                                 in (MessageType (toTpScheme (ps .=>. its)), unique', constantsInType its)				   
+           _                  -> (messageBlock, unique, [])

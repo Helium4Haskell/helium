@@ -1,26 +1,23 @@
 module HeliumConstraintInfo where
 
-import UHA_Syntax
-import UHA_Utils
-import OneLiner
 import Top.Types
+import Top.ComposedSolvers.Tree
+import Top.TypeGraph.Heuristics
+import UHA_Syntax
+import UHA_Source
+import OneLiner
 import TypeErrors
 import Messages
-import List
-import Top.ComposedSolvers.Tree
-import HeliumMessages
-import Maybe
-import UHA_Range
-import Utils (internalError)
+import HeliumMessages ()  -- for instance Show MessageBlock
 import DoublyLinkedTree
-import UHA_Source
-import Char (toLower, isDigit, isLower,isUpper)
-import Data.FiniteMap
 import LiftedConstraints
 import RepairHeuristics
 import TieBreakerHeuristics
 import OnlyResultHeuristics
-import Top.TypeGraph.Heuristics
+import Utils (internalError)
+import Data.Maybe
+import Data.Char
+import Data.FiniteMap
 
 data HeliumConstraintInfo =
    CInfo { location      :: String
@@ -60,7 +57,7 @@ data Property   = FolkloreConstraint
                 | NegationResult
                 | IsUserConstraint Int {- user-constraint-group unique number -} Int {- constraint number within group -}
                 | WithTypeError TypeError
-                | WithHint TypeErrorInfo
+                | WithHint TypeErrorHint
                 | Unifier Int {- the unifier -}
                 | ReductionErrorInfo Predicate
                 | IsEmptyInfixApplication
@@ -140,8 +137,8 @@ instance IsTupleEdge HeliumConstraintInfo where
       not . null $ [ () | IsTupleEdge <- properties cinfo ]
       
 instance WithHints HeliumConstraintInfo where
-  fixHint s        = addProperty (WithHint (TypeErrorHint "probable fix" (MessageString s)))
-  becauseHint s    = addProperty (WithHint (TypeErrorHint "because" (MessageString s)))
+  fixHint s        = addProperty (WithHint ("probable fix", MessageString s))
+  becauseHint s    = addProperty (WithHint ("because", MessageString s))
   typeErrorForTerm = makeTypeErrorForTerm
 
 instance SetReduction HeliumConstraintInfo where
@@ -156,7 +153,6 @@ instance Show HeliumConstraintInfo where
 type ConstraintSet  = Tree  (TypeConstraint HeliumConstraintInfo)
 type ConstraintSets = Trees (TypeConstraint HeliumConstraintInfo)
 
--- from the old instance declaration
 isReductionErrorInfo = isJust . maybeReductionErrorPredicate
 maybeReductionErrorPredicate cinfo = 
    case [ p | ReductionErrorInfo p <- properties cinfo ] of
@@ -165,37 +161,30 @@ maybeReductionErrorPredicate cinfo =
 isFolkloreConstraint cinfo = not . null $ [ () | FolkloreConstraint <- properties cinfo ]
 
 makeTypeError :: HeliumConstraintInfo -> TypeError
-makeTypeError cinfo | isReductionErrorInfo cinfo = 
-   let err = internalError "HeliumConstraintInfo" "makeTypeError" "..."
-       (_, tp) = typepair cinfo
-   in makeReductionError       
-        (case convertSources (sources cinfo) of (_,tree):_ -> tree ; _ -> err) 
-        (case maybeOriginalTypeScheme cinfo of Just (b,ts) -> (ts, tp) ; _ -> err)
-        standardClasses
-        (case maybeReductionErrorPredicate cinfo of Just p -> p ; _ -> err)
+makeTypeError cinfo 
+   | isReductionErrorInfo cinfo = 
+        let err = internalError "HeliumConstraintInfo" "makeTypeError" "..."
+            (_, tp) = typepair cinfo
+        in makeReductionError       
+              (case convertSources (sources cinfo) of (_,tree):_ -> tree ; _ -> err) 
+              (case maybeOriginalTypeScheme cinfo of Just (b,ts) -> (ts, tp) ; _ -> err)
+             standardClasses
+             (case maybeReductionErrorPredicate cinfo of Just p -> p ; _ -> err)
    
-makeTypeError cinfo =
- let oneliner = MessageString ("Type error in " ++ location cinfo)
-     reason   = if isFolkloreConstraint cinfo
-                  then "Expected type"
-                  else "Does not match"
-     (t1, t2) = typepair cinfo
-     (msgtp1, msgtp2) = case maybeOriginalTypeScheme cinfo of
-        Nothing     -> (Left t1, Left t2)
-        Just (b,ts)
-             | b    -> (Right ts, Left t2)
-             | True -> (Left t2, Right ts)
-     oneliners = [ (s, MessageOneLineTree (oneLinerSource source)) | (s, source) <- convertSources (sources cinfo)]
-     table = UnificationErrorTable oneliners msgtp1 msgtp2
-     extra = -- documentationLink (info cinfo)
-             [ hint | WithHint hint <- properties cinfo ]
-          ++ [ IsFolkloreTypeError | isFolkloreConstraint cinfo ]
- in case [t | WithTypeError t <- properties cinfo] of
-      typeError : _ -> typeError
-      _             -> TypeError (convertErrorRange cinfo) oneliner table extra
-
-
-
+   | otherwise =  
+        let oneliner = MessageOneLiner (MessageString ("Type error in " ++ location cinfo))
+            (t1, t2) = typepair cinfo 
+            (msgtp1, msgtp2) = case maybeOriginalTypeScheme cinfo of
+               Nothing     -> (toTpScheme t1, toTpScheme t2)
+               Just (b,ts)
+                    | b    -> (ts, toTpScheme t2)
+                    | True -> (toTpScheme t2, ts)
+            oneliners     = [ (s, MessageOneLineTree (oneLinerSource source)) | (s, source) <- convertSources (sources cinfo)]
+            table         = UnificationErrorTable oneliners msgtp1 msgtp2
+            typeErrorInfo = ([ hint | WithHint hint <- properties cinfo ], isFolkloreConstraint cinfo) 
+        in case [t | WithTypeError t <- properties cinfo] of
+             t:_ -> t
+             _   -> TypeError [convertErrorRange cinfo] oneliner table typeErrorInfo
    
 -- not a nice solution!
 makeTypeErrorForTerm :: (Bool,Bool) -> Int -> OneLineTree -> (Tp,Tp) -> Range -> HeliumConstraintInfo -> HeliumConstraintInfo
@@ -204,7 +193,7 @@ makeTypeErrorForTerm (isInfixApplication,isPatternApplication) argumentNumber te
 
       TypeError _ oneliner (UnificationErrorTable sources ftype _) infos ->
          let newSources = filter onlyExpression sources ++ [ (function, functionPretty)
-                                                           , ("type", functionType)
+                                                           , ("type", MessageType ftype)
                                                            , (subterm, MessageOneLineTree termOneLiner)
                                                            ]
              onlyExpression = (\x -> x=="expression" || x=="pattern") . fst
@@ -221,11 +210,10 @@ makeTypeErrorForTerm (isInfixApplication,isPatternApplication) argumentNumber te
                                  _        -> internalError "TypeGraphConstraintInfo.hs"
                                                            "makeTypeErrorForTerm"
                                                            "unexpected empty list"
-             functionType = either (\tp -> MessageType ([] .=>. tp)) MessageTypeScheme ftype
              subterm
                 | isInfixApplication = if argumentNumber == 0 then "left operand" else "right operand"
                 | otherwise          = ordinal False (argumentNumber + 1) ++ " argument"
-         in addProperty (WithTypeError (TypeError range oneliner (UnificationErrorTable newSources (Left t1) (Left t2)) infos)) cinfo
+         in addProperty (WithTypeError (TypeError [range] oneliner (UnificationErrorTable newSources (toTpScheme t1) (toTpScheme t2)) infos)) cinfo
 
       typeError -> cinfo
    
