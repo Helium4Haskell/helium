@@ -31,7 +31,7 @@ SEM Module
            . orderedTypeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment
            . (betaUniqueAtTheEnd,substitution,finalPredicates,solveErrors,solveDebug) 
                   = -- choose your algorithm to solve the type constraints
-                    (if @lhs.useTypeGraph then solveEquivalenceGroups else solveGreedy) 
+                    (if @lhs.useTypeGraph then solveTypeGraph' else solveGreedy') 
                        @body.betaUnique ([ SolveWithTypeSynonyms @orderedTypeSynonyms 
                                          , SolveWithTypeSignatures . map (\(n,ts) -> (show n,ts)) $
                                               (  fmToList (valueConstructors @lhs.importEnvironment)
@@ -41,6 +41,7 @@ SEM Module
                                          [ SolveWithSiblings xs | Siblings xs <- typingStrategies @lhs.importEnvironment ]
                                         )
                                         @constraints
+                                        
            . monomorphics  = ftv (  (eltsFM $ valueConstructors @lhs.importEnvironment) 
                                  ++ (eltsFM $ typeEnvironment @lhs.importEnvironment)
                                  )
@@ -827,6 +828,25 @@ performBindingGroup monos typeSignatures = variableDependencies . bindingGroupAn
 findMono :: Name -> MonoTable -> Tps
 findMono n = let p = elem n . fst
              in snd . head . filter p
+
+solveGreedy' :: Int -> SolverOptions -> TypeConstraints HeliumConstraintInfo -> (Int, WrappedSubstitution ,[a], [HeliumConstraintInfo], IO ())
+solveGreedy' unique options constraints = 
+   solveGreedy unique options (liftConstraints constraints) $                
+      do uniqueAtEnd <- getUnique
+         errors      <- getErrors
+         subst       <- buildSubstitutionGreedy
+         debug       <- getDebug
+         return (uniqueAtEnd, subst, [], errors, putStrLn debug)     
+
+solveTypeGraph' :: Int -> SolverOptions -> TypeConstraints HeliumConstraintInfo -> (Int, WrappedSubstitution ,[a], [HeliumConstraintInfo], IO ())
+solveTypeGraph' unique options constraints =
+   solveTypeGraph unique options (liftConstraints constraints) $
+      do uniqueAtEnd <- getUnique
+         errors      <- getErrors
+         subst       <- buildSubstitutionTypeGraph
+         debug       <- getDebug
+         return (uniqueAtEnd, subst, [], errors, putStrLn debug)
+
 }
 
 SEM Body

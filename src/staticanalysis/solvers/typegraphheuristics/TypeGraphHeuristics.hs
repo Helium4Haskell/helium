@@ -8,13 +8,12 @@
 --
 -------------------------------------------------------------------------------
 
-module TypeGraphHeuristics (heuristics) where
+module TypeGraphHeuristics where
 
 import EquivalenceGroup
-import SolveEquivalenceGroups
 import SolveTypeGraph
+import IsTypeGraph 
 import TypeGraphConstraintInfo
-import SolveConstraints
 import SolveState
 import Messages
 import TypeErrors
@@ -29,14 +28,15 @@ import UHA_Syntax           ( Literal(..), Range(..), Position(..) )
 import Monad                ( unless, when, filterM )
 import Maybe                ( catMaybes, isJust, isNothing )
 import InfiniteTypeHeuristic  -- (infiniteTypeHeuristic, safeMaximumBy, safeMinimumBy)
+import FixpointSolveState
+import IsSolver
 
 heuristics_MAX        =    120 :: Int
 upperbound_GOODPATHS  =     50 :: Int
 upperbound_ERRORPATHS =     50 :: Int
 testMode              = False  :: Bool
 
-heuristics :: (TypeGraph EquivalenceGroups info, TypeGraphConstraintInfo info, Show info) => 
-              SolveState EquivalenceGroups info ([EdgeID], [info])
+heuristics :: IsTypeGraph (TypeGraph info) info => TypeGraph info ([EdgeID], [info])
 heuristics = do conflicts <- getConflicts
                 let clashes   = [ i | (ConstantClash, i) <- conflicts ]
                     infinites = [ i | (InfiniteType , i) <- conflicts ]
@@ -44,15 +44,15 @@ heuristics = do conflicts <- getConflicts
                   then heuristicsConstantClash clashes
                   else infiniteTypeHeuristic infinites
 
-heuristicsConstantClash :: (TypeGraph EquivalenceGroups info, TypeGraphConstraintInfo info, Show info) => 
-                           [Int] -> SolveState EquivalenceGroups info ([EdgeID], [info])
+heuristicsConstantClash :: IsTypeGraph (TypeGraph info) info => 
+              [Int] -> TypeGraph info ([EdgeID], [info])
 heuristicsConstantClash is = 
 
    do pathsWithInfo    <- findPathsInTypeGraph is
       let edgeInfoTable = makeEdgeInfoTable pathsWithInfo
           allEdges      = map fst edgeInfoTable
           
-      addDebug . putStrLn  . unlines $ 
+      addDebug . unlines $ 
          ("*** Error Paths in Type Graph ***\n") : 
          zipWith (\i p -> "Path #"++show i++"\n"++replicate 25 '='++"\n"++showPath p) [1..] [ p | (p, (_, _, False)) <- pathsWithInfo ]    
 
@@ -67,7 +67,7 @@ heuristicsConstantClash is =
       bestForEachEdge <- mapM (\t -> do r <- applyHeuristicsToEdge t ; return (r,t) ) maxDifferentGroupEdges
       let sortedList = sortBy (\x y -> fst x `compare` fst y) bestForEachEdge
 
-      addDebug . putStrLn . unlines $ 
+      addDebug . unlines $ 
          ("*** Best heuristics for each edge ***\n") : 
          (map (\(r,t) -> take 15 (show (fst t)++repeat ' ')++show r) sortedList)               
          
@@ -130,9 +130,9 @@ combineHeuristicResult hr1 hr2 =
 -------------------------------------------------------------------------------
 -- Edge Heuristics
 
-type EdgeHeuristic info = EdgeID -> info -> SolveState EquivalenceGroups info HeuristicResult
+type EdgeHeuristic info = EdgeID -> info -> TypeGraph info HeuristicResult
 
-edgeheuristics :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => [EdgeHeuristic info]
+edgeheuristics :: IsTypeGraph (TypeGraph info) info => [EdgeHeuristic info]
 edgeheuristics = [ orderOfUnification
                  , trustFactorOfConstraint
                  , isFolkloreEdge
@@ -169,13 +169,13 @@ isFolkloreEdge edge info
 -- case the initial edges should also be considered as cyclic.
 edgeIsPartOfCycle :: TypeGraphConstraintInfo info => EdgeHeuristic info
 edgeIsPartOfCycle edge@(EdgeID v1 v2) info = 
-   useSolver 
+   liftUse 
       (\groups -> do eqc <- equivalenceGroupOf v1 groups
                      if length (splitGroup (removeEdge edge eqc)) < 2
                        then return (ModifierHeuristic 0.2 "part of a cycle")
                        else return NotApplicableHeuristic)
 
-similarFunctions :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
+similarFunctions :: IsTypeGraph (TypeGraph info) info => EdgeHeuristic info
 similarFunctions edge@(EdgeID v1 v2) info = 
    case maybeImportedFunction info of 
       Nothing   -> return NotApplicableHeuristic
@@ -208,7 +208,7 @@ similarFunctions edge@(EdgeID v1 v2) info =
                                          []  -> return NotApplicableHeuristic
                                          t:_ -> return t
 
-similarLiterals :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
+similarLiterals :: IsTypeGraph (TypeGraph info) info => EdgeHeuristic info
 similarLiterals edge@(EdgeID v1 v2) info = 
    case maybeLiteral info of 
       Nothing      -> return NotApplicableHeuristic
@@ -242,7 +242,7 @@ similarLiterals edge@(EdgeID v1 v2) info =
 
                   _ -> return NotApplicableHeuristic
 
-similarNegation :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
+similarNegation :: IsTypeGraph (TypeGraph info) info => EdgeHeuristic info
 similarNegation edge@(EdgeID v1 v2) info =
    case maybeNegation info of
       Nothing            -> return NotApplicableHeuristic
@@ -278,7 +278,7 @@ similarNegation edge@(EdgeID v1 v2) info =
 
                   _ -> return NotApplicableHeuristic
 
-applicationEdge :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
+applicationEdge :: IsTypeGraph (TypeGraph info) info => EdgeHeuristic info
 applicationEdge edge@(EdgeID v1 v2) info =
    case maybeApplicationEdge info of
       Nothing                            -> return NotApplicableHeuristic
@@ -399,7 +399,7 @@ applicationEdge edge@(EdgeID v1 v2) info =
                                              , p <- take heuristics_MAX (permutationsForLength numberOfArguments)
                                              , unifiableTypeLists (functionResult : functionArguments) 
                                                                   (expectedResult : permute p expectedArguments) 
-                                             ]                                                                         
+                                             ]         ;                                                                
 
                       -- at which locations should an extra argument be inserted?
                       typesZippedWithHoles  = [ is 
@@ -411,7 +411,7 @@ applicationEdge edge@(EdgeID v1 v2) info =
 
                _ -> return NotApplicableHeuristic
                                                        
-tupleEdge :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
+tupleEdge :: IsTypeGraph (TypeGraph info) info => EdgeHeuristic info
 tupleEdge edge@(EdgeID v1 v2) info
    | not (isTupleEdge info) = return NotApplicableHeuristic
    | otherwise              =
@@ -451,7 +451,7 @@ tupleEdge edge@(EdgeID v1 v2) info
                                in return (ConcreteHeuristic 2 [hint] "different sizes of tuple")
           _ -> return NotApplicableHeuristic
 
-fbHasTooManyArguments :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
+fbHasTooManyArguments :: IsTypeGraph (TypeGraph info) info => EdgeHeuristic info
 fbHasTooManyArguments edge info 
    | not (isExplicitTypedBinding info) = return NotApplicableHeuristic
    | otherwise                         =
@@ -460,7 +460,7 @@ fbHasTooManyArguments edge info
          let (t1,t2)         = getTwoTypes info
              maximumExplicit = arityOfTp (expandType (snd synonyms) t1)
              synonyms        = getTypeSynonyms options
-         maybeNumberOfPatterns <- useSolver 
+         maybeNumberOfPatterns <- liftUse 
             (\groups -> do let tvar = head (ftv t2)
                            eqgroup <- equivalenceGroupOf tvar groups
                            let edgeinfos = [ info | (EdgeID v1 v2,info) <- edges eqgroup, (v1==tvar || v2==tvar) ] 
@@ -476,7 +476,7 @@ fbHasTooManyArguments edge info
                                             in return (ConcreteHeuristic 8 [hint] "function binding has too many arguments")
             _                            -> return NotApplicableHeuristic
 
-variableFunction :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
+variableFunction :: IsTypeGraph (TypeGraph info) info => EdgeHeuristic info
 variableFunction edge info
    | (nt, alt) /= (NTBindingGroup, AltBindingGroup) && (nt, alt) /= (NTBody, AltBody) 
         = return NotApplicableHeuristic
@@ -596,9 +596,9 @@ mguForTps orderedTypeSynonyms tps =
          []     -> e
          tp:tps -> foldr (op tp) e tps
 
-getAdjacentEdges :: Int -> SolveState EquivalenceGroups info [(EdgeID, info)]
+getAdjacentEdges :: Int -> TypeGraph info [(EdgeID, info)]
 getAdjacentEdges vertexID =
-   useSolver
+   liftUse
       (\groups -> do eqc <- equivalenceGroupOf vertexID groups
                      let predicate (EdgeID v1 v2) = v1 == vertexID || v2 == vertexID
                      return (filter (predicate . fst) (edges eqc)))                              
@@ -632,14 +632,14 @@ zipWithHoles = rec 0 where
          GT -> [ (  is,(a,b):zl) | (is,zl) <- rec (i+1) as bs     ]
             ++ [ (i:is,      zl) | (is,zl) <- rec (i+1) as (b:bs) ]
 
-doWithoutEdge :: TypeGraph EquivalenceGroups info => (EdgeID,info)
-                                                  -> SolveState EquivalenceGroups info result
-                                                  -> SolveState EquivalenceGroups info result
+doWithoutEdge :: IsTypeGraph (TypeGraph info) info => (EdgeID,info)
+                                                  -> TypeGraph info result
+                                                  -> TypeGraph info result
 doWithoutEdge (edge@(EdgeID v1 v2),info) computation =
    do 
       testmax <- getUnique
       copy1 <- if testMode
-                 then let f i = do useSolver (\g -> do e <- equivalenceGroupOf i g ; return e)
+                 then let f i = do liftUse (\g -> do e <- equivalenceGroupOf i g ; return e)
                       in mapM f [0..testmax - 1]
                  else return []
              
@@ -648,7 +648,7 @@ doWithoutEdge (edge@(EdgeID v1 v2),info) computation =
       propagateEquality [v1,v2]
       addEdge edge (Initial info) 
       copy2 <- if testMode
-                 then let f i = do useSolver (\g -> do e <- equivalenceGroupOf i g ; return e)
+                 then let f i = do liftUse (\g -> do e <- equivalenceGroupOf i g ; return e)
                       in mapM f [0..testmax - 1]
                  else return []
       
@@ -660,14 +660,14 @@ doWithoutEdge (edge@(EdgeID v1 v2),info) computation =
       return result
  
                                            
-doWithoutEdges :: TypeGraph EquivalenceGroups info => [(EdgeID,info)]
-                                                   -> SolveState EquivalenceGroups info result
-                                                   -> SolveState EquivalenceGroups info result
+doWithoutEdges :: IsTypeGraph (TypeGraph info) info => [(EdgeID,info)]
+                                                   -> TypeGraph info result
+                                                   -> TypeGraph info result
 doWithoutEdges []     = id        
 doWithoutEdges (x:xs) = doWithoutEdge x . doWithoutEdges xs      
 
 {- keep a history to avoid non-termination (for type-graphs that contain an infinite type) -}                                           
-safeApplySubst :: TypeGraph EquivalenceGroups info => Tp -> SolveState EquivalenceGroups info (Maybe Tp)
+safeApplySubst :: IsTypeGraph (TypeGraph info) info => Tp -> TypeGraph info (Maybe Tp)
 safeApplySubst = rec [] where 
 
   rec history tp = case tp of 
@@ -723,7 +723,7 @@ type PathWithInfo cinfo  = (Path cinfo, PathInfo)
 type PathsWithInfo cinfo = [PathWithInfo cinfo]
 type EdgeInfoTable cinfo = [((EdgeID, cinfo), PathInfos)]
 
-findPathsInTypeGraph :: TypeGraph solver cinfo => [Int] -> SolveState solver cinfo (PathsWithInfo cinfo)
+findPathsInTypeGraph :: IsTypeGraph (TypeGraph cinfo) cinfo => [Int] -> TypeGraph cinfo (PathsWithInfo cinfo)
 findPathsInTypeGraph is = 
    let 
        rec (gp,ep) []          = return []

@@ -15,7 +15,7 @@ ATTR UserStatement UserStatements TypeRule Judgement SimpleJudgement SimpleJudge
      
 -- Construct type constraints from the constraint-set     
 
-ATTR UserStatement UserStatements [ | userConstraints : {Constraints HeliumConstraintInfo} | ]
+ATTR UserStatement UserStatements [ | userConstraints : {TypeConstraints HeliumConstraintInfo} | ]
 
 SEM TypingStrategy 
   | TypingStrategy

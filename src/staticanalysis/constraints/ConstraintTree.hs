@@ -15,23 +15,23 @@
 module ConstraintTree where
 
 import Strategy
-import Constraints
+import TypeConstraints
 import Types
 import Utils            (fst3, snd3, thd3, internalError)
 import List             (intersperse)
 import ConstraintInfo
 import FiniteMap
 
-type MappedConstraints  cinfo = FiniteMap Int (Constraint cinfo)
-type PhasedConstraints  cinfo = FiniteMap Int (ListCont (Constraint cinfo))
-type ConstraintTreeRoot cinfo = Strategy -> Constraints cinfo
+type MappedConstraints  cinfo = FiniteMap Int (TypeConstraint cinfo)
+type PhasedConstraints  cinfo = FiniteMap Int (ListCont (TypeConstraint cinfo))
+type ConstraintTreeRoot cinfo = Strategy -> TypeConstraints cinfo
 type ConstraintTrees    cinfo = [ConstraintTree cinfo]
 type ConstraintTree     cinfo = Strategy ->                          -- strategy to order the constraints
                                 MappedConstraints cinfo ->           -- the constraints that are mapped
-                                ListCont (Constraint cinfo) ->       -- constraints to add (downward)
-                                ( ListCont (Constraint cinfo)        -- the flattened tree
-                                , ListCont (Constraint cinfo)        -- constraints to add (upward)
-                                , PhasedConstraints cinfo            -- all phased constraints 
+                                ListCont (TypeConstraint cinfo) ->       -- constraints to add (downward)
+                                ( ListCont (TypeConstraint cinfo)        -- the flattened tree
+                                , ListCont (TypeConstraint cinfo)        -- constraints to add (upward)
+                                , PhasedConstraints cinfo                -- all phased constraints 
                                 )
 
 
@@ -57,7 +57,7 @@ ctStrictOrder trees strategy albinds addDown =
        result                = foldr (.) id (map (inStrictOrder t) tuples)
    in (treeWalk addDown [(result, id)], id, emptyFM)
 
-ctAdd :: Bool -> Constraints cinfo -> ConstraintTree cinfo -> ConstraintTree cinfo
+ctAdd :: Bool -> TypeConstraints cinfo -> ConstraintTree cinfo -> ConstraintTree cinfo
 ctAdd upward constraints tree strategy albinds addDown
 
    | upward    = let (flattened, added, phased) = tree strategy albinds addDown
@@ -66,7 +66,7 @@ ctAdd upward constraints tree strategy albinds addDown
    | otherwise = tree strategy albinds ((constraints++) . addDown)
 
 
-ctMapped :: Bool -> Constraints cinfo -> ConstraintTree cinfo -> ConstraintTree cinfo
+ctMapped :: Bool -> TypeConstraints cinfo -> ConstraintTree cinfo -> ConstraintTree cinfo
 ctMapped upward constraints tree strategy albinds addDown
 
    | snd3 strategy = tree strategy (toMappedConstraints constraints `plusFM` albinds) addDown
@@ -76,9 +76,9 @@ ctMapped upward constraints tree strategy albinds addDown
 
    | otherwise     = tree strategy albinds ((constraints++) . addDown)
 
-ctPhased :: ConstraintInfo cinfo => Int -> Constraints cinfo -> ConstraintTree cinfo
+ctPhased :: ConstraintInfo cinfo => Int -> TypeConstraints cinfo -> ConstraintTree cinfo
 ctPhased phase constraints strategy allbinds addDown = 
-   let phasedConstraints = map (applyToConstraintInfo (setConstraintPhaseNumber phase)) constraints
+   let phasedConstraints = map (fmap (setConstraintPhaseNumber phase)) constraints
    in (id, addDown, unitFM phase (phasedConstraints++) )
 
 ctVariable :: Int -> ConstraintTree cinfo
@@ -93,10 +93,10 @@ ctEmpty strategy albinds addDown =
 
 infixr 8 .>. , !<! , .>>. , !<<! , .<. , .<<.
 
-ctSingle :: Constraints a -> ConstraintTree a
+ctSingle :: TypeConstraints a -> ConstraintTree a
 ctSingle cs = ctNode [cs .<. ctEmpty]
 
-(.>.), (.<.), (!<!) :: Constraints cinfo -> ConstraintTree cinfo -> ConstraintTree cinfo
+(.>.), (.<.), (!<!) :: TypeConstraints cinfo -> ConstraintTree cinfo -> ConstraintTree cinfo
 (.>.) = ctAdd False
 (.<.) = ctAdd True
 
@@ -106,7 +106,7 @@ ctSingle cs = ctNode [cs .<. ctEmpty]
    | otherwise       = (constraints .>. tree) strategy albinds addDown
 
 
-(.>>.), (.<<.), (!<<!) :: Constraints cinfo -> ConstraintTree cinfo -> ConstraintTree cinfo
+(.>>.), (.<<.), (!<<!) :: TypeConstraints cinfo -> ConstraintTree cinfo -> ConstraintTree cinfo
 (.>>.) = ctMapped False
 (.<<.) = ctMapped True
 
@@ -115,20 +115,20 @@ ctSingle cs = ctNode [cs .<. ctEmpty]
                        in ((constraints++) . flattened, added, phased)
    | otherwise       = (constraints .<<. tree) strategy albinds addDown
 
-toMappedConstraints :: Constraints info -> MappedConstraints info
+toMappedConstraints :: TypeConstraints info -> MappedConstraints info
 toMappedConstraints = listToFM . concatMap f 
    where f constraint = case constraint of
-                           Equiv _ _ (TVar i)          -> [(i,constraint)]
-                           ExplInstance _ (TVar i) _   -> [(i,constraint)]
-                           ImplInstance _ (TVar i) _ _ -> [(i,constraint)]
-                           _                           -> []
+                           Equality _ _ (TVar i)           -> [(i,constraint)]
+                           ExplicitInstance _ (TVar i) _   -> [(i,constraint)]
+                           ImplicitInstance _ (TVar i) _ _ -> [(i,constraint)]
+                           MakeConsistent                  -> []
 
 inStrictOrder :: TreeWalk ->                          -- treewalk
-                 ( ListCont (Constraint cinfo)        -- the flattened tree
-                 , ListCont (Constraint cinfo)        -- constraints to add (upward)
+                 ( ListCont (TypeConstraint cinfo)        -- the flattened tree
+                 , ListCont (TypeConstraint cinfo)        -- constraints to add (upward)
                  , PhasedConstraints cinfo            -- all phased constraints 
                  ) ->
-                 ListCont (Constraint cinfo)
+                 ListCont (TypeConstraint cinfo)
 inStrictOrder (TreeWalk treewalk) (flattened, added, phased) = 
    let list        = treewalk id [(flattened, added)]
        listOfLists = eltsFM phased

@@ -1,24 +1,20 @@
 module InfiniteTypeHeuristic where
 
-import SolveConstraints
-import SolveEquivalenceGroups
 import SolveTypeGraph
+import IsTypeGraph
 import TypeGraphConstraintInfo
-
+import SolveState
 import List   (nub, maximumBy, minimumBy)
 import Maybe  (catMaybes)
 import Utils  (internalError)
-
--- temporary
+import FixpointSolveState
 import EquivalenceGroup
 
-infiniteTypeHeuristic :: (TypeGraph EquivalenceGroups info, TypeGraphConstraintInfo info, Show info) =>  
-                          [Int] -> SolveState EquivalenceGroups info ([EdgeID], [info])
+infiniteTypeHeuristic :: IsTypeGraph (TypeGraph info) info => [Int] -> TypeGraph info ([EdgeID], [info])
 infiniteTypeHeuristic is = 
-   do addDebug (putStrLn "Infinite Type") 
+   do addDebug "Infinite Type"
       
       infinitePaths <- mapM infinitePaths is
-      
       pathsList <- let f path     = mapM g (shift path) 
                        g (v1, v2) = getPathsFrom v1 [v2]
                    in mapM f . nub . map rotateToNormalForm . concat $ infinitePaths
@@ -53,7 +49,7 @@ infiniteTypeHeuristic is =
          Nothing           -> internalError "TypeGraphHeuristics" 
                                             "heuristicsInfiniteType" 
                                             "could not return a result"
-
+                                            
 shift :: [(a,a)] -> [(a,a)]
 shift []                 = []
 shift [(a,b)]            = [(b,a)]
@@ -76,7 +72,7 @@ safeMinimumBy f xs
    | otherwise = Just (minimumBy f xs)
 
 -- temporary
-moreEdgesFromUser :: TypeGraphConstraintInfo cinfo => cinfo -> EdgeID -> SolveState EquivalenceGroups cinfo [EdgeID]
+moreEdgesFromUser :: IsTypeGraph (TypeGraph info) info =>  info -> EdgeID -> TypeGraph info [EdgeID]
 moreEdgesFromUser cinfo edgeID = 
    case maybeUserConstraint cinfo of
       Nothing         -> return [edgeID]
@@ -88,15 +84,15 @@ moreEdgesFromUser cinfo edgeID =
                                 in filter (predicate . snd) edges
             return (edgeID : map fst edgesToRemove)
       
-allEdgesInTypeGraph :: SolveState EquivalenceGroups cinfo [(EdgeID, cinfo)]
+allEdgesInTypeGraph :: IsTypeGraph (TypeGraph info) info => TypeGraph info [(EdgeID, info)]
 allEdgesInTypeGraph = 
    do unique  <- getUnique 
-      ints    <- let f i = useSolver
+      ints    <- let f i = liftUse
                               (\groups -> do eqg <- equivalenceGroupOf i groups
                                              return (representative eqg))
                  in mapM f [0..unique-1]
-      results <- let f i = useSolver 
+      results <- let f i = liftUse 
                               (\groups -> do eqg <- equivalenceGroupOf i groups
                                              return (edges eqg))
                  in mapM f (nub ints)
-      return (concat results)                 
+      return (concat results)

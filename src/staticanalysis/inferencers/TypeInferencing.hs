@@ -9,7 +9,7 @@ import List                    ( intersperse, partition, nub, zipWith4, union )
 import Types
 import TypeConversion
 -- constraints
-import Constraints
+import TypeConstraints
 import LiftedConstraints
 import ConstraintTree
 import Strategy
@@ -18,13 +18,16 @@ import Messages
 import TypeErrors
 import Warnings
 -- solvers
-import SolveConstraints 
-import SolveEquivalenceGroups  ( solveEquivalenceGroups )
-import SolveGreedy             ( solveGreedy )
+import SolveTypeGraph
+import TypeGraphInstance
+import SolveGreedy           
 import ConstraintInfo
 import TypeGraphConstraintInfo
-import EquivalenceGroupsImplementation ( )
 import HeliumConstraintInfo
+import SolverOptions
+import Constraints
+import TypeConstraintSemantics
+import SolveState
 -- other
 import TopSort                 ( topSort )
 import Utils                   ( internalError )
@@ -122,6 +125,25 @@ performBindingGroup monos typeSignatures = variableDependencies . bindingGroupAn
 findMono :: Name -> MonoTable -> Tps
 findMono n = let p = elem n . fst
              in snd . head . filter p
+
+solveGreedy' :: Int -> SolverOptions -> TypeConstraints HeliumConstraintInfo -> (Int, WrappedSubstitution ,[a], [HeliumConstraintInfo], IO ())
+solveGreedy' unique options constraints = 
+   solveGreedy unique options (liftConstraints constraints) $                
+      do uniqueAtEnd <- getUnique
+         errors      <- getErrors
+         subst       <- buildSubstitutionGreedy
+         debug       <- getDebug
+         return (uniqueAtEnd, subst, [], errors, putStrLn debug)     
+
+solveTypeGraph' :: Int -> SolverOptions -> TypeConstraints HeliumConstraintInfo -> (Int, WrappedSubstitution ,[a], [HeliumConstraintInfo], IO ())
+solveTypeGraph' unique options constraints =
+   solveTypeGraph unique options (liftConstraints constraints) $
+      do uniqueAtEnd <- getUnique
+         errors      <- getErrors
+         subst       <- buildSubstitutionTypeGraph
+         debug       <- getDebug
+         return (uniqueAtEnd, subst, [], errors, putStrLn debug)
+
 
 cinfoBindingGroupExplicitTypedBinding :: Name -> (Tp,Tp) -> HeliumConstraintInfo
 cinfoBindingGroupExplicitTypedBinding =
@@ -3293,7 +3315,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
         (_orderedTypeSynonyms) =
             getOrderedTypeSynonyms _lhs_importEnvironment
         ((_betaUniqueAtTheEnd,_substitution,_finalPredicates,_solveErrors,_solveDebug)) =
-            (if _lhs_useTypeGraph then solveEquivalenceGroups else solveGreedy)
+            (if _lhs_useTypeGraph then solveTypeGraph' else solveGreedy')
                _body_betaUnique ([ SolveWithTypeSynonyms _orderedTypeSynonyms
                                  , SolveWithTypeSignatures . map (\(n,ts) -> (show n,ts)) $
                                       (  fmToList (valueConstructors _lhs_importEnvironment)

@@ -14,13 +14,13 @@ import TS_CoreSyntax
 import Messages
 import Types
 import HeliumConstraintInfo
-import Constraints
 import TypeGraphConstraintInfo
 import UHA_Range (noRange)
 import UHA_Utils (getNameName)
 import TypeConversion
 import Utils (internalError)
 import List
+import TypeConstraints
 import TypeErrors
 import OneLiner
 import TS_Attributes

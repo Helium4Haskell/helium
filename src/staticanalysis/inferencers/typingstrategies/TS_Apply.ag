@@ -4,7 +4,7 @@ imports {
 import UHA_Syntax
 import TS_CoreSyntax
 import ConstraintTree
-import Constraints
+import TypeConstraints
 import HeliumConstraintInfo
 import TypeGraphConstraintInfo
 import Types
@@ -165,7 +165,7 @@ standardConstraintInfo pos tppair =
          }
 }
 
-ATTR Core_TypeRule [ | | constraints : {Constraints HeliumConstraintInfo} ]
+ATTR Core_TypeRule [ | | constraints : {TypeConstraints HeliumConstraintInfo} ]
 
 SEM Core_TypeRule             
   | TypeRule        

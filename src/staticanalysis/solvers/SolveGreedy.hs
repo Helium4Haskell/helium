@@ -11,67 +11,69 @@
 --
 -------------------------------------------------------------------------------
 
-module SolveGreedy ( solveGreedy ) where
+module SolveGreedy (Greedy, evalGreedy, solveGreedy, buildSubstitutionGreedy) where
 
-import Array
-import Types 
-import SolveConstraints
 import ST
-import SolverOptions    ( getTypeSynonyms )
-import ConstraintInfo   ( ConstraintInfo )
-import Monad            ( when )
-import Utils            ( internalError, doubleSizeOfSTArray )
+import Types
+import Constraints
+import SolveState
+import IsSolver
+import Utils (internalError, doubleSizeOfSTArray )
+import FixpointSolveState
+import SolverOptions
+import ConstraintInfo
 
---------------------------------------
--- SolveGreedy: biased constraint solving
+type Greedy info = Fix info () (STMonad (ArraySubstitution info))
+      
+evalGreedy :: Greedy info result -> result
+evalGreedy x = fst $ runSTMonad $ runFix x newState
 
-solveGreedy :: ConstraintInfo info => RunnableSolver info
-solveGreedy = runSolver buildSubstitution where
+solveGreedy :: ConstraintInfo info => Int -> SolverOptions -> Constraints (Greedy info) -> Greedy info result -> result
+solveGreedy = solveConstraints evalGreedy
 
-   buildSubstitution :: ConstraintInfo info => SolveState ArraySubstitution info WrappedSubstitution
-   buildSubstitution = do arraysubstitution <- useSolver (\(A starray) -> freezeSTArray starray) 
-                          return (wrapSubstitution arraysubstitution)
+instance ConstraintInfo info => IsSolver (Greedy info) info where 
+
+   initialize = 
+     do unique <- getUnique
+        liftSet
+          ( do starray <- newSTArray (0,2*unique) Nothing 
+               return (A starray) )
+ 
+   unifyTerms info t1 t2 =
+       do  t1'     <- applySubst t1
+           t2'     <- applySubst t2
+           options <- getSolverOptions
+           let synonyms = getTypeSynonyms options
+           case mguWithTypeSynonyms synonyms t1' t2' of
+               Right (used,sub) -> 
+                   do liftUse
+                       (\(A starray) -> do
+                           let f i = writeSTArray starray i (lookupInt i sub)
+                           mapM_ f (dom sub)
+                           when used (do
+                                  let utp = equalUnderTypeSynonyms synonyms (sub |-> t1') (sub |-> t2')
+                                  writeExpandedType synonyms starray t1 utp 
+                                  writeExpandedType synonyms starray t2 utp) )
+               Left _ -> addError info
+               
+   findSubstForVar i =
+     do maybetp <- liftUse (\(A starray) -> readSTArray starray i)
+        case maybetp of 
+           Nothing                   -> return (TVar i)
+           Just tp@(TVar j) | i == j -> return tp
+           Just tp                   -> applySubst tp
+           
+   newVariables is = 
+     do resize <- liftUse (\(A starray) -> return $ not (null is) && last is > snd (boundsSTArray starray)) 
+        when resize $ 
+           liftUpdate 
+              (\(A old) -> do new <- doubleSizeOfSTArray Nothing old 
+                              return (A new))  
+                              
+------------------------------------------------
+-- Array Substitution
 
 newtype ArraySubstitution info state = A (STArray state Int (Maybe Tp))
-
-instance ConstraintInfo info => ConstraintSolver ArraySubstitution info where
-
-    initialize = 
-      do unique <- getUnique
-         setSolver 
-           ( do starray <- newSTArray (0,2*unique) Nothing 
-                return (A starray) )  
-
-    unifyTerms info t1 t2 =
-        do  t1'     <- applySubst t1
-            t2'     <- applySubst t2
-            options <- getSolverOptions
-            let synonyms = getTypeSynonyms options
-            case mguWithTypeSynonyms synonyms t1' t2' of
-                Right (used,sub) -> 
-                    do useSolver
-                        (\(A starray) -> do
-                            let f i = writeSTArray starray i (lookupInt i sub)
-                            mapM_ f (dom sub)
-                            when used (do
-                                   let utp = equalUnderTypeSynonyms synonyms (sub |-> t1') (sub |-> t2')
-                                   writeExpandedType synonyms starray t1 utp 
-                                   writeExpandedType synonyms starray t2 utp) )
-                Left _ -> addError info      
-
-    findSubstForVar i =
-      do maybetp <- useSolver (\(A starray) -> readSTArray starray i)
-         case maybetp of 
-            Nothing                   -> return (TVar i)
-            Just tp@(TVar j) | i == j -> return tp
-            Just tp                   -> applySubst tp
-
-    newVariables is = 
-      do resize <- useSolver (\(A starray) -> return $ not (null is) && last is > snd (boundsSTArray starray)) 
-         when resize $ 
-            updateSolver 
-               (\(A old) -> do new <- doubleSizeOfSTArray Nothing old 
-                               return (A new))
 
 -- The key idea is as follows:
 -- try to minimize the number of expansions by type synonyms.
@@ -107,3 +109,7 @@ writeExpandedType synonyms starray = writeTypeType where
                                                           writeIntType i utp
                                           Nothing   -> internalError "SolveGreedy.hs" "writeIntType" "inconsistent types(1)"
                     _               -> internalError "SolveGreedy.hs" "writeIntType" "inconsistent types(2)"
+
+buildSubstitutionGreedy :: ConstraintInfo info => Greedy info WrappedSubstitution
+buildSubstitutionGreedy = do arraysubstitution <- liftUse (\(A starray) -> freezeSTArray starray) 
+                             return (wrapSubstitution arraysubstitution)

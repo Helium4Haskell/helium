@@ -6,13 +6,13 @@ import TS_CoreSyntax
 import Messages
 import Types
 import HeliumConstraintInfo
-import Constraints
 import TypeGraphConstraintInfo
 import UHA_Range (noRange)
 import UHA_Utils (getNameName)
 import TypeConversion
 import Utils (internalError)
 import List
+import TypeConstraints
 import TypeErrors
 import OneLiner
 import TS_Attributes
@@ -2784,8 +2784,8 @@ type T_UserStatement = ([((String, Maybe String), MessageBlock)]) ->
                        (Names) ->
                        ([(Name,Tp)]) ->
                        (((Tp, Tp) -> HeliumConstraintInfo)) ->
-                       (Constraints HeliumConstraintInfo) ->
-                       ( (Core_UserStatement),(Names),(UserStatement),(Names),(Constraints HeliumConstraintInfo))
+                       (TypeConstraints HeliumConstraintInfo) ->
+                       ( (Core_UserStatement),(Names),(UserStatement),(Names),(TypeConstraints HeliumConstraintInfo))
 -- cata
 sem_UserStatement :: (UserStatement) ->
                      (T_UserStatement)
@@ -2837,8 +2837,8 @@ type T_UserStatements = ([((String, Maybe String), MessageBlock)]) ->
                         (Names) ->
                         ([(Name,Tp)]) ->
                         (((Tp, Tp) -> HeliumConstraintInfo)) ->
-                        (Constraints HeliumConstraintInfo) ->
-                        ( (Core_UserStatements),(Names),(UserStatements),(Names),(Constraints HeliumConstraintInfo))
+                        (TypeConstraints HeliumConstraintInfo) ->
+                        ( (Core_UserStatements),(Names),(UserStatements),(Names),(TypeConstraints HeliumConstraintInfo))
 -- cata
 sem_UserStatements :: (UserStatements) ->
                       (T_UserStatements)

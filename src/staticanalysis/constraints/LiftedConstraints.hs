@@ -9,7 +9,7 @@
 
 module LiftedConstraints where
 
-import Constraints
+import TypeConstraints
 import Types
 import FiniteMap
 
@@ -24,16 +24,16 @@ lift combinator =
            rest        = delListFromFM bs (keysFM as)
            f a list    = [ (a `combinator` b) (cf name) | (name,b) <- list ]
        in (constraints, rest)
-       
-(.===.) :: Ord key =>        FiniteMap key Tp       -> FiniteMap key [(key,Tp)] -> (key -> (Tp,Tp) -> info) -> (Constraints info,FiniteMap key [(key,Tp)])
-(.:::.) :: Ord key =>        FiniteMap key TpScheme -> FiniteMap key [(key,Tp)] -> (key -> (Tp,Tp) -> info) -> (Constraints info,FiniteMap key [(key,Tp)])  
-(.<==.) :: Ord key => Tps -> FiniteMap key Tp       -> FiniteMap key [(key,Tp)] -> (key -> (Tp,Tp) -> info) -> (Constraints info,FiniteMap key [(key,Tp)])
+    
+(.===.) :: Ord key =>        FiniteMap key Tp       -> FiniteMap key [(key,Tp)] -> (key -> (Tp,Tp) -> info) -> (TypeConstraints info,FiniteMap key [(key,Tp)])
+(.:::.) :: Ord key =>        FiniteMap key TpScheme -> FiniteMap key [(key,Tp)] -> (key -> (Tp,Tp) -> info) -> (TypeConstraints info,FiniteMap key [(key,Tp)])  
+(.<==.) :: Ord key => Tps -> FiniteMap key Tp       -> FiniteMap key [(key,Tp)] -> (key -> (Tp,Tp) -> info) -> (TypeConstraints info,FiniteMap key [(key,Tp)])
+(!:::!) :: Ord key =>        FiniteMap key TpScheme -> FiniteMap key Tp         -> (key -> (Tp,Tp) -> info) -> (TypeConstraints info,FiniteMap key Tp)  
 
-(.===.)    = lift (.==.)
+(.===.)    = lift (.==.) 
 (.:::.)    = lift (flip (.::.))
 (.<==.) ms = lift (flip ((.<=.) ms))
 
-(!:::!) :: Ord key => FiniteMap key TpScheme -> FiniteMap key Tp -> (key -> (Tp,Tp) -> info) -> (Constraints info,FiniteMap key Tp)  
 (as !:::! bs) cf = let bs' = mapFM (\name tp -> [(name,tp)]) bs
                        (xs,ys) = (as .:::. bs') cf                           
                        ys' = mapFM (\_ -> snd . head) ys

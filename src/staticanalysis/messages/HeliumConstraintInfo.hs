@@ -8,7 +8,7 @@ import TypeErrors
 import Messages
 import TypeGraphConstraintInfo
 import ConstraintInfo
-import Constraints
+import TypeConstraints
 import List
 
 data HeliumConstraintInfo =
@@ -149,7 +149,7 @@ addProperty :: Property -> HeliumConstraintInfo -> HeliumConstraintInfo
 addProperty property info = let old = properties info
                             in info { properties = property : old }
 
-setPosition :: Int -> Constraint HeliumConstraintInfo -> Constraint HeliumConstraintInfo
-setPosition = applyToConstraintInfo . addProperty . PositionInTreeWalk
+setPosition :: Int -> TypeConstraint HeliumConstraintInfo -> TypeConstraint HeliumConstraintInfo
+setPosition = fmap . addProperty . PositionInTreeWalk
 
 

@@ -73,23 +73,26 @@ STATICANALYSIS = \
 	staticanalysis/constraints/Constraints.hs \
 	staticanalysis/constraints/ConstraintTree.hs \
 	staticanalysis/constraints/Strategy.hs \
+	staticanalysis/constraints/TypeConstraints.hs \
 	staticanalysis/messages/HeliumConstraintInfo.hs \
 	staticanalysis/messages/Messages.hs \
 	staticanalysis/messages/HeliumMessages.hs \
 	staticanalysis/messages/StaticErrors.hs \
 	staticanalysis/messages/TypeErrors.hs \
 	staticanalysis/messages/Warnings.hs \
+	staticanalysis/solvers/BasicState.hs \
+	staticanalysis/solvers/FixpointSolveState.hs \
+	staticanalysis/solvers/TypeConstraintSemantics.hs \
+	staticanalysis/solvers/IsSolver.hs \
 	staticanalysis/solvers/SolverOptions.hs \
 	staticanalysis/solvers/ConstraintInfo.hs \
-	staticanalysis/solvers/SolveConstraints.hs \
 	staticanalysis/solvers/SolveGreedy.hs \
 	staticanalysis/solvers/SolveState.hs \
 	staticanalysis/solvers/typegraph/TypeGraphConstraintInfo.hs \
 	staticanalysis/solvers/typegraph/SolveTypeGraph.hs \
-	staticanalysis/solvers/typegraph/SolveEquivalenceGroups.hs \
+	staticanalysis/solvers/typegraph/IsTypeGraph.hs \
 	staticanalysis/solvers/typegraph/EquivalenceGroup.hs \
-	staticanalysis/solvers/typegraph/EquivalenceGroupsImplementation.hs \
-	staticanalysis/solvers/typegraph/EquivalenceGroupsToHTML.hs \
+	staticanalysis/solvers/typegraph/TypeGraphInstance.hs \
 	staticanalysis/solvers/typegraphheuristics/TypeGraphHeuristics.hs \
         staticanalysis/solvers/typegraphheuristics/InfiniteTypeHeuristic.hs \
 	staticanalysis/solvers/typegraphheuristics/SimilarFunctionTable.hs \

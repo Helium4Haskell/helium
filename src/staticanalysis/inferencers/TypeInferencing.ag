@@ -37,7 +37,7 @@ import List                    ( intersperse, partition, nub, zipWith4, union )
 import Types
 import TypeConversion
 -- constraints
-import Constraints
+import TypeConstraints
 import LiftedConstraints
 import ConstraintTree
 import Strategy
@@ -46,13 +46,16 @@ import Messages
 import TypeErrors
 import Warnings
 -- solvers
-import SolveConstraints 
-import SolveEquivalenceGroups  ( solveEquivalenceGroups )
-import SolveGreedy             ( solveGreedy )
+import SolveTypeGraph
+import TypeGraphInstance
+import SolveGreedy           
 import ConstraintInfo
 import TypeGraphConstraintInfo
-import EquivalenceGroupsImplementation ( )
 import HeliumConstraintInfo
+import SolverOptions
+import Constraints
+import TypeConstraintSemantics
+import SolveState
 -- other
 import TopSort                 ( topSort )
 import Utils                   ( internalError )

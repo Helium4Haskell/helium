@@ -9,8 +9,7 @@
 
 module EquivalenceGroup where
 
-import SolveConstraints
-import SolveTypeGraph
+import IsTypeGraph
 import List               ( partition, union, nub, sort )
 import Utils              ( internalError               )
 import IOExts             ( trace                       )

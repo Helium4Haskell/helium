@@ -1,4 +1,4 @@
--------------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 --
 --   *** The Helium Compiler : Static Analysis ***
 --               ( Bastiaan Heeren )
@@ -12,95 +12,48 @@
 
 module SolveTypeGraph where
 
+import ST
+import EquivalenceGroup
 import Types
-import SolveConstraints
-import SolverOptions           ( getTypeSynonyms )
-import List                    ( partition, groupBy, sortBy, transpose, nub, nubBy, maximumBy, sort )
-import Utils                   ( internalError )
-import Monad                   ( unless, filterM )
-import ConstraintInfo          ( ConstraintInfo(..) )
-import TypeGraphConstraintInfo ( TypeGraphConstraintInfo(..) ) 
-
-type VertexID      = Int
-type VertexInfo    = ( Maybe String               -- in case it represents a type constant
-                     , [VertexID]                 -- its children
-                     , Maybe (String,[VertexID])  -- original type synonym
-                     )
-data EdgeID        = EdgeID VertexID VertexID
-data EdgeInfo info = Initial info
-                   | Implied Int VertexID VertexID
-                   | Child Int
-type Clique        = (Int, [(VertexID,VertexID)] )
-type Cliques       = (Int,[[(VertexID,VertexID)]])
-type Path  info    = [(EdgeID,EdgeInfo info)]
-type Paths info    = [Path info]
-
-showPath :: TypeGraphConstraintInfo info => Path info -> String
-showPath = unlines . map f
-   where f (edge,info) = "   "++take 15 (show edge++repeat ' ')++show info
-
-instance TypeGraphConstraintInfo info => Show (EdgeInfo info) where
-   show (Initial info)    = '#' : take 5 (show (maybe 0 id $ getPosition info)++repeat ' ')++ "(" ++ show (getInfoSource info) ++ ")"
-   show (Implied i p1 p2) = "(" ++ show i ++ " : " ++ show (p1,p2) ++ ")"
-   show (Child i)         = "(" ++ show i ++ ")"
-
-instance Show EdgeID where
-   show (EdgeID a b) = "("++show a'++"-"++show b'++")"
-     where (a',b') = if a <= b then (a,b) else (b,a)
-     
-instance Eq EdgeID where
-   EdgeID a b == EdgeID c d = (a == c && b == d) || (a == d && b == c)
+import FixpointSolveState
+import IsSolver
+import IsTypeGraph
+import SolverOptions  
+import Constraints
+import SolveState
+import List
+import Utils (internalError, doubleSizeOfSTArray)
    
-instance Ord EdgeID where
-   EdgeID a b <= EdgeID c d = order (a,b) <= order (c,d)
-      where order (i,j) = if i <= j then (i,j) else (j,i)
-                              
+type TypeGraph info = Fix info () (STMonad (TG info))
 
-class TypeGraph typegraph info where
+data TG info state = 
+        TG { indexSTArray   :: STArray state Int (STRef state (EquivalenceGroup info))
+           , signaledErrors :: STRef state [(UnificationError,Int)]
+           }  
 
-   -- functions to construct a typegraph
-   initializeTypeGraph        ::                            SolveState typegraph info ()
-   addVertex                  :: VertexID -> VertexInfo ->  SolveState typegraph info ()
-   addEdge                    :: EdgeID -> EdgeInfo info -> SolveState typegraph info ()
-   getVerticesInGroup         :: VertexID ->                SolveState typegraph info [(VertexID,VertexInfo)]
-   getChildrenInGroup         :: VertexID ->                SolveState typegraph info [(VertexID,[VertexID])]
+evalTypeGraph :: TypeGraph info result -> result
+evalTypeGraph x = fst $ runSTMonad $ runFix x newState
 
-   -- functions to detect/remove inconsistencies
-   getPathsFrom               :: VertexID -> [VertexID] -> SolveState typegraph info [Path info]
-   getConflicts               :: SolveState typegraph info [(UnificationError,Int) ]
-   deleteEdge                 :: EdgeID -> SolveState typegraph info ()
-   getHeuristics              :: SolveState typegraph info ([EdgeID], [info])
+solveTypeGraph :: IsTypeGraph (TypeGraph info) info => Int -> SolverOptions -> Constraints (TypeGraph info) -> TypeGraph info result -> result
+solveTypeGraph = solveConstraints evalTypeGraph
 
-   -- additional functions
-   getConstantsInGroup :: VertexID -> SolveState typegraph info [String]
-   getConstantsInGroup i = do vertices <- getVerticesInGroup i
-                              return (nub [ s | (_,(Just s,_,_)) <- vertices ])
+buildSubstitutionTypeGraph :: IsTypeGraph (TypeGraph info) info => TypeGraph info WrappedSubstitution 
+buildSubstitutionTypeGraph = do newUnique <- getUnique
+                                bintreesubst <- rec (0, newUnique - 1)
+                                return (wrapSubstitution bintreesubst)
+  where
+    rec (a,b) 
+      | a == b    = do tp <- findSubstForVar a
+                       return (BinTreeSubstNode tp)
+      | a < b     = do let split = (a+b) `div` 2
+                       left  <- rec (a,split)
+                       right <- rec (split+1,b)
+                       return (BinTreeSubstSplit split left right)    
+      | otherwise = do return BinTreeSubstEmpty
+     
+-----------------------------------------------------------------------------------
 
-   -- implementing this function implies that addEdge is never called with an "Implied" edge
-   addImpliedClique :: Cliques -> SolveState typegraph info ()
-   addImpliedClique (cnr,lists) =
-       mapM_ id [ do propagateEquality [v1,v2] ; addEdge (EdgeID v1 v2) (Implied cnr p1 p2)
-                | (l1,l2) <- combinations lists
-                , (v1,p1) <- l1
-                , (v2,p2) <- l2
-                ]
-                
-            where combinations :: [a] -> [(a,a)]
-                  combinations []     = []
-                  combinations (a:as) = zip (repeat a) as ++ combinations as
-
-   isConsistent :: SolveState typegraph info Bool
-   isConsistent = do conflicts <- getConflicts
-                     return (null conflicts)
-
-   -- implementing this function implies that addEdge is never called with a "Child" edge, and
-   -- also addVertex will not be called
-   addVertexWithChildren :: VertexID -> VertexInfo -> SolveState typegraph info ()
-   addVertexWithChildren i info@(_,children,_) = 
-      do addVertex i info
-         mapM_ (\(cnr,v) -> addEdge (EdgeID i v) (Child cnr)) (zip [0..] children)
-
-instance (TypeGraphConstraintInfo info,TypeGraph typegraph info) => ConstraintSolver typegraph info where
+instance IsTypeGraph (TypeGraph info) info => IsSolver (TypeGraph info) info where
 
    initialize =
       do unique <- getUnique
@@ -122,14 +75,13 @@ instance (TypeGraphConstraintInfo info,TypeGraph typegraph info) => ConstraintSo
              do (edges, errors) <- getHeuristics                         
                 mapM_ addError errors               
                 mapM_ deleteEdge edges                        
-                addDebug (putStrLn $ "> removed edges "++show edges)
+                addDebug $ "> removed edges "++show edges
                 makeConsistent
 
    newVariables is = 
       mapM_ (\i -> addVertexWithChildren i (Nothing,[],Nothing)) is
 
-   findSubstForVar i =
-   
+   findSubstForVar i =   
       do options   <- getSolverOptions
          vertices  <- getVerticesInGroup i
          let synonyms = getTypeSynonyms options
@@ -146,96 +98,67 @@ instance (TypeGraphConstraintInfo info,TypeGraph typegraph info) => ConstraintSo
                                       Right (b,s) -> equalUnderTypeSynonyms synonyms (s |-> t1) (s |-> t2)
                      in return (foldr op t ts)
 
-makeTermGraph :: TypeGraph typegraph info => Tp -> SolveState typegraph info Int
-makeTermGraph tp = case leftSpine tp of
-                     (TVar i,[]) -> do return i
-                     (TCon s,ts) -> do options <- getSolverOptions
-                                       unique   <- getUnique
-                                       setUnique (unique+1)
-                                       is <- mapM makeTermGraph ts
-                                       let synonyms = getTypeSynonyms options
-                                           tp'      = foldl TApp (TCon s) $ map TVar is
-                                       case leftSpine (expandTypeConstructor (snd synonyms) tp') of
-                                          (TVar i,[])   -> do return i
-                                          (TCon s',ts') -> do is' <- mapM makeTermGraph ts'
-                                                              let expand | s == s'   = Nothing
-                                                                         | otherwise = Just (s,is) 
-                                                              addVertexWithChildren unique (Just s',is',expand)
-                                                              return unique                                                                                                                                                                    
-                     _           -> internalError "SolveTypeGraph.hs" "makeTermGraph" "error in leftSpine(1)"
+equivalenceGroupOf :: Int -> TG info state -> ST state (EquivalenceGroup info)
+equivalenceGroupOf i groups = equivalenceGroupRefOf i groups >>= readSTRef
+     
+equivalenceGroupRefOf :: Int -> TG info state -> ST state (STRef state (EquivalenceGroup info))
+equivalenceGroupRefOf i groups = readSTArray (indexSTArray groups) i 
 
-{- history necessary to avoid non-termination? -}                          
-propagateEquality :: TypeGraph typegraph info => [Int] -> SolveState typegraph info ()
-propagateEquality = rec [] where
+updateEquivalenceGroupOf :: Int -> (EquivalenceGroup info -> EquivalenceGroup info) -> TG info state -> ST state ()
+updateEquivalenceGroupOf i f groups = do ref <- equivalenceGroupRefOf i groups
+                                         myModifySTRef ref f
 
-   rec history is
-     | length list < 2     = return ()
-     | list `elem` history = return ()
-     | otherwise           = do cliques <- lookForCliques (nub is)
-                                let addClique c = do rec (list : history) (map (fst . head) (snd c))
-                                                     addImpliedClique c
-                                mapM_ addClique cliques
-    
-    where list = sort (nub is)
-                          
-{- rewrite this function as soon as possible! -}
-lookForCliques :: TypeGraph typegraph info => [Int] -> SolveState typegraph info [Cliques]
-lookForCliques is = do let f i = do children <- getChildrenInGroup i
-                                    let sameNumberOfChildren (_,as) (_,bs) = length as == length bs
-                                        {- bug fix 3 december 2002: first sort, then group! -}
-                                        sameOrd (_,as) (_,bs) = compare (length as) (length bs)
-                                        lengthOfList ((_,as) : _) = length as
-                                    return ((map (\z -> (lengthOfList z,z)) . groupBy sameNumberOfChildren . sortBy sameOrd . sortBy (\x y -> compare (snd x) (snd y))) children)
+signalInconsistency :: UnificationError -> Int -> TypeGraph info ()
+signalInconsistency u i = liftUse ( flip myModifySTRef ((u,i):) . signaledErrors )
 
-                       lists <- mapM f is
+myModifySTRef :: STRef state a -> (a -> a) -> ST state ()  -- see also GHC library
+myModifySTRef ref f = do a <- readSTRef ref
+                         writeSTRef ref (f a)
+   
+combineClasses :: IsTypeGraph (TypeGraph info) info => Int -> Int -> TypeGraph info ()
+combineClasses v1 v2 =
+   do liftUse
+        (\groups -> do ref1 <- equivalenceGroupRefOf v1 groups
+                       ref2 <- equivalenceGroupRefOf v2 groups
+                       unless (ref1 == ref2) $
+                         do eqc1 <- readSTRef ref1
+                            eqc2 <- readSTRef ref2
+                            let changeRef (i,_) = writeSTArray (indexSTArray groups) i ref1
+                            mapM_ changeRef (vertices eqc2) 
+                            writeSTRef ref1 (combineGroups eqc1 eqc2))
+                            
+      checkConsistencyForGroupOf v1
 
-                       let makeCliques xs = case xs of
-                              []                 -> []
-                              []:rest            -> makeCliques rest
-                              ((len,xs):ys):rest -> let (same,rest') = unzip (map (partition (\x -> len == fst x)) rest)
-                                                        this = zip [0..] $ transpose $ map transpose $ map (map (\(p,cs) -> zip cs (repeat p))) (xs : map snd (concat same))
-                                                    in if null (concat same)
-                                                         then makeCliques (ys:rest)
-                                                         else this ++ makeCliques (ys:rest)
-                       return (makeCliques lists)
+checkConsistencyForGroupOf :: IsTypeGraph (TypeGraph info) info => Int -> TypeGraph info ()
+checkConsistencyForGroupOf i = 
+   do strings <- getConstantsInGroup i
+      when (length strings > 1) (signalInconsistency ConstantClash i)
 
-infinitePaths :: TypeGraph typegraph info => Int -> SolveState typegraph info [[(Int,Int)]]
-infinitePaths i = do xs <- rec [] i 
-                     mapM cutLastPart xs where
+removeImpliedClique :: IsTypeGraph (TypeGraph info) info => Cliques -> TypeGraph info ()
+removeImpliedClique clique =
+   do is <- liftUse
+         (\groups -> do let vid = fst . head . head . snd $ clique
+                        eqgroup <- equivalenceGroupOf vid groups
+                        let makeRef eqc = do ref <- newSTRef eqc
+                                             let changeRef (i,_) = writeSTArray (indexSTArray groups) i ref
+                                             mapM_ changeRef (vertices eqc)
+                                             return (representative eqc)
+                                             
+                        mapM makeRef . splitGroup . removeClique clique $ eqgroup)                     
+      cliques <- lookForCliques is
+      mapM_ removeImpliedClique cliques
+      mapM_ checkConsistencyForGroupOf is
+  
+testArrayBounds :: Int -> TypeGraph info ()
+testArrayBounds i = 
+   do guard <- liftUse ( return . (i>) . snd . boundsSTArray . indexSTArray )
+      when guard $  
 
-   rec :: TypeGraph typegraph info => [(Int,Int)] -> Int -> SolveState typegraph info [[(Int,Int)]]
-   rec history i = do is <- getVerticesInGroup i
-                      if any (`elem` (map fst history)) (map fst is)
-                        then return [ history ]
-                        else do xs <- getChildrenInGroup i
-                                case xs of
-                                  []       -> return []
-                                  (i,cs):_ -> do let f c = rec ((i,c):history) c
-                                                 xss <- mapM f cs
-                                                 return (concat xss)
-                                                 
-   cutLastPart :: TypeGraph typegraph info => [(Int,Int)] -> SolveState typegraph info [(Int,Int)]
-   cutLastPart [] = return [] 
-   cutLastPart (x:xs) = do {- bug fix: 26 november 2002 -}
-                           is <- getVerticesInGroup (snd x)                        
-                           let (as,bs) = break ((`elem` (map fst is)) . fst) (x:xs)
-                           case bs of 
-                              []  -> return [] {- this should never occur: INTERNAL ERROR ! -}
-                              b:_ ->  return $ reverse (as++[b])
-
-checkErrors :: (TypeGraphConstraintInfo info, ConstraintSolver typegraph info) => SolveState typegraph info ()
-checkErrors =
-   do errors  <- getErrors
-      options <- getSolverOptions
-      let isValidError info = 
-             let (t1,t2)  = getTwoTypes info
-                 synonyms = getTypeSynonyms options
-             in do t1' <- applySubst t1
-                   t2' <- applySubst t2
-                   case mguWithTypeSynonyms synonyms t1' t2' of
-                      Left  _ -> return True
-                      Right _ -> do addDebug $ putStrLn $ "Re-inserted edge ("++show t1++"-"++show t2++")"
-                                    unifyTerms info t1 t2
-                                    return False
-      validErrors <- filterM isValidError errors
-      setErrors validErrors
+         do addDebug "size of state array is doubled"
+            liftUpdate 
+               (\groups -> 
+                  do let err = internalError "SolveEquivalenceGroups.hs" 
+                                             "testArrayBounds" 
+                                             "resize starray is not initialized"
+                     newarray <- doubleSizeOfSTArray err (indexSTArray groups)
+                     return (groups { indexSTArray = newarray }))

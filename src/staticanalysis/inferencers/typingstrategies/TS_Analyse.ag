@@ -15,7 +15,7 @@ INCLUDE "TS_Collect.ag"
 
 imports {
 import Types
-import Constraints
+import TypeConstraints
 import HeliumConstraintInfo
 import TypeGraphConstraintInfo
 import TS_Syntax
@@ -27,7 +27,9 @@ import Messages
 import TypeErrors
 import TS_Messages
 import ImportEnvironment
+import Constraints
 import SolveGreedy
+import SolveState
 import ExpressionTypeInferencer (expressionTypeInferencer)
 import FiniteMap
 import Char (isAlphaNum)
@@ -74,7 +76,12 @@ SEM TypingStrategy
                               xs -> [ MetaVariableConstraintsNotExplicit @name xs ]  -}
 
            -- Solve the constraint set.           
-           . (_, substitution, _, solveErrors, _) = solveGreedy (length @uniqueTypevariables) [] (reverse @statements.userConstraints)
+           . (substitution, solveErrors) =    
+                solveGreedy (length @uniqueTypevariables) [] 
+                            (reverse (liftConstraints @statements.userConstraints)) $                
+                   do subst  <- buildSubstitutionGreedy
+                      errors <- getErrors
+                      return (subst, errors)
                                    
            . soundnessErrors = 
                 if not (null @staticErrors)

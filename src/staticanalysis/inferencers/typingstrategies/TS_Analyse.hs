@@ -2,7 +2,7 @@
 module TS_Analyse where
 
 import Types
-import Constraints
+import TypeConstraints
 import HeliumConstraintInfo
 import TypeGraphConstraintInfo
 import TS_Syntax
@@ -14,7 +14,9 @@ import Messages
 import TypeErrors
 import TS_Messages
 import ImportEnvironment
+import Constraints
 import SolveGreedy
+import SolveState
 import ExpressionTypeInferencer (expressionTypeInferencer)
 import FiniteMap
 import Char (isAlphaNum)
@@ -2531,8 +2533,12 @@ sem_TypingStrategy_TypingStrategy (_typerule) (_statements) (_lhs_importEnvironm
             ]
         (_warnings) =
             []
-        ((_,_substitution,_,_solveErrors,_)) =
-            solveGreedy (length _uniqueTypevariables) [] (reverse _statements_userConstraints)
+        ((_substitution,_solveErrors)) =
+            solveGreedy (length _uniqueTypevariables) []
+                        (reverse (liftConstraints _statements_userConstraints)) $
+               do subst  <- buildSubstitutionGreedy
+                  errors <- getErrors
+                  return (subst, errors)
         (_soundnessErrors) =
             if not (null _staticErrors)
               then []
@@ -2578,8 +2584,8 @@ type T_UserStatement = ([((String, Maybe String), MessageBlock)]) ->
                        (Names) ->
                        ([(Name,Tp)]) ->
                        (((Tp, Tp) -> HeliumConstraintInfo)) ->
-                       (Constraints HeliumConstraintInfo) ->
-                       ( (Names),(UserStatement),(Names),(Constraints HeliumConstraintInfo))
+                       (TypeConstraints HeliumConstraintInfo) ->
+                       ( (Names),(UserStatement),(Names),(TypeConstraints HeliumConstraintInfo))
 -- cata
 sem_UserStatement :: (UserStatement) ->
                      (T_UserStatement)
@@ -2623,8 +2629,8 @@ type T_UserStatements = ([((String, Maybe String), MessageBlock)]) ->
                         (Names) ->
                         ([(Name,Tp)]) ->
                         (((Tp, Tp) -> HeliumConstraintInfo)) ->
-                        (Constraints HeliumConstraintInfo) ->
-                        ( (Names),(UserStatements),(Names),(Constraints HeliumConstraintInfo))
+                        (TypeConstraints HeliumConstraintInfo) ->
+                        ( (Names),(UserStatements),(Names),(TypeConstraints HeliumConstraintInfo))
 -- cata
 sem_UserStatements :: (UserStatements) ->
                       (T_UserStatements)

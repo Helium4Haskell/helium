@@ -4,7 +4,7 @@ module TS_Apply where
 import UHA_Syntax
 import TS_CoreSyntax
 import ConstraintTree
-import Constraints
+import TypeConstraints
 import HeliumConstraintInfo
 import TypeGraphConstraintInfo
 import Types
@@ -163,7 +163,7 @@ sem_Core_Judgements_Nil (_lhs_localInfo) (_lhs_metaVariableTable) (_lhs_substitu
 type T_Core_TypeRule = ((ConstraintSet, MetaVariableInfo)) ->
                        (MetaVariableTable MetaVariableInfo) ->
                        (FiniteMapSubstitution) ->
-                       ( (Constraints HeliumConstraintInfo),([Int]),([(String, Tp)]))
+                       ( (TypeConstraints HeliumConstraintInfo),([Int]),([(String, Tp)]))
 -- cata
 sem_Core_TypeRule :: (Core_TypeRule) ->
                      (T_Core_TypeRule)

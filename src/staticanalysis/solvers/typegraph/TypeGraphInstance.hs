@@ -1,55 +1,36 @@
--------------------------------------------------------------------------------
---
---   *** The Helium Compiler : Static Analysis ***
---               ( Bastiaan Heeren )
---
--- EquivalenceGroupsImplementation.hs : The implementation that an equivalence 
---    group is an instance of a type graph.
---
--- Note: nothing is exported from this module, except for the instance
---    declaration.
---
-------------------------------------------------------------------------------
+module TypeGraphInstance where
 
-module EquivalenceGroupsImplementation () where
-
-import SolveTypeGraph
-import SolveEquivalenceGroups
 import EquivalenceGroup
-import SolveState
+import FixpointSolveState
+import IsTypeGraph
+import List
 import ST
-import TypeGraphConstraintInfo   ( TypeGraphConstraintInfo )
-import TypeGraphHeuristics  ( heuristics              )
-import Types                ( UnificationError(..)    )
-import Utils                ( internalError           )
-import Monad                ( foldM, filterM, unless  )
-import List                 ( nub                     )
-import Int 
-import Monad
-import ConstraintInfo 
+import SolveState
+import SolveTypeGraph
+import TypeGraphConstraintInfo
+import TypeGraphHeuristics (heuristics)
+import Types
+import Utils (internalError)
 
-instance TypeGraphConstraintInfo info => TypeGraph EquivalenceGroups info where
-
+instance TypeGraphConstraintInfo info => IsTypeGraph (TypeGraph info) info where
    initializeTypeGraph =
       do unique <- getUnique
-         setSolver
+         liftSet
            (do starray     <- newSTArray (0,4*unique) (internalError "EquivalenceGroupsImplementation.hs" "initializeTypeGraph" "not initialized")
                errorgroups <- newSTRef []
-               return (EQGroups starray errorgroups))
-
-   addVertex = internalError "EquivalenceGroupsImplementation.hs" "addVertex" "this function should not be called"
+               return (TG starray errorgroups))
 
    addVertexWithChildren i info =
       do testArrayBounds i
-         useSolver
+         liftUse
            (\groups -> do ref <- newSTRef (insertVertex i info emptyGroup)
                           writeSTArray (indexSTArray groups) i ref)
-          
+     
    -- be carefull: the equality is not automatically propagated!
    addEdge (EdgeID v1 v2) edgeinfo =
       case edgeinfo of
          Initial info -> do combineClasses v1 v2
-                            useSolver
+                            liftUse
                                (updateEquivalenceGroupOf v1 (insertEdge (EdgeID v1 v2) info))
                             paths <- infinitePaths v1 
                             mapM_ (signalInconsistency InfiniteType . fst) (concat paths)
@@ -60,21 +41,21 @@ instance TypeGraphConstraintInfo info => TypeGraph EquivalenceGroups info where
       case filter (not . null) lists of
         []                -> return ()
         ((v1,_):_) : rest -> do mapM_ (combineClasses v1) (map (fst . head) rest)
-                                useSolver
+                                liftUse
                                    (updateEquivalenceGroupOf v1 (combineCliques (cnr,lists)))
 
    getVerticesInGroup i =
-      useSolver
+      liftUse
          (\groups -> do eqc <- equivalenceGroupOf i groups
                         return (vertices eqc))
 
    getChildrenInGroup i =
-      useSolver
+      liftUse
          (\groups -> do eqc <- equivalenceGroupOf i groups
                         return [ (i,children) | (i,(_,children,_)) <- vertices eqc, not (null children) ])
-
+   
    getConstantsInGroup i =
-         useSolver
+      liftUse
          (\groups -> do eqc <- equivalenceGroupOf i groups
                         return (constants eqc))                        
 
@@ -87,7 +68,7 @@ instance TypeGraphConstraintInfo info => TypeGraph EquivalenceGroups info where
       should return a single empty path (which is [[]]), and not the empty list (which is no path 
       at all)!
       -}  
-   getPathsFrom v1 vs = do ps <- useSolver  
+   getPathsFrom v1 vs = do ps <- liftUse  
                                     (\groups -> do eqc <- equivalenceGroupOf v1 groups
                                                    rec 20 [] (pathsFrom v1 vs eqc) groups) 
                            return ps where 
@@ -110,7 +91,7 @@ instance TypeGraphConstraintInfo info => TypeGraph EquivalenceGroups info where
                                                            ++ [(EdgeID p2 v2,Child cnr)]
                                                  return (take i [ path ++ path' | path <- list, path' <- map f parentspaths ],ceiling (fromIntegral i / fromIntegral (length parentspaths)) :: Int)
                          _                 -> return ([ path ++ [tuple] | path <- list ],i)
-   
+     
    -- check all the signaled errors whether they are still inconsistent.       
    getConflicts =
       do let predicate (unificationerror,i) = 
@@ -119,19 +100,19 @@ instance TypeGraphConstraintInfo info => TypeGraph EquivalenceGroups info where
                    ConstantClash -> getConstantsInGroup i >>= ( return . (>1) . length )
                                        
              getRepresentative (unificationerror,i) = 
-                useSolver (\groups -> do eqc <- equivalenceGroupOf i groups
-                                         return (unificationerror,representative eqc))
+                liftUse (\groups -> do eqc <- equivalenceGroupOf i groups
+                                       return (unificationerror,representative eqc))
                                        
-         signaled <- useSolver ( readSTRef . signaledErrors )                                            
+         signaled <- liftUse ( readSTRef . signaledErrors )                                            
          list     <- filterM predicate signaled
          list'    <- mapM getRepresentative list
 
          let conflicts = nub list'
-         useSolver ( flip writeSTRef conflicts . signaledErrors )         
+         liftUse ( flip writeSTRef conflicts . signaledErrors )         
          return conflicts
-
+         
    deleteEdge (EdgeID v1 v2) =
-      do is <- useSolver
+      do is <- liftUse
             (\groups -> do eqgroup <- equivalenceGroupOf v1 groups
                            
                            let makeRef eqc = do ref <- newSTRef eqc
