@@ -1,0 +1,5 @@
+Compiling correct/File3.hs
+(12,1): Warning: Missing type signature: writeFile :: String -> String -> IO ()
+(17,1): Warning: Missing type signature: readFile :: String -> IO [Char]
+Compilation successful with 2 warnings
+The read and writes are equal!

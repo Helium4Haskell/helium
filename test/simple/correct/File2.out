@@ -1,3 +1,6 @@
+Compiling correct/File2.hs
+(8,1): Warning: Missing type signature: readFile :: String -> IO [Char]
+Compilation successful with 1 warning
 module File2 where
 
 main :: IO ()
