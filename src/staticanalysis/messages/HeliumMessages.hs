@@ -54,11 +54,10 @@ showMessage x =
 
 showHints :: String -> MessageBlocks -> String
 showHints pre ms =
-   let firstPrefix = "  " ++ pre ++ " - "
-       restPrefix  = replicate (2 + length pre) ' ' ++ " - "
-       emptyPrefix = replicate (5 + length pre) ' '
+   let firstPrefix = "  " ++ pre ++ ": "
+       restPrefix  = replicate (4 + length pre) ' '
        width       = lineLength - length firstPrefix
-       combine     = concat . intersperse ("\n" ++ emptyPrefix)
+       combine     = concat . intersperse ("\n" ++ restPrefix)
        prefixes    = firstPrefix : repeat restPrefix
    in unlines . zipWith (++) prefixes . map (combine . splitString width . show) $ ms
 
