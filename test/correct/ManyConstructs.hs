@@ -4,7 +4,7 @@ module ManyConstructs where
 -- Check whether we can compile these constructs 
 -- without the Prelude
 
-import Prelude((>), (+))
+import Prelude((>), (+), dictNumInt, dictOrdInt)
 
 data A = A Int String
 

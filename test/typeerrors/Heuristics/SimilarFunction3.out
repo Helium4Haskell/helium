@@ -1,8 +1,3 @@
 Compiling typeerrors/Heuristics/SimilarFunction3.hs
-(4,19): Type error in variable
- expression       : +
-   type           : Int   -> Int   -> Int  
-   expected type  : Float -> Float -> Float
- probable fix     : use +. instead
-
-Compilation failed with 1 error
+Compilation successful
+No 'main' function defined in this module

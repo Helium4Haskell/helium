@@ -16,43 +16,6 @@ SEM Names
     | Cons     lhs.names = @hd.self : @tl.names
     | Nil      lhs.names = []
 
-{-
-
-SEM MaybeName [ | | isNothing : Bool  id : { Maybe Id } ]
-    | Nothing             lhs.id        = Nothing
-                          lhs.isNothing = True
-    | Just                lhs.id        = Just @name.id
-                          lhs.isNothing = False
-
-SEM MaybeNames [ | | ids : { Maybe [Id] } ]
-    | Nothing             lhs.ids = Nothing
-    | Just                lhs.ids = Just @names.ids
-    --  name                     : Name
-
-ATTR Names [ | | ids : {[Id]} ]
-
-SEM Names
-    | Cons     lhs.ids = @hd.id : @tl.ids
-    | Nil      lhs.ids = []
-
-SEM Name [ | | id : Id ]
-    | Identifier               lhs.id = idFromString @name
-    --  range                    : Range
-    --  module                   : Strings
-    --  name                     : String
-
-    | Operator                 lhs.id = idFromString @name
-    --  range                    : Range
-    --  module                   : Strings
-    --  name                     : String
-
-    | Special                  lhs.id = idFromString @name
-    --  range                    : Range
-    --  module                   : Strings
-    --  name                     : String
-
--}
-
 ATTR FunctionBinding FunctionBindings LeftHandSide [ | | name:Name ]
 
 SEM FunctionBindings 

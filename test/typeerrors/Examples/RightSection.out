@@ -1,6 +1,6 @@
 Compiling typeerrors/Examples/RightSection.hs
 (4,15): Type error in right section
- expression       : (False `eqBool`)
+ expression       : (False ==)
    type           : Bool -> Bool
    does not match : Int  -> Bool
 

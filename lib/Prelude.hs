@@ -29,8 +29,6 @@ negate  :: Num a => a -> a
 fromInt :: Num a => Int -> a
 -}
 
-main = (1.0+1.5,2+3, 'a'=='a', 'a'=='b', 3.0<4.0, []==[])
-
 sum :: Num a => [a] -> a
 sum = foldl' (+) (fromInt 0)
 
@@ -86,6 +84,11 @@ maximum = foldl1 max
 minimum :: Ord a => [a] -> a
 minimum = foldl1 min
 
+compare :: Ord a => a -> a -> Ordering
+compare x y | x < y     = LT
+            | x > y     = GT
+            | otherwise = EQ
+
 {-----------------------------------------------
  -- Int
  -----------------------------------------------}
@@ -102,7 +105,7 @@ abs x = if x < 0 then - x else x
 
 signum :: Int -> Int
 signum x =
-    case ordInt x 0 of
+    case compare x 0 of
         LT -> -1
         EQ ->  0
         GT ->  1
@@ -160,7 +163,7 @@ absFloat x = if x < 0.0 then -. x else x
 
 signumFloat :: Float -> Int
 signumFloat x =
-    case ordFloat x 0.0 of
+    case compare x 0.0 of
         LT -> -1
         EQ ->  0
         GT ->  1
@@ -625,14 +628,12 @@ eqChar c1 c2 =
     case ordChar c1 c2 of
         EQ -> True
         _  -> False
--}
 
 eqMaybe :: (a -> a -> Bool) -> Maybe a -> Maybe a -> Bool
 eqMaybe _ Nothing Nothing = True
 eqMaybe eq (Just a1) (Just a2) = a1 `eq` a2
 eqMaybe _ _ _ = False
 
-{-
 eqBool :: Bool -> Bool -> Bool
 eqBool True True = True
 eqBool False False = True
@@ -642,7 +643,6 @@ eqList :: (a -> a -> Bool) -> [a] -> [a] -> Bool
 eqList _      []     []     =  True
 eqList eqElem (x:xs) (y:ys) = x `eqElem` y && eqList eqElem xs ys
 eqList _      _      _      = False
--}
 
 eqTuple2 :: (a -> a -> Bool) -> (b -> b -> Bool) -> (a, b) -> (a, b) -> Bool
 eqTuple2 eqA eqB (a1, b1) (a2, b2) = a1 `eqA` a2 && b1 `eqB` b2
@@ -653,7 +653,6 @@ eqString s1 s2 =
         EQ -> True
         _  -> False
 
-{-
 eqInt :: Int -> Int -> Bool
 eqInt = (==)
 
@@ -665,6 +664,7 @@ eqFloat = (==.)
  -- Ord
  -----------------------------------------------}
 
+{-
 ordString :: String -> String -> Ordering
 ordString = ordList ordChar
 
@@ -692,6 +692,7 @@ ordList ordElem (x:xs) (y:ys) =
         GT -> GT
         LT -> LT
         EQ -> ordList ordElem xs ys
+-}
 
 {-----------------------------------------------
  -- Show
