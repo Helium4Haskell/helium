@@ -11,6 +11,7 @@ intErr = internalError "UHA_Pretty"
 opt = maybe empty id
 
 parensIf     p  n  = if p then parens n else n
+backQuotesIf p  n  = if p then text "`" <> n <> text "`" else n
 parensIfList ps ns = map (uncurry parensIf) (zip ps ns)
 
 tupled1 []  = empty
@@ -450,10 +451,9 @@ SEM Expression                                   {- *** -}
     --  leftExpression           : MaybeExpression
     --  operator                 : Expression
     --  rightExpression          : MaybeExpression
-    | If                 loc.text =  text "if" <+> @guardExpression.text <+> text "then" <$>
-                                                    indent 4 @thenExpression.text <$>
-                                                text "else" <$>
-                                                    indent 4 @elseExpression.text <$> empty
+    | If                 loc.text =  text "if" <+> @guardExpression.text <$> 
+                                        indent 4 (text "then" <+> @thenExpression.text <$>
+                                                  text "else" <+> @elseExpression.text)
     --  range                    : Range
     --  guardExpression          : Expression
     --  thenExpression           : Expression
@@ -469,7 +469,7 @@ SEM Expression                                   {- *** -}
     --  expression               : Expression
     --  alternatives             : Alternatives
     | Let                loc.text =  (text "let"<$>
-                                                    (indent 4 $ vcat @declarations.text) <$>
+                                                    (indent 4 $ vcat @declarations.text) <+>
                                                  text "in" <$>
                                                     (indent 4 $ @expression.text)
                                                 ) <$> empty
@@ -513,8 +513,8 @@ SEM Expression                                   {- *** -}
     --  from                     : Expression
     --  then                     : MaybeExpression
     --  to                       : MaybeExpression
-    | Negate             loc.text = text "-" <> parens (@expression.text)
-    | NegateFloat        loc.text = text "-." <> parens (@expression.text)
+    | Negate             loc.text = text "-"  <> @expression.text
+    | NegateFloat        loc.text = text "-." <> @expression.text
     --  range                    : Range
     --  expression               : Expression
 
@@ -579,11 +579,11 @@ SEM FunctionBinding
     --  righthandside            : RightHandSide
 
 SEM LeftHandSide
-    | Function         loc.text = foldl (<+>) @name.text @patterns.text
+    | Function         loc.text = foldl (<+>) (parensIf @name.isOperator @name.text) @patterns.text
     --  range                    : Range
     --  name                     : Name
     --  patterns                 : Patterns
-    | Infix            loc.text = @leftPattern.text <+> @operator.text <+> @rightPattern.text
+    | Infix            loc.text = @leftPattern.text <+> backQuotesIf (not @operator.isOperator) @operator.text <+> @rightPattern.text
     --  range                    : Range
     --  leftPattern              : Pattern
     --  operator                 : Name
@@ -630,7 +630,7 @@ SEM Pattern
     | Literal               loc.text = @literal.text              {- *** -}
     --  range                    : Range
     --  literal                  : Literal
-    | Variable              loc.text = @name.text {- *** -}
+    | Variable              loc.text = parensIf @name.isOperator @name.text {- *** -}
     --  range                    : Range
     --  name                     : Name
     | Constructor           loc.text = foldl (<+>) (parensIf @name.isOperator @name.text) @patterns.text {- *** -}
@@ -640,7 +640,7 @@ SEM Pattern
     | Parenthesized         loc.text = parens @pattern.text
     --  range                    : Range
     --  pattern                  : Pattern
-    | InfixConstructor      loc.text = parens @leftPattern.text <+> @constructorOperator.text <+> parens @rightPattern.text
+    | InfixConstructor      loc.text = @leftPattern.text <+> @constructorOperator.text <+> @rightPattern.text
     --  range                    : Range
     --  leftPattern              : Pattern
     --  constructorOperator      : Name

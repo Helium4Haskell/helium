@@ -14,6 +14,7 @@ intErr = internalError "UHA_Pretty"
 opt = maybe empty id
 
 parensIf     p  n  = if p then parens n else n
+backQuotesIf p  n  = if p then text "`" <> n <> text "`" else n
 parensIfList ps ns = map (uncurry parensIf) (zip ps ns)
 
 tupled1 []  = empty
@@ -764,10 +765,9 @@ sem_Expression_If :: (T_Range) ->
                      (T_Expression)
 sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression) =
     let (_text) =
-            text "if" <+> _guardExpression_text <+> text "then" <$>
-                           indent 4 _thenExpression_text <$>
-                       text "else" <$>
-                           indent 4 _elseExpression_text <$> empty
+            text "if" <+> _guardExpression_text <$>
+               indent 4 (text "then" <+> _thenExpression_text <$>
+                         text "else" <+> _elseExpression_text)
         ( _range_text) =
             (_range )
         ( _guardExpression_text) =
@@ -830,7 +830,7 @@ sem_Expression_Let :: (T_Range) ->
 sem_Expression_Let (_range) (_declarations) (_expression) =
     let (_text) =
             (text "let"<$>
-                           (indent 4 $ vcat _declarations_text) <$>
+                           (indent 4 $ vcat _declarations_text) <+>
                         text "in" <$>
                            (indent 4 $ _expression_text)
                        ) <$> empty
@@ -868,7 +868,7 @@ sem_Expression_Negate :: (T_Range) ->
                          (T_Expression)
 sem_Expression_Negate (_range) (_expression) =
     let (_text) =
-            text "-" <> parens (_expression_text)
+            text "-"  <> _expression_text
         ( _range_text) =
             (_range )
         ( _expression_text) =
@@ -879,7 +879,7 @@ sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression)
 sem_Expression_NegateFloat (_range) (_expression) =
     let (_text) =
-            text "-." <> parens (_expression_text)
+            text "-." <> _expression_text
         ( _range_text) =
             (_range )
         ( _expression_text) =
@@ -1325,7 +1325,7 @@ sem_LeftHandSide_Function :: (T_Range) ->
                              (T_LeftHandSide)
 sem_LeftHandSide_Function (_range) (_name) (_patterns) =
     let (_text) =
-            foldl (<+>) _name_text _patterns_text
+            foldl (<+>) (parensIf _name_isOperator _name_text) _patterns_text
         ( _range_text) =
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
@@ -1340,7 +1340,7 @@ sem_LeftHandSide_Infix :: (T_Range) ->
                           (T_LeftHandSide)
 sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) =
     let (_text) =
-            _leftPattern_text <+> _operator_text <+> _rightPattern_text
+            _leftPattern_text <+> backQuotesIf (not _operator_isOperator) _operator_text <+> _rightPattern_text
         ( _range_text) =
             (_range )
         ( _leftPattern_text) =
@@ -1749,7 +1749,7 @@ sem_Pattern_InfixConstructor :: (T_Range) ->
                                 (T_Pattern)
 sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_rightPattern) =
     let (_text) =
-            parens _leftPattern_text <+> _constructorOperator_text <+> parens _rightPattern_text
+            _leftPattern_text <+> _constructorOperator_text <+> _rightPattern_text
         ( _range_text) =
             (_range )
         ( _leftPattern_text) =
@@ -1869,7 +1869,7 @@ sem_Pattern_Variable :: (T_Range) ->
                         (T_Pattern)
 sem_Pattern_Variable (_range) (_name) =
     let (_text) =
-            _name_text
+            parensIf _name_isOperator _name_text
         ( _range_text) =
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
