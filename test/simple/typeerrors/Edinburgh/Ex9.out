@@ -6,9 +6,11 @@ Compiling typeerrors/Edinburgh/Ex9.hs
    type           : String -> String -> String
    does not match : Int    -> a      -> b     
 
-(4,22): Type error in variable
- expression       : f5
+(4,22): Type error in application
+ expression       : f5 (m - 1)
+ term             : f5
    type           : Int -> a -> [b]
-   expected type  : Int -> [b]     
+   does not match : Int -> [b]     
+ probable fix     : insert a second argument
 
 Compilation failed with 2 errors
