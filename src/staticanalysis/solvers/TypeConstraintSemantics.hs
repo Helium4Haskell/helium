@@ -25,7 +25,8 @@ instance ( IsSolver m info
                setUnique unique'
                newVariables [unique..unique'-1]               
                pushConstraint  (liftConstraint (tp .==. its $ info'))
-               pushConstraints (liftConstraints (map PredicateConstraint predicates))
+               let cs = map PredicateConstraint predicates
+               pushConstraints (liftConstraints cs)
 
          ImplicitInstance info t1 ms t2 ->         
             do makeConsistent
