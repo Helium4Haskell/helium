@@ -92,22 +92,10 @@ everythingPublicButPrelude mod = mod { Core.moduleDecls = map setPublic (Core.mo
             public = case Core.declAccess decl of 
                     Core.Defined _ -> True
                     Core.Imported { Core.importModule = m } -> 
-                        let p = stringFromId m `notElem` ["Prelude", "HeliumLang"] 
-                        in p
---                            trace (show (Core.declName decl) ++", public: " ++ show p ++ ", imported from: " ++ show m ++ "\n") p
-                        
+                        stringFromId m `notElem` ["Prelude", "HeliumLang"] 
         in 
         decl{ Core.declAccess = 
                   (Core.declAccess decl){ Core.accessPublic = public } }
-
-{-
-data Access
-  = Defined  { accessPublic :: !Bool }
-  | Imported { accessPublic :: !Bool, importModule :: Id, importName :: Id, importKind :: !DeclKind
-             , importMajorVer :: !Int, importMinorVer :: !Int }
-            
--}
-
 
 predicateToId :: Predicate -> Id
 predicateToId (Predicate class_ tp) =

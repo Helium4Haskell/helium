@@ -1,1 +1,1 @@
-module Version where version="2.0 (Tue Jan 25 17:04:54 RST 2005)"
+module Version where version="1.5 (Thu Jan 27 15:37:27 RST 2005)"
