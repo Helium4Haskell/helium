@@ -1,11 +1,11 @@
 module LayoutRule(layout) where
 
-import LexerToken(Token, Lexeme(..))
+import LexerToken(Token, Lexeme(..), lexemeLength)
 import ParsecPos
 
 layout :: [Token] -> [Token]
 layout [] = []
-layout input@((pos, lexeme):_) = optimise $
+layout input@((pos, lexeme):_) = fixEOF . optimise $
     case lexeme of 
         LexKeyword "module" -> 
             lay zeroPos [] input
@@ -99,3 +99,17 @@ addContext prevPos cs (_:ts) =
 
 addContext _ _ [] = []
 
+-- Make EOF's position equal to the end of the last token before EOF
+fixEOF :: [Token] -> [Token]
+fixEOF tokens 
+    | null revOthers = tokens
+    | otherwise = reverse $
+                        (newEOFPos, LexEOF) 
+                      : (  map (\(_, lexeme) -> (newEOFPos, lexeme)) revSamePos
+                        ++ revOthers
+                        )
+    where
+        newEOFPos = incSourceColumn lastPos (lexemeLength lastLexeme)
+        (lastPos, lastLexeme) = head revOthers
+        (revSamePos, revOthers) = span ((== pos) . fst) revTokens
+        ((pos, LexEOF):revTokens) = reverse tokens
