@@ -6,6 +6,7 @@ module TypeInferencing where
 import Monad                   ( when )
 import List                    ( intersperse, partition, nub, zipWith4, union )
 import Maybe (catMaybes, mapMaybe)
+import Args
 -- types
 import Types
 import TypeConversion
@@ -34,9 +35,9 @@ import SimilarFunctionTable    ( similarFunctionTable )
 import TopSort                 ( topSort )
 import Utils                   ( internalError )
 import DerivingShow            ( typeOfShowFunction, nameOfShowFunction ) 
-import UHA_Range               ( noRange, getNameRange, getExprRange, getPatRange, getLitRange )
+import UHA_Range               ( noRange, getNameRange, getExprRange, getPatRange, getLitRange, setNameRange )
 import UHA_Syntax
-import UHA_Utils               ( showNameAsOperator )
+import UHA_Utils               ( showNameAsOperator, intUnaryMinusName )
 import ImportEnvironment
 import FiniteMap
 
@@ -2385,7 +2386,27 @@ sem_Expression_Negate (_range) (_expression) (_lhs_allPatterns) (_lhs_betaUnique
             (_range )
         ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_localTypes,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_overloadedVars,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_unboundNames,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_localTypes) (_lhs_matchIO) (_lhs_monos) (_lhs_namesInScope) (_lhs_overloadedVars) (_lhs_overloads) (_lhs_patternMatchWarnings) (_lhs_predicates) (_lhs_substitution) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-    in  ( _expression_assumptions,_beta,_expression_betaUnique,_expression_collectednotypedef,_newConstraintSet,_expression_localTypes,_expression_matchIO >> _ioMatch,_matches,_oneLineTree,_expression_overloadedVars,_expression_patternMatchWarnings,_self,_expression_typeAnnotations,_expression_unboundNames,_newUnique)
+    in  ( _expression_assumptions
+         ,_beta
+         ,_expression_betaUnique
+         ,_expression_collectednotypedef
+         ,_newConstraintSet
+         ,_expression_localTypes
+         ,_expression_matchIO >> _ioMatch
+         ,_matches
+         ,_oneLineTree
+         ,case filter ((== "negate") . show) (keysFM $ typeEnvironment _lhs_importEnvironment) of
+             [nameImport] -> let myName = NameWithRange (setNameRange intUnaryMinusName _range_self)
+                                 qtype  = getQualifiedType (generalize [] _lhs_predicates subtp)
+                                 subtp  = _lhs_substitution |->  _expression_beta .->. _beta
+                             in addToFM _expression_overloadedVars myName (NameWithRange nameImport, qtype)
+             _            -> _expression_overloadedVars
+         ,_expression_patternMatchWarnings
+         ,_self
+         ,_expression_typeAnnotations
+         ,_expression_unboundNames
+         ,_newUnique
+         )
 sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
@@ -3606,9 +3627,8 @@ sem_MaybeNames_Nothing  =
     in  ( _self)
 -- Module ------------------------------------------------------
 -- semantic domain
-type T_Module = (Flattening) ->
-                (ImportEnvironment) ->
-                (Bool) ->
+type T_Module = (ImportEnvironment) ->
+                ([Option]) ->
                 ( (IO ()),(LocalTypes),(OverloadedVariables),(Module),(TypeEnvironment),(TypeErrors),(Warnings))
 -- cata
 sem_Module :: (Module) ->
@@ -3620,9 +3640,15 @@ sem_Module_Module :: (T_Range) ->
                      (T_MaybeExports) ->
                      (T_Body) ->
                      (T_Module)
-sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_flattening) (_lhs_importEnvironment) (_lhs_useTypeGraph) =
+sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (_lhs_options) =
     let (_self) =
             Module_Module _range_self _name_self _exports_self _body_self
+        ((_flattening,_useTypeGraph)) =
+            if AlgorithmW `elem` _lhs_options
+              then (flattenW, False)
+              else if AlgorithmM `elem` _lhs_options
+                     then (flattenM,False)
+                     else (flattenW,True )
         (_debugIO) =
             do putStrLn "--- Debug Info ---"
                putStrLn $ unlines $ map show _constraints
@@ -3631,11 +3657,11 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_flattening) (_lhs_im
                putStrLn $ "constraints in set: "++show (length _constraints)
                _solveDebug
         (_constraints) =
-            zipWith setPosition [0..] (flattenTree (snd _lhs_flattening) (phaseTree (spreadTree variableInConstraint _body_constraints)))
+            zipWith setPosition [0..] (flattenTree (snd _flattening) (phaseTree (spreadTree variableInConstraint _body_constraints)))
         (_orderedTypeSynonyms) =
             getOrderedTypeSynonyms _lhs_importEnvironment
         ((_betaUniqueAtTheEnd,_substitution,_predicates,_solveErrors,_solveDebug)) =
-            (if _lhs_useTypeGraph
+            (if _useTypeGraph
                then solveTypeGraph (_orderedTypeSynonyms , _siblings)
                else solveGreedy _orderedTypeSynonyms)
                _body_betaUnique

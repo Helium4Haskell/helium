@@ -62,7 +62,7 @@ compile fullName options lvmPath doneModules =
         -- Phase 7: Type inferencing
         (finalEnv, inferredTypes, overloadedVars, toplevelTypes, typeWarnings) <- 
             phaseTypeInferencer fullName resolvedModule doneModules localEnv 
-                                    importEnvs completeEnv options
+                                    completeEnv options
 
         unless (NoWarnings `elem` options) $
             showMessages typeWarnings

@@ -8,9 +8,8 @@
 -------------------------------------------------------------------------------
 
 ATTR Module
-   [ flattening            : Flattening
-     importEnvironment     : ImportEnvironment     
-     useTypeGraph          : Bool
+   [ importEnvironment     : ImportEnvironment
+     options               : {[Option]}
    |
    | debugIO               : {IO ()}
      localTypes            : LocalTypes
@@ -37,6 +36,7 @@ imports {
 import Monad                   ( when )
 import List                    ( intersperse, partition, nub, zipWith4, union )
 import Maybe (catMaybes, mapMaybe)
+import Args
 -- types
 import Types
 import TypeConversion
@@ -65,9 +65,9 @@ import SimilarFunctionTable    ( similarFunctionTable )
 import TopSort                 ( topSort )
 import Utils                   ( internalError )
 import DerivingShow            ( typeOfShowFunction, nameOfShowFunction ) 
-import UHA_Range               ( noRange, getNameRange, getExprRange, getPatRange, getLitRange )
+import UHA_Range               ( noRange, getNameRange, getExprRange, getPatRange, getLitRange, setNameRange )
 import UHA_Syntax
-import UHA_Utils               ( showNameAsOperator )
+import UHA_Utils               ( showNameAsOperator, intUnaryMinusName )
 import ImportEnvironment
 import FiniteMap
 }

@@ -11,30 +11,24 @@ import UHA_Utils
 import UHA_Syntax
 
 phaseTypeInferencer :: 
-    String -> Module -> [String] -> ImportEnvironment -> [ImportEnvironment] -> 
+    String -> Module -> [String] -> ImportEnvironment ->
         ImportEnvironment -> [Option] -> 
            IO (ImportEnvironment, FiniteMap NameWithRange TpScheme  {- == LocalTypes -}, 
                FiniteMap NameWithRange (NameWithRange, QType) {- OverloadedVariables -}, TypeEnvironment, [Warning])
-phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv options = do
+phaseTypeInferencer fullName module_ doneModules localEnv completeEnv options = do
     enterNewPhase "Type inferencing" options
 
-    let (strategy,useTypeGraph)
-            | AlgorithmW `elem` options = (flattenW,False)
-            | AlgorithmM `elem` options = (flattenM,False)
-            | otherwise                 = (flattenW,True ) -- default algorithm W + TypeGraphs
-
-        (debugTypes, localTypes, overloadedVars, _, toplevelTypes, typeErrors, warnings) =
+    let (debugIO, localTypes, overloadedVars, _, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_
-                strategy
-                (adjustIE completeEnv)                
-                useTypeGraph        
+                completeEnv
+                options        
         
         -- add the top-level types (including the inferred types)
-        finalEnv = addToTypeEnvironment toplevelTypes (adjustIE completeEnv)
+        finalEnv = addToTypeEnvironment toplevelTypes completeEnv
         inferredTypes = addListToFM localTypes 
                 [ (NameWithRange name, ts) | (name, ts) <- fmToList (typeEnvironment finalEnv) ]
     
-    when (DumpTypeDebug `elem` options) debugTypes    
+    when (DumpTypeDebug `elem` options) debugIO  
     
 {-
     putStrLn (unlines ("" : "toplevelTypes: " : map (\(n,ts) -> show (NameWithRange n) ++ " :: "++show (getQualifiedType ts)) (fmToList toplevelTypes)))
@@ -44,7 +38,7 @@ phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv
 
     when (not (null typeErrors)) $ do
         when (DumpInformationForAllModules `elem` options) $
-            putStr (show (foldr combineImportEnvironments emptyEnvironment importEnvs)) 
+            putStr (show completeEnv)
         unless (NoLogging `elem` options) $ 
             sendLog "T" fullName doneModules options
         showErrorsAndExit (reverse typeErrors) maximumNumberOfTypeErrors options
@@ -63,14 +57,3 @@ phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv
 
 maximumNumberOfTypeErrors :: Int
 maximumNumberOfTypeErrors = 3
-
--- temporary: for testing type classes --> also remove extra imports
-adjustIE :: ImportEnvironment -> ImportEnvironment
-adjustIE x = setTypeEnvironment (adjustTE (typeEnvironment x)) x
-
-adjustTE :: FiniteMap Name TpScheme -> FiniteMap Name TpScheme
-adjustTE fm = mapFM f fm 
-   where f name old 
-             | show name == "==" = generalize [] [Predicate "Eq"   (TVar 0)] (TVar 0 .->. TVar 0 .->. boolType)
-             | show name == "<"  = generalize [] [Predicate "Ord"  (TVar 0)] (TVar 0 .->. TVar 0 .->. boolType)
-             | otherwise         = old

@@ -36,9 +36,8 @@ expressionTypeInferencer importEnvironment expression =
        (_, _, _, _, typeEnvironment, errors, _) 
                 = sem_Module 
                      module_
-                     flattenW
                      importEnvironment                                        
-                     False
+                     []
                      
        inferredType = let err = internalError "ExpressionTypeInferencer.hs" "expressionTypeInferencer" "cannot find inferred type"
                       in maybe err id (lookupFM typeEnvironment functionName)

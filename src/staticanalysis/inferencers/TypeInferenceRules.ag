@@ -18,6 +18,11 @@ ATTR Body Statement Qualifier Statements Qualifiers Expression RightHandSide May
 SEM Module
 
   | Module
+      loc  . (flattening, useTypeGraph) = if AlgorithmW `elem` @lhs.options
+                                            then (flattenW, False)
+                                            else if AlgorithmM `elem` @lhs.options
+                                                   then (flattenM,False)
+                                                   else (flattenW,True ) -- default algorithm W + TypeGraphs
       body . betaUnique  = maximum (0 : @monomorphics) + 1
       loc  . debugIO     = do putStrLn "--- Debug Info ---"
                               putStrLn $ unlines $ map show @constraints
@@ -26,12 +31,12 @@ SEM Module
                               putStrLn $ "constraints in set: "++show (length @constraints)
                               @solveDebug
                                 
-      loc  . constraints = zipWith setPosition [0..] (flattenTree (snd @lhs.flattening) (phaseTree (spreadTree variableInConstraint @body.constraints)))
+      loc  . constraints = zipWith setPosition [0..] (flattenTree (snd @flattening) (phaseTree (spreadTree variableInConstraint @body.constraints)))
            . orderedTypeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment
            
            . (betaUniqueAtTheEnd,substitution,predicates,solveErrors,solveDebug) 
                   = -- choose your algorithm to solve the type constraints
-                    (if @lhs.useTypeGraph 
+                    (if @useTypeGraph 
                        then solveTypeGraph (@orderedTypeSynonyms , @siblings)
                        else solveGreedy @orderedTypeSynonyms) 
                        @body.betaUnique                        
@@ -926,6 +931,7 @@ SEM Module
                                        
   
 SEM Expression 
+
   | Variable   lhs  . overloadedVars = let mName = filter (@name.self==) @lhs.namesInScope
                                        in case mName of 
                                              [name] | any (equalNames name) @lhs.overloads
@@ -933,7 +939,13 @@ SEM Expression
                                                   in {- error (show (map NameWithRange @lhs.namesInScope)) -} 
                                                     addToFM @lhs.overloadedVars (NameWithRange @name.self) (NameWithRange name, qtype) 
                                              _ -> @lhs.overloadedVars
-
+                                             
+  | Negate     lhs . overloadedVars = case filter ((== "negate") . show) (keysFM $ typeEnvironment @lhs.importEnvironment) of
+                                         [nameImport] -> let myName = NameWithRange (setNameRange intUnaryMinusName @range.self)
+                                                             qtype  = getQualifiedType (generalize [] @lhs.predicates subtp)
+                                                             subtp  = @lhs.substitution |->  @expression.beta .->. @beta
+                                                         in addToFM @expression.overloadedVars myName (NameWithRange nameImport, qtype)
+                                         _            -> @expression.overloadedVars
 SEM Module 
   | Module    loc . initialScope = keysFM (typeEnvironment @lhs.importEnvironment)
 {
