@@ -1,4 +1,4 @@
 Compiling staticwarnings/Guards4.hs
-(3,11): Warning: Possible fallthrough
+(3,11): Warning: It is good practise to have 'otherwise' as the last guard
 Compilation successful with 1 warning
 <<function>>

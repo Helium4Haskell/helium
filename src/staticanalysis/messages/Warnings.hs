@@ -133,7 +133,7 @@ showWarning warning = case warning of
       )
 
    FallThrough _ -> 
-      ( MessageString "Possible fallthrough"
+      ( MessageString "It is good practise to have 'otherwise' as the last guard"
       , []
       )
 

@@ -19,6 +19,7 @@ import Text.ParserCombinators.Parsec.Pos
 import UHA_Syntax(Range(..), Position(..))
 import Messages
 import Data.List (partition)
+import qualified Texts
 
 instance HasMessage LexerError where
     getRanges (LexerError _ (StillOpenAtEOF brackets)) =
@@ -30,7 +31,7 @@ instance HasMessage LexerError where
     getMessage (LexerError _ info) = 
         let (line:rest) = showLexerErrorInfo info
         in MessageOneLiner (MessageString line) :
-            [ MessageHints "Hint" [ MessageString s | s <- rest ] ]
+            [ MessageHints Texts.hint [ MessageString s | s <- rest ] ]
 
 sourcePosToRange :: SourcePos -> Range
 sourcePosToRange pos = 
@@ -67,48 +68,39 @@ data LexerErrorInfo
 showLexerErrorInfo :: LexerErrorInfo -> [String]
 showLexerErrorInfo info =
     case info of
-        UnterminatedComment -> ["Unterminated comment"]
-        MissingExponentDigits -> [ "Missing digits in exponent in floating-point literal"
+        UnterminatedComment   -> [ Texts.lexerUnterminatedComment ]
+        MissingExponentDigits -> [ Texts.lexerMissingExponentDigits 
                                  , correctFloats 
                                  ]
-        UnexpectedChar c -> ["Unexpected character '" ++ [c] ++ "'"]
+        UnexpectedChar c      -> [ Texts.lexerUnexpectedChar c ]
         
-        IllegalEscapeInChar -> [ "Illegal escape sequence in character literal", correctChars ]
-        EmptyChar -> [ "Empty character literal", correctChars ]
-        IllegalCharInChar -> [ "Illegal character in character literal", correctChars ]
+        IllegalEscapeInChar   -> [ Texts.lexerIllegalEscapeInChar, correctChars ]
+        EmptyChar             -> [ Texts.lexerEmptyChar, correctChars ]
+        IllegalCharInChar     -> [ Texts.lexerIllegalCharInChar, correctChars ]
         NonTerminatedChar mn -> 
-            [ "Non-terminated character literal"
+            [ Texts.lexerNonTerminatedChar
             , correctChars
             ] ++ case mn of
                    Nothing -> []
-                   Just name -> ["To write a function in infix notation, use backquotes: `" ++ name ++ "`" ]
-        EOFInChar -> [ "End of file in character literal", correctChars]
+                   Just name -> [ Texts.lexerInfixHint name ]
+        EOFInChar               -> [ Texts.lexerEOFInChar, correctChars]
         
-        EOFInString -> ["End of file in string literal", correctStrings ]
-        IllegalEscapeInString -> ["Illegal escape sequence in string literal", correctStrings ]
-        NewLineInString -> ["Newline in string literal (expecting \")", correctStrings ]
-        IllegalCharInString -> ["Illegal character in string literal", correctStrings]
+        EOFInString             -> [ Texts.lexerEOFInString,              correctStrings ]
+        IllegalEscapeInString   -> [ Texts.lexerIllegalEscapeInString,    correctStrings ]
+        NewLineInString         -> [ Texts.lexerNewLineInString,          correctStrings ]
+        IllegalCharInString     -> [ Texts.lexerIllegalCharInString,      correctStrings]
                 
-        TooManyClose c -> ["Close bracket " ++ show c ++ " but no open bracket"]
-        UnexpectedClose c1 _ c2 -> 
-            [ "Unexpected close bracket " ++ show c1
-            , "Expecting a close bracket for " ++ show c2 
-            ]
-        StillOpenAtEOF [b] -> ["Bracket " ++ show (snd b) ++ " is never closed"]
-        StillOpenAtEOF bs -> ["The following brackets are never closed: " ++
-            commasAnd (reverse (map (show.snd) bs)) ]
+        TooManyClose c          -> [ Texts.lexerTooManyClose c ]
+        UnexpectedClose c1 _ c2 ->   Texts.lexerUnexpectedClose c1 c2
+        StillOpenAtEOF [b]      -> [ Texts.lexerStillOpenAtEOF [ show (snd b) ] ]
+        StillOpenAtEOF bs       -> [ Texts.lexerStillOpenAtEOF (reverse (map (show.snd) bs)) ]
             -- 'reverse' because positions will be sorted and brackets are
             -- reported in reversed order
 
 correctFloats, correctChars, correctStrings :: String
-correctFloats  = "Correct examples of Floats: 3.14 0.2 4e-13 5E+1 6.7e1"
-correctChars   = "Correct examples of Chars: 'a' '\\n' '&'"
-correctStrings = "Correct examples of Strings: \"Helium is cool\" \"abc\\ndef\" \"\""
-
-commasAnd :: [String] -> String
-commasAnd [] = []
-commasAnd [x] = x
-commasAnd (x:xs) = x ++ concatMap (", " ++) (init xs) ++ " and " ++ last xs
+correctFloats  = Texts.lexerCorrectFloats
+correctChars   = Texts.lexerCorrectChars 
+correctStrings = Texts.lexerCorrectStrings
 
 instance HasMessage LexerWarning where
     getRanges (LexerWarning pos (NestedComment pos2)) =
@@ -117,8 +109,8 @@ instance HasMessage LexerWarning where
         [ sourcePosToRange pos ]
     getMessage (LexerWarning _ info) = 
         let (line:rest) = showLexerWarningInfo info
-        in MessageOneLiner (MessageString ("Warning: " ++ line)) :
-            [ MessageHints "Hint" [ MessageString s | s <- rest ] ]
+        in MessageOneLiner (MessageString (Texts.warning ++ ": " ++ line)) :
+            [ MessageHints Texts.hint [ MessageString s | s <- rest ] ]
 
 data LexerWarning =
     LexerWarning SourcePos LexerWarningInfo
@@ -133,30 +125,12 @@ data LexerWarningInfo
 showLexerWarningInfo :: LexerWarningInfo -> [String]
 showLexerWarningInfo info = 
     case info of
-        TabCharacter -> 
-            [ "Tab character encountered; may cause problems with the layout rule"
-            , "Configure your editor to replace tabs by spaces" 
-            ]
-        LooksLikeFloatNoFraction digits ->
-            [ "Integer immediately followed by function composition (.)"
-            , "If a Float was meant, write \"" ++ digits ++ ".0\""
-            , "Otherwise, insert a space for readability" 
-            ]
-        LooksLikeFloatNoDigits fraction ->
-            [ "Function composition (.) immediately followed by number"
-            , "If a Float was meant, write \"0." ++ fraction ++ "\""
-            , "Otherwise, insert a space for readability" 
-            ]
-
-        NestedComment _ ->
-            [ "Syntax colouring usually can not handle nested comments"
-            , "Some of your code may be in comments but not visibly so"
-            ]
-        
-        CommentOperator ->
-            [ "Syntax colouring usually can not handle names containing --" 
-            , "If you wanted to start a comment, write spaces around --"
-            ]
+        TabCharacter                    -> Texts.lexerTabCharacter
+        LooksLikeFloatNoFraction digits -> Texts.lexerLooksLikeFloatNoFraction digits
+        LooksLikeFloatNoDigits fraction -> Texts.lexerLooksLikeFloatNoDigits fraction
+        NestedComment _                 -> Texts.lexerNestedComment
+        CommentOperator                 -> Texts.lexerCommentOperator
+            
       
 keepOneTabWarning :: [LexerWarning] -> [LexerWarning]
 keepOneTabWarning = keepOneTab True

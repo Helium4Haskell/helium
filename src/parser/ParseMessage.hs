@@ -10,6 +10,7 @@ module ParseMessage() where
 
 import Messages hiding (Message)
 import UHA_Syntax(Range(..), Position(..))
+import Texts
 
 import Text.ParserCombinators.Parsec.Error
 import Text.ParserCombinators.Parsec.Pos
@@ -17,12 +18,16 @@ import Text.ParserCombinators.Parsec.Pos
 instance HasMessage ParseError where
     getMessage pe = 
         let msgs = errorMessages pe in
-        MessageOneLiner (MessageString "Syntax error: ") :
+        MessageOneLiner (MessageString (Texts.parserSyntaxError ++ ": ")) :
         map (MessageOneLiner . MessageString . ("    "++)) (
             ( filter (not . null)
             . lines
-            . showErrorMessages "or" "unknown parse error" 
-                        "expecting" "unexpected" "end of input" 
+            . showErrorMessages 
+                    Texts.parserOr 
+                    Texts.parserUnknown
+                    Texts.parserExpecting 
+                    Texts.parserUnexpected 
+                    Texts.parserEndOfInput
             ) msgs
         )
     getRanges parseError =

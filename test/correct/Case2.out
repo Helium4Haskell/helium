@@ -5,6 +5,6 @@ Compiling correct/Case2.hs
 (8,12): Warning: Variable "xs" is not used
 (5,5): Warning: Missing pattern in case expression: 
   [] -> ...
-(6,18): Warning: Possible fallthrough
+(6,18): Warning: It is good practise to have 'otherwise' as the last guard
 Compilation successful with 6 warnings
 32

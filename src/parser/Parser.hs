@@ -38,6 +38,7 @@ import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Pos
 import Lexer
 import LayoutRule
+import qualified Texts
 
 import UHA_Syntax
 import UHA_Utils
@@ -179,7 +180,7 @@ topdecl = addRange (
     ) 
     <|>
     decl
-    <?> "declaration"
+    <?> Texts.parserDeclaration
 
 derivings :: HParser [Name]
 derivings = 
@@ -204,7 +205,7 @@ simpleType =
             c  <- tycon
             vs <- many tyvar
             return $ \r -> SimpleType_SimpleType r c vs
-    ) <?> "simple type"
+    )
     
 {-
 infixdecl   ->  fixity [digit] ops  (fixity declaration)  
@@ -217,7 +218,7 @@ infixdecl =
     do
         f <- fixity
         p <- fmap fromInteger (option 9 (fmap read lexInt)) :: HParser Int
-        if p < 0 || p > 9 then fail "priority must be a single digit"
+        if p < 0 || p > 9 then fail Texts.parserSingleDigitPriority
                           else return ()
         os <- ops
         return $ \r -> Declaration_Fixity r f (MaybeInt_Just p) os
@@ -281,7 +282,7 @@ impdecl = addRange (
         let a = MaybeName_Nothing
             i = MaybeImportSpecification_Nothing 
         return $ \r -> ImportDeclaration_Import r q m a i
-    ) <?> "import declaration"
+    ) <?> Texts.parserImportDeclaration
     
 {-
 decls   ->  "{" decl1 ";" ... ";" decln "}"    (n>=0)  
@@ -335,7 +336,7 @@ decl = addRange (
         b <- normalRhs
         return $ \r -> Declaration_FunctionBindings r
             [FunctionBinding_FunctionBinding r l b]
-    ) <?> "declaration"
+    ) <?> Texts.parserDeclaration
 
 decl1 :: (Name, Range) -> HParser (Range -> Declaration)
 decl1 (n, nr) =
@@ -480,7 +481,7 @@ exp_ = addRange (
                 t <- contextAndType
                 return $ \r -> Expression_Typed r e t
     )
-    <?> "expression"        
+    <?> Texts.parserExpression        
 
 contextAndType :: HParser Type
 contextAndType = addRange $ do
@@ -512,7 +513,7 @@ exp0 = addRange (
         es <- exprChain
         return $ \r -> Expression_List noRange (u ++ es)
     )
-    <?> "expression"        
+    <?> Texts.parserExpression        
 
 exprChain :: HParser [Expression]
 exprChain = 
@@ -528,7 +529,7 @@ exprChain =
 
 maybeUnaryMinus = 
     option [] (fmap (:[]) unaryMinus)  
-    <?> "expression"
+    <?> Texts.parserExpression
 
 unaryMinus :: HParser Expression
 unaryMinus = 
@@ -588,7 +589,7 @@ exp10 = addRange (
     ) 
     <|>
     fexp
-    <?> "expression"
+    <?> Texts.parserExpression
 
 {-
 fexp  -> aexp+
@@ -635,7 +636,7 @@ operatorAsExpression storeRange = (do
     return (case o of
         Left  v -> Expression_Variable    range v
         Right c -> Expression_Constructor range c
-     )) <?> "operator"
+     )) <?> Texts.parserOperator
                          
 aexp :: HParser Expression    
 aexp = addRange (
@@ -708,7 +709,7 @@ aexp = addRange (
     do
         lexLBRACKET
         aexp1
-    ) <?> "expression"
+    ) <?> Texts.parserExpression
 
 {-
 Last four cases, rewritten to eliminate backtracking
@@ -918,7 +919,7 @@ pat10 = addRange (
     )
     <|>
     apat
-    <?> "pattern"
+    <?> Texts.parserPattern
        
 {-
 apat    ->  var ( "@" apat )?
@@ -974,7 +975,7 @@ apat = addRange (
         lexTILDE
         p <- apat
         return $ \r -> Pattern_Irrefutable r p
-    ) <?> "pattern"
+    ) <?> Texts.parserPattern
 
 {-
 scontext -> class | "(" class1 "," ... "," classn ")"    (n>=0)
@@ -1010,7 +1011,7 @@ type_ = addRange (
                 right <- type_
                 return (\r -> Type_Application r False
                         (Type_Constructor rangeArrow (Name_Special rangeArrow [] "->")) [left, right]) -- !!!Name
-    ) <?> "type"
+    ) <?> Texts.parserType
 
 {-
 btype  ->  atype+
@@ -1023,7 +1024,7 @@ btype = addRange (
         return $ \r -> case ts of
             [t] -> t
             (t:ts) -> Type_Application r True t ts
-    ) <?> "type"
+    ) <?> Texts.parserType
 
 {-
 atype   ->  tycon
@@ -1059,7 +1060,7 @@ atype = addRange (
         return $ \r ->
             let n = Name_Special r [] "[]" -- !!!Name
             in Type_Application r False (Type_Constructor r n) [t]
-    ) <?> "type"
+    ) <?> Texts.parserType
 
 annotatedType :: HParser Type -> HParser AnnotatedType
 annotatedType p = addRange $
@@ -1083,7 +1084,7 @@ literal = addRange (
     do
         s <- lexString
         return $ \r -> Literal_String r s
-    ) <?> "literal"
+    ) <?> Texts.parserLiteral
 
 numericLiteral = addRange (
     do
@@ -1093,4 +1094,4 @@ numericLiteral = addRange (
     do
         d <- lexDouble
         return $ \r -> Literal_Float r d
-    ) <?> "numeric literal"
+    ) <?> Texts.parserNumericLiteral

@@ -1,7 +1,8 @@
 HELIUM
+- Hudak & Thompson & Bird doorlopen
+- warning bij Let, Where (undefined constructor, hint: did you mean the keyword...?)
 - --version vlag (aanroepen bij start van Hint)
 - Internationalisatie
-- Hints meer vragend brengen: Question: did you mean to use ++ ? o.i.d.
 - Bastiaan: type could be more general warning (heel moeilijk)
 - $main = putStr (show main) (toplevelTypes wordt dan onnodig in code generator)
 - XML uitvoer van errors en warnings t.b.v. interpreter
@@ -9,11 +10,7 @@ HELIUM
 	bijvoorbeeld showUnit of data Unit = ... proberen te definieren
 - :t in geval van typeringsfout
 - compilerondersteuning voor interpreter (expressie uitrekenen, type bepalen)
-- Hudak & Thompson & Bird doorlopen
-- deriving
 - class, instance
-- "possible fall through" anders presenteren, bijv. "it is good practice to have otherwise as the last guard"
-- warning bij Let, Where (undefined constructor, hint: did you mean the keyword...?)
 
 LIBRARIES
 - show implementeren met shows, ShowS; efficienter
@@ -23,7 +20,6 @@ HINT
 - Hint op Linux & Mac (springen naar regelnummers) (*)
 - Hint in wxHaskell (Arie, Daan)
 - functies definieren? 
-- autoload feature (zie e-mails van Stephen Milborrow)?
 - paden via command-line
 - meer features zoals springen naar definitie van functie, documentatie etc...
 - :l test.hs  slechte foutmelding over module naam die uppercase moet

@@ -9,6 +9,7 @@
 module LexerToken where
 
 import Text.ParserCombinators.Parsec.Pos(SourcePos)
+import qualified Texts
 
 type Token      = (SourcePos,Lexeme)
 
@@ -37,26 +38,26 @@ data Lexeme
 
 instance Show Lexeme where
     show x = case x of
-        LexChar    c        -> "character literal"      ++ " '" ++ c      ++ "'"
-        LexString  s        -> "string literal"         ++ " \""++ s      ++ "\""
-        LexInt     i        -> "integer literal"        ++ " '" ++ i      ++ "'"
-        LexFloat   f        -> "floating-point literal" ++ " '" ++ f      ++ "'"
+        LexChar    c        -> Texts.parserCharacterLiteral      ++ " '" ++ c      ++ "'"
+        LexString  s        -> Texts.parserStringLiteral         ++ " \""++ s      ++ "\""
+        LexInt     i        -> Texts.parserIntegerLiteral        ++ " '" ++ i      ++ "'"
+        LexFloat   f        -> Texts.parserFloatLiteral          ++ " '" ++ f      ++ "'"
 
-        LexVar     n        -> "variable"               ++ " '" ++ n      ++ "'"
-        LexVarSym  o        -> "operator"               ++ " '" ++ o      ++ "'"
-        LexCon     c        -> "constructor"            ++ " '" ++ c      ++ "'"
-        LexConSym  o        -> "constructor operator"   ++ " '" ++ o      ++ "'"
+        LexVar     n        -> Texts.parserVariable              ++ " '" ++ n      ++ "'"
+        LexVarSym  o        -> Texts.parserOperator              ++ " '" ++ o      ++ "'"
+        LexCon     c        -> Texts.parserConstructor           ++ " '" ++ c      ++ "'"
+        LexConSym  o        -> Texts.parserConstructorOperator   ++ " '" ++ o      ++ "'"
         
-        LexKeyword kwd      -> "keyword '" ++ kwd ++ "'"
+        LexKeyword kwd      -> Texts.parserKeyword ++ " '" ++ kwd ++ "'"
         LexResVarSym s      -> "'" ++ s ++ "'"
         LexResConSym s      -> "'" ++ s ++ "'"
         LexSpecial c        -> "'" ++ [c] ++ "'"
         
-        LexInsertedOpenBrace  -> "inserted '{'"
-        LexInsertedCloseBrace -> "end of block (based on layout)"
-        LexInsertedSemicolon  -> "next in block (based on layout)"
+        LexInsertedOpenBrace  -> Texts.parserInsertedLBrace 
+        LexInsertedCloseBrace -> Texts.parserEndOfBlock
+        LexInsertedSemicolon  -> Texts.parserNextInBlock
                         
-        LexEOF              -> "end of file"
+        LexEOF              -> Texts.parserEndOfFile
         
 lexemeLength :: Lexeme -> Int
 lexemeLength l = case l of

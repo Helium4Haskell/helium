@@ -1,5 +1,5 @@
 Compiling runtimeerrors/PMFailure.hs
-(10,5): Warning: Possible fallthrough
+(10,5): Warning: It is good practise to have 'otherwise' as the last guard
 Compilation successful with 1 warning
 exception: pattern match failed at function bindings ranging from (7,1) to (10,16) in module runtimeerrors/PMFailure.hs.
 

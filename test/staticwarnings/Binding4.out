@@ -1,4 +1,4 @@
 Compiling staticwarnings/Binding4.hs
-(3,8): Warning: Possible fallthrough
+(3,8): Warning: It is good practise to have 'otherwise' as the last guard
 Compilation successful with 1 warning
 No 'main' function defined in this module

@@ -13,6 +13,7 @@ import Text.ParserCombinators.Parsec.Pos(newPos)
 import Lexer
 import UHA_Syntax(Name(..), Range(..), Position(..))
 import UHA_Utils
+import qualified Texts
 
 type HParser a = GenParser Token SourcePos a
 
@@ -30,40 +31,40 @@ waitForEOF p
       ; return x
       }
 
-tycls   = name   lexCon  <?> "type class"
-tycon   = name   lexCon  <?> "type constructor"
-tyvar   = name   lexVar  <?> "type variable"
-modid   = name   lexCon  <?> "module name"
-varid   = name   lexVar  <?> "variable"
-conid   = name   lexCon  <?> "constructor"
+tycls   = name   lexCon  <?> Texts.parserTypeClass
+tycon   = name   lexCon  <?> Texts.parserTypeConstructor
+tyvar   = name   lexVar  <?> Texts.parserTypeVariable
+modid   = name   lexCon  <?> Texts.parserModuleName
+varid   = name   lexVar  <?> Texts.parserVariable
+conid   = name   lexCon  <?> Texts.parserVariable
 consym  = opName lexConSym
-       <?> "constructor operator"
+       <?> Texts.parserOperator
 varsym  = opName (   lexVarSym 
                  <|> do { lexMIN;    return "-" } 
                  <|> do { lexMINDOT; return "-." }
                  )
-       <?> "operator"
+       <?> Texts.parserOperator
 
 -- var  ->  varid | ( varsym )  (variable)  
 var = varid <|> parens varsym
-   <?> "variable"
+   <?> Texts.parserVariable
 
 -- con  ->  conid | ( consym )  (constructor)  
 con = conid <|> parens consym
-   <?> "constructor"
+   <?> Texts.parserVariable
 
 -- op  ->  varop | conop  (operator)  
 -- expanded for better parse errors
 op = varsym <|> consym <|> lexBACKQUOTEs (varid <|> conid) 
-  <?> "operator"
+  <?> Texts.parserOperator
 
 -- varop  ->  varsym | `varid ` (variable operator)  
 varop = varsym <|> lexBACKQUOTEs varid
-     <?> "operator"
+     <?> Texts.parserOperator
         
 -- conop  ->  consym | `conid ` (constructor operator)  
 conop = consym <|> lexBACKQUOTEs conid
-     <?> "constructor operator"
+     <?> Texts.parserOperator
 
 name :: HParser String -> HParser Name
 name p = addRange $

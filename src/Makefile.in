@@ -164,7 +164,7 @@ CODEGENERATION = \
 
 UTILS = \
 	utils/Utils.hs utils/Logger.hs utils/OSSpecific.hs utils/OneLiner.hs \
-	utils/Similarity.hs
+	utils/Similarity.hs utils/Texts.hs
 
 MAINFILES = \
 	main/Main.hs main/Version.hs main/Args.hs main/Compile.hs \
