@@ -32,6 +32,10 @@ module PreludePrim
     -- misc
     , error, catch
     
+    , dictShowInt, dictShowFloat, dictShowChar, dictShowBool, ''dictShow[]''
+    , ''dictShow()'', ''dictShow(,)'', ''dictShow(,,)'', ''dictShow(,,,)'', ''dictShow(,,,,)'', ''dictShow(,,,,,)''
+    , ''dictShow(,,,,,,)'', ''dictShow(,,,,,,,)'', ''dictShow(,,,,,,,,)'', ''dictShow(,,,,,,,,,)''
+    
     , dictEqInt, dictEqFloat, dictEqChar, dictEqBool, ''dictEq[]''
     , ''dictEq()'', ''dictEq(,)'', ''dictEq(,,)'', ''dictEq(,,,)'', ''dictEq(,,,,)'', ''dictEq(,,,,,)''
     , ''dictEq(,,,,,,)'', ''dictEq(,,,,,,,)'', ''dictEq(,,,,,,,,)'', ''dictEq(,,,,,,,,,)''
@@ -46,7 +50,9 @@ module PreludePrim
     ) where
 
 import HeliumLang
-    ( showFloat, showInt, showBool, showChar
+    ( showFloat, showInt, showBool, showChar, showList, showUnit
+    , showTuple2, showTuple3, showTuple4, showTuple5, showTuple6, showTuple7
+    , showTuple8, showTuple9, showTuple10
     )
 
 import LvmLang
@@ -195,12 +201,65 @@ round x
 
 {- Show -}
 
+dictShowInt :: "DictShowInt"
 dictShowInt    = (@0, 1) showInt
+
+dictShowFloat :: "DictShowFloat"
 dictShowFloat  = (@0, 1) showFloat
+
+dictShowBool :: "DictShowBool"
 dictShowBool   = (@0, 1) showBool
+
+dictShowChar :: "DictShowChar"
 dictShowChar   = (@0, 1) showChar
+
+''dictShow[]'' :: "DictShowList"
+''dictShow[]'' dict = (@0, 1) (\xs -> showList (show dict) xs)
+
+''dictShow()'' :: "DictShowTuple0"
 ''dictShow()'' = (@0, 1) showUnit
 
+''dictShow(,)'' :: "DictShowTuple2"
+''dictShow(,)'' d1 d2 = (@0, 1) (\t ->
+    showTuple2  (show d1) (show d2) t)
+
+''dictShow(,,)'' :: "DictShowTuple3"
+''dictShow(,,)'' d1 d2 d3 = (@0, 1) (\t ->
+    showTuple3  (show d1) (show d2) (show d3) t)
+
+''dictShow(,,,)'' :: "DictShowTuple4"
+''dictShow(,,,)'' d1 d2 d3 d4 = (@0, 1) (\t ->
+    showTuple4  (show d1) (show d2) (show d3) (show d4) t)
+
+''dictShow(,,,,)'' :: "DictShowTuple5"
+''dictShow(,,,,)'' d1 d2 d3 d4 d5 = (@0, 1) (\t ->
+    showTuple5  (show d1) (show d2) (show d3) (show d4) (show d5) t)
+
+''dictShow(,,,,,)'' :: "DictShowTuple6"
+''dictShow(,,,,,)'' d1 d2 d3 d4 d5 d6 = (@0, 1) (\t ->
+    showTuple6  (show d1) (show d2) (show d3) (show d4) (show d5) 
+                (show d6) t)
+
+''dictShow(,,,,,,)'' :: "DictShowTuple7"
+''dictShow(,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 = (@0, 1) (\t ->
+    showTuple7  (show d1) (show d2) (show d3) (show d4) (show d5) 
+                (show d6) (show d7) t)
+
+''dictShow(,,,,,,,)'' :: "DictShowTuple8"
+''dictShow(,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 = (@0, 1) (\t ->
+    showTuple8  (show d1) (show d2) (show d3) (show d4) (show d5) 
+                (show d6) (show d7) (show d8) t)
+
+''dictShow(,,,,,,,,)'' :: "DictShowTuple9"
+''dictShow(,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 = (@0, 1) (\t ->
+    showTuple9  (show d1) (show d2) (show d3) (show d4) (show d5) 
+                (show d6) (show d7) (show d8) (show d9) t)
+
+''dictShow(,,,,,,,,,)'' :: "DictShowTuple10"
+''dictShow(,,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 = (@0, 1) (\t ->
+    showTuple10 (show d1) (show d2) (show d3) (show d4) (show d5) 
+                (show d6) (show d7) (show d8) (show d9) (show d10) t)
+        
 show :: "Show a => a -> String"
 show dShow = 
     case dShow of
