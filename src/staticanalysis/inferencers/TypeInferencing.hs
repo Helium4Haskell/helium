@@ -172,8 +172,6 @@ findCurrentChunk n = let p = elem n . fst
 heliumTypeGraphHeuristics :: [Option] -> [[(String, TpScheme)]] -> [Heuristic ConstraintInfo]
 heliumTypeGraphHeuristics options siblings = 
    [ highParticipation 1.00
-   , applicationResult
-   , negationResult
    ] ++
    [ Heuristic (Voting $
         [ siblingFunctions siblings
@@ -187,7 +185,9 @@ heliumTypeGraphHeuristics options siblings =
         [ unifierVertex | UnifierHeuristics `elem` options ])
    | NoRepairHeuristics `notElem` options
    ] ++
-   [ trustFactorOfConstraint
+   [ applicationResult
+   , negationResult
+   , trustFactorOfConstraint
    , isTopDownEdge
    , positionInList
    ]
