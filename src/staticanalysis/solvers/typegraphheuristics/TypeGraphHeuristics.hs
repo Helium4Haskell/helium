@@ -327,7 +327,10 @@ applicationEdge edge@(EdgeID v1 v2) info =
                                 let hint = SetHint (becauseHint "it is not a binary function")
                                 in return (ConcreteHeuristic 6 [hint] "no binary function")
   
-                        EQ | not onlyArgumentsMatch -> -- test if there is one argument in particular that is incorrect                          
+                        EQ | onlyArgumentsMatch && length ftps >= length tuplesForArguments -> -- error in result 
+                                return (ModifierHeuristic 0.000001 "application: only result is incorrect")
+                                
+                           | not onlyArgumentsMatch -> -- test if there is one argument in particular that is incorrect                          
                            case ([ p
                                  | p <- take heuristics_MAX (permutationsForLength (length ftps))
                                  , predicate (zip ftps (permute p etps))
@@ -669,7 +672,7 @@ errorAndGoodPaths edgeInfoTable edgeID cinfo =
          let inGoodPaths     = length $ nub $ [ reorder src | (src, _, True ) <- pathInfos ]
              inErrorPaths    = length $ nub $ [ reorder src | (src, _, False) <- pathInfos ]
              reorder (a,b)   = if a <= b then (a,b) else (b,a)
-         in ModifierHeuristic (0.1 ^ inGoodPaths * 5.0 ^ inErrorPaths) "errorAndGoodPaths"         
+         in ModifierHeuristic (0.1 ^ inGoodPaths * 5.0 ^ inErrorPaths) ("[good="++show inGoodPaths ++",error="++show inErrorPaths++"]")
          
 maybeUserConstraintFilter :: (Monad monad, TypeGraphConstraintInfo cinfo) => PathsWithInfo cinfo -> EdgesFilter monad cinfo
 maybeUserConstraintFilter pathsWithInfo edges = 

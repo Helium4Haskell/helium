@@ -334,7 +334,7 @@ SEM Expression
                  . beta          = TVar @lhs.betaUnique
                  . newcon        = case @statements.generatorBeta of
                                       Nothing -> []
-                                      Just b  -> [ (b .==. @beta) @cinfo ]
+                                      Just b  -> [ (ioType b .==. @beta) @cinfo ]
 
   | List
       expressions . betaUnique  = @lhs.betaUnique + 2
@@ -601,7 +601,7 @@ ATTR           Statements                      [ monos:Tps | | ]
 SEM Statement
 
   | Expression
-      lhs        . generatorBeta = Just @expression.beta
+      lhs        . generatorBeta = Just @beta
                  . constraints   = ctNode [ @newcon .<. @expression.constraints
                                           , @lhs.constraints
                                           ]

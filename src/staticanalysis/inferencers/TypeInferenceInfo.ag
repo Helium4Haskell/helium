@@ -257,12 +257,11 @@ SEM Expression | Let loc . cinfoType =
 SEM Expression | Do loc . cinfo =
   \tppair ->
   CInfo { info       = (NTExpression,AltDo,"")
-        , location   = "do-expression (INTERNAL ERROR)"
+        , location   = "do-expression"
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
-                       , SuperHighlyTrusted 
                        , Size @size ]
         }
         

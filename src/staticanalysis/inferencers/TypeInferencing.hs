@@ -1293,16 +1293,15 @@ sem_Expression_Do (_range) (_statements) (_lhs_allPatterns) (_lhs_betaUnique) (_
         (_newcon) =
             case _statements_generatorBeta of
                Nothing -> []
-               Just b  -> [ (b .==. _beta) _cinfo ]
+               Just b  -> [ (ioType b .==. _beta) _cinfo ]
         (_cinfo) =
             \tppair ->
             CInfo { info       = (NTExpression,AltDo,"")
-                  , location   = "do-expression (INTERNAL ERROR)"
+                  , location   = "do-expression"
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
-                                 , SuperHighlyTrusted
                                  , Size _size ]
                   }
         (_size) =
@@ -4118,7 +4117,7 @@ sem_Statement_Expression (_range) (_expression) (_lhs_allPatterns) (_lhs_assumpt
         ,ctNode [ _newcon .<. _expression_constraints
                 , _lhs_constraints
                 ]
-        ,Just _expression_beta
+        ,Just _beta
         ,_expression_matchIO
         ,_lhs_monos
         ,_oneLineTree
