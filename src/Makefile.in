@@ -410,6 +410,7 @@ clean:
 	cd $(PARSECIMPDIR); $(RM) `find . -name "*.hi" -print`
 	cd $(LVMLIBDIR); $(MAKE) clean
 	cd $(LVMRUNTIMEDIR); $(MAKE) clean
+	cd $(TOPDIR)/..; $(MAKE) clean 
 
 # Inter-module dependencies
 depend :
