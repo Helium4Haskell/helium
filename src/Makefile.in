@@ -406,16 +406,7 @@ doc:
 		-h -o ../docs/haddock --lib /usr/local/lib/haddock-0.5 \
 		--read-interface http://www.haskell.org/ghc/docs/6.0.1/html/base/,../../base.haddock \
 		$(PARSER) $(STATICANALYSIS) $(UHA) $(CODEGENERATION) $(UTILS) \
-		$(LVM) $(ASM) $(CORE) $(PARSEC) $(MAINFILES) $(MODULESYSTEM) \
-		$(LVMLIBDIR)/common/Id.hs $(LVMLIBDIR)/common/IdMap.hs $(LVMLIBDIR)/common/IdSet.hs $(LVMLIBDIR)/common/IntMap.hs \
-		$(LVMLIBDIR)/common/Byte.hs $(LVMLIBDIR)/common/Standard.hs \
-		$(LVMLIBDIR)/common/TopSort.hs $(LVMLIBDIR)/common/Set.hs \
-		$(LVMLIBDIR)/common/PPrint.hs
-
-# feed all sources but Special.hs (ifdefs) to haddock
-
-
-
+		$(MAINFILES) $(MODULESYSTEM) 
 
 # Clean	up
 clean:
