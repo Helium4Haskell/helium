@@ -1,5 +1,4 @@
 clear
-echo DID YOU START THIS SCRIPT WITH:   bash testAll  ?
 bash testP
 bash testSE
 bash testTE
