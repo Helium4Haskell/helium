@@ -1,3 +1,14 @@
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- Type inferencing.
+--
+-----------------------------------------------------------------------------
+
 -------------------------------------------------------------------------------
 -- Attributes for type inferencing
 
@@ -26,7 +37,7 @@ INCLUDE "../staticchecks/Scope.ag"
 INCLUDE "../../syntax/UHA_Syntax.ag"
 
 --- Type Inference Directives (may be turned off)
-INCLUDE "typingstrategies/TS_PatternMatching.ag"
+INCLUDE "../directives/TS_PatternMatching.ag"
 SEM Module | Module   lhs . debugIO = @debugIO
                                       >> putStrLn "Inference Strategies:" 
                                       >> @body.matchIO
@@ -46,7 +57,7 @@ import Top.Types
 import TypeConversion
 
 -- constraints and constraint trees
-import LiftedConstraints
+import TypeConstraints
 import Top.ComposedSolvers.TreeWalk
 import Top.ComposedSolvers.Tree
 
@@ -54,7 +65,7 @@ import Top.ComposedSolvers.Tree
 import Messages
 import TypeErrors
 import Warnings
-import HeliumConstraintInfo
+import ConstraintInfo
 import DoublyLinkedTree
 import UHA_Source
 
@@ -62,17 +73,23 @@ import UHA_Source
 import Top.Constraints.Constraints
 import Top.Solvers.SimpleSolver (solveSimple)
 import Top.Solvers.GreedySolver (solveGreedy)
-import Top.TypeGraph.TypeGraphSolver (solveTypeGraph)
+import Top.TypeGraph.TypeGraphSolver (solveTypeGraphPlusDoAtEnd)
 import Top.Solvers.SolveConstraints
-import Top.ComposedSolvers.CombinationSolver (solveCombination)
+import Top.ComposedSolvers.CombinationSolver ((|>>|))
 import Top.ComposedSolvers.ChunkySolver
 import Top.States.TIState
-import Top.TypeGraph.DefaultHeuristics
 import Top.TypeGraph.TypeGraphMonad (setHeuristics)
+import Top.TypeGraph.Heuristics (HComponent(..), Heuristic(..) )
+import Top.TypeGraph.DefaultHeuristics
+
+-- specialized type graph heuristics
+import HeuristicsInfo
 import RepairHeuristics
 import TieBreakerHeuristics
 import OnlyResultHeuristics
-import Top.TypeGraph.Heuristics (HComponent(..), Heuristic(..) )
+import UnifierHeuristics     (unifierVertex)
+import ContributingSites     (contributingSites)
+import Top.States.BasicState (updateErrors)
 
 -- UHA syntax
 import UHA_Syntax

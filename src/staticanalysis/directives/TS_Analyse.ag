@@ -1,0 +1,150 @@
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+--
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- An analyzer for type inference directives.
+--
+-- (directives based on "Scripting the Type Inference Process", ICFP 2003)
+-----------------------------------------------------------------------------
+
+{
+analyseTypingStrategies :: TypingStrategies -> ImportEnvironment -> (TS_Errors, TS_Warnings)
+analyseTypingStrategies list ie = 
+   let (as, bs) = unzip (map (\ts -> analyseTypingStrategy ts ie) list)
+   in (concat as, concat bs)
+
+analyseTypingStrategy :: TypingStrategy -> ImportEnvironment -> (TS_Errors, TS_Warnings)
+analyseTypingStrategy ts ie = 
+    let (errs, _, wars) = sem_TypingStrategy ts ie in (errs, wars)
+}
+
+INCLUDE "../../syntax/UHA_Syntax.ag"
+INCLUDE "TS_Syntax.ag"
+INCLUDE "TS_Collect.ag"
+
+imports {
+import Top.Types
+import Top.Solvers.GreedySolver
+import Top.Solvers.SolveConstraints
+import Top.States.TIState
+import TypeConstraints
+import ConstraintInfo
+import TS_Syntax
+import TypeConversion
+import List
+import UHA_Utils (nameFromString)
+import UHA_Range (noRange)
+import UHA_Source
+import Messages
+import TypeErrors
+import TS_Messages
+import ImportEnvironment hiding (setTypeSynonyms)
+import ExpressionTypeInferencer (expressionTypeInferencer)
+import Data.FiniteMap
+import Char (isAlphaNum)
+import Utils (internalError)
+import qualified UHA_Pretty as PP
+}
+
+ATTR TypingStrategy  [ importEnvironment : ImportEnvironment
+                     |
+                     | errors            : TS_Errors
+                       warnings          : TS_Warnings  
+                     ]
+
+SEM TypingStrategy  
+  | Siblings             -- no analysis for siblings (yet)
+       lhs . errors       = []
+           . warnings     = []
+           
+  | TypingStrategy  
+       loc . name         = show (PP.sem_Expression @typerule.conclusionExpression)
+           . nameMap      = zip @uniqueTypevariables (map TVar [0..])
+           . errors       = @staticErrors ++ @soundnessErrors 
+           . staticErrors = [ InconsistentConstraint @name x | x <- @solveErrors ] ++
+                            [ UndefinedTS @name name entity 
+                            | (name, entity) <- @typerule.conclusionAllVariables 
+                            , show name `notElem` (@allMetaVariables ++ map show @allImportedVariables)
+                            ] ++
+                            [ UnusedMetaVariable @name s 
+                            | s <- @allMetaVariables
+                            , s `notElem` (map (show . fst) @typerule.conclusionAllVariables)
+                            ] ++
+                            [ DuplicatedMetaVariablesPremise @name x  
+                            | x:_ <- findDuplicates @allMetaVariables
+                            ] ++
+                            [ DuplicatedMetaVariablesConclusion @name x  
+                            | let strings = map (show . fst) @typerule.conclusionAllVariables
+                            , x:_ <- findDuplicates (filter (`elem` @allMetaVariables) strings)
+                            ] ++
+                            [ DuplicatedMetaVariableConstraints @name (show x) 
+                            | x:_ <- findDuplicates @statements.metaVariableConstraintNames
+                            ]
+           . warnings     = [] {-case @constraintsNotExplicit of 
+                              [] -> []
+                              xs -> [ MetaVariableConstraintsNotExplicit @name xs ]  -}
+
+           -- Solve the constraint set.           
+           . (SolveResult _ substitution _ solveErrors _) =    
+                solveGreedy
+                   (getOrderedTypeSynonyms @lhs.importEnvironment)
+                   (length @uniqueTypevariables) 
+                   (reverse @statements.userConstraints)        
+                                   
+           . soundnessErrors = 
+                if not (null @staticErrors)
+                  then []
+                  else let premiseTypes = reverse (map snd @typerule.simpleJudgements) 
+                           constraintsTpScheme = makeScheme [] [] (@substitution |-> tupleType (premiseTypes ++ [@typerule.conclusionType]))
+                           extendedEnvironment = let op (s, i) = addType (nameFromString s) (toTpScheme (TVar i))
+                                                 in foldr op @lhs.importEnvironment (zip @allMetaVariables [0..])
+                           extendedExpression  = let premiseVars = reverse (map (Expression_Variable noRange . nameFromString . fst) @typerule.simpleJudgements)
+                                                 in Expression_Tuple noRange (premiseVars ++ [@typerule.conclusionExpression])
+                           (monoTpScheme,inferredTypeErrors) = expressionTypeInferencer 
+                                                                  extendedEnvironment
+                                                                  extendedExpression
+                           inferredTpScheme = generalizeAll (snd $ instantiate 123456789 monoTpScheme)                                                                   
+                           synonyms = getOrderedTypeSynonyms @lhs.importEnvironment
+                       in if not (null inferredTypeErrors) 
+                            then map (TypeErrorTS @name) inferredTypeErrors
+                            else if genericInstanceOf synonyms standardClasses inferredTpScheme constraintsTpScheme 
+                                        &&
+                                    genericInstanceOf synonyms standardClasses constraintsTpScheme inferredTpScheme 
+                                      then []
+                                      else [ Soundness @name inferredTpScheme constraintsTpScheme ]
+
+-- cheching the names
+ATTR Judgement Expression Expressions MaybeExpression [ | | allVariables USE { ++ } { [] } : {[(Name,Entity)]} ]
+
+SEM Expression 
+  | Variable      lhs . allVariables = [(@name.self, Variable)] 
+  | Constructor   lhs . allVariables = [(@name.self, Constructor)]
+
+ATTR TypeRule  [ | | conclusionAllVariables : {[(Name,Entity)]} ]
+SEM TypeRule | TypeRule lhs . conclusionAllVariables = @conclusion.allVariables
+
+SEM TypingStrategy 
+  | TypingStrategy  
+       loc . allImportedVariables = keysFM (typeEnvironment   @lhs.importEnvironment) ++
+                                    keysFM (valueConstructors @lhs.importEnvironment)
+
+--
+
+ATTR TypeRule  [ | | conclusionExpression:Expression ]
+ATTR Judgement [ | | theExpression:Expression ]
+           
+SEM TypeRule  | TypeRule   lhs . conclusionExpression = @conclusion.theExpression           
+SEM Judgement | Judgement  lhs . theExpression = @expression.self
+
+-- prevent AG-warnings
+SEM TypingStrategies | Cons  loc . importEnvironment = error "TS_Analyse.ag"
+
+{
+findDuplicates :: Ord a => [a] -> [[a]]
+findDuplicates = filter (not . isSingleton) . group . sort
+   where isSingleton [_] = True
+         isSingleton _   = False        
+}

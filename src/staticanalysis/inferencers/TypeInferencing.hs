@@ -7,7 +7,7 @@ import Top.Types
 import TypeConversion
 
 -- constraints and constraint trees
-import LiftedConstraints
+import TypeConstraints
 import Top.ComposedSolvers.TreeWalk
 import Top.ComposedSolvers.Tree
 
@@ -15,7 +15,7 @@ import Top.ComposedSolvers.Tree
 import Messages
 import TypeErrors
 import Warnings
-import HeliumConstraintInfo
+import ConstraintInfo
 import DoublyLinkedTree
 import UHA_Source
 
@@ -23,17 +23,23 @@ import UHA_Source
 import Top.Constraints.Constraints
 import Top.Solvers.SimpleSolver (solveSimple)
 import Top.Solvers.GreedySolver (solveGreedy)
-import Top.TypeGraph.TypeGraphSolver (solveTypeGraph)
+import Top.TypeGraph.TypeGraphSolver (solveTypeGraphPlusDoAtEnd)
 import Top.Solvers.SolveConstraints
-import Top.ComposedSolvers.CombinationSolver (solveCombination)
+import Top.ComposedSolvers.CombinationSolver ((|>>|))
 import Top.ComposedSolvers.ChunkySolver
 import Top.States.TIState
-import Top.TypeGraph.DefaultHeuristics
 import Top.TypeGraph.TypeGraphMonad (setHeuristics)
+import Top.TypeGraph.Heuristics (HComponent(..), Heuristic(..) )
+import Top.TypeGraph.DefaultHeuristics
+
+-- specialized type graph heuristics
+import HeuristicsInfo
 import RepairHeuristics
 import TieBreakerHeuristics
 import OnlyResultHeuristics
-import Top.TypeGraph.Heuristics (HComponent(..), Heuristic(..) )
+import UnifierHeuristics     (unifierVertex)
+import ContributingSites     (contributingSites)
+import Top.States.BasicState (updateErrors)
 
 -- UHA syntax
 import UHA_Syntax
@@ -163,21 +169,25 @@ findCurrentChunk :: Name -> InheritedBDG -> Int
 findCurrentChunk n = let p = elem n . fst
                      in snd . snd . head . filter p  
 
-heliumTypeGraphHeuristics :: [[(String, TpScheme)]] -> [Heuristic HeliumConstraintInfo]
-heliumTypeGraphHeuristics siblings = 
+heliumTypeGraphHeuristics :: [Option] -> [[(String, TpScheme)]] -> [Heuristic ConstraintInfo]
+heliumTypeGraphHeuristics options siblings = 
    [ highParticipation 1.00
    , applicationResult
    , negationResult
-   , Heuristic (Voting 
+   ] ++
+   [ Heuristic (Voting $
         [ siblingFunctions siblings
         , similarLiterals
         , similarNegation
         , applicationEdge
         , tupleEdge
         , fbHasTooManyArguments
-        , variableFunction                                                    
-        ])
-   , trustFactorOfConstraint
+        , variableFunction
+        ] ++
+        [ unifierVertex | UnifierHeuristics `elem` options ])
+   | NoRepairHeuristics `notElem` options
+   ] ++
+   [ trustFactorOfConstraint
    , isTopDownEdge
    , positionInList
    ]
@@ -249,12 +259,12 @@ lookupChunkNumber i fm =
    let err = error ("could not find beta in lookupChunkNumber [i="++show i++"] [fm="++show (fmToList fm)++"]")
    in lookupWithDefaultFM fm err i
 
-dependencyBinds :: ChunkNumberMap -> TypeConstraints HeliumConstraintInfo -> [(Int, TypeConstraint HeliumConstraintInfo)]
+dependencyBinds :: ChunkNumberMap -> TypeConstraints ConstraintInfo -> [(Int, TypeConstraint ConstraintInfo)]
 dependencyBinds fm cs = 
    let err = error "could not find variable of a constraint"
    in [ (lookupChunkNumber i fm, c) | c <- cs, let i = maybe err id (spreadFunction c)]   
 
-childConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+childConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
 childConstraint childNr theLocation infoTree theProperties tppair =
   CInfo { location   = theLocation
         , sources    = ( (self . attribute) infoTree
@@ -265,7 +275,7 @@ childConstraint childNr theLocation infoTree theProperties tppair =
         , properties = theProperties
         }
 
-specialConstraint :: String -> InfoTree -> (UHA_Source, Maybe UHA_Source) -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+specialConstraint :: String -> InfoTree -> (UHA_Source, Maybe UHA_Source) -> Properties -> (Tp, Tp) -> ConstraintInfo
 specialConstraint theLocation infoTree theSources theProperties tppair =
   CInfo { location   = theLocation
         , sources    = theSources
@@ -274,7 +284,7 @@ specialConstraint theLocation infoTree theSources theProperties tppair =
         , properties = theProperties
         }
         
-orphanConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+orphanConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
 orphanConstraint childNr theLocation infoTree theProperties tppair =
   CInfo { location   = theLocation
         , sources    = ( (self . attribute . selectChild childNr) infoTree
@@ -285,7 +295,7 @@ orphanConstraint childNr theLocation infoTree theProperties tppair =
         , properties = theProperties
         }        
         
-resultConstraint :: String -> InfoTree -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+resultConstraint :: String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
 resultConstraint theLocation infoTree theProperties tppair =
   CInfo { location   = theLocation
         , sources    = ( (self . attribute) infoTree 
@@ -296,7 +306,7 @@ resultConstraint theLocation infoTree theProperties tppair =
         , properties = theProperties
         }        
 
-variableConstraint :: String -> UHA_Source -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+variableConstraint :: String -> UHA_Source -> Properties -> (Tp, Tp) -> ConstraintInfo
 variableConstraint theLocation theSource theProperties tppair =
   CInfo { location   = theLocation
         , sources    = (theSource, Nothing)
@@ -305,10 +315,10 @@ variableConstraint theLocation theSource theProperties tppair =
         , properties = theProperties
         }               
         
-cinfoBindingGroupExplicitTypedBinding :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoSameBindingGroup                 :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoBindingGroupImplicit             :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoBindingGroupExplicit             :: Name -> (Tp,Tp) -> HeliumConstraintInfo
+cinfoBindingGroupExplicitTypedBinding :: Name -> (Tp,Tp) -> ConstraintInfo
+cinfoSameBindingGroup                 :: Name -> (Tp,Tp) -> ConstraintInfo
+cinfoBindingGroupImplicit             :: Name -> (Tp,Tp) -> ConstraintInfo
+cinfoBindingGroupExplicit             :: Name -> (Tp,Tp) -> ConstraintInfo
 
 cinfoBindingGroupExplicitTypedBinding name = 
    variableConstraint "explicitly typed binding" (nameToSelfExpr name) [ FromBindingGroup, ExplicitTypedBinding, HasTrustFactor 10.0 ]
@@ -324,14 +334,6 @@ nameToSelfExpr name = UHA_Expr (Expression_Variable (getNameRange name) name)
 
 nameToSelfPat :: Name -> UHA_Source
 nameToSelfPat name = UHA_Pat (Pattern_Variable (getNameRange name) name)
-
-literalType :: Literal -> String
-literalType x = 
-   case x of   
-      Literal_Int    _ _ -> "Int"
-      Literal_Char   _ _ -> "Char"
-      Literal_String _ _ -> "String"
-      Literal_Float  _ _ -> "Float"
 
 globalInfoError :: a
 globalInfoError = internalError "GlobalInfo.ag" "n/a" "global info not available"
@@ -832,7 +834,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
             _righthandsideIconstraints :: (ConstraintSet)
             _righthandsideIdictionaryEnvironment :: (DictionaryEnvironment)
             _righthandsideIfallthrough :: (Bool)
-            _righthandsideIinfoTrees :: (InfoTrees)
+            _righthandsideIinfoTree :: (InfoTree)
             _righthandsideImatchIO :: (IO ())
             _righthandsideIpatternMatchWarnings :: ([Warning])
             _righthandsideIself :: (RightHandSide)
@@ -863,7 +865,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
                 (range_ )
             ( _patternIbeta,_patternIbetaUnique,_patternIconstraints,_patternIelements,_patternIenvironment,_patternIinfoTree,_patternIpatVarNames,_patternIpatternMatchWarnings,_patternIself,_patternIunboundNames) =
                 (pattern_ (_patternObetaUnique) (_patternOimportEnvironment) (_patternOmonos) (_patternOnamesInScope) (_patternOparentTree) (_patternOpatternMatchWarnings))
-            ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectChunkNumbers,_righthandsideIcollectErrors,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTrees,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
+            ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectChunkNumbers,_righthandsideIcollectErrors,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTree,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
                 (righthandside_ (_righthandsideOallPatterns)
                                 (_righthandsideOavailablePredicates)
                                 (_righthandsideObetaRight)
@@ -898,12 +900,14 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
                 _patternIenvironment `plusFM` getMonos _csetBinds `plusFM` _lhsImonos
             (_cinfoLeft@_) =
                 resultConstraint "case pattern" _patternIinfoTree
-                   []
+                   [ Unifier (head (ftv _lhsIbetaLeft)) ("case patterns", attribute _lhsIparentTree, "case pattern") ]
             (_cinfoBind@_) =
                 \name -> variableConstraint "variable" (nameToSelfExpr name)
-                   [FolkloreConstraint]
+                   [ FolkloreConstraint
+                   , makeUnifier name "case alternative" _patternIenvironment _lhsIparentTree
+                   ]
             (_lhsOinfoTrees@_) =
-                _patternIinfoTree : _righthandsideIinfoTrees
+                [_patternIinfoTree, _righthandsideIinfoTree]
             (_lhsOunboundNames@_) =
                 _unboundNames
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
@@ -3142,7 +3146,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             _righthandsideIconstraints :: (ConstraintSet)
             _righthandsideIdictionaryEnvironment :: (DictionaryEnvironment)
             _righthandsideIfallthrough :: (Bool)
-            _righthandsideIinfoTrees :: (InfoTrees)
+            _righthandsideIinfoTree :: (InfoTree)
             _righthandsideImatchIO :: (IO ())
             _righthandsideIpatternMatchWarnings :: ([Warning])
             _righthandsideIself :: (RightHandSide)
@@ -3173,7 +3177,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
                 (range_ )
             ( _patternIbeta,_patternIbetaUnique,_patternIconstraints,_patternIelements,_patternIenvironment,_patternIinfoTree,_patternIpatVarNames,_patternIpatternMatchWarnings,_patternIself,_patternIunboundNames) =
                 (pattern_ (_patternObetaUnique) (_patternOimportEnvironment) (_patternOmonos) (_patternOnamesInScope) (_patternOparentTree) (_patternOpatternMatchWarnings))
-            ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectChunkNumbers,_righthandsideIcollectErrors,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTrees,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
+            ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectChunkNumbers,_righthandsideIcollectErrors,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTree,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
                 (righthandside_ (_righthandsideOallPatterns)
                                 (_righthandsideOavailablePredicates)
                                 (_righthandsideObetaRight)
@@ -3243,7 +3247,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             (_lhsOinfoTrees@_) =
                 [_parentTree]
             (_parentTree@_) =
-                node _lhsIparentTree _localInfo (_patternIinfoTree : _righthandsideIinfoTrees)
+                node _lhsIparentTree _localInfo [_patternIinfoTree, _righthandsideIinfoTree]
             (_lhsOdeclVarNames@_) =
                 _patternIpatVarNames
             (_lhsOpatternMatchWarnings@_) =
@@ -4248,7 +4252,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
                 _expressionIassumptions `combine` _alternativesIassumptions
             (_cinfo@_) =
                 childConstraint 0 "scrutinee of case expression" _parentTree
-                   [ ]
+                   [ Unifier (head (ftv _beta')) ("case patterns", _localInfo, "scrutinee") ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta
@@ -5767,10 +5771,10 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                    []
             (_cinfoThen@_) =
                 childConstraint 1 "then branch of conditional" _parentTree
-                   []
+                   [ Unifier (head (ftv _beta)) ("conditional", _localInfo, "then branch") ]
             (_cinfoElse@_) =
                 childConstraint 2 "else branch of conditional" _parentTree
-                   []
+                   [ Unifier (head (ftv _beta)) ("conditional", _localInfo, "else branch") ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta
@@ -6258,7 +6262,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             (_cinfoEmpty@_) =
                 specialConstraint "infix application" _parentTree
                   (self _localInfo, Nothing)
-                  [ FolkloreConstraint, HasTrustFactor 10.0, IsEmptyInfixApplication ]
+                  [ FolkloreConstraint, HasTrustFactor 10.0 ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta
@@ -6580,7 +6584,9 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
                 _lhsIbetaUnique + 1
             (_cinfoBind@_) =
                 \name -> variableConstraint "variable" (nameToSelfExpr name)
-                   [FolkloreConstraint]
+                   [ FolkloreConstraint
+                   , makeUnifier name "lambda abstraction" _patternsIenvironment _parentTree
+                   ]
             (_cinfoType@_) =
                 resultConstraint "lambda abstraction" _parentTree
                    [ FolkloreConstraint ]
@@ -7140,8 +7146,9 @@ sem_Expression_List (range_) (expressions_) =
                 _lhsIbetaUnique + 2
             (_cinfoElem@_) =
                 \elemNr ->
-                childConstraint elemNr "element of list" _parentTree
-                [ HasTrustFactor 10.0 | length _expressionsIbetas < 2 ]
+                childConstraint elemNr "element of list" _parentTree $
+                   [ HasTrustFactor 10.0 | length _expressionsIbetas < 2 ] ++
+                   [ Unifier (head (ftv _beta')) ("list", _localInfo, ordinal False (elemNr+1) ++ " element") ]
             (_cinfoResult@_) =
                 resultConstraint "list" _parentTree
                 [ FolkloreConstraint ]
@@ -7296,7 +7303,7 @@ sem_Expression_Literal (range_) (literal_) =
                 _lhsIbetaUnique + 1
             (_cinfo@_) =
                 resultConstraint "literal" _parentTree
-                   [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral (literalType _literalIself) ]
+                   [ FolkloreConstraint, HasTrustFactor 10.0 ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta
@@ -7478,7 +7485,7 @@ sem_Expression_Negate (range_) (expression_) =
             (_cinfo@_) =
                 specialConstraint "negation" _parentTree
                    (self _localInfo, Just $ nameToSelfExpr (Name_Operator range_ [] "-"))
-                   [ Negation True ]
+                   []
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta
@@ -7683,7 +7690,7 @@ sem_Expression_NegateFloat (range_) (expression_) =
             (_cinfo@_) =
                 specialConstraint "negation" _parentTree
                    (self _localInfo, Just $ nameToSelfExpr (Name_Operator range_ [] "-."))
-                   [ Negation False ]
+                   []
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta
@@ -8807,7 +8814,7 @@ sem_Expression_Tuple (range_) (expressions_) =
                 _lhsIbetaUnique + 1
             (_cinfo@_) =
                 resultConstraint "tuple" _parentTree
-                   [ FolkloreConstraint, IsTupleEdge ]
+                   [ FolkloreConstraint ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta
@@ -9869,7 +9876,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
             _righthandsideIconstraints :: (ConstraintSet)
             _righthandsideIdictionaryEnvironment :: (DictionaryEnvironment)
             _righthandsideIfallthrough :: (Bool)
-            _righthandsideIinfoTrees :: (InfoTrees)
+            _righthandsideIinfoTree :: (InfoTree)
             _righthandsideImatchIO :: (IO ())
             _righthandsideIpatternMatchWarnings :: ([Warning])
             _righthandsideIself :: (RightHandSide)
@@ -9900,7 +9907,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
                 (range_ )
             ( _lefthandsideIargcount,_lefthandsideIbetaUnique,_lefthandsideIbetas,_lefthandsideIconstraints,_lefthandsideIelements,_lefthandsideIenvironment,_lefthandsideIinfoTrees,_lefthandsideIname,_lefthandsideInumberOfPatterns,_lefthandsideIpatVarNames,_lefthandsideIpatternMatchWarnings,_lefthandsideIself,_lefthandsideIunboundNames) =
                 (lefthandside_ (_lefthandsideObetaUnique) (_lefthandsideOimportEnvironment) (_lefthandsideOmonos) (_lefthandsideOnamesInScope) (_lefthandsideOparentTree) (_lefthandsideOpatternMatchWarnings))
-            ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectChunkNumbers,_righthandsideIcollectErrors,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTrees,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
+            ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectChunkNumbers,_righthandsideIcollectErrors,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTree,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
                 (righthandside_ (_righthandsideOallPatterns)
                                 (_righthandsideOavailablePredicates)
                                 (_righthandsideObetaRight)
@@ -9936,10 +9943,12 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
             (_cinfoLeft@_) =
                 \num  ->
                 orphanConstraint num "pattern of function binding" _parentTree
-                   []
+                   [ Unifier (head (ftv (_lhsIbetasLeft !! num))) (ordinal True (num+1)++" pattern of function bindings", attribute _lhsIparentTree, "pattern") ]
             (_cinfoBind@_) =
                 \name -> variableConstraint "variable" (nameToSelfExpr name)
-                   [FolkloreConstraint]
+                   [ FolkloreConstraint
+                   , makeUnifier name "function binding" _lefthandsideIenvironment _parentTree
+                   ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_FB _self
                           , assignedType = Nothing
@@ -9948,7 +9957,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
             (_lhsOinfoTree@_) =
                 _parentTree
             (_parentTree@_) =
-                node _lhsIparentTree _localInfo (_lefthandsideIinfoTrees ++ _righthandsideIinfoTrees)
+                node _lhsIparentTree _localInfo (_lefthandsideIinfoTrees ++ [_righthandsideIinfoTree])
             (_lhsOunboundNames@_) =
                 _unboundNames
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
@@ -10661,8 +10670,9 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
                 resultConstraint "guard" _guardIinfoTree
                    []
             (_cinfoExpr@_) =
-                resultConstraint "guarded expression" _expressionIinfoTree
-                   [ HasTrustFactor 10.0 | _lhsInumberOfGuards < 2 ]
+                resultConstraint "guarded expression" _expressionIinfoTree $
+                   [ HasTrustFactor 10.0 | _lhsInumberOfGuards < 2 ] ++
+                   [ Unifier (head (ftv _lhsIbetaRight)) ("right-hand sides", attribute (skip_UHA_FB_RHS _lhsIparentTree), "right-hand side") ]
             (_lhsOinfoTrees@_) =
                 [_guardIinfoTree, _expressionIinfoTree]
             (_expressionOtryPatterns@_) =
@@ -12699,7 +12709,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             (_typeErrors@_) =
                 if null _checkedSolveErrors then _bodyIcollectErrors else _checkedSolveErrors
             (_checkedSolveErrors@_) =
-                catMaybes (map (checkTypeError _orderedTypeSynonyms . (_substitution |->) . makeTypeError) _solveErrors)
+                makeTypeErrors _orderedTypeSynonyms _substitution _solveErrors
             (_siblings@_) =
                 let f s = [ (s, ts) | ts <- findTpScheme (nameFromString s) ]
                     findTpScheme n = catMaybes
@@ -12732,16 +12742,22 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                        | otherwise                       = id
                 in reverseOrNot select
             (_selectedSolver@_) =
-                let hs = heliumTypeGraphHeuristics _siblings
+                let typegraphSolver =
+                       let atEnd = if Highlighting `elem` _lhsIoptions
+                                     then updateErrors contributingSites
+                                     else return ()
+                           heuristics = heliumTypeGraphHeuristics _lhsIoptions _siblings
+                       in solveTypeGraphPlusDoAtEnd heuristics atEnd
+                    combinedSolver = solveGreedy |>>| typegraphSolver
                     select
                        | SolverSimple      `elem` _lhsIoptions = solveSimple
                        | SolverGreedy      `elem` _lhsIoptions = solveGreedy
-                       | SolverTypeGraph   `elem` _lhsIoptions = solveTypeGraph hs
-                       | SolverCombination `elem` _lhsIoptions = solveCombination hs
+                       | SolverTypeGraph   `elem` _lhsIoptions = typegraphSolver
+                       | SolverCombination `elem` _lhsIoptions = combinedSolver
                        | otherwise = \synonyms unique _ ->
-                                        let chunkConstraints :: ChunkConstraints (TypeConstraint HeliumConstraintInfo)
+                                        let chunkConstraints :: ChunkConstraints (TypeConstraint ConstraintInfo)
                                             chunkConstraints = chunkTree dependencyTypeConstraint . phaseTree . spreadTree spreadFunction $ _bodyIconstraints
-                                        in solveChunkConstraints hs (flattenTree _selectedTreeWalk) synonyms unique chunkConstraints
+                                        in solveChunkConstraints combinedSolver (flattenTree _selectedTreeWalk) synonyms unique chunkConstraints
                 in select
             (_bodyOdictionaryEnvironment@_) =
                 emptyDictionaryEnvironment
@@ -13422,8 +13438,9 @@ sem_Pattern_List (range_) (patterns_) =
                 _lhsIbetaUnique + 2
             (_cinfoElem@_) =
                 \elemNr ->
-                childConstraint elemNr "element of pattern list" _parentTree
-                   [ HasTrustFactor 10.0 | length _patternsIconstraintslist < 2 ]
+                childConstraint elemNr "element of pattern list" _parentTree $
+                   [ HasTrustFactor 10.0 | length _patternsIconstraintslist < 2 ] ++
+                   [ Unifier (head (ftv _beta')) ("pattern list", _localInfo, ordinal False (elemNr+1) ++ " element") ]
             (_cinfoResult@_) =
                 resultConstraint "pattern list" _parentTree
                    [ FolkloreConstraint ]
@@ -13505,7 +13522,7 @@ sem_Pattern_Literal (range_) (literal_) =
                 _lhsIbetaUnique + 1
             (_cinfo@_) =
                 resultConstraint "literal pattern" _parentTree
-                   [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral (literalType _literalIself) ]
+                   [ FolkloreConstraint, HasTrustFactor 10.0 ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Pat _self
                           , assignedType = Just _beta
@@ -13641,7 +13658,7 @@ sem_Pattern_NegateFloat (range_) (literal_) =
                 _lhsIbetaUnique + 1
             (_cinfo@_) =
                 resultConstraint "pattern negation" _parentTree
-                   [ FolkloreConstraint, NegationResult ]
+                   [ FolkloreConstraint ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Pat _self
                           , assignedType = Just _beta
@@ -13920,7 +13937,7 @@ sem_Pattern_Tuple (range_) (patterns_) =
                 _lhsIbetaUnique + 1
             (_cinfo@_) =
                 resultConstraint "pattern tuple" _parentTree
-                [ FolkloreConstraint, IsTupleEdge ]
+                [ FolkloreConstraint ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Pat _self
                           , assignedType = Just _beta
@@ -14545,7 +14562,9 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
                    []
             (_cinfoBind@_) =
                 \name -> variableConstraint "variable" (nameToSelfExpr name)
-                   [FolkloreConstraint]
+                   [ FolkloreConstraint
+                   , makeUnifier name "generator" _patternIenvironment _parentTree
+                   ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Qual _self
                           , assignedType = Nothing
@@ -16073,7 +16092,7 @@ type T_RightHandSide = ([((Expression, [String]), Core_TypingStrategy)]) ->
                        (Predicates) ->
                        (FixpointSubstitution) ->
                        (Int) ->
-                       ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Bool),(InfoTrees),(IO ()),([Warning]),(RightHandSide),(Names),(Int))
+                       ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Bool),(InfoTree),(IO ()),([Warning]),(RightHandSide),(Names),(Int))
 -- cata
 sem_RightHandSide :: (RightHandSide) ->
                      (T_RightHandSide)
@@ -16115,7 +16134,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOfallthrough :: (Bool)
-            _lhsOinfoTrees :: (InfoTrees)
+            _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (RightHandSide)
@@ -16260,10 +16279,17 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             (_inferredTypes@_) =
                 addListToFM _lhsIinferredTypes _whereIlocalTypes
             (_cinfo@_) =
-                resultConstraint "right-hand side" _expressionIinfoTree
-                   []
-            (_lhsOinfoTrees@_) =
-                _expressionIinfoTree : _whereIinfoTrees
+                orphanConstraint 0 "right-hand side" _parentTree
+                   [ Unifier (head (ftv _lhsIbetaRight)) ("right-hand sides", attribute (skip_UHA_FB_RHS _lhsIparentTree), "right-hand side") ]
+            (_localInfo@_) =
+                LocalInfo { self = UHA_RHS _self
+                          , assignedType = Nothing
+                          , monos = _lhsImonos
+                          }
+            (_lhsOinfoTree@_) =
+                _parentTree
+            (_parentTree@_) =
+                node _lhsIparentTree _localInfo (_expressionIinfoTree : _whereIinfoTrees)
             (_whereOunboundNames@_) =
                 _expressionIunboundNames
             (_expressionOnamesInScope@_) =
@@ -16327,7 +16353,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             (_expressionOorderedTypeSynonyms@_) =
                 _lhsIorderedTypeSynonyms
             (_expressionOparentTree@_) =
-                _lhsIparentTree
+                _parentTree
             (_expressionOpatternMatchWarnings@_) =
                 _lhsIpatternMatchWarnings
             (_expressionOpredicates@_) =
@@ -16365,7 +16391,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             (_whereOorderedTypeSynonyms@_) =
                 _lhsIorderedTypeSynonyms
             (_whereOparentTree@_) =
-                _lhsIparentTree
+                _parentTree
             (_whereOpatternMatchWarnings@_) =
                 _expressionIpatternMatchWarnings
             (_whereOpredicates@_) =
@@ -16374,7 +16400,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
                 _lhsIsubstitution
             (_whereOuniqueChunk@_) =
                 _expressionIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectChunkNumbers,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectChunkNumbers,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTree,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_RightHandSide_Guarded :: (T_Range) ->
                              (T_GuardedExpressions) ->
                              (T_MaybeDeclarations) ->
@@ -16409,7 +16435,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOfallthrough :: (Bool)
-            _lhsOinfoTrees :: (InfoTrees)
+            _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (RightHandSide)
@@ -16571,8 +16597,15 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
                 _whereIassumptions
             (_inferredTypes@_) =
                 addListToFM _lhsIinferredTypes _whereIlocalTypes
-            (_lhsOinfoTrees@_) =
-                _guardedexpressionsIinfoTrees ++ _whereIinfoTrees
+            (_localInfo@_) =
+                LocalInfo { self = UHA_RHS _self
+                          , assignedType = Nothing
+                          , monos = _lhsImonos
+                          }
+            (_lhsOinfoTree@_) =
+                _parentTree
+            (_parentTree@_) =
+                node _lhsIparentTree _localInfo (_guardedexpressionsIinfoTrees ++ _whereIinfoTrees)
             (_whereOunboundNames@_) =
                 _guardedexpressionsIunboundNames
             (_guardedexpressionsOnamesInScope@_) =
@@ -16639,7 +16672,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             (_guardedexpressionsOorderedTypeSynonyms@_) =
                 _lhsIorderedTypeSynonyms
             (_guardedexpressionsOparentTree@_) =
-                _lhsIparentTree
+                _parentTree
             (_guardedexpressionsOpatternMatchWarnings@_) =
                 _lhsIpatternMatchWarnings
             (_guardedexpressionsOpredicates@_) =
@@ -16677,7 +16710,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             (_whereOorderedTypeSynonyms@_) =
                 _lhsIorderedTypeSynonyms
             (_whereOparentTree@_) =
-                _lhsIparentTree
+                _parentTree
             (_whereOpatternMatchWarnings@_) =
                 _guardedexpressionsIpatternMatchWarnings
             (_whereOpredicates@_) =
@@ -16686,7 +16719,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
                 _lhsIsubstitution
             (_whereOuniqueChunk@_) =
                 _guardedexpressionsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectChunkNumbers,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectChunkNumbers,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTree,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
 -- SimpleType --------------------------------------------------
 -- semantic domain
 type T_SimpleType = ( (SimpleType))
@@ -17207,7 +17240,9 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
                    []
             (_cinfoBind@_) =
                 \name -> variableConstraint "variable" (nameToSelfExpr name)
-                   [FolkloreConstraint]
+                   [ FolkloreConstraint
+                   , makeUnifier name "generator" _patternIenvironment _parentTree
+                   ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Stat _self
                           , assignedType = Nothing

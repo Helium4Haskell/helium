@@ -1,12 +1,14 @@
--------------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
 --
---   *** The Helium Compiler : Static Analysis ***
---               ( Bastiaan Heeren )
---
--- Scope.ag : Here, all variables (of type Name) are determined that are in 
+-- All variables (of type Name) are determined that are in 
 --    scope (for each location in the abstract syntax tree)
 -- 
--- Variables can be add to the scope by three ways: 
+-- Variables can be added to the scope by three ways: 
 --
 --   1) externally defefined, imported, or primitive
 --           Module.Module

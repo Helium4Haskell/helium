@@ -1,11 +1,15 @@
--------------------------------------------------------------------------------
---
---   *** The Helium Compiler : Static Analysis ***
---               ( Bastiaan Heeren )
---
--- Messages.hs : ...
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
 -- 
--------------------------------------------------------------------------------
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- Datatype to represent error messages. One abstraction is the datatype
+-- MessageBlock, which contains (atomic) pieces of information that are
+-- reported in the error messages such as types, ranges and code fragments.
+--
+-----------------------------------------------------------------------------
 
 module Messages where
 
@@ -40,7 +44,7 @@ class HasMessage a where
    
    -- default definitions
    getRanges            _ = []
-   
+     
 instance Substitutable MessageLine where
 
    sub |-> ml = case ml of   
@@ -141,22 +145,23 @@ capitalize :: String -> String
 capitalize (x:xs) = toUpper x : xs
 
 findSimilar :: Name -> Names -> Names
-findSimilar n = filter (\n' -> show n `similar` show n')
+findSimilar n = filter (\x -> show n `similar` show x)
 
 instance Show Entity where
-   show entity = case entity of
-                  TypeSignature   -> "type signature"
-                  TypeVariable    -> "type variable"
-                  TypeConstructor -> "type constructor"
-                  Definition      -> "definition"
-                  Constructor     -> "constructor"
-                  Variable        -> "variable"
-                  Import          -> "import"
-                  ExportVariable  -> "exported variable"
-                  ExportModule    -> "exported module"
-                  ExportConstructor
-                                  -> "exported constructor"
-                  ExportTypeConstructor
-                                  -> "exported type constructor"
-                  Fixity          -> "infix declaration"
-                  _               -> internalError "SAMessages" "instance Show Entity" "unknown entity"
+   show entity = 
+      case entity of
+         TypeSignature   -> "type signature"
+         TypeVariable    -> "type variable"
+         TypeConstructor -> "type constructor"
+         Definition      -> "definition"
+         Constructor     -> "constructor"
+         Variable        -> "variable"
+         Import          -> "import"
+         ExportVariable  -> "exported variable"
+         ExportModule    -> "exported module"
+         ExportConstructor
+                         -> "exported constructor"
+         ExportTypeConstructor
+                         -> "exported type constructor"
+         Fixity          -> "infix declaration"
+         _               -> internalError "Messages" "instance Show Entity" "unknown entity"

@@ -1,3 +1,14 @@
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- Infer the type of an expression, and return the type errors that are encountered.
+--
+-----------------------------------------------------------------------------
+
 module ExpressionTypeInferencer (expressionTypeInferencer) where
 
 import TypeInferencing (sem_Module)

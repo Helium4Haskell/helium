@@ -15,7 +15,7 @@ import List
 import Utils ( internalError, fst3, minInt, maxInt )
 import TypeConversion
 import DerivingShow
-import LiftedConstraints
+import TypeConstraints
 import Data.FiniteMap
 import ImportEnvironment
 import OperatorTable

@@ -358,7 +358,7 @@ SEM Alternative
 
 SEM GuardedExpression -- ToDo: or _Guard?
     | GuardedExpression loc.oneLineTree =
-            \assign -> OneLineNode [ OneLineText "|", @guard.oneLineTree, OneLineText assign, @expression.oneLineTree ]
+            \assign -> OneLineNode [ OneLineText " | ", @guard.oneLineTree, OneLineText assign, @expression.oneLineTree ]
     --  range                    : Range
     --  guard                    : Expression -- type: Boolean
     --  expression               : Expression

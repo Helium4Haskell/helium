@@ -1,11 +1,14 @@
--------------------------------------------------------------------------------
---
---   *** The Helium Compiler : Static Analysis ***
---               ( Bastiaan Heeren )
---
--- Warnings.hs : ...
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
 -- 
--------------------------------------------------------------------------------
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- Warnings that are reported during static analysis.
+-- (the phase before type inference, as well as during type inference)
+--
+-----------------------------------------------------------------------------
 
 module Warnings where
 

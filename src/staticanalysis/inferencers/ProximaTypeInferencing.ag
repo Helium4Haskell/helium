@@ -1,12 +1,15 @@
--------------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
 --
---   *** The Helium Compiler : Static Analysis ***
---
--- ProximaTypeInferencing.ag : The type inferencer with extra attributes for Proxima
+-- The type inferencer with extra attributes for Proxima
+-- (Proxima is an editor developed by Martijn Schrage)
 --
 -- Proxima needs an extra synthesized attribute for top level Module.
---
---  typeEnvPrx:TpScheme - an environment containing the types for all subterms in the module
+-- typeEnvPrx:TpScheme - an environment containing the types for all subterms in the module
 --
 -------------------------------------------------------------------------------
 

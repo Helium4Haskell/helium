@@ -70,35 +70,39 @@ MODULESYSTEM = \
 	modulesystem/CoreToImportEnv.hs modulesystem/ExtractImportDecls.hs
 
 STATICANALYSIS = \
-	staticanalysis/constraints/LiftedConstraints.hs \
-	staticanalysis/messages/HeliumConstraintInfo.hs \
 	staticanalysis/messages/Messages.hs \
 	staticanalysis/messages/HeliumMessages.hs \
 	staticanalysis/messages/StaticErrors.hs \
 	staticanalysis/messages/TypeErrors.hs \
 	staticanalysis/messages/KindErrors.hs \
 	staticanalysis/messages/Warnings.hs \
-	staticanalysis/messages/UHA_Source.hs \
-	staticanalysis/messages/DoublyLinkedTree.hs \
+	staticanalysis/heuristics/HeuristicsInfo.hs \
 	staticanalysis/heuristics/OnlyResultHeuristics.hs \
 	staticanalysis/heuristics/RepairHeuristics.hs \
 	staticanalysis/heuristics/TieBreakerHeuristics.hs \
+	staticanalysis/heuristics/UnifierHeuristics.hs \
 	staticanalysis/staticchecks/StaticChecks.hs \
 	staticanalysis/inferencers/TypeInferencing.hs \
 	staticanalysis/inferencers/KindInferencing.hs \
 	staticanalysis/inferencers/ExpressionTypeInferencer.hs \
-	staticanalysis/inferencers/typingstrategies/TS_Parser.hs \
-	staticanalysis/inferencers/typingstrategies/TS_Syntax.hs \
-	staticanalysis/inferencers/typingstrategies/Matchers.hs \
-        staticanalysis/inferencers/typingstrategies/TS_Apply.hs \
-        staticanalysis/inferencers/typingstrategies/TS_Messages.hs \
-        staticanalysis/inferencers/typingstrategies/TS_Analyse.hs \
-        staticanalysis/inferencers/typingstrategies/TS_CoreSyntax.hs \
-        staticanalysis/inferencers/typingstrategies/TS_ToCore.hs \
-        staticanalysis/inferencers/typingstrategies/TS_Compile.hs \
-        staticanalysis/inferencers/typingstrategies/TS_Attributes.hs \
-        staticanalysis/types/TypesToAlignedDocs.hs \
-        staticanalysis/types/TypeConversion.hs \
+	staticanalysis/directives/TS_Parser.hs \
+	staticanalysis/directives/TS_Syntax.hs \
+	staticanalysis/directives/Matchers.hs \
+        staticanalysis/directives/TS_Apply.hs \
+        staticanalysis/directives/TS_Messages.hs \
+        staticanalysis/directives/TS_Analyse.hs \
+        staticanalysis/directives/TS_CoreSyntax.hs \
+        staticanalysis/directives/TS_ToCore.hs \
+        staticanalysis/directives/TS_Compile.hs \
+        staticanalysis/directives/TS_Attributes.hs \
+        staticanalysis/miscellaneous/ConstraintInfo.hs \
+        staticanalysis/miscellaneous/DoublyLinkedTree.hs \
+        staticanalysis/miscellaneous/TypeConstraints.hs \
+        staticanalysis/miscellaneous/TypesToAlignedDocs.hs \
+        staticanalysis/miscellaneous/ContributingSites.hs \
+        staticanalysis/miscellaneous/HighLightArea.hs \
+        staticanalysis/miscellaneous/TypeConversion.hs \
+        staticanalysis/miscellaneous/UHA_Source.hs \
         $(TOPDIR)/Types/Basics.hs \
         $(TOPDIR)/Types/Quantification.hs \
         $(TOPDIR)/Types/Qualification.hs \
@@ -187,7 +191,7 @@ CORE	= $(LVMLIBDIR)/core/Core.hs $(LVMLIBDIR)/core/CorePretty.hs $(LVMLIBDIR)/co
 	  $(LVMLIBDIR)/core/CoreNoShadow.hs $(LVMLIBDIR)/core/CoreFreeVar.hs $(LVMLIBDIR)/core/CoreLetSort.hs \
 	  $(LVMLIBDIR)/core/CoreLift.hs $(LVMLIBDIR)/core/CoreSaturate.hs
 
-IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:$(PARSECDIR):./parser:./staticanalysis:./staticanalysis/inferencers:./staticanalysis/inferencers/typingstrategies:./staticanalysis/staticchecks:./staticanalysis/constraints:./staticanalysis/types:./staticanalysis/heuristics:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem:$(TOPDIR):../../Top/src
+IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:$(PARSECDIR):./parser:./staticanalysis/miscellaneous:./staticanalysis/inferencers:./staticanalysis/directives:./staticanalysis/staticchecks:./staticanalysis/heuristics:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem:$(TOPDIR):../../Top/src
 
 # AG sources
 AGSOURCES = \
@@ -195,10 +199,10 @@ AGSOURCES = \
      staticanalysis/staticchecks/StaticChecks.hs staticanalysis/inferencers/TypeInferencing.hs \
      staticanalysis/inferencers/KindInferencing.hs \
      codegeneration/CodeGeneration.hs \
-     syntax/UHA_Syntax.hs modulesystem/ExtractImportDecls.hs staticanalysis/inferencers/typingstrategies/TS_Syntax.hs \
-     staticanalysis/inferencers/typingstrategies/TS_Apply.hs staticanalysis/inferencers/typingstrategies/TS_Analyse.hs \
-     staticanalysis/inferencers/typingstrategies/TS_CoreSyntax.hs \
-     staticanalysis/inferencers/typingstrategies/TS_ToCore.hs parser/ResolveOperators.hs
+     syntax/UHA_Syntax.hs modulesystem/ExtractImportDecls.hs staticanalysis/directives/TS_Syntax.hs \
+     staticanalysis/directives/TS_Apply.hs staticanalysis/directives/TS_Analyse.hs \
+     staticanalysis/directives/TS_CoreSyntax.hs \
+     staticanalysis/directives/TS_ToCore.hs parser/ResolveOperators.hs
 
 #Sources and object files
 SRCS = $(PARSER) $(STATICANALYSIS) $(UHA) $(CODEGENERATION) $(UTILS) $(LVMCOMMON) \
@@ -290,7 +294,7 @@ staticanalysis/inferencers/TypeInferencing.hs : \
                 staticanalysis/staticchecks/HeliumPartialSyntax.ag \
 		syntax/UHA_Syntax.ag \
                 staticanalysis/staticchecks/Scope.ag\
-                staticanalysis/inferencers/typingstrategies/TS_PatternMatching.ag
+                staticanalysis/directives/TS_PatternMatching.ag
                 
 	# AG TypeInferencing
 	cd staticanalysis/inferencers;$(AG) $(AG_OPTS) --self TypeInferencing.ag;cd ../..
@@ -318,42 +322,42 @@ modulesystem/ExtractImportDecls.hs : \
 	# AG ExtractImportDecls
 	cd modulesystem;$(AG) $(AG_OPTS) --self ExtractImportDecls.ag;cd ..
         
-staticanalysis/inferencers/typingstrategies/TS_Syntax.hs : \
-	staticanalysis/inferencers/typingstrategies/TS_Syntax.ag
+staticanalysis/directives/TS_Syntax.hs : \
+	staticanalysis/directives/TS_Syntax.ag
 	# AG TS_Syntax
-	cd staticanalysis/inferencers/typingstrategies;$(AG) -dmr TS_Syntax.ag;cd ../../..
+	cd staticanalysis/directives;$(AG) -dmr TS_Syntax.ag;cd ../..
 
-staticanalysis/inferencers/typingstrategies/TS_Analyse.hs : \
-        staticanalysis/inferencers/typingstrategies/TS_Syntax.ag \
-        staticanalysis/inferencers/typingstrategies/TS_Collect.ag \
-        staticanalysis/inferencers/typingstrategies/TS_Analyse.ag \
+staticanalysis/directives/TS_Analyse.hs : \
+        staticanalysis/directives/TS_Syntax.ag \
+        staticanalysis/directives/TS_Collect.ag \
+        staticanalysis/directives/TS_Analyse.ag \
         syntax/UHA_Syntax.ag 
 	# AG TS_Analyse
-	cd staticanalysis/inferencers/typingstrategies;$(AG) $(AG_OPTS) --self TS_Analyse.ag;cd ../../..
+	cd staticanalysis/directives;$(AG) $(AG_OPTS) --self TS_Analyse.ag;cd ../..
 
-staticanalysis/inferencers/typingstrategies/TS_Apply.hs : \
-        staticanalysis/inferencers/typingstrategies/TS_Syntax.ag \
-        staticanalysis/inferencers/typingstrategies/TS_Collect.ag \
-        staticanalysis/inferencers/typingstrategies/TS_Apply.ag \
-        staticanalysis/inferencers/typingstrategies/TS_CoreData.ag \
+staticanalysis/directives/TS_Apply.hs : \
+        staticanalysis/directives/TS_Syntax.ag \
+        staticanalysis/directives/TS_Collect.ag \
+        staticanalysis/directives/TS_Apply.ag \
+        staticanalysis/directives/TS_CoreData.ag \
         syntax/UHA_Syntax.ag \
 	# AG TS_Syntax
-	cd staticanalysis/inferencers/typingstrategies;$(AG) -mscf TS_Apply.ag;cd ../../..
+	cd staticanalysis/directives;$(AG) -mscf TS_Apply.ag;cd ../..
 
-staticanalysis/inferencers/typingstrategies/TS_CoreSyntax.hs : \
-	staticanalysis/inferencers/typingstrategies/TS_CoreSyntax.ag \
-        staticanalysis/inferencers/typingstrategies/TS_CoreData.ag
+staticanalysis/directives/TS_CoreSyntax.hs : \
+	staticanalysis/directives/TS_CoreSyntax.ag \
+        staticanalysis/directives/TS_CoreData.ag
 	# AG TS_CoreSyntax
-	cd staticanalysis/inferencers/typingstrategies;$(AG) -md TS_CoreSyntax.ag;cd ../../..
+	cd staticanalysis/directives;$(AG) -md TS_CoreSyntax.ag;cd ../..
 
-staticanalysis/inferencers/typingstrategies/TS_ToCore.hs : \
-        staticanalysis/inferencers/typingstrategies/TS_Syntax.ag \
-        staticanalysis/inferencers/typingstrategies/TS_Collect.ag \
-        staticanalysis/inferencers/typingstrategies/TS_ToCore.ag \
+staticanalysis/directives/TS_ToCore.hs : \
+        staticanalysis/directives/TS_Syntax.ag \
+        staticanalysis/directives/TS_Collect.ag \
+        staticanalysis/directives/TS_ToCore.ag \
         syntax/UHA_Syntax.ag \
         syntax/UHA_OneLine.ag 
 	# AG TS_Syntax
-	cd staticanalysis/inferencers/typingstrategies;$(AG) -mscrf --self TS_ToCore.ag;cd ../../..
+	cd staticanalysis/directives;$(AG) -mscrf --self TS_ToCore.ag;cd ../..
                         
 endif
 

@@ -54,8 +54,8 @@ processArgs args =
             ,   Option "" ["solver-simple"     ] (NoArg SolverSimple     ) "a straightforward implementation"
             ,   Option "" ["solver-greedy"     ] (NoArg SolverGreedy     ) "a fast solver"
             ,   Option "" ["solver-typegraph"  ] (NoArg SolverTypeGraph  ) "slow, but high quality error messages"
-            ,   Option "" ["solver-combination"] (NoArg SolverCombination) "combines `greedy' and `type graph'"
-            ,   Option "" ["solver-chunks"     ] (NoArg SolverChunks     ) "an experimental solver"
+            ,   Option "" ["solver-combination"] (NoArg SolverCombination) "combines \"greedy\" and \"type graph\""
+            ,   Option "" ["solver-chunks"     ] (NoArg SolverChunks     ) "solves chunks of constraints (default)"
             
             -- available treewalks for type inferencing
             ,   Option "" ["treewalk-topdown" ] (NoArg TreeWalkTopDown            ) "top down treewalk"
@@ -68,6 +68,11 @@ processArgs args =
             -- other options for type inferencing
             ,   Option "" ["right-to-left"] (NoArg RightToLeft) "right-to-left treewalk"
             ,   Option "" ["no-spreading" ] (NoArg NoSpreading) "do not spread type constraints"
+	    
+	    -- options for type graph heuristics
+	    ,   Option "" ["no-repair-heuristics"] (NoArg NoRepairHeuristics) "don't suggest program fixes"
+	    ,   Option "" ["unifier-heuristics"]   (NoArg UnifierHeuristics)  "use unifier heuristics (experimental)"
+	    ,   Option "" ["highlighting"]         (NoArg Highlighting)       "highlighting with type errors (experimental)"
             ]
 
 data Option
@@ -104,8 +109,8 @@ data Option
     -- do kind inferencing
     | KindInferencing    
     -- other type inference options
-    | RightToLeft | NoSpreading   
-    
+    | RightToLeft | NoSpreading
+    | NoRepairHeuristics | UnifierHeuristics | Highlighting
     | Overloading
     
     deriving Eq

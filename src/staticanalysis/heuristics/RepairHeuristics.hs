@@ -1,3 +1,15 @@
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- Heuristics that supply additional hints with a type error how a program
+-- can be corrected.
+--
+-----------------------------------------------------------------------------
+
 module RepairHeuristics where
 
 import Top.TypeGraph.Heuristics
@@ -10,8 +22,10 @@ import OnlyResultHeuristics
 import Data.List
 import Data.Maybe
 import TypeErrors
+import ConstraintInfo
 import Messages (showNumber, ordinal, prettyAndList)
 import OneLiner (OneLineTree)
+import UHA_Source
 import UHA_Syntax (Range)
 
 -----------------------------------------------------------------------------
@@ -183,10 +197,12 @@ applicationEdge =
                          fullTp <- applySubst t1 -- ???
                          let i = head incorrectArguments
                              {- bug fix 25 september 2003: don't forget to expand the type synonyms -}
-                             expandedTp = expandType (snd synonyms) fullTp
-                             (oneLiner,tp,range) = tuplesForArguments !! i
-                             infoFun       = typeErrorForTerm (isBinary,isPatternApplication) i oneLiner (tp,expargtp) range
-                             expargtp      = fst (functionSpine expandedTp) !! i
+                             expandedTp  = expandType (snd synonyms) fullTp
+                             (source,tp) = tuplesForArguments !! i
+			     range       = rangeOfSource source
+			     oneLiner    = oneLinerSource source
+                             infoFun     = typeErrorForTerm (isBinary,isPatternApplication) i oneLiner (tp,expargtp) range
+                             expargtp    = fst (functionSpine expandedTp) !! i
                          return $ Just 
                             (3, "incorrect argument of application="++show i, [edge], [infoFun info])
                    
@@ -407,68 +423,7 @@ variableFunction =
 -----------------------------------------------------------------------------
 -- REST 
 
-{-
-considerUnifierVertices :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => 
-                               [(EdgeID, info)] -> SolveState EquivalenceGroups info [(HeuristicResult, (EdgeID, info))]
-considerUnifierVertices xs = 
-   do let is = nub [ i | Just i <- map (maybeUnifier . snd) xs ]
-      results <- mapM unifierVertex is
-      return (concat results)
-
- where
-  unifierVertex :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => 
-                       Int -> SolveState EquivalenceGroups info [(HeuristicResult, (EdgeID, info))]
-  unifierVertex unifier =
-     do allEdgesAdjacentToUnifier <- edgesFrom unifier
-        doWithoutEdges allEdgesAdjacentToUnifier $
-
-           do options     <- getSolverOptions
-              let synonyms = getTypeSynonyms options
-              
-              allMaybePairs <- let f pair@((EdgeID v1 v2), _) = 
-                                      do let tp | v1 == unifier = TVar v2
-                                                | otherwise     = TVar v1
-                                         mtp <- safeApplySubst tp
-                                         return (mtp, pair) 
-                               in mapM f allEdgesAdjacentToUnifier 
-              if any (isNothing . fst) allMaybePairs                   
-                then return []
-                else let allPairs = [ (x, y) | (Just x, y) <- allMaybePairs ] 
-                         (typeVariablePairs, rest) = partition (isTVar . fst) allPairs
-                         allConstantGroupsSorted@(firstGroup : otherGroups) = 
-                            let rec []     = []
-                                rec (x:xs) = let (as,bs) = foldr op ([x],[]) xs
-                                             in as : rec bs
-                                op p (as,bs) 
-                                   | unifiableTps synonyms (map fst (p:as)) = (p:as,bs)
-                                   | otherwise                              = (as,p:bs)
-                                comparer xs ys = length ys `compare` length xs -- reversed!
-                            in sortBy comparer (rec rest)
-                            
-                         predicate = maybe False (unifier==) . maybeUnifier . snd . snd
-                         majority  = not (null otherGroups) && length firstGroup > length (concat otherGroups)
-                         result 
-                          | null otherGroups
-                               = []
-                          | majority
-                               = let (incorrectBranch, incorrectContext) = partition predicate (concat otherGroups)
-                                 in case length incorrectBranch of
-                                       0 -> []
-                                       1 -> if null incorrectContext
-                                              then [(ModifierHeuristic 100.0 "only branch incorrect in majority", snd $ head incorrectBranch)]
-                                              else undefined
-                                       n -> error "n"
-                                     -- 0 branches (alleen contexten)
-                                     -- alleen 1 branch
-                                     -- > 1 branch (takeover)
-                          | otherwise 
-                               = error "there is no majority"
-                                  
-                         
-                     in return result
--}             
-
-heuristics_MAX        =    120 :: Int
+heuristics_MAX = 120 :: Int
 
 zipWithHoles :: [a] -> [b] -> [ ( [Int] , [(a,b)] ) ] 
 zipWithHoles = rec 0 where
@@ -500,6 +455,9 @@ deleteIndex 0 (a:as) = as
 deleteIndex i (a:as) = a : deleteIndex (i-1) as
 
 class WithHints a where
-   fixHint          :: String -> a -> a
-   becauseHint      :: String -> a -> a
+   addHint          :: String -> String -> a -> a
    typeErrorForTerm :: (Bool,Bool) -> Int -> OneLineTree -> (Tp,Tp) -> Range -> a -> a
+   
+fixHint, becauseHint :: WithHints a => String -> a -> a
+fixHint     = addHint "probable fix"
+becauseHint = addHint "because"

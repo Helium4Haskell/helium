@@ -1,22 +1,39 @@
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- Contains all the typing rules for the an UHA abstract syntax tree.
+--
+-----------------------------------------------------------------------------
+
 ----------------------------------------------------------------------------------------
 -- Type Inferencing : Module
 
 SEM Module
 
-  | Module  
+  | Module
       loc  -- choose your algorithm to solve the type constraints                                                   
            -- the default solver is chunky
            . selectedSolver = 
-                let hs = heliumTypeGraphHeuristics @siblings
+                let typegraphSolver =
+                       let atEnd = if Highlighting `elem` @lhs.options
+                                     then updateErrors contributingSites
+                                     else return ()
+                           heuristics = heliumTypeGraphHeuristics @lhs.options @siblings
+                       in solveTypeGraphPlusDoAtEnd heuristics atEnd
+                    combinedSolver = solveGreedy |>>| typegraphSolver
                     select
                        | SolverSimple      `elem` @lhs.options = solveSimple   
                        | SolverGreedy      `elem` @lhs.options = solveGreedy                                                         
-                       | SolverTypeGraph   `elem` @lhs.options = solveTypeGraph hs
-                       | SolverCombination `elem` @lhs.options = solveCombination hs                      
+                       | SolverTypeGraph   `elem` @lhs.options = typegraphSolver
+                       | SolverCombination `elem` @lhs.options = combinedSolver               
                        | otherwise = \synonyms unique _ ->  
-                                        let chunkConstraints :: ChunkConstraints (TypeConstraint HeliumConstraintInfo)
+                                        let chunkConstraints :: ChunkConstraints (TypeConstraint ConstraintInfo)
                                             chunkConstraints = chunkTree dependencyTypeConstraint . phaseTree . spreadTree spreadFunction $ @body.constraints
-                                        in solveChunkConstraints hs (flattenTree @selectedTreeWalk) synonyms unique chunkConstraints
+                                        in solveChunkConstraints combinedSolver (flattenTree @selectedTreeWalk) synonyms unique chunkConstraints
                 in select
 
            -- choose your treewalk to flatten the constraint tree
@@ -55,7 +72,7 @@ SEM Module
                                                 , lookupFM (typeEnvironment   @lhs.importEnvironment) n
                                                 ]
                         in map (concatMap f) (getSiblings @lhs.importEnvironment)                                       
-           . checkedSolveErrors = catMaybes (map (checkTypeError @orderedTypeSynonyms . (@substitution |->) . makeTypeError) @solveErrors)
+ 	   . checkedSolveErrors = makeTypeErrors @orderedTypeSynonyms @substitution @solveErrors
            . typeErrors         = if null @checkedSolveErrors then @body.collectErrors else @checkedSolveErrors
            . warnings           = @body.collectWarnings
            . debugIO            = putStrLn @debugString
@@ -801,21 +818,25 @@ findCurrentChunk :: Name -> InheritedBDG -> Int
 findCurrentChunk n = let p = elem n . fst
                      in snd . snd . head . filter p  
 
-heliumTypeGraphHeuristics :: [[(String, TpScheme)]] -> [Heuristic HeliumConstraintInfo]
-heliumTypeGraphHeuristics siblings = 
+heliumTypeGraphHeuristics :: [Option] -> [[(String, TpScheme)]] -> [Heuristic ConstraintInfo]
+heliumTypeGraphHeuristics options siblings = 
    [ highParticipation 1.00
    , applicationResult
    , negationResult
-   , Heuristic (Voting 
+   ] ++
+   [ Heuristic (Voting $
         [ siblingFunctions siblings
         , similarLiterals
         , similarNegation
         , applicationEdge
         , tupleEdge
         , fbHasTooManyArguments
-        , variableFunction                                                    
-        ])
-   , trustFactorOfConstraint
+        , variableFunction
+        ] ++
+        [ unifierVertex | UnifierHeuristics `elem` options ])
+   | NoRepairHeuristics `notElem` options
+   ] ++
+   [ trustFactorOfConstraint
    , isTopDownEdge
    , positionInList
    ]

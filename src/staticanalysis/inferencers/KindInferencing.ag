@@ -1,3 +1,14 @@
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- Kind inference.
+--
+---------------------------------------------------------------------------------------
+
 -------------------------------------------------------------------------------
 -- Attributes for kind inferencing
 
@@ -23,11 +34,11 @@ import Top.Types
 import Top.Solvers.GreedySolver
 import Top.Solvers.SolveConstraints
 import Top.States.TIState
-import LiftedConstraints
+import TypeConstraints
 import UHA_Syntax
 import Args
 import Data.FiniteMap
-import LiftedConstraints
+import TypeConstraints
 import Utils (internalError)
 import UHA_Utils (nameFromString) -- instance Ord Name
 import UHA_Range (noRange)

@@ -1,10 +1,18 @@
--------------------------------------------
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
 -- Distributition of 
 --   * import environment
 --   * substitution   (result of solving the type constraints)
 --   * predicates     (already substituted)
 --   * inferred types
 --   * ordered type synonyms
+--
+-----------------------------------------------------------------------------
 
 ATTR Expression Expressions MaybeExpression Alternative Alternatives
      Statement Statements Declaration Declarations MaybeDeclarations 
@@ -218,7 +226,7 @@ lookupChunkNumber i fm =
    let err = error ("could not find beta in lookupChunkNumber [i="++show i++"] [fm="++show (fmToList fm)++"]")
    in lookupWithDefaultFM fm err i
 
-dependencyBinds :: ChunkNumberMap -> TypeConstraints HeliumConstraintInfo -> [(Int, TypeConstraint HeliumConstraintInfo)]
+dependencyBinds :: ChunkNumberMap -> TypeConstraints ConstraintInfo -> [(Int, TypeConstraint ConstraintInfo)]
 dependencyBinds fm cs = 
    let err = error "could not find variable of a constraint"
    in [ (lookupChunkNumber i fm, c) | c <- cs, let i = maybe err id (spreadFunction c)]   

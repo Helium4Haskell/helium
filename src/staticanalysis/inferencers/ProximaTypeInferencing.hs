@@ -8,7 +8,7 @@ import TypeConversion
 
 -- constraints and constraint trees
 import TypeConstraints
-import LiftedConstraints
+import TypeConstraints
 import TreeWalk
 import Tree
 

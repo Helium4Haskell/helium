@@ -1,10 +1,11 @@
--------------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
 --
---   *** The Helium Compiler : Static Analysis ***
---               ( Bastiaan Heeren )
---
--- TypeInferenceInfo.ag : Additional information (a local attribute) is
---    provided for each type constraint.
+-- Additional information (a local attribute) is provided for each type constraint.
 --
 -------------------------------------------------------------------------------
 
@@ -32,19 +33,21 @@ SEM Declaration | PatternBinding loc . cinfo =
 SEM FunctionBinding | FunctionBinding loc . cinfoLeft =
   \num  -> 
   orphanConstraint num "pattern of function binding" @parentTree
-     []                      
+     [ Unifier (head (ftv (@lhs.betasLeft !! num))) (ordinal True (num+1)++" pattern of function bindings", attribute @lhs.parentTree, "pattern") ]                      
 
 SEM FunctionBinding | FunctionBinding loc . cinfoBind =
   \name -> variableConstraint "variable" (nameToSelfExpr name) 
-     [FolkloreConstraint]
+     [ FolkloreConstraint 
+     , makeUnifier name "function binding" @lefthandside.environment @parentTree
+     ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : RightHandSide
 
 -- RightHandSide.Expression
 SEM RightHandSide | Expression loc . cinfo = 
-  resultConstraint "right-hand side" @expression.infoTree
-     []
+  orphanConstraint 0 "right-hand side" @parentTree 
+     [ Unifier (head (ftv @lhs.betaRight)) ("right-hand sides", attribute (skip_UHA_FB_RHS @lhs.parentTree), "right-hand side") ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Expression
@@ -52,7 +55,7 @@ SEM RightHandSide | Expression loc . cinfo =
 -- Expression.Literal
 SEM Expression | Literal loc . cinfo =
   resultConstraint "literal" @parentTree
-     [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral (literalType @literal.self) ]
+     [ FolkloreConstraint, HasTrustFactor 10.0 ]
 
 -- Expression.Constructor
 SEM Expression | Constructor loc . cinfo =
@@ -90,25 +93,27 @@ SEM Expression | InfixApplication loc . cinfoRightSection =
 SEM Expression | InfixApplication loc . cinfoEmpty =
   specialConstraint "infix application" @parentTree
     (self @localInfo, Nothing)
-    [ FolkloreConstraint, HasTrustFactor 10.0, IsEmptyInfixApplication ]
+    [ FolkloreConstraint, HasTrustFactor 10.0 ]
     
 -- Expression.If
 SEM Expression | If loc . cinfoGuard =
-  childConstraint 0 "conditional" @parentTree 
+  childConstraint 0 "conditional" @parentTree
      []   
 
 SEM Expression | If loc . cinfoThen =
   childConstraint 1 "then branch of conditional" @parentTree 
-     []
+     [ Unifier (head (ftv @beta)) ("conditional", @localInfo, "then branch") ]
 
 SEM Expression | If loc . cinfoElse =
   childConstraint 2 "else branch of conditional" @parentTree 
-     []
+     [ Unifier (head (ftv @beta)) ("conditional", @localInfo, "else branch") ]
 
 -- Expression.Lambda
 SEM Expression | Lambda loc . cinfoBind =
   \name -> variableConstraint "variable" (nameToSelfExpr name)
-     [FolkloreConstraint]
+     [ FolkloreConstraint
+     , makeUnifier name "lambda abstraction" @patterns.environment @parentTree
+     ]
 
 SEM Expression | Lambda loc . cinfoType =
   resultConstraint "lambda abstraction" @parentTree 
@@ -117,7 +122,7 @@ SEM Expression | Lambda loc . cinfoType =
 -- Expression.Case
 SEM Expression | Case loc . cinfo =
   childConstraint 0 "scrutinee of case expression" @parentTree
-     [ ]
+     [ Unifier (head (ftv @beta')) ("case patterns", @localInfo, "scrutinee") ]
 
 -- Expression.Let
 SEM Expression | Let loc . cinfoType =
@@ -132,9 +137,9 @@ SEM Expression | Do loc . cinfo =
 -- Expression.List
 SEM Expression | List loc . cinfoElem =
   \elemNr ->
-  childConstraint elemNr "element of list" @parentTree
-  [ HasTrustFactor 10.0 | length @expressions.betas < 2 ]
-
+  childConstraint elemNr "element of list" @parentTree $
+     [ HasTrustFactor 10.0 | length @expressions.betas < 2 ] ++
+     [ Unifier (head (ftv @beta')) ("list", @localInfo, ordinal False (elemNr+1) ++ " element") ]
 
 SEM Expression | List loc . cinfoResult =
   resultConstraint "list" @parentTree
@@ -143,7 +148,7 @@ SEM Expression | List loc . cinfoResult =
 -- Expression.Tuple   
 SEM Expression | Tuple loc . cinfo =
   resultConstraint "tuple" @parentTree 
-     [ FolkloreConstraint, IsTupleEdge ]
+     [ FolkloreConstraint ]
         
 -- Expression.Comprehension   
 SEM Expression | Comprehension loc . cinfo =
@@ -181,12 +186,12 @@ SEM Expression | Enum loc . cinfoResult =
 SEM Expression | Negate loc . cinfo =
   specialConstraint "negation" @parentTree 
      (self @localInfo, Just $ nameToSelfExpr (Name_Operator @range [] "-")) 
-     [ Negation True ]
+     []
 
 SEM Expression | NegateFloat loc . cinfo =
   specialConstraint "negation" @parentTree 
      (self @localInfo, Just $ nameToSelfExpr (Name_Operator @range [] "-."))
-     [ Negation False ]        
+     []        
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : GuardedExpression
@@ -196,8 +201,9 @@ SEM GuardedExpression | GuardedExpression loc . cinfoGuard =
      []       
 
 SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
-  resultConstraint "guarded expression" @expression.infoTree
-     [ HasTrustFactor 10.0 | @lhs.numberOfGuards < 2 ]
+  resultConstraint "guarded expression" @expression.infoTree $
+     [ HasTrustFactor 10.0 | @lhs.numberOfGuards < 2 ] ++
+     [ Unifier (head (ftv @lhs.betaRight)) ("right-hand sides", attribute (skip_UHA_FB_RHS @lhs.parentTree), "right-hand side") ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Pattern
@@ -205,7 +211,7 @@ SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
 -- Pattern.Literal
 SEM Pattern | Literal loc . cinfo =
   resultConstraint "literal pattern" @parentTree
-     [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral (literalType @literal.self) ]        
+     [ FolkloreConstraint, HasTrustFactor 10.0 ]        
 
 -- Pattern.Constructor
 SEM Pattern | Constructor loc . cinfoConstructor =
@@ -234,8 +240,9 @@ SEM Pattern | InfixConstructor loc . cinfoApply =
 -- Pattern.List
 SEM Pattern | List loc . cinfoElem =
   \elemNr ->
-  childConstraint elemNr "element of pattern list" @parentTree
-     [ HasTrustFactor 10.0 | length @patterns.constraintslist < 2 ]
+  childConstraint elemNr "element of pattern list" @parentTree $
+     [ HasTrustFactor 10.0 | length @patterns.constraintslist < 2 ] ++ 
+     [ Unifier (head (ftv @beta')) ("pattern list", @localInfo, ordinal False (elemNr+1) ++ " element") ]
 
 SEM Pattern | List loc . cinfoResult =
   resultConstraint "pattern list" @parentTree
@@ -244,7 +251,7 @@ SEM Pattern | List loc . cinfoResult =
 -- Pattern.Tuple
 SEM Pattern | Tuple loc . cinfo =
   resultConstraint "pattern tuple" @parentTree
-  [ FolkloreConstraint, IsTupleEdge ]
+  [ FolkloreConstraint ]
 
 -- Pattern.Negate
 SEM Pattern | Negate loc . cinfo =
@@ -260,18 +267,20 @@ SEM Pattern |  As loc . cinfo =
 -- Pattern.NegateFloat
 SEM Pattern | NegateFloat loc . cinfo =
   resultConstraint "pattern negation" @parentTree
-     [ FolkloreConstraint, NegationResult ]
+     [ FolkloreConstraint ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Alternative
 
 SEM Alternative | Alternative loc . cinfoLeft =
   resultConstraint "case pattern" @pattern.infoTree
-     []     
+     [ Unifier (head (ftv @lhs.betaLeft)) ("case patterns", attribute @lhs.parentTree, "case pattern") ]     
 
 SEM Alternative | Alternative loc . cinfoBind =
   \name -> variableConstraint "variable" (nameToSelfExpr name) 
-     [FolkloreConstraint]
+     [ FolkloreConstraint
+     , makeUnifier name "case alternative" @pattern.environment @lhs.parentTree
+     ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Statement
@@ -286,7 +295,9 @@ SEM Statement | Generator loc . cinfoResult =
      
 SEM Statement | Generator loc . cinfoBind =
   \name -> variableConstraint "variable" (nameToSelfExpr name)
-     [FolkloreConstraint]
+     [ FolkloreConstraint 
+     , makeUnifier name "generator" @pattern.environment @parentTree
+     ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Qualifier
@@ -301,13 +312,15 @@ SEM Qualifier | Generator loc . cinfoResult =
      
 SEM Qualifier | Generator loc . cinfoBind =
   \name -> variableConstraint "variable" (nameToSelfExpr name) 
-     [FolkloreConstraint]
+     [ FolkloreConstraint
+     , makeUnifier name "generator" @pattern.environment @parentTree
+     ]
   
 -----------------------------------------------------------------
 -- Smart constructors
 
 {
-childConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+childConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
 childConstraint childNr theLocation infoTree theProperties tppair =
   CInfo { location   = theLocation
         , sources    = ( (self . attribute) infoTree
@@ -318,7 +331,7 @@ childConstraint childNr theLocation infoTree theProperties tppair =
         , properties = theProperties
         }
 
-specialConstraint :: String -> InfoTree -> (UHA_Source, Maybe UHA_Source) -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+specialConstraint :: String -> InfoTree -> (UHA_Source, Maybe UHA_Source) -> Properties -> (Tp, Tp) -> ConstraintInfo
 specialConstraint theLocation infoTree theSources theProperties tppair =
   CInfo { location   = theLocation
         , sources    = theSources
@@ -327,7 +340,7 @@ specialConstraint theLocation infoTree theSources theProperties tppair =
         , properties = theProperties
         }
         
-orphanConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+orphanConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
 orphanConstraint childNr theLocation infoTree theProperties tppair =
   CInfo { location   = theLocation
         , sources    = ( (self . attribute . selectChild childNr) infoTree
@@ -338,7 +351,7 @@ orphanConstraint childNr theLocation infoTree theProperties tppair =
         , properties = theProperties
         }        
         
-resultConstraint :: String -> InfoTree -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+resultConstraint :: String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
 resultConstraint theLocation infoTree theProperties tppair =
   CInfo { location   = theLocation
         , sources    = ( (self . attribute) infoTree 
@@ -349,7 +362,7 @@ resultConstraint theLocation infoTree theProperties tppair =
         , properties = theProperties
         }        
 
-variableConstraint :: String -> UHA_Source -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+variableConstraint :: String -> UHA_Source -> Properties -> (Tp, Tp) -> ConstraintInfo
 variableConstraint theLocation theSource theProperties tppair =
   CInfo { location   = theLocation
         , sources    = (theSource, Nothing)
@@ -358,10 +371,10 @@ variableConstraint theLocation theSource theProperties tppair =
         , properties = theProperties
         }               
         
-cinfoBindingGroupExplicitTypedBinding :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoSameBindingGroup                 :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoBindingGroupImplicit             :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoBindingGroupExplicit             :: Name -> (Tp,Tp) -> HeliumConstraintInfo
+cinfoBindingGroupExplicitTypedBinding :: Name -> (Tp,Tp) -> ConstraintInfo
+cinfoSameBindingGroup                 :: Name -> (Tp,Tp) -> ConstraintInfo
+cinfoBindingGroupImplicit             :: Name -> (Tp,Tp) -> ConstraintInfo
+cinfoBindingGroupExplicit             :: Name -> (Tp,Tp) -> ConstraintInfo
 
 cinfoBindingGroupExplicitTypedBinding name = 
    variableConstraint "explicitly typed binding" (nameToSelfExpr name) [ FromBindingGroup, ExplicitTypedBinding, HasTrustFactor 10.0 ]
@@ -377,12 +390,4 @@ nameToSelfExpr name = UHA_Expr (Expression_Variable (getNameRange name) name)
 
 nameToSelfPat :: Name -> UHA_Source
 nameToSelfPat name = UHA_Pat (Pattern_Variable (getNameRange name) name)
-
-literalType :: Literal -> String
-literalType x = 
-   case x of   
-      Literal_Int    _ _ -> "Int"
-      Literal_Char   _ _ -> "Char"
-      Literal_String _ _ -> "String"
-      Literal_Float  _ _ -> "Float"
 }   

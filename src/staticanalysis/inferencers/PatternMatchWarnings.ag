@@ -1,7 +1,14 @@
-
-------------------------------------------------
--- PatternMatchWarnings.ag by Maarten Löffler --
-------------------------------------------------
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- Generates warnings for incomplete and overlapping pattern matches
+-- (PatternMatchWarnings.ag by Maarten Loffler)
+-- 
+-----------------------------------------------------------------------------
 
 imports {
 import UHA_Utils

@@ -237,6 +237,10 @@ showRange range@(Range_Range startPos endPos)
     | otherwise =
         showPosition startPos
 
+showFullRange :: Range -> String
+showFullRange (Range_Range startPos endPos) =
+   showPosition startPos ++ "-" ++ showPosition endPos
+	
 showPosition :: Position -> String
 showPosition (Position_Position _ line column) =
     "(" ++ show line ++ "," ++ show column ++ ")"

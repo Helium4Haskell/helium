@@ -5,11 +5,11 @@ import Top.Types
 import Top.Solvers.GreedySolver
 import Top.Solvers.SolveConstraints
 import Top.States.TIState
-import LiftedConstraints
+import TypeConstraints
 import UHA_Syntax
 import Args
 import Data.FiniteMap
-import LiftedConstraints
+import TypeConstraints
 import Utils (internalError)
 import UHA_Utils (nameFromString) -- instance Ord Name
 import UHA_Range (noRange)
@@ -103,7 +103,17 @@ sem_Alternative_Alternative :: (T_Range) ->
 sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Alternative)
+            _rangeIself :: (Range)
+            _patternIself :: (Pattern)
+            _righthandsideIbindingGroups :: (BindingGroups)
+            _righthandsideIkappaUnique :: (Int)
+            _righthandsideIself :: (RightHandSide)
+            _righthandsideObindingGroups :: (BindingGroups)
+            _righthandsideOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _patternIself) =
                 (pattern_ )
@@ -127,7 +137,11 @@ sem_Alternative_Empty :: (T_Range) ->
 sem_Alternative_Empty (range_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Alternative)
+            _rangeIself :: (Range)
+            ( _rangeIself) =
                 (range_ )
             (_self@_) =
                 Alternative_Empty _rangeIself
@@ -154,7 +168,20 @@ sem_Alternatives_Cons :: (T_Alternative) ->
 sem_Alternatives_Cons (hd_) (tl_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Alternatives)
+            _hdIbindingGroups :: (BindingGroups)
+            _hdIkappaUnique :: (Int)
+            _hdIself :: (Alternative)
+            _hdObindingGroups :: (BindingGroups)
+            _hdOkappaUnique :: (Int)
+            _tlIbindingGroups :: (BindingGroups)
+            _tlIkappaUnique :: (Int)
+            _tlIself :: (Alternatives)
+            _tlObindingGroups :: (BindingGroups)
+            _tlOkappaUnique :: (Int)
+            ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
                 (hd_ (_hdObindingGroups) (_hdOkappaUnique))
             ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
                 (tl_ (_tlObindingGroups) (_tlOkappaUnique))
@@ -179,7 +206,10 @@ sem_Alternatives_Nil :: (T_Alternatives)
 sem_Alternatives_Nil  =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let (_self@_) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Alternatives)
+            (_self@_) =
                 []
             (_lhsOself@_) =
                 _self
@@ -205,7 +235,20 @@ sem_AnnotatedType_AnnotatedType :: (T_Range) ->
 sem_AnnotatedType_AnnotatedType (range_) (strict_) (type_) =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappa :: (Kind)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (AnnotatedType)
+            _rangeIself :: (Range)
+            _typeIassumptions :: (Assumptions)
+            _typeIconstraints :: (KindConstraints)
+            _typeIkappa :: (Kind)
+            _typeIkappaUnique :: (Int)
+            _typeIself :: (Type)
+            _typeOconstraints :: (KindConstraints)
+            _typeOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _typeIassumptions,_typeIconstraints,_typeIkappa,_typeIkappaUnique,_typeIself) =
                 (type_ (_typeOconstraints) (_typeOkappaUnique))
@@ -244,7 +287,26 @@ sem_AnnotatedTypes_Cons :: (T_AnnotatedType) ->
 sem_AnnotatedTypes_Cons (hd_) (tl_) =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let ( _hdIassumptions,_hdIconstraints,_hdIkappa,_hdIkappaUnique,_hdIself) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappaUnique :: (Int)
+            _lhsOkappas :: (Kinds)
+            _lhsOself :: (AnnotatedTypes)
+            _hdIassumptions :: (Assumptions)
+            _hdIconstraints :: (KindConstraints)
+            _hdIkappa :: (Kind)
+            _hdIkappaUnique :: (Int)
+            _hdIself :: (AnnotatedType)
+            _hdOconstraints :: (KindConstraints)
+            _hdOkappaUnique :: (Int)
+            _tlIassumptions :: (Assumptions)
+            _tlIconstraints :: (KindConstraints)
+            _tlIkappaUnique :: (Int)
+            _tlIkappas :: (Kinds)
+            _tlIself :: (AnnotatedTypes)
+            _tlOconstraints :: (KindConstraints)
+            _tlOkappaUnique :: (Int)
+            ( _hdIassumptions,_hdIconstraints,_hdIkappa,_hdIkappaUnique,_hdIself) =
                 (hd_ (_hdOconstraints) (_hdOkappaUnique))
             ( _tlIassumptions,_tlIconstraints,_tlIkappaUnique,_tlIkappas,_tlIself) =
                 (tl_ (_tlOconstraints) (_tlOkappaUnique))
@@ -273,7 +335,12 @@ sem_AnnotatedTypes_Nil :: (T_AnnotatedTypes)
 sem_AnnotatedTypes_Nil  =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let (_lhsOkappas@_) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappaUnique :: (Int)
+            _lhsOkappas :: (Kinds)
+            _lhsOself :: (AnnotatedTypes)
+            (_lhsOkappas@_) =
                 []
             (_lhsOassumptions@_) =
                 noAssumptions
@@ -303,7 +370,18 @@ sem_Body_Body :: (T_Range) ->
 sem_Body_Body (range_) (importdeclarations_) (declarations_) =
     \ _lhsIimportEnvironment
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOconstraints :: (KindConstraints)
+            _lhsOenvironment :: (PatternAssumptions)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Body)
+            _rangeIself :: (Range)
+            _importdeclarationsIself :: (ImportDeclarations)
+            _declarationsIbindingGroups :: (BindingGroups)
+            _declarationsIkappaUnique :: (Int)
+            _declarationsIself :: (Declarations)
+            _declarationsObindingGroups :: (BindingGroups)
+            _declarationsOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _importdeclarationsIself) =
                 (importdeclarations_ )
@@ -351,7 +429,20 @@ sem_Constructor_Constructor :: (T_Range) ->
 sem_Constructor_Constructor (range_) (constructor_) (types_) =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Constructor)
+            _rangeIself :: (Range)
+            _constructorIself :: (Name)
+            _typesIassumptions :: (Assumptions)
+            _typesIconstraints :: (KindConstraints)
+            _typesIkappaUnique :: (Int)
+            _typesIkappas :: (Kinds)
+            _typesIself :: (AnnotatedTypes)
+            _typesOconstraints :: (KindConstraints)
+            _typesOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _constructorIself) =
                 (constructor_ )
@@ -380,7 +471,27 @@ sem_Constructor_Infix :: (T_Range) ->
 sem_Constructor_Infix (range_) (leftType_) (constructorOperator_) (rightType_) =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Constructor)
+            _rangeIself :: (Range)
+            _leftTypeIassumptions :: (Assumptions)
+            _leftTypeIconstraints :: (KindConstraints)
+            _leftTypeIkappa :: (Kind)
+            _leftTypeIkappaUnique :: (Int)
+            _leftTypeIself :: (AnnotatedType)
+            _leftTypeOconstraints :: (KindConstraints)
+            _leftTypeOkappaUnique :: (Int)
+            _constructorOperatorIself :: (Name)
+            _rightTypeIassumptions :: (Assumptions)
+            _rightTypeIconstraints :: (KindConstraints)
+            _rightTypeIkappa :: (Kind)
+            _rightTypeIkappaUnique :: (Int)
+            _rightTypeIself :: (AnnotatedType)
+            _rightTypeOconstraints :: (KindConstraints)
+            _rightTypeOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _leftTypeIassumptions,_leftTypeIconstraints,_leftTypeIkappa,_leftTypeIkappaUnique,_leftTypeIself) =
                 (leftType_ (_leftTypeOconstraints) (_leftTypeOkappaUnique))
@@ -414,7 +525,16 @@ sem_Constructor_Record :: (T_Range) ->
 sem_Constructor_Record (range_) (constructor_) (fieldDeclarations_) =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Constructor)
+            _rangeIself :: (Range)
+            _constructorIself :: (Name)
+            _fieldDeclarationsIkappaUnique :: (Int)
+            _fieldDeclarationsIself :: (FieldDeclarations)
+            _fieldDeclarationsOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _constructorIself) =
                 (constructor_ )
@@ -449,7 +569,23 @@ sem_Constructors_Cons :: (T_Constructor) ->
 sem_Constructors_Cons (hd_) (tl_) =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let ( _hdIassumptions,_hdIconstraints,_hdIkappaUnique,_hdIself) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Constructors)
+            _hdIassumptions :: (Assumptions)
+            _hdIconstraints :: (KindConstraints)
+            _hdIkappaUnique :: (Int)
+            _hdIself :: (Constructor)
+            _hdOconstraints :: (KindConstraints)
+            _hdOkappaUnique :: (Int)
+            _tlIassumptions :: (Assumptions)
+            _tlIconstraints :: (KindConstraints)
+            _tlIkappaUnique :: (Int)
+            _tlIself :: (Constructors)
+            _tlOconstraints :: (KindConstraints)
+            _tlOkappaUnique :: (Int)
+            ( _hdIassumptions,_hdIconstraints,_hdIkappaUnique,_hdIself) =
                 (hd_ (_hdOconstraints) (_hdOkappaUnique))
             ( _tlIassumptions,_tlIconstraints,_tlIkappaUnique,_tlIself) =
                 (tl_ (_tlOconstraints) (_tlOkappaUnique))
@@ -476,7 +612,11 @@ sem_Constructors_Nil :: (T_Constructors)
 sem_Constructors_Nil  =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let (_lhsOassumptions@_) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Constructors)
+            (_lhsOassumptions@_) =
                 noAssumptions
             (_self@_) =
                 []
@@ -502,7 +642,18 @@ sem_ContextItem_ContextItem :: (T_Range) ->
                                (T_ContextItem)
 sem_ContextItem_ContextItem (range_) (name_) (types_) =
     \ _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOkappaUnique :: (Int)
+            _lhsOself :: (ContextItem)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _typesIassumptions :: (Assumptions)
+            _typesIconstraints :: (KindConstraints)
+            _typesIkappaUnique :: (Int)
+            _typesIkappas :: (Kinds)
+            _typesIself :: (Types)
+            _typesOconstraints :: (KindConstraints)
+            _typesOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -535,7 +686,15 @@ sem_ContextItems_Cons :: (T_ContextItem) ->
                          (T_ContextItems)
 sem_ContextItems_Cons (hd_) (tl_) =
     \ _lhsIkappaUnique ->
-        let ( _hdIkappaUnique,_hdIself) =
+        let _lhsOkappaUnique :: (Int)
+            _lhsOself :: (ContextItems)
+            _hdIkappaUnique :: (Int)
+            _hdIself :: (ContextItem)
+            _hdOkappaUnique :: (Int)
+            _tlIkappaUnique :: (Int)
+            _tlIself :: (ContextItems)
+            _tlOkappaUnique :: (Int)
+            ( _hdIkappaUnique,_hdIself) =
                 (hd_ (_hdOkappaUnique))
             ( _tlIkappaUnique,_tlIself) =
                 (tl_ (_tlOkappaUnique))
@@ -553,7 +712,9 @@ sem_ContextItems_Cons (hd_) (tl_) =
 sem_ContextItems_Nil :: (T_ContextItems)
 sem_ContextItems_Nil  =
     \ _lhsIkappaUnique ->
-        let (_self@_) =
+        let _lhsOkappaUnique :: (Int)
+            _lhsOself :: (ContextItems)
+            (_self@_) =
                 []
             (_lhsOself@_) =
                 _self
@@ -598,7 +759,27 @@ sem_Declaration_Class :: (T_Range) ->
 sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Declaration)
+            _rangeIself :: (Range)
+            _contextIkappaUnique :: (Int)
+            _contextIself :: (ContextItems)
+            _contextOkappaUnique :: (Int)
+            _simpletypeIconstraints :: (KindConstraints)
+            _simpletypeIdeclared :: (PatternAssumptions)
+            _simpletypeIenvironment :: (PatternAssumptions)
+            _simpletypeIkappaUnique :: (Int)
+            _simpletypeIself :: (SimpleType)
+            _simpletypeOconstraints :: (KindConstraints)
+            _simpletypeOkappaOfRHS :: (Kind)
+            _simpletypeOkappaUnique :: (Int)
+            _whereIbindingGroups :: (BindingGroups)
+            _whereIkappaUnique :: (Int)
+            _whereIself :: (MaybeDeclarations)
+            _whereObindingGroups :: (BindingGroups)
+            _whereOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _contextIkappaUnique,_contextIself) =
                 (context_ (_contextOkappaUnique))
@@ -638,7 +819,29 @@ sem_Declaration_Data :: (T_Range) ->
 sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (derivings_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Declaration)
+            _rangeIself :: (Range)
+            _contextIkappaUnique :: (Int)
+            _contextIself :: (ContextItems)
+            _contextOkappaUnique :: (Int)
+            _simpletypeIconstraints :: (KindConstraints)
+            _simpletypeIdeclared :: (PatternAssumptions)
+            _simpletypeIenvironment :: (PatternAssumptions)
+            _simpletypeIkappaUnique :: (Int)
+            _simpletypeIself :: (SimpleType)
+            _simpletypeOconstraints :: (KindConstraints)
+            _simpletypeOkappaOfRHS :: (Kind)
+            _simpletypeOkappaUnique :: (Int)
+            _constructorsIassumptions :: (Assumptions)
+            _constructorsIconstraints :: (KindConstraints)
+            _constructorsIkappaUnique :: (Int)
+            _constructorsIself :: (Constructors)
+            _constructorsOconstraints :: (KindConstraints)
+            _constructorsOkappaUnique :: (Int)
+            _derivingsIself :: (Names)
+            ( _rangeIself) =
                 (range_ )
             ( _contextIkappaUnique,_contextIself) =
                 (context_ (_contextOkappaUnique))
@@ -679,7 +882,18 @@ sem_Declaration_Default :: (T_Range) ->
 sem_Declaration_Default (range_) (types_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Declaration)
+            _rangeIself :: (Range)
+            _typesIassumptions :: (Assumptions)
+            _typesIconstraints :: (KindConstraints)
+            _typesIkappaUnique :: (Int)
+            _typesIkappas :: (Kinds)
+            _typesIself :: (Types)
+            _typesOconstraints :: (KindConstraints)
+            _typesOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _typesIassumptions,_typesIconstraints,_typesIkappaUnique,_typesIkappas,_typesIself) =
                 (types_ (_typesOconstraints) (_typesOkappaUnique))
@@ -703,7 +917,11 @@ sem_Declaration_Empty :: (T_Range) ->
 sem_Declaration_Empty (range_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Declaration)
+            _rangeIself :: (Range)
+            ( _rangeIself) =
                 (range_ )
             (_self@_) =
                 Declaration_Empty _rangeIself
@@ -722,7 +940,14 @@ sem_Declaration_Fixity :: (T_Range) ->
 sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Declaration)
+            _rangeIself :: (Range)
+            _fixityIself :: (Fixity)
+            _priorityIself :: (MaybeInt)
+            _operatorsIself :: (Names)
+            ( _rangeIself) =
                 (range_ )
             ( _fixityIself) =
                 (fixity_ )
@@ -745,7 +970,16 @@ sem_Declaration_FunctionBindings :: (T_Range) ->
 sem_Declaration_FunctionBindings (range_) (bindings_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Declaration)
+            _rangeIself :: (Range)
+            _bindingsIbindingGroups :: (BindingGroups)
+            _bindingsIkappaUnique :: (Int)
+            _bindingsIself :: (FunctionBindings)
+            _bindingsObindingGroups :: (BindingGroups)
+            _bindingsOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _bindingsIbindingGroups,_bindingsIkappaUnique,_bindingsIself) =
                 (bindings_ (_bindingsObindingGroups) (_bindingsOkappaUnique))
@@ -771,7 +1005,27 @@ sem_Declaration_Instance :: (T_Range) ->
 sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Declaration)
+            _rangeIself :: (Range)
+            _contextIkappaUnique :: (Int)
+            _contextIself :: (ContextItems)
+            _contextOkappaUnique :: (Int)
+            _nameIself :: (Name)
+            _typesIassumptions :: (Assumptions)
+            _typesIconstraints :: (KindConstraints)
+            _typesIkappaUnique :: (Int)
+            _typesIkappas :: (Kinds)
+            _typesIself :: (Types)
+            _typesOconstraints :: (KindConstraints)
+            _typesOkappaUnique :: (Int)
+            _whereIbindingGroups :: (BindingGroups)
+            _whereIkappaUnique :: (Int)
+            _whereIself :: (MaybeDeclarations)
+            _whereObindingGroups :: (BindingGroups)
+            _whereOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _contextIkappaUnique,_contextIself) =
                 (context_ (_contextOkappaUnique))
@@ -811,7 +1065,29 @@ sem_Declaration_Newtype :: (T_Range) ->
 sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivings_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Declaration)
+            _rangeIself :: (Range)
+            _contextIkappaUnique :: (Int)
+            _contextIself :: (ContextItems)
+            _contextOkappaUnique :: (Int)
+            _simpletypeIconstraints :: (KindConstraints)
+            _simpletypeIdeclared :: (PatternAssumptions)
+            _simpletypeIenvironment :: (PatternAssumptions)
+            _simpletypeIkappaUnique :: (Int)
+            _simpletypeIself :: (SimpleType)
+            _simpletypeOconstraints :: (KindConstraints)
+            _simpletypeOkappaOfRHS :: (Kind)
+            _simpletypeOkappaUnique :: (Int)
+            _constructorIassumptions :: (Assumptions)
+            _constructorIconstraints :: (KindConstraints)
+            _constructorIkappaUnique :: (Int)
+            _constructorIself :: (Constructor)
+            _constructorOconstraints :: (KindConstraints)
+            _constructorOkappaUnique :: (Int)
+            _derivingsIself :: (Names)
+            ( _rangeIself) =
                 (range_ )
             ( _contextIkappaUnique,_contextIself) =
                 (context_ (_contextOkappaUnique))
@@ -851,7 +1127,17 @@ sem_Declaration_PatternBinding :: (T_Range) ->
 sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Declaration)
+            _rangeIself :: (Range)
+            _patternIself :: (Pattern)
+            _righthandsideIbindingGroups :: (BindingGroups)
+            _righthandsideIkappaUnique :: (Int)
+            _righthandsideIself :: (RightHandSide)
+            _righthandsideObindingGroups :: (BindingGroups)
+            _righthandsideOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _patternIself) =
                 (pattern_ )
@@ -877,7 +1163,26 @@ sem_Declaration_Type :: (T_Range) ->
 sem_Declaration_Type (range_) (simpletype_) (type_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Declaration)
+            _rangeIself :: (Range)
+            _simpletypeIconstraints :: (KindConstraints)
+            _simpletypeIdeclared :: (PatternAssumptions)
+            _simpletypeIenvironment :: (PatternAssumptions)
+            _simpletypeIkappaUnique :: (Int)
+            _simpletypeIself :: (SimpleType)
+            _simpletypeOconstraints :: (KindConstraints)
+            _simpletypeOkappaOfRHS :: (Kind)
+            _simpletypeOkappaUnique :: (Int)
+            _typeIassumptions :: (Assumptions)
+            _typeIconstraints :: (KindConstraints)
+            _typeIkappa :: (Kind)
+            _typeIkappaUnique :: (Int)
+            _typeIself :: (Type)
+            _typeOconstraints :: (KindConstraints)
+            _typeOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _simpletypeIconstraints,_simpletypeIdeclared,_simpletypeIenvironment,_simpletypeIkappaUnique,_simpletypeIself) =
                 (simpletype_ (_simpletypeOconstraints) (_simpletypeOkappaOfRHS) (_simpletypeOkappaUnique))
@@ -913,7 +1218,19 @@ sem_Declaration_TypeSignature :: (T_Range) ->
 sem_Declaration_TypeSignature (range_) (names_) (type_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Declaration)
+            _rangeIself :: (Range)
+            _namesIself :: (Names)
+            _typeIassumptions :: (Assumptions)
+            _typeIconstraints :: (KindConstraints)
+            _typeIkappa :: (Kind)
+            _typeIkappaUnique :: (Int)
+            _typeIself :: (Type)
+            _typeOconstraints :: (KindConstraints)
+            _typeOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _namesIself) =
                 (names_ )
@@ -956,7 +1273,20 @@ sem_Declarations_Cons :: (T_Declaration) ->
 sem_Declarations_Cons (hd_) (tl_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Declarations)
+            _hdIbindingGroups :: (BindingGroups)
+            _hdIkappaUnique :: (Int)
+            _hdIself :: (Declaration)
+            _hdObindingGroups :: (BindingGroups)
+            _hdOkappaUnique :: (Int)
+            _tlIbindingGroups :: (BindingGroups)
+            _tlIkappaUnique :: (Int)
+            _tlIself :: (Declarations)
+            _tlObindingGroups :: (BindingGroups)
+            _tlOkappaUnique :: (Int)
+            ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
                 (hd_ (_hdObindingGroups) (_hdOkappaUnique))
             ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
                 (tl_ (_tlObindingGroups) (_tlOkappaUnique))
@@ -981,7 +1311,10 @@ sem_Declarations_Nil :: (T_Declarations)
 sem_Declarations_Nil  =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let (_self@_) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Declarations)
+            (_self@_) =
                 []
             (_lhsOself@_) =
                 _self
@@ -1008,7 +1341,10 @@ sem_Export_Module :: (T_Range) ->
                      (T_Name) ->
                      (T_Export)
 sem_Export_Module (range_) (name_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Export)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -1022,7 +1358,11 @@ sem_Export_TypeOrClass :: (T_Range) ->
                           (T_MaybeNames) ->
                           (T_Export)
 sem_Export_TypeOrClass (range_) (name_) (names_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Export)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        _namesIself :: (MaybeNames)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -1037,7 +1377,10 @@ sem_Export_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Export)
 sem_Export_TypeOrClassComplete (range_) (name_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Export)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -1050,7 +1393,10 @@ sem_Export_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Export)
 sem_Export_Variable (range_) (name_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Export)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -1071,7 +1417,10 @@ sem_Exports_Cons :: (T_Export) ->
                     (T_Exports) ->
                     (T_Exports)
 sem_Exports_Cons (hd_) (tl_) =
-    let ( _hdIself) =
+    let _lhsOself :: (Exports)
+        _hdIself :: (Export)
+        _tlIself :: (Exports)
+        ( _hdIself) =
             (hd_ )
         ( _tlIself) =
             (tl_ )
@@ -1082,7 +1431,8 @@ sem_Exports_Cons (hd_) (tl_) =
     in  ( _lhsOself)
 sem_Exports_Nil :: (T_Exports)
 sem_Exports_Nil  =
-    let (_self@_) =
+    let _lhsOself :: (Exports)
+        (_self@_) =
             []
         (_lhsOself@_) =
             _self
@@ -1142,7 +1492,21 @@ sem_Expression_Case :: (T_Range) ->
 sem_Expression_Case (range_) (expression_) (alternatives_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            _alternativesIbindingGroups :: (BindingGroups)
+            _alternativesIkappaUnique :: (Int)
+            _alternativesIself :: (Alternatives)
+            _alternativesObindingGroups :: (BindingGroups)
+            _alternativesOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
                 (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
@@ -1172,7 +1536,21 @@ sem_Expression_Comprehension :: (T_Range) ->
 sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            _qualifiersIbindingGroups :: (BindingGroups)
+            _qualifiersIkappaUnique :: (Int)
+            _qualifiersIself :: (Qualifiers)
+            _qualifiersObindingGroups :: (BindingGroups)
+            _qualifiersOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
                 (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
@@ -1201,7 +1579,12 @@ sem_Expression_Constructor :: (T_Range) ->
 sem_Expression_Constructor (range_) (name_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -1220,7 +1603,16 @@ sem_Expression_Do :: (T_Range) ->
 sem_Expression_Do (range_) (statements_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _statementsIbindingGroups :: (BindingGroups)
+            _statementsIkappaUnique :: (Int)
+            _statementsIself :: (Statements)
+            _statementsObindingGroups :: (BindingGroups)
+            _statementsOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _statementsIbindingGroups,_statementsIkappaUnique,_statementsIself) =
                 (statements_ (_statementsObindingGroups) (_statementsOkappaUnique))
@@ -1245,7 +1637,26 @@ sem_Expression_Enum :: (T_Range) ->
 sem_Expression_Enum (range_) (from_) (then_) (to_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _fromIbindingGroups :: (BindingGroups)
+            _fromIkappaUnique :: (Int)
+            _fromIself :: (Expression)
+            _fromObindingGroups :: (BindingGroups)
+            _fromOkappaUnique :: (Int)
+            _thenIbindingGroups :: (BindingGroups)
+            _thenIkappaUnique :: (Int)
+            _thenIself :: (MaybeExpression)
+            _thenObindingGroups :: (BindingGroups)
+            _thenOkappaUnique :: (Int)
+            _toIbindingGroups :: (BindingGroups)
+            _toIkappaUnique :: (Int)
+            _toIself :: (MaybeExpression)
+            _toObindingGroups :: (BindingGroups)
+            _toOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _fromIbindingGroups,_fromIkappaUnique,_fromIself) =
                 (from_ (_fromObindingGroups) (_fromOkappaUnique))
@@ -1282,7 +1693,26 @@ sem_Expression_If :: (T_Range) ->
 sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _guardExpressionIbindingGroups :: (BindingGroups)
+            _guardExpressionIkappaUnique :: (Int)
+            _guardExpressionIself :: (Expression)
+            _guardExpressionObindingGroups :: (BindingGroups)
+            _guardExpressionOkappaUnique :: (Int)
+            _thenExpressionIbindingGroups :: (BindingGroups)
+            _thenExpressionIkappaUnique :: (Int)
+            _thenExpressionIself :: (Expression)
+            _thenExpressionObindingGroups :: (BindingGroups)
+            _thenExpressionOkappaUnique :: (Int)
+            _elseExpressionIbindingGroups :: (BindingGroups)
+            _elseExpressionIkappaUnique :: (Int)
+            _elseExpressionIself :: (Expression)
+            _elseExpressionObindingGroups :: (BindingGroups)
+            _elseExpressionOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _guardExpressionIbindingGroups,_guardExpressionIkappaUnique,_guardExpressionIself) =
                 (guardExpression_ (_guardExpressionObindingGroups) (_guardExpressionOkappaUnique))
@@ -1319,7 +1749,26 @@ sem_Expression_InfixApplication :: (T_Range) ->
 sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExpression_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _leftExpressionIbindingGroups :: (BindingGroups)
+            _leftExpressionIkappaUnique :: (Int)
+            _leftExpressionIself :: (MaybeExpression)
+            _leftExpressionObindingGroups :: (BindingGroups)
+            _leftExpressionOkappaUnique :: (Int)
+            _operatorIbindingGroups :: (BindingGroups)
+            _operatorIkappaUnique :: (Int)
+            _operatorIself :: (Expression)
+            _operatorObindingGroups :: (BindingGroups)
+            _operatorOkappaUnique :: (Int)
+            _rightExpressionIbindingGroups :: (BindingGroups)
+            _rightExpressionIkappaUnique :: (Int)
+            _rightExpressionIself :: (MaybeExpression)
+            _rightExpressionObindingGroups :: (BindingGroups)
+            _rightExpressionOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _leftExpressionIbindingGroups,_leftExpressionIkappaUnique,_leftExpressionIself) =
                 (leftExpression_ (_leftExpressionObindingGroups) (_leftExpressionOkappaUnique))
@@ -1355,7 +1804,17 @@ sem_Expression_Lambda :: (T_Range) ->
 sem_Expression_Lambda (range_) (patterns_) (expression_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _patternsIself :: (Patterns)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _patternsIself) =
                 (patterns_ )
@@ -1381,7 +1840,21 @@ sem_Expression_Let :: (T_Range) ->
 sem_Expression_Let (range_) (declarations_) (expression_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _declarationsIbindingGroups :: (BindingGroups)
+            _declarationsIkappaUnique :: (Int)
+            _declarationsIself :: (Declarations)
+            _declarationsObindingGroups :: (BindingGroups)
+            _declarationsOkappaUnique :: (Int)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _declarationsIbindingGroups,_declarationsIkappaUnique,_declarationsIself) =
                 (declarations_ (_declarationsObindingGroups) (_declarationsOkappaUnique))
@@ -1410,7 +1883,16 @@ sem_Expression_List :: (T_Range) ->
 sem_Expression_List (range_) (expressions_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _expressionsIbindingGroups :: (BindingGroups)
+            _expressionsIkappaUnique :: (Int)
+            _expressionsIself :: (Expressions)
+            _expressionsObindingGroups :: (BindingGroups)
+            _expressionsOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _expressionsIbindingGroups,_expressionsIkappaUnique,_expressionsIself) =
                 (expressions_ (_expressionsObindingGroups) (_expressionsOkappaUnique))
@@ -1433,7 +1915,12 @@ sem_Expression_Literal :: (T_Range) ->
 sem_Expression_Literal (range_) (literal_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _literalIself :: (Literal)
+            ( _rangeIself) =
                 (range_ )
             ( _literalIself) =
                 (literal_ )
@@ -1452,7 +1939,16 @@ sem_Expression_Negate :: (T_Range) ->
 sem_Expression_Negate (range_) (expression_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
                 (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
@@ -1475,7 +1971,16 @@ sem_Expression_NegateFloat :: (T_Range) ->
 sem_Expression_NegateFloat (range_) (expression_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
                 (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
@@ -1499,7 +2004,21 @@ sem_Expression_NormalApplication :: (T_Range) ->
 sem_Expression_NormalApplication (range_) (function_) (arguments_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _functionIbindingGroups :: (BindingGroups)
+            _functionIkappaUnique :: (Int)
+            _functionIself :: (Expression)
+            _functionObindingGroups :: (BindingGroups)
+            _functionOkappaUnique :: (Int)
+            _argumentsIbindingGroups :: (BindingGroups)
+            _argumentsIkappaUnique :: (Int)
+            _argumentsIself :: (Expressions)
+            _argumentsObindingGroups :: (BindingGroups)
+            _argumentsOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _functionIbindingGroups,_functionIkappaUnique,_functionIself) =
                 (function_ (_functionObindingGroups) (_functionOkappaUnique))
@@ -1528,7 +2047,16 @@ sem_Expression_Parenthesized :: (T_Range) ->
 sem_Expression_Parenthesized (range_) (expression_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
                 (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
@@ -1552,7 +2080,17 @@ sem_Expression_RecordConstruction :: (T_Range) ->
 sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _recordExpressionBindingsIbindingGroups :: (BindingGroups)
+            _recordExpressionBindingsIkappaUnique :: (Int)
+            _recordExpressionBindingsIself :: (RecordExpressionBindings)
+            _recordExpressionBindingsObindingGroups :: (BindingGroups)
+            _recordExpressionBindingsOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -1578,7 +2116,21 @@ sem_Expression_RecordUpdate :: (T_Range) ->
 sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            _recordExpressionBindingsIbindingGroups :: (BindingGroups)
+            _recordExpressionBindingsIkappaUnique :: (Int)
+            _recordExpressionBindingsIself :: (RecordExpressionBindings)
+            _recordExpressionBindingsObindingGroups :: (BindingGroups)
+            _recordExpressionBindingsOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
                 (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
@@ -1607,7 +2159,16 @@ sem_Expression_Tuple :: (T_Range) ->
 sem_Expression_Tuple (range_) (expressions_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _expressionsIbindingGroups :: (BindingGroups)
+            _expressionsIkappaUnique :: (Int)
+            _expressionsIself :: (Expressions)
+            _expressionsObindingGroups :: (BindingGroups)
+            _expressionsOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _expressionsIbindingGroups,_expressionsIkappaUnique,_expressionsIself) =
                 (expressions_ (_expressionsObindingGroups) (_expressionsOkappaUnique))
@@ -1631,7 +2192,23 @@ sem_Expression_Typed :: (T_Range) ->
 sem_Expression_Typed (range_) (expression_) (type_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            _typeIassumptions :: (Assumptions)
+            _typeIconstraints :: (KindConstraints)
+            _typeIkappa :: (Kind)
+            _typeIkappaUnique :: (Int)
+            _typeIself :: (Type)
+            _typeOconstraints :: (KindConstraints)
+            _typeOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
                 (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
@@ -1668,7 +2245,12 @@ sem_Expression_Variable :: (T_Range) ->
 sem_Expression_Variable (range_) (name_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expression)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -1697,7 +2279,20 @@ sem_Expressions_Cons :: (T_Expression) ->
 sem_Expressions_Cons (hd_) (tl_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expressions)
+            _hdIbindingGroups :: (BindingGroups)
+            _hdIkappaUnique :: (Int)
+            _hdIself :: (Expression)
+            _hdObindingGroups :: (BindingGroups)
+            _hdOkappaUnique :: (Int)
+            _tlIbindingGroups :: (BindingGroups)
+            _tlIkappaUnique :: (Int)
+            _tlIself :: (Expressions)
+            _tlObindingGroups :: (BindingGroups)
+            _tlOkappaUnique :: (Int)
+            ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
                 (hd_ (_hdObindingGroups) (_hdOkappaUnique))
             ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
                 (tl_ (_tlObindingGroups) (_tlOkappaUnique))
@@ -1722,7 +2317,10 @@ sem_Expressions_Nil :: (T_Expressions)
 sem_Expressions_Nil  =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let (_self@_) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Expressions)
+            (_self@_) =
                 []
             (_lhsOself@_) =
                 _self
@@ -1746,7 +2344,18 @@ sem_FieldDeclaration_FieldDeclaration :: (T_Range) ->
                                          (T_FieldDeclaration)
 sem_FieldDeclaration_FieldDeclaration (range_) (names_) (type_) =
     \ _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOkappaUnique :: (Int)
+            _lhsOself :: (FieldDeclaration)
+            _rangeIself :: (Range)
+            _namesIself :: (Names)
+            _typeIassumptions :: (Assumptions)
+            _typeIconstraints :: (KindConstraints)
+            _typeIkappa :: (Kind)
+            _typeIkappaUnique :: (Int)
+            _typeIself :: (AnnotatedType)
+            _typeOconstraints :: (KindConstraints)
+            _typeOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _namesIself) =
                 (names_ )
@@ -1779,7 +2388,15 @@ sem_FieldDeclarations_Cons :: (T_FieldDeclaration) ->
                               (T_FieldDeclarations)
 sem_FieldDeclarations_Cons (hd_) (tl_) =
     \ _lhsIkappaUnique ->
-        let ( _hdIkappaUnique,_hdIself) =
+        let _lhsOkappaUnique :: (Int)
+            _lhsOself :: (FieldDeclarations)
+            _hdIkappaUnique :: (Int)
+            _hdIself :: (FieldDeclaration)
+            _hdOkappaUnique :: (Int)
+            _tlIkappaUnique :: (Int)
+            _tlIself :: (FieldDeclarations)
+            _tlOkappaUnique :: (Int)
+            ( _hdIkappaUnique,_hdIself) =
                 (hd_ (_hdOkappaUnique))
             ( _tlIkappaUnique,_tlIself) =
                 (tl_ (_tlOkappaUnique))
@@ -1797,7 +2414,9 @@ sem_FieldDeclarations_Cons (hd_) (tl_) =
 sem_FieldDeclarations_Nil :: (T_FieldDeclarations)
 sem_FieldDeclarations_Nil  =
     \ _lhsIkappaUnique ->
-        let (_self@_) =
+        let _lhsOkappaUnique :: (Int)
+            _lhsOself :: (FieldDeclarations)
+            (_self@_) =
                 []
             (_lhsOself@_) =
                 _self
@@ -1819,7 +2438,9 @@ sem_Fixity ((Fixity_Infixr (_range))) =
 sem_Fixity_Infix :: (T_Range) ->
                     (T_Fixity)
 sem_Fixity_Infix (range_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Fixity)
+        _rangeIself :: (Range)
+        ( _rangeIself) =
             (range_ )
         (_self@_) =
             Fixity_Infix _rangeIself
@@ -1829,7 +2450,9 @@ sem_Fixity_Infix (range_) =
 sem_Fixity_Infixl :: (T_Range) ->
                      (T_Fixity)
 sem_Fixity_Infixl (range_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Fixity)
+        _rangeIself :: (Range)
+        ( _rangeIself) =
             (range_ )
         (_self@_) =
             Fixity_Infixl _rangeIself
@@ -1839,7 +2462,9 @@ sem_Fixity_Infixl (range_) =
 sem_Fixity_Infixr :: (T_Range) ->
                      (T_Fixity)
 sem_Fixity_Infixr (range_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Fixity)
+        _rangeIself :: (Range)
+        ( _rangeIself) =
             (range_ )
         (_self@_) =
             Fixity_Infixr _rangeIself
@@ -1863,7 +2488,17 @@ sem_FunctionBinding_FunctionBinding :: (T_Range) ->
 sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (FunctionBinding)
+            _rangeIself :: (Range)
+            _lefthandsideIself :: (LeftHandSide)
+            _righthandsideIbindingGroups :: (BindingGroups)
+            _righthandsideIkappaUnique :: (Int)
+            _righthandsideIself :: (RightHandSide)
+            _righthandsideObindingGroups :: (BindingGroups)
+            _righthandsideOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _lefthandsideIself) =
                 (lefthandside_ )
@@ -1898,7 +2533,20 @@ sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
 sem_FunctionBindings_Cons (hd_) (tl_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (FunctionBindings)
+            _hdIbindingGroups :: (BindingGroups)
+            _hdIkappaUnique :: (Int)
+            _hdIself :: (FunctionBinding)
+            _hdObindingGroups :: (BindingGroups)
+            _hdOkappaUnique :: (Int)
+            _tlIbindingGroups :: (BindingGroups)
+            _tlIkappaUnique :: (Int)
+            _tlIself :: (FunctionBindings)
+            _tlObindingGroups :: (BindingGroups)
+            _tlOkappaUnique :: (Int)
+            ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
                 (hd_ (_hdObindingGroups) (_hdOkappaUnique))
             ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
                 (tl_ (_tlObindingGroups) (_tlOkappaUnique))
@@ -1923,7 +2571,10 @@ sem_FunctionBindings_Nil :: (T_FunctionBindings)
 sem_FunctionBindings_Nil  =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let (_self@_) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (FunctionBindings)
+            (_self@_) =
                 []
             (_lhsOself@_) =
                 _self
@@ -1949,7 +2600,21 @@ sem_GuardedExpression_GuardedExpression :: (T_Range) ->
 sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (GuardedExpression)
+            _rangeIself :: (Range)
+            _guardIbindingGroups :: (BindingGroups)
+            _guardIkappaUnique :: (Int)
+            _guardIself :: (Expression)
+            _guardObindingGroups :: (BindingGroups)
+            _guardOkappaUnique :: (Int)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _guardIbindingGroups,_guardIkappaUnique,_guardIself) =
                 (guard_ (_guardObindingGroups) (_guardOkappaUnique))
@@ -1988,7 +2653,20 @@ sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
 sem_GuardedExpressions_Cons (hd_) (tl_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (GuardedExpressions)
+            _hdIbindingGroups :: (BindingGroups)
+            _hdIkappaUnique :: (Int)
+            _hdIself :: (GuardedExpression)
+            _hdObindingGroups :: (BindingGroups)
+            _hdOkappaUnique :: (Int)
+            _tlIbindingGroups :: (BindingGroups)
+            _tlIkappaUnique :: (Int)
+            _tlIself :: (GuardedExpressions)
+            _tlObindingGroups :: (BindingGroups)
+            _tlOkappaUnique :: (Int)
+            ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
                 (hd_ (_hdObindingGroups) (_hdOkappaUnique))
             ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
                 (tl_ (_tlObindingGroups) (_tlOkappaUnique))
@@ -2013,7 +2691,10 @@ sem_GuardedExpressions_Nil :: (T_GuardedExpressions)
 sem_GuardedExpressions_Nil  =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let (_self@_) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (GuardedExpressions)
+            (_self@_) =
                 []
             (_lhsOself@_) =
                 _self
@@ -2039,7 +2720,11 @@ sem_Import_TypeOrClass :: (T_Range) ->
                           (T_MaybeNames) ->
                           (T_Import)
 sem_Import_TypeOrClass (range_) (name_) (names_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Import)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        _namesIself :: (MaybeNames)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -2054,7 +2739,10 @@ sem_Import_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Import)
 sem_Import_TypeOrClassComplete (range_) (name_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Import)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -2067,7 +2755,10 @@ sem_Import_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Import)
 sem_Import_Variable (range_) (name_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Import)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -2089,7 +2780,9 @@ sem_ImportDeclaration ((ImportDeclaration_Import (_range) (_qualified) (_name) (
 sem_ImportDeclaration_Empty :: (T_Range) ->
                                (T_ImportDeclaration)
 sem_ImportDeclaration_Empty (range_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (ImportDeclaration)
+        _rangeIself :: (Range)
+        ( _rangeIself) =
             (range_ )
         (_self@_) =
             ImportDeclaration_Empty _rangeIself
@@ -2103,7 +2796,12 @@ sem_ImportDeclaration_Import :: (T_Range) ->
                                 (T_MaybeImportSpecification) ->
                                 (T_ImportDeclaration)
 sem_ImportDeclaration_Import (range_) (qualified_) (name_) (asname_) (importspecification_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (ImportDeclaration)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        _asnameIself :: (MaybeName)
+        _importspecificationIself :: (MaybeImportSpecification)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -2128,7 +2826,10 @@ sem_ImportDeclarations_Cons :: (T_ImportDeclaration) ->
                                (T_ImportDeclarations) ->
                                (T_ImportDeclarations)
 sem_ImportDeclarations_Cons (hd_) (tl_) =
-    let ( _hdIself) =
+    let _lhsOself :: (ImportDeclarations)
+        _hdIself :: (ImportDeclaration)
+        _tlIself :: (ImportDeclarations)
+        ( _hdIself) =
             (hd_ )
         ( _tlIself) =
             (tl_ )
@@ -2139,7 +2840,8 @@ sem_ImportDeclarations_Cons (hd_) (tl_) =
     in  ( _lhsOself)
 sem_ImportDeclarations_Nil :: (T_ImportDeclarations)
 sem_ImportDeclarations_Nil  =
-    let (_self@_) =
+    let _lhsOself :: (ImportDeclarations)
+        (_self@_) =
             []
         (_lhsOself@_) =
             _self
@@ -2157,7 +2859,10 @@ sem_ImportSpecification_Import :: (T_Range) ->
                                   (T_Imports) ->
                                   (T_ImportSpecification)
 sem_ImportSpecification_Import (range_) (hiding_) (imports_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (ImportSpecification)
+        _rangeIself :: (Range)
+        _importsIself :: (Imports)
+        ( _rangeIself) =
             (range_ )
         ( _importsIself) =
             (imports_ )
@@ -2178,7 +2883,10 @@ sem_Imports_Cons :: (T_Import) ->
                     (T_Imports) ->
                     (T_Imports)
 sem_Imports_Cons (hd_) (tl_) =
-    let ( _hdIself) =
+    let _lhsOself :: (Imports)
+        _hdIself :: (Import)
+        _tlIself :: (Imports)
+        ( _hdIself) =
             (hd_ )
         ( _tlIself) =
             (tl_ )
@@ -2189,7 +2897,8 @@ sem_Imports_Cons (hd_) (tl_) =
     in  ( _lhsOself)
 sem_Imports_Nil :: (T_Imports)
 sem_Imports_Nil  =
-    let (_self@_) =
+    let _lhsOself :: (Imports)
+        (_self@_) =
             []
         (_lhsOself@_) =
             _self
@@ -2211,7 +2920,11 @@ sem_LeftHandSide_Function :: (T_Range) ->
                              (T_Patterns) ->
                              (T_LeftHandSide)
 sem_LeftHandSide_Function (range_) (name_) (patterns_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (LeftHandSide)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        _patternsIself :: (Patterns)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -2228,7 +2941,12 @@ sem_LeftHandSide_Infix :: (T_Range) ->
                           (T_Pattern) ->
                           (T_LeftHandSide)
 sem_LeftHandSide_Infix (range_) (leftPattern_) (operator_) (rightPattern_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (LeftHandSide)
+        _rangeIself :: (Range)
+        _leftPatternIself :: (Pattern)
+        _operatorIself :: (Name)
+        _rightPatternIself :: (Pattern)
+        ( _rangeIself) =
             (range_ )
         ( _leftPatternIself) =
             (leftPattern_ )
@@ -2246,7 +2964,11 @@ sem_LeftHandSide_Parenthesized :: (T_Range) ->
                                   (T_Patterns) ->
                                   (T_LeftHandSide)
 sem_LeftHandSide_Parenthesized (range_) (lefthandside_) (patterns_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (LeftHandSide)
+        _rangeIself :: (Range)
+        _lefthandsideIself :: (LeftHandSide)
+        _patternsIself :: (Patterns)
+        ( _rangeIself) =
             (range_ )
         ( _lefthandsideIself) =
             (lefthandside_ )
@@ -2275,7 +2997,9 @@ sem_Literal_Char :: (T_Range) ->
                     (String) ->
                     (T_Literal)
 sem_Literal_Char (range_) (value_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Literal)
+        _rangeIself :: (Range)
+        ( _rangeIself) =
             (range_ )
         (_self@_) =
             Literal_Char _rangeIself value_
@@ -2286,7 +3010,9 @@ sem_Literal_Float :: (T_Range) ->
                      (String) ->
                      (T_Literal)
 sem_Literal_Float (range_) (value_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Literal)
+        _rangeIself :: (Range)
+        ( _rangeIself) =
             (range_ )
         (_self@_) =
             Literal_Float _rangeIself value_
@@ -2297,7 +3023,9 @@ sem_Literal_Int :: (T_Range) ->
                    (String) ->
                    (T_Literal)
 sem_Literal_Int (range_) (value_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Literal)
+        _rangeIself :: (Range)
+        ( _rangeIself) =
             (range_ )
         (_self@_) =
             Literal_Int _rangeIself value_
@@ -2308,7 +3036,9 @@ sem_Literal_String :: (T_Range) ->
                       (String) ->
                       (T_Literal)
 sem_Literal_String (range_) (value_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Literal)
+        _rangeIself :: (Range)
+        ( _rangeIself) =
             (range_ )
         (_self@_) =
             Literal_String _rangeIself value_
@@ -2332,7 +3062,15 @@ sem_MaybeDeclarations_Just :: (T_Declarations) ->
 sem_MaybeDeclarations_Just (declarations_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _declarationsIbindingGroups,_declarationsIkappaUnique,_declarationsIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (MaybeDeclarations)
+            _declarationsIbindingGroups :: (BindingGroups)
+            _declarationsIkappaUnique :: (Int)
+            _declarationsIself :: (Declarations)
+            _declarationsObindingGroups :: (BindingGroups)
+            _declarationsOkappaUnique :: (Int)
+            ( _declarationsIbindingGroups,_declarationsIkappaUnique,_declarationsIself) =
                 (declarations_ (_declarationsObindingGroups) (_declarationsOkappaUnique))
             (_self@_) =
                 MaybeDeclarations_Just _declarationsIself
@@ -2351,7 +3089,10 @@ sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
 sem_MaybeDeclarations_Nothing  =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let (_self@_) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (MaybeDeclarations)
+            (_self@_) =
                 MaybeDeclarations_Nothing
             (_lhsOself@_) =
                 _self
@@ -2373,7 +3114,9 @@ sem_MaybeExports ((MaybeExports_Nothing )) =
 sem_MaybeExports_Just :: (T_Exports) ->
                          (T_MaybeExports)
 sem_MaybeExports_Just (exports_) =
-    let ( _exportsIself) =
+    let _lhsOself :: (MaybeExports)
+        _exportsIself :: (Exports)
+        ( _exportsIself) =
             (exports_ )
         (_self@_) =
             MaybeExports_Just _exportsIself
@@ -2382,7 +3125,8 @@ sem_MaybeExports_Just (exports_) =
     in  ( _lhsOself)
 sem_MaybeExports_Nothing :: (T_MaybeExports)
 sem_MaybeExports_Nothing  =
-    let (_self@_) =
+    let _lhsOself :: (MaybeExports)
+        (_self@_) =
             MaybeExports_Nothing
         (_lhsOself@_) =
             _self
@@ -2404,7 +3148,15 @@ sem_MaybeExpression_Just :: (T_Expression) ->
 sem_MaybeExpression_Just (expression_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (MaybeExpression)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
                 (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
             (_self@_) =
                 MaybeExpression_Just _expressionIself
@@ -2423,7 +3175,10 @@ sem_MaybeExpression_Nothing :: (T_MaybeExpression)
 sem_MaybeExpression_Nothing  =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let (_self@_) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (MaybeExpression)
+            (_self@_) =
                 MaybeExpression_Nothing
             (_lhsOself@_) =
                 _self
@@ -2445,7 +3200,9 @@ sem_MaybeImportSpecification ((MaybeImportSpecification_Nothing )) =
 sem_MaybeImportSpecification_Just :: (T_ImportSpecification) ->
                                      (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Just (importspecification_) =
-    let ( _importspecificationIself) =
+    let _lhsOself :: (MaybeImportSpecification)
+        _importspecificationIself :: (ImportSpecification)
+        ( _importspecificationIself) =
             (importspecification_ )
         (_self@_) =
             MaybeImportSpecification_Just _importspecificationIself
@@ -2454,7 +3211,8 @@ sem_MaybeImportSpecification_Just (importspecification_) =
     in  ( _lhsOself)
 sem_MaybeImportSpecification_Nothing :: (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Nothing  =
-    let (_self@_) =
+    let _lhsOself :: (MaybeImportSpecification)
+        (_self@_) =
             MaybeImportSpecification_Nothing
         (_lhsOself@_) =
             _self
@@ -2472,14 +3230,16 @@ sem_MaybeInt ((MaybeInt_Nothing )) =
 sem_MaybeInt_Just :: (Int) ->
                      (T_MaybeInt)
 sem_MaybeInt_Just (int_) =
-    let (_self@_) =
+    let _lhsOself :: (MaybeInt)
+        (_self@_) =
             MaybeInt_Just int_
         (_lhsOself@_) =
             _self
     in  ( _lhsOself)
 sem_MaybeInt_Nothing :: (T_MaybeInt)
 sem_MaybeInt_Nothing  =
-    let (_self@_) =
+    let _lhsOself :: (MaybeInt)
+        (_self@_) =
             MaybeInt_Nothing
         (_lhsOself@_) =
             _self
@@ -2497,7 +3257,9 @@ sem_MaybeName ((MaybeName_Nothing )) =
 sem_MaybeName_Just :: (T_Name) ->
                       (T_MaybeName)
 sem_MaybeName_Just (name_) =
-    let ( _nameIself) =
+    let _lhsOself :: (MaybeName)
+        _nameIself :: (Name)
+        ( _nameIself) =
             (name_ )
         (_self@_) =
             MaybeName_Just _nameIself
@@ -2506,7 +3268,8 @@ sem_MaybeName_Just (name_) =
     in  ( _lhsOself)
 sem_MaybeName_Nothing :: (T_MaybeName)
 sem_MaybeName_Nothing  =
-    let (_self@_) =
+    let _lhsOself :: (MaybeName)
+        (_self@_) =
             MaybeName_Nothing
         (_lhsOself@_) =
             _self
@@ -2524,7 +3287,9 @@ sem_MaybeNames ((MaybeNames_Nothing )) =
 sem_MaybeNames_Just :: (T_Names) ->
                        (T_MaybeNames)
 sem_MaybeNames_Just (names_) =
-    let ( _namesIself) =
+    let _lhsOself :: (MaybeNames)
+        _namesIself :: (Names)
+        ( _namesIself) =
             (names_ )
         (_self@_) =
             MaybeNames_Just _namesIself
@@ -2533,7 +3298,8 @@ sem_MaybeNames_Just (names_) =
     in  ( _lhsOself)
 sem_MaybeNames_Nothing :: (T_MaybeNames)
 sem_MaybeNames_Nothing  =
-    let (_self@_) =
+    let _lhsOself :: (MaybeNames)
+        (_self@_) =
             MaybeNames_Nothing
         (_lhsOself@_) =
             _self
@@ -2556,7 +3322,20 @@ sem_Module_Module :: (T_Range) ->
 sem_Module_Module (range_) (name_) (exports_) (body_) =
     \ _lhsIimportEnvironment
       _lhsIoptions ->
-        let ( _rangeIself) =
+        let _lhsOdebugIO :: (IO ())
+            _lhsOkindEnvironment :: (KindEnvironment)
+            _lhsOkindErrors :: (KindErrors)
+            _lhsOself :: (Module)
+            _rangeIself :: (Range)
+            _nameIself :: (MaybeName)
+            _exportsIself :: (MaybeExports)
+            _bodyIconstraints :: (KindConstraints)
+            _bodyIenvironment :: (PatternAssumptions)
+            _bodyIkappaUnique :: (Int)
+            _bodyIself :: (Body)
+            _bodyOimportEnvironment :: (ImportEnvironment)
+            _bodyOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -2601,7 +3380,10 @@ sem_Name_Identifier :: (T_Range) ->
                        (String) ->
                        (T_Name)
 sem_Name_Identifier (range_) (module_) (name_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Name)
+        _rangeIself :: (Range)
+        _moduleIself :: (Strings)
+        ( _rangeIself) =
             (range_ )
         ( _moduleIself) =
             (module_ )
@@ -2615,7 +3397,10 @@ sem_Name_Operator :: (T_Range) ->
                      (String) ->
                      (T_Name)
 sem_Name_Operator (range_) (module_) (name_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Name)
+        _rangeIself :: (Range)
+        _moduleIself :: (Strings)
+        ( _rangeIself) =
             (range_ )
         ( _moduleIself) =
             (module_ )
@@ -2629,7 +3414,10 @@ sem_Name_Special :: (T_Range) ->
                     (String) ->
                     (T_Name)
 sem_Name_Special (range_) (module_) (name_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Name)
+        _rangeIself :: (Range)
+        _moduleIself :: (Strings)
+        ( _rangeIself) =
             (range_ )
         ( _moduleIself) =
             (module_ )
@@ -2650,7 +3438,10 @@ sem_Names_Cons :: (T_Name) ->
                   (T_Names) ->
                   (T_Names)
 sem_Names_Cons (hd_) (tl_) =
-    let ( _hdIself) =
+    let _lhsOself :: (Names)
+        _hdIself :: (Name)
+        _tlIself :: (Names)
+        ( _hdIself) =
             (hd_ )
         ( _tlIself) =
             (tl_ )
@@ -2661,7 +3452,8 @@ sem_Names_Cons (hd_) (tl_) =
     in  ( _lhsOself)
 sem_Names_Nil :: (T_Names)
 sem_Names_Nil  =
-    let (_self@_) =
+    let _lhsOself :: (Names)
+        (_self@_) =
             []
         (_lhsOself@_) =
             _self
@@ -2705,7 +3497,11 @@ sem_Pattern_As :: (T_Range) ->
                   (T_Pattern) ->
                   (T_Pattern)
 sem_Pattern_As (range_) (name_) (pattern_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Pattern)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        _patternIself :: (Pattern)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -2721,7 +3517,11 @@ sem_Pattern_Constructor :: (T_Range) ->
                            (T_Patterns) ->
                            (T_Pattern)
 sem_Pattern_Constructor (range_) (name_) (patterns_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Pattern)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        _patternsIself :: (Patterns)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -2738,7 +3538,12 @@ sem_Pattern_InfixConstructor :: (T_Range) ->
                                 (T_Pattern) ->
                                 (T_Pattern)
 sem_Pattern_InfixConstructor (range_) (leftPattern_) (constructorOperator_) (rightPattern_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Pattern)
+        _rangeIself :: (Range)
+        _leftPatternIself :: (Pattern)
+        _constructorOperatorIself :: (Name)
+        _rightPatternIself :: (Pattern)
+        ( _rangeIself) =
             (range_ )
         ( _leftPatternIself) =
             (leftPattern_ )
@@ -2755,7 +3560,10 @@ sem_Pattern_Irrefutable :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Pattern)
 sem_Pattern_Irrefutable (range_) (pattern_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Pattern)
+        _rangeIself :: (Range)
+        _patternIself :: (Pattern)
+        ( _rangeIself) =
             (range_ )
         ( _patternIself) =
             (pattern_ )
@@ -2768,7 +3576,10 @@ sem_Pattern_List :: (T_Range) ->
                     (T_Patterns) ->
                     (T_Pattern)
 sem_Pattern_List (range_) (patterns_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Pattern)
+        _rangeIself :: (Range)
+        _patternsIself :: (Patterns)
+        ( _rangeIself) =
             (range_ )
         ( _patternsIself) =
             (patterns_ )
@@ -2781,7 +3592,10 @@ sem_Pattern_Literal :: (T_Range) ->
                        (T_Literal) ->
                        (T_Pattern)
 sem_Pattern_Literal (range_) (literal_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Pattern)
+        _rangeIself :: (Range)
+        _literalIself :: (Literal)
+        ( _rangeIself) =
             (range_ )
         ( _literalIself) =
             (literal_ )
@@ -2794,7 +3608,10 @@ sem_Pattern_Negate :: (T_Range) ->
                       (T_Literal) ->
                       (T_Pattern)
 sem_Pattern_Negate (range_) (literal_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Pattern)
+        _rangeIself :: (Range)
+        _literalIself :: (Literal)
+        ( _rangeIself) =
             (range_ )
         ( _literalIself) =
             (literal_ )
@@ -2807,7 +3624,10 @@ sem_Pattern_NegateFloat :: (T_Range) ->
                            (T_Literal) ->
                            (T_Pattern)
 sem_Pattern_NegateFloat (range_) (literal_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Pattern)
+        _rangeIself :: (Range)
+        _literalIself :: (Literal)
+        ( _rangeIself) =
             (range_ )
         ( _literalIself) =
             (literal_ )
@@ -2820,7 +3640,10 @@ sem_Pattern_Parenthesized :: (T_Range) ->
                              (T_Pattern) ->
                              (T_Pattern)
 sem_Pattern_Parenthesized (range_) (pattern_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Pattern)
+        _rangeIself :: (Range)
+        _patternIself :: (Pattern)
+        ( _rangeIself) =
             (range_ )
         ( _patternIself) =
             (pattern_ )
@@ -2834,7 +3657,11 @@ sem_Pattern_Record :: (T_Range) ->
                       (T_RecordPatternBindings) ->
                       (T_Pattern)
 sem_Pattern_Record (range_) (name_) (recordPatternBindings_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Pattern)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        _recordPatternBindingsIself :: (RecordPatternBindings)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -2850,7 +3677,11 @@ sem_Pattern_Successor :: (T_Range) ->
                          (T_Literal) ->
                          (T_Pattern)
 sem_Pattern_Successor (range_) (name_) (literal_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Pattern)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        _literalIself :: (Literal)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -2865,7 +3696,10 @@ sem_Pattern_Tuple :: (T_Range) ->
                      (T_Patterns) ->
                      (T_Pattern)
 sem_Pattern_Tuple (range_) (patterns_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Pattern)
+        _rangeIself :: (Range)
+        _patternsIself :: (Patterns)
+        ( _rangeIself) =
             (range_ )
         ( _patternsIself) =
             (patterns_ )
@@ -2878,7 +3712,10 @@ sem_Pattern_Variable :: (T_Range) ->
                         (T_Name) ->
                         (T_Pattern)
 sem_Pattern_Variable (range_) (name_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Pattern)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -2890,7 +3727,9 @@ sem_Pattern_Variable (range_) (name_) =
 sem_Pattern_Wildcard :: (T_Range) ->
                         (T_Pattern)
 sem_Pattern_Wildcard (range_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Pattern)
+        _rangeIself :: (Range)
+        ( _rangeIself) =
             (range_ )
         (_self@_) =
             Pattern_Wildcard _rangeIself
@@ -2909,7 +3748,10 @@ sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns) ->
                      (T_Patterns)
 sem_Patterns_Cons (hd_) (tl_) =
-    let ( _hdIself) =
+    let _lhsOself :: (Patterns)
+        _hdIself :: (Pattern)
+        _tlIself :: (Patterns)
+        ( _hdIself) =
             (hd_ )
         ( _tlIself) =
             (tl_ )
@@ -2920,7 +3762,8 @@ sem_Patterns_Cons (hd_) (tl_) =
     in  ( _lhsOself)
 sem_Patterns_Nil :: (T_Patterns)
 sem_Patterns_Nil  =
-    let (_self@_) =
+    let _lhsOself :: (Patterns)
+        (_self@_) =
             []
         (_lhsOself@_) =
             _self
@@ -2940,14 +3783,16 @@ sem_Position_Position :: (String) ->
                          (Int) ->
                          (T_Position)
 sem_Position_Position (filename_) (line_) (column_) =
-    let (_self@_) =
+    let _lhsOself :: (Position)
+        (_self@_) =
             Position_Position filename_ line_ column_
         (_lhsOself@_) =
             _self
     in  ( _lhsOself)
 sem_Position_Unknown :: (T_Position)
 sem_Position_Unknown  =
-    let (_self@_) =
+    let _lhsOself :: (Position)
+        (_self@_) =
             Position_Unknown
         (_lhsOself@_) =
             _self
@@ -2973,7 +3818,11 @@ sem_Qualifier_Empty :: (T_Range) ->
 sem_Qualifier_Empty (range_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Qualifier)
+            _rangeIself :: (Range)
+            ( _rangeIself) =
                 (range_ )
             (_self@_) =
                 Qualifier_Empty _rangeIself
@@ -2991,7 +3840,17 @@ sem_Qualifier_Generator :: (T_Range) ->
 sem_Qualifier_Generator (range_) (pattern_) (expression_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Qualifier)
+            _rangeIself :: (Range)
+            _patternIself :: (Pattern)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _patternIself) =
                 (pattern_ )
@@ -3016,7 +3875,16 @@ sem_Qualifier_Guard :: (T_Range) ->
 sem_Qualifier_Guard (range_) (guard_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Qualifier)
+            _rangeIself :: (Range)
+            _guardIbindingGroups :: (BindingGroups)
+            _guardIkappaUnique :: (Int)
+            _guardIself :: (Expression)
+            _guardObindingGroups :: (BindingGroups)
+            _guardOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _guardIbindingGroups,_guardIkappaUnique,_guardIself) =
                 (guard_ (_guardObindingGroups) (_guardOkappaUnique))
@@ -3039,7 +3907,16 @@ sem_Qualifier_Let :: (T_Range) ->
 sem_Qualifier_Let (range_) (declarations_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Qualifier)
+            _rangeIself :: (Range)
+            _declarationsIbindingGroups :: (BindingGroups)
+            _declarationsIkappaUnique :: (Int)
+            _declarationsIself :: (Declarations)
+            _declarationsObindingGroups :: (BindingGroups)
+            _declarationsOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _declarationsIbindingGroups,_declarationsIkappaUnique,_declarationsIself) =
                 (declarations_ (_declarationsObindingGroups) (_declarationsOkappaUnique))
@@ -3072,7 +3949,20 @@ sem_Qualifiers_Cons :: (T_Qualifier) ->
 sem_Qualifiers_Cons (hd_) (tl_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Qualifiers)
+            _hdIbindingGroups :: (BindingGroups)
+            _hdIkappaUnique :: (Int)
+            _hdIself :: (Qualifier)
+            _hdObindingGroups :: (BindingGroups)
+            _hdOkappaUnique :: (Int)
+            _tlIbindingGroups :: (BindingGroups)
+            _tlIkappaUnique :: (Int)
+            _tlIself :: (Qualifiers)
+            _tlObindingGroups :: (BindingGroups)
+            _tlOkappaUnique :: (Int)
+            ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
                 (hd_ (_hdObindingGroups) (_hdOkappaUnique))
             ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
                 (tl_ (_tlObindingGroups) (_tlOkappaUnique))
@@ -3097,7 +3987,10 @@ sem_Qualifiers_Nil :: (T_Qualifiers)
 sem_Qualifiers_Nil  =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let (_self@_) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Qualifiers)
+            (_self@_) =
                 []
             (_lhsOself@_) =
                 _self
@@ -3118,7 +4011,10 @@ sem_Range_Range :: (T_Position) ->
                    (T_Position) ->
                    (T_Range)
 sem_Range_Range (start_) (stop_) =
-    let ( _startIself) =
+    let _lhsOself :: (Range)
+        _startIself :: (Position)
+        _stopIself :: (Position)
+        ( _startIself) =
             (start_ )
         ( _stopIself) =
             (stop_ )
@@ -3144,7 +4040,17 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
 sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (RecordExpressionBinding)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -3179,7 +4085,20 @@ sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
 sem_RecordExpressionBindings_Cons (hd_) (tl_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (RecordExpressionBindings)
+            _hdIbindingGroups :: (BindingGroups)
+            _hdIkappaUnique :: (Int)
+            _hdIself :: (RecordExpressionBinding)
+            _hdObindingGroups :: (BindingGroups)
+            _hdOkappaUnique :: (Int)
+            _tlIbindingGroups :: (BindingGroups)
+            _tlIkappaUnique :: (Int)
+            _tlIself :: (RecordExpressionBindings)
+            _tlObindingGroups :: (BindingGroups)
+            _tlOkappaUnique :: (Int)
+            ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
                 (hd_ (_hdObindingGroups) (_hdOkappaUnique))
             ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
                 (tl_ (_tlObindingGroups) (_tlOkappaUnique))
@@ -3204,7 +4123,10 @@ sem_RecordExpressionBindings_Nil :: (T_RecordExpressionBindings)
 sem_RecordExpressionBindings_Nil  =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let (_self@_) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (RecordExpressionBindings)
+            (_self@_) =
                 []
             (_lhsOself@_) =
                 _self
@@ -3226,7 +4148,11 @@ sem_RecordPatternBinding_RecordPatternBinding :: (T_Range) ->
                                                  (T_Pattern) ->
                                                  (T_RecordPatternBinding)
 sem_RecordPatternBinding_RecordPatternBinding (range_) (name_) (pattern_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (RecordPatternBinding)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        _patternIself :: (Pattern)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -3249,7 +4175,10 @@ sem_RecordPatternBindings_Cons :: (T_RecordPatternBinding) ->
                                   (T_RecordPatternBindings) ->
                                   (T_RecordPatternBindings)
 sem_RecordPatternBindings_Cons (hd_) (tl_) =
-    let ( _hdIself) =
+    let _lhsOself :: (RecordPatternBindings)
+        _hdIself :: (RecordPatternBinding)
+        _tlIself :: (RecordPatternBindings)
+        ( _hdIself) =
             (hd_ )
         ( _tlIself) =
             (tl_ )
@@ -3260,7 +4189,8 @@ sem_RecordPatternBindings_Cons (hd_) (tl_) =
     in  ( _lhsOself)
 sem_RecordPatternBindings_Nil :: (T_RecordPatternBindings)
 sem_RecordPatternBindings_Nil  =
-    let (_self@_) =
+    let _lhsOself :: (RecordPatternBindings)
+        (_self@_) =
             []
         (_lhsOself@_) =
             _self
@@ -3284,7 +4214,21 @@ sem_RightHandSide_Expression :: (T_Range) ->
 sem_RightHandSide_Expression (range_) (expression_) (where_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (RightHandSide)
+            _rangeIself :: (Range)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            _whereIbindingGroups :: (BindingGroups)
+            _whereIkappaUnique :: (Int)
+            _whereIself :: (MaybeDeclarations)
+            _whereObindingGroups :: (BindingGroups)
+            _whereOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
                 (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
@@ -3314,7 +4258,21 @@ sem_RightHandSide_Guarded :: (T_Range) ->
 sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (RightHandSide)
+            _rangeIself :: (Range)
+            _guardedexpressionsIbindingGroups :: (BindingGroups)
+            _guardedexpressionsIkappaUnique :: (Int)
+            _guardedexpressionsIself :: (GuardedExpressions)
+            _guardedexpressionsObindingGroups :: (BindingGroups)
+            _guardedexpressionsOkappaUnique :: (Int)
+            _whereIbindingGroups :: (BindingGroups)
+            _whereIkappaUnique :: (Int)
+            _whereIself :: (MaybeDeclarations)
+            _whereObindingGroups :: (BindingGroups)
+            _whereOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _guardedexpressionsIbindingGroups,_guardedexpressionsIkappaUnique,_guardedexpressionsIself) =
                 (guardedexpressions_ (_guardedexpressionsObindingGroups) (_guardedexpressionsOkappaUnique))
@@ -3356,7 +4314,15 @@ sem_SimpleType_SimpleType (range_) (name_) (typevariables_) =
     \ _lhsIconstraints
       _lhsIkappaOfRHS
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOconstraints :: (KindConstraints)
+            _lhsOdeclared :: (PatternAssumptions)
+            _lhsOenvironment :: (PatternAssumptions)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (SimpleType)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _typevariablesIself :: (Names)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -3402,7 +4368,11 @@ sem_Statement_Empty :: (T_Range) ->
 sem_Statement_Empty (range_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Statement)
+            _rangeIself :: (Range)
+            ( _rangeIself) =
                 (range_ )
             (_self@_) =
                 Statement_Empty _rangeIself
@@ -3419,7 +4389,16 @@ sem_Statement_Expression :: (T_Range) ->
 sem_Statement_Expression (range_) (expression_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Statement)
+            _rangeIself :: (Range)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
                 (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
@@ -3443,7 +4422,17 @@ sem_Statement_Generator :: (T_Range) ->
 sem_Statement_Generator (range_) (pattern_) (expression_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Statement)
+            _rangeIself :: (Range)
+            _patternIself :: (Pattern)
+            _expressionIbindingGroups :: (BindingGroups)
+            _expressionIkappaUnique :: (Int)
+            _expressionIself :: (Expression)
+            _expressionObindingGroups :: (BindingGroups)
+            _expressionOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _patternIself) =
                 (pattern_ )
@@ -3468,7 +4457,16 @@ sem_Statement_Let :: (T_Range) ->
 sem_Statement_Let (range_) (declarations_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Statement)
+            _rangeIself :: (Range)
+            _declarationsIbindingGroups :: (BindingGroups)
+            _declarationsIkappaUnique :: (Int)
+            _declarationsIself :: (Declarations)
+            _declarationsObindingGroups :: (BindingGroups)
+            _declarationsOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _declarationsIbindingGroups,_declarationsIkappaUnique,_declarationsIself) =
                 (declarations_ (_declarationsObindingGroups) (_declarationsOkappaUnique))
@@ -3501,7 +4499,20 @@ sem_Statements_Cons :: (T_Statement) ->
 sem_Statements_Cons (hd_) (tl_) =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Statements)
+            _hdIbindingGroups :: (BindingGroups)
+            _hdIkappaUnique :: (Int)
+            _hdIself :: (Statement)
+            _hdObindingGroups :: (BindingGroups)
+            _hdOkappaUnique :: (Int)
+            _tlIbindingGroups :: (BindingGroups)
+            _tlIkappaUnique :: (Int)
+            _tlIself :: (Statements)
+            _tlObindingGroups :: (BindingGroups)
+            _tlOkappaUnique :: (Int)
+            ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
                 (hd_ (_hdObindingGroups) (_hdOkappaUnique))
             ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
                 (tl_ (_tlObindingGroups) (_tlOkappaUnique))
@@ -3526,7 +4537,10 @@ sem_Statements_Nil :: (T_Statements)
 sem_Statements_Nil  =
     \ _lhsIbindingGroups
       _lhsIkappaUnique ->
-        let (_self@_) =
+        let _lhsObindingGroups :: (BindingGroups)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Statements)
+            (_self@_) =
                 []
             (_lhsOself@_) =
                 _self
@@ -3547,7 +4561,9 @@ sem_Strings_Cons :: (String) ->
                     (T_Strings) ->
                     (T_Strings)
 sem_Strings_Cons (hd_) (tl_) =
-    let ( _tlIself) =
+    let _lhsOself :: (Strings)
+        _tlIself :: (Strings)
+        ( _tlIself) =
             (tl_ )
         (_self@_) =
             (:) hd_ _tlIself
@@ -3556,7 +4572,8 @@ sem_Strings_Cons (hd_) (tl_) =
     in  ( _lhsOself)
 sem_Strings_Nil :: (T_Strings)
 sem_Strings_Nil  =
-    let (_self@_) =
+    let _lhsOself :: (Strings)
+        (_self@_) =
             []
         (_lhsOself@_) =
             _self
@@ -3591,7 +4608,27 @@ sem_Type_Application :: (T_Range) ->
 sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappa :: (Kind)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Type)
+            _rangeIself :: (Range)
+            _functionIassumptions :: (Assumptions)
+            _functionIconstraints :: (KindConstraints)
+            _functionIkappa :: (Kind)
+            _functionIkappaUnique :: (Int)
+            _functionIself :: (Type)
+            _functionOconstraints :: (KindConstraints)
+            _functionOkappaUnique :: (Int)
+            _argumentsIassumptions :: (Assumptions)
+            _argumentsIconstraints :: (KindConstraints)
+            _argumentsIkappaUnique :: (Int)
+            _argumentsIkappas :: (Kinds)
+            _argumentsIself :: (Types)
+            _argumentsOconstraints :: (KindConstraints)
+            _argumentsOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _functionIassumptions,_functionIconstraints,_functionIkappa,_functionIkappaUnique,_functionIself) =
                 (function_ (_functionOconstraints) (_functionOkappaUnique))
@@ -3628,7 +4665,14 @@ sem_Type_Constructor :: (T_Range) ->
 sem_Type_Constructor (range_) (name_) =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappa :: (Kind)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Type)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -3654,7 +4698,21 @@ sem_Type_Exists :: (T_Range) ->
 sem_Type_Exists (range_) (typevariables_) (type_) =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappa :: (Kind)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Type)
+            _rangeIself :: (Range)
+            _typevariablesIself :: (Names)
+            _typeIassumptions :: (Assumptions)
+            _typeIconstraints :: (KindConstraints)
+            _typeIkappa :: (Kind)
+            _typeIkappaUnique :: (Int)
+            _typeIself :: (Type)
+            _typeOconstraints :: (KindConstraints)
+            _typeOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _typevariablesIself) =
                 (typevariables_ )
@@ -3686,7 +4744,21 @@ sem_Type_Forall :: (T_Range) ->
 sem_Type_Forall (range_) (typevariables_) (type_) =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappa :: (Kind)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Type)
+            _rangeIself :: (Range)
+            _typevariablesIself :: (Names)
+            _typeIassumptions :: (Assumptions)
+            _typeIconstraints :: (KindConstraints)
+            _typeIkappa :: (Kind)
+            _typeIkappaUnique :: (Int)
+            _typeIself :: (Type)
+            _typeOconstraints :: (KindConstraints)
+            _typeOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _typevariablesIself) =
                 (typevariables_ )
@@ -3717,7 +4789,20 @@ sem_Type_Parenthesized :: (T_Range) ->
 sem_Type_Parenthesized (range_) (type_) =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappa :: (Kind)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Type)
+            _rangeIself :: (Range)
+            _typeIassumptions :: (Assumptions)
+            _typeIconstraints :: (KindConstraints)
+            _typeIkappa :: (Kind)
+            _typeIkappaUnique :: (Int)
+            _typeIself :: (Type)
+            _typeOconstraints :: (KindConstraints)
+            _typeOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _typeIassumptions,_typeIconstraints,_typeIkappa,_typeIkappaUnique,_typeIself) =
                 (type_ (_typeOconstraints) (_typeOkappaUnique))
@@ -3745,7 +4830,23 @@ sem_Type_Qualified :: (T_Range) ->
 sem_Type_Qualified (range_) (context_) (type_) =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappa :: (Kind)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Type)
+            _rangeIself :: (Range)
+            _contextIkappaUnique :: (Int)
+            _contextIself :: (ContextItems)
+            _contextOkappaUnique :: (Int)
+            _typeIassumptions :: (Assumptions)
+            _typeIconstraints :: (KindConstraints)
+            _typeIkappa :: (Kind)
+            _typeIkappaUnique :: (Int)
+            _typeIself :: (Type)
+            _typeOconstraints :: (KindConstraints)
+            _typeOkappaUnique :: (Int)
+            ( _rangeIself) =
                 (range_ )
             ( _contextIkappaUnique,_contextIself) =
                 (context_ (_contextOkappaUnique))
@@ -3778,7 +4879,14 @@ sem_Type_Variable :: (T_Range) ->
 sem_Type_Variable (range_) (name_) =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let ( _rangeIself) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappa :: (Kind)
+            _lhsOkappaUnique :: (Int)
+            _lhsOself :: (Type)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -3813,7 +4921,26 @@ sem_Types_Cons :: (T_Type) ->
 sem_Types_Cons (hd_) (tl_) =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let ( _hdIassumptions,_hdIconstraints,_hdIkappa,_hdIkappaUnique,_hdIself) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappaUnique :: (Int)
+            _lhsOkappas :: (Kinds)
+            _lhsOself :: (Types)
+            _hdIassumptions :: (Assumptions)
+            _hdIconstraints :: (KindConstraints)
+            _hdIkappa :: (Kind)
+            _hdIkappaUnique :: (Int)
+            _hdIself :: (Type)
+            _hdOconstraints :: (KindConstraints)
+            _hdOkappaUnique :: (Int)
+            _tlIassumptions :: (Assumptions)
+            _tlIconstraints :: (KindConstraints)
+            _tlIkappaUnique :: (Int)
+            _tlIkappas :: (Kinds)
+            _tlIself :: (Types)
+            _tlOconstraints :: (KindConstraints)
+            _tlOkappaUnique :: (Int)
+            ( _hdIassumptions,_hdIconstraints,_hdIkappa,_hdIkappaUnique,_hdIself) =
                 (hd_ (_hdOconstraints) (_hdOkappaUnique))
             ( _tlIassumptions,_tlIconstraints,_tlIkappaUnique,_tlIkappas,_tlIself) =
                 (tl_ (_tlOconstraints) (_tlOkappaUnique))
@@ -3842,7 +4969,12 @@ sem_Types_Nil :: (T_Types)
 sem_Types_Nil  =
     \ _lhsIconstraints
       _lhsIkappaUnique ->
-        let (_lhsOkappas@_) =
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOconstraints :: (KindConstraints)
+            _lhsOkappaUnique :: (Int)
+            _lhsOkappas :: (Kinds)
+            _lhsOself :: (Types)
+            (_lhsOkappas@_) =
                 []
             (_lhsOassumptions@_) =
                 noAssumptions
@@ -3855,4 +4987,5 @@ sem_Types_Nil  =
             (_lhsOkappaUnique@_) =
                 _lhsIkappaUnique
         in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappaUnique,_lhsOkappas,_lhsOself)
+
 

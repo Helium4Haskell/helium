@@ -1,6 +1,25 @@
--------------------------------------------------------------------
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
 -- Make a doubly-linked tree from the local information that is    
--- available.                                 
+-- available.  
+--
+---------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------
+-- Right-hand side
+
+SEM RightHandSide [ parentTree : InfoTree | | infoTree : InfoTree ]     
+  | Expression  
+       loc . parentTree = node @lhs.parentTree @localInfo (@expression.infoTree : @where.infoTrees)
+       lhs . infoTree   = @parentTree
+  | Guarded     
+       loc . parentTree = node @lhs.parentTree @localInfo (@guardedexpressions.infoTrees ++ @where.infoTrees)
+       lhs . infoTree   = @parentTree
 
 ---------------------------------------------------------------------------------------
 -- Expression
@@ -143,10 +162,6 @@ SEM Body [ | | root : InfoTree ]
   | Body         loc . parentTree = root @declInfo @declarations.infoTrees
                  lhs . root       = @parentTree
 
-SEM RightHandSide [ parentTree : InfoTree | | infoTrees : InfoTrees ]     
-  | Expression  lhs . infoTrees  = @expression.infoTree : @where.infoTrees 
-  | Guarded     lhs . infoTrees  = @guardedexpressions.infoTrees ++ @where.infoTrees
-
 SEM Expressions [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Cons   lhs . infoTrees = @hd.infoTree : @tl.infoTrees
   | Nil    lhs . infoTrees = []
@@ -164,7 +179,7 @@ SEM Alternatives [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Nil    lhs . infoTrees = []
 
 SEM Alternative [ parentTree : InfoTree | | infoTrees : InfoTrees ]
-  | Alternative   lhs . infoTrees = @pattern.infoTree : @righthandside.infoTrees     
+  | Alternative   lhs . infoTrees = [@pattern.infoTree, @righthandside.infoTree]  
   | Empty         lhs . infoTrees = []
 
 SEM Statements [ parentTree : InfoTree | | infoTrees : InfoTrees ]
@@ -197,7 +212,7 @@ SEM Declaration [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Data     lhs . infoTrees = []
   | FunctionBindings    loc . parentTree = node @lhs.parentTree @localInfo @bindings.infoTrees
                         lhs . infoTrees  = [@parentTree]
-  | PatternBinding      loc . parentTree = node @lhs.parentTree @localInfo (@pattern.infoTree : @righthandside.infoTrees)
+  | PatternBinding      loc . parentTree = node @lhs.parentTree @localInfo [@pattern.infoTree, @righthandside.infoTree]
                         lhs . infoTrees  = [@parentTree]
   | TypeSignature  lhs . infoTrees = []
   | Fixity         lhs . infoTrees = []
@@ -208,7 +223,7 @@ SEM FunctionBindings [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Nil    lhs . infoTrees = []
 
 SEM FunctionBinding [ parentTree : InfoTree | | infoTree : InfoTree ]
-  | FunctionBinding  loc . parentTree = node @lhs.parentTree @localInfo (@lefthandside.infoTrees ++ @righthandside.infoTrees)
+  | FunctionBinding  loc . parentTree = node @lhs.parentTree @localInfo (@lefthandside.infoTrees ++ [@righthandside.infoTree])
                      lhs . infoTree   = @parentTree   
   
 SEM LeftHandSide [ parentTree : InfoTree | | infoTrees : InfoTrees ]

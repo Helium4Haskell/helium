@@ -1,3 +1,14 @@
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- A static analyzer. The checks are defined in the included ag-modules.
+--
+-----------------------------------------------------------------------------
+
 ATTR Module
    [ baseName              : String
      importEnvironments    : ImportEnvironments
@@ -10,6 +21,17 @@ ATTR Module
    ]
 
 ATTR Module -> Type [ options : {[Option]} || ]
+
+INCLUDE "Collect.ag"
+INCLUDE "../../syntax/UHA_Syntax.ag"
+INCLUDE "Scope.ag"
+INCLUDE "KindChecking.ag"
+INCLUDE "Warnings.ag"
+INCLUDE "TopLevelErrors.ag"
+INCLUDE "MiscErrors.ag"
+INCLUDE "ExportErrors.ag"
+INCLUDE "HeliumPartialSyntax.ag"
+INCLUDE "ScopeErrors.ag"
 
 imports {
 import Similarity ( similar )
@@ -26,25 +48,12 @@ import List
 import Utils ( internalError, fst3, minInt, maxInt )
 import TypeConversion
 import DerivingShow
-import LiftedConstraints
+import TypeConstraints
 import Data.FiniteMap
 import ImportEnvironment
 import OperatorTable
 import Char ( isUpper )
 }
-
-INCLUDE "Collect.ag"
-
-INCLUDE "../../syntax/UHA_Syntax.ag"
-
-INCLUDE "Scope.ag"
-INCLUDE "KindChecking.ag"
-INCLUDE "Warnings.ag"
-INCLUDE "TopLevelErrors.ag"
-INCLUDE "MiscErrors.ag"
-INCLUDE "ExportErrors.ag"
-INCLUDE "HeliumPartialSyntax.ag"
-INCLUDE "ScopeErrors.ag"
 
 -- combine all the collected errors, then filter out the "entity is undefined" 
 -- errors that are caused by the removal of "duplicated entities"

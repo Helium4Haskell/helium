@@ -1,11 +1,14 @@
--------------------------------------------------------------------------------
---
---   *** The Helium Compiler : Static Analysis ***
---               ( Bastiaan Heeren )
---
--- HeliumMessages.hs : ...
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
 -- 
--------------------------------------------------------------------------------
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- Defines how the (error) messages should be reported by the Helium compiler.
+-- (For instance, one could define another layout, or produce XML-like output).
+--
+-----------------------------------------------------------------------------
 
 module HeliumMessages where
 
@@ -18,11 +21,30 @@ import TypesToAlignedDocs  (qualifiedTypesToAlignedDocs)
 import UHA_Range           (isImportRange, showRanges)
 import Char                (isSpace)
 
-sortAndShowMessages :: HasMessage a => [a] -> String
-sortAndShowMessages = concatMap showMessage . sortMessages
+----------------------------------------------------------
+-- message parameters
 
 lineLength :: Int
 lineLength = 80
+
+tableWidthLeft :: Int
+tableWidthLeft = 16
+
+tablePrefix :: String
+tablePrefix = " "
+
+tableSeparator :: String
+tableSeparator = " : "
+
+splitStringMargin :: Int
+splitStringMargin = 15
+
+----------------------------------------------------------
+
+tableWidthRight :: Int
+tableWidthRight = lineLength - tableWidthLeft - length (tablePrefix ++ tableSeparator)
+
+----------------------------------------------------------
 
 instance Show MessageLine where
    show messageLine = 
@@ -36,55 +58,57 @@ instance Show MessageBlock where
    show (MessageRange r      ) = show r
    show (MessageType tp      ) = show tp
    show (MessagePredicate p  ) = show p
-   show (MessageOneLineTree t) =  -- see tableWidthRight
-                                 OneLiner.showOneLine 58 t
+   show (MessageOneLineTree t) = OneLiner.showOneLine tableWidthRight t
    show (MessageCompose ms   ) = concatMap show ms
 
+sortAndShowMessages :: HasMessage a => [a] -> String
+sortAndShowMessages = concatMap showMessage . sortMessages  
+   
 showMessage :: HasMessage message => message -> String
 showMessage x =
-    let rangePart = MessageString $ case filter (not . isImportRange) (getRanges x) of
-                       [] -> ""
-                       xs -> showRanges xs ++ ": "
-        list = case getMessage x of
-                  MessageOneLiner m:rest -> MessageOneLiner (MessageCompose [rangePart, m]) : rest
-                  xs                     -> MessageOneLiner rangePart : xs
-    in concatMap show list
+    let rangePart = 
+           case filter (not . isImportRange) (getRanges x) of
+              [] -> MessageString ""
+              xs -> MessageString (showRanges xs ++ ": ")
+        messageWithRange = 
+	   case getMessage x of
+              MessageOneLiner m:rest -> MessageOneLiner (MessageCompose [rangePart, m]) : rest
+              xs                     -> MessageOneLiner rangePart : xs
+    in concatMap show messageWithRange
 
 showHints :: String -> MessageBlocks -> String
 showHints pre ms =
    let firstPrefix = "  " ++ pre ++ ": "
        restPrefix  = replicate (4 + length pre) ' '
+       prefixes    = firstPrefix : repeat restPrefix
        width       = lineLength - length firstPrefix
        combine     = concat . intersperse ("\n" ++ restPrefix)
-       prefixes    = firstPrefix : repeat restPrefix
    in unlines . zipWith (++) prefixes . map (combine . splitString width . show) $ ms
 
-tableWidthLeft :: Int
-tableWidthLeft = 16
-
-tableWidthRight :: Int
-tableWidthRight = lineLength - tableWidthLeft - 7 -- see leftStars and middleSep
-
 showTable :: [(MessageBlock, MessageBlock)] -> String
-showTable = let leftStars = " "
-                middleSep = " : "
-                showTuple (x, y) =
-                   let tableWidthLeft'| indentThisBlock y = tableWidthLeft - 2
-                                      | otherwise         = tableWidthLeft
-                       zipf a b c d = a ++ b ++ c ++ d
-                       xs  = splitString tableWidthLeft  (show x)
-                       ys  = splitString tableWidthRight (show y)
-                       i   = length xs `max` length ys
-                       xs' = map (\s -> take tableWidthLeft' (s++repeat ' ')) (xs ++ repeat "")
-                       ys' = ys ++ repeat (replicate tableWidthRight ' ')
-                       left   | indentThisBlock y = repeat (replicate (length leftStars + 2) ' ')
-                              | otherwise         = leftStars : repeat (replicate (length leftStars) ' ')
-                       middle = middleSep : repeat "   "
-                   in unlines (take i (zipWith4 zipf left xs' middle ys'))
-            in concatMap showTuple . renderTypesInRight tableWidthRight
-
-indentThisBlock :: MessageBlock -> Bool
-indentThisBlock mb =
+showTable = 
+   let showTuple (leftBlock, rightBlock) =
+          let -- some helper functions
+	      leftWidth = tableWidthLeft - (if indentBlock rightBlock then 2 else 0)
+              concatFour a b c d = a ++ b ++ c ++ d
+	      makeOfLength i s   = take i (s ++ repeat ' ')
+	      linesOfLength i    = repeat (replicate i ' ')
+	      -- lines
+              leftLines  = splitString leftWidth       (show leftBlock)
+              rightLines = splitString tableWidthRight (show rightBlock)
+              nrOfLines  = length leftLines `max` length rightLines
+	      -- the four columns
+              indentColumn    = if indentBlock rightBlock
+	                          then               linesOfLength (length tablePrefix + 2)
+                                  else tablePrefix : linesOfLength (length tablePrefix)
+              leftColumn      = map (makeOfLength leftWidth) leftLines ++ linesOfLength leftWidth 
+	      seperatorColumn = tableSeparator : linesOfLength (length tableSeparator)
+              rightColumn     = rightLines ++ linesOfLength tableWidthRight
+          in unlines (take nrOfLines (zipWith4 concatFour indentColumn leftColumn seperatorColumn rightColumn))
+   in concatMap showTuple . renderTypesInRight
+   
+indentBlock :: MessageBlock -> Bool
+indentBlock mb =
    case mb of
       MessageType _       -> True
       MessagePredicate _  -> True
@@ -92,17 +116,18 @@ indentThisBlock mb =
 
 -- if two types or type schemes follow each other in a table (on the right-hand side)
 -- then the two types are rendered in a special way.
-renderTypesInRight :: Int -> [(MessageBlock, MessageBlock)] -> [(MessageBlock, MessageBlock)]
-renderTypesInRight width table =
+renderTypesInRight :: [(MessageBlock, MessageBlock)] -> [(MessageBlock, MessageBlock)]
+renderTypesInRight table =
    case table of
-      (l1, r1) : (l2, r2) : rest
+      hd@(l1, r1) : tl@((l2, r2) : rest)
         -> case (maybeQType r1, maybeQType r2) of
-              (Just tp1, Just tp2) -> let [doc1, doc2] = qualifiedTypesToAlignedDocs [tp1, tp2]
-                                          render = flip PPrint.displayS [] . PPrint.renderPretty 1.0 width
-                                      in (l1, MessageType (toTpScheme (TCon (render doc1))))
-                                       : (l2, MessageType (toTpScheme (TCon (render doc2))))
-                                       : renderTypesInRight width rest
-              _                    -> (l1, r1) : renderTypesInRight width ((l2, r2) : rest)
+              (Just tp1, Just tp2) -> 
+	         let [doc1, doc2] = qualifiedTypesToAlignedDocs [tp1, tp2]
+                     render = flip PPrint.displayS [] . PPrint.renderPretty 1.0 tableWidthRight
+                 in (l1, MessageType (toTpScheme (TCon (render doc1))))
+                  : (l2, MessageType (toTpScheme (TCon (render doc2))))
+                  : renderTypesInRight rest
+              _ -> hd : renderTypesInRight tl
       _ -> table
 
   where maybeQType :: MessageBlock -> Maybe QType
@@ -126,9 +151,6 @@ splitString width = concatMap f . lines
                           (begin, rest) = splitAt lastSpace string
                       in begin : f (dropWhile isSpace rest)
                     
-splitStringMargin :: Int
-splitStringMargin = 15
-
 -- Prepare the types and type schemes in a messageline to be shown.
 --
 -- type schemes:

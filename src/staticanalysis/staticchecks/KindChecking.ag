@@ -1,9 +1,11 @@
--------------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
 --
---   *** The Helium Compiler : Static Analysis ***
---               ( Bastiaan Heeren )
---
--- KindChecking.ag : A kind checker for Helium
+-- A kind checker for Helium.
 --
 -- Note: Kind Inferencing for the Helium language is pretty straightforward: check
 --    if each type constructor has the right number of arguments, and whether 

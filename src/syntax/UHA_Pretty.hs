@@ -52,7 +52,11 @@ sem_Alternative_Alternative :: (T_Range) ->
                                (T_RightHandSide) ->
                                (T_Alternative)
 sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _patternItext :: (Doc)
+        _righthandsideItext :: ( Doc        -> Doc  )
+        ( _rangeItext) =
             (range_ )
         ( _patternItext) =
             (pattern_ )
@@ -66,7 +70,9 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
 sem_Alternative_Empty :: (T_Range) ->
                          (T_Alternative)
 sem_Alternative_Empty (range_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         (_text@_) =
             empty
@@ -85,7 +91,10 @@ sem_Alternatives_Cons :: (T_Alternative) ->
                          (T_Alternatives) ->
                          (T_Alternatives)
 sem_Alternatives_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -94,7 +103,8 @@ sem_Alternatives_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_Alternatives_Nil :: (T_Alternatives)
 sem_Alternatives_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- AnnotatedType -----------------------------------------------
@@ -110,7 +120,10 @@ sem_AnnotatedType_AnnotatedType :: (T_Range) ->
                                    (T_Type) ->
                                    (T_AnnotatedType)
 sem_AnnotatedType_AnnotatedType (range_) (strict_) (type_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _typeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _typeItext) =
             (type_ )
@@ -131,7 +144,10 @@ sem_AnnotatedTypes_Cons :: (T_AnnotatedType) ->
                            (T_AnnotatedTypes) ->
                            (T_AnnotatedTypes)
 sem_AnnotatedTypes_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -140,7 +156,8 @@ sem_AnnotatedTypes_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_AnnotatedTypes_Nil :: (T_AnnotatedTypes)
 sem_AnnotatedTypes_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- Body --------------------------------------------------------
@@ -156,7 +173,11 @@ sem_Body_Body :: (T_Range) ->
                  (T_Declarations) ->
                  (T_Body)
 sem_Body_Body (range_) (importdeclarations_) (declarations_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _importdeclarationsItext :: ( [       Doc ] )
+        _declarationsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _importdeclarationsItext) =
             (importdeclarations_ )
@@ -187,7 +208,14 @@ sem_Constructor_Constructor :: (T_Range) ->
                                (T_AnnotatedTypes) ->
                                (T_Constructor)
 sem_Constructor_Constructor (range_) (constructor_) (types_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _constructorIisIdentifier :: (Bool)
+        _constructorIisOperator :: (Bool)
+        _constructorIisSpecial :: (Bool)
+        _constructorItext :: (Doc)
+        _typesItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _constructorIisIdentifier,_constructorIisOperator,_constructorIisSpecial,_constructorItext) =
             (constructor_ )
@@ -204,7 +232,15 @@ sem_Constructor_Infix :: (T_Range) ->
                          (T_AnnotatedType) ->
                          (T_Constructor)
 sem_Constructor_Infix (range_) (leftType_) (constructorOperator_) (rightType_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _leftTypeItext :: (Doc)
+        _constructorOperatorIisIdentifier :: (Bool)
+        _constructorOperatorIisOperator :: (Bool)
+        _constructorOperatorIisSpecial :: (Bool)
+        _constructorOperatorItext :: (Doc)
+        _rightTypeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _leftTypeItext) =
             (leftType_ )
@@ -222,7 +258,14 @@ sem_Constructor_Record :: (T_Range) ->
                           (T_FieldDeclarations) ->
                           (T_Constructor)
 sem_Constructor_Record (range_) (constructor_) (fieldDeclarations_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _constructorIisIdentifier :: (Bool)
+        _constructorIisOperator :: (Bool)
+        _constructorIisSpecial :: (Bool)
+        _constructorItext :: (Doc)
+        _fieldDeclarationsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _constructorIisIdentifier,_constructorIisOperator,_constructorIisSpecial,_constructorItext) =
             (constructor_ )
@@ -245,7 +288,10 @@ sem_Constructors_Cons :: (T_Constructor) ->
                          (T_Constructors) ->
                          (T_Constructors)
 sem_Constructors_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -254,7 +300,8 @@ sem_Constructors_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_Constructors_Nil :: (T_Constructors)
 sem_Constructors_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- ContextItem -------------------------------------------------
@@ -270,7 +317,14 @@ sem_ContextItem_ContextItem :: (T_Range) ->
                                (T_Types) ->
                                (T_ContextItem)
 sem_ContextItem_ContextItem (range_) (name_) (types_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        _typesItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -293,7 +347,10 @@ sem_ContextItems_Cons :: (T_ContextItem) ->
                          (T_ContextItems) ->
                          (T_ContextItems)
 sem_ContextItems_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -302,7 +359,8 @@ sem_ContextItems_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_ContextItems_Nil :: (T_ContextItems)
 sem_ContextItems_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- Declaration -------------------------------------------------
@@ -339,7 +397,12 @@ sem_Declaration_Class :: (T_Range) ->
                          (T_MaybeDeclarations) ->
                          (T_Declaration)
 sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _contextItext :: ( [       Doc ] )
+        _simpletypeItext :: (Doc)
+        _whereItext :: ( Maybe [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _contextItext) =
             (context_ )
@@ -359,7 +422,16 @@ sem_Declaration_Data :: (T_Range) ->
                         (T_Names) ->
                         (T_Declaration)
 sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (derivings_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _contextItext :: ( [       Doc ] )
+        _simpletypeItext :: (Doc)
+        _constructorsItext :: ( [       Doc ] )
+        _derivingsIisIdentifier :: ( [Bool] )
+        _derivingsIisOperator :: ( [Bool] )
+        _derivingsIisSpecial :: ( [Bool] )
+        _derivingsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _contextItext) =
             (context_ )
@@ -406,7 +478,10 @@ sem_Declaration_Default :: (T_Range) ->
                            (T_Types) ->
                            (T_Declaration)
 sem_Declaration_Default (range_) (types_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _typesItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _typesItext) =
             (types_ )
@@ -418,7 +493,9 @@ sem_Declaration_Default (range_) (types_) =
 sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
 sem_Declaration_Empty (range_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         (_text@_) =
             empty
@@ -431,7 +508,15 @@ sem_Declaration_Fixity :: (T_Range) ->
                           (T_Names) ->
                           (T_Declaration)
 sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _fixityItext :: (Doc)
+        _priorityItext :: (        Maybe Doc  )
+        _operatorsIisIdentifier :: ( [Bool] )
+        _operatorsIisOperator :: ( [Bool] )
+        _operatorsIisSpecial :: ( [Bool] )
+        _operatorsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _fixityItext) =
             (fixity_ )
@@ -459,7 +544,10 @@ sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)
 sem_Declaration_FunctionBindings (range_) (bindings_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _bindingsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _bindingsItext) =
             (bindings_ )
@@ -475,7 +563,16 @@ sem_Declaration_Instance :: (T_Range) ->
                             (T_MaybeDeclarations) ->
                             (T_Declaration)
 sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _contextItext :: ( [       Doc ] )
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        _typesItext :: ( [       Doc ] )
+        _whereItext :: ( Maybe [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _contextItext) =
             (context_ )
@@ -497,7 +594,16 @@ sem_Declaration_Newtype :: (T_Range) ->
                            (T_Names) ->
                            (T_Declaration)
 sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivings_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _contextItext :: ( [       Doc ] )
+        _simpletypeItext :: (Doc)
+        _constructorItext :: (Doc)
+        _derivingsIisIdentifier :: ( [Bool] )
+        _derivingsIisOperator :: ( [Bool] )
+        _derivingsIisSpecial :: ( [Bool] )
+        _derivingsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _contextItext) =
             (context_ )
@@ -538,7 +644,11 @@ sem_Declaration_PatternBinding :: (T_Range) ->
                                   (T_RightHandSide) ->
                                   (T_Declaration)
 sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _patternItext :: (Doc)
+        _righthandsideItext :: ( Doc        -> Doc  )
+        ( _rangeItext) =
             (range_ )
         ( _patternItext) =
             (pattern_ )
@@ -554,7 +664,11 @@ sem_Declaration_Type :: (T_Range) ->
                         (T_Type) ->
                         (T_Declaration)
 sem_Declaration_Type (range_) (simpletype_) (type_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _simpletypeItext :: (Doc)
+        _typeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _simpletypeItext) =
             (simpletype_ )
@@ -570,7 +684,14 @@ sem_Declaration_TypeSignature :: (T_Range) ->
                                  (T_Type) ->
                                  (T_Declaration)
 sem_Declaration_TypeSignature (range_) (names_) (type_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _namesIisIdentifier :: ( [Bool] )
+        _namesIisOperator :: ( [Bool] )
+        _namesIisSpecial :: ( [Bool] )
+        _namesItext :: ( [       Doc ] )
+        _typeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _namesIisIdentifier,_namesIisOperator,_namesIisSpecial,_namesItext) =
             (names_ )
@@ -595,7 +716,10 @@ sem_Declarations_Cons :: (T_Declaration) ->
                          (T_Declarations) ->
                          (T_Declarations)
 sem_Declarations_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -604,7 +728,8 @@ sem_Declarations_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_Declarations_Nil :: (T_Declarations)
 sem_Declarations_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- Export ------------------------------------------------------
@@ -625,7 +750,13 @@ sem_Export_Module :: (T_Range) ->
                      (T_Name) ->
                      (T_Export)
 sem_Export_Module (range_) (name_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -639,7 +770,14 @@ sem_Export_TypeOrClass :: (T_Range) ->
                           (T_MaybeNames) ->
                           (T_Export)
 sem_Export_TypeOrClass (range_) (name_) (names_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        _namesItext :: ( Maybe [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -654,7 +792,13 @@ sem_Export_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Export)
 sem_Export_TypeOrClassComplete (range_) (name_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -667,7 +811,13 @@ sem_Export_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Export)
 sem_Export_Variable (range_) (name_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -688,7 +838,10 @@ sem_Exports_Cons :: (T_Export) ->
                     (T_Exports) ->
                     (T_Exports)
 sem_Exports_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -697,7 +850,8 @@ sem_Exports_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_Exports_Nil :: (T_Exports)
 sem_Exports_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- Expression --------------------------------------------------
@@ -751,7 +905,11 @@ sem_Expression_Case :: (T_Range) ->
                        (T_Alternatives) ->
                        (T_Expression)
 sem_Expression_Case (range_) (expression_) (alternatives_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _expressionItext :: (Doc)
+        _alternativesItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _expressionItext) =
             (expression_ )
@@ -769,7 +927,11 @@ sem_Expression_Comprehension :: (T_Range) ->
                                 (T_Qualifiers) ->
                                 (T_Expression)
 sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _expressionItext :: (Doc)
+        _qualifiersItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _expressionItext) =
             (expression_ )
@@ -785,7 +947,13 @@ sem_Expression_Constructor :: (T_Range) ->
                               (T_Name) ->
                               (T_Expression)
 sem_Expression_Constructor (range_) (name_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -798,7 +966,10 @@ sem_Expression_Do :: (T_Range) ->
                      (T_Statements) ->
                      (T_Expression)
 sem_Expression_Do (range_) (statements_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _statementsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _statementsItext) =
             (statements_ )
@@ -813,7 +984,12 @@ sem_Expression_Enum :: (T_Range) ->
                        (T_MaybeExpression) ->
                        (T_Expression)
 sem_Expression_Enum (range_) (from_) (then_) (to_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _fromItext :: (Doc)
+        _thenItext :: (        Maybe Doc  )
+        _toItext :: (        Maybe Doc  )
+        ( _rangeItext) =
             (range_ )
         ( _fromItext) =
             (from_ )
@@ -837,7 +1013,12 @@ sem_Expression_If :: (T_Range) ->
                      (T_Expression) ->
                      (T_Expression)
 sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _guardExpressionItext :: (Doc)
+        _thenExpressionItext :: (Doc)
+        _elseExpressionItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _guardExpressionItext) =
             (guardExpression_ )
@@ -858,7 +1039,12 @@ sem_Expression_InfixApplication :: (T_Range) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression)
 sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExpression_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _leftExpressionItext :: (        Maybe Doc  )
+        _operatorItext :: (Doc)
+        _rightExpressionItext :: (        Maybe Doc  )
+        ( _rangeItext) =
             (range_ )
         ( _leftExpressionItext) =
             (leftExpression_ )
@@ -891,7 +1077,11 @@ sem_Expression_Lambda :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
 sem_Expression_Lambda (range_) (patterns_) (expression_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _patternsItext :: ( [       Doc ] )
+        _expressionItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _patternsItext) =
             (patterns_ )
@@ -907,7 +1097,11 @@ sem_Expression_Let :: (T_Range) ->
                       (T_Expression) ->
                       (T_Expression)
 sem_Expression_Let (range_) (declarations_) (expression_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _declarationsItext :: ( [       Doc ] )
+        _expressionItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _declarationsItext) =
             (declarations_ )
@@ -926,7 +1120,10 @@ sem_Expression_List :: (T_Range) ->
                        (T_Expressions) ->
                        (T_Expression)
 sem_Expression_List (range_) (expressions_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _expressionsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _expressionsItext) =
             (expressions_ )
@@ -939,7 +1136,10 @@ sem_Expression_Literal :: (T_Range) ->
                           (T_Literal) ->
                           (T_Expression)
 sem_Expression_Literal (range_) (literal_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _literalItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _literalItext) =
             (literal_ )
@@ -952,7 +1152,10 @@ sem_Expression_Negate :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
 sem_Expression_Negate (range_) (expression_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _expressionItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _expressionItext) =
             (expression_ )
@@ -965,7 +1168,10 @@ sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
 sem_Expression_NegateFloat (range_) (expression_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _expressionItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _expressionItext) =
             (expression_ )
@@ -979,7 +1185,11 @@ sem_Expression_NormalApplication :: (T_Range) ->
                                     (T_Expressions) ->
                                     (T_Expression)
 sem_Expression_NormalApplication (range_) (function_) (arguments_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _functionItext :: (Doc)
+        _argumentsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _functionItext) =
             (function_ )
@@ -994,7 +1204,10 @@ sem_Expression_Parenthesized :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Expression)
 sem_Expression_Parenthesized (range_) (expression_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _expressionItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _expressionItext) =
             (expression_ )
@@ -1008,7 +1221,14 @@ sem_Expression_RecordConstruction :: (T_Range) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_Expression)
 sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        _recordExpressionBindingsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -1024,7 +1244,11 @@ sem_Expression_RecordUpdate :: (T_Range) ->
                                (T_RecordExpressionBindings) ->
                                (T_Expression)
 sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _expressionItext :: (Doc)
+        _recordExpressionBindingsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _expressionItext) =
             (expression_ )
@@ -1039,7 +1263,10 @@ sem_Expression_Tuple :: (T_Range) ->
                         (T_Expressions) ->
                         (T_Expression)
 sem_Expression_Tuple (range_) (expressions_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _expressionsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _expressionsItext) =
             (expressions_ )
@@ -1053,7 +1280,11 @@ sem_Expression_Typed :: (T_Range) ->
                         (T_Type) ->
                         (T_Expression)
 sem_Expression_Typed (range_) (expression_) (type_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _expressionItext :: (Doc)
+        _typeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _expressionItext) =
             (expression_ )
@@ -1068,7 +1299,13 @@ sem_Expression_Variable :: (T_Range) ->
                            (T_Name) ->
                            (T_Expression)
 sem_Expression_Variable (range_) (name_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -1089,7 +1326,10 @@ sem_Expressions_Cons :: (T_Expression) ->
                         (T_Expressions) ->
                         (T_Expressions)
 sem_Expressions_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -1098,7 +1338,8 @@ sem_Expressions_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_Expressions_Nil :: (T_Expressions)
 sem_Expressions_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- FieldDeclaration --------------------------------------------
@@ -1114,7 +1355,14 @@ sem_FieldDeclaration_FieldDeclaration :: (T_Range) ->
                                          (T_AnnotatedType) ->
                                          (T_FieldDeclaration)
 sem_FieldDeclaration_FieldDeclaration (range_) (names_) (type_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _namesIisIdentifier :: ( [Bool] )
+        _namesIisOperator :: ( [Bool] )
+        _namesIisSpecial :: ( [Bool] )
+        _namesItext :: ( [       Doc ] )
+        _typeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _namesIisIdentifier,_namesIisOperator,_namesIisSpecial,_namesItext) =
             (names_ )
@@ -1137,7 +1385,10 @@ sem_FieldDeclarations_Cons :: (T_FieldDeclaration) ->
                               (T_FieldDeclarations) ->
                               (T_FieldDeclarations)
 sem_FieldDeclarations_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -1146,7 +1397,8 @@ sem_FieldDeclarations_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_FieldDeclarations_Nil :: (T_FieldDeclarations)
 sem_FieldDeclarations_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- Fixity ------------------------------------------------------
@@ -1164,7 +1416,9 @@ sem_Fixity ((Fixity_Infixr (_range))) =
 sem_Fixity_Infix :: (T_Range) ->
                     (T_Fixity)
 sem_Fixity_Infix (range_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         (_text@_) =
             text "infix "
@@ -1174,7 +1428,9 @@ sem_Fixity_Infix (range_) =
 sem_Fixity_Infixl :: (T_Range) ->
                      (T_Fixity)
 sem_Fixity_Infixl (range_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         (_text@_) =
             text "infixl"
@@ -1184,7 +1440,9 @@ sem_Fixity_Infixl (range_) =
 sem_Fixity_Infixr :: (T_Range) ->
                      (T_Fixity)
 sem_Fixity_Infixr (range_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         (_text@_) =
             text "infixr"
@@ -1204,7 +1462,11 @@ sem_FunctionBinding_FunctionBinding :: (T_Range) ->
                                        (T_RightHandSide) ->
                                        (T_FunctionBinding)
 sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _lefthandsideItext :: (Doc)
+        _righthandsideItext :: ( Doc        -> Doc  )
+        ( _rangeItext) =
             (range_ )
         ( _lefthandsideItext) =
             (lefthandside_ )
@@ -1227,7 +1489,10 @@ sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
                              (T_FunctionBindings) ->
                              (T_FunctionBindings)
 sem_FunctionBindings_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -1236,7 +1501,8 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_FunctionBindings_Nil :: (T_FunctionBindings)
 sem_FunctionBindings_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- GuardedExpression -------------------------------------------
@@ -1252,7 +1518,11 @@ sem_GuardedExpression_GuardedExpression :: (T_Range) ->
                                            (T_Expression) ->
                                            (T_GuardedExpression)
 sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: ( Doc        -> Doc  )
+        _rangeItext :: (Doc)
+        _guardItext :: (Doc)
+        _expressionItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _guardItext) =
             (guard_ )
@@ -1275,7 +1545,10 @@ sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
                                (T_GuardedExpressions) ->
                                (T_GuardedExpressions)
 sem_GuardedExpressions_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [        Doc -> Doc  ] )
+        _hdItext :: ( Doc        -> Doc  )
+        _tlItext :: ( [        Doc -> Doc  ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -1284,7 +1557,8 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_GuardedExpressions_Nil :: (T_GuardedExpressions)
 sem_GuardedExpressions_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [        Doc -> Doc  ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- Import ------------------------------------------------------
@@ -1304,7 +1578,14 @@ sem_Import_TypeOrClass :: (T_Range) ->
                           (T_MaybeNames) ->
                           (T_Import)
 sem_Import_TypeOrClass (range_) (name_) (names_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        _namesItext :: ( Maybe [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -1319,7 +1600,13 @@ sem_Import_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Import)
 sem_Import_TypeOrClassComplete (range_) (name_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -1332,7 +1619,13 @@ sem_Import_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Import)
 sem_Import_Variable (range_) (name_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -1354,7 +1647,9 @@ sem_ImportDeclaration ((ImportDeclaration_Import (_range) (_qualified) (_name) (
 sem_ImportDeclaration_Empty :: (T_Range) ->
                                (T_ImportDeclaration)
 sem_ImportDeclaration_Empty (range_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         (_text@_) =
             empty
@@ -1368,7 +1663,15 @@ sem_ImportDeclaration_Import :: (T_Range) ->
                                 (T_MaybeImportSpecification) ->
                                 (T_ImportDeclaration)
 sem_ImportDeclaration_Import (range_) (qualified_) (name_) (asname_) (importspecification_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        _asnameItext :: (        Maybe Doc  )
+        _importspecificationItext :: (        Maybe Doc  )
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -1393,7 +1696,10 @@ sem_ImportDeclarations_Cons :: (T_ImportDeclaration) ->
                                (T_ImportDeclarations) ->
                                (T_ImportDeclarations)
 sem_ImportDeclarations_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -1402,7 +1708,8 @@ sem_ImportDeclarations_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_ImportDeclarations_Nil :: (T_ImportDeclarations)
 sem_ImportDeclarations_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- ImportSpecification -----------------------------------------
@@ -1418,7 +1725,10 @@ sem_ImportSpecification_Import :: (T_Range) ->
                                   (T_Imports) ->
                                   (T_ImportSpecification)
 sem_ImportSpecification_Import (range_) (hiding_) (imports_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _importsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _importsItext) =
             (imports_ )
@@ -1440,7 +1750,10 @@ sem_Imports_Cons :: (T_Import) ->
                     (T_Imports) ->
                     (T_Imports)
 sem_Imports_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -1449,7 +1762,8 @@ sem_Imports_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_Imports_Nil :: (T_Imports)
 sem_Imports_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- LeftHandSide ------------------------------------------------
@@ -1469,7 +1783,14 @@ sem_LeftHandSide_Function :: (T_Range) ->
                              (T_Patterns) ->
                              (T_LeftHandSide)
 sem_LeftHandSide_Function (range_) (name_) (patterns_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        _patternsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -1486,7 +1807,15 @@ sem_LeftHandSide_Infix :: (T_Range) ->
                           (T_Pattern) ->
                           (T_LeftHandSide)
 sem_LeftHandSide_Infix (range_) (leftPattern_) (operator_) (rightPattern_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _leftPatternItext :: (Doc)
+        _operatorIisIdentifier :: (Bool)
+        _operatorIisOperator :: (Bool)
+        _operatorIisSpecial :: (Bool)
+        _operatorItext :: (Doc)
+        _rightPatternItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _leftPatternItext) =
             (leftPattern_ )
@@ -1504,7 +1833,11 @@ sem_LeftHandSide_Parenthesized :: (T_Range) ->
                                   (T_Patterns) ->
                                   (T_LeftHandSide)
 sem_LeftHandSide_Parenthesized (range_) (lefthandside_) (patterns_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _lefthandsideItext :: (Doc)
+        _patternsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _lefthandsideItext) =
             (lefthandside_ )
@@ -1533,7 +1866,9 @@ sem_Literal_Char :: (T_Range) ->
                     (String) ->
                     (T_Literal)
 sem_Literal_Char (range_) (value_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         (_text@_) =
             text ("'" ++ value_ ++ "'")
@@ -1544,7 +1879,9 @@ sem_Literal_Float :: (T_Range) ->
                      (String) ->
                      (T_Literal)
 sem_Literal_Float (range_) (value_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         (_text@_) =
             text value_
@@ -1555,7 +1892,9 @@ sem_Literal_Int :: (T_Range) ->
                    (String) ->
                    (T_Literal)
 sem_Literal_Int (range_) (value_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         (_text@_) =
             text value_
@@ -1566,7 +1905,9 @@ sem_Literal_String :: (T_Range) ->
                       (String) ->
                       (T_Literal)
 sem_Literal_String (range_) (value_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         (_text@_) =
             text ("\"" ++ value_ ++ "\"")
@@ -1586,7 +1927,9 @@ sem_MaybeDeclarations ((MaybeDeclarations_Nothing )) =
 sem_MaybeDeclarations_Just :: (T_Declarations) ->
                               (T_MaybeDeclarations)
 sem_MaybeDeclarations_Just (declarations_) =
-    let ( _declarationsItext) =
+    let _lhsOtext :: ( Maybe [       Doc ] )
+        _declarationsItext :: ( [       Doc ] )
+        ( _declarationsItext) =
             (declarations_ )
         (_text@_) =
             Just _declarationsItext
@@ -1595,7 +1938,8 @@ sem_MaybeDeclarations_Just (declarations_) =
     in  ( _lhsOtext)
 sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
 sem_MaybeDeclarations_Nothing  =
-    let (_text@_) =
+    let _lhsOtext :: ( Maybe [       Doc ] )
+        (_text@_) =
             Nothing
         (_lhsOtext@_) =
             _text
@@ -1613,7 +1957,9 @@ sem_MaybeExports ((MaybeExports_Nothing )) =
 sem_MaybeExports_Just :: (T_Exports) ->
                          (T_MaybeExports)
 sem_MaybeExports_Just (exports_) =
-    let ( _exportsItext) =
+    let _lhsOtext :: ( Maybe [       Doc ] )
+        _exportsItext :: ( [       Doc ] )
+        ( _exportsItext) =
             (exports_ )
         (_text@_) =
             Just _exportsItext
@@ -1622,7 +1968,8 @@ sem_MaybeExports_Just (exports_) =
     in  ( _lhsOtext)
 sem_MaybeExports_Nothing :: (T_MaybeExports)
 sem_MaybeExports_Nothing  =
-    let (_text@_) =
+    let _lhsOtext :: ( Maybe [       Doc ] )
+        (_text@_) =
             Nothing
         (_lhsOtext@_) =
             _text
@@ -1640,7 +1987,9 @@ sem_MaybeExpression ((MaybeExpression_Nothing )) =
 sem_MaybeExpression_Just :: (T_Expression) ->
                             (T_MaybeExpression)
 sem_MaybeExpression_Just (expression_) =
-    let ( _expressionItext) =
+    let _lhsOtext :: (        Maybe Doc  )
+        _expressionItext :: (Doc)
+        ( _expressionItext) =
             (expression_ )
         (_text@_) =
             Just _expressionItext
@@ -1649,7 +1998,8 @@ sem_MaybeExpression_Just (expression_) =
     in  ( _lhsOtext)
 sem_MaybeExpression_Nothing :: (T_MaybeExpression)
 sem_MaybeExpression_Nothing  =
-    let (_text@_) =
+    let _lhsOtext :: (        Maybe Doc  )
+        (_text@_) =
             Nothing
         (_lhsOtext@_) =
             _text
@@ -1667,7 +2017,9 @@ sem_MaybeImportSpecification ((MaybeImportSpecification_Nothing )) =
 sem_MaybeImportSpecification_Just :: (T_ImportSpecification) ->
                                      (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Just (importspecification_) =
-    let ( _importspecificationItext) =
+    let _lhsOtext :: (        Maybe Doc  )
+        _importspecificationItext :: (Doc)
+        ( _importspecificationItext) =
             (importspecification_ )
         (_text@_) =
             Just _importspecificationItext
@@ -1676,7 +2028,8 @@ sem_MaybeImportSpecification_Just (importspecification_) =
     in  ( _lhsOtext)
 sem_MaybeImportSpecification_Nothing :: (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Nothing  =
-    let (_text@_) =
+    let _lhsOtext :: (        Maybe Doc  )
+        (_text@_) =
             Nothing
         (_lhsOtext@_) =
             _text
@@ -1694,14 +2047,16 @@ sem_MaybeInt ((MaybeInt_Nothing )) =
 sem_MaybeInt_Just :: (Int) ->
                      (T_MaybeInt)
 sem_MaybeInt_Just (int_) =
-    let (_text@_) =
+    let _lhsOtext :: (        Maybe Doc  )
+        (_text@_) =
             Just (int int_)
         (_lhsOtext@_) =
             _text
     in  ( _lhsOtext)
 sem_MaybeInt_Nothing :: (T_MaybeInt)
 sem_MaybeInt_Nothing  =
-    let (_text@_) =
+    let _lhsOtext :: (        Maybe Doc  )
+        (_text@_) =
             Nothing
         (_lhsOtext@_) =
             _text
@@ -1719,7 +2074,12 @@ sem_MaybeName ((MaybeName_Nothing )) =
 sem_MaybeName_Just :: (T_Name) ->
                       (T_MaybeName)
 sem_MaybeName_Just (name_) =
-    let ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+    let _lhsOtext :: (        Maybe Doc  )
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
         (_text@_) =
             Just _nameItext
@@ -1728,7 +2088,8 @@ sem_MaybeName_Just (name_) =
     in  ( _lhsOtext)
 sem_MaybeName_Nothing :: (T_MaybeName)
 sem_MaybeName_Nothing  =
-    let (_text@_) =
+    let _lhsOtext :: (        Maybe Doc  )
+        (_text@_) =
             Nothing
         (_lhsOtext@_) =
             _text
@@ -1746,7 +2107,12 @@ sem_MaybeNames ((MaybeNames_Nothing )) =
 sem_MaybeNames_Just :: (T_Names) ->
                        (T_MaybeNames)
 sem_MaybeNames_Just (names_) =
-    let ( _namesIisIdentifier,_namesIisOperator,_namesIisSpecial,_namesItext) =
+    let _lhsOtext :: ( Maybe [       Doc ] )
+        _namesIisIdentifier :: ( [Bool] )
+        _namesIisOperator :: ( [Bool] )
+        _namesIisSpecial :: ( [Bool] )
+        _namesItext :: ( [       Doc ] )
+        ( _namesIisIdentifier,_namesIisOperator,_namesIisSpecial,_namesItext) =
             (names_ )
         (_text@_) =
             Just _namesItext
@@ -1755,7 +2121,8 @@ sem_MaybeNames_Just (names_) =
     in  ( _lhsOtext)
 sem_MaybeNames_Nothing :: (T_MaybeNames)
 sem_MaybeNames_Nothing  =
-    let (_text@_) =
+    let _lhsOtext :: ( Maybe [       Doc ] )
+        (_text@_) =
             Nothing
         (_lhsOtext@_) =
             _text
@@ -1774,7 +2141,12 @@ sem_Module_Module :: (T_Range) ->
                      (T_Body) ->
                      (T_Module)
 sem_Module_Module (range_) (name_) (exports_) (body_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameItext :: (        Maybe Doc  )
+        _exportsItext :: ( Maybe [       Doc ] )
+        _bodyItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameItext) =
             (name_ )
@@ -1817,7 +2189,13 @@ sem_Name_Identifier :: (T_Range) ->
                        (String) ->
                        (T_Name)
 sem_Name_Identifier (range_) (module_) (name_) =
-    let ( _rangeItext) =
+    let _lhsOisIdentifier :: (Bool)
+        _lhsOisOperator :: (Bool)
+        _lhsOisSpecial :: (Bool)
+        _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _moduleItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _moduleItext) =
             (module_ )
@@ -1837,7 +2215,13 @@ sem_Name_Operator :: (T_Range) ->
                      (String) ->
                      (T_Name)
 sem_Name_Operator (range_) (module_) (name_) =
-    let ( _rangeItext) =
+    let _lhsOisIdentifier :: (Bool)
+        _lhsOisOperator :: (Bool)
+        _lhsOisSpecial :: (Bool)
+        _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _moduleItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _moduleItext) =
             (module_ )
@@ -1857,7 +2241,13 @@ sem_Name_Special :: (T_Range) ->
                     (String) ->
                     (T_Name)
 sem_Name_Special (range_) (module_) (name_) =
-    let ( _rangeItext) =
+    let _lhsOisIdentifier :: (Bool)
+        _lhsOisOperator :: (Bool)
+        _lhsOisSpecial :: (Bool)
+        _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _moduleItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _moduleItext) =
             (module_ )
@@ -1884,7 +2274,19 @@ sem_Names_Cons :: (T_Name) ->
                   (T_Names) ->
                   (T_Names)
 sem_Names_Cons (hd_) (tl_) =
-    let ( _hdIisIdentifier,_hdIisOperator,_hdIisSpecial,_hdItext) =
+    let _lhsOisIdentifier :: ( [Bool] )
+        _lhsOisOperator :: ( [Bool] )
+        _lhsOisSpecial :: ( [Bool] )
+        _lhsOtext :: ( [       Doc ] )
+        _hdIisIdentifier :: (Bool)
+        _hdIisOperator :: (Bool)
+        _hdIisSpecial :: (Bool)
+        _hdItext :: (Doc)
+        _tlIisIdentifier :: ( [Bool] )
+        _tlIisOperator :: ( [Bool] )
+        _tlIisSpecial :: ( [Bool] )
+        _tlItext :: ( [       Doc ] )
+        ( _hdIisIdentifier,_hdIisOperator,_hdIisSpecial,_hdItext) =
             (hd_ )
         ( _tlIisIdentifier,_tlIisOperator,_tlIisSpecial,_tlItext) =
             (tl_ )
@@ -1899,7 +2301,11 @@ sem_Names_Cons (hd_) (tl_) =
     in  ( _lhsOisIdentifier,_lhsOisOperator,_lhsOisSpecial,_lhsOtext)
 sem_Names_Nil :: (T_Names)
 sem_Names_Nil  =
-    let (_lhsOisIdentifier@_) =
+    let _lhsOisIdentifier :: ( [Bool] )
+        _lhsOisOperator :: ( [Bool] )
+        _lhsOisSpecial :: ( [Bool] )
+        _lhsOtext :: ( [       Doc ] )
+        (_lhsOisIdentifier@_) =
             []
         (_lhsOisOperator@_) =
             []
@@ -1947,7 +2353,14 @@ sem_Pattern_As :: (T_Range) ->
                   (T_Pattern) ->
                   (T_Pattern)
 sem_Pattern_As (range_) (name_) (pattern_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        _patternItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -1963,7 +2376,14 @@ sem_Pattern_Constructor :: (T_Range) ->
                            (T_Patterns) ->
                            (T_Pattern)
 sem_Pattern_Constructor (range_) (name_) (patterns_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        _patternsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -1980,7 +2400,15 @@ sem_Pattern_InfixConstructor :: (T_Range) ->
                                 (T_Pattern) ->
                                 (T_Pattern)
 sem_Pattern_InfixConstructor (range_) (leftPattern_) (constructorOperator_) (rightPattern_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _leftPatternItext :: (Doc)
+        _constructorOperatorIisIdentifier :: (Bool)
+        _constructorOperatorIisOperator :: (Bool)
+        _constructorOperatorIisSpecial :: (Bool)
+        _constructorOperatorItext :: (Doc)
+        _rightPatternItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _leftPatternItext) =
             (leftPattern_ )
@@ -1997,7 +2425,10 @@ sem_Pattern_Irrefutable :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Pattern)
 sem_Pattern_Irrefutable (range_) (pattern_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _patternItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _patternItext) =
             (pattern_ )
@@ -2010,7 +2441,10 @@ sem_Pattern_List :: (T_Range) ->
                     (T_Patterns) ->
                     (T_Pattern)
 sem_Pattern_List (range_) (patterns_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _patternsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _patternsItext) =
             (patterns_ )
@@ -2023,7 +2457,10 @@ sem_Pattern_Literal :: (T_Range) ->
                        (T_Literal) ->
                        (T_Pattern)
 sem_Pattern_Literal (range_) (literal_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _literalItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _literalItext) =
             (literal_ )
@@ -2036,7 +2473,10 @@ sem_Pattern_Negate :: (T_Range) ->
                       (T_Literal) ->
                       (T_Pattern)
 sem_Pattern_Negate (range_) (literal_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _literalItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _literalItext) =
             (literal_ )
@@ -2049,7 +2489,10 @@ sem_Pattern_NegateFloat :: (T_Range) ->
                            (T_Literal) ->
                            (T_Pattern)
 sem_Pattern_NegateFloat (range_) (literal_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _literalItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _literalItext) =
             (literal_ )
@@ -2062,7 +2505,10 @@ sem_Pattern_Parenthesized :: (T_Range) ->
                              (T_Pattern) ->
                              (T_Pattern)
 sem_Pattern_Parenthesized (range_) (pattern_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _patternItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _patternItext) =
             (pattern_ )
@@ -2076,7 +2522,14 @@ sem_Pattern_Record :: (T_Range) ->
                       (T_RecordPatternBindings) ->
                       (T_Pattern)
 sem_Pattern_Record (range_) (name_) (recordPatternBindings_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        _recordPatternBindingsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -2092,7 +2545,14 @@ sem_Pattern_Successor :: (T_Range) ->
                          (T_Literal) ->
                          (T_Pattern)
 sem_Pattern_Successor (range_) (name_) (literal_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        _literalItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -2107,7 +2567,10 @@ sem_Pattern_Tuple :: (T_Range) ->
                      (T_Patterns) ->
                      (T_Pattern)
 sem_Pattern_Tuple (range_) (patterns_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _patternsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _patternsItext) =
             (patterns_ )
@@ -2120,7 +2583,13 @@ sem_Pattern_Variable :: (T_Range) ->
                         (T_Name) ->
                         (T_Pattern)
 sem_Pattern_Variable (range_) (name_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -2132,7 +2601,9 @@ sem_Pattern_Variable (range_) (name_) =
 sem_Pattern_Wildcard :: (T_Range) ->
                         (T_Pattern)
 sem_Pattern_Wildcard (range_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         (_text@_) =
             text "_"
@@ -2151,7 +2622,10 @@ sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns) ->
                      (T_Patterns)
 sem_Patterns_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -2160,7 +2634,8 @@ sem_Patterns_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_Patterns_Nil :: (T_Patterns)
 sem_Patterns_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- Position ----------------------------------------------------
@@ -2178,14 +2653,16 @@ sem_Position_Position :: (String) ->
                          (Int) ->
                          (T_Position)
 sem_Position_Position (filename_) (line_) (column_) =
-    let (_text@_) =
+    let _lhsOtext :: (Doc)
+        (_text@_) =
             text filename_ <> tupled [int line_, int column_]
         (_lhsOtext@_) =
             _text
     in  ( _lhsOtext)
 sem_Position_Unknown :: (T_Position)
 sem_Position_Unknown  =
-    let (_text@_) =
+    let _lhsOtext :: (Doc)
+        (_text@_) =
             text "Unknown"
         (_lhsOtext@_) =
             _text
@@ -2207,7 +2684,9 @@ sem_Qualifier ((Qualifier_Let (_range) (_declarations))) =
 sem_Qualifier_Empty :: (T_Range) ->
                        (T_Qualifier)
 sem_Qualifier_Empty (range_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         (_text@_) =
             empty
@@ -2219,7 +2698,11 @@ sem_Qualifier_Generator :: (T_Range) ->
                            (T_Expression) ->
                            (T_Qualifier)
 sem_Qualifier_Generator (range_) (pattern_) (expression_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _patternItext :: (Doc)
+        _expressionItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _patternItext) =
             (pattern_ )
@@ -2234,7 +2717,10 @@ sem_Qualifier_Guard :: (T_Range) ->
                        (T_Expression) ->
                        (T_Qualifier)
 sem_Qualifier_Guard (range_) (guard_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _guardItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _guardItext) =
             (guard_ )
@@ -2247,7 +2733,10 @@ sem_Qualifier_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Qualifier)
 sem_Qualifier_Let (range_) (declarations_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _declarationsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _declarationsItext) =
             (declarations_ )
@@ -2268,7 +2757,10 @@ sem_Qualifiers_Cons :: (T_Qualifier) ->
                        (T_Qualifiers) ->
                        (T_Qualifiers)
 sem_Qualifiers_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -2277,7 +2769,8 @@ sem_Qualifiers_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_Qualifiers_Nil :: (T_Qualifiers)
 sem_Qualifiers_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- Range -------------------------------------------------------
@@ -2292,7 +2785,10 @@ sem_Range_Range :: (T_Position) ->
                    (T_Position) ->
                    (T_Range)
 sem_Range_Range (start_) (stop_) =
-    let ( _startItext) =
+    let _lhsOtext :: (Doc)
+        _startItext :: (Doc)
+        _stopItext :: (Doc)
+        ( _startItext) =
             (start_ )
         ( _stopItext) =
             (stop_ )
@@ -2314,7 +2810,14 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
                                                        (T_Expression) ->
                                                        (T_RecordExpressionBinding)
 sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        _expressionItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -2337,7 +2840,10 @@ sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_RecordExpressionBindings)
 sem_RecordExpressionBindings_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -2346,7 +2852,8 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_RecordExpressionBindings_Nil :: (T_RecordExpressionBindings)
 sem_RecordExpressionBindings_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- RecordPatternBinding ----------------------------------------
@@ -2362,7 +2869,14 @@ sem_RecordPatternBinding_RecordPatternBinding :: (T_Range) ->
                                                  (T_Pattern) ->
                                                  (T_RecordPatternBinding)
 sem_RecordPatternBinding_RecordPatternBinding (range_) (name_) (pattern_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        _patternItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -2385,7 +2899,10 @@ sem_RecordPatternBindings_Cons :: (T_RecordPatternBinding) ->
                                   (T_RecordPatternBindings) ->
                                   (T_RecordPatternBindings)
 sem_RecordPatternBindings_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -2394,7 +2911,8 @@ sem_RecordPatternBindings_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_RecordPatternBindings_Nil :: (T_RecordPatternBindings)
 sem_RecordPatternBindings_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- RightHandSide -----------------------------------------------
@@ -2412,7 +2930,11 @@ sem_RightHandSide_Expression :: (T_Range) ->
                                 (T_MaybeDeclarations) ->
                                 (T_RightHandSide)
 sem_RightHandSide_Expression (range_) (expression_) (where_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: ( Doc        -> Doc  )
+        _rangeItext :: (Doc)
+        _expressionItext :: (Doc)
+        _whereItext :: ( Maybe [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _expressionItext) =
             (expression_ )
@@ -2436,7 +2958,11 @@ sem_RightHandSide_Guarded :: (T_Range) ->
                              (T_MaybeDeclarations) ->
                              (T_RightHandSide)
 sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: ( Doc        -> Doc  )
+        _rangeItext :: (Doc)
+        _guardedexpressionsItext :: ( [        Doc -> Doc  ] )
+        _whereItext :: ( Maybe [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _guardedexpressionsItext) =
             (guardedexpressions_ )
@@ -2468,7 +2994,17 @@ sem_SimpleType_SimpleType :: (T_Range) ->
                              (T_Names) ->
                              (T_SimpleType)
 sem_SimpleType_SimpleType (range_) (name_) (typevariables_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        _typevariablesIisIdentifier :: ( [Bool] )
+        _typevariablesIisOperator :: ( [Bool] )
+        _typevariablesIisSpecial :: ( [Bool] )
+        _typevariablesItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -2496,7 +3032,9 @@ sem_Statement ((Statement_Let (_range) (_declarations))) =
 sem_Statement_Empty :: (T_Range) ->
                        (T_Statement)
 sem_Statement_Empty (range_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         (_text@_) =
             empty
@@ -2507,7 +3045,10 @@ sem_Statement_Expression :: (T_Range) ->
                             (T_Expression) ->
                             (T_Statement)
 sem_Statement_Expression (range_) (expression_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _expressionItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _expressionItext) =
             (expression_ )
@@ -2521,7 +3062,11 @@ sem_Statement_Generator :: (T_Range) ->
                            (T_Expression) ->
                            (T_Statement)
 sem_Statement_Generator (range_) (pattern_) (expression_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _patternItext :: (Doc)
+        _expressionItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _patternItext) =
             (pattern_ )
@@ -2536,7 +3081,10 @@ sem_Statement_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Statement)
 sem_Statement_Let (range_) (declarations_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _declarationsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _declarationsItext) =
             (declarations_ )
@@ -2557,7 +3105,10 @@ sem_Statements_Cons :: (T_Statement) ->
                        (T_Statements) ->
                        (T_Statements)
 sem_Statements_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -2566,7 +3117,8 @@ sem_Statements_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_Statements_Nil :: (T_Statements)
 sem_Statements_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- Strings -----------------------------------------------------
@@ -2581,14 +3133,17 @@ sem_Strings_Cons :: (String) ->
                     (T_Strings) ->
                     (T_Strings)
 sem_Strings_Cons (hd_) (tl_) =
-    let ( _tlItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _tlItext :: ( [       Doc ] )
+        ( _tlItext) =
             (tl_ )
         (_lhsOtext@_) =
             _tlItext
     in  ( _lhsOtext)
 sem_Strings_Nil :: (T_Strings)
 sem_Strings_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
 -- Type --------------------------------------------------------
@@ -2617,7 +3172,11 @@ sem_Type_Application :: (T_Range) ->
                         (T_Types) ->
                         (T_Type)
 sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _functionItext :: (Doc)
+        _argumentsItext :: ( [       Doc ] )
+        ( _rangeItext) =
             (range_ )
         ( _functionItext) =
             (function_ )
@@ -2641,7 +3200,13 @@ sem_Type_Constructor :: (T_Range) ->
                         (T_Name) ->
                         (T_Type)
 sem_Type_Constructor (range_) (name_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -2655,7 +3220,14 @@ sem_Type_Exists :: (T_Range) ->
                    (T_Type) ->
                    (T_Type)
 sem_Type_Exists (range_) (typevariables_) (type_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _typevariablesIisIdentifier :: ( [Bool] )
+        _typevariablesIisOperator :: ( [Bool] )
+        _typevariablesIisSpecial :: ( [Bool] )
+        _typevariablesItext :: ( [       Doc ] )
+        _typeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _typevariablesIisIdentifier,_typevariablesIisOperator,_typevariablesIisSpecial,_typevariablesItext) =
             (typevariables_ )
@@ -2671,7 +3243,14 @@ sem_Type_Forall :: (T_Range) ->
                    (T_Type) ->
                    (T_Type)
 sem_Type_Forall (range_) (typevariables_) (type_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _typevariablesIisIdentifier :: ( [Bool] )
+        _typevariablesIisOperator :: ( [Bool] )
+        _typevariablesIisSpecial :: ( [Bool] )
+        _typevariablesItext :: ( [       Doc ] )
+        _typeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _typevariablesIisIdentifier,_typevariablesIisOperator,_typevariablesIisSpecial,_typevariablesItext) =
             (typevariables_ )
@@ -2686,7 +3265,10 @@ sem_Type_Parenthesized :: (T_Range) ->
                           (T_Type) ->
                           (T_Type)
 sem_Type_Parenthesized (range_) (type_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _typeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _typeItext) =
             (type_ )
@@ -2700,7 +3282,11 @@ sem_Type_Qualified :: (T_Range) ->
                       (T_Type) ->
                       (T_Type)
 sem_Type_Qualified (range_) (context_) (type_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _contextItext :: ( [       Doc ] )
+        _typeItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _contextItext) =
             (context_ )
@@ -2717,7 +3303,13 @@ sem_Type_Variable :: (T_Range) ->
                      (T_Name) ->
                      (T_Type)
 sem_Type_Variable (range_) (name_) =
-    let ( _rangeItext) =
+    let _lhsOtext :: (Doc)
+        _rangeItext :: (Doc)
+        _nameIisIdentifier :: (Bool)
+        _nameIisOperator :: (Bool)
+        _nameIisSpecial :: (Bool)
+        _nameItext :: (Doc)
+        ( _rangeItext) =
             (range_ )
         ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
             (name_ )
@@ -2738,7 +3330,10 @@ sem_Types_Cons :: (T_Type) ->
                   (T_Types) ->
                   (T_Types)
 sem_Types_Cons (hd_) (tl_) =
-    let ( _hdItext) =
+    let _lhsOtext :: ( [       Doc ] )
+        _hdItext :: (Doc)
+        _tlItext :: ( [       Doc ] )
+        ( _hdItext) =
             (hd_ )
         ( _tlItext) =
             (tl_ )
@@ -2747,7 +3342,9 @@ sem_Types_Cons (hd_) (tl_) =
     in  ( _lhsOtext)
 sem_Types_Nil :: (T_Types)
 sem_Types_Nil  =
-    let (_lhsOtext@_) =
+    let _lhsOtext :: ( [       Doc ] )
+        (_lhsOtext@_) =
             []
     in  ( _lhsOtext)
+
 
