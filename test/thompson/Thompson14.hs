@@ -1,7 +1,7 @@
 double :: Int -> Int
 double x = 2 * x
 
-main = double - 4
+main = double -4
 
 {-
 (4,8): Type error in infix application

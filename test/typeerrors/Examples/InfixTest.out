@@ -9,14 +9,16 @@ Compiling typeerrors/Examples/InfixTest.hs
 
 (11,10): Type error in infix pattern application
  pattern          : True `C` False
- operator         : `C`
+ constructor      : `C`
    type           : Int  -> Int  -> C
    does not match : Bool -> Bool -> a
 
-(14,5): Type error in infix pattern application
+(14,2): Type error in infix pattern application
  pattern          : x `C` y
- operator         : `C`
-   type           : Int  -> Int -> C
-   does not match : Bool -> a   -> C
+ constructor      : `C`
+   type           : Int -> Int -> C
+ left operand     : x
+   type           : Bool
+   does not match : Int 
 
 Compilation failed with 3 errors

@@ -18,7 +18,7 @@ main = do
     args                <- getArgs
     (options, fullName) <- processArgs args
     lvmPath             <- getLvmPath
-    let (filePath, moduleName, extension) = splitFilePath fullName
+    let a@(filePath, moduleName, extension) = splitFilePath fullName
         searchPath = filter (not.null).nub $ ".":filePath:lvmPath
 
     -- File must exist, this test doesn't use the search path

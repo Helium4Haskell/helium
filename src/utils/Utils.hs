@@ -78,8 +78,8 @@ splitFilePath :: String -> (String, String, String)
 splitFilePath filePath = 
     let slashes = "\\/"
         (revFileName, revPath) = span (`notElem` slashes) (reverse filePath)
-        (revExt, revBaseName)  = span (/= '.') revFileName
-    in (reverse revPath, reverse (dropWhile (== '.') revBaseName), reverse revExt)
+        (baseName, ext)  = span (/= '.') (reverse revFileName)
+    in (reverse revPath, baseName, dropWhile (== '.') ext)
     
 -- unsafePerformIO only to be able to make an error report 
 -- in case of an internal error

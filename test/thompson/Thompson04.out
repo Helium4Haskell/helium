@@ -1,5 +1,5 @@
 Compiling thompson/Thompson04.hs
-(1,1): declared type is too general
+(1,1): Declared type is too general
  expression       : exOr
    declared type  : bool -> bool -> bool
    inferred type  : Bool -> Bool -> Bool

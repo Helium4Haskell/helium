@@ -180,7 +180,7 @@ ifdef STRIP
 	$(STRIP) $(HELIUMBINDIR)/$(MAIN)$(EXE)
 endif
 
-all: ag compiler coreasm lvmrun libraries hint status
+all: ag compiler coreasm lvmrun libraries texthint status
 
 coreasm:
 	# make core assembler
@@ -200,10 +200,10 @@ libraries:
 	# Building libraries
 	cd ../lib; $(MAKE) 
 
-hint: interpreter/Main.hs utils/OSSpecific.hs
+texthint: texthint/Main.hs utils/OSSpecific.hs
 	# GHC HeliumInterpreter
-	$(HC) --make -iutils -o $(HELIUMBINDIR)/hint$(EXE) interpreter/Main.hs 
-	$(STRIP) $(HELIUMBINDIR)/hint$(EXE)
+	$(HC) --make -iutils -o $(HELIUMBINDIR)/texthint$(EXE) texthint/Main.hs 
+	$(STRIP) $(HELIUMBINDIR)/texthint$(EXE)
 
 # AG sources
 
@@ -331,7 +331,7 @@ clean:
 	$(RM) `find . -name "*.class" -print`
 	$(RM) ../lib/*.lvm
 	$(RM) $(HELIUMBINDIR)/$(MAIN)$(EXE)
-	$(RM) $(HELIUMBINDIR)/hint$(EXE)	
+	$(RM) $(HELIUMBINDIR)/texthint$(EXE)	
 	$(RM) $(PARSECDIR)/*.o
 	$(RM) $(PARSECDIR)/*.hi
 	cd $(LVMLIBDIR); $(MAKE) clean
@@ -348,11 +348,11 @@ newVersion:
 	echo "module Version where version=\"`date`\"" >main/Version.hs
 
 smaller:
-	# *** UPX helium, hint & lvmrun
+	# *** UPX helium, texthint & lvmrun
 ifdef UPX
 	$(UPX) -q $(HELIUMBINDIR)/$(MAIN)$(EXE) 
 	cd $(LVMRUNTIMEDIR); $(UPX) -q lvmrun$(EXE)
-	$(UPX) -q $(HELIUMBINDIR)/hint$(EXE)
+	$(UPX) -q $(HELIUMBINDIR)/texthint$(EXE)
 endif
 
 install : smaller
@@ -361,7 +361,7 @@ install : smaller
 	$(INSTALL) -m 644 ../lib/Prelude.hs ../lib/List.hs ../lib/Maybe.hs $(libdir)
 	$(INSTALL) -m 755 $(HELIUMBINDIR)/$(MAIN)$(EXE) $(bindir)
 	$(INSTALL) -m 755 $(LVMRUNTIMEDIR)/lvmrun$(EXE) $(bindir)
-	$(INSTALL) -m 755 $(HELIUMBINDIR)/hint$(EXE) $(bindir)
+	$(INSTALL) -m 755 $(HELIUMBINDIR)/texthint$(EXE) $(bindir)
 	# *** Copying demos to demo directory
 	$(INSTALL) -m 644 ../demo/Calendar.hs ../demo/ParserLibrary.hs ../demo/ParserDemo.hs ../demo/TicTacToe.hs $(demodir)
 	# *** Copy generated lvms and touch them
@@ -374,7 +374,7 @@ movetohome: smaller
 	# *** Copying executables to projects directory
 	cp $(HELIUMBINDIR)/$(MAIN)$(EXE) ../distribution/helium/bin
 	cp $(LVMRUNTIMEDIR)/lvmrun$(EXE) ../distribution/helium/bin
-	cp $(HELIUMBINDIR)/hint$(EXE) ../distribution/helium/bin
+	cp $(HELIUMBINDIR)/texthint$(EXE) ../distribution/helium/bin
 	# *** Copying demos to projects directory
 	cp ../demo/Calendar.hs ../demo/ParserLibrary.hs ../demo/ParserDemo.hs ../demo/TicTacToe.hs ../distribution/helium/demo
 	# *** Copy generated lvms and touch them
@@ -383,15 +383,15 @@ movetohome: smaller
 
 movetobbl: smaller
 	# *** Copying library sources to projects directory
-	cp bin/Prelude.hs bin/List.hs bin/Maybe.hs //p/helium/lib
+	cp ../lib/Prelude.hs ../lib/List.hs ../lib/Maybe.hs //p/helium/lib
 	# *** Copying executables to projects directory
-	cp $(MAIN).exe //p/helium/bin
-	cp $(LVMRUNTIMEDIR)/lvmrun.exe //p/helium/bin
-	cp hint.exe //p/helium/bin
+	cp $(HELIUMBINDIR)/$(MAIN)$(EXE) //p/helium/bin
+	cp $(LVMRUNTIMEDIR)/lvmrun$(EXE) //p/helium/bin
+	cp $(HELIUMBINDIR)/texthint$(EXE) //p/helium/bin
 	# *** Copying demos to projects directory
-	cp demo/Calendar.hs demo/ParserLibrary.hs demo/ParserDemo.hs demo/TicTacToe.hs //p/helium/demo
+	cp ../demo/Calendar.hs ../demo/ParserLibrary.hs ../demo/ParserDemo.hs ../demo/TicTacToe.hs //p/helium/demo
 	# *** Copy generated lvms and touch them
-	cp bin/*.lvm //p/helium/lib
+	cp ../lib/*.lvm //p/helium/lib
 	touch //p/helium/lib/*.lvm # so that they are seen as up to date
 	# DON'T FORGET TO CHECK PERMISSIONS
 

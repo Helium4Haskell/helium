@@ -1,45 +1,30 @@
 DOCUMENTATIE
 
-! User manual hint A4
-! Alle mogelijke fouten/warnings/hints uitleggen adhv voorbeeldje (DICTAAT?)
-! Tour of Haskell syntax controleren
+! User manual grafische hint A4
 ! commentaar over List en Maybe
-! haddock over implementatie
 ! tutorial
 
 INTERPRETER
-* hint opties doorspelen naar Helium
-* hint parameter mag ook .hs bevatten, maar geen pad (of wel?) 
-  :l ook; pad van meegegeven file vooraan LVMPATH
-* testen of TEMP schrijfbaar is
-* :r
 (	* functies definieren? )
 (	* autoload feature (zie e-mails van Stephen Milborrow))
 (	* springen naar internet browser bij :i map http://www.cs.uu.nl/~afie/helium/tourofprelude.html#map)
-
-COMMAND Interpreter
-
-* interpreter gooit temp files weg a/h begin na iedere expressie
-* foutmeldingen over Interpreter.hs afvangen
-* Ctrl-C stopt niet alleen lvmrun maar ook hint
 
 DAAN
 ! file IO exceptions; * EOF in getChar. How? catch werkt niet
 ! strictheid van error
 
 COMPILER
-! XML uitvoer van errors en warnings t.b.v. interpreter
-! installer voor Windows
-! environment vars weg
+! installer voor Windows 
 * catchen van exception van writeFile/openFileEx etc.
-* AG geeft geen ExitFailure bij een fout (en make gaat vrolijk verder).
-* bij het exporteren van een functie moeten ook de types geexporteerd worden. Hoe?
-	we moeten ook weten waar iets oorspronkelijk vandaan komt (definitieplek)
-* import Module(N) moet ook de show importeren: import Module (N, showN)
-* pattern match incomplete check [Maarten L\"offler]
 
 ---- ONBELANGRIJK ----
                 
+* bij het exporteren van een functie moeten ook de types geexporteerd worden. Hoe?
+	we moeten ook weten waar iets oorspronkelijk vandaan komt (definitieplek)
+* import Module(N) moet ook de show importeren: import Module (N, showN)
+! XML uitvoer van errors en warnings t.b.v. interpreter
+! Alle mogelijke fouten/warnings/hints uitleggen adhv voorbeeldje (DICTAAT?)
+* AG geeft geen ExitFailure bij een fout (en make gaat vrolijk verder).
 * read functies voor andere types dan Int
 * clashes with HeliumLang ==> clash with built-in (MANUAL)
 * generiek maken show voor tupels (Daan)
@@ -49,6 +34,16 @@ COMPILER
 * domein kopen
 
 ---- DONE ----================================================================================
+
+! Tour of Haskell syntax controleren
+* hint opties doorspelen naar Helium
+
+COMMAND Interpreter
+
+* interpreter gooit temp files weg a/h begin na iedere expressie
+* foutmeldingen over Interpreter.hs afvangen
+* Ctrl-C stopt niet alleen lvmrun maar ook hint
+
 
 ! parse error tests (zie Thompson)
 * unexpected '\n' als je een string niet beeindigd. kan dat newline worden?

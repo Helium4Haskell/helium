@@ -1,8 +1,10 @@
 Compiling typeerrors/Examples/PatConstructorApply.hs
-(5,4): Type error in pattern application
+(5,8): Type error in pattern application
  pattern          : A 3 True
- term             : A
-   type           : Int -> Int  -> A
-   does not match : Int -> Bool -> a
+ constructor      : A
+   type           : Int -> Int -> A
+ 2nd argument     : True
+   type           : Bool
+   does not match : Int 
 
 Compilation failed with 1 error

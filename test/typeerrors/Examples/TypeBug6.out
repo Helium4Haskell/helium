@@ -4,6 +4,7 @@ Compiling typeerrors/Examples/TypeBug6.hs
  term             : concat
    type           : [[a]   ] -> [a]                 
    does not match : [String] -> [String] -> [String]
+ because          : too many arguments are given
 
 (6,17): Type error in infix application
  expression       : x : y

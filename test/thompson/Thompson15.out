@@ -1,0 +1,10 @@
+Compiling thompson/Thompson15.hs
+(1,13): Type error in infix application
+ expression       : x + abs
+ operator         : +
+   type           : Int -> Int -> Int
+ right operand    : abs
+   type           : Int -> Int
+   does not match : Int       
+
+Compilation failed with 1 error

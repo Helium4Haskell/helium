@@ -1,6 +1,6 @@
 #!/bin/bash
 echo $1
 ./compileAndRun $* > result.txt 2>&1
-diff --strip-trailing-cr result.txt $1.out
+diff result.txt $1.out
 rm result.txt
 rm -f $1.lvm

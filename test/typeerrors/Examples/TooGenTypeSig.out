@@ -1,5 +1,5 @@
 Compiling typeerrors/Examples/TooGenTypeSig.hs
-(3,14): declared type is too general
+(3,14): Declared type is too general
  expression       : f
    declared type  : a  -> [a ]
    inferred type  : _1 -> [_1]

@@ -3,9 +3,9 @@ module PatternMatch(patternToCore, patternsToCore, nextClauseId, freshIds) where
 import qualified Core
 import UHA_Syntax
 import UHA_Utils
+import UHA_Range
 import Id
 import Char
-import IOExts -- trace
 import Utils
 import CoreUtils
 
@@ -78,10 +78,12 @@ patternToCore' (name, pat) continue nr =
             case l of
                 Literal_Int _ i -> withNr nr $
                     case_ name [ Core.Alt (Core.PatLit (Core.LitInt (read i))) continue ]
-                Literal_Char _ [c] -> withNr nr $
+                Literal_Char r c -> withNr nr $
                     case_ name 
-                    [ Core.Alt 
-                        (Core.PatLit (Core.LitInt (ord c)))
+                    [ Core.Alt  
+                        (Core.PatLit 
+                            (Core.LitInt (ord (read ("'" ++ c ++ "'"))))
+                        )
                         continue 
                     ]
                 Literal_Float _ f -> withNr nr $
@@ -93,11 +95,13 @@ patternToCore' (name, pat) continue nr =
                 Literal_String _ s -> 
                     patternToCore' 
                         ( name
-                        , Pattern_List undefined 
-                            (map (\c -> Pattern_Literal undefined (Literal_Char undefined [c])) s) 
+                        , Pattern_List noRange 
+                            (map (Pattern_Literal noRange . Literal_Int noRange . show . ord) characters) 
                         )
                         continue
                         nr
+                  where
+                    characters = read ("\"" ++ s ++ "\"") :: String
             
         Pattern_List _ ps -> 
             patternToCore' (name, expandPatList ps) continue nr
@@ -140,12 +144,12 @@ patternToCore' (name, pat) continue nr =
 -- [1, 2, 3] ==> 1 : (2 : (3 : [] ) )
 expandPatList :: [Pattern] -> Pattern
 expandPatList [] = 
-    Pattern_Constructor undefined (Name_Special undefined [] "[]") []
+    Pattern_Constructor noRange (Name_Special noRange [] "[]") []
 expandPatList (p:ps) =
     Pattern_InfixConstructor 
-        undefined 
+        noRange 
         p
-        (Name_Identifier undefined [] ":") 
+        (Name_Identifier noRange [] ":") 
         (expandPatList ps)
     
 isSimple :: Pattern -> Bool

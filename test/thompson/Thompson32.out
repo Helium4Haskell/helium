@@ -1,5 +1,5 @@
 Compiling thompson/Thompson32.hs
-(7,5): declared type is too general
+(7,5): Declared type is too general
  expression       : g
    declared type  : b  -> Float
    inferred type  : _1 -> Float

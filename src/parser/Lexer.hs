@@ -9,6 +9,7 @@ import LexerMonad
 import LexerMessage
 import LexerToken
 import ParsecPos
+import Utils(internalError)
 
 import Monad(when)
 import Char(ord)
@@ -59,7 +60,7 @@ mainLexer input@(c:cs)
         nextPos c 
         mainLexer cs        
     | myIsUpper c = -- constructor
-        lexName isLetter LexCon undefined ["Piep"] input
+        lexName isLetter LexCon (internalError "Lexer" "mainLexer" "constructor") [] input
     | c == ':' = -- constructor operator
         lexName isSymbol LexConSym LexResConSym reservedConSyms input
     | isSymbol c = -- variable operator
