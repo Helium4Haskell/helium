@@ -10,6 +10,8 @@ import ConstraintInfo
 import TypeConstraints
 import List
 import Tree
+import Maybe
+import Utils (internalError)
 
 data HeliumConstraintInfo =
    CInfo { info       :: InfoSource
@@ -40,6 +42,7 @@ data Property   = FolkloreConstraint
                 | WithHint TypeErrorInfo
                 | SubTermRange Range
                 | Unifier Int {- the unifier -}
+                | ReductionErrorInfo Predicate
 
 instance Show HeliumConstraintInfo where
    show = show . getInfoSource
@@ -51,7 +54,9 @@ instance ConstraintInfo HeliumConstraintInfo where
                                    
    setOriginalTypeScheme scheme   = addProperty (OriginalTypeScheme scheme)           
    setConstraintPhaseNumber phase = addProperty (ConstraintPhaseNumber phase)
-
+   setReductionError predicate    = addProperty (ReductionErrorInfo predicate)
+     
+      
 instance TypeGraphConstraintInfo HeliumConstraintInfo where
 
    getInfoSource = info
@@ -114,7 +119,24 @@ instance TypeGraphConstraintInfo HeliumConstraintInfo where
       case [ r | SubTermRange r <- properties cinfo ] of
          []  -> errorrange cinfo
          r:_ -> r
+         
+   isReductionErrorInfo = isJust . maybeReductionErrorPredicate
+   maybeReductionErrorPredicate cinfo = 
+      case [ p | ReductionErrorInfo p <- properties cinfo ] of
+         [x] -> Just x
+         _   -> Nothing
 
+   makeTypeError cinfo | isReductionErrorInfo cinfo = 
+      let err = internalError "HeliumConstraintInfo" "makeTypeError" "..."
+          (_, tp) = typepair cinfo
+      in makeReductionError 
+           (getErrorRange cinfo) 
+           (case sources cinfo of (_,tree):_ -> tree ; _ -> err) 
+           (case maybeOriginalTypeScheme cinfo of Just (b,ts) -> (ts, tp) ; _ -> err)
+ 
+           standardClasses
+           (case maybeReductionErrorPredicate cinfo of Just p -> p ; _ -> err)
+      
    makeTypeError cinfo =
     let oneliner = MessageString ("Type error in " ++ location cinfo)
         reason   = if isFolkloreConstraint cinfo
@@ -151,5 +173,3 @@ addProperty property info = let old = properties info
 
 setPosition :: Int -> TypeConstraint HeliumConstraintInfo -> TypeConstraint HeliumConstraintInfo
 setPosition = fmap . addProperty . PositionInTreeWalk
-
-

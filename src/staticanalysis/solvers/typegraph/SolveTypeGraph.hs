@@ -50,7 +50,7 @@ solveTypeGraph (synonyms, siblings) unique constraints =
       subst       <- buildSubstitutionTypeGraph
       predicates  <- getReducedPredicates
       debug       <- getDebug
-      return (uniqueAtEnd, subst, predicates, errors, putStrLn debug)
+      return (uniqueAtEnd, subst, map fst predicates, errors, putStrLn debug)
 
 buildSubstitutionTypeGraph :: IsTypeGraph (TypeGraph info) info => TypeGraph info FixpointSubstitution 
 buildSubstitutionTypeGraph = 
@@ -96,7 +96,8 @@ instance IsTypeGraph (TypeGraph info) info => IsSolver (TypeGraph info) info whe
       do consistent <- isConsistent
          if consistent 
            then 
-             checkErrors
+             do getReducedPredicates
+                checkErrors
            else 
              do (edges, errors) <- getHeuristics                         
                 mapM_ addError errors               

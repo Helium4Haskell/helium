@@ -46,7 +46,8 @@ class (Show constraintinfo,ConstraintInfo constraintinfo) =>
    isPattern               :: constraintinfo -> Bool
    isPattern cinfo = let (nt, _, _, _) = getInfoSource cinfo 
                      in nt == NTPattern
-
+   isReductionErrorInfo :: constraintinfo -> Bool
+   maybeReductionErrorPredicate :: constraintinfo -> Maybe Predicate
 -- not a nice solution!
 makeTypeErrorForTerm :: TypeGraphConstraintInfo constraintinfo => (Bool,Bool) -> Int -> OneLineTree -> (Tp,Tp) -> Range -> constraintinfo -> TypeError
 makeTypeErrorForTerm (isInfixApplication,isPatternApplication) argumentNumber termOneLiner (t1, t2) range cinfo =

@@ -42,13 +42,15 @@ applySubstGeneral scheme =
       let sub = listToSubstitution (zip var tps)                          
       return (sub |-> scheme)   
 
-getReducedPredicates :: (IsSolver m info, MonadState (SolveState m info ext) m) => m Predicates
+getReducedPredicates :: (IsSolver m info, MonadState (SolveState m info ext) m) => m [(Predicate, info)]
 getReducedPredicates =
    do synonyms    <- getTypeSynonyms
       predicates  <- getPredicates
-      substituted <- applySubstGeneral predicates
-      let (reduced, errors) = contextReduction synonyms standardClasses substituted
-      unless (null errors) $ 
-         error (unlines ("" : "Reduction error(s)" : map show errors))
+      substituted <- let f (predicate, info) = 
+                              do predicate' <- applySubstGeneral predicate
+                                 return (predicate', info)
+                     in mapM f predicates
+      let (reduced, errors) = associatedContextReduction synonyms standardClasses substituted
+      mapM_ addError [ setReductionError p info | ReductionError (p, info) <- errors ]
       setPredicates reduced
       return reduced

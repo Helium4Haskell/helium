@@ -85,6 +85,9 @@ unifiableTypeSchemes typesynonyms s1 s2 =
        (_ ,_,t2) = instantiate i' s2
    in unifiable typesynonyms t1 t2 -}
 
+isInstanceOf :: Tp -> TpScheme -> Bool
+isInstanceOf tp ts = True -- !!!!!!!!!!!! undefined
+
 genericInstanceOf :: OrderedTypeSynonyms -> ClassEnvironment -> TpScheme -> TpScheme -> Bool
 genericInstanceOf synonyms classes scheme1 scheme2 =
    let -- monomorphic type variables are treated as constants

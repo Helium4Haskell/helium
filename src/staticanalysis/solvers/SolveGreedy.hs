@@ -43,7 +43,7 @@ solveGreedy synonyms unique constraints =
       subst       <- buildSubstitutionGreedy
       predicates  <- getReducedPredicates
       debug       <- getDebug
-      return (uniqueAtEnd, subst, predicates, errors, putStrLn debug)
+      return (uniqueAtEnd, subst, map fst predicates, errors, putStrLn debug)
 
 instance ConstraintInfo info => IsSolver (Greedy info) info where
  
@@ -68,6 +68,10 @@ instance ConstraintInfo info => IsSolver (Greedy info) info where
      do s <- get
         let sub = getWith id s
         return (lookupInt i sub)
+   
+   makeConsistent = 
+      do getReducedPredicates
+         return ()
            
 -- The key idea is as follows:
 -- try to minimize the number of expansions by type synonyms.

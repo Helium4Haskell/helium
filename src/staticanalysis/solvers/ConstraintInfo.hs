@@ -14,8 +14,11 @@ import Utils
 
 class ConstraintInfo constraintinfo where
    
-   setOriginalTypeScheme    :: TpScheme -> constraintinfo -> constraintinfo  
-   setConstraintPhaseNumber :: Int      -> constraintinfo -> constraintinfo   
-    
+   setOriginalTypeScheme    :: TpScheme  -> constraintinfo -> constraintinfo  
+   setConstraintPhaseNumber :: Int       -> constraintinfo -> constraintinfo   
+   setReductionError        :: Predicate -> constraintinfo -> constraintinfo 
+   
    setOriginalTypeScheme    _ = id    -- default definition (do nothing)
    setConstraintPhaseNumber _ = id    -- default definition (do nothing) 
+   setReductionError        _ = id    -- default definition (do nothing) 
+   

@@ -28,7 +28,7 @@ solveSimple synonyms unique constraints =
       predicates  <- getReducedPredicates
       debug       <- getDebug
       let subst = FixpointSubstitution (getWith id s)
-      return (uniqueAtEnd, subst, predicates, errors, putStrLn debug)
+      return (uniqueAtEnd, subst, map fst predicates, errors, putStrLn debug)
  
 instance Show FiniteMapSubstitution where
    show _ = "<FiniteMapSubstitution>"
@@ -48,3 +48,7 @@ instance ConstraintInfo info => IsSolver (Simple info) info where
               Right (used,sub) -> 
                   modify (liftFunction (sub @@))
               Left _ -> addError info
+
+   makeConsistent = 
+      do getReducedPredicates
+         return ()

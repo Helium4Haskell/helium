@@ -12,14 +12,14 @@ import           BasicState hiding   (extend, getWith, liftFunction, newState)
 import qualified BasicState as State (extend, getWith, liftFunction, newState)
 import Types
 
-type SolveState monad info a = BasicState monad info (SS a)
+type SolveState monad info a = BasicState monad info (SS info a)
 
-data SS a = S { counter    :: Int
-              , synonyms   :: OrderedTypeSynonyms
-              , siblings   :: [[(String, TpScheme)]]
-              , predicates :: Predicates              
-              , hiddenExt  :: a 
-              }
+data SS info a = S { counter    :: Int
+                   , synonyms   :: OrderedTypeSynonyms
+                   , siblings   :: [[(String, TpScheme)]]
+                   , predicates :: [(Predicate, info)]               
+                   , hiddenExt  :: a 
+                   }
 
 newState :: SolveState monad info ()
 newState = State.extend $
@@ -30,7 +30,7 @@ newState = State.extend $
                 , hiddenExt  = () 
                 }
 
-instance Show a => Show (SS a) where
+instance Show a => Show (SS info a) where
    show s = unlines [ "counter = " ++ show (counter s)
                     , show (hiddenExt s)
                     ]
@@ -60,11 +60,11 @@ addSiblings xs = modify $ State.liftFunction (\x -> x { siblings = xs ++ sibling
 getSiblings    = gets (State.getWith siblings)
 
 getPredicates :: MonadState (SolveState monad info a) monad => 
-                    monad Predicates
+                    monad [(Predicate, info)]
 addPredicate  :: MonadState (SolveState monad info a) monad =>
-                    Predicate  -> monad ()
+                    (Predicate, info)  -> monad ()
 setPredicates :: MonadState (SolveState monad info a) monad => 
-                    Predicates -> monad ()
+                    [(Predicate, info)] -> monad ()
 
 getPredicates    = gets (State.getWith predicates)
 addPredicate  p  = modify $ State.liftFunction (\x -> x { predicates = p : predicates x })

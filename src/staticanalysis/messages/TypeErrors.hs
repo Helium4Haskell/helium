@@ -11,7 +11,7 @@ module TypeErrors where
 
 import Messages
 import Types
-import List       (union)
+import List       (union, intersperse, partition)
 import OneLiner   (OneLineTree)
 import UHA_Syntax (Range)
 
@@ -146,6 +146,42 @@ makeNotGeneralEnoughTypeError range tree tpscheme1 tpscheme2 =
                     then []
                     else [TypeErrorHint "hint" (MessageString "try removing the type signature")]
    in TypeError range oneliner table hints
+   
+makeReductionError :: Range -> OneLineTree -> (TpScheme, Tp) -> ClassEnvironment -> Predicate -> TypeError
+makeReductionError range tree (scheme, tp) classEnvironment (Predicate className classTP) =
+   CustomTypeError [range] 
+      [ MessageOneLiner (MessageString "Type error in overloaded function")
+      , MessageTable 
+           [ (MessageString "function" , MessageOneLineTree tree) 
+           , (MessageString "type"     , MessageTypeScheme scheme)
+           , (MessageString "used as"  , MessageType tp)
+           , (MessageString "predicate", MessageCompose [MessageString className, MessageString " ", parensIf (priorityOfType classTP < 2)(MessageType classTP)])
+           ]
+      , MessageOneLiner (MessageString pretty)
+      ]
+
+   where parensIf :: Bool -> MessageBlock -> MessageBlock
+         parensIf b s = if b then MessageCompose [MessageString "(", s, MessageString ")"] else s
+         
+         pretty :: String
+         pretty = case valids of
+                     []  -> "  hint: there are no valid instances of "++className
+                     [x] -> "  hint: valid instance of "++className++" is "++show x
+                     xs  -> "  hint: valid instance of "++className++" are "++andList valids
+         
+         andList :: [String] -> String
+         andList [x,y]    = x++" and "++y
+         andList (x:xs) = x++", "++andList xs
+         
+         valids :: [String]
+         valids = let tps              = [ tp | (Predicate _ tp, _) <- instances className classEnvironment ]
+                      (tuples, others) = let p (TCon s) = isTupleConstructor s
+                                             p _        = False
+                                         in partition (p . fst . leftSpine) tps
+                      f tp = listToSubstitution (zip (ftv tp) [ TCon [c] | c <- ['a'..] ]) |-> tp
+                  in if length tuples > 4 -- magic number!
+                       then map (show . f) others ++ ["tuples"]
+                       else map (show . f) tps
 
 documentationLinkForTypeError :: TypeError -> Maybe String
 documentationLinkForTypeError typeError =

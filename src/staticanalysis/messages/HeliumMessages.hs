@@ -88,9 +88,9 @@ showTable = let leftStars = " "
 isTypeOrTypeSchemeMessage :: MessageBlock -> Bool
 isTypeOrTypeSchemeMessage mb =
    case mb of
-      MessageType _        -> True
-      MessageTypeScheme ts -> not . hasPredicates . getQualifiedType $ ts
-      _                    -> False
+      MessageType _       -> True
+      MessageTypeScheme _ -> True
+      _                   -> False
 
 -- if two types or type schemes follow each other in a table (on the right-hand side)
 -- then the two types are rendered in a special way.
@@ -113,7 +113,7 @@ renderTypesInRight width table =
                                          = Just (unsafeInstantiate ts)
         maybeType _                      = Nothing
 
--- make sure that a string does not exceed a certain with.
+-- make sure that a string does not exceed a certain width.
 -- Two extra features:
 --   - treat '\n' in the proper way.
 --     (Be careful here: an enter in a string or a character does not

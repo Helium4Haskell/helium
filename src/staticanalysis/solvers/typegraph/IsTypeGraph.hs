@@ -51,7 +51,8 @@ checkErrors :: (IsTypeGraph m info, MonadState (SolveState m info a) m, IsSolver
 checkErrors =
    do errors   <- getErrors
       synonyms <- getTypeSynonyms
-      let isValidError info = 
+      let isValidError info | isReductionErrorInfo info = return True
+          isValidError info = 
              let (t1,t2) = getTwoTypes info
              in do t1' <- applySubst t1
                    t2' <- applySubst t2

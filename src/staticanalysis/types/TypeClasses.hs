@@ -105,10 +105,11 @@ scEntail classes ps p = any (p `elem`) (map (bySuperclass classes) ps)
 ---------------------------------------------------------------------- 
 -- Context Reduction
 
-newtype ReductionError = ReductionError Predicate
+newtype ReductionError a = ReductionError a
    deriving Show
 
-contextReduction :: OrderedTypeSynonyms -> ClassEnvironment -> Predicates -> (Predicates, [ReductionError])
+contextReduction :: OrderedTypeSynonyms -> ClassEnvironment -> Predicates -> 
+                       (Predicates, [ReductionError Predicate])
 contextReduction synonyms classes ps = 
    let op p (a,b) = case toHeadNormalForm synonyms classes p of
                        Just ps -> (ps++a,b)
@@ -121,13 +122,13 @@ contextReduction synonyms classes ps =
                            
    in (loop [] predicates, errors)
    
-{-
-contextReduction' :: OrderedTypeSynonyms -> ClassEnvironment -> [(Predicate,a)] -> ([(Predicate,a)], [a])
-contextReduction' synonyms classes ps = 
+associatedContextReduction :: OrderedTypeSynonyms -> ClassEnvironment -> [(Predicate, a)] -> 
+                                 ([(Predicate,a)], [ReductionError (Predicate, a)])
+associatedContextReduction synonyms classes ps = 
    let op (predicate, a) (reduced, errors) = 
           case toHeadNormalForm synonyms classes predicate of
              Just ps -> ([(p,a) | p <- ps]++reduced,errors)
-             Nothing -> (reduced,a : errors)                       
+             Nothing -> (reduced,ReductionError (predicate, a) : errors)                       
        (predicates, errors) = foldr op ([], []) ps
        
        loop rs []                 = rs
@@ -135,7 +136,7 @@ contextReduction' synonyms classes ps =
                       | otherwise = loop (p:rs) ps  
           where entailed = scEntail classes (map fst (rs++ps)) (fst p)                      
                            
-   in (loop [] predicates, errors) -}
+   in (loop [] predicates, errors)
                              
 ---------------------------------------------------------------------- 
 -- Standard Class Environment

@@ -25,7 +25,7 @@ instance ( IsSolver m info
                setUnique unique'
                newVariables [unique..unique'-1]               
                pushConstraint  (liftConstraint (tp .==. its $ info'))
-               let cs = map PredicateConstraint predicates
+               let cs = map (PredicateConstraint (info' (tp,its))) predicates
                pushConstraints (liftConstraints cs)
 
          ImplicitInstance info t1 ms t2 ->         
@@ -33,14 +33,14 @@ instance ( IsSolver m info
                t2' <- applySubst t2
                ms' <- mapM applySubst ms
                ps  <- getReducedPredicates
-               let scheme = generalize (ftv ms') ps t2'
+               let scheme = generalize (ftv ms') (map fst ps) t2'
                pushConstraint (liftConstraint (t1 .::. scheme $ info)) 
                
          MakeConsistent ->
             do makeConsistent
             
-         PredicateConstraint p ->
-            do addPredicate p
+         PredicateConstraint info p ->
+            do addPredicate (p, info)
             
    checkConstraint constraint =
       case constraint of
@@ -63,6 +63,9 @@ instance ( IsSolver m info
                ps  <- getReducedPredicates
                let scheme = generalize (ftv ms') [] t2'
                return (isInstanceOf t1' scheme)                            
-         
-isInstanceOf :: Tp -> TpScheme -> Bool
-isInstanceOf tp ts = True -- !!!!!!!!!!!! undefined
+
+         MakeConsistent ->
+            return True
+            
+         PredicateConstraint info p ->
+            return True             

@@ -7,7 +7,7 @@ data TypeConstraint info
    = Equality         info Tp Tp                   
    | ExplicitInstance ((Tp,Tp) -> info) Tp TpScheme 
    | ImplicitInstance ((Tp,Tp) -> info) Tp Tps Tp   
-   | PredicateConstraint Predicate
+   | PredicateConstraint info Predicate 
    | MakeConsistent
 
 
@@ -42,7 +42,7 @@ instance Show info => Show (TypeConstraint info) where
                 monos    = if null ms then "" else "monos="++show (ftv ms)++"; "
             in show t1 ++ " <= " ++ show t2 ++ " : " ++ monos ++ show (info unknowns)            
          MakeConsistent -> "<MakeConsistent>"
-         PredicateConstraint p -> show p
+         PredicateConstraint info p -> show p
 
 instance Functor TypeConstraint where 
    fmap function constraint = 
@@ -51,7 +51,7 @@ instance Functor TypeConstraint where
          ExplicitInstance a tp tps   -> ExplicitInstance (function . a) tp tps
          ImplicitInstance a t1 ms t2 -> ImplicitInstance (function . a) t1 ms t2
          MakeConsistent              -> MakeConsistent
-         PredicateConstraint p       -> PredicateConstraint p
+         PredicateConstraint a p     -> PredicateConstraint (function a) p
             
 instance Substitutable (TypeConstraint info) where
 
