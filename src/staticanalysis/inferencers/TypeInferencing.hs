@@ -92,12 +92,12 @@ findInferredTypes typeschemeMap =
        f _ (SigmaScheme ts) = ts
    in mapFM f
    
-missingTypeSignature :: Bool -> TypeEnvironment -> Warnings
-missingTypeSignature topLevel = 
+missingTypeSignature :: Bool -> Names -> TypeEnvironment -> Warnings
+missingTypeSignature topLevel simplePats = 
    let -- for the moment, only missing type signature for top-level functions are reported (unless monomorphic).
-      makeWarning (name, scheme)
-         | null (ftv scheme) && topLevel = [ NoTypeDef name scheme topLevel ]
-         | otherwise                     = []
+      makeWarning (name, scheme) =
+         let fromSimple = name `elem` simplePats
+         in [ NoTypeDef name scheme topLevel fromSimple | null (ftv scheme) && (topLevel || fromSimple)  ]
    in concatMap makeWarning . fmToList
    
 restrictedNameErrors :: TypeEnvironment -> Names -> TypeErrors
@@ -1295,6 +1295,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             _declarationsIpatternMatchWarnings :: ([Warning])
             _declarationsIrestrictedNames :: (Names)
             _declarationsIself :: (Declarations)
+            _declarationsIsimplePatNames :: (Names)
             _declarationsItypeSignatures :: (TypeEnvironment)
             _declarationsIunboundNames :: (Names)
             _declarationsIuniqueChunk :: (Int)
@@ -1323,7 +1324,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                 (range_ )
             ( _importdeclarationsIself) =
                 (importdeclarations_ )
-            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
+            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
                 (declarations_ (_declarationsOallPatterns)
                                (_declarationsOallTypeSchemes)
                                (_declarationsOavailablePredicates)
@@ -1358,7 +1359,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                 restrictedNameErrors _inferredTypes _declarationsIrestrictedNames
                 ++ _declarationsIcollectErrors
             (_lhsOcollectWarnings@_) =
-                missingTypeSignature True _inferredTypes
+                missingTypeSignature True _declarationsIsimplePatNames _inferredTypes
                 ++ _declarationsIcollectWarnings
             (_inferredTypes@_) =
                 findInferredTypes _lhsItypeschemeMap _implicitsFM
@@ -1678,7 +1679,7 @@ type T_Declaration = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (TypeEnvironment) ->
                      (FiniteMap Int (Scheme Predicates)) ->
                      (Int) ->
-                     ( (Int),(BindingGroups),(TypeErrors),(Warnings),(Names),(DictionaryEnvironment),(InfoTrees),(IO ()),([Warning]),(Names),(Declaration),(TypeEnvironment),(Names),(Int))
+                     ( (Int),(BindingGroups),(TypeErrors),(Warnings),(Names),(DictionaryEnvironment),(InfoTrees),(IO ()),([Warning]),(Names),(Declaration),(Names),(TypeEnvironment),(Names),(Int))
 -- cata
 sem_Declaration :: (Declaration) ->
                    (T_Declaration)
@@ -1742,6 +1743,7 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOrestrictedNames :: (Names)
             _lhsOself :: (Declaration)
+            _lhsOsimplePatNames :: (Names)
             _lhsOtypeSignatures :: (TypeEnvironment)
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
@@ -1817,6 +1819,8 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
                 []
             (_lhsOrestrictedNames@_) =
                 []
+            (_lhsOsimplePatNames@_) =
+                []
             (_lhsOunboundNames@_) =
                 _unboundNames
             (_self@_) =
@@ -1885,7 +1889,7 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
                 _unboundNames
             (_whereOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_Data :: (T_Range) ->
                         (T_ContextItems) ->
                         (T_SimpleType) ->
@@ -1925,6 +1929,7 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOrestrictedNames :: (Names)
             _lhsOself :: (Declaration)
+            _lhsOsimplePatNames :: (Names)
             _lhsOtypeSignatures :: (TypeEnvironment)
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
@@ -1950,6 +1955,8 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
             (_lhsOdeclVarNames@_) =
                 []
             (_lhsOrestrictedNames@_) =
+                []
+            (_lhsOsimplePatNames@_) =
                 []
             (_lhsOunboundNames@_) =
                 _constructorsIunboundNames
@@ -1977,7 +1984,7 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
                 _lhsIuniqueChunk
             (_constructorsOnamesInScope@_) =
                 _lhsInamesInScope
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_Default :: (T_Range) ->
                            (T_Types) ->
                            (T_Declaration)
@@ -2014,6 +2021,7 @@ sem_Declaration_Default (range_) (types_) =
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOrestrictedNames :: (Names)
             _lhsOself :: (Declaration)
+            _lhsOsimplePatNames :: (Names)
             _lhsOtypeSignatures :: (TypeEnvironment)
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
@@ -2028,6 +2036,8 @@ sem_Declaration_Default (range_) (types_) =
             (_lhsOdeclVarNames@_) =
                 []
             (_lhsOrestrictedNames@_) =
+                []
+            (_lhsOsimplePatNames@_) =
                 []
             (_lhsOunboundNames@_) =
                 []
@@ -2055,7 +2065,7 @@ sem_Declaration_Default (range_) (types_) =
                 _lhsItypeSignatures
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
 sem_Declaration_Empty (range_) =
@@ -2091,6 +2101,7 @@ sem_Declaration_Empty (range_) =
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOrestrictedNames :: (Names)
             _lhsOself :: (Declaration)
+            _lhsOsimplePatNames :: (Names)
             _lhsOtypeSignatures :: (TypeEnvironment)
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
@@ -2102,6 +2113,8 @@ sem_Declaration_Empty (range_) =
             (_lhsOdeclVarNames@_) =
                 []
             (_lhsOrestrictedNames@_) =
+                []
+            (_lhsOsimplePatNames@_) =
                 []
             (_lhsOunboundNames@_) =
                 []
@@ -2127,7 +2140,7 @@ sem_Declaration_Empty (range_) =
                 _lhsItypeSignatures
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_Fixity :: (T_Range) ->
                           (T_Fixity) ->
                           (T_MaybeInt) ->
@@ -2166,6 +2179,7 @@ sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOrestrictedNames :: (Names)
             _lhsOself :: (Declaration)
+            _lhsOsimplePatNames :: (Names)
             _lhsOtypeSignatures :: (TypeEnvironment)
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
@@ -2186,6 +2200,8 @@ sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
             (_lhsOdeclVarNames@_) =
                 []
             (_lhsOrestrictedNames@_) =
+                []
+            (_lhsOsimplePatNames@_) =
                 []
             (_lhsOunboundNames@_) =
                 []
@@ -2211,7 +2227,7 @@ sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
                 _lhsItypeSignatures
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)
@@ -2248,6 +2264,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOrestrictedNames :: (Names)
             _lhsOself :: (Declaration)
+            _lhsOsimplePatNames :: (Names)
             _lhsOtypeSignatures :: (TypeEnvironment)
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
@@ -2377,6 +2394,8 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
                 ++ _bindingsIpatternMatchWarnings
             (_lhsOrestrictedNames@_) =
                 []
+            (_lhsOsimplePatNames@_) =
+                []
             (_lhsOunboundNames@_) =
                 _bindingsIunboundNames
             (_self@_) =
@@ -2427,7 +2446,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
                 _lhsItypeschemeMap
             (_bindingsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_Instance :: (T_Range) ->
                             (T_ContextItems) ->
                             (T_Name) ->
@@ -2467,6 +2486,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOrestrictedNames :: (Names)
             _lhsOself :: (Declaration)
+            _lhsOsimplePatNames :: (Names)
             _lhsOtypeSignatures :: (TypeEnvironment)
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
@@ -2545,6 +2565,8 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
                 []
             (_lhsOrestrictedNames@_) =
                 []
+            (_lhsOsimplePatNames@_) =
+                []
             (_lhsOunboundNames@_) =
                 _unboundNames
             (_self@_) =
@@ -2613,7 +2635,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
                 _unboundNames
             (_whereOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_Newtype :: (T_Range) ->
                            (T_ContextItems) ->
                            (T_SimpleType) ->
@@ -2653,6 +2675,7 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOrestrictedNames :: (Names)
             _lhsOself :: (Declaration)
+            _lhsOsimplePatNames :: (Names)
             _lhsOtypeSignatures :: (TypeEnvironment)
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
@@ -2678,6 +2701,8 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
             (_lhsOdeclVarNames@_) =
                 []
             (_lhsOrestrictedNames@_) =
+                []
+            (_lhsOsimplePatNames@_) =
                 []
             (_lhsOunboundNames@_) =
                 _constructorIunboundNames
@@ -2707,7 +2732,7 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
                 _lhsIuniqueChunk
             (_constructorOnamesInScope@_) =
                 _lhsInamesInScope
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_PatternBinding :: (T_Range) ->
                                   (T_Pattern) ->
                                   (T_RightHandSide) ->
@@ -2745,6 +2770,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOrestrictedNames :: (Names)
             _lhsOself :: (Declaration)
+            _lhsOsimplePatNames :: (Names)
             _lhsOtypeSignatures :: (TypeEnvironment)
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
@@ -2858,10 +2884,10 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
                          err = internalError "TypeInferenceOverloading.ag" "n/a" ("could not find type for pattern binding "++show name)
                      in Just (name, expandPredicates _lhsIorderedTypeSynonyms predicates)
                   _ -> Nothing
-            (_lhsOrestrictedNames@_) =
+            ((_lhsOrestrictedNames@_,_lhsOsimplePatNames@_)) =
                 if isSimplePattern _patternIself
-                  then []
-                  else _patternIpatVarNames
+                  then ([], _patternIpatVarNames)
+                  else (_patternIpatVarNames, [])
             (_righthandsideOcurrentChunk@_) =
                 findCurrentChunk (head (keysFM _patternIenvironment)) _lhsIinheritedBDG
             (_cinfo@_) =
@@ -2951,7 +2977,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
                 _lhsItypeschemeMap
             (_righthandsideOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_Type :: (T_Range) ->
                         (T_SimpleType) ->
                         (T_Type) ->
@@ -2989,6 +3015,7 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOrestrictedNames :: (Names)
             _lhsOself :: (Declaration)
+            _lhsOsimplePatNames :: (Names)
             _lhsOtypeSignatures :: (TypeEnvironment)
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
@@ -3006,6 +3033,8 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
             (_lhsOdeclVarNames@_) =
                 []
             (_lhsOrestrictedNames@_) =
+                []
+            (_lhsOsimplePatNames@_) =
                 []
             (_lhsOunboundNames@_) =
                 []
@@ -3031,7 +3060,7 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
                 _lhsItypeSignatures
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_TypeSignature :: (T_Range) ->
                                  (T_Names) ->
                                  (T_Type) ->
@@ -3069,6 +3098,7 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOrestrictedNames :: (Names)
             _lhsOself :: (Declaration)
+            _lhsOsimplePatNames :: (Names)
             _lhsOtypeSignatures :: (TypeEnvironment)
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
@@ -3090,6 +3120,8 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
             (_lhsOdeclVarNames@_) =
                 []
             (_lhsOrestrictedNames@_) =
+                []
+            (_lhsOsimplePatNames@_) =
                 []
             (_lhsOunboundNames@_) =
                 []
@@ -3113,7 +3145,7 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
                 _lhsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 -- Declarations ------------------------------------------------
 -- semantic domain
 type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -3137,7 +3169,7 @@ type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (TypeEnvironment) ->
                       (FiniteMap Int (Scheme Predicates)) ->
                       (Int) ->
-                      ( (Int),(BindingGroups),(TypeErrors),(Warnings),(Names),(DictionaryEnvironment),(InfoTrees),(IO ()),([Warning]),(Names),(Declarations),(TypeEnvironment),(Names),(Int))
+                      ( (Int),(BindingGroups),(TypeErrors),(Warnings),(Names),(DictionaryEnvironment),(InfoTrees),(IO ()),([Warning]),(Names),(Declarations),(Names),(TypeEnvironment),(Names),(Int))
 -- cata
 sem_Declarations :: (Declarations) ->
                     (T_Declarations)
@@ -3179,6 +3211,7 @@ sem_Declarations_Cons (hd_) (tl_) =
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOrestrictedNames :: (Names)
             _lhsOself :: (Declarations)
+            _lhsOsimplePatNames :: (Names)
             _lhsOtypeSignatures :: (TypeEnvironment)
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
@@ -3193,6 +3226,7 @@ sem_Declarations_Cons (hd_) (tl_) =
             _hdIpatternMatchWarnings :: ([Warning])
             _hdIrestrictedNames :: (Names)
             _hdIself :: (Declaration)
+            _hdIsimplePatNames :: (Names)
             _hdItypeSignatures :: (TypeEnvironment)
             _hdIunboundNames :: (Names)
             _hdIuniqueChunk :: (Int)
@@ -3228,6 +3262,7 @@ sem_Declarations_Cons (hd_) (tl_) =
             _tlIpatternMatchWarnings :: ([Warning])
             _tlIrestrictedNames :: (Names)
             _tlIself :: (Declarations)
+            _tlIsimplePatNames :: (Names)
             _tlItypeSignatures :: (TypeEnvironment)
             _tlIunboundNames :: (Names)
             _tlIuniqueChunk :: (Int)
@@ -3252,9 +3287,9 @@ sem_Declarations_Cons (hd_) (tl_) =
             _tlOtypeSignatures :: (TypeEnvironment)
             _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
             _tlOuniqueChunk :: (Int)
-            ( _hdIbetaUnique,_hdIbindingGroups,_hdIcollectErrors,_hdIcollectWarnings,_hdIdeclVarNames,_hdIdictionaryEnvironment,_hdIinfoTrees,_hdImatchIO,_hdIpatternMatchWarnings,_hdIrestrictedNames,_hdIself,_hdItypeSignatures,_hdIunboundNames,_hdIuniqueChunk) =
+            ( _hdIbetaUnique,_hdIbindingGroups,_hdIcollectErrors,_hdIcollectWarnings,_hdIdeclVarNames,_hdIdictionaryEnvironment,_hdIinfoTrees,_hdImatchIO,_hdIpatternMatchWarnings,_hdIrestrictedNames,_hdIself,_hdIsimplePatNames,_hdItypeSignatures,_hdIunboundNames,_hdIuniqueChunk) =
                 (hd_ (_hdOallPatterns) (_hdOallTypeSchemes) (_hdOavailablePredicates) (_hdObetaUnique) (_hdObindingGroups) (_hdOcollectErrors) (_hdOcollectWarnings) (_hdOcurrentChunk) (_hdOdictionaryEnvironment) (_hdOimportEnvironment) (_hdOinheritedBDG) (_hdOmatchIO) (_hdOmonos) (_hdOnamesInScope) (_hdOorderedTypeSynonyms) (_hdOparentTree) (_hdOpatternMatchWarnings) (_hdOsubstitution) (_hdOtypeSignatures) (_hdOtypeschemeMap) (_hdOuniqueChunk))
-            ( _tlIbetaUnique,_tlIbindingGroups,_tlIcollectErrors,_tlIcollectWarnings,_tlIdeclVarNames,_tlIdictionaryEnvironment,_tlIinfoTrees,_tlImatchIO,_tlIpatternMatchWarnings,_tlIrestrictedNames,_tlIself,_tlItypeSignatures,_tlIunboundNames,_tlIuniqueChunk) =
+            ( _tlIbetaUnique,_tlIbindingGroups,_tlIcollectErrors,_tlIcollectWarnings,_tlIdeclVarNames,_tlIdictionaryEnvironment,_tlIinfoTrees,_tlImatchIO,_tlIpatternMatchWarnings,_tlIrestrictedNames,_tlIself,_tlIsimplePatNames,_tlItypeSignatures,_tlIunboundNames,_tlIuniqueChunk) =
                 (tl_ (_tlOallPatterns) (_tlOallTypeSchemes) (_tlOavailablePredicates) (_tlObetaUnique) (_tlObindingGroups) (_tlOcollectErrors) (_tlOcollectWarnings) (_tlOcurrentChunk) (_tlOdictionaryEnvironment) (_tlOimportEnvironment) (_tlOinheritedBDG) (_tlOmatchIO) (_tlOmonos) (_tlOnamesInScope) (_tlOorderedTypeSynonyms) (_tlOparentTree) (_tlOpatternMatchWarnings) (_tlOsubstitution) (_tlOtypeSignatures) (_tlOtypeschemeMap) (_tlOuniqueChunk))
             (_lhsOinfoTrees@_) =
                 _hdIinfoTrees ++ _tlIinfoTrees
@@ -3262,6 +3297,8 @@ sem_Declarations_Cons (hd_) (tl_) =
                 _hdIdeclVarNames ++ _tlIdeclVarNames
             (_lhsOrestrictedNames@_) =
                 _hdIrestrictedNames  ++  _tlIrestrictedNames
+            (_lhsOsimplePatNames@_) =
+                _hdIsimplePatNames  ++  _tlIsimplePatNames
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -3370,7 +3407,7 @@ sem_Declarations_Cons (hd_) (tl_) =
                 _lhsItypeschemeMap
             (_tlOuniqueChunk@_) =
                 _hdIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declarations_Nil :: (T_Declarations)
 sem_Declarations_Nil  =
     \ _lhsIallPatterns
@@ -3405,6 +3442,7 @@ sem_Declarations_Nil  =
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOrestrictedNames :: (Names)
             _lhsOself :: (Declarations)
+            _lhsOsimplePatNames :: (Names)
             _lhsOtypeSignatures :: (TypeEnvironment)
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
@@ -3413,6 +3451,8 @@ sem_Declarations_Nil  =
             (_lhsOdeclVarNames@_) =
                 []
             (_lhsOrestrictedNames@_) =
+                []
+            (_lhsOsimplePatNames@_) =
                 []
             (_lhsOunboundNames@_) =
                 []
@@ -3438,7 +3478,7 @@ sem_Declarations_Nil  =
                 _lhsItypeSignatures
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 -- Export ------------------------------------------------------
 -- semantic domain
 type T_Export = ( (Export))
@@ -6059,6 +6099,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _declarationsIpatternMatchWarnings :: ([Warning])
             _declarationsIrestrictedNames :: (Names)
             _declarationsIself :: (Declarations)
+            _declarationsIsimplePatNames :: (Names)
             _declarationsItypeSignatures :: (TypeEnvironment)
             _declarationsIunboundNames :: (Names)
             _declarationsIuniqueChunk :: (Int)
@@ -6120,7 +6161,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
+            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
                 (declarations_ (_declarationsOallPatterns)
                                (_declarationsOallTypeSchemes)
                                (_declarationsOavailablePredicates)
@@ -6179,7 +6220,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                 restrictedNameErrors _inferredTypes _declarationsIrestrictedNames
                 ++ _declarationsIcollectErrors
             (_lhsOcollectWarnings@_) =
-                missingTypeSignature False _inferredTypes
+                missingTypeSignature False _declarationsIsimplePatNames  _inferredTypes
                 ++ _expressionIcollectWarnings
             (_inferredTypes@_) =
                 findInferredTypes _lhsItypeschemeMap _implicitsFM
@@ -10767,6 +10808,7 @@ sem_MaybeDeclarations_Just (declarations_) =
             _declarationsIpatternMatchWarnings :: ([Warning])
             _declarationsIrestrictedNames :: (Names)
             _declarationsIself :: (Declarations)
+            _declarationsIsimplePatNames :: (Names)
             _declarationsItypeSignatures :: (TypeEnvironment)
             _declarationsIunboundNames :: (Names)
             _declarationsIuniqueChunk :: (Int)
@@ -10791,7 +10833,7 @@ sem_MaybeDeclarations_Just (declarations_) =
             _declarationsOtypeSignatures :: (TypeEnvironment)
             _declarationsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
             _declarationsOuniqueChunk :: (Int)
-            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
+            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
                 (declarations_ (_declarationsOallPatterns)
                                (_declarationsOallTypeSchemes)
                                (_declarationsOavailablePredicates)
@@ -10823,7 +10865,7 @@ sem_MaybeDeclarations_Just (declarations_) =
                 restrictedNameErrors _inferredTypes _declarationsIrestrictedNames
                 ++ _declarationsIcollectErrors
             (_lhsOcollectWarnings@_) =
-                missingTypeSignature False _inferredTypes
+                missingTypeSignature False _declarationsIsimplePatNames _inferredTypes
                 ++ _declarationsIcollectWarnings
             (_inferredTypes@_) =
                 findInferredTypes _lhsItypeschemeMap _implicitsFM
@@ -13624,6 +13666,7 @@ sem_Qualifier_Let (range_) (declarations_) =
             _declarationsIpatternMatchWarnings :: ([Warning])
             _declarationsIrestrictedNames :: (Names)
             _declarationsIself :: (Declarations)
+            _declarationsIsimplePatNames :: (Names)
             _declarationsItypeSignatures :: (TypeEnvironment)
             _declarationsIunboundNames :: (Names)
             _declarationsIuniqueChunk :: (Int)
@@ -13650,7 +13693,7 @@ sem_Qualifier_Let (range_) (declarations_) =
             _declarationsOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
+            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
                 (declarations_ (_declarationsOallPatterns)
                                (_declarationsOallTypeSchemes)
                                (_declarationsOavailablePredicates)
@@ -13682,7 +13725,7 @@ sem_Qualifier_Let (range_) (declarations_) =
                 restrictedNameErrors _inferredTypes _declarationsIrestrictedNames
                 ++ _declarationsIcollectErrors
             (_lhsOcollectWarnings@_) =
-                missingTypeSignature False _inferredTypes
+                missingTypeSignature False _declarationsIsimplePatNames _inferredTypes
                 ++ _declarationsIcollectWarnings
             (_inferredTypes@_) =
                 findInferredTypes _lhsItypeschemeMap _implicitsFM
@@ -15932,6 +15975,7 @@ sem_Statement_Let (range_) (declarations_) =
             _declarationsIpatternMatchWarnings :: ([Warning])
             _declarationsIrestrictedNames :: (Names)
             _declarationsIself :: (Declarations)
+            _declarationsIsimplePatNames :: (Names)
             _declarationsItypeSignatures :: (TypeEnvironment)
             _declarationsIunboundNames :: (Names)
             _declarationsIuniqueChunk :: (Int)
@@ -15958,7 +16002,7 @@ sem_Statement_Let (range_) (declarations_) =
             _declarationsOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
+            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
                 (declarations_ (_declarationsOallPatterns)
                                (_declarationsOallTypeSchemes)
                                (_declarationsOavailablePredicates)
@@ -15992,7 +16036,7 @@ sem_Statement_Let (range_) (declarations_) =
                 restrictedNameErrors _inferredTypes _declarationsIrestrictedNames
                 ++ _declarationsIcollectErrors
             (_lhsOcollectWarnings@_) =
-                missingTypeSignature False _inferredTypes
+                missingTypeSignature False _declarationsIsimplePatNames _inferredTypes
                 ++ _declarationsIcollectWarnings
             (_inferredTypes@_) =
                 findInferredTypes _lhsItypeschemeMap _implicitsFM

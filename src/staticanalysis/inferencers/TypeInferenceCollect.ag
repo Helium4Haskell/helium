@@ -39,35 +39,35 @@ SEM Module
 
 SEM Body
   | Body   loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-           lhs . collectWarnings    = missingTypeSignature True @inferredTypes 
+           lhs . collectWarnings    = missingTypeSignature True @declarations.simplePatNames @inferredTypes 
                                       ++ @declarations.collectWarnings
                . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 SEM MaybeDeclarations
   | Just   loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-           lhs . collectWarnings    = missingTypeSignature False @inferredTypes
+           lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes 
                                       ++ @declarations.collectWarnings 
                . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
                                       
 SEM Expression
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-           lhs . collectWarnings    = missingTypeSignature False @inferredTypes 
+           lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames  @inferredTypes
                                       ++ @expression.collectWarnings
                . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
                                       
 SEM Statement                  
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-           lhs . collectWarnings    = missingTypeSignature False @inferredTypes 
+           lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes 
                                       ++ @declarations.collectWarnings
                . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
                                       
 SEM Qualifier                    
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-           lhs . collectWarnings    = missingTypeSignature False @inferredTypes 
+           lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes 
                                       ++ @declarations.collectWarnings
                . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
@@ -81,12 +81,12 @@ findInferredTypes typeschemeMap =
        f _ (SigmaScheme ts) = ts
    in mapFM f
    
-missingTypeSignature :: Bool -> TypeEnvironment -> Warnings
-missingTypeSignature topLevel = 
+missingTypeSignature :: Bool -> Names -> TypeEnvironment -> Warnings
+missingTypeSignature topLevel simplePats = 
    let -- for the moment, only missing type signature for top-level functions are reported (unless monomorphic).
-      makeWarning (name, scheme)
-         | null (ftv scheme) && topLevel = [ NoTypeDef name scheme topLevel ]
-         | otherwise                     = []
+      makeWarning (name, scheme) =
+         let fromSimple = name `elem` simplePats
+         in [ NoTypeDef name scheme topLevel fromSimple | null (ftv scheme) && (topLevel || fromSimple)  ]
    in concatMap makeWarning . fmToList
    
 restrictedNameErrors :: TypeEnvironment -> Names -> TypeErrors
@@ -153,13 +153,15 @@ makeLocalTypeEnv local groups =
 }
 
 -- context for restricted pattern error
-ATTR Declaration Declarations [ | | restrictedNames USE { ++ } { [] } : Names ]
+ATTR Declaration Declarations [ | | restrictedNames USE { ++ } { [] } : Names 
+                                    simplePatNames  USE { ++ } { [] } : Names ]
 
 SEM Declaration
   | PatternBinding   
-       lhs . restrictedNames = if isSimplePattern @pattern.self
-                                 then []
-                                 else @pattern.patVarNames
+       (lhs.restrictedNames, lhs.simplePatNames)
+          = if isSimplePattern @pattern.self
+              then ([], @pattern.patVarNames)
+              else (@pattern.patVarNames, [])
 
 {
 isSimplePattern :: Pattern -> Bool

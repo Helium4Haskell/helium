@@ -23,7 +23,7 @@ import qualified UHA_Pretty as PP (sem_Pattern, sem_LeftHandSide, sem_Expression
 -- (Static) Warnings
 
 type Warnings = [Warning]
-data Warning  = NoTypeDef Name TpScheme Bool
+data Warning  = NoTypeDef Name TpScheme Bool{- toplevel? -} Bool{- simple pat? -}
               | Shadow Name Name
               | Unused Entity Name
               | SimilarFunctionBindings Name {- without typesignature -} Name {- with type signature -}
@@ -41,7 +41,7 @@ instance HasMessage Warning where
                       firstLine = MessageOneLiner (MessageCompose [MessageString "Warning: ", oneliner])
                   in [firstLine, MessageHints "Hint" hints]
    getRanges warning = case warning of
-      NoTypeDef name _ _            -> [getNameRange name]
+      NoTypeDef name _ _ _          -> [getNameRange name]
       Shadow _ name                 -> [getNameRange name]
       Unused _ name                 -> [getNameRange name]
       SimilarFunctionBindings n1 n2 -> sortRanges [getNameRange n1, getNameRange n2]
@@ -62,9 +62,11 @@ instance HasMessage Warning where
 showWarning :: Warning -> (MessageBlock {- oneliner -}, MessageBlocks {- hints -})
 showWarning warning = case warning of
 
-   NoTypeDef name tpscheme topLevel ->
+   NoTypeDef name tpscheme topLevel simplePat ->
       ( MessageString ("Missing type signature: " ++ showNameAsVariable name ++ " :: " ++ show tpscheme)
-      , []
+      , let hint = "Because " ++ showNameAsVariable name ++ " has an overloaded type, computations may be repeated. " ++
+                   "Insert the missing type signature if this is indeed your intention."
+        in [ MessageString hint | simplePat, isOverloaded tpscheme ]
       )
 
    Shadow shadowee shadower ->
