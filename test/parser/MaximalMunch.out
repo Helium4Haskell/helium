@@ -1,5 +1,5 @@
 Compiling parser/MaximalMunch.hs
-(1,1): Missing type signature: main :: Int
-(3,2): Missing type signature: (-->) :: Int -> Int -> Int
+(1,1): Warning: Missing type signature: main :: Int
+(3,2): Warning: Missing type signature: (-->) :: Int -> Int -> Int
 Compilation successful with 2 warnings
 7

@@ -1,5 +1,5 @@
 Compiling parser/LetInComprehension2.hs
-(1,1): Missing type signature: main :: [Int]
-(1,34): Missing type signature: y :: Int
+(1,1): Warning: Missing type signature: main :: [Int]
+(1,34): Warning: Missing type signature: y :: Int
 Compilation successful with 2 warnings
 [3,4,5,6,7,8,9,10,11,12]

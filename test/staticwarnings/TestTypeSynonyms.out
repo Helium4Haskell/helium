@@ -1,8 +1,8 @@
 Compiling staticwarnings/TestTypeSynonyms.hs
-(32,1): Missing type signature: noordpool :: [Beer]
-(33,1): Missing type signature: duo :: [IJsbeer]
-(34,1): Missing type signature: trio :: [Beer]
-(35,1): Missing type signature: artis :: [Dier]
-(36,1): Missing type signature: vreemdevogel :: [Char]
+(32,1): Warning: Missing type signature: noordpool :: [Beer]
+(33,1): Warning: Missing type signature: duo :: [IJsbeer]
+(34,1): Warning: Missing type signature: trio :: [Beer]
+(35,1): Warning: Missing type signature: artis :: [Dier]
+(36,1): Warning: Missing type signature: vreemdevogel :: [Char]
 Compilation successful with 5 warnings
 No 'main' function defined in this module

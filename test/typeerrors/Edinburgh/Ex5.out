@@ -1,4 +1,5 @@
 Compiling typeerrors/Edinburgh/Ex5.hs
+(3,32): Warning: Definition "wildcard" is not used
 (5,25): Type error in application
  expression       : y True
  function         : y

@@ -1,4 +1,4 @@
 Compiling correct/OnlyGuards.hs
-(3,1): Missing type signature: main :: Int
+(3,1): Warning: Missing type signature: main :: Int
 Compilation successful with 1 warning
 1

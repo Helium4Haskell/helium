@@ -1,4 +1,5 @@
 Compiling typeerrors/Examples/PatListResult.hs
+(4,4): Warning: Variable "a" is not used
 (4,1): Type error in pattern of function binding
  pattern          : [a]
    type           : [a] 

@@ -1,4 +1,4 @@
 Compiling staticwarnings/ExprLambdaUnusedVar.hs
-(6,10): Variable "a" is not used
+(6,10): Warning: Variable "a" is not used
 Compilation successful with 1 warning
 0

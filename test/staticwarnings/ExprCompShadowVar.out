@@ -1,5 +1,5 @@
 Compiling staticwarnings/ExprCompShadowVar.hs
-(6,14): Variable "x" is not used
-(6,26): Variable "x" shadows the one at (6,14)
+(6,14): Warning: Variable "x" is not used
+(6,26): Warning: Variable "x" shadows the one at (6,14)
 Compilation successful with 2 warnings
 [3,4,3,4]

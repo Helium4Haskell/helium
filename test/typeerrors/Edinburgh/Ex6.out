@@ -1,4 +1,5 @@
 Compiling typeerrors/Edinburgh/Ex6.hs
+(4,42): Warning: Variable "v" is not used
 (4,17): Type error in application
  expression       : (f (\z -> z)) (f (\u -> \v -> u))
  term             : (f (\z -> z))

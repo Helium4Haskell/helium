@@ -1,5 +1,5 @@
 Compiling parser/LetInDo.hs
-(1,1): Missing type signature: main :: IO ()
-(1,15): Missing type signature: x :: String -> IO ()
+(1,1): Warning: Missing type signature: main :: IO ()
+(1,15): Warning: Missing type signature: x :: String -> IO ()
 Compilation successful with 2 warnings
 hello

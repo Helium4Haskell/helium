@@ -1,4 +1,4 @@
 Compiling correct/Lambda1.hs
-(4,15): Variable "xs" is not used
+(4,15): Warning: Variable "xs" is not used
 Compilation successful with 1 warning
 3

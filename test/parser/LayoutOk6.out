@@ -1,6 +1,6 @@
 Compiling parser/LayoutOk6.hs
-(3,1): Missing type signature: f :: Int
-(3,9): Definition "x" is not used
-(3,9): Missing type signature: x :: Int
+(3,9): Warning: Definition "x" is not used
+(3,1): Warning: Missing type signature: f :: Int
+(3,9): Warning: Missing type signature: x :: Int
 Compilation successful with 3 warnings
 No 'main' function defined in this module

@@ -1,5 +1,5 @@
 Compiling parser/LayoutOk9.hs
-(1,1): Missing type signature: x :: Int
-(2,1): Missing type signature: y :: Int
+(1,1): Warning: Missing type signature: x :: Int
+(2,1): Warning: Missing type signature: y :: Int
 Compilation successful with 2 warnings
 No 'main' function defined in this module

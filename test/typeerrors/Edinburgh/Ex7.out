@@ -1,4 +1,5 @@
 Compiling typeerrors/Edinburgh/Ex7.hs
+(4,21): Warning: Definition "y" is not used
 (5,22): Type error in application
  expression       : x True
  function         : x

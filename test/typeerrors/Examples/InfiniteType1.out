@@ -1,4 +1,5 @@
 Compiling typeerrors/Examples/InfiniteType1.hs
+(5,8): Warning: Variable "cmp" is not used
 (9,31): Type error in application
  expression       : voegIn n xs
  term             : voegIn

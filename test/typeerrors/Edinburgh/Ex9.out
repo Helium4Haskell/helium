@@ -1,4 +1,5 @@
 Compiling typeerrors/Edinburgh/Ex9.hs
+(3,6): Warning: Variable "n" is not used
 (4,11): Type error in infix application
  expression       : m ^^^ n
  operator         : ^^^

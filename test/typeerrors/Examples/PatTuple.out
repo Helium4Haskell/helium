@@ -1,4 +1,6 @@
 Compiling typeerrors/Examples/PatTuple.hs
+(4,4): Warning: Variable "a" is not used
+(4,6): Warning: Variable "b" is not used
 (4,1): Type error in pattern of function binding
  pattern          : (a, b)
    type           : (a, b)

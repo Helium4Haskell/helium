@@ -1,8 +1,8 @@
 Compiling correct/Case2.hs
-(6,12): Variable "y" is not used
-(6,14): Variable "ys" is not used
-(7,27): Missing type signature: z :: Int
-(8,10): Variable "x" is not used
-(8,12): Variable "xs" is not used
+(6,12): Warning: Variable "y" is not used
+(6,14): Warning: Variable "ys" is not used
+(8,10): Warning: Variable "x" is not used
+(8,12): Warning: Variable "xs" is not used
+(7,27): Warning: Missing type signature: z :: Int
 Compilation successful with 5 warnings
 32

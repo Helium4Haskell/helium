@@ -1,4 +1,5 @@
 Compiling typeerrors/Heuristics/AppNotEnough1.hs
+(4,9): Warning: Variable "xs" is not used
 (4,14): Type error in application
  expression       : foldr (+) 0
  term             : foldr

@@ -1,12 +1,12 @@
 Compiling staticwarnings/SuspiciousFBs.hs
-(3,1): Missing type signature: fun :: a -> a
-(4,1): Missing type signature: funs :: a -> [a]
-(6,1): Missing type signature: test :: a
-(7,12): Definition "suspiciuos" is not used
-(7,12): Missing type signature: suspiciuos :: Int -> Bool
-(7,12), (8,12): Suspicious adjacent functions "suspiciuos" and "suspicious"
-(14,1), (16,1): Suspicious adjacent functions "deleteIndex" and "deleteindex"
-(15,16): Variable "a" is not used
-(16,1): Missing type signature: deleteindex :: Int -> [a] -> [a]
+(7,12): Warning: Definition "suspiciuos" is not used
+(7,12), (8,12): Warning: Suspicious adjacent functions "suspiciuos" and "suspicious"
+(14,1), (16,1): Warning: Suspicious adjacent functions "deleteIndex" and "deleteindex"
+(15,16): Warning: Variable "a" is not used
+(3,1): Warning: Missing type signature: fun :: a -> a
+(4,1): Warning: Missing type signature: funs :: a -> [a]
+(6,1): Warning: Missing type signature: test :: a
+(7,12): Warning: Missing type signature: suspiciuos :: Int -> Bool
+(16,1): Warning: Missing type signature: deleteindex :: Int -> [a] -> [a]
 Compilation successful with 9 warnings
 No 'main' function defined in this module

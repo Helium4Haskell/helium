@@ -94,7 +94,7 @@ instance HasMessage LexerWarning where
         in [ Range_Range position position ]
     getMessage (LexerWarning _ info) = 
         let (line:rest) = showLexerWarningInfo info
-        in MessageOneLiner (MessageString line) :
+        in MessageOneLiner (MessageString ("Warning: " ++ line)) :
             [ MessageHints "Hint" [ MessageString s | s <- rest ] ]
 
 data LexerWarning =
@@ -112,12 +112,12 @@ showLexerWarningInfo info =
             , "Configure your editor to replace tabs by spaces" 
             ]
         LooksLikeFloatNoFraction digits ->
-            [ "This is interpreted as an integer followed by function composition"
+            [ "Interpreted as an integer followed by function composition"
             , "If a Float was meant, write \"" ++ digits ++ ".0\""
             , "Otherwise, insert a space for readability" 
             ]
         LooksLikeFloatNoDigits fraction ->
-            [ "This is interpreted as function composition followed by a number"
+            [ "Interpreted as function composition followed by a number"
             , "If a Float was meant, write \"0." ++ fraction ++ "\""
             , "Otherwise, insert a space for readability" 
             ]

@@ -1,7 +1,7 @@
 Compiling staticwarnings/NoTypeDef.hs
-(3,1): Missing type signature: toplevel :: Int
-(6,9): Missing type signature: local :: Int
-(10,11): Definition "monomorph" is not used
-(15,11): Missing type signature: inWhere :: Int
+(10,11): Warning: Definition "monomorph" is not used
+(3,1): Warning: Missing type signature: toplevel :: Int
+(6,9): Warning: Missing type signature: local :: Int
+(15,11): Warning: Missing type signature: inWhere :: Int
 Compilation successful with 4 warnings
 No 'main' function defined in this module

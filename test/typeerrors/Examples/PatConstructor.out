@@ -1,4 +1,6 @@
 Compiling typeerrors/Examples/PatConstructor.hs
+(4,8): Warning: Variable "x" is not used
+(4,10): Warning: Variable "xs" is not used
 (4,1): Type error in pattern of function binding
  pattern          : ((:) x xs)
    type           : [a] 

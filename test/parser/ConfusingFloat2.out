@@ -1,5 +1,5 @@
 Compiling parser/ConfusingFloat2.hs
-(1,5): This is interpreted as function composition followed by a number
+(1,5): Warning: Interpreted as function composition followed by a number
   Hint: If a Float was meant, write "0.2"
         Otherwise, insert a space for readability
 (1,5): Syntax error: 

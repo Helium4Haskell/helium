@@ -1,4 +1,4 @@
 Compiling correct/PMC8.hs
-(14,9): Variable "y" is not used
+(14,9): Warning: Variable "y" is not used
 Compilation successful with 1 warning
 500

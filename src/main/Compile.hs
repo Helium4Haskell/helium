@@ -50,6 +50,9 @@ compile fullName options doneModules =
         (localEnv, staticWarnings) <-
             phaseStaticChecks fullName resolvedModule importEnvs options        
 
+        unless (NoWarnings `elem` options) $
+            showMessages staticWarnings
+
         stopCompilingIf (StopAfterStaticAnalysis `elem` options)
 
         -- Phase 6: Typing Strategies
@@ -61,13 +64,10 @@ compile fullName options doneModules =
             phaseTypeInferencer fullName resolvedModule doneModules localEnv 
                                     importEnvs completeEnv options
 
-        stopCompilingIf (StopAfterTypeInferencing `elem` options)
-
-        -- Static Warnings
-        let warnings = staticWarnings ++ typeWarnings
-
         unless (NoWarnings `elem` options) $
-            showMessages warnings
+            showMessages typeWarnings
+
+        stopCompilingIf (StopAfterTypeInferencing `elem` options)
 
         -- Phase 8: Desugaring
         coreModule <-                
@@ -82,7 +82,7 @@ compile fullName options doneModules =
         
         unless (NoLogging `elem` options) $ logger "C" Nothing
 
-        let number = length warnings + length lexerWarnings
+        let number = length staticWarnings + length typeWarnings + length lexerWarnings
         putStrLn $ "Compilation successful" ++
                       if number == 0 || (NoWarnings `elem` options)
                         then ""

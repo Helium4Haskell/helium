@@ -1,5 +1,5 @@
 Compiling correct/PatternMatchBug4.hs
-(3,1): Missing type signature: main :: String
-(5,1): Missing type signature: f :: [String] -> String
+(3,1): Warning: Missing type signature: main :: String
+(5,1): Warning: Missing type signature: f :: [String] -> String
 Compilation successful with 2 warnings
 "a"

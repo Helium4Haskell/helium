@@ -1,4 +1,5 @@
 Compiling typeerrors/Examples/FbRight.hs
+(4,3): Warning: Variable "x" is not used
 (4,5): Type error in right hand side
  term             : True
    type           : Bool  

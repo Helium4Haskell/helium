@@ -1,4 +1,5 @@
 Compiling typeerrors/Heuristics/AppSwap1.hs
+(7,9): Warning: Variable "i" is not used
 (4,21): Type error in infix application
  expression       : [0, 2 .. ] `elemInt` i
  operator         : `elemInt`

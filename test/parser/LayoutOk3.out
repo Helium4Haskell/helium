@@ -1,4 +1,4 @@
 Compiling parser/LayoutOk3.hs
-(3,1): Missing type signature: x :: Int
+(3,1): Warning: Missing type signature: x :: Int
 Compilation successful with 1 warning
 No 'main' function defined in this module

@@ -1,4 +1,5 @@
 Compiling typeerrors/Examples/FbLeft.hs
+(3,5): Warning: Variable "y" is not used
 (5,1): Type error in pattern of function binding
  pattern          : True
    type           : Bool

@@ -26,7 +26,7 @@ data Warning  = NoTypeDef Name TpScheme Bool
               | SimilarFunctionBindings Name {- without typesignature -} Name {- with type signature -}
 
 instance HasMessage Warning where
-   getMessage x = [MessageOneLiner (showWarning x)]
+   getMessage x = [MessageOneLiner (MessageString ("Warning: " ++ showWarning x))]
    getRanges warning = case warning of
       NoTypeDef name _ _            -> [getNameRange name]
       Shadow _ name                 -> [getNameRange name]
@@ -36,23 +36,21 @@ instance HasMessage Warning where
                                                       "instance IsMessage Warning" 
                                                       "unknown type of Warning"
 
-showWarning :: Warning -> MessageBlock
+showWarning :: Warning -> String
 showWarning warning = case warning of
 
    NoTypeDef name tpscheme topLevel ->
-      MessageString ("Missing type signature: " ++ showNameAsVariable name ++ " :: "++show tpscheme)
+      "Missing type signature: " ++ showNameAsVariable name ++ " :: "++show tpscheme
 
    Shadow shadowee shadower ->
-      MessageString ("Variable " ++ show (show shadower) ++
-                     " shadows the one at " ++
-                     showRange (getNameRange shadowee))
+      "Variable " ++ show (show shadower) ++ " shadows the one at " ++ showRange (getNameRange shadowee)
 
    Unused entity name toplevel ->
-      MessageString (capitalize (show entity) ++ " " ++ show (show name) ++ " is not used")
+      capitalize (show entity) ++ " " ++ show (show name) ++ " is not used"
     
    SimilarFunctionBindings suspect witness ->
       let [n1, n2] = sortNamesByRange [suspect, witness] 
-      in MessageString ("Suspicious adjacent functions "++ show (show n1) ++ " and " ++ show (show n2))
+      in "Suspicious adjacent functions "++ show (show n1) ++ " and " ++ show (show n2)
    
    _ -> internalError "Messages" "showWarning" "unknown type of Warning"
    

@@ -1,5 +1,5 @@
 Compiling thompson/Thompson37.hs
-(4,1): Missing type signature: main :: [Bool]
+(4,1): Warning: Missing type signature: main :: [Bool]
 Compilation successful with 1 warning
 [exception: pattern match failed at function bindings ranging from (2,1) to (2,18) in module thompson/Thompson37.hs.
 

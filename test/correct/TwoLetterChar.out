@@ -1,6 +1,6 @@
 Compiling correct/TwoLetterChar.hs
-(3,1): Missing type signature: main :: (Int, Int)
-(5,1): Missing type signature: f :: Char -> Int
-(7,1): Missing type signature: g :: Char -> Int
+(3,1): Warning: Missing type signature: main :: (Int, Int)
+(5,1): Warning: Missing type signature: f :: Char -> Int
+(7,1): Warning: Missing type signature: g :: Char -> Int
 Compilation successful with 3 warnings
 (3,4)

@@ -1,4 +1,5 @@
 Compiling typeerrors/Edinburgh/Ex13.hs
+(3,5): Warning: Variable "x" is not used
 (3,9): Type error in literal
  expression       : 0.0
    type           : Float
