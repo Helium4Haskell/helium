@@ -9,6 +9,8 @@ import List
 import IO
 import Version
 
+{-# NOTINLINE logger #-}
+
 ---------------------------------------------------
 -- Global variables and settings
 

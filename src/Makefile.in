@@ -378,8 +378,6 @@ movetohome: smaller
 	# *** Copy generated lvms and touch them
 	cp ../lib/*.lvm ../distribution/helium/lib
 	touch ../distribution/helium/lib/*.lvm # so that they are seen as up to date
-	# *** Copy Hint.jar
-	cp ../../hint/release/Hint.jar ../distribution/helium/bin
 
 movetobbl: smaller
 	# *** Copying library sources to projects directory
