@@ -351,7 +351,10 @@ SEM Type                                         {- *** -}
     | Constructor              loc.text = @name.text              {- *** -}
     --  range                    : Range
     --  name                     : Name
-    | Qualified                loc.text = text "{- !!! qualified type -}"
+    | Qualified                loc.text = case @context.text of
+                                            [] -> @type.text
+                                            [ct] -> ct <+> text "=>" <+> @type.text
+                                            cts -> parens (commas cts) <+> text "=>" <+> @type.text
     --  range                    : Range
     --  context                  : ContextItems
     --  type                     : Type
@@ -373,7 +376,7 @@ SEM SimpleType
     --  typevariables            : Names
 
 SEM ContextItem
-    | ContextItem       loc.text = foldl (<+>) @name.text @types.text -- ToDo: or _Item?
+    | ContextItem       loc.text = @name.text <+> head @types.text -- no parens because it is always a var
     --  range                    : Range
     --  name                     : Name   -- that is the class
     --  types                    : Types  -- in Haskell 98, this is only one type

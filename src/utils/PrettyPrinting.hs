@@ -249,7 +249,7 @@ sem_ContextItem_ContextItem :: (T_Range) ->
                                (T_ContextItem)
 sem_ContextItem_ContextItem (_range) (_name) (_types) =
     let (_text) =
-            foldl (<+>) _name_text _types_text
+            _name_text <+> head _types_text
         ( _range_text) =
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
@@ -2385,7 +2385,10 @@ sem_Type_Qualified :: (T_Range) ->
                       (T_Type)
 sem_Type_Qualified (_range) (_context) (_type) =
     let (_text) =
-            text "{- !!! qualified type -}"
+            case _context_text of
+              [] -> _type_text
+              [ct] -> ct <+> text "=>" <+> _type_text
+              cts -> parens (commas cts) <+> text "=>" <+> _type_text
         ( _range_text) =
             (_range )
         ( _context_text) =

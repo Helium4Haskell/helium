@@ -1144,20 +1144,5 @@ simpleTypeOneVar =
             return $ \r -> SimpleType_SimpleType r c [v]
     ) <?> "simple type"
 
-scontext :: HParser ContextItems
-scontext = 
-    do
-        sc <- simpleclass
-        return [sc]
-    <|>
-    parens (semiSepTerm simpleclass)
-
-simpleclass :: HParser ContextItem
-simpleclass = addRange ( 
-    do
-        c <- tycon
-        (v, r) <- withRange tyvar
-        return (\r -> ContextItem_ContextItem r c [Type_Variable r v])
-    ) <?> "context"
 -}
 
