@@ -3,7 +3,7 @@ Compiling thompson/Thompson32.hs
 (2,13): Warning: Variable "y" is not used
 (8,5): Warning: Definition "g" is not used
 (7,5): Declared type is too general
- expression       : g
+ function         : g
    declared type  : b  -> Float
    inferred type  : _1 -> Float
  hint             : try removing the type signature

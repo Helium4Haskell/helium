@@ -1,6 +1,6 @@
 Compiling thompson/Thompson24.hs
 (1,1): Declared type is too general
- expression       : compress
+ function         : compress
    declared type  : [a  ] -> [a  ]
    inferred type  : [Int] -> [Int]
 

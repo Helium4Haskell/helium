@@ -6,7 +6,7 @@ Compiling thompson/Thompson04.hs
 (1,25): Warning: Suspicious type variable "bool"
   Hint: Did you mean the type constructor "Bool" ?
 (1,1): Declared type is too general
- expression       : exOr
+ function         : exOr
    declared type  : bool -> bool -> bool
    inferred type  : Bool -> Bool -> Bool
 
