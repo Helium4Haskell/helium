@@ -21,7 +21,7 @@ SEM Body | Body loc . cinfo =
 
 SEM Declaration | FunctionBindings loc . cinfo =
   resultConstraint "function bindings (INTERNAL ERROR)" @parentTree
-     [ FolkloreConstraint, HasTrustFactor 10000.0, FuntionBindingEdge @bindings.numberOfPatterns ]
+     [ FolkloreConstraint, highlyTrusted, FuntionBindingEdge @bindings.numberOfPatterns ]
 
 SEM Declaration | PatternBinding loc . cinfo =
   orphanConstraint 1 "right hand side" @parentTree
@@ -78,7 +78,7 @@ SEM Expression | InfixApplication loc . operatorNr    = length @leftExpression.i
 SEM Expression | InfixApplication loc . cinfoComplete =
   specialConstraint "infix application (INTERNAL ERROR)" @parentTree
      (self @localInfo, Nothing)
-     [ FolkloreConstraint, HasTrustFactor 10000.0 ]
+     [ FolkloreConstraint, highlyTrusted ]
 
 SEM Expression | InfixApplication loc . cinfoLeftSection =
   specialConstraint "left section" @parentTree
@@ -127,7 +127,7 @@ SEM Expression | Case loc . cinfo =
 -- Expression.Let
 SEM Expression | Let loc . cinfoType =
   resultConstraint "let expression (INTERNAL ERROR)" @thisTree
-     [ FolkloreConstraint, HasTrustFactor 10000.0 ]
+     [ FolkloreConstraint, highlyTrusted ]
      
 -- Expression.Do
 SEM Expression | Do loc . cinfo =

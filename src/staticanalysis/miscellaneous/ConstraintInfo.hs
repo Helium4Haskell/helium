@@ -128,13 +128,13 @@ data Property   = FolkloreConstraint
                 | IsUserConstraint Int{-user-constraint-group unique number-} Int{-constraint number within group-}
                 | WithTypeError TypeError
                 | WithHint TypeErrorHint
-		| HighlightAreas (Area, Area) 
+                | HighlightAreas (Area, Area) 
                 | ReductionErrorInfo Predicate
                 | FromBindingGroup 
-		| IsImported Name 
+                | IsImported Name 
                 | ApplicationEdge Bool{-is binary-} [LocalInfo]{-info about terms-}
                 | ExplicitTypedBinding
-		| Unifier Int{-type variable-} (String{-location-}, LocalInfo, String{-description-})
+                | Unifier Int{-type variable-} (String{-location-}, LocalInfo, String{-description-})
                 | OriginalTypePair (Tp, Tp)
 		
 instance SetReduction ConstraintInfo where
@@ -183,6 +183,16 @@ phaseOfConstraint info =
    case [ i | ConstraintPhaseNumber i <- properties info ] of  
       []  -> 5 -- default phase number
       i:_ -> i
+
+highlyTrustedFactor :: Float
+highlyTrustedFactor = 10000.0
+
+highlyTrusted :: Property
+highlyTrusted = HasTrustFactor highlyTrustedFactor
+
+isHighlyTrusted :: ConstraintInfo -> Bool
+isHighlyTrusted info = 
+   product [ i | HasTrustFactor i <- properties info ] >= highlyTrustedFactor
 
 setTypePair :: (Tp, Tp) -> ConstraintInfo -> ConstraintInfo
 setTypePair pair info =

@@ -32,7 +32,8 @@ listOfHeuristics options siblings =
    let is = [ i | SelectConstraintNumber i <- options ]
    in [ selectConstraintNumbers is | not (null is) ]
    ++
-   [ highParticipation 1.00
+   [ highlyTrustedFilter
+   , highParticipation 0.95
    , phaseFilter
    ] ++
    [ Heuristic (Voting (
@@ -56,7 +57,15 @@ listOfHeuristics options siblings =
    , isTopDownEdge
    , positionInList
    ]
-   
+
+-- Never report a constraint which is highly trusted
+-- (even if this means that you have to report multiple errors)
+-- This should be the first heuristic that is applied 
+highlyTrustedFilter :: Heuristic ConstraintInfo
+highlyTrustedFilter = Heuristic (
+   let f (_, _, info) = return (not (isHighlyTrusted info))
+   in edgeFilter "Not highly trusted" f)
+
 -- two more heuristics for the Type Inference Directives
 -- (move to another module?)
 phaseFilter :: Heuristic ConstraintInfo

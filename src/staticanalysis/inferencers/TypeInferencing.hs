@@ -2579,7 +2579,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
                 findCurrentChunk _bindingsIname _lhsIinheritedBDG
             (_cinfo@_) =
                 resultConstraint "function bindings (INTERNAL ERROR)" _parentTree
-                   [ FolkloreConstraint, HasTrustFactor 10000.0, FuntionBindingEdge _bindingsInumberOfPatterns ]
+                   [ FolkloreConstraint, highlyTrusted, FuntionBindingEdge _bindingsInumberOfPatterns ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Decl _self
                           , assignedType = Nothing
@@ -6307,7 +6307,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             (_cinfoComplete@_) =
                 specialConstraint "infix application (INTERNAL ERROR)" _parentTree
                    (self _localInfo, Nothing)
-                   [ FolkloreConstraint, HasTrustFactor 10000.0 ]
+                   [ FolkloreConstraint, highlyTrusted ]
             (_cinfoLeftSection@_) =
                 specialConstraint "left section" _parentTree
                    (self _localInfo, Nothing)
@@ -6975,7 +6975,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                 _chunkNr
             (_cinfoType@_) =
                 resultConstraint "let expression (INTERNAL ERROR)" _thisTree
-                   [ FolkloreConstraint, HasTrustFactor 10000.0 ]
+                   [ FolkloreConstraint, highlyTrusted ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta
