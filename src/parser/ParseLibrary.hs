@@ -30,6 +30,7 @@ waitForEOF p
       ; return x
       }
 
+tycls   = name   lexCon  <?> "type class"
 tycon   = name   lexCon  <?> "type constructor"
 tyvar   = name   lexVar  <?> "type variable"
 modid   = name   lexCon  <?> "module name"
@@ -130,6 +131,7 @@ lexCOLCOL   = lexeme (LexResConSym "::")
 
 lexCLASS    = lexeme (LexKeyword "class")
 lexDATA     = lexeme (LexKeyword "data")
+lexDERIVING = lexeme (LexKeyword "deriving")
 lexTYPE     = lexeme (LexKeyword "type")
 lexLET      = lexeme (LexKeyword "let")
 lexIN       = lexeme (LexKeyword "in")

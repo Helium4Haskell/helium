@@ -1,0 +1,5 @@
+Compiling parser/DerivingError.hs
+(3,14): Syntax error: 
+    unexpected variable 'x'
+    expecting type class or ')'
+Compilation failed with 1 error

@@ -1,0 +1,5 @@
+Compiling parser/ContextError.hs
+(1,8): Syntax error: 
+    unexpected '=>'
+    expecting type, '->', next in block (based on layout), ';' or end of block (based on layout)
+Compilation failed with 1 error

@@ -75,21 +75,10 @@ module_ = addRange $
     do
         lexMODULE
         n <- modid
-        let mes = MaybeExports_Nothing -- no support for export lists; mes <- option MaybeExports_Nothing (fmap MaybeExports_Just exports)
+        let mes = MaybeExports_Nothing
         lexWHERE
         b <- body
-        return (\r ->
-                Module_Module 
-                    r 
-                    (MaybeName_Just n)
-                    -- TODO: hack so that Prelude still exports PreludePrim
-                    (if getNameName n == "Prelude" then MaybeExports_Just 
-                                            [ Export_Module noRange (Name_Identifier noRange [] "Prelude")
-                                            , Export_Module noRange (Name_Identifier noRange [] "PreludePrim")
-                                            ]
-                                       else mes) 
-                    b
-               )
+        return (\r -> Module_Module r (MaybeName_Just n) mes b)
     <|>
     do 
         b <- body
@@ -101,7 +90,7 @@ onlyImports =
     do
         lexMODULE
         modid
-        let mes = MaybeExports_Nothing -- no support for export lists; mes <- option MaybeExports_Nothing (fmap MaybeExports_Just exports)
+        let mes = MaybeExports_Nothing
         lexWHERE
         lexLBRACE <|> lexINSERTED_LBRACE
         many (do { i <- impdecl; semicolon; return i })
@@ -143,13 +132,30 @@ importsThenTopdecls explicit =
 {-
 topdecl  
     ->  impdecl  
-     |  "data" simpletype "=" constrs
+     |  "data" simpletype "=" constrs derivings?
      |  "type" simpletype "=" type
      |  infixdecl
      |  decl  
 
+derivings
+    -> "deriving" derivings'
+
+derivings'
+    -> tycon 
+     | "(" ")"
+     | "(" tycon ( "," tycon )* ")"
+
 simpletype  
     ->  tycon tyvar1 ... tyvark  (k>=0)  
+-}
+
+{-
+    | Data                            
+        range                    : Range
+        context                  : ContextItems
+        simpletype               : SimpleType
+        constructors             : Constructors
+        derivings                : Names
 -}
 
 topdecl :: HParser Declaration
@@ -159,7 +165,8 @@ topdecl = addRange (
         st <- simpleType
         lexASG
         cs <- constrs
-        return (\r -> Declaration_Data r [] st cs [])
+        ds <- option [] derivings
+        return (\r -> Declaration_Data r [] st cs ds)
     <|>
     do
         lexTYPE
@@ -174,6 +181,22 @@ topdecl = addRange (
     decl
     <?> "declaration"
 
+derivings :: HParser [Name]
+derivings = 
+    do
+        lexDERIVING
+        ds <- 
+            do
+                cls <- tycls
+                return [cls]
+            <|>
+            do
+                lexLPAREN           
+                clss <- tycls `sepBy` lexCOMMA
+                lexRPAREN
+                return clss
+        return ds            
+    
 simpleType :: HParser SimpleType
 simpleType =
     addRange (
@@ -245,118 +268,20 @@ constr = addRange $
         
 
 {-
-
-simplified import:
+Simplified import:
 impdecl -> "import" modid
-
-In comments you can still find the code for:
-impdecl     ->  "import" "qualified"? modid ( "as" modid )? impspec
-impspec     ->  "hiding"? "(" import1 "," ... "," importn ")"    (n>=0)  
-             |      (empty)
-import      ->  var  
-             |  conid ( "(" export1 ")" )?    (n>=0)
-import1     ->  ".." | cname1 "," ... "," cnamen 
 -}
 
 impdecl :: HParser ImportDeclaration
 impdecl = addRange (
     do
         lexIMPORT
-
-        {- currently no support for "qualified" -}
-        -- q <- option False (do { reserved "qualified"; return True })
         let q = False
-
         m <- modid
-     
-        {- currently no support for "as"
-        a <- option MaybeName_Nothing $
-            do 
-                reserved "as" 
-                m <- modid
-                return (MaybeName_Just m)
-        -}
         let a = MaybeName_Nothing
-        
-        let i = MaybeImportSpecification_Nothing 
-            -- currently no support for import lists
-            --   option MaybeImportSpecification_Nothing 
-            --     (fmap MaybeImportSpecification_Just impspec)
+            i = MaybeImportSpecification_Nothing 
         return $ \r -> ImportDeclaration_Import r q m a i
     ) <?> "import declaration"
-
-{-
-
-impspec :: HParser ImportSpecification
-impspec = addRange $
-    do  
-        h <- option False (do { reserved "hiding"; return True })
-        is <- parens (commas import_)
-        return $ \r -> ImportSpecification_Import r h is
-
-import_ :: HParser Import
-import_ = addRange $
-    do
-        n <- var
-        return $ \r -> Import_Variable r n
-    <|>
-    do 
-        n <- conid 
-        option (\r -> Import_TypeOrClass r n MaybeNames_Nothing) 
-                    (parens (import1 n))
-
-import1 :: Name -> HParser (Range -> Import)
-import1 n =
-    do
-        lexDotDot
-        return $ \r -> Import_TypeOrClassComplete r n
-    <|> 
-    do 
-        ns <- commas cname
-        return $ \r -> Import_TypeOrClass r n (MaybeNames_Just ns)
--}
-
-{-
-exports ->  "(" export1 "," ... "," exportn ")"    (n>=0)  
-export  ->  var  
-         |  "module" modid  
-         |  conid ( "(" export1 ")" )?    (n>=0)
-export1 -> ".." | cname1 "," ... "," cnamen 
-cname   ->  var | con  
-
-exports :: HParser Exports
-exports =
-    parens (commas export_)
-
-export_ :: HParser Export
-export_ = addRange (
-    do
-        n <- var
-        return $ \r -> Export_Variable r n
-    <|>
-    do
-        lexMODULE
-        n <- conid
-        return $ \r -> Export_Module r n
-    <|>
-    do 
-        n <- conid 
-        option (\r -> Export_TypeOrClass r n MaybeNames_Nothing) 
-                (parens (export1 n))
-    )
-export1 :: Name -> HParser (Range -> Export)
-export1 n =
-    do
-        lexDOTDOT
-        return $ \r -> Export_TypeOrClassComplete r n
-    <|>
-    do 
-        ns <- commas cname
-        return $ \r -> Export_TypeOrClass r n (MaybeNames_Just ns)
-
-cname :: HParser Name
-cname = try var <|> con
--}
     
 {-
 decls   ->  "{" decl1 ";" ... ";" decln "}"    (n>=0)  
@@ -1169,27 +1094,3 @@ numericLiteral = addRange (
         d <- lexDouble
         return $ \r -> Literal_Float r d
     ) <?> "numeric literal"
-
-{- Niet nodig, want voor class declaraties
-
-    ...
-    <|>
-    do
-        lexCLASS
-        contextItems <- option [] (do { is <- scontext; lexDARROW; return is } )
-        st <- simpleTypeOneVar
-        maybeDecls <- option MaybeDeclarations_Nothing 
-                        (fmap MaybeDeclarations_Just (do { lexWHERE; decls }))
-        return $ \r -> Declaration_Class r contextItems st maybeDecls
-
-simpleTypeOneVar :: HParser SimpleType
-simpleTypeOneVar =
-    addRange (
-        do
-            c  <- tycon
-            v  <- tyvar
-            return $ \r -> SimpleType_SimpleType r c [v]
-    ) <?> "simple type"
-
--}
-
