@@ -379,7 +379,7 @@ commaList list =
 extern float_of_string_extern "float_of_string" :: "Fz"
 
 ''$primShowFloat'' :: Float -> String
-''$primShowFloat'' x = let! x = x in stringFromPacked (stringFromFloat x 6 0)
+''$primShowFloat'' x = let! x = x in stringFromPacked (stringFromFloat x 6 'g')
 
 extern stringFromFloat "string_of_float" :: "aFII"
 
