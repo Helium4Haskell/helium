@@ -1,0 +1,10 @@
+BBL versie
+
+Maak een nieuwe versie
+Staat de logger aan?
+Werkt hi en wordt er gelogd?
+Test all
+
+thuis versie
+
+Logger uit!

@@ -1,0 +1,185 @@
+\documentclass[pdftex,11pt,a4paper,notitlepage]{article}
+
+    \usepackage[pdftex]{graphicx}
+    \usepackage[pdftex,
+                colorlinks=true,
+                urlcolor=black,
+                anchorcolor=black,
+                filecolor=black,
+                linkcolor=black,
+                menucolor=black,
+                citecolor=black,
+                pdftitle={Helium},
+                pdfauthor={Arie Middelkoop},
+                pdfsubject={Helium},
+                pdfkeywords={helium,haskell,compiler,interpretor,learn,install,manual,download,run,howto},
+                pdfpagemode=None,
+                bookmarksopen=true]{hyperref}
+
+    \pagenumbering{arabic}
+    \pagestyle{plain}
+
+    \title{Helium installation Manual}
+    \author{Arie Middelkoop}
+    \date{11 November 2002}
+
+
+
+\begin{document}
+
+    \maketitle
+
+    
+    \begin{abstract}
+        This guide explains how to install and run Helium, a compiler and
+        virtual machine package for a subset of the Haskell programming
+        language.
+    \end{abstract}
+    
+    
+    \section{Introduction}
+    
+        Helium is a subset of Haskell, which is a so called functional
+        programming language. In case you are not familiar to this concept,
+        you can check out a tutorial written by Jeroen Fokker \cite{JEROEN}.
+        There exists a few compilers and interpreters for Haskell, such as
+        Hugs and GHC\cite{HASKELL}, but the (sometimes rather cryptic) error
+        messages these tools display tend to confuse students who want to
+        learn the language. This is where Helium jumps in.
+        
+        Helium consists of two parts, a compiler and virtual machine. The
+        compiler, called helium, accepts a subset of the Haskell language. Some
+        features (type classes for example) are not (yet) implemented, though
+        most of these features are rarely used by inexperienced functional
+        programmers. On the other hand, the Helium compiler is able to display
+        more comprehensible errors and warnings, and therefore perfectly
+        suited for educational purposes.
+        
+        The compiler compiles the Helium source files (.hs files) into an
+        intermediate format (.lvm files), which can be executed by the
+        (lazy) virtual machine called lvmrun. This is similar to the java
+        programming language, where the source files are compiled with javac
+        into .class-files and executed by java virtual machine.
+        
+        The next few sections of this guide will show you how to obtain the
+        package, install en run the tools. Instructions will be given for a
+        Microsoft Windows platform, those for other supported platforms are
+        very similar.
+
+
+    \section{Obtain Helium}
+    
+        The Helium package, with compiler, virtual machine and libraries is
+        available at the following website:
+        \mbox{http://www.cs.uu.nl/$\,\tilde{}$afie/helium/}.
+
+
+    \section{Installation}
+        
+        After you downloaded the package, extract the compressed zip file to
+        a directory (folder), for example ``R:$\backslash$''.
+        A directory called ``helium'' will be created with four
+        subdirectories: ``bin'', ``lib'',  and ``demo''. The first
+        directory (``bin'') contains the compiler (``helium.exe''), 
+        the interpreter (``hi.exe'') and the
+        virtual machine (``lvmrun.exe''). These tools need libraries located
+        in the ``lib'' directory. The directory ``demo'' contains some Helium
+        samples.
+        
+        You'll probably use the compiler and interpreter a lot from an
+        arbitrary directory, for example, the directory where your source
+        files are located. In order to run these tools by just entering the
+        name at the command prompt, you have to add the ``bin'' directory
+        to the environment variable called ``PATH''. This variable contains
+        a semicolumn separated list of directories, where frequently used
+        (``MS-DOS'') executables are located (such as ``copy.exe''). There
+        are two ways to change the path, temporary and permanent. The first
+        method affects only a single command console (terminal/dosbox), the
+        latter (preferred) lasts till you remove the directory from the path.
+        
+        The first method is the easiest, just enter the following command
+        at the console:
+        \begin{quote}
+        SET PATH=\%PATH\%;R:$\backslash$helium$\backslash$bin
+        \end{quote}
+        You can view the contents of PATH by entering the following command:
+        \begin{quote}
+        PATH
+        \end{quote}
+        This should now also contain the path to the bin directory.
+        Please remember that this effect is only temporary. When you close the
+        console, you have to add the path again the next time.
+        
+        This may not be very practical. If you have enough administrative
+        privileges, you can make these changes permanent. For the windows 95
+        based operating systems (95, 98, ME) you can append the ``SET PATH'' line
+        above to the file ``C:$\backslash$autoexec.bat''. Make sure you make a
+        backup of this file and reboot the computer. For Windows NT based
+        operating systems (NT,2000,XP), you can use the the configuration program at
+        controlpanel $\rightarrow$ system $\rightarrow$ advanced $\rightarrow$
+        environmentvariables to change the PATH environment variable. Reboot the
+        computer to activate the changes.
+        
+        Though you can run the tools from any directory, you need to perform one
+        more step: telling the tools where to find the libraries. This is done by
+        setting the LVMPATH environment variable. You can do this the same way as
+        with the PATH above, at the command console with, for example:
+        \begin{quote}
+        SET LVMPATH=.;R:$\backslash$helium$\backslash$lib
+        \end{quote}
+        Notice the dot in one of the paths. This allows the tools to use libraries
+        relative to the working directory (from which you run the tools). Like with
+        the PATH above, you can make these changes permanent, by appending it to the
+        autoexec.bat file or add it to the windows NT environment list.
+        
+        To verify that the required environment changes have been made, enter the
+        following command at the console:
+        \begin{quote}
+        SET
+        \end{quote}
+        This will display a list of environment variables and their value. This list
+        should contain the LVMPATH variable and the modified PATH.
+        
+        This concludes the installation of Helium and it's time to verify that the
+        installation is successful. See the next section to compile and run a
+        Helium application in the ``demo'' directory.
+
+
+    \section{Compile and Run}
+    
+        This section will show you how to compile a Helium source file with helium and
+        how to run it with lvmrun. We will use the Calendar.hs file in the demo directory
+        as an example. Open a console and go to the demo directory. Enter the following
+        command at the console to compile the Calendar.hs file:
+        \begin{quote}
+            helium Calendar
+        \end{quote}
+        You should get the message ``compilation successful'' and a file called
+        ``Calendar.lvm'' is created. Execute this file by typing:
+        \begin{quote}
+            lvmrun Calendar
+        \end{quote}
+        After entering a year, this should display the calendar for
+        that year on your screen. Congratulations,
+        you just compiled and runned your first Helium application!
+        
+
+    \section{Conclusion}
+    
+        The Helium package should now be installed and working. If you encounter bugs,
+        report them to the helium{@}cs.uu.nl mailing-list. You could also consult the
+        helium-announce{@}cs.uu.nl mailing-list if you are interested in Helium.
+
+
+    \begin{thebibliography}{10}
+
+        \bibitem{JEROEN}
+            \mbox{Jeroen Fokker, \emph{Functioneel Programmeren}}, \mbox{http://www.cs.uu.nl/$\,\tilde{}\,$jeroen/courses/fp-nl.pdf}
+
+        \bibitem{HASKELL}
+            \mbox{Tools, compilers and libraries for Haskell}, \mbox{http://www.haskell.org}
+
+    \end{thebibliography}
+
+
+\end{document}
