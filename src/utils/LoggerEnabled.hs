@@ -25,8 +25,8 @@ import Version
 loggerHOSTNAME :: String
 loggerHOSTNAME    = {- Bastiaan     -} -- "ikaria.cs.uu.nl" 
                     {- Jurriaan     -} -- "cox.cs.uu.nl" 
-                    {- Test         -} "localhost"
-                    {- StudentenNet -} -- "bellatrix.students.cs.uu.nl" 
+                    {- Test         -} -- "localhost"
+                    {- StudentenNet -} "bellatrix.students.cs.uu.nl" 
                     
 loggerPORTNUMBER, loggerDELAY, loggerTRIES :: Int
 loggerPORTNUMBER  = 5010
