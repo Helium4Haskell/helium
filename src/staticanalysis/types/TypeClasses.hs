@@ -132,11 +132,29 @@ contextReduction' synonyms classes ps =
 -- Standard Class Environment
 
 standardClasses :: ClassEnvironment
-standardClasses = listToFM
-   [ ("Eq" ,  ([]    , rules "Eq"  ))
-   , ("Ord",  (["Eq"], rules "Ord" ))
-   , ("Show", ([],     rules "Show"))
-   , ("Num",  (["Eq","Show"], rules "Num"))
+standardClasses = listToFM $ 
+
+   -- only two instances for Num: Int and Float
+   ( "Num",  
+     ( ["Eq","Show"] -- superclasses
+     , [ (Predicate "Num" intType  , []) -- instances
+       , (Predicate "Num" floatType, [])
+       ]
+     )
+   ) :
+   -- Eq, Ord and Show all have the same instances
+   [ ("Eq" ,  ([]    , makeInstances "Eq"  ))
+   , ("Ord",  (["Eq"], makeInstances "Ord" ))
+   , ("Show", ([],     makeInstances "Show"))
    ]
-  where rules s = (Predicate s (listType (TVar 0)), [Predicate s (TVar 0)])
-                : [ (Predicate s g, []) | g <- [intType, floatType, boolType, charType]]               
+   
+   where 
+     makeInstances className = 
+        let basicTypes = [intType, floatType, boolType, charType]
+            makeTupleInstance i = 
+               ( Predicate className (tupleType [ TVar n | n <- [1..i] ])
+               , [ Predicate className (TVar n) | n <- [1..i] ]
+               ) 
+        in (Predicate className (listType (TVar 0)), [Predicate className (TVar 0)]) -- instance for Lists
+           :  [ (Predicate className tp, []) | tp <- basicTypes ]
+           ++ map makeTupleInstance (0 : [2..10])
