@@ -1,27 +1,35 @@
 module Main where
 
-import Prelude
-import System
-import IO 
-import Monad
 import Char
-import List
-import OSSpecific
+import List(isPrefixOf, isSuffixOf)
+import Monad(when)
+import IO(stdout, hFlush)
+import System(system, getEnv, getArgs, exitWith, ExitCode(..))  
+import OSSpecific(slash)
+import Directory
 
 data State = 
     State
-    { modName :: Maybe String
+    { maybeModName :: Maybe String
+    , maybeFileName :: Maybe String
     , tempDir :: String
     }
 
-prompt :: State -> String
-prompt State{ modName = Nothing} = "Prelude> "
-prompt State{ modName = Just modName} = modName ++ "> "
+header :: String
+header = unlines
+    [ " _          _ _                 "
+    , "| |        | (_)                   "
+    , "| |__   ___| |_ _   _ _ __ ___     -- Welcome to the Helium interpreter --"
+    , "| '_ \\ / _ \\ | | | | | '_ ` _ \\    ---------------------------------------"
+    , "| | | |  __/ | | |_| | | | | | |   -- Type an expression to evaluate    --"
+    , "|_| |_|\\___|_|_|\\__,_|_| |_| |_|   --    or a command (:? for a list)   --"
+    ]
 
+main :: IO ()
 main = do
     -- Find TEMP directory
     dir' <- getEnv "TEMP" `catch` (\_ -> do
-                putStrLn "Can't find environment variable TEMP"
+                putStrLn "Unable to find environment variable TEMP"
                 putStrLn "Please set this variable to a temporary directory"
                 exitWith (ExitFailure 1)
            )
@@ -29,10 +37,11 @@ main = do
         dirPlusSlash = case reverse dir of
                             '/' : _ -> dir
                             '\\' : _ -> dir
-                            _ -> dir ++ slash -- "\\" for Windows, "/" for UNIX
+                            _ -> dir ++ [slash] -- "\\" for Windows, "/" for UNIX
     
     -- State is temp dir and maybe a currently loaded module
-    let initialState = State { tempDir = dirPlusSlash, modName = Nothing }
+    let initialState = 
+         State { tempDir = dirPlusSlash, maybeModName = Nothing, maybeFileName = Nothing }
     
     -- Logo
     putStrLn header
@@ -41,7 +50,7 @@ main = do
     args <- getArgs
     stateAfterLoad <-
         if length args == 1 then
-            processSpecial ("l " ++ head args) initialState
+            cmdLoadModule (head args) initialState
         else
             return initialState
             
@@ -58,9 +67,9 @@ loop state = do
     let command = trim command'
     newState <- case command of
         (':':cmd:rest) -> 
-            processSpecial (toLower cmd : rest) state
+            processCommand (toLower cmd) (trim rest) state
         (':':_) -> do
-            putStrLn "Expecting command after :. Type :? for a list of commands"
+            putStrLn "Expecting command after colon. Type :? for help"
             return state
         expression -> do
             if null expression 
@@ -68,164 +77,288 @@ loop state = do
                 else processExpression expression state
             return state
     loop newState
+  where
+    prompt :: State -> String
+    prompt State{ maybeModName = Nothing} = "Prelude> "
+    prompt State{ maybeModName = Just modName} = modName ++ "> "
+  
+processCommand :: Char -> String -> State -> IO State
+processCommand cmd rest state = 
+    case cmd of
+        '!' -> cmdSystem       rest state
+        't' -> cmdShowType     rest state
+        'l' -> cmdLoadModule   rest state
+        'r' -> cmdReloadModule      state
+        'b' -> cmdBrowse            state
+        '?' -> cmdHelp              state
+        'q' -> do   putStrLn "[Leaving Hint]"
+                    exitWith ExitSuccess
+        _   -> do   putStrLn "Command not recognised.  Type :? for help"
+                    return state
 
-trim :: String -> String
-trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
-
-processSpecial :: String -> State -> IO State
-
-processSpecial ('!':rest) state = do
-    system (trim rest)
+------------------------
+-- Command :!
+------------------------
+        
+cmdSystem :: String -> State -> IO State
+cmdSystem command state = do       
+    system command
     return state
 
-processSpecial ('t':rest) state = 
-    let expression = trim rest
-    in if not (null expression) then do
-            writeModule expression state
-            (success, output) <- compile "-i" state
-            if success then do
-                let typeLine = filter (interpreterMain `isPrefixOf`) (map trim (lines output))
-                if null typeLine then
-                    return ()
-                  else 
-                    let typeString = 
-                              trim
-                            . dropWhile (== ':')
-                            . dropWhile isSpace
-                            . drop (length interpreterMain) 
-                            . head
-                            $ typeLine
-                    in do 
+------------------------
+-- Command :t
+------------------------
 
-                          putStrLn (expression ++ " :: " ++ typeString)
-              else
-                putStr output
+cmdShowType :: String -> State -> IO State
+cmdShowType [] state = do
+    putStrLn "ERROR: Expecting expression after :t"
+    return state
+cmdShowType expression state = do
+    let moduleContents = expressionModule expression state
+    writeInternalModule moduleContents state
+    (success, output) <- compileInternalModule "-i" state
+    if success then do
+        let typeLine = filter (interpreterMain `isPrefixOf`) (map trim (lines output))
+        if null typeLine then
+            return ()
+          else 
+            let typeString = 
+                      trim
+                    . dropWhile (== ':')
+                    . dropWhile isSpace
+                    . drop (length interpreterMain) 
+                    . head
+                    $ typeLine
+            in do 
+
+                  putStrLn (expression ++ " :: " ++ typeString)
+      else
+        putStr (removeEvidence output)
+    return state
+
+------------------------
+-- Command :l 
+------------------------
+
+cmdLoadModule :: String -> State -> IO State
+cmdLoadModule [] state = -- unload
+    return state{maybeModName = Nothing, maybeFileName = Nothing }
+cmdLoadModule fileName state = do
+    fileExists <- doesFileExist fileName
+    if fileExists 
+      then loadExistingModule fileName state
+      else do
+        let fileNameWithHS = fileName ++ ".hs"
+        fileExistsWithHS <- doesFileExist fileNameWithHS
+        if fileExistsWithHS
+          then loadExistingModule fileNameWithHS state
+          else do
+            putStr $ "ERROR - Unable to open file \"" ++ fileName ++ "\"\n"
             return state
-       else do
-            putStrLn "ERROR: Expecting expression after :t"
+
+loadExistingModule :: String -> State -> IO State
+loadExistingModule fileName state = do
+    let (path, baseName, _) = splitFilePath fileName
+    when (not (null path)) $
+        setCurrentDirectory path
+    let newState = state{ maybeModName = Just baseName, maybeFileName = Just fileName }
+        moduleContents = expressionModule "()" newState
+    writeInternalModule moduleContents newState
+    (success, output) <- compileInternalModule "" newState
+    putStr (removeEvidence output)
+    return newState    
+
+------------------------
+-- Command :r
+------------------------
+
+cmdReloadModule :: State -> IO State
+cmdReloadModule state = 
+    case maybeModName state of
+        Nothing -> return state
+        Just name -> cmdLoadModule name state
+
+------------------------
+-- Command :?
+------------------------
+
+cmdBrowse :: State -> IO State
+cmdBrowse state = 
+    case maybeModName state of
+        Nothing -> do
+            let moduleContents = "import Prelude\n"
+            writeInternalModule moduleContents state
+            (succes, output) <- compileInternalModule "-I3b" state
+            putStr (unlines (safeTail (lines output)))
             return state
-       
-processSpecial ('l':rest) state =
-    let moduleName = trim rest
-    in if null moduleName then
-            return (state { modName = Nothing })
-       else if not (isModuleName moduleName) then do
-            putStrLn "ERROR: Expecting module name after :l"
+        Just modName -> do
+            (succes, output) <- compileModule modName "-i3b" state
+            putStr (unlines (safeTail (lines output)))
             return state
-       else do
-            let newState = state { modName = Just moduleName }
-            writeModule "()" newState
-            (success, output) <- compile "" state
-            putStr output
-            return (if success then newState else state)
             
-processSpecial ('q':_) _ = 
-    exitWith ExitSuccess
-    
-processSpecial ('?':_) state = do
-    putStrLn ":l <module>      Load a module"
-    putStrLn ":t <expression>  Show type of expression"
-    putStrLn ":! <command>     Shell command"
-    putStrLn ":q               Quit"
+------------------------
+-- Command :?
+------------------------
+
+cmdHelp :: State -> IO State
+cmdHelp state = do
+    putStrLn ":l <filename>    load module"
+    putStrLn ":l               unload module"
+    putStrLn ":r               reload module"
+    putStrLn ":t <expression>  show type of expression"
+    putStrLn ":b               browse definitions in current module"
+    putStrLn ":! <command>     shell command"
+    putStrLn ":q               quit"
     return state
     
-processSpecial _ state = do
-    putStrLn "Unknown command, press :? for all commands" 
-    return state
-    
-isModuleName :: String -> Bool
-isModuleName str@(first:_) = all isAlphaNum str && isUpper first
-isModuleName _ = False
+------------------------
+-- Expression 
+------------------------
 
 processExpression :: String -> State -> IO ()
 processExpression expression state = do
-    writeModule expression state
-    (success, output) <- compile "" state
-    putStr output -- removeUpToDateLines
-    when success $ do
-        let cmd = "lvmrun " ++ tempDir state ++ internalModule ++ ".lvm"
-        system cmd
-        return ()
+    removeLVM state
+    let moduleContents = expressionModule expression state
+    writeInternalModule moduleContents state
+    (success, output) <- compileInternalModule "" state
+    putStr (removeEvidence output)
+    when success $ 
+        executeInternalModule state
 
-compile :: String -> State -> IO (Bool, String)
-compile options state = do
-    let outputFilePath = tempDir state ++ outputFileName
-    exitCode <- system ("helium " ++ options ++ " " ++ tempDir state ++ internalModule ++ ".hs" ++
-                            "> " ++ outputFilePath)
-    contents <- readFile outputFilePath
-                `catch` (\_ -> fatal ("Can't read from file " ++ show outputFilePath))
-    let newContents = contents -- removeEvidence contents state
-    case exitCode of 
-        ExitSuccess -> return (True, newContents)
-        _ -> return (False, newContents)
-        
+------------------------
+-- Interpreter module 
+------------------------
+
+outputFileName, internalModule, interpreterMain :: String
 outputFileName = "InterpreterOutput.txt"        
 internalModule = "Interpreter"
 interpreterMain = "interpreter_main"
 
-writeModule :: String -> State -> IO ()
-writeModule expression state = do
-    let hiFile = tempDir state ++ internalModule ++ ".hs"
-    writeFile 
-        hiFile
-        (makeModule expression state)
-            `catch` (\_ -> fatal ("Can't write to file " ++ show hiFile))
+internalModulePath :: State -> String
+internalModulePath state = tempDir state ++ internalModule
 
+writeInternalModule :: String -> State -> IO ()
+writeInternalModule contents state =
+    writeModule (internalModulePath state) contents
+
+writeModule :: String -> String -> IO ()
+writeModule modulePath contents = do
+    let hsFile = modulePath ++ ".hs"
+    writeFile hsFile contents
+        `catch` (\_ -> fatal ("Unable to write to file \"" ++ hsFile ++ "\""))
+
+compileInternalModule :: String -> State -> IO (Bool, String)
+compileInternalModule options state =
+    compileModule (internalModulePath state) options state
+
+compileModule :: String -> String -> State -> IO (Bool, String)
+compileModule fileName options state = do
+    let outputFilePath = tempDir state ++ outputFileName
+    exitCode <- system ("helium " ++ options ++ " " ++ fileName ++ "> " ++ outputFilePath)
+    contents <- readFile outputFilePath
+                `catch` (\_ -> fatal ("Unable to read from file \"" ++ outputFilePath ++ "\""))
+    return (exitCode == ExitSuccess, contents)
+
+executeInternalModule :: State -> IO ()
+executeInternalModule state =
+    executeModule (internalModulePath state)
+
+executeModule :: String -> IO ()
+executeModule fileName = do
+    system ("lvmrun " ++ fileName)
+    return ()
+        
+removeLVM :: State -> IO ()
+removeLVM state = do
+    let lvmFile = tempDir state ++ internalModule ++ ".lvm"
+    lvmExist <- doesFileExist lvmFile
+    when lvmExist $ removeFile lvmFile
+    
+expressionModule :: String -> State -> String
+expressionModule expression state =
+    unlines
+    (  case maybeModName state of 
+        Nothing -> []
+        Just name -> [ "import " ++ name ]
+    ++ [ interpreterMain ++ " = " ++ expression ]
+    )
+
+------------------------
+-- Remove evidence 
+------------------------
+
+-- remove evidence that there is an Interpreter module 
+-- that is compiled each time you type an expression
+-- or ask for a type
+
+removeEvidence :: String -> String
+removeEvidence = 
+    unlines . firstState . lines
+  where
+    firstState :: [String] -> [String]
+    firstState [] = []
+    firstState (line:lines)
+        | "Compiling" `isPrefixOf` line && 
+                (internalModule ++ ".hs") `isSuffixOf` line =
+            interpreterState [] lines
+        | "Compiling" `isPrefixOf` line =
+            line : otherModuleState lines
+        | "is up to date" `isSuffixOf` line =
+            firstState lines
+        | otherwise =
+            line : firstState lines
+    
+    interpreterState soFar [] = soFar
+    interpreterState soFar (line:lines) 
+        | "Compilation successful" `isPrefixOf` line =
+            firstState lines
+        | "Compilation" `isPrefixOf` line = 
+            map removePositions soFar ++ firstState lines
+        | otherwise =
+            interpreterState (soFar ++ [line]) lines
+
+    otherModuleState [] = []
+    otherModuleState (line:lines)  
+        | "Compilation" `isPrefixOf` line = 
+            line : firstState lines
+        | otherwise = 
+            line : otherModuleState lines
+    
+    removePositions line = 
+        let (upToColon, rest) = span (/= ':') line
+        in if not (all isSpace upToColon) &&
+                all (\c -> isDigit c || c `elem` "(), ") upToColon then
+            "<expression>" ++ rest
+           else 
+            line
+
+------------------------
+-- Utility functions 
+------------------------
+
+fatal :: String -> IO a
 fatal msg = do    
     putStrLn msg
     putStrLn "Make sure that the environment variable TEMP points to a valid directory"
     exitWith (ExitFailure 1)
 
-makeModule :: String -> State -> String
-makeModule expression state =
-    unlines
-    (  {- [ "module " ++ internalModule ++ " where" ]
-    ++  -}
-       (case modName state of Nothing -> []; Just modName -> [ "import " ++ modName ])
-    ++ [ interpreterMain ++ " = " ++ expression ]
-    )
-
-header :: String
-header = unlines
-    [ " _          _ _                 "
-    , "| |        | (_)                   "
-    , "| |__   ___| |_ _   _ _ __ ___     -- Welcome to the Helium interpreter --"
-    , "| '_ \\ / _ \\ | | | | | '_ ` _ \\    ---------------------------------------"
-    , "| | | |  __/ | | |_| | | | | | |   -- Type an expression to evaluate    --"
-    , "|_| |_|\\___|_|_|\\__,_|_| |_| |_|   --    or a command (:? for a list)   --"
-    ]
-
-{-
-removeEvidence :: String -> State -> String
-removeEvidence output state = 
-    let 
-        outputLines = lines output
-        (linesBefore, rest') = 
-            span (not . (("Compiling " ++ tempDir state) `isPrefixOf`)) outputLines
-        rest = safeTail rest'
-        (linesBetween, result') =  
-            span (not . ("Compilation" `isPrefixOf`)) rest
-        result = safeTail result'
-    in
-        unlines (linesBefore ++ 
-                 filter 
-                    (\line -> not (line `contains` interpreterMain) || interpreterMain `isPrefixOf` line) 
-                    linesBetween ++ 
-                 result)
-
-removeUpToDateLines :: String -> String
-removeUpToDateLines =
-      unlines
-    . filter (not . ("is up to date" `isSuffixOf`))
-    . lines
--}
-
-safeTail :: [a] -> [a]
-safeTail [] = []
-safeTail (_:tl) = tl
-
 contains :: Eq a => [a] -> [a] -> Bool
 _  `contains` [] = True
 [] `contains` _  = False
-(large@(_:tail)) `contains` small = 
-    small `isPrefixOf` large || tail `contains` small 
+(large@(_:rest)) `contains` small = 
+    small `isPrefixOf` large || rest `contains` small 
+
+safeTail :: [a] -> [a]
+safeTail (x:xs) = xs
+safeTail [] = []
+
+trim :: String -> String
+trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
+
+splitFilePath :: String -> (String, String, String)
+splitFilePath filePath = 
+    let slashes = "\\/"
+        (revFileName, revPath) = span (`notElem` slashes) (reverse filePath)
+        (revExt, revBaseName)  = span (/= '.') revFileName
+    in (reverse revPath, reverse (dropWhile (== '.') revBaseName), reverse revExt)
+    
