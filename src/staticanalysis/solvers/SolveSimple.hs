@@ -1,4 +1,4 @@
-module SolveSimple (Simple, evalSimple, solveSimple) where
+module SolveSimple where -- (Simple, evalSimple, solveSimple) where
 
 import FixpointSolveState
 import Types
@@ -13,8 +13,8 @@ type Simple info = Fix info FiniteMapSubstitution {- hack -} Maybe
 evalSimple :: Simple info result -> result
 evalSimple x = fst . fromJust . runFix x . extend $ emptySubst
    
-solveSimple :: ConstraintInfo info => SolverOptions -> Constraints (Simple info) -> Simple info result -> result
-solveSimple = solveConstraints evalSimple
+--solveSimple :: ConstraintInfo info => () -> Constraints (Simple info) -> Simple info result -> result
+--solveSimple = solveConstraints evalSimple
  
 instance Show FiniteMapSubstitution where
    show _ = "<FiniteMapSubstitution>"

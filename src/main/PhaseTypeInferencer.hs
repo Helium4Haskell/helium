@@ -34,11 +34,11 @@ phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv
         inferredTypes = addListToFM localTypes 
                 [ (NameWithRange name, ts) | (name, ts) <- fmToList (typeEnvironment finalEnv) ]
     
-    putStrLn (unlines ("" : "toplevelTypes: " : map (\(n,ts) -> show n ++ " :: "++show (getQualifiedType ts)) (fmToList toplevelTypes)))
-    putStrLn (unlines ("" : "localTypes:" : map show (fmToList localTypes)))
-    putStrLn (unlines ("" : "overloadedVars:"   : map (\(n,(m,t)) -> show n ++ " in scope of " ++ show m ++" has type " ++ show t) (fmToList overloadedVars)))
+    when (DumpTypeDebug `elem` options) debugTypes    
     
-    when (DumpTypeDebug `elem` options) debugTypes
+    putStrLn (unlines ("" : "toplevelTypes: " : map (\(n,ts) -> show (NameWithRange n) ++ " :: "++show (getQualifiedType ts)) (fmToList toplevelTypes)))
+    putStrLn (unlines ("" : "localTypes:" : map show (fmToList localTypes)))
+    putStrLn (unlines ("" : "overloadedVars:"   : map (\(n,(m,t)) -> show n ++ " in scope of " ++ show m ++" has type " ++ show t) (fmToList overloadedVars)))        
     
     when (not (null typeErrors)) $ do
         when (DumpInformationForAllModules `elem` options) $
@@ -72,19 +72,3 @@ adjustTE fm = mapFM f fm
              | show name == "==" = generalize [] [Predicate "Eq"   (TVar 0)] (TVar 0 .->. TVar 0 .->. boolType)
              | show name == "<"  = generalize [] [Predicate "Ord"  (TVar 0)] (TVar 0 .->. TVar 0 .->. boolType)
              | otherwise         = old
-{-
-let op (s,ts) fm = addToFM fm (myNameFromString s) ts 
-              in foldr op fm list
-       
-  where
-   list = [ ("showString", generalize [] [Predicate "Show" (TVar 0)] (TVar 0 .->. stringType))
-          , 
-            ("=="        , generalize [] [Predicate "Eq"   (TVar 0)] (TVar 0 .->. TVar 0 .->. boolType))
-          , ("<"         , generalize [] [Predicate "Ord"  (TVar 0)] (TVar 0 .->. TVar 0 .->. boolType))
-          ]
-          
-        
-myNameFromString s = Name_Operator
-                    (Range_Range (Position_Position "Bla" 0 0) 
-                                 (Position_Position "Prelude" 0 0)) 
-                     [] s -} 

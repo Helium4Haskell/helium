@@ -888,24 +888,20 @@ SEM Module
 ATTR Body [ | | toplevelTypes : TypeEnvironment ] 
   
 SEM Body
-  | Body   lhs . toplevelTypes = convertTop @lhs.substitution @lhs.predicates @notypedefs `plusFM` @declarations.typeSignatures
-  
+  | Body   lhs . toplevelTypes = convertTop @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups
+ 
 SEM MaybeDeclarations
-  | Just   lhs . localTypes = convertLocal @lhs.substitution @lhs.predicates @notypedefs
-                              `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM @declarations.typeSignatures
+  | Just   lhs . localTypes = makeInferredTypeEnvironment @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups
                               `plusFM` @declarations.localTypes 
 SEM Expression                    
-  | Let    lhs . localTypes = convertLocal @lhs.substitution @lhs.predicates @notypedefs
-                              `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM  @declarations.typeSignatures 
+  | Let    lhs . localTypes = makeInferredTypeEnvironment @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups
                               `plusFM` @declarations.localTypes 
 SEM Statement                  
-  | Let    lhs . localTypes = convertLocal @lhs.substitution @lhs.predicates @notypedefs
-                              `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM  @declarations.typeSignatures 
+  | Let    lhs . localTypes = makeInferredTypeEnvironment @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups
                               `plusFM` @declarations.localTypes 
 SEM Qualifier                    
-  | Let    lhs . localTypes = convertLocal @lhs.substitution @lhs.predicates @notypedefs 
-                              `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM  @declarations.typeSignatures 
-                              `plusFM` @declarations.localTypes 
+  | Let    lhs . localTypes = makeInferredTypeEnvironment @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups
+                              `plusFM` @declarations.localTypes  
  
 ----
 
@@ -942,19 +938,23 @@ SEM Module
 type LocalTypes          = FiniteMap NameWithRange TpScheme
 type OverloadedVariables = FiniteMap NameWithRange (NameWithRange, QType)
 
-convertTop :: WrappedSubstitution -> Predicates -> [(Name,Tps,Tp,Bool)] -> TypeEnvironment
-convertTop sub predicates = listToFM . map f 
-   where f (name,monos,tp,_) = 
-            let monos' = ftv (sub |-> monos)
-                tp'    = sub |-> tp 
-            in (name, generalize monos' predicates tp')
- 
-convertLocal :: WrappedSubstitution -> Predicates -> [(Name,Tps,Tp,Bool)] -> LocalTypes
-convertLocal sub predicates = listToFM . map f 
-   where f (name,monos,tp,_) = 
-            let monos' = ftv (sub |-> monos)
-                tp'    = sub |-> tp 
-            in (NameWithRange name, generalize monos' predicates tp')
+convertTop :: Tps -> WrappedSubstitution -> Predicates -> BindingGroups -> TypeEnvironment
+convertTop monos substitution predicates groups = 
+   let (environment, _, _) = concatBindingGroups groups
+       monos' = ftv (substitution |-> monos)      
+   in listToFM [ (name, generalize monos' predicates tp')
+      | (name, tp) <- fmToList environment 
+      , let  tp' = substitution |-> tp
+      ]
+
+makeInferredTypeEnvironment :: Tps -> WrappedSubstitution -> Predicates -> BindingGroups -> LocalTypes
+makeInferredTypeEnvironment monos substitution predicates groups = 
+   let (environment, _, _) = concatBindingGroups groups
+       monos' = ftv (substitution |-> monos)      
+   in listToFM [ (NameWithRange name, generalize monos' predicates tp')
+               | (name, tp) <- fmToList environment 
+               , let  tp' = substitution |-> tp
+               ]
             
 equalNames :: Name -> Name -> Bool
 equalNames n1 n2 = n1 == n2 && (getNameRange n1) `cmp` (getNameRange n2)            
