@@ -1,7 +1,7 @@
 module Main where
 
 import Compile
-import Parser(parseModule)
+import Parser(parseOnlyImports)
 import UHA_Utils(stringFromImportDeclaration)
 import UHA_Syntax(Module(..), Body(..))
 
@@ -64,7 +64,7 @@ make fullName searchPath chain options doneRef =
         case lookup fullName done of 
           Just isRecompiled -> return isRecompiled
           Nothing -> do
-            imports <- getImports options fullName
+            imports <- parseOnlyImports fullName
 
             -- If this module imports a module earlier in the chain, there is a cycle
             case circularityCheck imports chain of
@@ -154,21 +154,7 @@ resolve path name =
            Just fullName -> return (Just fullName)
            Nothing       -> searchPathMaybe path ".lvm" name
 
--- getImports returns the names of all
--- modules imported in the given module
-getImports :: [Option] -> String -> IO [String]
-getImports options fullName =
-    do
-        parseResult <- parseModule fullName
-        case parseResult of 
-            Left errorString -> do
-                unless (NoLogging `elem` options) $ logger "P" Nothing
-                putStrLn errorString
-                exitWith (ExitFailure 1)
-            Right (Module_Module _ _ _ (Body_Body _ ids _)) ->
-                return (map stringFromImportDeclaration ids)
-
--- upToDateCheck returns true if the .lvm is newer than the .hs
+-- | upToDateCheck returns true if the .lvm is newer than the .hs
 upToDateCheck :: String -> IO Bool
 upToDateCheck basePath = do
     lvmExists <- doesFileExist (basePath ++ ".lvm")

@@ -8,6 +8,7 @@
 
 module HaskellLexer( HParser     -- a "Haskell" parser
                    , runHParser  -- takes care of start whitespace and eof
+                   , runHParserNoEOF -- same but doesn't wait for eof
 
                    -- literals
                    , naturalOrFloat, float, natural 
@@ -40,6 +41,10 @@ type HParser a  = LayoutParser Char SourcePos a
 runHParser :: HParser a -> FilePath -> String -> Either ParseError a
 runHParser p fname input
   = runLayoutParser (toplevel p) (newPos "" 0 0) fname input -- AFIE
+
+runHParserNoEOF :: HParser a -> FilePath -> String -> Either ParseError a -- AFIE
+runHParserNoEOF p fname input
+  = runLayoutParser (do { whiteSpace; p }) (newPos "" 0 0) fname input 
 
 -----------------------------------------------------------
 -- Reserved identifiers and operators

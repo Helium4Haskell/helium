@@ -1,4 +1,4 @@
-module Parser(parseModule) where
+module Parser(parseModule, parseOnlyImports) where
 
 {-
 Verschillen:
@@ -43,16 +43,19 @@ import Messages(showPositions)
 test p s = runHParser p "" s
 
 parseModule :: String -> IO (Either String Module)
-parseModule fullName = parseFile module_ fullName
+parseModule fullName = parseFile module_ fullName True
 
-{-
-parseOnlyImports :: String -> IO [ImportDeclaration]
-parseOnlyImports fullName = parseFile onlyImports fullName
--}
+parseOnlyImports :: String -> IO [String]
+parseOnlyImports fullName = do 
+    result <- parseFile onlyImports fullName False
+    case result of
+        Left err -> return []
+        Right imports ->  
+            return ( map stringFromImportDeclaration imports )
 
 -- Parse file
-parseFile :: HParser a -> String -> IO (Either String a)
-parseFile parser fullName =
+parseFile :: HParser a -> String -> Bool -> IO (Either String a)
+parseFile parser fullName withEOF =
     do
         contents <- catch (readFile fullName)
             (\ioError -> 
@@ -60,7 +63,7 @@ parseFile parser fullName =
                            ++ " (" ++ show ioError ++ ")"
                 in throw message)
 
-        case runHParser parser fullName contents of
+        case (if withEOF then runHParser else runHParserNoEOF) parser fullName contents of
             Left parseError -> do
                 return (Left ("Parse error: " ++ show parseError))
             Right module_ ->
@@ -97,6 +100,8 @@ onlyImports =
         option MaybeExports_Nothing (fmap MaybeExports_Just exports)
         reserved "where"
         option () (special "{")
+        many (do { i <- impdecl; option () (special ";"); return i })
+    <|>
         many (do { i <- impdecl; option () (special ";"); return i })
         
 {-

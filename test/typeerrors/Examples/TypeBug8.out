@@ -1,0 +1,10 @@
+Compiling typeerrors/Examples/TypeBug8.hs
+
+(23,19): Type error in application
+*** Expression     : foldr ($) fs x
+*** Term           : foldr
+*** Type           : (a        -> b -> b) -> b        -> [a] -> b
+*** Does not match : ((c -> d) -> c -> d) -> [e -> e] -> e   -> e
+*** Because        : unification would give infinite type
+
+Compilation failed with 1 type error

@@ -1,0 +1,14 @@
+Compiling typeerrors/Examples/TypeBug9.hs
+
+(18,16): Type error in infix application
+*** Expression     : h <$> many (j <$> pe <*> po) <*> pe
+*** Term           : <*>
+*** Type           : Parser a (b                      -> c       )
+                     -> Parser a b
+                     -> Parser a c
+*** Does not match : Parser d ([[e -> e] -> [e -> e]] -> [e -> e])
+                     -> Parser d e
+                     -> Parser d e
+*** Because        : unification would give infinite type
+
+Compilation failed with 1 type error

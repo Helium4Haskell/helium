@@ -34,7 +34,6 @@ COMPILER
 ! parse error tests (zie Thompson)
 ! installer voor Windows
 ! environment vars weg
-* bij chasing niet de hele module parsen
 * read functies voor andere types dan Int
 * catchen van exception van writeFile/openFileEx etc.
 * unexpected '\n' als je een string niet beeindigd. kan dat newline worden?
@@ -56,6 +55,7 @@ COMPILER
 
 ---- DONE ----================================================================================
 
+* bij chasing niet de hele module parsen
 * operator definitie in pp haakjes er omheen
 ! User manual helium A4
 ! User manual lvmrun A5
