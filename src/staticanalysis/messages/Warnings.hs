@@ -17,6 +17,7 @@ import UHA_Utils
 import Top.Types
 import Messages
 import Utils        (internalError)
+import Data.List    (intersperse)
 import qualified UHA_Pretty as PP (sem_Pattern, sem_LeftHandSide, sem_Expression)
 
 -------------------------------------------------------------
@@ -91,11 +92,10 @@ showWarning warning = case warning of
       )
 
    ReduceContext range predicates reduced ->
-      ( MessageString ( "The context " ++ show (show predicates) ++
-                        " has superfluous predicates. You may change it into " ++
-			show (show reduced) ++ ".")
-      , []
-      )
+      let showPredicates ps = "(" ++ concat (intersperse ", " (map show ps)) ++ ")"  
+      in ( MessageString ( "The context " ++ showPredicates predicates ++ " has superfluous predicates." )
+         , [ MessageString ("You may change it into " ++ showPredicates reduced ++ ".") ]
+         )
 
    
    MissingPatterns _ Nothing tp pss place sym ->

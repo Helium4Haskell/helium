@@ -11,7 +11,7 @@
 module ListOfHeuristics (listOfHeuristics) where
 
 import Args (Option(..))
-import ConstraintInfo -- (ConstraintInfo)
+import ConstraintInfo
 import HeuristicsInfo () -- instances
 import Top.Types
 import Top.TypeGraph.Heuristics
@@ -27,13 +27,13 @@ import Top.TypeGraph.Paths
 import Data.Maybe
 import Top.TypeGraph.Basics
 
-listOfHeuristics :: [Option] -> Siblings -> [Heuristic ConstraintInfo]
-listOfHeuristics options siblings =
+listOfHeuristics :: [Option] -> Siblings -> Path (EdgeId, ConstraintInfo) -> [Heuristic ConstraintInfo]
+listOfHeuristics options siblings path =
    let is = [ makeEdgeNr i | SelectConstraintNumber i <- options ]
    in [ selectConstraintNumbers is | not (null is) ]
    ++
    [ highlyTrustedFilter
-   , highParticipation 0.95
+   , highParticipation 0.95 path
    , phaseFilter
    ] ++
    [ Heuristic (Voting (
@@ -43,7 +43,7 @@ listOfHeuristics options siblings =
         , tupleEdge
         , fbHasTooManyArguments
         , variableFunction
-        , constraintFromUser
+        , constraintFromUser path
         , unaryMinus (Overloading `elem` options)
         ] ++
         [ similarNegation | Overloading `notElem` options ] ++
@@ -74,10 +74,9 @@ phaseFilter = Heuristic (
    let f (_, info) = return (phaseOfConstraint info)
    in maximalEdgeFilter "Highest phase number" f)
 
-constraintFromUser :: HasTypeGraph m ConstraintInfo => Selector m ConstraintInfo
-constraintFromUser = 
-   SelectorPath (\path -> 
-      SelectorList ("Constraints from .type file", helper path))
+constraintFromUser :: HasTypeGraph m ConstraintInfo => Path (EdgeId, ConstraintInfo) -> Selector m ConstraintInfo
+constraintFromUser path = 
+   SelectorList ("Constraints from .type file", helper path)
 
  where
    helper path edges = 

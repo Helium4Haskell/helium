@@ -22,7 +22,8 @@ import Top.Solvers.SolveConstraints
 import Top.States.States
 import Top.Solvers.SimpleSolver (runSimple)
 import Top.Solvers.GreedySolver (runGreedy)
-import Top.TypeGraph.TypeGraphSolver (runTypeGraphPlusDoAtEnd)
+import Top.TypeGraph.TypeGraphSolver (runTypeGraphPlusDoFirst)
+import Top.TypeGraph.TypeGraphMonad (setPathHeuristics)
 import Top.ComposedSolvers.Tree (Tree, spreadTree, phaseTree, chunkTree, flattenTree)
 import Top.ComposedSolvers.TreeWalk
 import Top.ComposedSolvers.CombinationSolver ((|>>|))
@@ -79,7 +80,7 @@ selectConstraintSolver options importenv classEnv synonyms unique constraintTree
       
        typegraphSolver =
           let heuristics = listOfHeuristics options siblings
-          in runTypeGraphPlusDoAtEnd heuristics (return ())
+          in runTypeGraphPlusDoFirst (setPathHeuristics heuristics)
 
        combinedSolver =
           (if SignatureWarnings `elem` options then warnForTooSpecificSignatures runGreedy else runGreedy)   
