@@ -47,7 +47,7 @@ siblingFunctions siblings =
                             return Nothing
       
                          Just tp ->                             
-                            case filter (unifiable synonyms tp . unsafeInstantiate . snd) functions of
+                            case filter (unifiable synonyms tp . unqualify . snd . instantiate 123456789 . snd) functions of
                                [(s, scheme)] -> let hint = fixHint ("use "++s++" instead")
                                                 in return $ Just
                                                       (10,"Sibling "++show s++" instead of "++show name, [edge], [hint info])

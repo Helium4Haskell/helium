@@ -382,7 +382,7 @@ SEM Expression
        loc        . constraints = @newcon .>. Node [ @expression.constraints ]
                   . beta        = TVar @lhs.betaUnique
                   . newcon      = -- search for the type of 'negate' in the import envionment: otherwise use the default type.
-                                  let standard = generalize [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
+                                  let standard = makeScheme [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
                                       tpscheme = lookupWithDefaultFM (typeEnvironment @lhs.importEnvironment) standard (nameFromString "negate")
                                   in [ (@expression.beta .->. @beta .::. tpscheme) @cinfo]
 
@@ -533,7 +533,7 @@ SEM Pattern
           . beta        = TVar @lhs.betaUnique
           . newcon      = -- The parser only accepts a literal after '-' in a Pattern
                           -- search for the type of 'negate' in the import envionment: otherwise use the default type.
-                          let standard = generalize [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
+                          let standard = makeScheme [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
                               tpscheme = lookupWithDefaultFM (typeEnvironment @lhs.importEnvironment) standard (nameFromString "negate")
                           in [ (@literal.literalType .->. @beta .::. tpscheme) @cinfo]
           

@@ -31,7 +31,7 @@ ATTR Body [ |  | toplevelTypes : TypeEnvironment ]
 SEM Body
   | Body   lhs . toplevelTypes = let (environment, _, _) = concatBindingGroups @declarations.bindingGroups
                                      monos' = ftv (@lhs.substitution |-> eltsFM @lhs.monos)
-                                     make _ = generalize monos' @lhs.predicates . (@lhs.substitution |->)
+                                     make _ = makeScheme monos' @lhs.predicates . (@lhs.substitution |->)
                                  in mapFM make environment
  
 ---------------------------------------------------------
@@ -77,7 +77,7 @@ getInferredTypes :: Substitution substitution => Monos -> substitution -> Predic
 getInferredTypes monos substitution predicates groups = 
    let (environment, _, _) = concatBindingGroups groups
        monos' = ftv (substitution |-> (eltsFM monos))
-   in [ (NameWithRange name, generalize monos' predicates tp')
+   in [ (NameWithRange name, makeScheme monos' predicates tp')
       | (name, tp) <- fmToList environment 
       , let  tp' = substitution |-> tp
       ]
@@ -111,7 +111,7 @@ SEM Expression
            lhs . collectErrors      = @errors ++ @expression.collectErrors
                . collectWarnings    = @warnings ++ @expression.collectWarnings
 
-  | Typed  loc . errors             = let scheme = generalize monos' @lhs.predicates tp'
+  | Typed  loc . errors             = let scheme = makeScheme monos' @lhs.predicates tp'
                                           monos' = ftv (@lhs.substitution |-> eltsFM @lhs.monos)
                                           tp'    = @lhs.substitution |-> @expression.beta
                                           info   = (self . attribute) @expression.infoTree

@@ -49,7 +49,7 @@ insertedMain toplevelTypes =
                             (showFunctionOfType True (makeTypeFromTp tp) `app_` 
                                 var name)
                     where                        
-                        tp = unsafeInstantiate tpScheme
+                        tp = unqualify (snd (instantiate 123456789 tpScheme))
     where
         unsafePIO = var "primUnsafePerformIO"    
                 

@@ -15,8 +15,8 @@ import PPrint
 
 qualifiedTypesToAlignedDocs :: [QType] -> [PPrint.Doc]
 qualifiedTypesToAlignedDocs qtps = 
-   let (contexts, types) = unzip [ (c, tp) | (c :=> tp) <- qtps ]
-       docContexts = map text . sameLength . map showContext $ contexts
+   let (contexts, types) = unzip (map split qtps)
+       docContexts = map text . sameLength . map showQualifiers $ contexts
        docArrows   = map (\xs -> if null xs then text "  " else text "=>") contexts
        docTypes    = typesToAlignedDocs types
    in if null (concat contexts)

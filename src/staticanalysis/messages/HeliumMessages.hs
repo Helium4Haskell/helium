@@ -105,15 +105,15 @@ renderTypesInRight width table =
         -> case (maybeQType r1, maybeQType r2) of
               (Just tp1, Just tp2) -> let [doc1, doc2] = qualifiedTypesToAlignedDocs [tp1, tp2]
                                           render = flip PPrint.displayS [] . PPrint.renderPretty 1.0 width
-                                      in (l1, MessageType ([] :=> TCon (render doc1)))
-                                       : (l2, MessageType ([] :=> TCon (render doc2)))
+                                      in (l1, MessageType ([] .=>. TCon (render doc1)))
+                                       : (l2, MessageType ([] .=>. TCon (render doc2)))
                                        : renderTypesInRight width rest
               _                    -> (l1, r1) : renderTypesInRight width ((l2, r2) : rest)
       _ -> table
 
   where maybeQType :: MessageBlock -> Maybe QType
         maybeQType (MessageType qtype   ) = Just qtype
-        maybeQType (MessageTypeScheme ts) = Just (getQualifiedType ts) -- unsafe?
+        maybeQType (MessageTypeScheme ts) = Just (unquantify ts) -- unsafe?
         maybeQType _                      = Nothing
 
 -- make sure that a string does not exceed a certain width.
@@ -188,5 +188,5 @@ prepareTypesAndTypeSchemes messageLine = newMessageLine
            MessageCompose mbs   -> let (r, i, ns) = f_MessageBlocks unique mbs
                                    in (MessageCompose r, i, ns)
            MessageTypeScheme ts -> let (unique', ps, its) = instantiateWithNameMap unique ts
-                                   in (MessageType (ps :=> its), unique', constantsInType its)
+                                   in (MessageType (ps .=>. its), unique', constantsInType its)
            _                    -> (messageBlock, unique, [])

@@ -214,7 +214,7 @@ makeTypeErrorForTerm (isInfixApplication,isPatternApplication) argumentNumber te
                                  _        -> internalError "TypeGraphConstraintInfo.hs"
                                                            "makeTypeErrorForTerm"
                                                            "unexpected empty list"
-             functionType = either (\tp -> MessageType ([] :=> tp)) MessageTypeScheme ftype
+             functionType = either (\tp -> MessageType ([] .=>. tp)) MessageTypeScheme ftype
              subterm
                 | isInfixApplication = if argumentNumber == 0 then "left operand" else "right operand"
                 | otherwise          = ordinal False (argumentNumber + 1) ++ " argument"

@@ -42,7 +42,7 @@ makeTpSchemeFromType uhaType =
    let context = predicatesFromContext nameMap uhaType
        nameMap = makeNameMap (namesInType uhaType)
        tp = makeTpFromType nameMap uhaType
-   in TpScheme (ftv tp) [ (i,getNameName n) | (n,TVar i) <- nameMap] (context :=> tp)
+   in Quantification (ftv tp, [ (i,getNameName n) | (n,TVar i) <- nameMap], context .=>. tp)
 
 predicatesFromContext :: [(Name,Tp)] -> Type -> Predicates
 predicatesFromContext nameMap (Type_Qualified _ is _) =

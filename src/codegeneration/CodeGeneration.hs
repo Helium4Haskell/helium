@@ -76,7 +76,7 @@ insertedMain toplevelTypes =
                             (showFunctionOfType True (makeTypeFromTp tp) `app_` 
                                 var name)
                     where                        
-                        tp = unsafeInstantiate tpScheme
+                        tp = unqualify (snd (instantiate 123456789 tpScheme))
     where
         unsafePIO = var "primUnsafePerformIO"    
                 
@@ -972,7 +972,9 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
                 let
                     (t1,[t2])   = convertFromSimpleTypeAndTypes _simpletypeIself [_typeIself]
                     allTypeVars = ftv [t1,t2]
-                    (ts1,ts2)   = (TpScheme allTypeVars [] ([] :=> t1),TpScheme allTypeVars [] ([] :=> t2))
+                    (ts1,ts2)   = ( Quantification (allTypeVars, [], [] .=>. t1) :: TpScheme
+                                  , Quantification (allTypeVars, [], [] .=>. t2) :: TpScheme
+                                  )
                 in
                 [ Core.DeclCustom
                     { Core.declName    = idFromString (getNameName _simpletypeIname)

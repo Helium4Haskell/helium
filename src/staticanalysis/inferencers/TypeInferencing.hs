@@ -185,7 +185,7 @@ heliumTypeGraphHeuristics siblings =
 getRequiredDictionaries :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
 getRequiredDictionaries synonyms useType defType = 
    let i  = nextFTV useType
-       (_, instantiatedPreds, instantiatedType) = instantiate i defType
+       (instantiatedPreds, instantiatedType) = split (snd (instantiate i defType))
    in -- one-way unification is necessary!
       case mguWithTypeSynonyms synonyms instantiatedType useType of
          Left _ -> internalError "TypeInferenceOverloading.ag" "getRequiredDictionaries" "no unification"
@@ -209,7 +209,7 @@ getInferredTypes :: Substitution substitution => Monos -> substitution -> Predic
 getInferredTypes monos substitution predicates groups = 
    let (environment, _, _) = concatBindingGroups groups
        monos' = ftv (substitution |-> (eltsFM monos))
-   in [ (NameWithRange name, generalize monos' predicates tp')
+   in [ (NameWithRange name, makeScheme monos' predicates tp')
       | (name, tp) <- fmToList environment 
       , let  tp' = substitution |-> tp
       ]
@@ -532,11 +532,8 @@ nrOfArguments env con | isTupleConstructor con = length con - 1
 
 -- convert constructor to fit in an Env
 rearrange :: (Name, TpScheme) -> (Tp, (Name, [Tp]))
-rearrange (name, tpscheme) = let (args, res) = functionSpine $ unqualify $ getQualifiedType tpscheme
+rearrange (name, tpscheme) = let (args, res) = functionSpine $ unqualify $ unquantify tpscheme
                              in (res, (name, args))
-  where
-    unqualify :: QType -> Tp
-    unqualify (_ :=> tp) = tp
 
 -- get the constructors of a given type out of an Env
 -- tuples ar not in the Env so they require special treatment
@@ -1420,7 +1417,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             (_lhsOtoplevelTypes@_) =
                 let (environment, _, _) = concatBindingGroups _declarationsIbindingGroups
                     monos' = ftv (_lhsIsubstitution |-> eltsFM _lhsImonos)
-                    make _ = generalize monos' _lhsIpredicates . (_lhsIsubstitution |->)
+                    make _ = makeScheme monos' _lhsIpredicates . (_lhsIsubstitution |->)
                 in mapFM make environment
             (_localTypes@_) =
                 getInferredTypes _lhsImonos _lhsIsubstitution _lhsIpredicates _declarationsIbindingGroups
@@ -2218,8 +2215,8 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
             (_bindingsOavailablePredicates@_) =
                 _declPredicates ++ _lhsIavailablePredicates
             (_declPredicates@_) =
-                let scheme = lookupWithDefaultFM _lhsIinferredTypes err (NameWithRange _bindingsIname)
-                    (predicates :=> _) = getQualifiedType scheme
+                let scheme     = lookupWithDefaultFM _lhsIinferredTypes err (NameWithRange _bindingsIname)
+                    predicates = qualifiers (unquantify scheme)
                     err = internalError "TypeInferenceOverloading.ag" "n/a" "could not find type for function binding"
                 in expandPredicates _lhsIorderedTypeSynonyms predicates
             (_bindingsOcurrentChunk@_) =
@@ -2608,8 +2605,8 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             (_declPredicates@_) =
                 case _patternIself of
                   Pattern_Variable _ name ->
-                     let scheme = lookupWithDefaultFM _lhsIinferredTypes err (NameWithRange name)
-                         (predicates :=> _) = getQualifiedType scheme
+                     let scheme     = lookupWithDefaultFM _lhsIinferredTypes err (NameWithRange name)
+                         predicates = qualifiers (unquantify scheme)
                          err = internalError "TypeInferenceOverloading.ag" "n/a" "could not find type for pattern binding"
                      in Just (name, expandPredicates _lhsIorderedTypeSynonyms predicates)
                   _                  -> Nothing
@@ -5725,7 +5722,7 @@ sem_Expression_Negate (range_) (expression_) =
                              (_expressionOuniqueChunk)
                              (_expressionOuniqueSecondRound))
             (_newcon@_) =
-                let standard = generalize [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
+                let standard = makeScheme [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
                     tpscheme = lookupWithDefaultFM (typeEnvironment _lhsIimportEnvironment) standard (nameFromString "negate")
                 in [ (_expressionIbeta .->. _beta .::. tpscheme) _cinfo]
             (_beta@_) =
@@ -6868,7 +6865,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             (_lhsOcollectErrors@_) =
                 _errors ++ _expressionIcollectErrors
             (_errors@_) =
-                let scheme = generalize monos' _lhsIpredicates tp'
+                let scheme = makeScheme monos' _lhsIpredicates tp'
                     monos' = ftv (_lhsIsubstitution |-> eltsFM _lhsImonos)
                     tp'    = _lhsIsubstitution |-> _expressionIbeta
                     info   = (self . attribute) _expressionIinfoTree
@@ -8087,6 +8084,8 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
                 of Expression_Variable    _ (Name_Identifier _ _ "otherwise") -> False
                    Expression_Constructor _ (Name_Identifier _ _ "True"     ) -> False
                    _                                                          -> True
+            (_lhsOrange@_) =
+                range_
             (_lhsOunboundNames@_) =
                 _guardIunboundNames ++ _expressionIunboundNames
             (_self@_) =
@@ -8107,8 +8106,6 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
                 _expressionImatchIO
             (_lhsOpatternMatchWarnings@_) =
                 _expressionIpatternMatchWarnings
-            (_lhsOrange@_) =
-                range_
             (_lhsOuniqueChunk@_) =
                 _expressionIuniqueChunk
             (_lhsOuniqueSecondRound@_) =
@@ -10297,7 +10294,7 @@ sem_Pattern_Negate (range_) (literal_) =
             ( _literalIelements,_literalIliteralType,_literalIself) =
                 (literal_ )
             (_newcon@_) =
-                let standard = generalize [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
+                let standard = makeScheme [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
                     tpscheme = lookupWithDefaultFM (typeEnvironment _lhsIimportEnvironment) standard (nameFromString "negate")
                 in [ (_literalIliteralType .->. _beta .::. tpscheme) _cinfo]
             (_beta@_) =

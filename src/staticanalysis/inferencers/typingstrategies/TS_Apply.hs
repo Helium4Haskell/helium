@@ -92,8 +92,8 @@ setCustomTypeError (tp, source, range) cinfo =
                        [ (MessageString "Expression", MessageOneLineTree (oneLinerSource source)) ]                     
                      , MessageOneLiner (MessageString "   implies that the following types are equal:")
                      , MessageTable 
-                       [ (MessageString "Type 1", MessageType ([] :=> fst (typepair cinfo)))
-                       , (MessageString "Type 2", MessageType ([] :=> snd (typepair cinfo)))
+                       [ (MessageString "Type 1", MessageType ([] .=>. fst (typepair cinfo)))
+                       , (MessageString "Type 2", MessageType ([] .=>. snd (typepair cinfo)))
                        ]                     
                      ]  
 
@@ -109,13 +109,13 @@ makeMessageAlgebra table = ( MessageString
 makeAttributeTable :: MetaVariableInfo -> MetaVariableTable MetaVariableInfo -> FiniteMapSubstitution -> [((String, Maybe String), MessageBlock)]
 makeAttributeTable local table substitution = 
    let f :: String -> MetaVariableInfo -> [((String, Maybe String), MessageBlock)]
-       f string (tp, source, range) = [ ((string, Just "type" ), MessageType ([] :=> tp))
+       f string (tp, source, range) = [ ((string, Just "type" ), MessageType ([] .=>. tp))
                                       , ((string, Just "pp"   ), MessageOneLineTree (oneLinerSource source))
                                       , ((string, Just "range"), MessageRange range)
                                       ]
    in f "expr" local 
    ++ concatMap (\(s,(_,info)) -> f s info) table 
-   ++ [ ((show i, Nothing), MessageType ([] :=> (substitution |-> TVar i))) | i <- dom substitution ]  
+   ++ [ ((show i, Nothing), MessageType ([] .=>. (substitution |-> TVar i))) | i <- dom substitution ]  
 -- Core_Judgement ----------------------------------------------
 -- semantic domain
 type T_Core_Judgement = ((ConstraintSet, MetaVariableInfo)) ->

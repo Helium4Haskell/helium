@@ -2964,15 +2964,15 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
                 if not (null _staticErrors)
                   then []
                   else let premiseTypes = reverse (map snd _typeruleIsimpleJudgements)
-                           constraintsTpScheme = generalizeAll (_substitution |-> tupleType (premiseTypes ++ [_typeruleIconclusionType]))
-                           extendedEnvironment = let op (s, i) = addType (nameFromString s) (generalize [i] [] (TVar i))
+                           constraintsTpScheme = makeScheme [] [] (_substitution |-> tupleType (premiseTypes ++ [_typeruleIconclusionType]))
+                           extendedEnvironment = let op (s, i) = addType (nameFromString s) (noQuantifiers ([] .=>. TVar i))
                                                  in foldr op _lhsIimportEnvironment (zip _allMetaVariables [0..])
                            extendedExpression  = let premiseVars = reverse (map (Expression_Variable noRange . nameFromString . fst) _typeruleIsimpleJudgements)
                                                  in Expression_Tuple noRange (premiseVars ++ [_typeruleIconclusionExpression])
                            (monoTpScheme,inferredTypeErrors) = expressionTypeInferencer
                                                                   extendedEnvironment
                                                                   extendedExpression
-                           inferredTpScheme = generalizeAll (unsafeInstantiate monoTpScheme)
+                           inferredTpScheme = generalizeAll (snd $ instantiate 123456789 monoTpScheme)
                            synonyms = getOrderedTypeSynonyms _lhsIimportEnvironment
                        in if not (null inferredTypeErrors)
                             then map (TypeErrorTS _name) inferredTypeErrors

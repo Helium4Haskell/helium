@@ -102,7 +102,7 @@ makeMessageTable isFolklore typeErrorTable =
              reason     = if isFolklore
                             then "expected type"
                             else "does not match"
-             makeType   = either (\tp -> MessageType ([] :=> tp)) MessageTypeScheme
+             makeType   = either (\tp -> MessageType ([] .=>. tp)) MessageTypeScheme
          in MessageTable (sourcePart ++ typePart)
 
       NotGeneralEnoughTable tree tpscheme1 tpscheme2 ->
@@ -118,7 +118,7 @@ checkTypeError synonyms typeError@(TypeError r o table h) =
    case table of
       UnificationErrorTable sources type1 type2 ->
          let becauseHint = TypeErrorHint "because" . MessageString
-             fun i     = (\(_,_,a) -> a) . instantiate i
+             fun i     = unqualify . snd . instantiate i
              unique    = nextFTV [type1, type2]
              t1        = either id (fun unique) type1
              unique'   = maximum (0 : ftv t1 ++ ftv type2) + 1
@@ -136,8 +136,8 @@ checkTypeError synonyms typeError = Just typeError
 makeNotGeneralEnoughTypeError :: UHA_Source -> TpScheme -> TpScheme -> TypeError
 makeNotGeneralEnoughTypeError source tpscheme1 tpscheme2 =
    let sub      = listToSubstitution (zip (ftv [tpscheme1, tpscheme2]) [ TVar i | i <- [1..] ])
-       ts1      = freezeFreeTypeVariables (sub |-> tpscheme1)
-       ts2      = freezeFreeTypeVariables (sub |-> tpscheme2)
+       ts1      = skolemizeFTV (sub |-> tpscheme1)
+       ts2      = skolemizeFTV (sub |-> tpscheme2)
        oneliner = MessageString "Declared type is too general"
        table    = NotGeneralEnoughTable (oneLinerSource source) ts2 ts1
        hints    = if null (ftv tpscheme1)
@@ -162,8 +162,8 @@ makeReductionError source (scheme, tp) classEnvironment predicate@(Predicate cla
       , MessageTable 
            [ (MessageString "function", MessageOneLineTree (oneLinerSource source)) 
            , (MessageString "type"    , MessageTypeScheme scheme)
-           , (MessageString "used as" , MessageType ([] :=> tp))
-           , (MessageString "problem" , MessageCompose [ MessageType ([] :=> predicateTp)
+           , (MessageString "used as" , MessageType ([] .=>. tp))
+           , (MessageString "problem" , MessageCompose [ MessageType ([] .=>. predicateTp)
                                                        , MessageString (" is not an instance of class "++className)])
            ]
       , MessageOneLiner (MessageString hint)

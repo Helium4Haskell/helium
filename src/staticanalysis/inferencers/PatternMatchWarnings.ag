@@ -223,6 +223,10 @@ SEM GuardedExpression
                                              Expression_Constructor _ (Name_Identifier _ _ "True"     ) -> False -- !!!Name
                                              _                                                          -> True
                       lhs . unrwar = UnreachableGuard @range @guard.self
+
+SEM GuardedExpression
+  | GuardedExpression lhs . range = @range
+
 {
 
 ----------
@@ -251,11 +255,8 @@ nrOfArguments env con | isTupleConstructor con = length con - 1
 
 -- convert constructor to fit in an Env
 rearrange :: (Name, TpScheme) -> (Tp, (Name, [Tp]))
-rearrange (name, tpscheme) = let (args, res) = functionSpine $ unqualify $ getQualifiedType tpscheme
+rearrange (name, tpscheme) = let (args, res) = functionSpine $ unqualify $ unquantify tpscheme
                              in (res, (name, args))
-  where
-    unqualify :: QType -> Tp
-    unqualify (_ :=> tp) = tp
 
 -- get the constructors of a given type out of an Env
 -- tuples ar not in the Env so they require special treatment

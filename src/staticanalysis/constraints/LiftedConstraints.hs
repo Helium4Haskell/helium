@@ -59,7 +59,7 @@ dependencyTypeConstraint constraint sub preds =
       TC_Inst (ImplicitInstance t1 ms t2 info)
          -> let ms' = sub |-> ms
                 t2' = sub |-> t2
-                ts  = generalize (ftv ms') preds t2'
+                ts  = makeScheme (ftv ms') preds t2'
             in TC_Inst (ExplicitInstance t1 ts info)
       _  -> constraint
 

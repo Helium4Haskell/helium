@@ -990,7 +990,7 @@ sem_Constructor_Constructor (range_) (constructor_) (types_) =
             ((_tp@_,_tps@_)) =
                 convertFromSimpleTypeAndTypes _lhsIsimpletype _typesItypes
             (_typeScheme@_) =
-                generalizeAll (foldr (.->.) _tp _tps)
+                generalizeAll ([] .=>. foldr (.->.) _tp _tps)
             (_lhsOcollectValueConstructors@_) =
                 (_constructorIself, _typeScheme) : _lhsIcollectValueConstructors
             (_lhsOtypevariables@_) =
@@ -1085,7 +1085,7 @@ sem_Constructor_Infix (range_) (leftType_) (constructorOperator_) (rightType_) =
             ((_tp@_,_tps@_)) =
                 convertFromSimpleTypeAndTypes _lhsIsimpletype [_leftTypeItype,_rightTypeItype]
             (_typeScheme@_) =
-                generalizeAll (foldr (.->.) _tp _tps)
+                generalizeAll ([] .=>. foldr (.->.) _tp _tps)
             (_lhsOcollectValueConstructors@_) =
                 (_constructorOperatorIself, _typeScheme) : _lhsIcollectValueConstructors
             (_lhsOtypevariables@_) =

@@ -46,7 +46,7 @@ SEM Module
              body . kappaUnique     = 0
              loc  . (SolveResult kappaUniqueAtTheEnd substitution _ kindErrors debugString) = 
                        solveGreedy noOrderedTypeSynonyms @body.kappaUnique @body.constraints
-                  . kindEnvironment = let f _ kind = generalize [] [] (defaultToStar $ @substitution |-> kind)
+                  . kindEnvironment = let f _ kind = generalizeAll ([] .=>. defaultToStar (@substitution |-> kind))
                                       in mapFM f @body.environment                     
                                         
 
@@ -239,7 +239,7 @@ performBindingGroup = glueGroups . bindingGroupAnalysis
 
 getKindsFromImportEnvironment :: ImportEnvironment -> KindEnvironment
 getKindsFromImportEnvironment = mapFM f . typeConstructors
-   where f _ i = generalize [] [] (foldr (.->.) star (replicate i star))
+   where f _ i = generalizeAll ([] .=>. foldr (.->.) star (replicate i star))
 
 getTypeVariables :: Assumptions -> Names
 getTypeVariables = filter p . keysFM

@@ -51,12 +51,12 @@ SEM Module | Module   body . collectValueConstructors = []
 SEM Constructor
   | Constructor
        lhs . collectValueConstructors = (@constructor.self, @typeScheme) : @lhs.collectValueConstructors
-       loc . typeScheme = generalizeAll (foldr (.->.) @tp @tps)
+       loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
            . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype @types.types
                   
   | Infix
        lhs . collectValueConstructors = (@constructorOperator.self, @typeScheme) : @lhs.collectValueConstructors
-       loc . typeScheme = generalizeAll (foldr (.->.) @tp @tps)
+       loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
            . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype [@leftType.type,@rightType.type] 
 
 -------------------------------------------

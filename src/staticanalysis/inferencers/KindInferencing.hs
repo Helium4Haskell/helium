@@ -70,7 +70,7 @@ performBindingGroup = glueGroups . bindingGroupAnalysis
 
 getKindsFromImportEnvironment :: ImportEnvironment -> KindEnvironment
 getKindsFromImportEnvironment = mapFM f . typeConstructors
-   where f _ i = generalize [] [] (foldr (.->.) star (replicate i star))
+   where f _ i = generalizeAll ([] .=>. foldr (.->.) star (replicate i star))
 
 getTypeVariables :: Assumptions -> Names
 getTypeVariables = filter p . keysFM
@@ -2565,7 +2565,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             ( _bodyIconstraints,_bodyIenvironment,_bodyIkappaUnique,_bodyIself) =
                 (body_ (_bodyOimportEnvironment) (_bodyOkappaUnique))
             (_kindEnvironment@_) =
-                let f _ kind = generalize [] [] (defaultToStar $ _substitution |-> kind)
+                let f _ kind = generalizeAll ([] .=>. defaultToStar (_substitution |-> kind))
                 in mapFM f _bodyIenvironment
             ((SolveResult (_kappaUniqueAtTheEnd@_)(_substitution@_)(_)(_kindErrors@_)(_debugString@_))) =
                 solveGreedy noOrderedTypeSynonyms _bodyIkappaUnique _bodyIconstraints

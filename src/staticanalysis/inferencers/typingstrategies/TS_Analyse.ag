@@ -86,15 +86,15 @@ SEM TypingStrategy
                 if not (null @staticErrors)
                   then []
                   else let premiseTypes = reverse (map snd @typerule.simpleJudgements) 
-                           constraintsTpScheme = generalizeAll (@substitution |-> tupleType (premiseTypes ++ [@typerule.conclusionType]))
-                           extendedEnvironment = let op (s, i) = addType (nameFromString s) (generalize [i] [] (TVar i))
+                           constraintsTpScheme = makeScheme [] [] (@substitution |-> tupleType (premiseTypes ++ [@typerule.conclusionType]))
+                           extendedEnvironment = let op (s, i) = addType (nameFromString s) (noQuantifiers ([] .=>. TVar i))
                                                  in foldr op @lhs.importEnvironment (zip @allMetaVariables [0..])
                            extendedExpression  = let premiseVars = reverse (map (Expression_Variable noRange . nameFromString . fst) @typerule.simpleJudgements)
                                                  in Expression_Tuple noRange (premiseVars ++ [@typerule.conclusionExpression])
                            (monoTpScheme,inferredTypeErrors) = expressionTypeInferencer 
                                                                   extendedEnvironment
                                                                   extendedExpression
-                           inferredTpScheme = generalizeAll (unsafeInstantiate monoTpScheme)                                                                   
+                           inferredTpScheme = generalizeAll (snd $ instantiate 123456789 monoTpScheme)                                                                   
                            synonyms = getOrderedTypeSynonyms @lhs.importEnvironment
                        in if not (null inferredTypeErrors) 
                             then map (TypeErrorTS @name) inferredTypeErrors

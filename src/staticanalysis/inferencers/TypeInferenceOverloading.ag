@@ -18,8 +18,8 @@ SEM Module
 SEM Declaration   
  
   | FunctionBindings
-       loc      . declPredicates        = let scheme = lookupWithDefaultFM @lhs.inferredTypes err (NameWithRange @bindings.name)
-                                              (predicates :=> _) = getQualifiedType scheme
+       loc      . declPredicates        = let scheme     = lookupWithDefaultFM @lhs.inferredTypes err (NameWithRange @bindings.name)
+                                              predicates = qualifiers (unquantify scheme)
                                               err = internalError "TypeInferenceOverloading.ag" "n/a" "could not find type for function binding"
                                           in expandPredicates @lhs.orderedTypeSynonyms predicates      
        bindings . availablePredicates   = @declPredicates ++ @lhs.availablePredicates
@@ -28,8 +28,8 @@ SEM Declaration
   | PatternBinding 
        loc           . declPredicates = case @pattern.self of
                                           Pattern_Variable _ name -> 
-                                             let scheme = lookupWithDefaultFM @lhs.inferredTypes err (NameWithRange name)
-                                                 (predicates :=> _) = getQualifiedType scheme
+                                             let scheme     = lookupWithDefaultFM @lhs.inferredTypes err (NameWithRange name)
+                                                 predicates = qualifiers (unquantify scheme)
                                                  err = internalError "TypeInferenceOverloading.ag" "n/a" "could not find type for pattern binding"
                                              in Just (name, expandPredicates @lhs.orderedTypeSynonyms predicates)
                                           _                  -> Nothing
@@ -70,7 +70,7 @@ SEM Expression
 getRequiredDictionaries :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
 getRequiredDictionaries synonyms useType defType = 
    let i  = nextFTV useType
-       (_, instantiatedPreds, instantiatedType) = instantiate i defType
+       (instantiatedPreds, instantiatedType) = split (snd (instantiate i defType))
    in -- one-way unification is necessary!
       case mguWithTypeSynonyms synonyms instantiatedType useType of
          Left _ -> internalError "TypeInferenceOverloading.ag" "getRequiredDictionaries" "no unification"
