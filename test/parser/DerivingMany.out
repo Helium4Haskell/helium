@@ -1,3 +1,6 @@
 Compiling parser/DerivingMany.hs
-Compilation successful
-No 'main' function defined in this module
+(3,20): Cannot derive class "Eq"
+  Hint: Only Show instances can be derived
+(3,24): Cannot derive class "Num"
+  Hint: Only Show instances can be derived
+Compilation failed with 2 errors

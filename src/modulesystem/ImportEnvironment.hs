@@ -17,8 +17,10 @@ import OperatorTable
 import Messages -- instance Show Name
 import RepairHeuristics (Siblings)
 import TS_CoreSyntax
-import Data.List (sortBy, partition, groupBy)
+import Data.List 
 import Data.Maybe (catMaybes)
+
+import IOExts
 
 type TypeEnvironment             = FiniteMap Name TpScheme
 type ValueConstructorEnvironment = FiniteMap Name TpScheme
@@ -34,8 +36,8 @@ data ImportEnvironment  =
                          -- values
                        , valueConstructors :: ValueConstructorEnvironment
                        , operatorTable     :: OperatorTable
-                         -- type classes
-                       , classEnvironment  :: ClassEnvironment
+--                         -- type classes
+--                       , classEnvironment  :: ClassEnvironment
                          -- other
                        , typingStrategies  :: Core_TypingStrategies 
                        }
@@ -47,7 +49,7 @@ emptyEnvironment = ImportEnvironment
    , typeEnvironment   = emptyFM
    , valueConstructors = emptyFM
    , operatorTable     = emptyFM
-   , classEnvironment  = emptyClassEnvironment
+--   , classEnvironment  = emptyClassEnvironment
    , typingStrategies  = [] 
    }
                                               
@@ -100,8 +102,10 @@ getOrderedTypeSynonyms importEnvironment =
        ordering = fst (getTypeSynonymOrdering synonyms)
    in (ordering, synonyms)
 
+{-
 setClassEnvironment :: ClassEnvironment -> ImportEnvironment -> ImportEnvironment
 setClassEnvironment new importenv = importenv { classEnvironment = new }
+-}
 
 addTypingStrategies :: Core_TypingStrategies -> ImportEnvironment -> ImportEnvironment  
 addTypingStrategies new importenv = importenv {typingStrategies = new ++ typingStrategies importenv}
@@ -121,18 +125,19 @@ getSiblings importenv =
                     , lookupFM (typeEnvironment   importenv) n
                     ]
    in map (concatMap f) (getSiblingGroups importenv) 
-			
+            
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
-combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 ce2 xs2) = 
+combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 xs2) = 
    ImportEnvironment 
       (tcs1 `plusFM` tcs2) 
       (tss1 `plusFM` tss2)
       (te1  `plusFM` te2 )
       (vcs1 `plusFM` vcs2)
       (ot1  `plusFM` ot2)
-      (plusFM_C combineClassDecls ce1 ce2) 
+--      (plusFM_C combineClassDecls ce1 ce2) 
       (xs1 ++ xs2)
 
+{-
 -- Bastiaan:
 -- For the moment, this function combines class-environments.
 -- The only instances that are added to the standard instances 
@@ -146,28 +151,68 @@ combineClassDecls :: ([[Char]],[(Predicate,[Predicate])]) ->
 combineClassDecls (super1, inst1) (super2, inst2)
    | super1 == super2 = (super1, inst1 ++ inst2)
    | otherwise        = internalError "ImportEnvironment.hs" "combineClassDecls" "cannot combine class environments"
+-}
 
 -- Bastiaan:
--- Create a standard class environment, extended with "Show" instances for the type constructors that 
--- are present in the import environment
+-- Create a class environment from the dictionaries in the import environment
 createClassEnvironment :: ImportEnvironment -> ClassEnvironment
 createClassEnvironment importenv = 
+    let  dicts = map (drop (length dictPrefix) . show) 
+               . keysFM 
+               . filterFM isDict 
+               $ typeEnvironment importenv
+         isDict n _ = dictPrefix `isPrefixOf` show n
+         dictPrefix = "$dict"
+         classes = ["Eq","Num","Ord","Enum","Show"]
+         -- TODO: put $ between class name and type in dictionary name
+         --  i.e. $dictEq$Int instead of $dictEqInt
+         splitDictName ('E':'q':t) = ("Eq", t)
+         splitDictName ('N':'u':'m':t) = ("Num", t)
+         splitDictName ('O':'r':'d':t) = ("Ord", t)
+         splitDictName ('E':'n':'u':'m':t) = ("Enum", t)
+         splitDictName ('S':'h':'o':'w':t) = ("Show", t)
+         splitDictName x = internalError "ImportEnvironment" "splitDictName" ("illegal dictionary: " ++ show x)
+         arity s | s == "()" = 0
+                 | isTupleConstructor s = length s - 1
+                 | otherwise = lookupWithDefaultFM (typeConstructors importenv) 
+                        (internalError "ImportEnvironment" "splitDictName" ("unknown type constructor: " ++ show s))                            
+                        (nameFromString s)
+         dictTuples = [ (c, makeInstance c (arity t) t) 
+                      | d <- dicts, let (c, t) = splitDictName d 
+                      ]
+         
+         classEnv = foldr 
+                    (\(className, inst) e -> insertInstance className inst e) 
+                    superClassRelation 
+                    dictTuples
+    in classEnv
+{-
+    trace (show (fmToList classEnv)) $
    let donts = [ "IO", "IOMode", "Handle", "->" ] -- not in Show
        stds  = [ "()", "Int", "Float", "Bool", "Char", "[]" ] -- standard in Show
        fm    = delListFromFM (typeConstructors importenv)
              $ keysFM (typeSynonyms importenv) ++ map nameFromString (donts ++ stds)
-       extraShowInstances = [ makeShowInstance nrOfArgs (show name) | (name, nrOfArgs) <- fmToList fm ]
+       extraShowInstances = [ makeInstance "Show" nrOfArgs (show name) | (name, nrOfArgs) <- fmToList fm ]
    in addToFM_C combineClassDecls standardClasses "Show" ([], extraShowInstances)
+-}
+superClassRelation :: ClassEnvironment
+superClassRelation = listToFM $ 
+   [ ("Num",  ( ["Eq","Show"],   []))
+   , ("Enum", ( [],              []))
+   , ("Eq" ,  ( [],              []))
+   , ("Ord",  ( ["Eq"],          []))
+   , ("Show", ( [],              []))
+   ]
 
-makeShowInstance :: Int -> String -> (Predicate, Predicates)
-makeShowInstance nrOfArgs tp =
+makeInstance :: String -> Int -> String -> (Predicate, Predicates)
+makeInstance className nrOfArgs tp =
    let tps = take nrOfArgs [ TVar i | i <- [0..] ] 
-   in ( Predicate "Show" (foldl TApp (TCon tp) tps)
-      , [ Predicate "Show" x | x <- tps ] 
+   in ( Predicate className (foldl TApp (TCon tp) tps)
+      , [ Predicate className x | x <- tps ] 
       )
 
 instance Show ImportEnvironment where
-   show (ImportEnvironment tcs tss te vcs ot ce _) = 
+   show (ImportEnvironment tcs tss te vcs ot _) = 
       unlines (concat [ fixities
                       , datatypes
                       , typesynonyms

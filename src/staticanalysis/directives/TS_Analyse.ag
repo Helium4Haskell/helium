@@ -90,11 +90,13 @@ SEM TypingStrategy
            -- Solve the constraint set.           
            . (SolveResult _ substitution _ solveErrors _ ()) =    
                 runGreedy
-                   (classEnvironment @lhs.importEnvironment)
+                   @classEnv
                    (getOrderedTypeSynonyms @lhs.importEnvironment)
                    (length @uniqueTypevariables) 
                    (reverse @statements.userConstraints)        
-                                   
+                   
+           . classEnv = createClassEnvironment @lhs.importEnvironment
+           
            . soundnessErrors = 
                 if not (null @staticErrors)
                   then []
@@ -109,12 +111,11 @@ SEM TypingStrategy
                                   pats = map (Pattern_Variable noRange . nameFromString . fst) orderedMetaList
                               in expressionTypeInferencer @lhs.importEnvironment expr                          
                            synonyms = getOrderedTypeSynonyms @lhs.importEnvironment
-                           classEnv = classEnvironment @lhs.importEnvironment
                        in if not (null inferredTypeErrors) 
                             then map (TypeErrorTS @name) inferredTypeErrors
-                            else if genericInstanceOf synonyms classEnv inferredTpScheme constraintsTpScheme 
+                            else if genericInstanceOf synonyms @classEnv inferredTpScheme constraintsTpScheme 
                                         &&
-                                    genericInstanceOf synonyms classEnv constraintsTpScheme inferredTpScheme 
+                                    genericInstanceOf synonyms @classEnv constraintsTpScheme inferredTpScheme 
                                       then []
                                       else [ Soundness @name inferredTpScheme constraintsTpScheme ]
                                       

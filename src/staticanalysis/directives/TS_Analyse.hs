@@ -3589,17 +3589,18 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
                                   pats = map (Pattern_Variable noRange . nameFromString . fst) orderedMetaList
                               in expressionTypeInferencer _lhsIimportEnvironment expr
                            synonyms = getOrderedTypeSynonyms _lhsIimportEnvironment
-                           classEnv = classEnvironment _lhsIimportEnvironment
                        in if not (null inferredTypeErrors)
                             then map (TypeErrorTS _name) inferredTypeErrors
-                            else if genericInstanceOf synonyms classEnv inferredTpScheme constraintsTpScheme
+                            else if genericInstanceOf synonyms _classEnv inferredTpScheme constraintsTpScheme
                                         &&
-                                    genericInstanceOf synonyms classEnv constraintsTpScheme inferredTpScheme
+                                    genericInstanceOf synonyms _classEnv constraintsTpScheme inferredTpScheme
                                       then []
                                       else [ Soundness _name inferredTpScheme constraintsTpScheme ]
+            (_classEnv@_) =
+                createClassEnvironment _lhsIimportEnvironment
             ((SolveResult (_)(_substitution@_)(_)(_solveErrors@_)(_)(()))) =
                 runGreedy
-                   (classEnvironment _lhsIimportEnvironment)
+                   _classEnv
                    (getOrderedTypeSynonyms _lhsIimportEnvironment)
                    (length _uniqueTypevariables)
                    (reverse _statementsIuserConstraints)

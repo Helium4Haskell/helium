@@ -4,6 +4,6 @@ Compiling typeerrors/Examples/ExprNegateExpr.hs
    type           : Num a => a      -> a     
    used as        :          String -> String
  problem          : String is not an instance of class Num
- hint             : valid instances of Num are Int and Float
+ hint             : valid instances of Num are Float and Int
 
 Compilation failed with 1 error

@@ -5,7 +5,7 @@
     Stability   :  experimental
     Portability :  portable
 
-	Collection of static error messages.
+    Collection of static error messages.
 -}
 
 module StaticErrors where
@@ -39,6 +39,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | WrongOverloadingFlag Bool{- flag? -}
             | AmbiguousContext Name
             | UnknownClass Name
+            | NonDerivableClass Name
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -61,6 +62,7 @@ instance HasMessage Error where
       WrongOverloadingFlag flag   -> [emptyRange]
       AmbiguousContext name       -> [getNameRange name]
       UnknownClass name           -> [getNameRange name]
+      NonDerivableClass name   -> [getNameRange name]
       _                           -> internalError "StaticErrors.hs" 
                                                    "instance IsMessage Error" 
                                                    "unknown type of Error"
@@ -194,7 +196,11 @@ showError anError = case anError of
       ( MessageString ("Unknown class " ++ show (show name) ++ " (Helium only supports Eq, Ord, Num, Show, Enum)")
       , []
       )
-      
+
+   NonDerivableClass name ->
+      ( MessageString ("Cannot derive class " ++ show (show name))
+      , [MessageString "Only Show instances can be derived"]
+      )        
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -248,6 +254,7 @@ errorLogCode anError = case anError of
           WrongOverloadingFlag _  -> "of"
           AmbiguousContext _      -> "ac"
           UnknownClass _          -> "uc"
+          NonDerivableClass _     -> "nd"
           _                       -> "??"
    where code entity = maybe "??" id
                      . lookup entity 

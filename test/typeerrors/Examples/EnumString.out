@@ -3,6 +3,6 @@ Compiling typeerrors/Examples/EnumString.hs
  expression       : ["a" .. "z"]
    type           : [String]
  problem          : String is not an instance of class Enum
- hint             : valid instances of Enum are (), Char, Int, Float and Bool
+ hint             : valid instances of Enum are (), Bool, Char, Float and Int
 
 Compilation failed with 1 error

@@ -1957,6 +1957,13 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
                 map (Unused TypeVariable) _unused ++ _lhsIwarnings
             (_lhsOpreviousWasAlsoFB@_) =
                 Nothing
+            (_unknCls@_) =
+                [ if show c `elem` [ "Eq", "Num", "Enum", "Ord" ]
+                   then NonDerivableClass c
+                   else UnknownClass c
+                | c <- derivings_
+                , show c /= "Show"
+                ]
             (_undef@_) =
                 filter (`notElem` _simpletypeItypevariables)   _constructorsItypevariables
             (_doubles@_) =
@@ -1967,6 +1974,7 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
                 concat [ makeDuplicated TypeVariable _doubles
                        , makeUndefined TypeVariable _undef _simpletypeItypevariables
                        , _lhsImiscerrors
+                       , _unknCls
                        ]
             (_lhsOdeclVarNames@_) =
                 []
@@ -8016,21 +8024,12 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                     g (n,(i,_)) = f (n,i)
                 in map f _bodyIcollectTypeConstructors ++
                    map g _bodyIcollectTypeSynonyms
-            (_derivedInstances@_) =
-                let f (n,i) = makeShowInstance i (show n)
-                    g (n,(i,_)) = f (n,i)
-                in unitFM "Show"
-                      ( []
-                      , map f _bodyIcollectTypeConstructors ++
-                        map g _bodyIcollectTypeSynonyms
-                      )
             (_collectEnvironment@_) =
                 setValueConstructors   (listToFM _bodyIcollectValueConstructors)
                 . setTypeConstructors  (listToFM _bodyIcollectTypeConstructors)
                 . setTypeSynonyms      (listToFM _bodyIcollectTypeSynonyms)
                 . setOperatorTable     (listToFM _bodyIoperatorFixities)
                 . addToTypeEnvironment (listToFM _derivedFunctions)
-                . setClassEnvironment  _derivedInstances
                 $ emptyEnvironment
             (_bodyOcollectTypeConstructors@_) =
                 []

@@ -24,11 +24,18 @@ SEM Module
                                         . setTypeSynonyms      (listToFM @body.collectTypeSynonyms)          
                                         . setOperatorTable     (listToFM @body.operatorFixities)
                                         . addToTypeEnvironment (listToFM @derivedFunctions)
-                                        . setClassEnvironment  @derivedInstances
+                                        -- . setClassEnvironment  @derivedInstances
                                         $ emptyEnvironment 
                                         -- the type environment will be added after type inferencing.
-                 
-                 . derivedInstances = let f (n,i) = makeShowInstance i (show n)
+                 . derivedFunctions = let f (n,i) = ( nameOfShowFunction n
+                                                    , typeOfShowFunction n (take i [ nameFromString s | s <- variableList])
+                                                    )
+                                          g (n,(i,_)) = f (n,i)
+                                      in map f @body.collectTypeConstructors ++
+                                         map g @body.collectTypeSynonyms
+
+{-                 
+                 . derivedInstances = let f (n,i) = makeInstance "Show" i (show n)
                                           g (n,(i,_)) = f (n,i)
                                       in unitFM "Show"
                                             ( []
@@ -36,13 +43,7 @@ SEM Module
                                               map g @body.collectTypeSynonyms
                                             )
                  
-                 
-                 . derivedFunctions = let f (n,i) = ( nameOfShowFunction n
-                                                    , typeOfShowFunction n (take i [ nameFromString s | s <- variableList])
-                                                    )
-                                          g (n,(i,_)) = f (n,i)
-                                      in map f @body.collectTypeConstructors ++
-                                         map g @body.collectTypeSynonyms
+-}                 
 
 -------------------------------------------
 -- 1) Collecting (data-)type constructors
