@@ -118,6 +118,8 @@ compile fullName options doneModules =
                     
         unless (null errors) $           
            do
+              when (DumpInformationForAllModules `elem` options) $ 
+                 putStrLn (show (foldr combineImportEnvironments emptyEnvironment importEnvironments))         
               putStr . sortAndShowMessages $ errors
               unless (NoLogging `elem` options) $ logger ("S"++errorsLogCode errors) Nothing
               let number = length errors
@@ -164,20 +166,25 @@ compile fullName options doneModules =
 
         unless (null typeErrors) $
            do             
+              when (DumpInformationForAllModules `elem` options) $ 
+                 putStr (show (foldr combineImportEnvironments emptyEnvironment importEnvironments))
               putStr . ("\n"++) . sortAndShowMessages . take maximumNumberOfTypeErrors . reverse $ typeErrors
               unless (NoLogging `elem` options) $ logger "T" (Just (doneModules,fullName))
               let number = length typeErrors
               when (number > maximumNumberOfTypeErrors) $ putStrLn "(...)\n" 
               putStrLn ("Compilation failed with " ++ show number ++ " type error" ++ if number == 1 then "" else "s")
 
-        -- Dump inferred top-level types
-        when (DumpTypes `elem` options) $
-            putStr . unlines $
-                map
-                    (\(name,tp) -> parensIfOperator name ++ " :: " ++ show tp)
-                    (fmToList toplevelTypes)                   
-
         stopCompilingIf (StopAfterTypeInferencing `elem` options || not (null typeErrors))         
+
+        -- Dump information
+        if (DumpInformationForAllModules `elem` options)
+          then 
+             putStrLn (show finalEnvironment)   
+          else if (DumpInformationForThisModule `elem` options)
+                 then   
+                    putStrLn (show (addToTypeEnvironment toplevelTypes collectEnvironment))
+                 else 
+                    return ()
                     
         -- Static Warnings        
         let warnings = warnings1 ++ warnings2

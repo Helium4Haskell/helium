@@ -30,12 +30,19 @@ data MessageBlock  = MessageString       String
                    | MessageRange        Range
                    | MessageType         Tp
                    | MessageTypeScheme   TpScheme
+                   | MessageInfoLink     String
                    | MessageOneLineTree  OneLiner.Tree
-                   | MessageCompose      MessageBlocks
+                   | MessageCompose      MessageBlocks                   
                   
 class HasMessage a where
-   getRanges      :: a -> [Range]
-   getMessage     :: a -> Message
+   getRanges            :: a -> [Range]
+   getDocumentationLink :: a -> Maybe String
+   getMessage           :: a -> Message  
+   
+   -- default definitions
+   getRanges            _ = []
+   getDocumentationLink _ = Nothing
+   
 
 instance Substitutable MessageLine where
 

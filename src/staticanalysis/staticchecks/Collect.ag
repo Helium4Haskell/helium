@@ -17,10 +17,11 @@
 -------------------------------------------------------------------------------
 
 SEM Module
-  | Module   loc . collectEnvironment = setValueConstructors  @valueConstructors
-                                        . setTypeConstructors @typeConstructors
+  | Module   loc . collectEnvironment = setValueConstructors  (listToFM @body.collectValueConstructors)
+                                        . setTypeConstructors (listToFM @body.collectTypeConstructors)
                                         . setTypeSynonyms     (listToFM @body.collectTypeSynonyms)
                                         . setTypeEnvironment  (listToFM @body.typeSignatures)
+                                        . setOperatorTable [ (show name, info) | (name, info) <- @body.operatorFixities ]
                                         $ emptyEnvironment 
                                         
                  . derivedFunctions = let f (n,i) = ( nameOfShowFunction n
@@ -77,7 +78,14 @@ ATTR Body Declarations Declaration [ | operatorFixities : {[(Name,(Int,Assoc))]}
 SEM Module | Module   body . operatorFixities = [] 
 
 SEM Declaration
-  | Fixity   lhs . operatorFixities = [ (name,(9,AssocNone)) | name <- @operators.self ] ++ @lhs.operatorFixities
+  | Fixity   lhs . operatorFixities = let associativity = case @fixity.self of
+                                                             Fixity_Infix _  -> AssocNone
+                                                             Fixity_Infixl _ -> AssocLeft
+                                                             Fixity_Infixr _ -> AssocRight
+                                          priority      = case @priority.self of
+                                                             MaybeInt_Just i  -> i
+                                                             MaybeInt_Nothing -> 9
+                                      in [ (name, (priority, associativity)) | name <- @operators.self ] ++ @lhs.operatorFixities
 
 -------------------------------------------
 -- 5) Distributing Value Constructors

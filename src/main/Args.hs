@@ -19,7 +19,8 @@ processArgs args =
             [   Option "w" ["no-warnings"] (NoArg NoWarnings) "do not show warnings"
             ,   Option "b" ["build"] (NoArg Build) "recompile even if files are up to date"
             ,   Option "l" ["no-logging"] (NoArg NoLogging) "do not send log information"
-            ,   Option "t" ["dump-types"] (NoArg DumpTypes) "show types of top-level functions"
+            ,   Option "i" ["dump-information"]     (NoArg DumpInformationForThisModule) "show information about this module"
+            ,   Option "I" ["dump-all-information"] (NoArg DumpInformationForAllModules) "show information about all imported modules"
 
 #ifndef RELEASE
             ,   Option "u" ["dump-uha"] (NoArg DumpUHA) "pretty print abstract syntax tree"
@@ -46,7 +47,8 @@ data Option
     = DumpUHA --
     | DumpCore --
     | DumpCoreToFile --
-    | DumpTypes --
+    | DumpInformationForThisModule
+    | DumpInformationForAllModules
     | DumpTypeDebug
     
     | NoStaticAnalysis --

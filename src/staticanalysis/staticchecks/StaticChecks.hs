@@ -660,7 +660,27 @@ sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) (_lhs_allType
             (_priority )
         ( _operators_self) =
             (_operators )
-    in  (_lhs_collectTypeConstructors,_lhs_collectTypeSynonyms,_lhs_collectValueConstructors,[],_lhs_kindErrors,_lhs_miscerrors,[ (name,(9,AssocNone)) | name <- _operators_self ] ++ _lhs_operatorFixities,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,[],_lhs_warnings)
+    in  (_lhs_collectTypeConstructors
+        ,_lhs_collectTypeSynonyms
+        ,_lhs_collectValueConstructors
+        ,[]
+        ,_lhs_kindErrors
+        ,_lhs_miscerrors
+        ,let associativity = case _fixity_self of
+                                Fixity_Infix _  -> AssocNone
+                                Fixity_Infixl _ -> AssocLeft
+                                Fixity_Infixr _ -> AssocRight
+             priority      = case _priority_self of
+                                MaybeInt_Just i  -> i
+                                MaybeInt_Nothing -> 9
+         in [ (name, (priority, associativity)) | name <- _operators_self ] ++ _lhs_operatorFixities
+        ,Nothing
+        ,_self
+        ,_lhs_suspiciousFBs
+        ,_lhs_typeSignatures
+        ,[]
+        ,_lhs_warnings
+        )
 sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)
@@ -2052,10 +2072,11 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
         (_derivedRanges) =
             map getNameRange (map fst _derivedFunctions)
         (_collectEnvironment) =
-            setValueConstructors  _valueConstructors
-            . setTypeConstructors _typeConstructors
+            setValueConstructors  (listToFM _body_collectValueConstructors)
+            . setTypeConstructors (listToFM _body_collectTypeConstructors)
             . setTypeSynonyms     (listToFM _body_collectTypeSynonyms)
             . setTypeEnvironment  (listToFM _body_typeSignatures)
+            . setOperatorTable [ (show name, info) | (name, info) <- _body_operatorFixities ]
             $ emptyEnvironment
         (_derivedFunctions) =
             let f (n,i) = ( nameOfShowFunction n

@@ -38,16 +38,17 @@ instance Show MessageBlock where
    show (MessageTypeScheme ts) = show ts
    show (MessageOneLineTree t) =  -- see tableWidthRight
                                  OneLiner.showOneLine 59 t
+   show (MessageInfoLink s   ) = "<a link=" ++ s ++ ">[?]</a>"
    show (MessageCompose ms   ) = concatMap show ms
 
 instance HasMessage message => Show message where
    show x = let rangePart = MessageString $ case filter (not . isImportRange) (getRanges x) of
                                [] -> ""
                                xs -> showPositions xs ++ ": "
+                documentationLinkPart = maybe (MessageString "") MessageInfoLink (getDocumentationLink x)
                 list = case getMessage x of
-                           []                     -> [MessageOneLiner rangePart]
-                           MessageOneLiner m:rest -> MessageOneLiner (MessageCompose [rangePart,m]) : rest
-                           xs                     -> MessageOneLiner rangePart : xs
+                          MessageOneLiner m:rest -> MessageOneLiner (MessageCompose [rangePart, documentationLinkPart, m]) : rest
+                          xs                     -> MessageOneLiner (MessageCompose [rangePart, documentationLinkPart]) : xs
             in concatMap show list
 
 showHints :: String -> MessageBlocks -> String

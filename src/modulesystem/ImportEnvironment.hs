@@ -6,6 +6,7 @@ import Types
 import OperatorTable
 import Messages -- instance Show Name
 import TS_CoreSyntax (Core_TypingStrategies)
+import List (sortBy)
 
 type TypeEnvironment             = FiniteMap Name TpScheme
 type ValueConstructorEnvironment = FiniteMap Name TpScheme
@@ -101,7 +102,14 @@ combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 xs1) (Import
       
 instance Show ImportEnvironment where
    show (ImportEnvironment tcs tss te vcs ot xs) = 
-      let tclist = let datas    = map f . filter p . fmToList $ tcs
+      let fixlist = case sortBy  (\x y -> fst x `compare` fst y) ot of
+                       [] -> []
+                       xs -> let f (s, (i, a)) = case a of
+                                                    AssocRight -> "   infixr " ++ show i ++ " " ++ s
+                                                    AssocLeft  -> "   infixl " ++ show i ++ " " ++ s
+                                                    AssocNone  -> "   infix "  ++ show i ++ " " ++ s
+                             in "Fixity declarations:" : map f xs
+          tclist = let datas    = map f . filter p . fmToList $ tcs
                          where p = (`notElem` syns) . fst
                                f (n,i) = "   data "++show n++concatMap (\t -> " " ++ [t])  (take i ['a'..])
                        syns = [ n | (n,(i,f)) <- fmToList tss ]
@@ -117,4 +125,4 @@ instance Show ImportEnvironment where
           telist = case fmToList te of
                       [] -> []
                       xs -> "Functions:" : map (\(n,ts) -> "   " ++ show n ++ " :: "++show ts) xs 
-      in unlines (concat [tclist,vclist,telist])
+      in unlines (concat [fixlist,tclist,vclist,telist])
