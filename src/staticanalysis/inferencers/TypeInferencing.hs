@@ -25,7 +25,6 @@ import EquivalenceGroupsImplementation ( )
 import HeliumConstraintInfo
 -- common
 import ImportEnvironment
-import EnvironmentSynonyms
 import SortedAssocList
 -- other
 import TopSort                 ( topSort )
@@ -33,7 +32,7 @@ import Utils                   ( internalError )
 import DerivingShow            ( typeOfShowFunction, nameOfShowFunction ) 
 import UHA_Utils               ( noRange, getNameRange, getExprRange )
 import UHA_Syntax
-
+import FiniteMap
  
 import OneLiner
 import Char
@@ -41,6 +40,9 @@ import Char
 import List (intersperse)
 import SATypes (isTupleConstructor)
 -}
+
+type Assumptions        = AssocList Name Tp
+type PatternAssumptions = AssocList Name Tp
 
 type BindingGroups = [BindingGroup]
 type BindingGroup  = (PatternAssumptions,Assumptions,ConstraintSets)
@@ -58,7 +60,7 @@ concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
 type TypeAnnotations = [((Tps,Tp),TpScheme,(Tree,Range))]
 type NoTypeDefs      = [(Name,Tps,Tp,Bool)]
 
-findTypeAnnotations :: Bool -> Tps -> TypeEnvironment -> BindingGroups -> (TypeAnnotations,NoTypeDefs)
+findTypeAnnotations :: Bool -> Tps -> AssocList Name TpScheme -> BindingGroups -> (TypeAnnotations,NoTypeDefs)
 findTypeAnnotations toplevel monos typeSignatures bdgs =
    let (environment,_,_) = concatBindingGroups bdgs
        (_,binds,rest)    = typeSignatures ./\. environment
@@ -66,9 +68,8 @@ findTypeAnnotations toplevel monos typeSignatures bdgs =
        noTypeDefs        = [ (n,monos,t,toplevel) | (n,t) <- toList rest ]
    in (typeAnnotations,noTypeDefs)
                     
-performBindingGroup :: Tps -> TypeEnvironment -> BindingGroups -> (PatternAssumptions,Assumptions,ConstraintSet,MonoTable)
-performBindingGroup monos typeSignatures bdgs =
-   variableDependencies (bindingGroupAnalysis bdgs)
+performBindingGroup :: Tps -> AssocList Name TpScheme -> BindingGroups -> (PatternAssumptions,Assumptions,ConstraintSet,MonoTable)
+performBindingGroup monos typeSignatures = variableDependencies . bindingGroupAnalysis
 
    where
         bindingGroupAnalysis :: BindingGroups -> BindingGroups
@@ -84,9 +85,9 @@ performBindingGroup monos typeSignatures bdgs =
         variableDependencies :: BindingGroups -> (PatternAssumptions,Assumptions,ConstraintSet,MonoTable)
         variableDependencies = foldr op (empty,empty,ctEmpty,[]) where
             op (e,a,c) (env,aset,cset,mt) =
-               let (cset1,e'   ) = (typeSignatures .:::. e) cinfoBindingGroupExplicitTypedBinding
+               let (cset1,e'   ) = ((listToFM . toList) typeSignatures !:::! e) cinfoBindingGroupExplicitTypedBinding
                    (cset5,aset') = (.<==.) monos e' aset    cinfoBindingGroupImplicit
-                   (cset2,a'   ) = (typeSignatures .:::. a) cinfoBindingGroupExplicit
+                   (cset2,a'   ) = ((listToFM . toList) typeSignatures !:::! a) cinfoBindingGroupExplicit
                    (cset3,a''  ) = (e' .===. a')            cinfoSameBindingGroup
                in ( e' `combine` env
                   , a'' `combine` aset'
@@ -360,7 +361,7 @@ type T_Body = (Int) ->
               ([(Name,Tps,Tp,Bool)]) ->
               (ImportEnvironment) ->
               ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
-              ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(PatternAssumptions),(Body),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(TypeEnvironment))
+              ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(PatternAssumptions),(Body),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(AssocList Name TpScheme))
 -- cata
 sem_Body :: (Body) ->
             (T_Body)
@@ -374,7 +375,7 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_betaUnique) (
     let ((_env,_aset,_cset,_monoTable)) =
             performBindingGroup [] _declarations_typeSignatures _declarations_bindingGroups
         ((_csetBinds,_aset')) =
-            (typeEnvironment _lhs_importEnvironment .:::. _aset) _cinfo
+            (typeEnvironment _lhs_importEnvironment !:::! _aset) _cinfo
         ((_anns,_notypedefs)) =
             findTypeAnnotations True [] _declarations_typeSignatures _declarations_bindingGroups
         (_cinfo) =
@@ -536,8 +537,8 @@ type T_Declaration = (Int) ->
                      (MonoTable) ->
                      (Tps) ->
                      ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
-                     (TypeEnvironment) ->
-                     ((Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(Tree),(Declaration),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(TypeEnvironment))
+                     (AssocList Name TpScheme) ->
+                     ((Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(Tree),(Declaration),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(AssocList Name TpScheme))
 -- cata
 sem_Declaration :: (Declaration) ->
                    (T_Declaration)
@@ -838,8 +839,8 @@ type T_Declarations = (Int) ->
                       (MonoTable) ->
                       (Tps) ->
                       ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
-                      (TypeEnvironment) ->
-                      ((Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),( [ Tree] ),(Declarations),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(TypeEnvironment))
+                      (AssocList Name TpScheme) ->
+                      ((Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),( [ Tree] ),(Declarations),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(AssocList Name TpScheme))
 -- cata
 sem_Declarations :: (Declarations) ->
                     (T_Declarations)
@@ -1091,7 +1092,7 @@ sem_Expression_Constructor (_range) (_name) (_lhs_betaUnique) (_lhs_collectednot
     let (_beta) =
             TVar _lhs_betaUnique
         (_newcon) =
-            case lookupAL _name_self (valueConstructors _lhs_importEnvironment) of
+            case lookupFM (valueConstructors _lhs_importEnvironment) _name_self of
                Nothing  -> []
                Just ctp -> [ (_beta .::. ctp) _cinfo ]
         (_cinfo) =
@@ -1332,9 +1333,10 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
             [ (_operator_beta .==. _leftExpression_beta .->. _rightExpression_beta .->. _betaResOp) _cinfoOperator ]
         (_conResult) =
             case (_leftExpression_section,_rightExpression_section) of
-                   (False,False) -> [ (_betaResOp     .==. _beta) _cinfoComplete  ]
-                   (True ,True ) -> [ (_operator_beta .==. _beta) _cinfoEmpty ]
-                   _             -> internalError "TypeInferencing.ag" "n/a" "sections are not supported by the type-checker"
+                   (False,False) -> [ (_betaResOp     .==. _beta)                        _cinfoComplete     ]
+                   (True ,True ) -> [ (_operator_beta .==. _beta)                        _cinfoEmpty        ]
+                   (False,True ) -> [ (_rightExpression_beta .->. _betaResOp .==. _beta) _cinfoRightSection ]
+                   (True ,False) -> [ (_leftExpression_beta  .->. _betaResOp .==. _beta) _cinfoLeftSection  ]
         (_cinfoComplete) =
             \tppair ->
             CInfo { info       = (NTExpression,AltInfixApplication,"")
@@ -1357,6 +1359,8 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
                                  , HighlyTrusted
                                  , Size _size ]
                   }
+        ((_cinfoLeftSection,_cinfoRightSection)) =
+            internalError "TypeInferenceInfo.ag" "n/a" "todo: type error message for sections"
         (_cinfoOperator) =
             \tppair ->
             CInfo { info       = (NTExpression,AltInfixApplication,"operator")
@@ -1487,7 +1491,7 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_betaUnique) (_lh
                                  , SuperHighlyTrusted
                                  , Size _size ]
                   }
-        ((_collectEnvironment,_collectConstructorEnv,_typeSynonyms,_derivedFunctions,_fixOps,_collectDataTypes)) =
+        ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel Expression"
         (_size) =
             1 + _declarations_size + _expression_size
@@ -1916,7 +1920,7 @@ sem_FieldDeclaration_FieldDeclaration :: (T_Range) ->
                                          (T_AnnotatedType) ->
                                          (T_FieldDeclaration)
 sem_FieldDeclaration_FieldDeclaration (_range) (_names) (_type) =
-    let ((_kindErrors,_tyconEnv,_constructorenv)) =
+    let ((_kindErrors,_tyconEnv,_constructorenv,_importEnvironment,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors)) =
             internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
         (_self) =
             FieldDeclaration_FieldDeclaration _range_self _names_self _type_self
@@ -2505,7 +2509,7 @@ sem_MaybeDeclarations_Just (_declarations) (_lhs_assumptions) (_lhs_betaUnique) 
             (empty,_lhs_assumptions,[_lhs_constraints])
         ((_anns,_notypedefs)) =
             findTypeAnnotations False _lhs_monos _declarations_typeSignatures (_mybdggroup : _declarations_bindingGroups)
-        ((_collectEnvironment,_collectConstructorEnv,_typeSynonyms,_derivedFunctions,_fixOps,_collectDataTypes)) =
+        ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel MaybeDeclaration"
         (_oneLineTree) =
             Just _declarations_oneLineTree
@@ -2673,7 +2677,7 @@ sem_MaybeNames_Nothing  =
 type T_Module = (ImportEnvironment) ->
                 (Strategy) ->
                 (Bool) ->
-                ((IO ()),(TypeEnvironment),(TypeErrors),(Warnings))
+                ((IO ()),(AssocList Name TpScheme),(TypeErrors),(Warnings))
 -- cata
 sem_Module :: (Module) ->
               (T_Module)
@@ -2696,13 +2700,13 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
         (_constraints) =
             zipWith setPosition [0..] (ctRoot _body_constraints _lhs_strategy)
         (_orderedTypeSynonyms) =
-            [ (show n,i,f) | (n,i,f) <- typeSynonyms _lhs_importEnvironment ]
+            [ (show n,i,f) | (n,(i,f)) <- fmToList (typeSynonyms _lhs_importEnvironment) ]
         ((_betaUniqueAtTheEnd,_substitution,_solveErrors,_solveDebug)) =
             (if _lhs_useTypeGraph then solveEquivalenceGroups else solveGreedy)
                _body_betaUnique [ SolveWithTypeSynonyms _orderedTypeSynonyms
                                 , SolveWithTypeSignatures . map (\(n,ts) -> (show n,ts)) $
-                                     (  toList (valueConstructors _lhs_importEnvironment)
-                                     ++ toList (typeEnvironment _lhs_importEnvironment)
+                                     (  fmToList (valueConstructors _lhs_importEnvironment)
+                                     ++ fmToList (typeEnvironment _lhs_importEnvironment)
                                      )
                                 ]
                                 _constraints
@@ -2915,7 +2919,7 @@ sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_imp
         (_conApply) =
             [ (_betaCon .==. foldr (.->.) _beta _patterns_betas) _cinfoApply ]
         (_conConstructor) =
-            case lookupAL _name_self (valueConstructors _lhs_importEnvironment) of
+            case lookupFM (valueConstructors _lhs_importEnvironment) _name_self of
                Nothing  -> []
                Just ctp -> [ (_betaCon .::. ctp) _cinfoConstructor ]
         (_cinfoConstructor) =
@@ -2993,7 +2997,7 @@ sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_ri
         (_conApply) =
             [ (_betaCon .==. _leftPattern_beta .->. _rightPattern_beta .->. _beta) _cinfoApply ]
         (_conConstructor) =
-            case lookupAL _constructorOperator_self (valueConstructors _lhs_importEnvironment) of
+            case lookupFM (valueConstructors _lhs_importEnvironment) _constructorOperator_self  of
                Nothing  -> []
                Just ctp -> [ (_betaCon .::. ctp) _cinfoConstructor ]
         (_cinfoConstructor) =
@@ -3509,7 +3513,7 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_assumptions) (_lhs_betaUnique) 
             (empty,_lhs_assumptions,[_lhs_constraints])
         ((_anns,_notypedefs)) =
             findTypeAnnotations False _lhs_monos _declarations_typeSignatures (_mybdggroup : _declarations_bindingGroups)
-        ((_collectEnvironment,_collectConstructorEnv,_typeSynonyms,_derivedFunctions,_fixOps,_collectDataTypes)) =
+        ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel Qualifier"
         (_oneLineTree) =
             Node [ Text "let ", encloseSep "{" ";" "}" _declarations_oneLineTree ]
@@ -3585,7 +3589,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
                                                        (T_Expression) ->
                                                        (T_RecordExpressionBinding)
 sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expression) (_lhs_collectednotypedef) (_lhs_typeAnnotations) =
-    let ((_monos,_constructorenv,_betaUnique,_miscerrors,_warnings,_kindErrors,_tyconEnv,_importEnvironment)) =
+    let ((_monos,_constructorenv,_betaUnique,_miscerrors,_warnings,_kindErrors,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_importEnvironment)) =
             internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
         (_self) =
             RecordExpressionBinding_RecordExpressionBinding _range_self _name_self _expression_self
@@ -3635,7 +3639,7 @@ sem_RecordPatternBinding_RecordPatternBinding :: (T_Range) ->
                                                  (T_Pattern) ->
                                                  (T_RecordPatternBinding)
 sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) =
-    let ((_constructorenv,_betaUnique,_miscerrors,_warnings,_tyconEnv,_importEnvironment)) =
+    let ((_constructorenv,_betaUnique,_miscerrors,_warnings,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_importEnvironment)) =
             internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
         (_self) =
             RecordPatternBinding_RecordPatternBinding _range_self _name_self _pattern_self
@@ -3884,7 +3888,7 @@ sem_Statement_Let (_range) (_declarations) (_lhs_assumptions) (_lhs_betaUnique) 
             (empty,_lhs_assumptions,[_lhs_constraints])
         ((_anns,_notypedefs)) =
             findTypeAnnotations False _lhs_monos _declarations_typeSignatures (_mybdggroup : _declarations_bindingGroups)
-        ((_collectEnvironment,_collectConstructorEnv,_typeSynonyms,_derivedFunctions,_fixOps,_collectDataTypes)) =
+        ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel Statement"
         (_oneLineTree) =
             Node [ Text "let ", encloseSep "{" ";" "}" _declarations_oneLineTree ]

@@ -42,9 +42,8 @@ ATTR Expression RightHandSide
      [ namesInScope : Names | | unboundNames USE {++} {[]} : Names ]
 
 SEM Module
-  | Module   loc . initialNames = concat [ keys (typeEnvironment @lhs.importEnvironment)
-                                         , keys @body.derivedFunctions
-                                         ]
+  | Module   loc . initialNames = map fst @derivedFunctions ++
+                                  concatMap (keysFM . typeEnvironment) @lhs.importEnvironments
                  . (namesInScope,unboundNames,scopeErrors,_) = changeOfScope (@initialNames ++ @body.declVarNames) Definition @body.unboundNames []
                  
 SEM MaybeDeclarations

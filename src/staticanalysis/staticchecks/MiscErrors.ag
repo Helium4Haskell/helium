@@ -121,8 +121,8 @@ SEM Expression
                                                 
   | Lambda       lhs . miscerrors = @scopeErrors ++ @expression.miscerrors  
   | Constructor  lhs . miscerrors = @undefinedConstructorErrors ++ @lhs.miscerrors
-                 loc . undefinedConstructorErrors = case lookupAL @name.self @lhs.constructorenv of 
-                                                       Nothing -> [ undefinedConstructor @name.self (@lhs.namesInScope ++ keys @lhs.constructorenv) (keys @lhs.tyconEnv) ]
+                 loc . undefinedConstructorErrors = case lookupFM @lhs.valueConstructors @name.self of 
+                                                       Nothing -> [ undefinedConstructor @name.self (@lhs.namesInScope ++ @lhs.allValueConstructors) @lhs.allTypeConstructors ]
                                                        Just _  -> []
                                                                           
   | Let          lhs . miscerrors = @scopeErrors ++ @duplicatedTypeSignature ++ @expression.miscerrors
@@ -134,12 +134,12 @@ SEM Expression
 
 SEM Pattern
     | Constructor        lhs . miscerrors = @patConstructorErrors ++ @patterns.miscerrors
-                         loc . patConstructorErrors = patternConstructorErrors @maybetp @name.self (@lhs.namesInScope ++ keys @lhs.constructorenv) @patterns.numberOfPatterns (keys @lhs.tyconEnv) 
-                             . maybetp    = lookupAL @name.self @lhs.constructorenv
+                         loc . patConstructorErrors = patternConstructorErrors @maybetp @name.self (@lhs.namesInScope ++ @lhs.allValueConstructors) @patterns.numberOfPatterns @lhs.allTypeConstructors
+                             . maybetp    = lookupFM @lhs.valueConstructors @name.self
                          
     | InfixConstructor   lhs . miscerrors = @patConstructorErrors ++ @rightPattern.miscerrors
-                         loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self (@lhs.namesInScope ++ keys @lhs.constructorenv) 2 (keys @lhs.tyconEnv)                                          
-                             . maybetp    = lookupAL @constructorOperator.self @lhs.constructorenv                         
+                         loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self (@lhs.namesInScope ++ @lhs.allValueConstructors) 2 @lhs.allTypeConstructors
+                             . maybetp    = lookupFM @lhs.valueConstructors @constructorOperator.self
 
        
 {

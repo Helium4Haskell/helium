@@ -1,57 +1,82 @@
 module ImportEnvironment where
 
-import EnvironmentSynonyms
+import FiniteMap
 import UHA_Syntax  ( Names, Name )
-import SortedAssocList
 import Types
-import Messages () -- for instance
+import OperatorTable
 
-data ImportEnvironment = 
+type TypeEnvironment             = FiniteMap Name TpScheme
+type ValueConstructorEnvironment = FiniteMap Name TpScheme
+type TypeConstructorEnvironment  = FiniteMap Name Int
+type TypeSynonymEnvironment      = FiniteMap Name (Int, Tps -> Tp)
+
+type ImportEnvironments = [ImportEnvironment]
+data ImportEnvironment  = 
      ImportEnvironment { -- types
                          typeConstructors  :: TypeConstructorEnvironment
                        , typeSynonyms      :: TypeSynonymEnvironment
-                       , typeEnvironment   :: TypeEnvironment
-                          -- values
-                       , valueConstructors :: ConstructorEnvironment
+                       , typeEnvironment   :: TypeEnvironment       
+                         -- values
+                       , valueConstructors :: ValueConstructorEnvironment
+                       , operatorTable     :: OperatorTable
                        }
 
 emptyEnvironment :: ImportEnvironment
-emptyEnvironment = ImportEnvironment { typeConstructors  = empty
-                                     , typeSynonyms      = []
-                                     , typeEnvironment   = empty
-                                     , valueConstructors = empty
+emptyEnvironment = ImportEnvironment { typeConstructors  = emptyFM
+                                     , typeSynonyms      = emptyFM
+                                     , typeEnvironment   = emptyFM
+                                     , valueConstructors = emptyFM
+                                     , operatorTable     = []
                                      }
                                               
 addTypeConstructor :: Name -> Int -> ImportEnvironment -> ImportEnvironment                      
 addTypeConstructor name int importenv = 
-   importenv {typeConstructors = add name int (typeConstructors importenv)} 
+   importenv {typeConstructors = addToFM (typeConstructors importenv) name int} 
 
 -- add a type synonym also to the type constructor environment   
 addTypeSynonym :: Name -> (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment                      
 addTypeSynonym name (arity, function) importenv = 
-   importenv { typeSynonyms     = (name, arity, function) : (typeSynonyms importenv)
-             , typeConstructors = add name arity (typeConstructors importenv)
+   importenv { typeSynonyms     = addToFM (typeSynonyms importenv)     name (arity, function)
+             , typeConstructors = addToFM (typeConstructors importenv) name arity 
              } 
 
 addType :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment                      
 addType name tpscheme importenv = 
-   importenv {typeEnvironment = add name tpscheme (typeEnvironment importenv)} 
+   importenv {typeEnvironment = addToFM (typeEnvironment importenv) name tpscheme} 
    
 addValueConstructor :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment                      
 addValueConstructor name tpscheme importenv = 
-   importenv {valueConstructors = add name tpscheme (valueConstructors importenv)} 
+   importenv {valueConstructors = addToFM (valueConstructors importenv) name tpscheme} 
+
+addOperator :: String -> (Int,Assoc) -> ImportEnvironment -> ImportEnvironment  
+addOperator name pair importenv = 
+   importenv {operatorTable = (name,pair) : operatorTable importenv } 
+   
+setValueConstructors :: FiniteMap Name TpScheme -> ImportEnvironment -> ImportEnvironment  
+setValueConstructors new importenv = importenv {valueConstructors = new} 
+
+setTypeConstructors :: FiniteMap Name Int -> ImportEnvironment -> ImportEnvironment     
+setTypeConstructors new importenv = importenv {typeConstructors = new}
+
+setTypeSynonyms :: FiniteMap Name (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment  
+setTypeSynonyms new importenv = importenv {typeSynonyms = new}
+
+setTypeEnvironment :: FiniteMap Name TpScheme -> ImportEnvironment -> ImportEnvironment 
+setTypeEnvironment new importenv = importenv {typeEnvironment = new}
+
+setOperatorTable :: OperatorTable -> ImportEnvironment -> ImportEnvironment 
+setOperatorTable new importenv = importenv {operatorTable = new}
 
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
-combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1) (ImportEnvironment tcs2 tss2 te2 vcs2) = 
+combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2) = 
    ImportEnvironment 
-      (tcs1 `combine` tcs2) 
-      (tss1 ++ tss2)
-      (te1  `combine` te2 )
-      (vcs1 `combine` vcs2)
-
-temporaryConverter :: ConstructorEnvironment -> TypeConstructorEnvironment -> TypeEnvironment -> AssocList Name (Int,Tps -> Tp) -> ImportEnvironment
-temporaryConverter vcs tcs te ass = ImportEnvironment (tcs `combine` mapElt fst ass) [ (n,i,f) | (n,(i,f)) <- toList ass ] te vcs
-
+      (tcs1 `plusFM` tcs2) 
+      (tss1 `plusFM` tss2)
+      (te1  `plusFM` te2 )
+      (vcs1 `plusFM` vcs2)
+      (ot1 ++ ot2)
+      
+{-
 instance Show ImportEnvironment where
    show (ImportEnvironment tcs tss te vcs) = 
       let tclist = let datas    = map f . filter p . toList $ tcs
@@ -71,4 +96,4 @@ instance Show ImportEnvironment where
                       [] -> []
                       xs -> "Types:" : map (\(n,ts) -> "   " ++ show n ++ " :: "++show ts) xs 
       in unlines (concat [tclist,vclist,telist])
-      
+      -}

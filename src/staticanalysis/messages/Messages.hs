@@ -336,15 +336,6 @@ showPosition (Range_Range Position_Unknown _) =
 showPosition _ =
     internalError "SAMessages" "showPosition" "unknown kind of position"
 
-sortAndShowErrors :: [Error] -> [String]
-sortAndShowErrors = sortAndShow -- weg
-
-sortAndShowTypeErrors :: [TypeError] -> [String]
-sortAndShowTypeErrors = sortAndShow  -- weg
-
-sortAndShowWarnings :: [Warning] -> [String]
-sortAndShowWarnings = sortAndShow  -- weg
-
 sortRanges :: [Range] -> [Range]
 sortRanges ranges = let (xs,ys) = partition isImportRange ranges
                     in sort ys ++ xs

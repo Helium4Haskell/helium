@@ -50,7 +50,7 @@ else
 PACKAGENET = 
 endif
 HC_OPTS = -static -cpp -fallow-overlapping-instances -fglasgow-exts \
-		-fallow-undecidable-instances -package util -package lang \
+		-fallow-undecidable-instances -package util -package lang -package data \
 		$(PACKAGENET) \
 		-i$(IFACES) $(EXTRA_HC_OPTS)
 
@@ -65,7 +65,7 @@ PARSER	= \
 	parser/Parser.hs parser/ParseType.hs parser/ResolveOperators.hs
 
 MODULESYSTEM = \
-	modulesystem/EnvironmentSynonyms.hs modulesystem/ImportEnvironment.hs \
+	modulesystem/ImportEnvironment.hs \
 	modulesystem/CoreToImportEnv.hs modulesystem/ExtractImportDecls.hs
 
 STATICANALYSIS = \

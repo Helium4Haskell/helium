@@ -2,7 +2,6 @@
 module StaticChecks where
 
 import UHA_Syntax
-import EnvironmentSynonyms
 import Types
 import Messages
 import SortedAssocList
@@ -13,8 +12,9 @@ import Utils ( internalError )
 import TypeConversion
 import DerivingShow
 import LiftedConstraints
-
+import FiniteMap
 import ImportEnvironment
+import OperatorTable
 
 import List       ( sort, group, nubBy )
 import UHA_Utils  ( getNameName, getPatRange, getStatementRange )
@@ -34,9 +34,9 @@ filterDerivedNames ranges err =
       Duplicated Definition names -> any (`notElem` ranges) (map getNameRange names) 
       _                           -> True
 
-checkRecursionTypeSynonyms :: TypeSynonymEnvironment -> (OrderedTypeSynonyms,[Names])
+checkRecursionTypeSynonyms :: [(Name,(Int,Tps -> Tp))] -> ([(Name,(Int,Tps -> Tp))],[Names])
 checkRecursionTypeSynonyms unordered =
-    let synonyms  = [ (n,(i,f)) | (n,i,f) <- unordered ]
+    let synonyms  = unordered
         nameTable = zip (map fst synonyms) [0..]
         synTable  = zip [0..] synonyms 
         edges = concat [ let Just i1 = lookup n1 nameTable
@@ -49,9 +49,18 @@ checkRecursionTypeSynonyms unordered =
         op [i] (as,bs)
            | (i,i) `elem` edges = (as,[ n | (n,i') <- nameTable, i==i' ] : bs)
            | otherwise          = let Just (name,(arity,tf)) = lookup i synTable
-                                  in ((show name,arity,tf):as,bs)
+                                  in ((name,(arity,tf)):as,bs)
         op is  (as,bs) = (as,[ n | i <- is, (n,i') <- nameTable, i==i'] : bs)
     in foldr op ([],[]) list
+
+uniqueKeys :: Ord key => [(key,a)] -> ([(key,a)],[[key]])
+uniqueKeys = let comp (x,_) (y,_) = compare x y
+                 eq   (x,_) (y,_) = x == y
+                 predicate xs = length xs == 1 
+             in (\(xs, ys) -> (map head xs, map (map fst) ys)) 
+              . partition predicate 
+              . groupBy eq 
+              . sortBy comp
                               
 changeOfScope :: Names -> Entity -> Names -> Names -> (Names,Names,Errors,Warnings)
 changeOfScope names entity unboundNames namesInScope = 
@@ -74,16 +83,16 @@ uniqueAppearance = foldr insert ([],[]) . group . sort
    where insert [x] (as,bs) = (x:as,bs)
          insert xs  (as,bs) = (as,xs:bs)
 
-checkType :: TypeConstructorEnvironment -> Names -> Type -> [Error]
-checkType tyconEnv namesInScope t =
+checkType :: FiniteMap Name Int -> Names -> Type -> [Error]
+checkType typeConstructors namesInScope t =
     let (f, xs) = walkSpine t
-        xsErrors = concatMap (checkType tyconEnv namesInScope) xs
+        xsErrors = concatMap (checkType typeConstructors namesInScope) xs
     in
         xsErrors
         ++
         case f of
             Type_Constructor _ c ->
-                checkKind c tyconEnv (length xs) namesInScope
+                checkKind c typeConstructors (length xs) namesInScope
             Type_Variable _ v ->
                 if length xs /= 0 then
                     [ TypeVarApplication v ]
@@ -102,7 +111,7 @@ walkSpine t =
             in (t, ys ++ xs)
         Type_Parenthesized _ t -> walkSpine t
 
-checkKind :: Name -> TypeConstructorEnvironment -> Int -> Names -> [Error]
+checkKind :: Name -> FiniteMap Name Int -> Int -> Names -> [Error]
 checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity namesInScope =
     if expected == useArity then
         []
@@ -114,20 +123,20 @@ checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity namesInScope =
                  0 -> 0  -- ()
                  n -> n + 1 -- (,) (,,) ...
 
-checkKind tycon tyconEnv useArity namesInScope =
-    case lookupAL tycon tyconEnv of
+checkKind tycon typeConstructors useArity namesInScope =
+    case lookupFM typeConstructors tycon of
         Nothing ->
             let hint = if tycon `elem` namesInScope 
                          then Just ("Constructor "++show (show tycon)++" cannot be used in a type") 
                          else Nothing 
-            in [ Undefined TypeConstructor tycon (keys tyconEnv) hint ]
+            in [ Undefined TypeConstructor tycon (keysFM typeConstructors) hint ]
         Just defArity ->
             if useArity /= defArity then
                 [ ArityMismatch TypeConstructor tycon defArity useArity ]
             else
                 [ ]
 
-findSimilarFunctionBindings :: TypeEnvironment -> [(Name,Name)] -> [Warning]
+findSimilarFunctionBindings :: AssocList Name a -> [(Name,Name)] -> [Warning]
 findSimilarFunctionBindings environment candidates = 
    [ uncurry SimilarFunctionBindings pair
    | (n1,n2) <- candidates
@@ -179,11 +188,13 @@ equalName x y =
     getNameName x == getNameName y        
 -- Alternative -------------------------------------------------
 -- semantic domain
-type T_Alternative = (ConstructorEnvironment) ->
+type T_Alternative = (Names) ->
+                     (Names) ->
                      ([Error]) ->
                      ([Error]) ->
                      (Names) ->
-                     (TypeConstructorEnvironment) ->
+                     (FiniteMap Name Int) ->
+                     (FiniteMap Name TpScheme) ->
                      ([Warning]) ->
                      (([Error]),([Error]),(Alternative),(Names),([Warning]))
 -- cata
@@ -197,7 +208,7 @@ sem_Alternative_Alternative :: (T_Range) ->
                                (T_Pattern) ->
                                (T_RightHandSide) ->
                                (T_Alternative)
-sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Alternative_Alternative _range_self _pattern_self _righthandside_self
         ((_namesInScope,_unboundNames,_scopeErrors,_scopeWarnings)) =
@@ -205,9 +216,9 @@ sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_construct
         ( _range_self) =
             (_range )
         ( _pattern_miscerrors,_pattern_patVarNames,_pattern_self,_pattern_unboundNames,_pattern_warnings) =
-            (_pattern (_lhs_constructorenv) (_lhs_miscerrors) (_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_pattern (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _righthandside_kindErrors,_righthandside_miscerrors,_righthandside_self,_righthandside_unboundNames,_righthandside_warnings) =
-            (_righthandside (_lhs_constructorenv) (_lhs_kindErrors) (_pattern_miscerrors) (_namesInScope) (_lhs_tyconEnv) (_pattern_warnings))
+            (_righthandside (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_pattern_miscerrors) (_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_pattern_warnings))
     in  (_righthandside_kindErrors
         ,_scopeErrors ++ _righthandside_miscerrors
         ,_self
@@ -217,7 +228,7 @@ sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_construct
         )
 sem_Alternative_Empty :: (T_Range) ->
                          (T_Alternative)
-sem_Alternative_Empty (_range) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Alternative_Empty (_range) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Alternative_Empty _range_self
         ( _range_self) =
@@ -225,11 +236,13 @@ sem_Alternative_Empty (_range) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_mis
     in  (_lhs_kindErrors,_lhs_miscerrors,_self,[],_lhs_warnings)
 -- Alternatives ------------------------------------------------
 -- semantic domain
-type T_Alternatives = (ConstructorEnvironment) ->
+type T_Alternatives = (Names) ->
+                      (Names) ->
                       ([Error]) ->
                       ([Error]) ->
                       (Names) ->
-                      (TypeConstructorEnvironment) ->
+                      (FiniteMap Name Int) ->
+                      (FiniteMap Name TpScheme) ->
                       ([Warning]) ->
                       (([Error]),([Error]),(Alternatives),(Names),([Warning]))
 -- cata
@@ -240,25 +253,27 @@ sem_Alternatives (list) =
 sem_Alternatives_Cons :: (T_Alternative) ->
                          (T_Alternatives) ->
                          (T_Alternatives)
-sem_Alternatives_Cons (_hd) (_tl) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Alternatives_Cons (_hd) (_tl) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             _hd_self : _tl_self
         ( _hd_kindErrors,_hd_miscerrors,_hd_self,_hd_unboundNames,_hd_warnings) =
-            (_hd (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_hd (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _tl_kindErrors,_tl_miscerrors,_tl_self,_tl_unboundNames,_tl_warnings) =
-            (_tl (_lhs_constructorenv) (_hd_kindErrors) (_hd_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_hd_warnings))
+            (_tl (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_hd_kindErrors) (_hd_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_hd_warnings))
     in  (_tl_kindErrors,_tl_miscerrors,_self,_hd_unboundNames ++ _tl_unboundNames,_tl_warnings)
 sem_Alternatives_Nil :: (T_Alternatives)
-sem_Alternatives_Nil (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Alternatives_Nil (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             []
     in  (_lhs_kindErrors,_lhs_miscerrors,_self,[],_lhs_warnings)
 -- AnnotatedType -----------------------------------------------
 -- semantic domain
-type T_AnnotatedType = (ConstructorEnvironment) ->
+type T_AnnotatedType = (Names) ->
+                       (Names) ->
                        ([Error]) ->
                        (Names) ->
-                       (TypeConstructorEnvironment) ->
+                       (FiniteMap Name Int) ->
+                       (FiniteMap Name TpScheme) ->
                        (([Error]),(AnnotatedType),(Type),(Names),(Names))
 -- cata
 sem_AnnotatedType :: (AnnotatedType) ->
@@ -269,20 +284,24 @@ sem_AnnotatedType_AnnotatedType :: (T_Range) ->
                                    (Bool) ->
                                    (T_Type) ->
                                    (T_AnnotatedType)
-sem_AnnotatedType_AnnotatedType (_range) (_strict) (_type) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_tyconEnv) =
+sem_AnnotatedType_AnnotatedType (_range) (_strict) (_type) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) =
     let (_self) =
             AnnotatedType_AnnotatedType _range_self _strict _type_self
+        (_newErrors) =
+            checkType _lhs_typeConstructors (_lhs_namesInScope ++ _lhs_allValueConstructors) _type_self
         ( _range_self) =
             (_range )
         ( _type_self,_type_typevariables) =
-            (_type (_lhs_tyconEnv))
-    in  (checkType _lhs_tyconEnv (_lhs_namesInScope ++ keys _lhs_constructorenv) _type_self ++ _lhs_kindErrors,_self,_type_self,_type_typevariables,[])
+            (_type )
+    in  (_newErrors ++ _lhs_kindErrors,_self,_type_self,_type_typevariables,[])
 -- AnnotatedTypes ----------------------------------------------
 -- semantic domain
-type T_AnnotatedTypes = (ConstructorEnvironment) ->
+type T_AnnotatedTypes = (Names) ->
+                        (Names) ->
                         ([Error]) ->
                         (Names) ->
-                        (TypeConstructorEnvironment) ->
+                        (FiniteMap Name Int) ->
+                        (FiniteMap Name TpScheme) ->
                         (([Error]),(AnnotatedTypes),(Types),(Names),(Names))
 -- cata
 sem_AnnotatedTypes :: (AnnotatedTypes) ->
@@ -292,29 +311,34 @@ sem_AnnotatedTypes (list) =
 sem_AnnotatedTypes_Cons :: (T_AnnotatedType) ->
                            (T_AnnotatedTypes) ->
                            (T_AnnotatedTypes)
-sem_AnnotatedTypes_Cons (_hd) (_tl) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_tyconEnv) =
+sem_AnnotatedTypes_Cons (_hd) (_tl) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) =
     let (_self) =
             _hd_self : _tl_self
         ( _hd_kindErrors,_hd_self,_hd_type,_hd_typevariables,_hd_unboundNames) =
-            (_hd (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_tyconEnv))
+            (_hd (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors))
         ( _tl_kindErrors,_tl_self,_tl_types,_tl_typevariables,_tl_unboundNames) =
-            (_tl (_lhs_constructorenv) (_hd_kindErrors) (_lhs_namesInScope) (_lhs_tyconEnv))
+            (_tl (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_hd_kindErrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors))
     in  (_tl_kindErrors,_self,_hd_type : _tl_types,_hd_typevariables  ++  _tl_typevariables,_hd_unboundNames ++ _tl_unboundNames)
 sem_AnnotatedTypes_Nil :: (T_AnnotatedTypes)
-sem_AnnotatedTypes_Nil (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_tyconEnv) =
+sem_AnnotatedTypes_Nil (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) =
     let (_self) =
             []
     in  (_lhs_kindErrors,_self,[],[],[])
 -- Body --------------------------------------------------------
 -- semantic domain
-type T_Body = (ImportEnvironment) ->
-              (ConstructorEnvironment) ->
+type T_Body = (Names) ->
+              (Names) ->
+              ([(Name,Int)]) ->
+              ([(Name,(Int,Tps -> Tp))]) ->
+              ([(Name,TpScheme)]) ->
               ([Error]) ->
               ([Error]) ->
               (Names) ->
-              (TypeConstructorEnvironment) ->
+              ([(Name,(Int,Assoc))]) ->
+              (FiniteMap Name Int) ->
+              (FiniteMap Name TpScheme) ->
               ([Warning]) ->
-              ((ImportEnvironment),(Names),(TypeEnvironment),(Names),(Names),([Error]),([Error]),(Body),(TypeEnvironment),(Names),([Warning]))
+              (([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),(Names),(Names),([Error]),([Error]),([(Name,(Int,Assoc))]),(Body),(AssocList Name TpScheme),(Names),([Warning]))
 -- cata
 sem_Body :: (Body) ->
             (T_Body)
@@ -324,7 +348,7 @@ sem_Body_Body :: (T_Range) ->
                  (T_ImportDeclarations) ->
                  (T_Declarations) ->
                  (T_Body)
-sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Body_Body _range_self _importdeclarations_self _declarations_self
         (_suspiciousErrors) =
@@ -337,15 +361,16 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_collectEnviro
             (_range )
         ( _importdeclarations_importedModules,_importdeclarations_self) =
             (_importdeclarations ([]))
-        ( _declarations_collectEnvironment,_declarations_declVarNames,_declarations_derivedFunctions,_declarations_fixOps,_declarations_kindErrors,_declarations_miscerrors,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
-            (_declarations (_lhs_collectEnvironment) (_lhs_constructorenv) (empty) ([]) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (Nothing) ([]) (_lhs_tyconEnv) (empty) (_lhs_warnings))
-    in  (_declarations_collectEnvironment
+        ( _declarations_collectTypeConstructors,_declarations_collectTypeSynonyms,_declarations_collectValueConstructors,_declarations_declVarNames,_declarations_kindErrors,_declarations_miscerrors,_declarations_operatorFixities,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
+            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) (empty) (_lhs_valueConstructors) (_lhs_warnings))
+    in  (_declarations_collectTypeConstructors
+        ,_declarations_collectTypeSynonyms
+        ,_declarations_collectValueConstructors
         ,_declarations_declVarNames
-        ,_declarations_derivedFunctions
-        ,_declarations_fixOps
         ,_importdeclarations_importedModules
         ,_declarations_kindErrors
         ,_duplicatedTypeSignature ++ _declarations_miscerrors
+        ,_declarations_operatorFixities
         ,_self
         ,_declarations_typeSignatures
         ,_declarations_unboundNames
@@ -354,13 +379,15 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_collectEnviro
         )
 -- Constructor -------------------------------------------------
 -- semantic domain
-type T_Constructor = (ImportEnvironment) ->
-                     (ConstructorEnvironment) ->
+type T_Constructor = (Names) ->
+                     (Names) ->
+                     ([(Name,TpScheme)]) ->
                      ([Error]) ->
                      (Names) ->
                      (SimpleType) ->
-                     (TypeConstructorEnvironment) ->
-                     ((ImportEnvironment),([Error]),(Constructor),(Names),(Names))
+                     (FiniteMap Name Int) ->
+                     (FiniteMap Name TpScheme) ->
+                     (([(Name,TpScheme)]),([Error]),(Constructor),(Names),(Names))
 -- cata
 sem_Constructor :: (Constructor) ->
                    (T_Constructor)
@@ -374,7 +401,7 @@ sem_Constructor_Constructor :: (T_Range) ->
                                (T_Name) ->
                                (T_AnnotatedTypes) ->
                                (T_Constructor)
-sem_Constructor_Constructor (_range) (_constructor) (_types) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_simpletype) (_lhs_tyconEnv) =
+sem_Constructor_Constructor (_range) (_constructor) (_types) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_simpletype) (_lhs_typeConstructors) (_lhs_valueConstructors) =
     let (_typeScheme) =
             generalizeAll (foldr (.->.) _tp _tps)
         ((_tp,_tps)) =
@@ -386,14 +413,14 @@ sem_Constructor_Constructor (_range) (_constructor) (_types) (_lhs_collectEnviro
         ( _constructor_self) =
             (_constructor )
         ( _types_kindErrors,_types_self,_types_types,_types_typevariables,_types_unboundNames) =
-            (_types (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_tyconEnv))
-    in  (addValueConstructor _constructor_self _typeScheme _lhs_collectEnvironment,_types_kindErrors,_self,_types_typevariables,_types_unboundNames)
+            (_types (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors))
+    in  ((_constructor_self, _typeScheme) : _lhs_collectValueConstructors,_types_kindErrors,_self,_types_typevariables,_types_unboundNames)
 sem_Constructor_Infix :: (T_Range) ->
                          (T_AnnotatedType) ->
                          (T_Name) ->
                          (T_AnnotatedType) ->
                          (T_Constructor)
-sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_simpletype) (_lhs_tyconEnv) =
+sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_simpletype) (_lhs_typeConstructors) (_lhs_valueConstructors) =
     let (_typeScheme) =
             generalizeAll (foldr (.->.) _tp _tps)
         ((_tp,_tps)) =
@@ -403,17 +430,17 @@ sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) (
         ( _range_self) =
             (_range )
         ( _leftType_kindErrors,_leftType_self,_leftType_type,_leftType_typevariables,_leftType_unboundNames) =
-            (_leftType (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_tyconEnv))
+            (_leftType (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors))
         ( _constructorOperator_self) =
             (_constructorOperator )
         ( _rightType_kindErrors,_rightType_self,_rightType_type,_rightType_typevariables,_rightType_unboundNames) =
-            (_rightType (_lhs_constructorenv) (_leftType_kindErrors) (_lhs_namesInScope) (_lhs_tyconEnv))
-    in  (addValueConstructor _constructorOperator_self _typeScheme _lhs_collectEnvironment,_rightType_kindErrors,_self,_leftType_typevariables  ++  _rightType_typevariables,_leftType_unboundNames ++ _rightType_unboundNames)
+            (_rightType (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_leftType_kindErrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors))
+    in  ((_constructorOperator_self, _typeScheme) : _lhs_collectValueConstructors,_rightType_kindErrors,_self,_leftType_typevariables  ++  _rightType_typevariables,_leftType_unboundNames ++ _rightType_unboundNames)
 sem_Constructor_Record :: (T_Range) ->
                           (T_Name) ->
                           (T_FieldDeclarations) ->
                           (T_Constructor)
-sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_simpletype) (_lhs_tyconEnv) =
+sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_simpletype) (_lhs_typeConstructors) (_lhs_valueConstructors) =
     let (_self) =
             Constructor_Record _range_self _constructor_self _fieldDeclarations_self
         ( _range_self) =
@@ -422,16 +449,18 @@ sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) (_lhs_collec
             (_constructor )
         ( _fieldDeclarations_self,_fieldDeclarations_unboundNames) =
             (_fieldDeclarations (_lhs_namesInScope))
-    in  (_lhs_collectEnvironment,_lhs_kindErrors,_self,[],_fieldDeclarations_unboundNames)
+    in  (_lhs_collectValueConstructors,_lhs_kindErrors,_self,[],_fieldDeclarations_unboundNames)
 -- Constructors ------------------------------------------------
 -- semantic domain
-type T_Constructors = (ImportEnvironment) ->
-                      (ConstructorEnvironment) ->
+type T_Constructors = (Names) ->
+                      (Names) ->
+                      ([(Name,TpScheme)]) ->
                       ([Error]) ->
                       (Names) ->
                       (SimpleType) ->
-                      (TypeConstructorEnvironment) ->
-                      ((ImportEnvironment),([Error]),(Constructors),(Names),(Names))
+                      (FiniteMap Name Int) ->
+                      (FiniteMap Name TpScheme) ->
+                      (([(Name,TpScheme)]),([Error]),(Constructors),(Names),(Names))
 -- cata
 sem_Constructors :: (Constructors) ->
                     (T_Constructors)
@@ -440,19 +469,19 @@ sem_Constructors (list) =
 sem_Constructors_Cons :: (T_Constructor) ->
                          (T_Constructors) ->
                          (T_Constructors)
-sem_Constructors_Cons (_hd) (_tl) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_simpletype) (_lhs_tyconEnv) =
+sem_Constructors_Cons (_hd) (_tl) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_simpletype) (_lhs_typeConstructors) (_lhs_valueConstructors) =
     let (_self) =
             _hd_self : _tl_self
-        ( _hd_collectEnvironment,_hd_kindErrors,_hd_self,_hd_typevariables,_hd_unboundNames) =
-            (_hd (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_simpletype) (_lhs_tyconEnv))
-        ( _tl_collectEnvironment,_tl_kindErrors,_tl_self,_tl_typevariables,_tl_unboundNames) =
-            (_tl (_hd_collectEnvironment) (_lhs_constructorenv) (_hd_kindErrors) (_lhs_namesInScope) (_lhs_simpletype) (_lhs_tyconEnv))
-    in  (_tl_collectEnvironment,_tl_kindErrors,_self,_hd_typevariables  ++  _tl_typevariables,_hd_unboundNames ++ _tl_unboundNames)
+        ( _hd_collectValueConstructors,_hd_kindErrors,_hd_self,_hd_typevariables,_hd_unboundNames) =
+            (_hd (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_simpletype) (_lhs_typeConstructors) (_lhs_valueConstructors))
+        ( _tl_collectValueConstructors,_tl_kindErrors,_tl_self,_tl_typevariables,_tl_unboundNames) =
+            (_tl (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_hd_collectValueConstructors) (_hd_kindErrors) (_lhs_namesInScope) (_lhs_simpletype) (_lhs_typeConstructors) (_lhs_valueConstructors))
+    in  (_tl_collectValueConstructors,_tl_kindErrors,_self,_hd_typevariables  ++  _tl_typevariables,_hd_unboundNames ++ _tl_unboundNames)
 sem_Constructors_Nil :: (T_Constructors)
-sem_Constructors_Nil (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_simpletype) (_lhs_tyconEnv) =
+sem_Constructors_Nil (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_simpletype) (_lhs_typeConstructors) (_lhs_valueConstructors) =
     let (_self) =
             []
-    in  (_lhs_collectEnvironment,_lhs_kindErrors,_self,[],[])
+    in  (_lhs_collectValueConstructors,_lhs_kindErrors,_self,[],[])
 -- ContextItem -------------------------------------------------
 -- semantic domain
 type T_ContextItem = ((ContextItem))
@@ -475,7 +504,7 @@ sem_ContextItem_ContextItem (_range) (_name) (_types) =
         ( _name_self) =
             (_name )
         ( _types_self,_types_typevariables) =
-            (_types (_tyconEnv))
+            (_types )
     in  (_self)
 -- ContextItems ------------------------------------------------
 -- semantic domain
@@ -503,19 +532,22 @@ sem_ContextItems_Nil  =
     in  (_self)
 -- Declaration -------------------------------------------------
 -- semantic domain
-type T_Declaration = (ImportEnvironment) ->
-                     (ConstructorEnvironment) ->
-                     (TypeEnvironment) ->
+type T_Declaration = (Names) ->
                      (Names) ->
+                     ([(Name,Int)]) ->
+                     ([(Name,(Int,Tps -> Tp))]) ->
+                     ([(Name,TpScheme)]) ->
                      ([Error]) ->
                      ([Error]) ->
                      (Names) ->
+                     ([(Name,(Int,Assoc))]) ->
                      (Maybe Name) ->
                      ([(Name,Name)]) ->
-                     (TypeConstructorEnvironment) ->
-                     (TypeEnvironment) ->
+                     (FiniteMap Name Int) ->
+                     (AssocList Name TpScheme) ->
+                     (FiniteMap Name TpScheme) ->
                      ([Warning]) ->
-                     ((ImportEnvironment),(Names),(TypeEnvironment),(Names),([Error]),([Error]),(Maybe Name),(Declaration),([(Name,Name)]),(TypeEnvironment),(Names),([Warning]))
+                     (([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),(Names),([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),(Declaration),([(Name,Name)]),(AssocList Name TpScheme),(Names),([Warning]))
 -- cata
 sem_Declaration :: (Declaration) ->
                    (T_Declaration)
@@ -546,7 +578,7 @@ sem_Declaration_Class :: (T_Range) ->
                          (T_SimpleType) ->
                          (T_MaybeDeclarations) ->
                          (T_Declaration)
-sem_Declaration_Class (_range) (_context) (_simpletype) (_where) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_derivedFunctions) (_lhs_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_tyconEnv) (_lhs_typeSignatures) (_lhs_warnings) =
+sem_Declaration_Class (_range) (_context) (_simpletype) (_where) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_typeConstructors) (_lhs_typeSignatures) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Declaration_Class _range_self _context_self _simpletype_self _where_self
         ((_assumptions,_constraints,_unboundNames)) =
@@ -558,15 +590,15 @@ sem_Declaration_Class (_range) (_context) (_simpletype) (_where) (_lhs_collectEn
         ( _simpletype_name,_simpletype_self,_simpletype_typevariables) =
             (_simpletype )
         ( _where_kindErrors,_where_miscerrors,_where_namesInScope,_where_self,_where_unboundNames,_where_warnings) =
-            (_where (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_unboundNames) (_lhs_warnings))
-    in  (_lhs_collectEnvironment,[],_lhs_derivedFunctions,_lhs_fixOps,_where_kindErrors,_where_miscerrors,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,_where_unboundNames,_where_warnings)
+            (_where (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_unboundNames) (_lhs_valueConstructors) (_lhs_warnings))
+    in  (_lhs_collectTypeConstructors,_lhs_collectTypeSynonyms,_lhs_collectValueConstructors,[],_where_kindErrors,_where_miscerrors,_lhs_operatorFixities,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,_where_unboundNames,_where_warnings)
 sem_Declaration_Data :: (T_Range) ->
                         (T_ContextItems) ->
                         (T_SimpleType) ->
                         (T_Constructors) ->
                         (T_Names) ->
                         (T_Declaration)
-sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivings) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_derivedFunctions) (_lhs_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_tyconEnv) (_lhs_typeSignatures) (_lhs_warnings) =
+sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivings) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_typeConstructors) (_lhs_typeSignatures) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Declaration_Data _range_self _context_self _simpletype_self _constructors_self _derivings_self
         (_unused) =
@@ -581,22 +613,20 @@ sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivin
             (_context )
         ( _simpletype_name,_simpletype_self,_simpletype_typevariables) =
             (_simpletype )
-        ( _constructors_collectEnvironment,_constructors_kindErrors,_constructors_self,_constructors_typevariables,_constructors_unboundNames) =
-            (_constructors (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_namesInScope) (_simpletype_self) (_lhs_tyconEnv))
+        ( _constructors_collectValueConstructors,_constructors_kindErrors,_constructors_self,_constructors_typevariables,_constructors_unboundNames) =
+            (_constructors (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_namesInScope) (_simpletype_self) (_lhs_typeConstructors) (_lhs_valueConstructors))
         ( _derivings_self) =
             (_derivings )
-    in  (addTypeConstructor _simpletype_name (length _simpletype_typevariables) _constructors_collectEnvironment
+    in  ((_simpletype_name,length _simpletype_typevariables) : _lhs_collectTypeConstructors
+        ,_lhs_collectTypeSynonyms
+        ,_constructors_collectValueConstructors
         ,[]
-        ,add
-             (nameOfShowFunction _simpletype_name)
-             (typeOfShowFunction _simpletype_name _simpletype_typevariables)
-             _lhs_derivedFunctions
-        ,_lhs_fixOps
         ,_constructors_kindErrors
         ,concat [ makeDuplicated TypeVariable _doubles
                 , makeUndefined TypeVariable _undef _simpletype_typevariables
                 , _lhs_miscerrors
                 ]
+        ,_lhs_operatorFixities
         ,Nothing
         ,_self
         ,_lhs_suspiciousFBs
@@ -607,28 +637,28 @@ sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivin
 sem_Declaration_Default :: (T_Range) ->
                            (T_Types) ->
                            (T_Declaration)
-sem_Declaration_Default (_range) (_types) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_derivedFunctions) (_lhs_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_tyconEnv) (_lhs_typeSignatures) (_lhs_warnings) =
+sem_Declaration_Default (_range) (_types) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_typeConstructors) (_lhs_typeSignatures) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Declaration_Default _range_self _types_self
         ( _range_self) =
             (_range )
         ( _types_self,_types_typevariables) =
-            (_types (_lhs_tyconEnv))
-    in  (_lhs_collectEnvironment,[],_lhs_derivedFunctions,_lhs_fixOps,_lhs_kindErrors,_lhs_miscerrors,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,[],_lhs_warnings)
+            (_types )
+    in  (_lhs_collectTypeConstructors,_lhs_collectTypeSynonyms,_lhs_collectValueConstructors,[],_lhs_kindErrors,_lhs_miscerrors,_lhs_operatorFixities,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,[],_lhs_warnings)
 sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
-sem_Declaration_Empty (_range) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_derivedFunctions) (_lhs_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_tyconEnv) (_lhs_typeSignatures) (_lhs_warnings) =
+sem_Declaration_Empty (_range) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_typeConstructors) (_lhs_typeSignatures) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Declaration_Empty _range_self
         ( _range_self) =
             (_range )
-    in  (_lhs_collectEnvironment,[],_lhs_derivedFunctions,_lhs_fixOps,_lhs_kindErrors,_lhs_miscerrors,_lhs_previousWasAlsoFB,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,[],_lhs_warnings)
+    in  (_lhs_collectTypeConstructors,_lhs_collectTypeSynonyms,_lhs_collectValueConstructors,[],_lhs_kindErrors,_lhs_miscerrors,_lhs_operatorFixities,_lhs_previousWasAlsoFB,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,[],_lhs_warnings)
 sem_Declaration_Fixity :: (T_Range) ->
                           (T_Fixity) ->
                           (T_MaybeInt) ->
                           (T_Names) ->
                           (T_Declaration)
-sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_derivedFunctions) (_lhs_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_tyconEnv) (_lhs_typeSignatures) (_lhs_warnings) =
+sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_typeConstructors) (_lhs_typeSignatures) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Declaration_Fixity _range_self _fixity_self _priority_self _operators_self
         ( _range_self) =
@@ -639,11 +669,11 @@ sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) (_lhs_collect
             (_priority )
         ( _operators_self) =
             (_operators )
-    in  (_lhs_collectEnvironment,[],_lhs_derivedFunctions,_operators_self ++ _lhs_fixOps,_lhs_kindErrors,_lhs_miscerrors,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,[],_lhs_warnings)
+    in  (_lhs_collectTypeConstructors,_lhs_collectTypeSynonyms,_lhs_collectValueConstructors,[],_lhs_kindErrors,_lhs_miscerrors,[ (name,(0,AssocNone)) | name <- _operators_self ] ++ _lhs_operatorFixities,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,[],_lhs_warnings)
 sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)
-sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_derivedFunctions) (_lhs_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_tyconEnv) (_lhs_typeSignatures) (_lhs_warnings) =
+sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_typeConstructors) (_lhs_typeSignatures) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Declaration_FunctionBindings _range_self _bindings_self
         (_arityErrors) =
@@ -653,13 +683,14 @@ sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_collectEnvironment) 
         ( _range_self) =
             (_range )
         ( _bindings_arities,_bindings_kindErrors,_bindings_miscerrors,_bindings_name,_bindings_self,_bindings_unboundNames,_bindings_warnings) =
-            (_bindings (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
-    in  (_lhs_collectEnvironment
+            (_bindings (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
+    in  (_lhs_collectTypeConstructors
+        ,_lhs_collectTypeSynonyms
+        ,_lhs_collectValueConstructors
         ,[_bindings_name]
-        ,_lhs_derivedFunctions
-        ,_lhs_fixOps
         ,_bindings_kindErrors
         ,_arityErrors ++ _bindings_miscerrors
+        ,_lhs_operatorFixities
         ,Just _bindings_name
         ,_self
         ,case _lhs_previousWasAlsoFB of
@@ -676,7 +707,7 @@ sem_Declaration_Instance :: (T_Range) ->
                             (T_Types) ->
                             (T_MaybeDeclarations) ->
                             (T_Declaration)
-sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_derivedFunctions) (_lhs_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_tyconEnv) (_lhs_typeSignatures) (_lhs_warnings) =
+sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_typeConstructors) (_lhs_typeSignatures) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Declaration_Instance _range_self _context_self _name_self _types_self _where_self
         ((_assumptions,_constraints,_unboundNames)) =
@@ -688,17 +719,17 @@ sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) (_lhs_col
         ( _name_self) =
             (_name )
         ( _types_self,_types_typevariables) =
-            (_types (_lhs_tyconEnv))
+            (_types )
         ( _where_kindErrors,_where_miscerrors,_where_namesInScope,_where_self,_where_unboundNames,_where_warnings) =
-            (_where (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_unboundNames) (_lhs_warnings))
-    in  (_lhs_collectEnvironment,[],_lhs_derivedFunctions,_lhs_fixOps,_where_kindErrors,_where_miscerrors,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,_where_unboundNames,_where_warnings)
+            (_where (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_unboundNames) (_lhs_valueConstructors) (_lhs_warnings))
+    in  (_lhs_collectTypeConstructors,_lhs_collectTypeSynonyms,_lhs_collectValueConstructors,[],_where_kindErrors,_where_miscerrors,_lhs_operatorFixities,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,_where_unboundNames,_where_warnings)
 sem_Declaration_Newtype :: (T_Range) ->
                            (T_ContextItems) ->
                            (T_SimpleType) ->
                            (T_Constructor) ->
                            (T_Names) ->
                            (T_Declaration)
-sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_derivings) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_derivedFunctions) (_lhs_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_tyconEnv) (_lhs_typeSignatures) (_lhs_warnings) =
+sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_derivings) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_typeConstructors) (_lhs_typeSignatures) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Declaration_Newtype _range_self _context_self _simpletype_self _constructor_self _derivings_self
         ( _range_self) =
@@ -707,16 +738,16 @@ sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_deriv
             (_context )
         ( _simpletype_name,_simpletype_self,_simpletype_typevariables) =
             (_simpletype )
-        ( _constructor_collectEnvironment,_constructor_kindErrors,_constructor_self,_constructor_typevariables,_constructor_unboundNames) =
-            (_constructor (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_namesInScope) (_simpletype_self) (_lhs_tyconEnv))
+        ( _constructor_collectValueConstructors,_constructor_kindErrors,_constructor_self,_constructor_typevariables,_constructor_unboundNames) =
+            (_constructor (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_namesInScope) (_simpletype_self) (_lhs_typeConstructors) (_lhs_valueConstructors))
         ( _derivings_self) =
             (_derivings )
-    in  (_constructor_collectEnvironment,[],_lhs_derivedFunctions,_lhs_fixOps,_constructor_kindErrors,_lhs_miscerrors,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,_constructor_unboundNames,_lhs_warnings)
+    in  (_lhs_collectTypeConstructors,_lhs_collectTypeSynonyms,_constructor_collectValueConstructors,[],_constructor_kindErrors,_lhs_miscerrors,_lhs_operatorFixities,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,_constructor_unboundNames,_lhs_warnings)
 sem_Declaration_PatternBinding :: (T_Range) ->
                                   (T_Pattern) ->
                                   (T_RightHandSide) ->
                                   (T_Declaration)
-sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_derivedFunctions) (_lhs_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_tyconEnv) (_lhs_typeSignatures) (_lhs_warnings) =
+sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_typeConstructors) (_lhs_typeSignatures) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Declaration_PatternBinding _range_self _pattern_self _righthandside_self
         (_patternDefinesNoVarsErrors) =
@@ -726,19 +757,21 @@ sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_collec
         ( _range_self) =
             (_range )
         ( _pattern_miscerrors,_pattern_patVarNames,_pattern_self,_pattern_unboundNames,_pattern_warnings) =
-            (_pattern (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_pattern (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _righthandside_kindErrors,_righthandside_miscerrors,_righthandside_self,_righthandside_unboundNames,_righthandside_warnings) =
-            (_righthandside (_lhs_constructorenv) (_lhs_kindErrors) (_pattern_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_pattern_warnings))
-    in  (_lhs_collectEnvironment,_pattern_patVarNames,_lhs_derivedFunctions,_lhs_fixOps,_righthandside_kindErrors,_patternDefinesNoVarsErrors ++ _righthandside_miscerrors,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,_pattern_unboundNames ++ _righthandside_unboundNames,_righthandside_warnings)
+            (_righthandside (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_pattern_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_pattern_warnings))
+    in  (_lhs_collectTypeConstructors,_lhs_collectTypeSynonyms,_lhs_collectValueConstructors,_pattern_patVarNames,_righthandside_kindErrors,_patternDefinesNoVarsErrors ++ _righthandside_miscerrors,_lhs_operatorFixities,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,_pattern_unboundNames ++ _righthandside_unboundNames,_righthandside_warnings)
 sem_Declaration_Type :: (T_Range) ->
                         (T_SimpleType) ->
                         (T_Type) ->
                         (T_Declaration)
-sem_Declaration_Type (_range) (_simpletype) (_type) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_derivedFunctions) (_lhs_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_tyconEnv) (_lhs_typeSignatures) (_lhs_warnings) =
+sem_Declaration_Type (_range) (_simpletype) (_type) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_typeConstructors) (_lhs_typeSignatures) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_typeSynonymInfo) =
             (length _simpletype_typevariables,\tps -> makeTpFromType (zip _simpletype_typevariables tps) _type_self)
         (_self) =
             Declaration_Type _range_self _simpletype_self _type_self
+        (_newErrors) =
+            checkType _lhs_typeConstructors (_lhs_namesInScope ++ _lhs_allValueConstructors) _type_self
         (_unused) =
             filter (`notElem` _type_typevariables)       _simpletype_typevariables
         (_doubles) =
@@ -750,19 +783,17 @@ sem_Declaration_Type (_range) (_simpletype) (_type) (_lhs_collectEnvironment) (_
         ( _simpletype_name,_simpletype_self,_simpletype_typevariables) =
             (_simpletype )
         ( _type_self,_type_typevariables) =
-            (_type (_lhs_tyconEnv))
-    in  (addTypeSynonym     _simpletype_name _typeSynonymInfo _lhs_collectEnvironment
+            (_type )
+    in  (_lhs_collectTypeConstructors
+        ,(_simpletype_name, _typeSynonymInfo) : _lhs_collectTypeSynonyms
+        ,_lhs_collectValueConstructors
         ,[]
-        ,add
-             (nameOfShowFunction _simpletype_name)
-             (typeOfShowFunction _simpletype_name _simpletype_typevariables)
-             _lhs_derivedFunctions
-        ,_lhs_fixOps
-        ,checkType _lhs_tyconEnv (_lhs_namesInScope ++ keys _lhs_constructorenv) _type_self ++ _lhs_kindErrors
+        ,_newErrors ++ _lhs_kindErrors
         ,concat [ makeDuplicated TypeVariable _doubles
                 , makeUndefined TypeVariable _undef _simpletype_typevariables
                 , _lhs_miscerrors
                 ]
+        ,_lhs_operatorFixities
         ,Nothing
         ,_self
         ,_lhs_suspiciousFBs
@@ -774,33 +805,38 @@ sem_Declaration_TypeSignature :: (T_Range) ->
                                  (T_Names) ->
                                  (T_Type) ->
                                  (T_Declaration)
-sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_derivedFunctions) (_lhs_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_tyconEnv) (_lhs_typeSignatures) (_lhs_warnings) =
-    let (_self) =
-            Declaration_TypeSignature _range_self _names_self _type_self
-        (_typeScheme) =
+sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_typeConstructors) (_lhs_typeSignatures) (_lhs_valueConstructors) (_lhs_warnings) =
+    let (_typeScheme) =
             makeTpSchemeFromType _type_self
+        (_self) =
+            Declaration_TypeSignature _range_self _names_self _type_self
+        (_newErrors) =
+            checkType _lhs_typeConstructors (_lhs_namesInScope ++ _lhs_allValueConstructors) _type_self
         ( _range_self) =
             (_range )
         ( _names_self) =
             (_names )
         ( _type_self,_type_typevariables) =
-            (_type (_lhs_tyconEnv))
-    in  (_lhs_collectEnvironment,[],_lhs_derivedFunctions,_lhs_fixOps,checkType _lhs_tyconEnv (_lhs_namesInScope ++ keys _lhs_constructorenv) _type_self ++ _lhs_kindErrors,_lhs_miscerrors,Nothing,_self,_lhs_suspiciousFBs,foldr (uncurry add) _lhs_typeSignatures [ (n,_typeScheme) | n <- _names_self ],[],_lhs_warnings)
+            (_type )
+    in  (_lhs_collectTypeConstructors,_lhs_collectTypeSynonyms,_lhs_collectValueConstructors,[],_newErrors ++ _lhs_kindErrors,_lhs_miscerrors,_lhs_operatorFixities,Nothing,_self,_lhs_suspiciousFBs,foldr (uncurry add) _lhs_typeSignatures [ (n,_typeScheme) | n <- _names_self ],[],_lhs_warnings)
 -- Declarations ------------------------------------------------
 -- semantic domain
-type T_Declarations = (ImportEnvironment) ->
-                      (ConstructorEnvironment) ->
-                      (TypeEnvironment) ->
+type T_Declarations = (Names) ->
                       (Names) ->
+                      ([(Name,Int)]) ->
+                      ([(Name,(Int,Tps -> Tp))]) ->
+                      ([(Name,TpScheme)]) ->
                       ([Error]) ->
                       ([Error]) ->
                       (Names) ->
+                      ([(Name,(Int,Assoc))]) ->
                       (Maybe Name) ->
                       ([(Name,Name)]) ->
-                      (TypeConstructorEnvironment) ->
-                      (TypeEnvironment) ->
+                      (FiniteMap Name Int) ->
+                      (AssocList Name TpScheme) ->
+                      (FiniteMap Name TpScheme) ->
                       ([Warning]) ->
-                      ((ImportEnvironment),(Names),(TypeEnvironment),(Names),([Error]),([Error]),(Maybe Name),(Declarations),([(Name,Name)]),(TypeEnvironment),(Names),([Warning]))
+                      (([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),(Names),([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),(Declarations),([(Name,Name)]),(AssocList Name TpScheme),(Names),([Warning]))
 -- cata
 sem_Declarations :: (Declarations) ->
                     (T_Declarations)
@@ -809,19 +845,19 @@ sem_Declarations (list) =
 sem_Declarations_Cons :: (T_Declaration) ->
                          (T_Declarations) ->
                          (T_Declarations)
-sem_Declarations_Cons (_hd) (_tl) (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_derivedFunctions) (_lhs_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_tyconEnv) (_lhs_typeSignatures) (_lhs_warnings) =
+sem_Declarations_Cons (_hd) (_tl) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_typeConstructors) (_lhs_typeSignatures) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             _hd_self : _tl_self
-        ( _hd_collectEnvironment,_hd_declVarNames,_hd_derivedFunctions,_hd_fixOps,_hd_kindErrors,_hd_miscerrors,_hd_previousWasAlsoFB,_hd_self,_hd_suspiciousFBs,_hd_typeSignatures,_hd_unboundNames,_hd_warnings) =
-            (_hd (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_derivedFunctions) (_lhs_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_tyconEnv) (_lhs_typeSignatures) (_lhs_warnings))
-        ( _tl_collectEnvironment,_tl_declVarNames,_tl_derivedFunctions,_tl_fixOps,_tl_kindErrors,_tl_miscerrors,_tl_previousWasAlsoFB,_tl_self,_tl_suspiciousFBs,_tl_typeSignatures,_tl_unboundNames,_tl_warnings) =
-            (_tl (_hd_collectEnvironment) (_lhs_constructorenv) (_hd_derivedFunctions) (_hd_fixOps) (_hd_kindErrors) (_hd_miscerrors) (_lhs_namesInScope) (_hd_previousWasAlsoFB) (_hd_suspiciousFBs) (_lhs_tyconEnv) (_hd_typeSignatures) (_hd_warnings))
-    in  (_tl_collectEnvironment,_hd_declVarNames ++ _tl_declVarNames,_tl_derivedFunctions,_tl_fixOps,_tl_kindErrors,_tl_miscerrors,_tl_previousWasAlsoFB,_self,_tl_suspiciousFBs,_tl_typeSignatures,_hd_unboundNames ++ _tl_unboundNames,_tl_warnings)
+        ( _hd_collectTypeConstructors,_hd_collectTypeSynonyms,_hd_collectValueConstructors,_hd_declVarNames,_hd_kindErrors,_hd_miscerrors,_hd_operatorFixities,_hd_previousWasAlsoFB,_hd_self,_hd_suspiciousFBs,_hd_typeSignatures,_hd_unboundNames,_hd_warnings) =
+            (_hd (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_typeConstructors) (_lhs_typeSignatures) (_lhs_valueConstructors) (_lhs_warnings))
+        ( _tl_collectTypeConstructors,_tl_collectTypeSynonyms,_tl_collectValueConstructors,_tl_declVarNames,_tl_kindErrors,_tl_miscerrors,_tl_operatorFixities,_tl_previousWasAlsoFB,_tl_self,_tl_suspiciousFBs,_tl_typeSignatures,_tl_unboundNames,_tl_warnings) =
+            (_tl (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_hd_collectTypeConstructors) (_hd_collectTypeSynonyms) (_hd_collectValueConstructors) (_hd_kindErrors) (_hd_miscerrors) (_lhs_namesInScope) (_hd_operatorFixities) (_hd_previousWasAlsoFB) (_hd_suspiciousFBs) (_lhs_typeConstructors) (_hd_typeSignatures) (_lhs_valueConstructors) (_hd_warnings))
+    in  (_tl_collectTypeConstructors,_tl_collectTypeSynonyms,_tl_collectValueConstructors,_hd_declVarNames ++ _tl_declVarNames,_tl_kindErrors,_tl_miscerrors,_tl_operatorFixities,_tl_previousWasAlsoFB,_self,_tl_suspiciousFBs,_tl_typeSignatures,_hd_unboundNames ++ _tl_unboundNames,_tl_warnings)
 sem_Declarations_Nil :: (T_Declarations)
-sem_Declarations_Nil (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_derivedFunctions) (_lhs_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_tyconEnv) (_lhs_typeSignatures) (_lhs_warnings) =
+sem_Declarations_Nil (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (_lhs_previousWasAlsoFB) (_lhs_suspiciousFBs) (_lhs_typeConstructors) (_lhs_typeSignatures) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             []
-    in  (_lhs_collectEnvironment,[],_lhs_derivedFunctions,_lhs_fixOps,_lhs_kindErrors,_lhs_miscerrors,_lhs_previousWasAlsoFB,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,[],_lhs_warnings)
+    in  (_lhs_collectTypeConstructors,_lhs_collectTypeSynonyms,_lhs_collectValueConstructors,[],_lhs_kindErrors,_lhs_miscerrors,_lhs_operatorFixities,_lhs_previousWasAlsoFB,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,[],_lhs_warnings)
 -- Export ------------------------------------------------------
 -- semantic domain
 type T_Export = (Names) ->
@@ -923,11 +959,13 @@ sem_Exports_Nil (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScope) (_l
     in  ([],_self)
 -- Expression --------------------------------------------------
 -- semantic domain
-type T_Expression = (ConstructorEnvironment) ->
+type T_Expression = (Names) ->
+                    (Names) ->
                     ([Error]) ->
                     ([Error]) ->
                     (Names) ->
-                    (TypeConstructorEnvironment) ->
+                    (FiniteMap Name Int) ->
+                    (FiniteMap Name TpScheme) ->
                     ([Warning]) ->
                     (([Error]),([Error]),(Expression),(Names),([Warning]))
 -- cata
@@ -977,39 +1015,39 @@ sem_Expression_Case :: (T_Range) ->
                        (T_Expression) ->
                        (T_Alternatives) ->
                        (T_Expression)
-sem_Expression_Case (_range) (_expression) (_alternatives) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_Case (_range) (_expression) (_alternatives) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_Case _range_self _expression_self _alternatives_self
         ( _range_self) =
             (_range )
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _alternatives_kindErrors,_alternatives_miscerrors,_alternatives_self,_alternatives_unboundNames,_alternatives_warnings) =
-            (_alternatives (_lhs_constructorenv) (_expression_kindErrors) (_expression_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_expression_warnings))
+            (_alternatives (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_expression_kindErrors) (_expression_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_expression_warnings))
     in  (_alternatives_kindErrors,_alternatives_miscerrors,_self,_expression_unboundNames ++ _alternatives_unboundNames,_alternatives_warnings)
 sem_Expression_Comprehension :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Qualifiers) ->
                                 (T_Expression)
-sem_Expression_Comprehension (_range) (_expression) (_qualifiers) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_Comprehension (_range) (_expression) (_qualifiers) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_Comprehension _range_self _expression_self _qualifiers_self
         ( _range_self) =
             (_range )
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_qualifiers_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_qualifiers_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _qualifiers_kindErrors,_qualifiers_miscerrors,_qualifiers_namesInScope,_qualifiers_self,_qualifiers_unboundNames,_qualifiers_warnings) =
-            (_qualifiers (_lhs_constructorenv) (_expression_kindErrors) (_expression_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_expression_unboundNames) (_expression_warnings))
+            (_qualifiers (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_expression_kindErrors) (_expression_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_expression_unboundNames) (_lhs_valueConstructors) (_expression_warnings))
     in  (_qualifiers_kindErrors,_qualifiers_miscerrors,_self,_qualifiers_unboundNames,_qualifiers_warnings)
 sem_Expression_Constructor :: (T_Range) ->
                               (T_Name) ->
                               (T_Expression)
-sem_Expression_Constructor (_range) (_name) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_Constructor (_range) (_name) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_Constructor _range_self _name_self
         (_undefinedConstructorErrors) =
-            case lookupAL _name_self _lhs_constructorenv of
-               Nothing -> [ undefinedConstructor _name_self (_lhs_namesInScope ++ keys _lhs_constructorenv) (keys _lhs_tyconEnv) ]
+            case lookupFM _lhs_valueConstructors _name_self of
+               Nothing -> [ undefinedConstructor _name_self (_lhs_namesInScope ++ _lhs_allValueConstructors) _lhs_allTypeConstructors ]
                Just _  -> []
         ( _range_self) =
             (_range )
@@ -1019,7 +1057,7 @@ sem_Expression_Constructor (_range) (_name) (_lhs_constructorenv) (_lhs_kindErro
 sem_Expression_Do :: (T_Range) ->
                      (T_Statements) ->
                      (T_Expression)
-sem_Expression_Do (_range) (_statements) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_Do (_range) (_statements) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_Do _range_self _statements_self
         (_lastStatementErrors) =
@@ -1030,64 +1068,64 @@ sem_Expression_Do (_range) (_statements) (_lhs_constructorenv) (_lhs_kindErrors)
         ( _range_self) =
             (_range )
         ( _statements_kindErrors,_statements_lastStatementIsExpr,_statements_miscerrors,_statements_namesInScope,_statements_self,_statements_unboundNames,_statements_warnings) =
-            (_statements (_lhs_constructorenv) (_lhs_kindErrors) (False) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) ([]) (_lhs_warnings))
+            (_statements (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (False) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) ([]) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_statements_kindErrors,_lastStatementErrors ++ _statements_miscerrors,_self,_statements_unboundNames,_statements_warnings)
 sem_Expression_Enum :: (T_Range) ->
                        (T_Expression) ->
                        (T_MaybeExpression) ->
                        (T_MaybeExpression) ->
                        (T_Expression)
-sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_Enum _range_self _from_self _then_self _to_self
         ( _range_self) =
             (_range )
         ( _from_kindErrors,_from_miscerrors,_from_self,_from_unboundNames,_from_warnings) =
-            (_from (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_from (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _then_kindErrors,_then_miscerrors,_then_self,_then_unboundNames,_then_warnings) =
-            (_then (_lhs_constructorenv) (_from_kindErrors) (_from_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_from_warnings))
+            (_then (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_from_kindErrors) (_from_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_from_warnings))
         ( _to_kindErrors,_to_miscerrors,_to_self,_to_unboundNames,_to_warnings) =
-            (_to (_lhs_constructorenv) (_then_kindErrors) (_then_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_then_warnings))
+            (_to (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_then_kindErrors) (_then_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_then_warnings))
     in  (_to_kindErrors,_to_miscerrors,_self,_from_unboundNames ++ _then_unboundNames ++ _to_unboundNames,_to_warnings)
 sem_Expression_If :: (T_Range) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression)
-sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_If _range_self _guardExpression_self _thenExpression_self _elseExpression_self
         ( _range_self) =
             (_range )
         ( _guardExpression_kindErrors,_guardExpression_miscerrors,_guardExpression_self,_guardExpression_unboundNames,_guardExpression_warnings) =
-            (_guardExpression (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_guardExpression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _thenExpression_kindErrors,_thenExpression_miscerrors,_thenExpression_self,_thenExpression_unboundNames,_thenExpression_warnings) =
-            (_thenExpression (_lhs_constructorenv) (_guardExpression_kindErrors) (_guardExpression_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_guardExpression_warnings))
+            (_thenExpression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_guardExpression_kindErrors) (_guardExpression_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_guardExpression_warnings))
         ( _elseExpression_kindErrors,_elseExpression_miscerrors,_elseExpression_self,_elseExpression_unboundNames,_elseExpression_warnings) =
-            (_elseExpression (_lhs_constructorenv) (_thenExpression_kindErrors) (_thenExpression_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_thenExpression_warnings))
+            (_elseExpression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_thenExpression_kindErrors) (_thenExpression_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_thenExpression_warnings))
     in  (_elseExpression_kindErrors,_elseExpression_miscerrors,_self,_guardExpression_unboundNames ++ _thenExpression_unboundNames ++ _elseExpression_unboundNames,_elseExpression_warnings)
 sem_Expression_InfixApplication :: (T_Range) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression)
-sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightExpression) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightExpression) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_InfixApplication _range_self _leftExpression_self _operator_self _rightExpression_self
         ( _range_self) =
             (_range )
         ( _leftExpression_kindErrors,_leftExpression_miscerrors,_leftExpression_self,_leftExpression_unboundNames,_leftExpression_warnings) =
-            (_leftExpression (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_leftExpression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _operator_kindErrors,_operator_miscerrors,_operator_self,_operator_unboundNames,_operator_warnings) =
-            (_operator (_lhs_constructorenv) (_leftExpression_kindErrors) (_leftExpression_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_leftExpression_warnings))
+            (_operator (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_leftExpression_kindErrors) (_leftExpression_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_leftExpression_warnings))
         ( _rightExpression_kindErrors,_rightExpression_miscerrors,_rightExpression_self,_rightExpression_unboundNames,_rightExpression_warnings) =
-            (_rightExpression (_lhs_constructorenv) (_operator_kindErrors) (_operator_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_operator_warnings))
+            (_rightExpression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_operator_kindErrors) (_operator_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_operator_warnings))
     in  (_rightExpression_kindErrors,_rightExpression_miscerrors,_self,_leftExpression_unboundNames ++ _operator_unboundNames ++ _rightExpression_unboundNames,_rightExpression_warnings)
 sem_Expression_Lambda :: (T_Range) ->
                          (T_Patterns) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_Lambda _range_self _patterns_self _expression_self
         ((_namesInScope,_unboundNames,_scopeErrors,_scopeWarnings)) =
@@ -1095,9 +1133,9 @@ sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_constructorenv) (
         ( _range_self) =
             (_range )
         ( _patterns_miscerrors,_patterns_numberOfPatterns,_patterns_patVarNames,_patterns_self,_patterns_unboundNames,_patterns_warnings) =
-            (_patterns (_lhs_constructorenv) (_lhs_miscerrors) (_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_patterns (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_lhs_kindErrors) (_patterns_miscerrors) (_namesInScope) (_lhs_tyconEnv) (_patterns_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_patterns_miscerrors) (_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_patterns_warnings))
     in  (_expression_kindErrors
         ,_scopeErrors ++ _expression_miscerrors
         ,_self
@@ -1109,7 +1147,7 @@ sem_Expression_Let :: (T_Range) ->
                       (T_Declarations) ->
                       (T_Expression) ->
                       (T_Expression)
-sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_Let _range_self _declarations_self _expression_self
         ((_namesInScope,_unboundNames,_scopeErrors,_scopeWarnings)) =
@@ -1120,14 +1158,14 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_constructorenv) 
             uniqueAppearance (keys _declarations_typeSignatures)
         (_duplicatedTypeSignature) =
             [ Duplicated TypeSignature names | names <- _doubles ]
-        ((_collectEnvironment,_collectConstructorEnv,_typeSynonyms,_derivedFunctions,_fixOps,_collectDataTypes)) =
+        ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel Expression"
         ( _range_self) =
             (_range )
-        ( _declarations_collectEnvironment,_declarations_declVarNames,_declarations_derivedFunctions,_declarations_fixOps,_declarations_kindErrors,_declarations_miscerrors,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
-            (_declarations (_collectEnvironment) (_lhs_constructorenv) (_derivedFunctions) (_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (Nothing) ([]) (_lhs_tyconEnv) (empty) (_lhs_warnings))
+        ( _declarations_collectTypeConstructors,_declarations_collectTypeSynonyms,_declarations_collectValueConstructors,_declarations_declVarNames,_declarations_kindErrors,_declarations_miscerrors,_declarations_operatorFixities,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
+            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) (empty) (_lhs_valueConstructors) (_lhs_warnings))
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_declarations_kindErrors) (_declarations_miscerrors) (_namesInScope) (_lhs_tyconEnv) (_declarations_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_declarations_kindErrors) (_declarations_miscerrors) (_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_declarations_warnings))
     in  (_expression_kindErrors
         ,_scopeErrors ++ _duplicatedTypeSignature ++ _expression_miscerrors
         ,_self
@@ -1139,18 +1177,18 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_constructorenv) 
 sem_Expression_List :: (T_Range) ->
                        (T_Expressions) ->
                        (T_Expression)
-sem_Expression_List (_range) (_expressions) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_List (_range) (_expressions) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_List _range_self _expressions_self
         ( _range_self) =
             (_range )
         ( _expressions_kindErrors,_expressions_miscerrors,_expressions_self,_expressions_unboundNames,_expressions_warnings) =
-            (_expressions (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_expressions (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_expressions_kindErrors,_expressions_miscerrors,_self,_expressions_unboundNames,_expressions_warnings)
 sem_Expression_Literal :: (T_Range) ->
                           (T_Literal) ->
                           (T_Expression)
-sem_Expression_Literal (_range) (_literal) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_Literal (_range) (_literal) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_Literal _range_self _literal_self
         ( _range_self) =
@@ -1161,55 +1199,55 @@ sem_Expression_Literal (_range) (_literal) (_lhs_constructorenv) (_lhs_kindError
 sem_Expression_Negate :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Negate (_range) (_expression) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_Negate (_range) (_expression) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_Negate _range_self _expression_self
         ( _range_self) =
             (_range )
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_expression_kindErrors,_expression_miscerrors,_self,_expression_unboundNames,_expression_warnings)
 sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
-sem_Expression_NegateFloat (_range) (_expression) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_NegateFloat (_range) (_expression) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_NegateFloat _range_self _expression_self
         ( _range_self) =
             (_range )
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_expression_kindErrors,_expression_miscerrors,_self,_expression_unboundNames,_expression_warnings)
 sem_Expression_NormalApplication :: (T_Range) ->
                                     (T_Expression) ->
                                     (T_Expressions) ->
                                     (T_Expression)
-sem_Expression_NormalApplication (_range) (_function) (_arguments) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_NormalApplication (_range) (_function) (_arguments) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_NormalApplication _range_self _function_self _arguments_self
         ( _range_self) =
             (_range )
         ( _function_kindErrors,_function_miscerrors,_function_self,_function_unboundNames,_function_warnings) =
-            (_function (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_function (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _arguments_kindErrors,_arguments_miscerrors,_arguments_self,_arguments_unboundNames,_arguments_warnings) =
-            (_arguments (_lhs_constructorenv) (_function_kindErrors) (_function_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_function_warnings))
+            (_arguments (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_function_kindErrors) (_function_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_function_warnings))
     in  (_arguments_kindErrors,_arguments_miscerrors,_self,_function_unboundNames ++ _arguments_unboundNames,_arguments_warnings)
 sem_Expression_Parenthesized :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Expression)
-sem_Expression_Parenthesized (_range) (_expression) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_Parenthesized (_range) (_expression) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_Parenthesized _range_self _expression_self
         ( _range_self) =
             (_range )
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_expression_kindErrors,_expression_miscerrors,_self,_expression_unboundNames,_expression_warnings)
 sem_Expression_RecordConstruction :: (T_Range) ->
                                      (T_Name) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_Expression)
-sem_Expression_RecordConstruction (_range) (_name) (_recordExpressionBindings) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_RecordConstruction (_range) (_name) (_recordExpressionBindings) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_RecordConstruction _range_self _name_self _recordExpressionBindings_self
         ((_assumptions,_constraints,_beta)) =
@@ -1225,45 +1263,47 @@ sem_Expression_RecordUpdate :: (T_Range) ->
                                (T_Expression) ->
                                (T_RecordExpressionBindings) ->
                                (T_Expression)
-sem_Expression_RecordUpdate (_range) (_expression) (_recordExpressionBindings) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_RecordUpdate (_range) (_expression) (_recordExpressionBindings) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_RecordUpdate _range_self _expression_self _recordExpressionBindings_self
         ( _range_self) =
             (_range )
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _recordExpressionBindings_self,_recordExpressionBindings_unboundNames) =
             (_recordExpressionBindings (_lhs_namesInScope))
     in  (_expression_kindErrors,_expression_miscerrors,_self,_expression_unboundNames ++ _recordExpressionBindings_unboundNames,_expression_warnings)
 sem_Expression_Tuple :: (T_Range) ->
                         (T_Expressions) ->
                         (T_Expression)
-sem_Expression_Tuple (_range) (_expressions) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_Tuple (_range) (_expressions) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_Tuple _range_self _expressions_self
         ( _range_self) =
             (_range )
         ( _expressions_kindErrors,_expressions_miscerrors,_expressions_self,_expressions_unboundNames,_expressions_warnings) =
-            (_expressions (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_expressions (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_expressions_kindErrors,_expressions_miscerrors,_self,_expressions_unboundNames,_expressions_warnings)
 sem_Expression_Typed :: (T_Range) ->
                         (T_Expression) ->
                         (T_Type) ->
                         (T_Expression)
-sem_Expression_Typed (_range) (_expression) (_type) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_Typed (_range) (_expression) (_type) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_Typed _range_self _expression_self _type_self
+        (_newErrors) =
+            checkType _lhs_typeConstructors (_lhs_namesInScope ++ _lhs_allValueConstructors) _type_self
         ( _range_self) =
             (_range )
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _type_self,_type_typevariables) =
-            (_type (_lhs_tyconEnv))
-    in  (checkType _lhs_tyconEnv  (_lhs_namesInScope ++ keys _lhs_constructorenv) _type_self ++ _expression_kindErrors,_expression_miscerrors,_self,_expression_unboundNames,_expression_warnings)
+            (_type )
+    in  (_newErrors ++ _expression_kindErrors,_expression_miscerrors,_self,_expression_unboundNames,_expression_warnings)
 sem_Expression_Variable :: (T_Range) ->
                            (T_Name) ->
                            (T_Expression)
-sem_Expression_Variable (_range) (_name) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expression_Variable (_range) (_name) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Expression_Variable _range_self _name_self
         (_undefinedErrors) =
@@ -1277,11 +1317,13 @@ sem_Expression_Variable (_range) (_name) (_lhs_constructorenv) (_lhs_kindErrors)
     in  (_lhs_kindErrors,_undefinedErrors ++ _lhs_miscerrors,_self,[ _name_self ],_lhs_warnings)
 -- Expressions -------------------------------------------------
 -- semantic domain
-type T_Expressions = (ConstructorEnvironment) ->
+type T_Expressions = (Names) ->
+                     (Names) ->
                      ([Error]) ->
                      ([Error]) ->
                      (Names) ->
-                     (TypeConstructorEnvironment) ->
+                     (FiniteMap Name Int) ->
+                     (FiniteMap Name TpScheme) ->
                      ([Warning]) ->
                      (([Error]),([Error]),(Expressions),(Names),([Warning]))
 -- cata
@@ -1292,16 +1334,16 @@ sem_Expressions (list) =
 sem_Expressions_Cons :: (T_Expression) ->
                         (T_Expressions) ->
                         (T_Expressions)
-sem_Expressions_Cons (_hd) (_tl) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expressions_Cons (_hd) (_tl) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             _hd_self : _tl_self
         ( _hd_kindErrors,_hd_miscerrors,_hd_self,_hd_unboundNames,_hd_warnings) =
-            (_hd (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_hd (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _tl_kindErrors,_tl_miscerrors,_tl_self,_tl_unboundNames,_tl_warnings) =
-            (_tl (_lhs_constructorenv) (_hd_kindErrors) (_hd_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_hd_warnings))
+            (_tl (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_hd_kindErrors) (_hd_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_hd_warnings))
     in  (_tl_kindErrors,_tl_miscerrors,_self,_hd_unboundNames ++ _tl_unboundNames,_tl_warnings)
 sem_Expressions_Nil :: (T_Expressions)
-sem_Expressions_Nil (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Expressions_Nil (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             []
     in  (_lhs_kindErrors,_lhs_miscerrors,_self,[],_lhs_warnings)
@@ -1321,14 +1363,14 @@ sem_FieldDeclaration_FieldDeclaration :: (T_Range) ->
 sem_FieldDeclaration_FieldDeclaration (_range) (_names) (_type) (_lhs_namesInScope) =
     let (_self) =
             FieldDeclaration_FieldDeclaration _range_self _names_self _type_self
-        ((_kindErrors,_tyconEnv,_constructorenv)) =
+        ((_kindErrors,_tyconEnv,_constructorenv,_importEnvironment,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors)) =
             internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
         ( _range_self) =
             (_range )
         ( _names_self) =
             (_names )
         ( _type_kindErrors,_type_self,_type_type,_type_typevariables,_type_unboundNames) =
-            (_type (_constructorenv) (_kindErrors) (_lhs_namesInScope) (_tyconEnv))
+            (_type (_allTypeConstructors) (_allValueConstructors) (_kindErrors) (_lhs_namesInScope) (_typeConstructors) (_valueConstructors))
     in  (_self,_type_unboundNames)
 -- FieldDeclarations -------------------------------------------
 -- semantic domain
@@ -1393,11 +1435,13 @@ sem_Fixity_Infixr (_range) =
     in  (_self)
 -- FunctionBinding ---------------------------------------------
 -- semantic domain
-type T_FunctionBinding = (ConstructorEnvironment) ->
+type T_FunctionBinding = (Names) ->
+                         (Names) ->
                          ([Error]) ->
                          ([Error]) ->
                          (Names) ->
-                         (TypeConstructorEnvironment) ->
+                         (FiniteMap Name Int) ->
+                         (FiniteMap Name TpScheme) ->
                          ([Warning]) ->
                          ((Int),([Error]),([Error]),(Name),(FunctionBinding),(Names),([Warning]))
 -- cata
@@ -1409,7 +1453,7 @@ sem_FunctionBinding_FunctionBinding :: (T_Range) ->
                                        (T_LeftHandSide) ->
                                        (T_RightHandSide) ->
                                        (T_FunctionBinding)
-sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             FunctionBinding_FunctionBinding _range_self _lefthandside_self _righthandside_self
         ((_namesInScope,_unboundNames,_scopeErrors,_scopeWarnings)) =
@@ -1417,9 +1461,9 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_
         ( _range_self) =
             (_range )
         ( _lefthandside_miscerrors,_lefthandside_name,_lefthandside_numberOfPatterns,_lefthandside_patVarNames,_lefthandside_self,_lefthandside_unboundNames,_lefthandside_warnings) =
-            (_lefthandside (_lhs_constructorenv) (_lhs_miscerrors) (_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_lefthandside (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _righthandside_kindErrors,_righthandside_miscerrors,_righthandside_self,_righthandside_unboundNames,_righthandside_warnings) =
-            (_righthandside (_lhs_constructorenv) (_lhs_kindErrors) (_lefthandside_miscerrors) (_namesInScope) (_lhs_tyconEnv) (_lefthandside_warnings))
+            (_righthandside (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lefthandside_miscerrors) (_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lefthandside_warnings))
     in  (_lefthandside_numberOfPatterns
         ,_righthandside_kindErrors
         ,_scopeErrors ++ _righthandside_miscerrors
@@ -1431,11 +1475,13 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_
         )
 -- FunctionBindings --------------------------------------------
 -- semantic domain
-type T_FunctionBindings = (ConstructorEnvironment) ->
+type T_FunctionBindings = (Names) ->
+                          (Names) ->
                           ([Error]) ->
                           ([Error]) ->
                           (Names) ->
-                          (TypeConstructorEnvironment) ->
+                          (FiniteMap Name Int) ->
+                          (FiniteMap Name TpScheme) ->
                           ([Warning]) ->
                           (( [Int] ),([Error]),([Error]),(Name),(FunctionBindings),(Names),([Warning]))
 -- cata
@@ -1446,26 +1492,28 @@ sem_FunctionBindings (list) =
 sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
                              (T_FunctionBindings) ->
                              (T_FunctionBindings)
-sem_FunctionBindings_Cons (_hd) (_tl) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_FunctionBindings_Cons (_hd) (_tl) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             _hd_self : _tl_self
         ( _hd_arity,_hd_kindErrors,_hd_miscerrors,_hd_name,_hd_self,_hd_unboundNames,_hd_warnings) =
-            (_hd (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_hd (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _tl_arities,_tl_kindErrors,_tl_miscerrors,_tl_name,_tl_self,_tl_unboundNames,_tl_warnings) =
-            (_tl (_lhs_constructorenv) (_hd_kindErrors) (_hd_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_hd_warnings))
+            (_tl (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_hd_kindErrors) (_hd_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_hd_warnings))
     in  (_hd_arity : _tl_arities,_tl_kindErrors,_tl_miscerrors,_hd_name,_self,_hd_unboundNames ++ _tl_unboundNames,_tl_warnings)
 sem_FunctionBindings_Nil :: (T_FunctionBindings)
-sem_FunctionBindings_Nil (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_FunctionBindings_Nil (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             []
     in  ([],_lhs_kindErrors,_lhs_miscerrors,internalError "StaticChecks.ag" "n/a" "empty FunctionBindings",_self,[],_lhs_warnings)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
-type T_GuardedExpression = (ConstructorEnvironment) ->
+type T_GuardedExpression = (Names) ->
+                           (Names) ->
                            ([Error]) ->
                            ([Error]) ->
                            (Names) ->
-                           (TypeConstructorEnvironment) ->
+                           (FiniteMap Name Int) ->
+                           (FiniteMap Name TpScheme) ->
                            ([Warning]) ->
                            (([Error]),([Error]),(GuardedExpression),(Names),([Warning]))
 -- cata
@@ -1477,23 +1525,25 @@ sem_GuardedExpression_GuardedExpression :: (T_Range) ->
                                            (T_Expression) ->
                                            (T_Expression) ->
                                            (T_GuardedExpression)
-sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             GuardedExpression_GuardedExpression _range_self _guard_self _expression_self
         ( _range_self) =
             (_range )
         ( _guard_kindErrors,_guard_miscerrors,_guard_self,_guard_unboundNames,_guard_warnings) =
-            (_guard (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_guard (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_guard_kindErrors) (_guard_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_guard_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_guard_kindErrors) (_guard_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_guard_warnings))
     in  (_expression_kindErrors,_expression_miscerrors,_self,_guard_unboundNames ++ _expression_unboundNames,_expression_warnings)
 -- GuardedExpressions ------------------------------------------
 -- semantic domain
-type T_GuardedExpressions = (ConstructorEnvironment) ->
+type T_GuardedExpressions = (Names) ->
+                            (Names) ->
                             ([Error]) ->
                             ([Error]) ->
                             (Names) ->
-                            (TypeConstructorEnvironment) ->
+                            (FiniteMap Name Int) ->
+                            (FiniteMap Name TpScheme) ->
                             ([Warning]) ->
                             (([Error]),([Error]),(GuardedExpressions),(Names),([Warning]))
 -- cata
@@ -1504,16 +1554,16 @@ sem_GuardedExpressions (list) =
 sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
                                (T_GuardedExpressions) ->
                                (T_GuardedExpressions)
-sem_GuardedExpressions_Cons (_hd) (_tl) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_GuardedExpressions_Cons (_hd) (_tl) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             _hd_self : _tl_self
         ( _hd_kindErrors,_hd_miscerrors,_hd_self,_hd_unboundNames,_hd_warnings) =
-            (_hd (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_hd (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _tl_kindErrors,_tl_miscerrors,_tl_self,_tl_unboundNames,_tl_warnings) =
-            (_tl (_lhs_constructorenv) (_hd_kindErrors) (_hd_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_hd_warnings))
+            (_tl (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_hd_kindErrors) (_hd_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_hd_warnings))
     in  (_tl_kindErrors,_tl_miscerrors,_self,_hd_unboundNames ++ _tl_unboundNames,_tl_warnings)
 sem_GuardedExpressions_Nil :: (T_GuardedExpressions)
-sem_GuardedExpressions_Nil (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_GuardedExpressions_Nil (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             []
     in  (_lhs_kindErrors,_lhs_miscerrors,_self,[],_lhs_warnings)
@@ -1673,10 +1723,12 @@ sem_Imports_Nil  =
     in  (_self)
 -- LeftHandSide ------------------------------------------------
 -- semantic domain
-type T_LeftHandSide = (ConstructorEnvironment) ->
+type T_LeftHandSide = (Names) ->
+                      (Names) ->
                       ([Error]) ->
                       (Names) ->
-                      (TypeConstructorEnvironment) ->
+                      (FiniteMap Name Int) ->
+                      (FiniteMap Name TpScheme) ->
                       ([Warning]) ->
                       (([Error]),(Name),(Int),(Names),(LeftHandSide),(Names),([Warning]))
 -- cata
@@ -1692,7 +1744,7 @@ sem_LeftHandSide_Function :: (T_Range) ->
                              (T_Name) ->
                              (T_Patterns) ->
                              (T_LeftHandSide)
-sem_LeftHandSide_Function (_range) (_name) (_patterns) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_LeftHandSide_Function (_range) (_name) (_patterns) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             LeftHandSide_Function _range_self _name_self _patterns_self
         ( _range_self) =
@@ -1700,38 +1752,38 @@ sem_LeftHandSide_Function (_range) (_name) (_patterns) (_lhs_constructorenv) (_l
         ( _name_self) =
             (_name )
         ( _patterns_miscerrors,_patterns_numberOfPatterns,_patterns_patVarNames,_patterns_self,_patterns_unboundNames,_patterns_warnings) =
-            (_patterns (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_patterns (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_patterns_miscerrors,_name_self,_patterns_numberOfPatterns,_patterns_patVarNames,_self,_patterns_unboundNames,_patterns_warnings)
 sem_LeftHandSide_Infix :: (T_Range) ->
                           (T_Pattern) ->
                           (T_Name) ->
                           (T_Pattern) ->
                           (T_LeftHandSide)
-sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             LeftHandSide_Infix _range_self _leftPattern_self _operator_self _rightPattern_self
         ( _range_self) =
             (_range )
         ( _leftPattern_miscerrors,_leftPattern_patVarNames,_leftPattern_self,_leftPattern_unboundNames,_leftPattern_warnings) =
-            (_leftPattern (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_leftPattern (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _operator_self) =
             (_operator )
         ( _rightPattern_miscerrors,_rightPattern_patVarNames,_rightPattern_self,_rightPattern_unboundNames,_rightPattern_warnings) =
-            (_rightPattern (_lhs_constructorenv) (_leftPattern_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_leftPattern_warnings))
+            (_rightPattern (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_leftPattern_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_leftPattern_warnings))
     in  (_rightPattern_miscerrors,_operator_self,2,_leftPattern_patVarNames ++ _rightPattern_patVarNames,_self,_leftPattern_unboundNames ++ _rightPattern_unboundNames,_rightPattern_warnings)
 sem_LeftHandSide_Parenthesized :: (T_Range) ->
                                   (T_LeftHandSide) ->
                                   (T_Patterns) ->
                                   (T_LeftHandSide)
-sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             LeftHandSide_Parenthesized _range_self _lefthandside_self _patterns_self
         ( _range_self) =
             (_range )
         ( _lefthandside_miscerrors,_lefthandside_name,_lefthandside_numberOfPatterns,_lefthandside_patVarNames,_lefthandside_self,_lefthandside_unboundNames,_lefthandside_warnings) =
-            (_lefthandside (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_lefthandside (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _patterns_miscerrors,_patterns_numberOfPatterns,_patterns_patVarNames,_patterns_self,_patterns_unboundNames,_patterns_warnings) =
-            (_patterns (_lhs_constructorenv) (_lefthandside_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lefthandside_warnings))
+            (_patterns (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lefthandside_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lefthandside_warnings))
     in  (_patterns_miscerrors,_lefthandside_name,_lefthandside_numberOfPatterns + _patterns_numberOfPatterns,_lefthandside_patVarNames ++ _patterns_patVarNames,_self,_lefthandside_unboundNames ++ _patterns_unboundNames,_patterns_warnings)
 -- Literal -----------------------------------------------------
 -- semantic domain
@@ -1785,12 +1837,14 @@ sem_Literal_String (_range) (_value) =
     in  (_self)
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
-type T_MaybeDeclarations = (ConstructorEnvironment) ->
+type T_MaybeDeclarations = (Names) ->
+                           (Names) ->
                            ([Error]) ->
                            ([Error]) ->
                            (Names) ->
-                           (TypeConstructorEnvironment) ->
+                           (FiniteMap Name Int) ->
                            (Names) ->
+                           (FiniteMap Name TpScheme) ->
                            ([Warning]) ->
                            (([Error]),([Error]),(Names),(MaybeDeclarations),(Names),([Warning]))
 -- cata
@@ -1802,7 +1856,7 @@ sem_MaybeDeclarations ((MaybeDeclarations_Nothing )) =
     (sem_MaybeDeclarations_Nothing )
 sem_MaybeDeclarations_Just :: (T_Declarations) ->
                               (T_MaybeDeclarations)
-sem_MaybeDeclarations_Just (_declarations) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_lhs_warnings) =
+sem_MaybeDeclarations_Just (_declarations) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             MaybeDeclarations_Just _declarations_self
         ((_namesInScope,_unboundNames,_scopeErrors,_scopeWarnings)) =
@@ -1813,10 +1867,10 @@ sem_MaybeDeclarations_Just (_declarations) (_lhs_constructorenv) (_lhs_kindError
             uniqueAppearance (keys _declarations_typeSignatures)
         (_duplicatedTypeSignature) =
             [ Duplicated TypeSignature names | names <- _doubles ]
-        ((_collectEnvironment,_collectConstructorEnv,_typeSynonyms,_derivedFunctions,_fixOps,_collectDataTypes)) =
+        ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel MaybeDeclaration"
-        ( _declarations_collectEnvironment,_declarations_declVarNames,_declarations_derivedFunctions,_declarations_fixOps,_declarations_kindErrors,_declarations_miscerrors,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
-            (_declarations (_collectEnvironment) (_lhs_constructorenv) (_derivedFunctions) (_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (Nothing) ([]) (_lhs_tyconEnv) (empty) (_lhs_warnings))
+        ( _declarations_collectTypeConstructors,_declarations_collectTypeSynonyms,_declarations_collectValueConstructors,_declarations_declVarNames,_declarations_kindErrors,_declarations_miscerrors,_declarations_operatorFixities,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
+            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) (empty) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_declarations_kindErrors
         ,_scopeErrors ++ _duplicatedTypeSignature ++ _declarations_miscerrors
         ,_namesInScope
@@ -1827,7 +1881,7 @@ sem_MaybeDeclarations_Just (_declarations) (_lhs_constructorenv) (_lhs_kindError
          _suspiciousErrors
         )
 sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
-sem_MaybeDeclarations_Nothing (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_lhs_warnings) =
+sem_MaybeDeclarations_Nothing (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             MaybeDeclarations_Nothing
     in  (_lhs_kindErrors,_lhs_miscerrors,_lhs_namesInScope,_self,_lhs_unboundNames,_lhs_warnings)
@@ -1860,11 +1914,13 @@ sem_MaybeExports_Nothing (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInS
     in  ([],_self)
 -- MaybeExpression ---------------------------------------------
 -- semantic domain
-type T_MaybeExpression = (ConstructorEnvironment) ->
+type T_MaybeExpression = (Names) ->
+                         (Names) ->
                          ([Error]) ->
                          ([Error]) ->
                          (Names) ->
-                         (TypeConstructorEnvironment) ->
+                         (FiniteMap Name Int) ->
+                         (FiniteMap Name TpScheme) ->
                          ([Warning]) ->
                          (([Error]),([Error]),(MaybeExpression),(Names),([Warning]))
 -- cata
@@ -1876,14 +1932,14 @@ sem_MaybeExpression ((MaybeExpression_Nothing )) =
     (sem_MaybeExpression_Nothing )
 sem_MaybeExpression_Just :: (T_Expression) ->
                             (T_MaybeExpression)
-sem_MaybeExpression_Just (_expression) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_MaybeExpression_Just (_expression) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             MaybeExpression_Just _expression_self
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_expression_kindErrors,_expression_miscerrors,_self,_expression_unboundNames,_expression_warnings)
 sem_MaybeExpression_Nothing :: (T_MaybeExpression)
-sem_MaybeExpression_Nothing (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_MaybeExpression_Nothing (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             MaybeExpression_Nothing
     in  (_lhs_kindErrors,_lhs_miscerrors,_self,[],_lhs_warnings)
@@ -1980,7 +2036,7 @@ sem_MaybeNames_Nothing  =
 -- Module ------------------------------------------------------
 -- semantic domain
 type T_Module = (String) ->
-                (ImportEnvironment) ->
+                (ImportEnvironments) ->
                 ((ImportEnvironment),(Errors),(Warnings))
 -- cata
 sem_Module :: (Module) ->
@@ -1992,7 +2048,7 @@ sem_Module_Module :: (T_Range) ->
                      (T_MaybeExports) ->
                      (T_Body) ->
                      (T_Module)
-sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_importEnvironment) =
+sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_importEnvironments) =
     let (_allErrors) =
             concat [ _exportErrors
                    , _miscerrors
@@ -2003,21 +2059,43 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
             [ (name,TypeConstructor) | name:_ <- _duplicatedTypeConstructors  ] ++
             [ (name,Constructor    ) | name:_ <- _duplicatedValueConstructors ]
         (_derivedRanges) =
-            map getNameRange (keys _body_derivedFunctions)
-        ((_constructorenv,_duplicatedValueConstructors)) =
-            onlyUniqueKeys ( valueConstructors _body_collectEnvironment `combine` valueConstructors _lhs_importEnvironment )
-        ((_tyconEnv,_duplicatedTypeConstructors)) =
-            onlyUniqueKeys ( typeConstructors _body_collectEnvironment `combine`
-                             typeConstructors _lhs_importEnvironment
-                           )
+            map getNameRange (map fst _derivedFunctions)
+        (_collectEnvironment) =
+            setValueConstructors  _valueConstructors
+            . setTypeConstructors _typeConstructors
+            . setTypeSynonyms     (listToFM _orderedTypeSynonyms)
+            $ emptyEnvironment
+        (_derivedFunctions) =
+            let f (n,i) = ( nameOfShowFunction n
+                          , typeOfShowFunction n (take i [ nameFromString [c] | c <- ['a'..]])
+                          )
+                g (n,(i,_)) = f (n,i)
+            in map f _body_collectTypeConstructors ++
+               map g _body_collectTypeSynonyms
+        ((_uniqueValueConstructors,_duplicatedValueConstructors)) =
+            uniqueKeys (  _body_collectValueConstructors
+                       ++ concatMap (fmToList . valueConstructors) _lhs_importEnvironments
+                       )
+        (_allValueConstructors) =
+            map fst _uniqueValueConstructors ++ map head _duplicatedValueConstructors
+        (_valueConstructors) =
+            listToFM _uniqueValueConstructors
+        ((_uniqueTypeConstructors,_duplicatedTypeConstructors)) =
+            uniqueKeys (  _body_collectTypeConstructors
+                       ++ concatMap (fmToList . typeConstructors) _lhs_importEnvironments
+                       ++ [ (n,i) | (n,(i,f)) <- _body_collectTypeSynonyms ]
+                       )
+        (_allTypeConstructors) =
+            map fst _uniqueTypeConstructors ++ map head _duplicatedTypeConstructors
+        (_typeConstructors) =
+            listToFM _uniqueTypeConstructors
         ((_orderedTypeSynonyms,_recursiveTypeSynonyms)) =
-            checkRecursionTypeSynonyms (typeSynonyms _body_collectEnvironment)
+            checkRecursionTypeSynonyms _body_collectTypeSynonyms
         (_self) =
             Module_Module _range_self _name_self _exports_self _body_self
         (_initialNames) =
-            concat [ keys (typeEnvironment _lhs_importEnvironment)
-                   , keys _body_derivedFunctions
-                   ]
+            map fst _derivedFunctions ++
+            concatMap (keysFM . typeEnvironment) _lhs_importEnvironments
         ((_namesInScope,_unboundNames,_scopeErrors,_)) =
             changeOfScope (_initialNames ++ _body_declVarNames) Definition _body_unboundNames []
         (_kindErrors) =
@@ -2039,13 +2117,12 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
         (_fixityErrors) =
             makeDuplicated Fixity _duplicatedFixities
         ((_duplicatedFixities,_correctFixities)) =
-            let (xs,ys) = partition ((>1) . length) . group . sort $ _body_fixOps
+            let (xs,ys) = partition ((>1) . length) . group . sort $ (map fst _body_operatorFixities)
             in (xs,map head ys)
         (_fixityButNoFunDefErrors) =
             let list = concat [ _body_declVarNames
-                              , keys (typeEnvironment _lhs_importEnvironment)
-                              , keys (valueConstructors _body_collectEnvironment)
-                              , keys (valueConstructors _lhs_importEnvironment)
+                              , _allValueConstructors
+                              , concatMap (keysFM . typeEnvironment) _lhs_importEnvironments
                               ]
             in makeNoFunDef Fixity (filter (`notElem` list) _correctFixities) (nub list)
         (_recursiveTypeSynonymErrors) =
@@ -2071,16 +2148,16 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
         ( _name_self) =
             (_name )
         ( _exports_exportErrors,_exports_self) =
-            (_exports (keys _constructorenv)
+            (_exports (_allValueConstructors)
                       ((_moduleName : _fileName : _body_importedModules))
                       (concat [ _body_declVarNames
-                              , keys (typeEnvironment _lhs_importEnvironment)
-                              , keys _body_derivedFunctions
+                              , concatMap (keysFM . typeEnvironment) _lhs_importEnvironments
+                              , map fst _derivedFunctions
                               ])
-                      (keys _tyconEnv))
-        ( _body_collectEnvironment,_body_declVarNames,_body_derivedFunctions,_body_fixOps,_body_importedModules,_body_kindErrors,_body_miscerrors,_body_self,_body_typeSignatures,_body_unboundNames,_body_warnings) =
-            (_body (emptyEnvironment) (_constructorenv) ([]) ([]) (_namesInScope) (_tyconEnv) ([]))
-    in  (_body_collectEnvironment
+                      (_allTypeConstructors))
+        ( _body_collectTypeConstructors,_body_collectTypeSynonyms,_body_collectValueConstructors,_body_declVarNames,_body_importedModules,_body_kindErrors,_body_miscerrors,_body_operatorFixities,_body_self,_body_typeSignatures,_body_unboundNames,_body_warnings) =
+            (_body (_allTypeConstructors) (_allValueConstructors) ([]) ([]) ([]) ([]) ([]) (_namesInScope) ([]) (_typeConstructors) (_valueConstructors) ([]))
+    in  (_collectEnvironment
         ,filter (\err -> filterRemovedNames _removedEntities err
                       && filterDerivedNames _derivedRanges err) _allErrors
         ,_warnings
@@ -2159,10 +2236,12 @@ sem_Names_Nil  =
     in  (_self)
 -- Pattern -----------------------------------------------------
 -- semantic domain
-type T_Pattern = (ConstructorEnvironment) ->
+type T_Pattern = (Names) ->
+                 (Names) ->
                  ([Error]) ->
                  (Names) ->
-                 (TypeConstructorEnvironment) ->
+                 (FiniteMap Name Int) ->
+                 (FiniteMap Name TpScheme) ->
                  ([Warning]) ->
                  (([Error]),(Names),(Pattern),(Names),([Warning]))
 -- cata
@@ -2200,7 +2279,7 @@ sem_Pattern_As :: (T_Range) ->
                   (T_Name) ->
                   (T_Pattern) ->
                   (T_Pattern)
-sem_Pattern_As (_range) (_name) (_pattern) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Pattern_As (_range) (_name) (_pattern) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Pattern_As _range_self _name_self _pattern_self
         ( _range_self) =
@@ -2208,73 +2287,73 @@ sem_Pattern_As (_range) (_name) (_pattern) (_lhs_constructorenv) (_lhs_miscerror
         ( _name_self) =
             (_name )
         ( _pattern_miscerrors,_pattern_patVarNames,_pattern_self,_pattern_unboundNames,_pattern_warnings) =
-            (_pattern (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_pattern (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_pattern_miscerrors,_name_self : _pattern_patVarNames,_self,_pattern_unboundNames,_pattern_warnings)
 sem_Pattern_Constructor :: (T_Range) ->
                            (T_Name) ->
                            (T_Patterns) ->
                            (T_Pattern)
-sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Pattern_Constructor _range_self _name_self _patterns_self
         (_patConstructorErrors) =
-            patternConstructorErrors _maybetp _name_self (_lhs_namesInScope ++ keys _lhs_constructorenv) _patterns_numberOfPatterns (keys _lhs_tyconEnv)
+            patternConstructorErrors _maybetp _name_self (_lhs_namesInScope ++ _lhs_allValueConstructors) _patterns_numberOfPatterns _lhs_allTypeConstructors
         (_maybetp) =
-            lookupAL _name_self _lhs_constructorenv
+            lookupFM _lhs_valueConstructors _name_self
         ( _range_self) =
             (_range )
         ( _name_self) =
             (_name )
         ( _patterns_miscerrors,_patterns_numberOfPatterns,_patterns_patVarNames,_patterns_self,_patterns_unboundNames,_patterns_warnings) =
-            (_patterns (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_patterns (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_patConstructorErrors ++ _patterns_miscerrors,_patterns_patVarNames,_self,_patterns_unboundNames,_patterns_warnings)
 sem_Pattern_InfixConstructor :: (T_Range) ->
                                 (T_Pattern) ->
                                 (T_Name) ->
                                 (T_Pattern) ->
                                 (T_Pattern)
-sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_rightPattern) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_rightPattern) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Pattern_InfixConstructor _range_self _leftPattern_self _constructorOperator_self _rightPattern_self
         (_patConstructorErrors) =
-            patternConstructorErrors _maybetp _constructorOperator_self (_lhs_namesInScope ++ keys _lhs_constructorenv) 2 (keys _lhs_tyconEnv)
+            patternConstructorErrors _maybetp _constructorOperator_self (_lhs_namesInScope ++ _lhs_allValueConstructors) 2 _lhs_allTypeConstructors
         (_maybetp) =
-            lookupAL _constructorOperator_self _lhs_constructorenv
+            lookupFM _lhs_valueConstructors _constructorOperator_self
         ( _range_self) =
             (_range )
         ( _leftPattern_miscerrors,_leftPattern_patVarNames,_leftPattern_self,_leftPattern_unboundNames,_leftPattern_warnings) =
-            (_leftPattern (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_leftPattern (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _constructorOperator_self) =
             (_constructorOperator )
         ( _rightPattern_miscerrors,_rightPattern_patVarNames,_rightPattern_self,_rightPattern_unboundNames,_rightPattern_warnings) =
-            (_rightPattern (_lhs_constructorenv) (_leftPattern_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_leftPattern_warnings))
+            (_rightPattern (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_leftPattern_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_leftPattern_warnings))
     in  (_patConstructorErrors ++ _rightPattern_miscerrors,_leftPattern_patVarNames ++ _rightPattern_patVarNames,_self,_leftPattern_unboundNames ++ _rightPattern_unboundNames,_rightPattern_warnings)
 sem_Pattern_Irrefutable :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Pattern)
-sem_Pattern_Irrefutable (_range) (_pattern) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Pattern_Irrefutable (_range) (_pattern) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Pattern_Irrefutable _range_self _pattern_self
         ( _range_self) =
             (_range )
         ( _pattern_miscerrors,_pattern_patVarNames,_pattern_self,_pattern_unboundNames,_pattern_warnings) =
-            (_pattern (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_pattern (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_pattern_miscerrors,_pattern_patVarNames,_self,_pattern_unboundNames,_pattern_warnings)
 sem_Pattern_List :: (T_Range) ->
                     (T_Patterns) ->
                     (T_Pattern)
-sem_Pattern_List (_range) (_patterns) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Pattern_List (_range) (_patterns) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Pattern_List _range_self _patterns_self
         ( _range_self) =
             (_range )
         ( _patterns_miscerrors,_patterns_numberOfPatterns,_patterns_patVarNames,_patterns_self,_patterns_unboundNames,_patterns_warnings) =
-            (_patterns (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_patterns (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_patterns_miscerrors,_patterns_patVarNames,_self,_patterns_unboundNames,_patterns_warnings)
 sem_Pattern_Literal :: (T_Range) ->
                        (T_Literal) ->
                        (T_Pattern)
-sem_Pattern_Literal (_range) (_literal) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Pattern_Literal (_range) (_literal) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Pattern_Literal _range_self _literal_self
         ( _range_self) =
@@ -2285,7 +2364,7 @@ sem_Pattern_Literal (_range) (_literal) (_lhs_constructorenv) (_lhs_miscerrors) 
 sem_Pattern_Negate :: (T_Range) ->
                       (T_Literal) ->
                       (T_Pattern)
-sem_Pattern_Negate (_range) (_literal) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Pattern_Negate (_range) (_literal) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Pattern_Negate _range_self _literal_self
         ( _range_self) =
@@ -2296,7 +2375,7 @@ sem_Pattern_Negate (_range) (_literal) (_lhs_constructorenv) (_lhs_miscerrors) (
 sem_Pattern_NegateFloat :: (T_Range) ->
                            (T_Literal) ->
                            (T_Pattern)
-sem_Pattern_NegateFloat (_range) (_literal) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Pattern_NegateFloat (_range) (_literal) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Pattern_NegateFloat _range_self _literal_self
         ( _range_self) =
@@ -2307,19 +2386,19 @@ sem_Pattern_NegateFloat (_range) (_literal) (_lhs_constructorenv) (_lhs_miscerro
 sem_Pattern_Parenthesized :: (T_Range) ->
                              (T_Pattern) ->
                              (T_Pattern)
-sem_Pattern_Parenthesized (_range) (_pattern) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Pattern_Parenthesized (_range) (_pattern) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Pattern_Parenthesized _range_self _pattern_self
         ( _range_self) =
             (_range )
         ( _pattern_miscerrors,_pattern_patVarNames,_pattern_self,_pattern_unboundNames,_pattern_warnings) =
-            (_pattern (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_pattern (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_pattern_miscerrors,_pattern_patVarNames,_self,_pattern_unboundNames,_pattern_warnings)
 sem_Pattern_Record :: (T_Range) ->
                       (T_Name) ->
                       (T_RecordPatternBindings) ->
                       (T_Pattern)
-sem_Pattern_Record (_range) (_name) (_recordPatternBindings) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Pattern_Record (_range) (_name) (_recordPatternBindings) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Pattern_Record _range_self _name_self _recordPatternBindings_self
         ((_beta,_constraints,_environment)) =
@@ -2335,7 +2414,7 @@ sem_Pattern_Successor :: (T_Range) ->
                          (T_Name) ->
                          (T_Literal) ->
                          (T_Pattern)
-sem_Pattern_Successor (_range) (_name) (_literal) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Pattern_Successor (_range) (_name) (_literal) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Pattern_Successor _range_self _name_self _literal_self
         ((_beta,_constraints,_environment)) =
@@ -2350,18 +2429,18 @@ sem_Pattern_Successor (_range) (_name) (_literal) (_lhs_constructorenv) (_lhs_mi
 sem_Pattern_Tuple :: (T_Range) ->
                      (T_Patterns) ->
                      (T_Pattern)
-sem_Pattern_Tuple (_range) (_patterns) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Pattern_Tuple (_range) (_patterns) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Pattern_Tuple _range_self _patterns_self
         ( _range_self) =
             (_range )
         ( _patterns_miscerrors,_patterns_numberOfPatterns,_patterns_patVarNames,_patterns_self,_patterns_unboundNames,_patterns_warnings) =
-            (_patterns (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_patterns (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_patterns_miscerrors,_patterns_patVarNames,_self,_patterns_unboundNames,_patterns_warnings)
 sem_Pattern_Variable :: (T_Range) ->
                         (T_Name) ->
                         (T_Pattern)
-sem_Pattern_Variable (_range) (_name) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Pattern_Variable (_range) (_name) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Pattern_Variable _range_self _name_self
         ( _range_self) =
@@ -2371,7 +2450,7 @@ sem_Pattern_Variable (_range) (_name) (_lhs_constructorenv) (_lhs_miscerrors) (_
     in  (_lhs_miscerrors,[ _name_self ],_self,[],_lhs_warnings)
 sem_Pattern_Wildcard :: (T_Range) ->
                         (T_Pattern)
-sem_Pattern_Wildcard (_range) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Pattern_Wildcard (_range) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Pattern_Wildcard _range_self
         ( _range_self) =
@@ -2379,10 +2458,12 @@ sem_Pattern_Wildcard (_range) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_name
     in  (_lhs_miscerrors,[],_self,[],_lhs_warnings)
 -- Patterns ----------------------------------------------------
 -- semantic domain
-type T_Patterns = (ConstructorEnvironment) ->
+type T_Patterns = (Names) ->
+                  (Names) ->
                   ([Error]) ->
                   (Names) ->
-                  (TypeConstructorEnvironment) ->
+                  (FiniteMap Name Int) ->
+                  (FiniteMap Name TpScheme) ->
                   ([Warning]) ->
                   (([Error]),(Int),(Names),(Patterns),(Names),([Warning]))
 -- cata
@@ -2393,16 +2474,16 @@ sem_Patterns (list) =
 sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns) ->
                      (T_Patterns)
-sem_Patterns_Cons (_hd) (_tl) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Patterns_Cons (_hd) (_tl) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             _hd_self : _tl_self
         ( _hd_miscerrors,_hd_patVarNames,_hd_self,_hd_unboundNames,_hd_warnings) =
-            (_hd (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_hd (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _tl_miscerrors,_tl_numberOfPatterns,_tl_patVarNames,_tl_self,_tl_unboundNames,_tl_warnings) =
-            (_tl (_lhs_constructorenv) (_hd_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_hd_warnings))
+            (_tl (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_hd_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_hd_warnings))
     in  (_tl_miscerrors,1 + _tl_numberOfPatterns,_hd_patVarNames ++ _tl_patVarNames,_self,_hd_unboundNames ++ _tl_unboundNames,_tl_warnings)
 sem_Patterns_Nil :: (T_Patterns)
-sem_Patterns_Nil (_lhs_constructorenv) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_Patterns_Nil (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             []
     in  (_lhs_miscerrors,0,[],_self,[],_lhs_warnings)
@@ -2431,12 +2512,14 @@ sem_Position_Unknown  =
     in  (_self)
 -- Qualifier ---------------------------------------------------
 -- semantic domain
-type T_Qualifier = (ConstructorEnvironment) ->
+type T_Qualifier = (Names) ->
+                   (Names) ->
                    ([Error]) ->
                    ([Error]) ->
                    (Names) ->
-                   (TypeConstructorEnvironment) ->
+                   (FiniteMap Name Int) ->
                    (Names) ->
+                   (FiniteMap Name TpScheme) ->
                    ([Warning]) ->
                    (([Error]),([Error]),(Names),(Qualifier),(Names),([Warning]))
 -- cata
@@ -2452,7 +2535,7 @@ sem_Qualifier ((Qualifier_Let (_range) (_declarations))) =
     (sem_Qualifier_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Qualifier_Empty :: (T_Range) ->
                        (T_Qualifier)
-sem_Qualifier_Empty (_range) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_lhs_warnings) =
+sem_Qualifier_Empty (_range) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Qualifier_Empty _range_self
         ( _range_self) =
@@ -2462,7 +2545,7 @@ sem_Qualifier_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Qualifier)
-sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_lhs_warnings) =
+sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Qualifier_Generator _range_self _pattern_self _expression_self
         ((_namesInScope,_unboundNames,_scopeErrors,_scopeWarnings)) =
@@ -2470,9 +2553,9 @@ sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_constructorenv) 
         ( _range_self) =
             (_range )
         ( _pattern_miscerrors,_pattern_patVarNames,_pattern_self,_pattern_unboundNames,_pattern_warnings) =
-            (_pattern (_lhs_constructorenv) (_lhs_miscerrors) (_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_pattern (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_lhs_kindErrors) (_pattern_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_pattern_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_pattern_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_pattern_warnings))
     in  (_expression_kindErrors
         ,_scopeErrors ++ _expression_miscerrors
         ,_namesInScope
@@ -2484,18 +2567,18 @@ sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_constructorenv) 
 sem_Qualifier_Guard :: (T_Range) ->
                        (T_Expression) ->
                        (T_Qualifier)
-sem_Qualifier_Guard (_range) (_guard) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_lhs_warnings) =
+sem_Qualifier_Guard (_range) (_guard) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Qualifier_Guard _range_self _guard_self
         ( _range_self) =
             (_range )
         ( _guard_kindErrors,_guard_miscerrors,_guard_self,_guard_unboundNames,_guard_warnings) =
-            (_guard (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_guard (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_guard_kindErrors,_guard_miscerrors,_lhs_namesInScope,_self,_guard_unboundNames ++ _lhs_unboundNames,_guard_warnings)
 sem_Qualifier_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Qualifier)
-sem_Qualifier_Let (_range) (_declarations) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_lhs_warnings) =
+sem_Qualifier_Let (_range) (_declarations) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Qualifier_Let _range_self _declarations_self
         ((_namesInScope,_unboundNames,_scopeErrors,_scopeWarnings)) =
@@ -2506,12 +2589,12 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_constructorenv) (_lhs_kindError
             uniqueAppearance (keys _declarations_typeSignatures)
         (_duplicatedTypeSignature) =
             [ Duplicated TypeSignature names | names <- _doubles ]
-        ((_collectEnvironment,_collectConstructorEnv,_typeSynonyms,_derivedFunctions,_fixOps,_collectDataTypes)) =
+        ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel Qualifier"
         ( _range_self) =
             (_range )
-        ( _declarations_collectEnvironment,_declarations_declVarNames,_declarations_derivedFunctions,_declarations_fixOps,_declarations_kindErrors,_declarations_miscerrors,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
-            (_declarations (_collectEnvironment) (_lhs_constructorenv) (_derivedFunctions) (_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (Nothing) ([]) (_lhs_tyconEnv) (empty) (_lhs_warnings))
+        ( _declarations_collectTypeConstructors,_declarations_collectTypeSynonyms,_declarations_collectValueConstructors,_declarations_declVarNames,_declarations_kindErrors,_declarations_miscerrors,_declarations_operatorFixities,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
+            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) (empty) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_declarations_kindErrors
         ,_scopeErrors ++ _duplicatedTypeSignature ++ _declarations_miscerrors
         ,_namesInScope
@@ -2523,12 +2606,14 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_constructorenv) (_lhs_kindError
         )
 -- Qualifiers --------------------------------------------------
 -- semantic domain
-type T_Qualifiers = (ConstructorEnvironment) ->
+type T_Qualifiers = (Names) ->
+                    (Names) ->
                     ([Error]) ->
                     ([Error]) ->
                     (Names) ->
-                    (TypeConstructorEnvironment) ->
+                    (FiniteMap Name Int) ->
                     (Names) ->
+                    (FiniteMap Name TpScheme) ->
                     ([Warning]) ->
                     (([Error]),([Error]),(Names),(Qualifiers),(Names),([Warning]))
 -- cata
@@ -2539,16 +2624,16 @@ sem_Qualifiers (list) =
 sem_Qualifiers_Cons :: (T_Qualifier) ->
                        (T_Qualifiers) ->
                        (T_Qualifiers)
-sem_Qualifiers_Cons (_hd) (_tl) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_lhs_warnings) =
+sem_Qualifiers_Cons (_hd) (_tl) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             _hd_self : _tl_self
         ( _hd_kindErrors,_hd_miscerrors,_hd_namesInScope,_hd_self,_hd_unboundNames,_hd_warnings) =
-            (_hd (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_tl_unboundNames) (_lhs_warnings))
+            (_hd (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_tl_unboundNames) (_lhs_valueConstructors) (_lhs_warnings))
         ( _tl_kindErrors,_tl_miscerrors,_tl_namesInScope,_tl_self,_tl_unboundNames,_tl_warnings) =
-            (_tl (_lhs_constructorenv) (_hd_kindErrors) (_hd_miscerrors) (_hd_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_hd_warnings))
+            (_tl (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_hd_kindErrors) (_hd_miscerrors) (_hd_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_hd_warnings))
     in  (_tl_kindErrors,_tl_miscerrors,_tl_namesInScope,_self,_hd_unboundNames,_tl_warnings)
 sem_Qualifiers_Nil :: (T_Qualifiers)
-sem_Qualifiers_Nil (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_lhs_warnings) =
+sem_Qualifiers_Nil (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             []
     in  (_lhs_kindErrors,_lhs_miscerrors,_lhs_namesInScope,_self,_lhs_unboundNames,_lhs_warnings)
@@ -2587,14 +2672,14 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
 sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expression) (_lhs_namesInScope) =
     let (_self) =
             RecordExpressionBinding_RecordExpressionBinding _range_self _name_self _expression_self
-        ((_monos,_constructorenv,_betaUnique,_miscerrors,_warnings,_kindErrors,_tyconEnv,_importEnvironment)) =
+        ((_monos,_constructorenv,_betaUnique,_miscerrors,_warnings,_kindErrors,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_importEnvironment)) =
             internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
         ( _range_self) =
             (_range )
         ( _name_self) =
             (_name )
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_constructorenv) (_kindErrors) (_miscerrors) (_lhs_namesInScope) (_tyconEnv) (_warnings))
+            (_expression (_allTypeConstructors) (_allValueConstructors) (_kindErrors) (_miscerrors) (_lhs_namesInScope) (_typeConstructors) (_valueConstructors) (_warnings))
     in  (_self,_expression_unboundNames)
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
@@ -2637,14 +2722,14 @@ sem_RecordPatternBinding_RecordPatternBinding :: (T_Range) ->
 sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) (_lhs_namesInScope) =
     let (_self) =
             RecordPatternBinding_RecordPatternBinding _range_self _name_self _pattern_self
-        ((_constructorenv,_betaUnique,_miscerrors,_warnings,_tyconEnv,_importEnvironment)) =
+        ((_constructorenv,_betaUnique,_miscerrors,_warnings,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_importEnvironment)) =
             internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
         ( _range_self) =
             (_range )
         ( _name_self) =
             (_name )
         ( _pattern_miscerrors,_pattern_patVarNames,_pattern_self,_pattern_unboundNames,_pattern_warnings) =
-            (_pattern (_constructorenv) (_miscerrors) (_lhs_namesInScope) (_tyconEnv) (_warnings))
+            (_pattern (_allTypeConstructors) (_allValueConstructors) (_miscerrors) (_lhs_namesInScope) (_typeConstructors) (_valueConstructors) (_warnings))
     in  (_self,_pattern_unboundNames)
 -- RecordPatternBindings ---------------------------------------
 -- semantic domain
@@ -2673,11 +2758,13 @@ sem_RecordPatternBindings_Nil (_lhs_namesInScope) =
     in  (_self,[])
 -- RightHandSide -----------------------------------------------
 -- semantic domain
-type T_RightHandSide = (ConstructorEnvironment) ->
+type T_RightHandSide = (Names) ->
+                       (Names) ->
                        ([Error]) ->
                        ([Error]) ->
                        (Names) ->
-                       (TypeConstructorEnvironment) ->
+                       (FiniteMap Name Int) ->
+                       (FiniteMap Name TpScheme) ->
                        ([Warning]) ->
                        (([Error]),([Error]),(RightHandSide),(Names),([Warning]))
 -- cata
@@ -2691,29 +2778,29 @@ sem_RightHandSide_Expression :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_MaybeDeclarations) ->
                                 (T_RightHandSide)
-sem_RightHandSide_Expression (_range) (_expression) (_where) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_RightHandSide_Expression (_range) (_expression) (_where) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             RightHandSide_Expression _range_self _expression_self _where_self
         ( _range_self) =
             (_range )
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_where_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_where_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _where_kindErrors,_where_miscerrors,_where_namesInScope,_where_self,_where_unboundNames,_where_warnings) =
-            (_where (_lhs_constructorenv) (_expression_kindErrors) (_expression_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_expression_unboundNames) (_expression_warnings))
+            (_where (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_expression_kindErrors) (_expression_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_expression_unboundNames) (_lhs_valueConstructors) (_expression_warnings))
     in  (_where_kindErrors,_where_miscerrors,_self,_where_unboundNames,_where_warnings)
 sem_RightHandSide_Guarded :: (T_Range) ->
                              (T_GuardedExpressions) ->
                              (T_MaybeDeclarations) ->
                              (T_RightHandSide)
-sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings) =
+sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             RightHandSide_Guarded _range_self _guardedexpressions_self _where_self
         ( _range_self) =
             (_range )
         ( _guardedexpressions_kindErrors,_guardedexpressions_miscerrors,_guardedexpressions_self,_guardedexpressions_unboundNames,_guardedexpressions_warnings) =
-            (_guardedexpressions (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_where_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_guardedexpressions (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_where_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _where_kindErrors,_where_miscerrors,_where_namesInScope,_where_self,_where_unboundNames,_where_warnings) =
-            (_where (_lhs_constructorenv) (_guardedexpressions_kindErrors) (_guardedexpressions_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_guardedexpressions_unboundNames) (_guardedexpressions_warnings))
+            (_where (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_guardedexpressions_kindErrors) (_guardedexpressions_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_guardedexpressions_unboundNames) (_lhs_valueConstructors) (_guardedexpressions_warnings))
     in  (_where_kindErrors,_where_miscerrors,_self,_where_unboundNames,_where_warnings)
 -- SimpleType --------------------------------------------------
 -- semantic domain
@@ -2739,13 +2826,15 @@ sem_SimpleType_SimpleType (_range) (_name) (_typevariables) =
     in  (_name_self,_self,_typevariables_self)
 -- Statement ---------------------------------------------------
 -- semantic domain
-type T_Statement = (ConstructorEnvironment) ->
+type T_Statement = (Names) ->
+                   (Names) ->
                    ([Error]) ->
                    (Bool) ->
                    ([Error]) ->
                    (Names) ->
-                   (TypeConstructorEnvironment) ->
+                   (FiniteMap Name Int) ->
                    (Names) ->
+                   (FiniteMap Name TpScheme) ->
                    ([Warning]) ->
                    (([Error]),(Bool),([Error]),(Names),(Statement),(Names),([Warning]))
 -- cata
@@ -2761,7 +2850,7 @@ sem_Statement ((Statement_Let (_range) (_declarations))) =
     (sem_Statement_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Statement_Empty :: (T_Range) ->
                        (T_Statement)
-sem_Statement_Empty (_range) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_lastStatementIsExpr) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_lhs_warnings) =
+sem_Statement_Empty (_range) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_lastStatementIsExpr) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Statement_Empty _range_self
         ( _range_self) =
@@ -2770,19 +2859,19 @@ sem_Statement_Empty (_range) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_lastS
 sem_Statement_Expression :: (T_Range) ->
                             (T_Expression) ->
                             (T_Statement)
-sem_Statement_Expression (_range) (_expression) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_lastStatementIsExpr) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_lhs_warnings) =
+sem_Statement_Expression (_range) (_expression) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_lastStatementIsExpr) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Statement_Expression _range_self _expression_self
         ( _range_self) =
             (_range )
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_expression_kindErrors,True,_expression_miscerrors,_lhs_namesInScope,_self,_expression_unboundNames ++ _lhs_unboundNames,_expression_warnings)
 sem_Statement_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Statement)
-sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_lastStatementIsExpr) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_lhs_warnings) =
+sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_lastStatementIsExpr) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Statement_Generator _range_self _pattern_self _expression_self
         ((_namesInScope,_unboundNames,_scopeErrors,_scopeWarnings)) =
@@ -2790,9 +2879,9 @@ sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_constructorenv) 
         ( _range_self) =
             (_range )
         ( _pattern_miscerrors,_pattern_patVarNames,_pattern_self,_pattern_unboundNames,_pattern_warnings) =
-            (_pattern (_lhs_constructorenv) (_lhs_miscerrors) (_namesInScope) (_lhs_tyconEnv) (_lhs_warnings))
+            (_pattern (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_miscerrors) (_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
-            (_expression (_lhs_constructorenv) (_lhs_kindErrors) (_pattern_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_pattern_warnings))
+            (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_pattern_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_pattern_warnings))
     in  (_expression_kindErrors
         ,False
         ,_scopeErrors ++ _expression_miscerrors
@@ -2805,7 +2894,7 @@ sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_constructorenv) 
 sem_Statement_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Statement)
-sem_Statement_Let (_range) (_declarations) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_lastStatementIsExpr) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_lhs_warnings) =
+sem_Statement_Let (_range) (_declarations) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_lastStatementIsExpr) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             Statement_Let _range_self _declarations_self
         ((_namesInScope,_unboundNames,_scopeErrors,_scopeWarnings)) =
@@ -2816,12 +2905,12 @@ sem_Statement_Let (_range) (_declarations) (_lhs_constructorenv) (_lhs_kindError
             uniqueAppearance (keys _declarations_typeSignatures)
         (_duplicatedTypeSignature) =
             [ Duplicated TypeSignature names | names <- _doubles ]
-        ((_collectEnvironment,_collectConstructorEnv,_typeSynonyms,_derivedFunctions,_fixOps,_collectDataTypes)) =
+        ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel Statement"
         ( _range_self) =
             (_range )
-        ( _declarations_collectEnvironment,_declarations_declVarNames,_declarations_derivedFunctions,_declarations_fixOps,_declarations_kindErrors,_declarations_miscerrors,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
-            (_declarations (_collectEnvironment) (_lhs_constructorenv) (_derivedFunctions) (_fixOps) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (Nothing) ([]) (_lhs_tyconEnv) (empty) (_lhs_warnings))
+        ( _declarations_collectTypeConstructors,_declarations_collectTypeSynonyms,_declarations_collectValueConstructors,_declarations_declVarNames,_declarations_kindErrors,_declarations_miscerrors,_declarations_operatorFixities,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
+            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) (empty) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_declarations_kindErrors
         ,False
         ,_scopeErrors ++ _duplicatedTypeSignature ++ _declarations_miscerrors
@@ -2834,13 +2923,15 @@ sem_Statement_Let (_range) (_declarations) (_lhs_constructorenv) (_lhs_kindError
         )
 -- Statements --------------------------------------------------
 -- semantic domain
-type T_Statements = (ConstructorEnvironment) ->
+type T_Statements = (Names) ->
+                    (Names) ->
                     ([Error]) ->
                     (Bool) ->
                     ([Error]) ->
                     (Names) ->
-                    (TypeConstructorEnvironment) ->
+                    (FiniteMap Name Int) ->
                     (Names) ->
+                    (FiniteMap Name TpScheme) ->
                     ([Warning]) ->
                     (([Error]),(Bool),([Error]),(Names),(Statements),(Names),([Warning]))
 -- cata
@@ -2851,16 +2942,16 @@ sem_Statements (list) =
 sem_Statements_Cons :: (T_Statement) ->
                        (T_Statements) ->
                        (T_Statements)
-sem_Statements_Cons (_hd) (_tl) (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_lastStatementIsExpr) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_lhs_warnings) =
+sem_Statements_Cons (_hd) (_tl) (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_lastStatementIsExpr) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             _hd_self : _tl_self
         ( _hd_kindErrors,_hd_lastStatementIsExpr,_hd_miscerrors,_hd_namesInScope,_hd_self,_hd_unboundNames,_hd_warnings) =
-            (_hd (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_lastStatementIsExpr) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_tl_unboundNames) (_lhs_warnings))
+            (_hd (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_lastStatementIsExpr) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_tl_unboundNames) (_lhs_valueConstructors) (_lhs_warnings))
         ( _tl_kindErrors,_tl_lastStatementIsExpr,_tl_miscerrors,_tl_namesInScope,_tl_self,_tl_unboundNames,_tl_warnings) =
-            (_tl (_lhs_constructorenv) (_hd_kindErrors) (_hd_lastStatementIsExpr) (_hd_miscerrors) (_hd_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_hd_warnings))
+            (_tl (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_hd_kindErrors) (_hd_lastStatementIsExpr) (_hd_miscerrors) (_hd_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_hd_warnings))
     in  (_tl_kindErrors,_tl_lastStatementIsExpr,_tl_miscerrors,_tl_namesInScope,_self,_hd_unboundNames,_tl_warnings)
 sem_Statements_Nil :: (T_Statements)
-sem_Statements_Nil (_lhs_constructorenv) (_lhs_kindErrors) (_lhs_lastStatementIsExpr) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lhs_unboundNames) (_lhs_warnings) =
+sem_Statements_Nil (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_kindErrors) (_lhs_lastStatementIsExpr) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_unboundNames) (_lhs_valueConstructors) (_lhs_warnings) =
     let (_self) =
             []
     in  (_lhs_kindErrors,_lhs_lastStatementIsExpr,_lhs_miscerrors,_lhs_namesInScope,_self,_lhs_unboundNames,_lhs_warnings)
@@ -2888,8 +2979,7 @@ sem_Strings_Nil  =
     in  (_self)
 -- Type --------------------------------------------------------
 -- semantic domain
-type T_Type = (TypeConstructorEnvironment) ->
-              ((Type),(Names))
+type T_Type = ((Type),(Names))
 -- cata
 sem_Type :: (Type) ->
             (T_Type)
@@ -2912,20 +3002,20 @@ sem_Type_Application :: (T_Range) ->
                         (T_Type) ->
                         (T_Types) ->
                         (T_Type)
-sem_Type_Application (_range) (_prefix) (_function) (_arguments) (_lhs_tyconEnv) =
+sem_Type_Application (_range) (_prefix) (_function) (_arguments) =
     let (_self) =
             Type_Application _range_self _prefix _function_self _arguments_self
         ( _range_self) =
             (_range )
         ( _function_self,_function_typevariables) =
-            (_function (_lhs_tyconEnv))
+            (_function )
         ( _arguments_self,_arguments_typevariables) =
-            (_arguments (_lhs_tyconEnv))
+            (_arguments )
     in  (_self,_function_typevariables  ++  _arguments_typevariables)
 sem_Type_Constructor :: (T_Range) ->
                         (T_Name) ->
                         (T_Type)
-sem_Type_Constructor (_range) (_name) (_lhs_tyconEnv) =
+sem_Type_Constructor (_range) (_name) =
     let (_self) =
             Type_Constructor _range_self _name_self
         ( _range_self) =
@@ -2937,7 +3027,7 @@ sem_Type_Exists :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
-sem_Type_Exists (_range) (_typevariables) (_type) (_lhs_tyconEnv) =
+sem_Type_Exists (_range) (_typevariables) (_type) =
     let (_self) =
             Type_Exists _range_self _typevariables_self _type_self
         ( _range_self) =
@@ -2945,13 +3035,13 @@ sem_Type_Exists (_range) (_typevariables) (_type) (_lhs_tyconEnv) =
         ( _typevariables_self) =
             (_typevariables )
         ( _type_self,_type_typevariables) =
-            (_type (_lhs_tyconEnv))
+            (_type )
     in  (_self,_type_typevariables)
 sem_Type_Forall :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
-sem_Type_Forall (_range) (_typevariables) (_type) (_lhs_tyconEnv) =
+sem_Type_Forall (_range) (_typevariables) (_type) =
     let (_self) =
             Type_Forall _range_self _typevariables_self _type_self
         ( _range_self) =
@@ -2959,24 +3049,24 @@ sem_Type_Forall (_range) (_typevariables) (_type) (_lhs_tyconEnv) =
         ( _typevariables_self) =
             (_typevariables )
         ( _type_self,_type_typevariables) =
-            (_type (_lhs_tyconEnv))
+            (_type )
     in  (_self,_type_typevariables)
 sem_Type_Parenthesized :: (T_Range) ->
                           (T_Type) ->
                           (T_Type)
-sem_Type_Parenthesized (_range) (_type) (_lhs_tyconEnv) =
+sem_Type_Parenthesized (_range) (_type) =
     let (_self) =
             Type_Parenthesized _range_self _type_self
         ( _range_self) =
             (_range )
         ( _type_self,_type_typevariables) =
-            (_type (_lhs_tyconEnv))
+            (_type )
     in  (_self,_type_typevariables)
 sem_Type_Qualified :: (T_Range) ->
                       (T_ContextItems) ->
                       (T_Type) ->
                       (T_Type)
-sem_Type_Qualified (_range) (_context) (_type) (_lhs_tyconEnv) =
+sem_Type_Qualified (_range) (_context) (_type) =
     let (_self) =
             Type_Qualified _range_self _context_self _type_self
         ( _range_self) =
@@ -2984,12 +3074,12 @@ sem_Type_Qualified (_range) (_context) (_type) (_lhs_tyconEnv) =
         ( _context_self) =
             (_context )
         ( _type_self,_type_typevariables) =
-            (_type (_lhs_tyconEnv))
+            (_type )
     in  (_self,_type_typevariables)
 sem_Type_Variable :: (T_Range) ->
                      (T_Name) ->
                      (T_Type)
-sem_Type_Variable (_range) (_name) (_lhs_tyconEnv) =
+sem_Type_Variable (_range) (_name) =
     let (_self) =
             Type_Variable _range_self _name_self
         ( _range_self) =
@@ -2999,8 +3089,7 @@ sem_Type_Variable (_range) (_name) (_lhs_tyconEnv) =
     in  (_self,[ _name_self ])
 -- Types -------------------------------------------------------
 -- semantic domain
-type T_Types = (TypeConstructorEnvironment) ->
-               ((Types),(Names))
+type T_Types = ((Types),(Names))
 -- cata
 sem_Types :: (Types) ->
              (T_Types)
@@ -3009,16 +3098,16 @@ sem_Types (list) =
 sem_Types_Cons :: (T_Type) ->
                   (T_Types) ->
                   (T_Types)
-sem_Types_Cons (_hd) (_tl) (_lhs_tyconEnv) =
+sem_Types_Cons (_hd) (_tl) =
     let (_self) =
             _hd_self : _tl_self
         ( _hd_self,_hd_typevariables) =
-            (_hd (_lhs_tyconEnv))
+            (_hd )
         ( _tl_self,_tl_typevariables) =
-            (_tl (_lhs_tyconEnv))
+            (_tl )
     in  (_self,_hd_typevariables  ++  _tl_typevariables)
 sem_Types_Nil :: (T_Types)
-sem_Types_Nil (_lhs_tyconEnv) =
+sem_Types_Nil  =
     let (_self) =
             []
     in  (_self,[])

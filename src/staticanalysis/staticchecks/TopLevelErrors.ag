@@ -34,6 +34,7 @@ SEM Module
 
 ------------------------------------------------------------------------------
 -- duplicated value constructors
+
 SEM Module
   | Module   loc . valueConstructorErrors = makeDuplicated Constructor @duplicatedValueConstructors
   
@@ -41,16 +42,16 @@ SEM Module
 -- duplicated fixity declarations
 SEM Module
   | Module   loc . fixityErrors = makeDuplicated Fixity @duplicatedFixities
-                 . (duplicatedFixities,correctFixities) = let (xs,ys) = partition ((>1) . length) . group . sort $ @body.fixOps
+                 . (duplicatedFixities,correctFixities) = let (xs,ys) = partition ((>1) . length) . group . sort $ (map fst @body.operatorFixities)
                                                           in (xs,map head ys)
 
 ------------------------------------------------------------------------------
 -- fixity declarations without a definition
+
 SEM Module
   | Module   loc . fixityButNoFunDefErrors = let list = concat [ @body.declVarNames
-                                                               , keys (typeEnvironment @lhs.importEnvironment)
-                                                               , keys (valueConstructors @body.collectEnvironment)
-                                                               , keys (valueConstructors @lhs.importEnvironment)
+                                                               , @allValueConstructors
+                                                               , concatMap (keysFM . typeEnvironment) @lhs.importEnvironments
                                                                ]
                                              in makeNoFunDef Fixity (filter (`notElem` list) @correctFixities) (nub list)
                                                                                                          

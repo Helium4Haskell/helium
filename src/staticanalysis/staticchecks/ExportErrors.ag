@@ -24,12 +24,12 @@ SEM Export
 -}
 SEM Module
   | Module  exports . namesInScope   = concat [ @body.declVarNames
-                                              , keys (typeEnvironment @lhs.importEnvironment)
-                                              , keys @body.derivedFunctions
+                                              , concatMap (keysFM . typeEnvironment) @lhs.importEnvironments
+                                              , map fst @derivedFunctions
                                               ]
                     . modulesInScope = (@moduleName : @fileName : @body.importedModules)
-                    . tyconsInScope  = keys @tyconEnv
-                    . consInScope    = keys @constructorenv
+                    . tyconsInScope  = @allTypeConstructors
+                    . consInScope    = @allValueConstructors
 
 SEM Module 
   | Module    loc . exportErrors = @exports.exportErrors
@@ -62,3 +62,14 @@ SEM Export
                                            @lhs.namesInScope
     | Module      lhs . exportErrors =  checkExport ExportModule @name.self
                                            @lhs.modulesInScope    
+-------------------------------------------
+-- Collecting the imported modules
+
+ATTR ImportDeclarations ImportDeclaration  [ | importedModules : Names | ]
+ATTR Body                                  [ | | importedModules : Names ]  
+
+SEM Body
+  | Body    importdeclarations . importedModules = []
+    
+SEM ImportDeclaration
+  | Import   lhs . importedModules = @name.self : @lhs.importedModules

@@ -5,7 +5,8 @@ import UHA_Syntax
 import UHA_Utils
 import List (union)
 import Messages () -- instance Show Name
-import EnvironmentSynonyms
+import ImportEnvironment
+import FiniteMap
 import TypeConversion
 import Char (ord)
 
@@ -51,7 +52,7 @@ interpreterMain = "interpreter_main"
 -- The interpreter_main has te be wrapped inside unsafePerformIO etcetera, too
 -- We can't just call it main because we'll get import clashes.  Sigh!
 
-insertedMain :: TypeEnvironment -> CoreDecl
+insertedMain :: AssocList Name TpScheme -> CoreDecl
 insertedMain toplevelTypes =
     let maybeWrapMainAndType = 
             case lookupAL (Name_Identifier noRange [] "main") toplevelTypes of
@@ -91,14 +92,14 @@ toplevelType name (Just tps) = [customType typeString]
             show
             (lookupAL name tps)
 
-constructorTypeAndArity :: Name -> ConstructorEnvironment -> [Core.Custom]
+constructorTypeAndArity :: Name -> ValueConstructorEnvironment -> [Core.Custom]
 constructorTypeAndArity name env =
     maybe 
         (internalError "UHA_ToCore" "Constructor" ("no type found for " ++ show name))
         (\tpScheme -> 
             [ customType (show tpScheme)]
         )
-        (lookupAL name env)
+        (lookupFM env name)
 
 
 -- Function "bind" is used in the translation of do-expressions
@@ -140,7 +141,7 @@ showRange (Range_Range (Position_Position mod line column) _) = mod ++ show (lin
 showRange _ = internalError "ToCorePat.ag" "showRange" "unknown position"
 -- Alternative -------------------------------------------------
 -- semantic domain
-type T_Alternative = (ConstructorEnvironment) ->
+type T_Alternative = (ValueConstructorEnvironment) ->
                      (( Core.Expr -> Core.Expr ),(Alternative))
 -- cata
 sem_Alternative :: (Alternative) ->
@@ -182,7 +183,7 @@ sem_Alternative_Empty (_range) (_lhs_constructorenv) =
 -- Alternatives ------------------------------------------------
 -- semantic domain
 type T_Alternatives = (Range) ->
-                      (ConstructorEnvironment) ->
+                      (ValueConstructorEnvironment) ->
                       (( Core.Expr ),(Alternatives))
 -- cata
 sem_Alternatives :: (Alternatives) ->
@@ -251,8 +252,8 @@ sem_AnnotatedTypes_Nil  =
     in  (0,_self)
 -- Body --------------------------------------------------------
 -- semantic domain
-type T_Body = (ConstructorEnvironment) ->
-              (TypeEnvironment) ->
+type T_Body = (ValueConstructorEnvironment) ->
+              (AssocList Name TpScheme) ->
               ( Maybe (AssocList String TpScheme) ) ->
               (( [CoreDecl] ),(Body))
 -- cata
@@ -276,7 +277,7 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_constructoren
     in  (_declarations_decls,_self)
 -- Constructor -------------------------------------------------
 -- semantic domain
-type T_Constructor = (ConstructorEnvironment) ->
+type T_Constructor = (ValueConstructorEnvironment) ->
                      (Int) ->
                      (( [(Id, CoreDecl)] ),(Constructor))
 -- cata
@@ -355,7 +356,7 @@ sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) (_lhs_constr
     in  (intErr "Constructor" "records not supported",_self)
 -- Constructors ------------------------------------------------
 -- semantic domain
-type T_Constructors = (ConstructorEnvironment) ->
+type T_Constructors = (ValueConstructorEnvironment) ->
                       (Int) ->
                       (( [(Id, CoreDecl)] ),(Constructors))
 -- cata
@@ -427,7 +428,7 @@ sem_ContextItems_Nil  =
     in  (_self)
 -- Declaration -------------------------------------------------
 -- semantic domain
-type T_Declaration = (ConstructorEnvironment) ->
+type T_Declaration = (ValueConstructorEnvironment) ->
                      (Int) ->
                      ( Maybe (AssocList String TpScheme) ) ->
                      (( [CoreDecl] ),(Int),(Declaration))
@@ -743,7 +744,7 @@ sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_constructorenv) (_
     in  ([],_lhs_patBindNr,_self)
 -- Declarations ------------------------------------------------
 -- semantic domain
-type T_Declarations = (ConstructorEnvironment) ->
+type T_Declarations = (ValueConstructorEnvironment) ->
                       (Int) ->
                       ( Maybe (AssocList String TpScheme) ) ->
                       (( [CoreDecl] ),(Int),(Declarations))
@@ -855,7 +856,7 @@ sem_Exports_Nil  =
     in  (emptySet,emptySet,_self,emptySet,emptySet)
 -- Expression --------------------------------------------------
 -- semantic domain
-type T_Expression = (ConstructorEnvironment) ->
+type T_Expression = (ValueConstructorEnvironment) ->
                     (( Core.Expr ),(Expression))
 -- cata
 sem_Expression :: (Expression) ->
@@ -1204,7 +1205,7 @@ sem_Expression_Variable (_range) (_name) (_lhs_constructorenv) =
     in  (Core.Var _name_id,_self)
 -- Expressions -------------------------------------------------
 -- semantic domain
-type T_Expressions = (ConstructorEnvironment) ->
+type T_Expressions = (ValueConstructorEnvironment) ->
                      (( [Core.Expr] ),(Expressions))
 -- cata
 sem_Expressions :: (Expressions) ->
@@ -1311,7 +1312,7 @@ sem_Fixity_Infixr (_range) =
     in  (_self)
 -- FunctionBinding ---------------------------------------------
 -- semantic domain
-type T_FunctionBinding = (ConstructorEnvironment) ->
+type T_FunctionBinding = (ValueConstructorEnvironment) ->
                          ( [Id] ) ->
                          ((Int),( Core.Expr -> Core.Expr ),(Id),(FunctionBinding))
 -- cata
@@ -1350,7 +1351,7 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_
         )
 -- FunctionBindings --------------------------------------------
 -- semantic domain
-type T_FunctionBindings = (ConstructorEnvironment) ->
+type T_FunctionBindings = (ValueConstructorEnvironment) ->
                           ( [Id] ) ->
                           (Range) ->
                           ((Int),(Core.Expr),(Id),(FunctionBindings))
@@ -1377,7 +1378,7 @@ sem_FunctionBindings_Nil (_lhs_constructorenv) (_lhs_ids) (_lhs_range) =
     in  (intErr "FunctionBindings" "empty list of function bindings",patternMatchFail _lhs_range,intErr "FunctionBindings" "empty list of function bindings",_self)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
-type T_GuardedExpression = (ConstructorEnvironment) ->
+type T_GuardedExpression = (ValueConstructorEnvironment) ->
                            (( Core.Expr -> Core.Expr ),(GuardedExpression))
 -- cata
 sem_GuardedExpression :: (GuardedExpression) ->
@@ -1400,7 +1401,7 @@ sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_co
     in  (\fail -> if_ _guard_core _expression_core fail,_self)
 -- GuardedExpressions ------------------------------------------
 -- semantic domain
-type T_GuardedExpressions = (ConstructorEnvironment) ->
+type T_GuardedExpressions = (ValueConstructorEnvironment) ->
                             (( [Core.Expr -> Core.Expr] ),(GuardedExpressions))
 -- cata
 sem_GuardedExpressions :: (GuardedExpressions) ->
@@ -1577,7 +1578,7 @@ sem_Imports_Nil  =
     in  (_self)
 -- LeftHandSide ------------------------------------------------
 -- semantic domain
-type T_LeftHandSide = (ConstructorEnvironment) ->
+type T_LeftHandSide = (ValueConstructorEnvironment) ->
                       ((Int),(Id),(Patterns),(LeftHandSide))
 -- cata
 sem_LeftHandSide :: (LeftHandSide) ->
@@ -1685,7 +1686,7 @@ sem_Literal_String (_range) (_value) =
     in  (var "primPackedToString" `app_` packedString _value,_self)
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
-type T_MaybeDeclarations = (ConstructorEnvironment) ->
+type T_MaybeDeclarations = (ValueConstructorEnvironment) ->
                            (( Core.Expr -> Core.Expr ),(MaybeDeclarations))
 -- cata
 sem_MaybeDeclarations :: (MaybeDeclarations) ->
@@ -1732,7 +1733,7 @@ sem_MaybeExports_Nothing  =
     in  (emptySet,emptySet,_self,emptySet,emptySet)
 -- MaybeExpression ---------------------------------------------
 -- semantic domain
-type T_MaybeExpression = (ConstructorEnvironment) ->
+type T_MaybeExpression = (ValueConstructorEnvironment) ->
                          (( Maybe Core.Expr ),(MaybeExpression))
 -- cata
 sem_MaybeExpression :: (MaybeExpression) ->
@@ -1846,9 +1847,9 @@ sem_MaybeNames_Nothing  =
     in  (Nothing,_self)
 -- Module ------------------------------------------------------
 -- semantic domain
-type T_Module = (ConstructorEnvironment) ->
+type T_Module = (ValueConstructorEnvironment) ->
                 ( [Core.CoreDecl] ) ->
-                (TypeEnvironment) ->
+                ( AssocList Name TpScheme ) ->
                 (( Core.CoreModule ))
 -- cata
 sem_Module :: (Module) ->
@@ -1961,7 +1962,7 @@ sem_Names_Nil  =
     in  ([],_self)
 -- Pattern -----------------------------------------------------
 -- semantic domain
-type T_Pattern = (ConstructorEnvironment) ->
+type T_Pattern = (ValueConstructorEnvironment) ->
                  ((Pattern),( [Id] ))
 -- cata
 sem_Pattern :: (Pattern) ->
@@ -2165,7 +2166,7 @@ sem_Pattern_Wildcard (_range) (_lhs_constructorenv) =
     in  (_self,[])
 -- Patterns ----------------------------------------------------
 -- semantic domain
-type T_Patterns = (ConstructorEnvironment) ->
+type T_Patterns = (ValueConstructorEnvironment) ->
                   ((Int),(Patterns),( [Id] ))
 -- cata
 sem_Patterns :: (Patterns) ->
@@ -2213,7 +2214,7 @@ sem_Position_Unknown  =
     in  (_self)
 -- Qualifier ---------------------------------------------------
 -- semantic domain
-type T_Qualifier = (ConstructorEnvironment) ->
+type T_Qualifier = (ValueConstructorEnvironment) ->
                    (( Core.Expr -> Core.Expr ),(Qualifier))
 -- cata
 sem_Qualifier :: (Qualifier) ->
@@ -2285,7 +2286,7 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_constructorenv) =
     in  (\continue -> letrec_ _declarations_decls continue,_self)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
-type T_Qualifiers = (ConstructorEnvironment) ->
+type T_Qualifiers = (ValueConstructorEnvironment) ->
                     (( [Core.Expr -> Core.Expr] ),(Qualifiers))
 -- cata
 sem_Qualifiers :: (Qualifiers) ->
@@ -2329,7 +2330,7 @@ sem_Range_Range (_start) (_stop) =
     in  (_self)
 -- RecordExpressionBinding -------------------------------------
 -- semantic domain
-type T_RecordExpressionBinding = (ConstructorEnvironment) ->
+type T_RecordExpressionBinding = (ValueConstructorEnvironment) ->
                                  ((RecordExpressionBinding))
 -- cata
 sem_RecordExpressionBinding :: (RecordExpressionBinding) ->
@@ -2352,7 +2353,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expressio
     in  (_self)
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
-type T_RecordExpressionBindings = (ConstructorEnvironment) ->
+type T_RecordExpressionBindings = (ValueConstructorEnvironment) ->
                                   ((RecordExpressionBindings))
 -- cata
 sem_RecordExpressionBindings :: (RecordExpressionBindings) ->
@@ -2377,7 +2378,7 @@ sem_RecordExpressionBindings_Nil (_lhs_constructorenv) =
     in  (_self)
 -- RecordPatternBinding ----------------------------------------
 -- semantic domain
-type T_RecordPatternBinding = (ConstructorEnvironment) ->
+type T_RecordPatternBinding = (ValueConstructorEnvironment) ->
                               ((RecordPatternBinding))
 -- cata
 sem_RecordPatternBinding :: (RecordPatternBinding) ->
@@ -2400,7 +2401,7 @@ sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) (_lhs_
     in  (_self)
 -- RecordPatternBindings ---------------------------------------
 -- semantic domain
-type T_RecordPatternBindings = (ConstructorEnvironment) ->
+type T_RecordPatternBindings = (ValueConstructorEnvironment) ->
                                ((RecordPatternBindings))
 -- cata
 sem_RecordPatternBindings :: (RecordPatternBindings) ->
@@ -2425,7 +2426,7 @@ sem_RecordPatternBindings_Nil (_lhs_constructorenv) =
     in  (_self)
 -- RightHandSide -----------------------------------------------
 -- semantic domain
-type T_RightHandSide = (ConstructorEnvironment) ->
+type T_RightHandSide = (ValueConstructorEnvironment) ->
                        (( Core.Expr ),(Bool),(RightHandSide))
 -- cata
 sem_RightHandSide :: (RightHandSide) ->
@@ -2486,7 +2487,7 @@ sem_SimpleType_SimpleType (_range) (_name) (_typevariables) =
     in  (_name_self,_self,_typevariables_self)
 -- Statement ---------------------------------------------------
 -- semantic domain
-type T_Statement = (ConstructorEnvironment) ->
+type T_Statement = (ValueConstructorEnvironment) ->
                    (( Maybe Core.Expr -> Core.Expr ),(Statement))
 -- cata
 sem_Statement :: (Statement) ->
@@ -2572,7 +2573,7 @@ sem_Statement_Let (_range) (_declarations) (_lhs_constructorenv) =
         )
 -- Statements --------------------------------------------------
 -- semantic domain
-type T_Statements = (ConstructorEnvironment) ->
+type T_Statements = (ValueConstructorEnvironment) ->
                     (( [Maybe Core.Expr -> Core.Expr] ),(Statements))
 -- cata
 sem_Statements :: (Statements) ->

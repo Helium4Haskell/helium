@@ -28,11 +28,12 @@ processArgs args =
             ,   Option "C" ["dump-core-to-file"] (NoArg DumpCoreToFile) "write Core program to file"
             ,   Option "d" ["dump-type-debug"] (NoArg DumpTypeDebug) "show type checker debugging information"
             
-            ,   Option "s" ["no-static-analysis"] (NoArg NoStaticAnalysis) "do not perform static analysis (dangerous!)"
+--            ,   Option "s" ["no-static-analysis"] (NoArg NoStaticAnalysis) "do not perform static analysis (dangerous!)"
             
-            ,   Option "1" ["stop-after-parser"] (NoArg StopAfterParser) "stop after parsing"
+            ,   Option "1" ["stop-after-parsing"] (NoArg StopAfterParser) "stop after parsing"
             ,   Option "2" ["stop-after-static-analysis"] (NoArg StopAfterStaticAnalysis) "stop after static analysis"
-            ,   Option "3" ["stop-after-desugar"] (NoArg StopAfterDesugar) "stop after desugaring into Core"
+            ,   Option "3" ["stop-after-type-inferencing"] (NoArg StopAfterTypeInferencing) "stop after type inferencing"
+            ,   Option "4" ["stop-after-desugaring"] (NoArg StopAfterDesugar) "stop after desugaring into Core"
             
             ,   Option "W" ["algorithm-w"]   (NoArg AlgorithmW) "use algorithm W for type inferencing"
             ,   Option "M" ["algorithm-m"]   (NoArg AlgorithmM) "use algorithm M for type inferencing"
@@ -54,6 +55,7 @@ data Option
     
     | StopAfterParser --
     | StopAfterStaticAnalysis --
+    | StopAfterTypeInferencing    
     | StopAfterDesugar --
     
     | AlgorithmW --

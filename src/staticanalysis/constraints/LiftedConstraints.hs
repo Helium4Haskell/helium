@@ -12,8 +12,9 @@ module LiftedConstraints where
 import Constraints
 import TypeRepresentation
 import SortedAssocList
+import FiniteMap
 
-infix 3 .===. , .:::. , .<==.
+infix 3 .===. , .:::. , .<==. , !:::!
 
 ------------------------------------------------------------------------------
 -- Lifted constructors
@@ -37,6 +38,9 @@ lift combinator =
 (.===.)    = lift (.==.)
 (.:::.)    = lift (flip (.::.))
 (.<==.) ms = lift (flip ((.<=.) ms))
+
+(!:::!) :: Ord key =>        FiniteMap key TpScheme -> AssocList key Tp -> (key -> (Tp,Tp) -> info) -> (Constraints info,AssocList key Tp)  
+xs !:::! ys = fromList (fmToList xs) .:::. ys
 
 ---------------------------------------------------------------------------------
 -- utility functions

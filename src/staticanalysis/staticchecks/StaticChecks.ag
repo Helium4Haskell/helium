@@ -1,6 +1,6 @@
 ATTR Module
    [ baseName              : String
-     importEnvironment     : ImportEnvironment
+     importEnvironments    : ImportEnvironments
    |
    | collectEnvironment    : ImportEnvironment  
      errors                : Errors
@@ -9,7 +9,6 @@ ATTR Module
 
 imports {
 import UHA_Syntax
-import EnvironmentSynonyms
 import Types
 import Messages
 import SortedAssocList
@@ -20,6 +19,9 @@ import Utils ( internalError )
 import TypeConversion
 import DerivingShow
 import LiftedConstraints
+import FiniteMap
+import ImportEnvironment
+import OperatorTable
 }
 
 INCLUDE "Collect.ag"
@@ -47,7 +49,7 @@ SEM Module
                                       ] 
                  . removedEntities = [ (name,TypeConstructor) | name:_ <- @duplicatedTypeConstructors  ] ++   
                                      [ (name,Constructor    ) | name:_ <- @duplicatedValueConstructors ]
-                 . derivedRanges   = map getNameRange (keys @body.derivedFunctions)                                                                                          
+                 . derivedRanges   = map getNameRange (map fst @derivedFunctions)
 {
 -- filter undefined errors that are caused by the removal of a duplicate definition
 filterRemovedNames :: [(Name,Entity)] -> Error -> Bool

@@ -22,13 +22,13 @@ SEM Pattern
   | Successor loc . (beta,constraints,environment) = internalError "PartialSyntax.ag" "n/a" "Pattern.Successor"
 
 SEM RecordExpressionBinding
-  | RecordExpressionBinding  loc . (monos,constructorenv,betaUnique,miscerrors,warnings,kindErrors,tyconEnv,importEnvironment) = internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
+  | RecordExpressionBinding  loc . (monos,constructorenv,betaUnique,miscerrors,warnings,kindErrors,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors,importEnvironment) = internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
 
 SEM RecordPatternBinding
-  | RecordPatternBinding    loc . (constructorenv,betaUnique,miscerrors,warnings,tyconEnv,importEnvironment) = internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
+  | RecordPatternBinding    loc . (constructorenv,betaUnique,miscerrors,warnings,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors,importEnvironment) = internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
 
 SEM FieldDeclaration
-  | FieldDeclaration    loc . (kindErrors,tyconEnv,constructorenv) = internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
+  | FieldDeclaration    loc . (kindErrors,tyconEnv,constructorenv,importEnvironment,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors) = internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
 
 SEM ContextItem
   | ContextItem    loc . (tyconEnv) = internalError "PartialSyntax.ag" "n/a" "ContextItem.ContextItem"
@@ -37,13 +37,13 @@ SEM ContextItem
 -- Attributes that are only used at top-level
 
 SEM Statement
-  | Let   loc . (collectEnvironment,collectConstructorEnv,typeSynonyms,derivedFunctions,fixOps,collectDataTypes) = internalError "PartialSyntax.ag" "n/a" "toplevel Statement"
+  | Let   loc . (collectTypeConstructors,collectValueConstructors,collectTypeSynonyms,collectConstructorEnv,derivedFunctions,operatorFixities) = internalError "PartialSyntax.ag" "n/a" "toplevel Statement"
 
 SEM Expression
-  | Let   loc . (collectEnvironment,collectConstructorEnv,typeSynonyms,derivedFunctions,fixOps,collectDataTypes) = internalError "PartialSyntax.ag" "n/a" "toplevel Expression"
+  | Let   loc . (collectTypeConstructors,collectValueConstructors,collectTypeSynonyms,collectConstructorEnv,derivedFunctions,operatorFixities) = internalError "PartialSyntax.ag" "n/a" "toplevel Expression"
 
 SEM MaybeDeclarations
-  | Just  loc . (collectEnvironment,collectConstructorEnv,typeSynonyms,derivedFunctions,fixOps,collectDataTypes) = internalError "PartialSyntax.ag" "n/a" "toplevel MaybeDeclaration"
+  | Just  loc . (collectTypeConstructors,collectValueConstructors,collectTypeSynonyms,collectConstructorEnv,derivedFunctions,operatorFixities) = internalError "PartialSyntax.ag" "n/a" "toplevel MaybeDeclaration"
 
 SEM Qualifier
-  | Let   loc . (collectEnvironment,collectConstructorEnv,typeSynonyms,derivedFunctions,fixOps,collectDataTypes) = internalError "PartialSyntax.ag" "n/a" "toplevel Qualifier"
+  | Let   loc . (collectTypeConstructors,collectValueConstructors,collectTypeSynonyms,collectConstructorEnv,derivedFunctions,operatorFixities) = internalError "PartialSyntax.ag" "n/a" "toplevel Qualifier"

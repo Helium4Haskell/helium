@@ -28,14 +28,14 @@ SEM Module
                               @solveDebug
                                 
       loc  . constraints = zipWith setPosition [0..] (ctRoot @body.constraints @lhs.strategy)
-           . orderedTypeSynonyms = [ (show n,i,f) | (n,i,f) <- typeSynonyms @lhs.importEnvironment ]
+           . orderedTypeSynonyms = [ (show n,i,f) | (n,(i,f)) <- fmToList (typeSynonyms @lhs.importEnvironment) ]
            . (betaUniqueAtTheEnd,substitution,solveErrors,solveDebug) 
                   = -- choose your algorithm to solve the type constraints
                     (if @lhs.useTypeGraph then solveEquivalenceGroups else solveGreedy) 
                        @body.betaUnique [ SolveWithTypeSynonyms @orderedTypeSynonyms 
                                         , SolveWithTypeSignatures . map (\(n,ts) -> (show n,ts)) $
-                                             (  toList (valueConstructors @lhs.importEnvironment)
-                                             ++ toList (typeEnvironment @lhs.importEnvironment)
+                                             (  fmToList (valueConstructors @lhs.importEnvironment)
+                                             ++ fmToList (typeEnvironment @lhs.importEnvironment)
                                              )
                                         ]
                                         @constraints
@@ -86,27 +86,14 @@ SEM Body
       loc . (env,aset,cset,monoTable) = 
                performBindingGroup [] @declarations.typeSignatures @declarations.bindingGroups
                
-          . (csetBinds,aset') = (typeEnvironment @lhs.importEnvironment .:::. @aset) @cinfo
+          . (csetBinds,aset') = (typeEnvironment @lhs.importEnvironment !:::! @aset) @cinfo
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Declaration, Declarations, MaybeDeclarations
 
-ATTR Declaration Declarations MaybeDeclarations
-    [ monos         : Tps
-    | betaUnique    : Int
-    |
-    ]
-ATTR Declaration Declarations
-    [ monoTable     : MonoTable
-    | bindingGroups : BindingGroups
-    |
-    ]
-ATTR MaybeDeclarations
-    [
-    | assumptions   : Assumptions
-      constraints   : ConstraintSet
-    |
-    ]
+ATTR Declaration Declarations MaybeDeclarations [ monos:Tps | betaUnique:Int | ]
+ATTR Declaration Declarations                   [ monoTable:MonoTable | bindingGroups:BindingGroups | ]
+ATTR                          MaybeDeclarations [ | assumptions:Assumptions constraints:ConstraintSet | ]
 
 SEM Declaration
 
@@ -251,7 +238,7 @@ SEM Expression
           . assumptions  = empty
           . constraints  = ctSingle @newcon
       loc . beta         = TVar @lhs.betaUnique
-          . newcon       = case lookupAL @name.self (valueConstructors @lhs.importEnvironment) of
+          . newcon       = case lookupFM (valueConstructors @lhs.importEnvironment) @name.self of
                               Nothing  -> []
                               Just ctp -> [ (@beta .::. ctp) @cinfo ]
 
@@ -283,10 +270,10 @@ SEM Expression
                      . betaResOp   = TVar (@lhs.betaUnique + 1)
                      . conOperator = [ (@operator.beta .==. @leftExpression.beta .->. @rightExpression.beta .->. @betaResOp) @cinfoOperator ]
                      . conResult   = case (@leftExpression.section,@rightExpression.section) of
-                                            (False,False) -> [ (@betaResOp     .==. @beta) @cinfoComplete  ]
-                                            (True ,True ) -> [ (@operator.beta .==. @beta) @cinfoEmpty ]
-                                            _             -> internalError "TypeInferencing.ag" "n/a" "sections are not supported by the type-checker"
-
+                                            (False,False) -> [ (@betaResOp     .==. @beta)                        @cinfoComplete     ]
+                                            (True ,True ) -> [ (@operator.beta .==. @beta)                        @cinfoEmpty        ]
+                                            (False,True ) -> [ (@rightExpression.beta .->. @betaResOp .==. @beta) @cinfoRightSection ]
+                                            (True ,False) -> [ (@leftExpression.beta  .->. @betaResOp .==. @beta) @cinfoLeftSection  ]
 
   | If
       lhs             . assumptions = @guardExpression.assumptions `combine` @thenExpression.assumptions `combine` @elseExpression.assumptions
@@ -488,7 +475,7 @@ SEM Pattern
       loc         . beta           = TVar @lhs.betaUnique
                   . betaCon        = TVar (@lhs.betaUnique + 1)
                   . conApply       = [ (@betaCon .==. @leftPattern.beta .->. @rightPattern.beta .->. @beta) @cinfoApply ]
-                  . conConstructor = case lookupAL @constructorOperator.self (valueConstructors @lhs.importEnvironment) of
+                  . conConstructor = case lookupFM (valueConstructors @lhs.importEnvironment) @constructorOperator.self  of
                                         Nothing  -> []
                                         Just ctp -> [ (@betaCon .::. ctp) @cinfoConstructor ]
 
@@ -501,7 +488,7 @@ SEM Pattern
       loc      . beta           = TVar (@lhs.betaUnique)
                . betaCon        = TVar (@lhs.betaUnique + 1)
                . conApply       = [ (@betaCon .==. foldr (.->.) @beta @patterns.betas) @cinfoApply ]             
-               . conConstructor = case lookupAL @name.self (valueConstructors @lhs.importEnvironment) of
+               . conConstructor = case lookupFM (valueConstructors @lhs.importEnvironment) @name.self of
                                      Nothing  -> []
                                      Just ctp -> [ (@betaCon .::. ctp) @cinfoConstructor ]
 
@@ -706,8 +693,8 @@ SEM Literal
 -------------------------------------------
 -- Collecting Type Signatures
 
-ATTR Declaration Declarations [ | typeSignatures:TypeEnvironment | ]
-ATTR Body                     [ | | typeSignatures:TypeEnvironment ]
+ATTR Declaration Declarations [ | typeSignatures:{AssocList Name TpScheme} | ]
+ATTR Body                     [ | | typeSignatures:{AssocList Name TpScheme} ]
 
 SEM Body              | Body    declarations . typeSignatures = empty
 SEM Expression        | Let     declarations . typeSignatures = empty
@@ -753,6 +740,9 @@ SEM Qualifier
 -- Utility functions to perform the binding-group analysis
 
 {
+type Assumptions        = AssocList Name Tp
+type PatternAssumptions = AssocList Name Tp
+
 type BindingGroups = [BindingGroup]
 type BindingGroup  = (PatternAssumptions,Assumptions,ConstraintSets)
 type MonoTable    = [(PatternAssumptions,Tps)]
@@ -769,7 +759,7 @@ concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
 type TypeAnnotations = [((Tps,Tp),TpScheme,(Tree,Range))]
 type NoTypeDefs      = [(Name,Tps,Tp,Bool)]
 
-findTypeAnnotations :: Bool -> Tps -> TypeEnvironment -> BindingGroups -> (TypeAnnotations,NoTypeDefs)
+findTypeAnnotations :: Bool -> Tps -> AssocList Name TpScheme -> BindingGroups -> (TypeAnnotations,NoTypeDefs)
 findTypeAnnotations toplevel monos typeSignatures bdgs =
    let (environment,_,_) = concatBindingGroups bdgs
        (_,binds,rest)    = typeSignatures ./\. environment
@@ -777,9 +767,8 @@ findTypeAnnotations toplevel monos typeSignatures bdgs =
        noTypeDefs        = [ (n,monos,t,toplevel) | (n,t) <- toList rest ]
    in (typeAnnotations,noTypeDefs)
                     
-performBindingGroup :: Tps -> TypeEnvironment -> BindingGroups -> (PatternAssumptions,Assumptions,ConstraintSet,MonoTable)
-performBindingGroup monos typeSignatures bdgs =
-   variableDependencies (bindingGroupAnalysis bdgs)
+performBindingGroup :: Tps -> AssocList Name TpScheme -> BindingGroups -> (PatternAssumptions,Assumptions,ConstraintSet,MonoTable)
+performBindingGroup monos typeSignatures = variableDependencies . bindingGroupAnalysis
 
    where
         bindingGroupAnalysis :: BindingGroups -> BindingGroups
@@ -795,9 +784,9 @@ performBindingGroup monos typeSignatures bdgs =
         variableDependencies :: BindingGroups -> (PatternAssumptions,Assumptions,ConstraintSet,MonoTable)
         variableDependencies = foldr op (empty,empty,ctEmpty,[]) where
             op (e,a,c) (env,aset,cset,mt) =
-               let (cset1,e'   ) = (typeSignatures .:::. e) cinfoBindingGroupExplicitTypedBinding
+               let (cset1,e'   ) = ((listToFM . toList) typeSignatures !:::! e) cinfoBindingGroupExplicitTypedBinding
                    (cset5,aset') = (.<==.) monos e' aset    cinfoBindingGroupImplicit
-                   (cset2,a'   ) = (typeSignatures .:::. a) cinfoBindingGroupExplicit
+                   (cset2,a'   ) = ((listToFM . toList) typeSignatures !:::! a) cinfoBindingGroupExplicit
                    (cset3,a''  ) = (e' .===. a')            cinfoSameBindingGroup
                in ( e' `combine` env
                   , a'' `combine` aset'

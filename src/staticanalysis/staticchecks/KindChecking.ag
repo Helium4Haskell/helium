@@ -20,30 +20,35 @@ ATTR Declarations MaybeDeclarations Declaration
      [ | kindErrors : {[Error]} | ]
 
 SEM Module
-  | Module         body . kindErrors   = []
-                    loc . kindErrors   = @body.kindErrors
+  | Module         body . kindErrors = []
+                    loc . kindErrors = @body.kindErrors
   
 SEM Expression
-  | Typed           lhs . kindErrors   = checkType @lhs.tyconEnv  (@lhs.namesInScope ++ keys @lhs.constructorenv) @type.self ++ @expression.kindErrors
+  | Typed           lhs . kindErrors = @newErrors ++ @expression.kindErrors
+                    loc . newErrors  = checkType @lhs.typeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self
 
 SEM Declaration
-  | Type            lhs . kindErrors   =  checkType @lhs.tyconEnv (@lhs.namesInScope ++ keys @lhs.constructorenv) @type.self ++ @lhs.kindErrors
-  | TypeSignature   lhs . kindErrors   =  checkType @lhs.tyconEnv (@lhs.namesInScope ++ keys @lhs.constructorenv) @type.self ++ @lhs.kindErrors
+  | Type            lhs . kindErrors = @newErrors ++ @lhs.kindErrors
+                    loc . newErrors  = checkType @lhs.typeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self
+                      
+  | TypeSignature   lhs . kindErrors = @newErrors ++ @lhs.kindErrors
+                    loc . newErrors  = checkType @lhs.typeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self
 
 SEM AnnotatedType
-  | AnnotatedType   lhs . kindErrors   =  checkType @lhs.tyconEnv (@lhs.namesInScope ++ keys @lhs.constructorenv) @type.self ++ @lhs.kindErrors
+  | AnnotatedType   lhs . kindErrors = @newErrors ++ @lhs.kindErrors
+                    loc . newErrors  = checkType @lhs.typeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self
   
 {
-checkType :: TypeConstructorEnvironment -> Names -> Type -> [Error]
-checkType tyconEnv namesInScope t =
+checkType :: FiniteMap Name Int -> Names -> Type -> [Error]
+checkType typeConstructors namesInScope t =
     let (f, xs) = walkSpine t
-        xsErrors = concatMap (checkType tyconEnv namesInScope) xs
+        xsErrors = concatMap (checkType typeConstructors namesInScope) xs
     in
         xsErrors
         ++
         case f of
             Type_Constructor _ c ->
-                checkKind c tyconEnv (length xs) namesInScope
+                checkKind c typeConstructors (length xs) namesInScope
             Type_Variable _ v ->
                 if length xs /= 0 then
                     [ TypeVarApplication v ]
@@ -62,7 +67,7 @@ walkSpine t =
             in (t, ys ++ xs)
         Type_Parenthesized _ t -> walkSpine t
 
-checkKind :: Name -> TypeConstructorEnvironment -> Int -> Names -> [Error]
+checkKind :: Name -> FiniteMap Name Int -> Int -> Names -> [Error]
 checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity namesInScope =
     if expected == useArity then
         []
@@ -74,13 +79,13 @@ checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity namesInScope =
                  0 -> 0  -- ()
                  n -> n + 1 -- (,) (,,) ...
 
-checkKind tycon tyconEnv useArity namesInScope =
-    case lookupAL tycon tyconEnv of
+checkKind tycon typeConstructors useArity namesInScope =
+    case lookupFM typeConstructors tycon of
         Nothing ->
             let hint = if tycon `elem` namesInScope 
                          then Just ("Constructor "++show (show tycon)++" cannot be used in a type") 
                          else Nothing 
-            in [ Undefined TypeConstructor tycon (keys tyconEnv) hint ]
+            in [ Undefined TypeConstructor tycon (keysFM typeConstructors) hint ]
         Just defArity ->
             if useArity /= defArity then
                 [ ArityMismatch TypeConstructor tycon defArity useArity ]

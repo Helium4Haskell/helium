@@ -1,7 +1,7 @@
 ATTR Module
-   [   constructorenv   : ConstructorEnvironment
+   [   constructorenv   : ValueConstructorEnvironment
        indirectionDecls : { [Core.CoreDecl] }
-       toplevelTypes    : TypeEnvironment 
+       toplevelTypes    : { AssocList Name TpScheme }
    |
    |   core             : { Core.CoreModule }
    ]
@@ -22,7 +22,8 @@ import UHA_Syntax
 import UHA_Utils
 import List (union)
 import Messages () -- instance Show Name
-import EnvironmentSynonyms
+import ImportEnvironment
+import FiniteMap
 import TypeConversion
 import Char (ord)
 
@@ -58,7 +59,7 @@ ATTR Body
      Constructors Constructor
      Statement Statements FunctionBinding FunctionBindings LeftHandSide RightHandSide
      MaybeDeclarations Qualifier Qualifiers GuardedExpression GuardedExpressions RecordExpressionBinding
-     RecordPatternBinding RecordExpressionBindings RecordPatternBindings [ constructorenv:ConstructorEnvironment | | ]
+     RecordPatternBinding RecordExpressionBindings RecordPatternBindings [ constructorenv:ValueConstructorEnvironment | | ]
 
 ATTR SimpleType [ | | name:Name typevariables:Names ]
 

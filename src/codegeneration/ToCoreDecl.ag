@@ -338,12 +338,12 @@ toplevelType name (Just tps) = [customType typeString]
             show
             (lookupAL name tps)
 
-constructorTypeAndArity :: Name -> ConstructorEnvironment -> [Core.Custom]
+constructorTypeAndArity :: Name -> ValueConstructorEnvironment -> [Core.Custom]
 constructorTypeAndArity name env =
     maybe 
         (internalError "UHA_ToCore" "Constructor" ("no type found for " ++ show name))
         (\tpScheme -> 
             [ customType (show tpScheme)]
         )
-        (lookupAL name env)
+        (lookupFM env name)
 }

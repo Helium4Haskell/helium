@@ -4,11 +4,9 @@
 --               ( Bastiaan Heeren )
 --
 -- Warnings.ag : The warnings that are collected are the following:
---    1) No type definition given although there exists one 
---          (...in other words, no monomorphic type variables are present in the generalized type)
---    2) A variable shadows another variable
---    3) An entity is not used (except top level entities, since these can be exported)
---    4) Suspicious function bindings (two groups of functionbindings are next to each 
+--    1) A variable shadows another variable
+--    2) An entity is not used (except top level entities, since these can be exported)
+--    3) Suspicious function bindings (two groups of functionbindings are next to each 
 --               other in the program; the names are similar, but only one has an
 --               explicit type signature. Perhaps only one group of functionbindings was intended?)
 --
@@ -119,7 +117,7 @@ SEM Declaration
                                                     _  -> @lhs.suspiciousFBs
 
 {
-findSimilarFunctionBindings :: TypeEnvironment -> [(Name,Name)] -> [Warning]
+findSimilarFunctionBindings :: AssocList Name a -> [(Name,Name)] -> [Warning]
 findSimilarFunctionBindings environment candidates = 
    [ uncurry SimilarFunctionBindings pair
    | (n1,n2) <- candidates
@@ -132,20 +130,3 @@ findSimilarFunctionBindings environment candidates =
 xor :: Bool -> Bool -> Bool
 xor b1 b2 = not (b1 == b2)
 }                 
-
--------------------------------------------
--- Collecting Type Signatures
-
-ATTR Declaration Declarations [ | typeSignatures:TypeEnvironment | ]
-ATTR Body                     [ | | typeSignatures:TypeEnvironment ]
-
-SEM Body              | Body    declarations . typeSignatures = empty
-SEM Expression        | Let     declarations . typeSignatures = empty
-SEM Statement         | Let     declarations . typeSignatures = empty
-SEM Qualifier         | Let     declarations . typeSignatures = empty
-SEM MaybeDeclarations | Just    declarations . typeSignatures = empty
-
-SEM Declaration
-  | TypeSignature
-      lhs . typeSignatures = foldr (uncurry add) @lhs.typeSignatures [ (n,@typeScheme) | n <- @names.self ]
-      loc . typeScheme     = makeTpSchemeFromType @type.self

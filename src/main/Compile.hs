@@ -1,9 +1,9 @@
 module Compile where
 
 import Args(Option(..))
-import Messages(sortAndShowErrors, sortAndShowTypeErrors,sortAndShowWarnings,Error,TypeError,Warning)
-import EnvironmentSynonyms(TypeEnvironment)
-import CoreToImportEnv(getImportInfo)
+import Messages(sortAndShow,Error,TypeError,Warning)
+import ImportEnvironment
+import CoreToImportEnv(getImportEnvironment)
 import Strategy(algM, algW)
 
 -- Semantic functions from the ag-world
@@ -42,23 +42,39 @@ import Utils(splitFilePath)
 import System(ExitCode(..), exitWith)
 import Monad(when, unless)
 import IOExts(unsafePerformIO, writeIORef)
-import ImportEnvironment
+
+-- Temporary !!!!!
+import SortedAssocList
+import FiniteMap
+import Types (TpScheme)
+
+------------------------------------------------------------------------------------
+-- Compiling a single Helium file consists of the following phases:
+--   1) Parsing
+--   2) Static checking
+--   3) Type inferencing
+--   4) Desugaring
+--   5) Code generation 
+------------------------------------------------------------------------------------
 
 compile :: String -> [Option] -> [String] -> IO ()
 compile fullName options doneModules =
     do
-        when (Interpreter `notElem` options) $ putStrLn ("Compiling " ++ fullName)
+        when (Interpreter `notElem` options) $ 
+           putStrLn ("Compiling " ++ fullName)
+           
         -- Split file name
         -- e.g. /docs/haskell/Hello.hs =>
         --   filePath = /docs/haskell  baseName = Hello  ext = hs
         --   fullNameNoExt = /docs/haskell/Hello
-        let
-            (filePath, baseName, ext) = splitFilePath fullName
+        let (filePath, baseName, ext) = splitFilePath fullName
             fullNameNoExt = filePath ++ "/" ++ baseName
+         
+        -- Phase 1: Parsing
+        enterNewPhase "Parsing" options
         
-        -- Parser
-        when verbose $ putStrLn "Parsing..."
-        parseResult <- {-# SCC "parseModule" #-} parseModule fullName
+        parseResult <- {-# SCC "parseModule" #-} 
+                       parseModule fullName
         
         mod <- case parseResult of
             Left errorString -> do
@@ -72,101 +88,111 @@ compile fullName options doneModules =
         let moduleBeforeResolve = addImplicitImports mod
                 
         -- Chase imports
-        chasedImps <- {-# SCC "chaseImports" #-} chaseImports filePath moduleBeforeResolve
+        chasedImpsList <- {-# SCC "chaseImports" #-} 
+                          chaseImports filePath moduleBeforeResolve
         
-        let ( importTypeEnv
-             ,importConstructorEnv
-             ,importTyConEnv
-             ,importTypeSynEnv
-             ,importOperatorTable
-             ,indirectionDecls
-             ) =
-                    {-# SCC "getImportInfo" #-} getImportInfo baseName chasedImps
+        let indirectionDecls   = concat chasedImpsList
+            importEnvironments = {-# SCC "getImportEnvironment" #-} 
+                                 map (getImportEnvironment baseName) chasedImpsList
 
         -- Store the current module file-name and its context in 
         -- two IO refs (unsafe! only used for internal error bug-report)
         writeIORef refToCurrentFileName fullName    
         writeIORef refToCurrentImported doneModules
         
-        let module_ = {-# SCC "resolveOperators" #-} resolveOperators moduleBeforeResolve importOperatorTable
-            
-            -- Choose your algorithm for Type Inferencing
-            (strategy,useTypeGraph)   
-               | AlgorithmW `elem` options = (algW,False)
-               | AlgorithmM `elem` options = (algM,False)
-               | otherwise                 = (algW,True ) -- default algorithm W + TypeGraphs
-            
-            importEnvironment = temporaryConverter {- should have been the result of getImportInfo -}
-                                    importConstructorEnv importTyConEnv importTypeEnv importTypeSynEnv
-            
-            -- Tree traversal with the attribute grammar
-            (collectEnvironment, errors, warnings1) = 
+        let importOperatorTable = concatMap operatorTable importEnvironments
+            module_ = {-# SCC "resolveOperators" #-} 
+                      resolveOperators moduleBeforeResolve importOperatorTable
+
+        when (DumpUHA `elem` options) $ 
+            putStrLn $ show $ PrettyPrinting.sem_Module module_  
+
+        stopCompilingIf (StopAfterParser `elem` options)
+
+        -- Phase 2: Static checking
+        enterNewPhase "Static checks" options
+        
+        let (collectEnvironment, errors, warnings1) = 
                 {-# SCC "StaticAnalysis" #-} 
                 StaticChecks.sem_Module module_ 
                     baseName 
-                    importEnvironment                        
-            
-            completeEnvironment = collectEnvironment `combineImportEnvironments` importEnvironment
+                    importEnvironments
+                    
+        unless (null errors) $           
+           do
+              putStr . unlines . sortAndShow $ errors
+              unless (NoLogging `elem` options) $ logger ("S"++errorsLogCode errors) Nothing
+              let number = length errors
+              when (Interpreter `notElem` options) $ 
+                 putStrLn ("Compilation failed with " ++ show number ++ " error" ++ if number == 1 then "" else "s")
+
+        stopCompilingIf (StopAfterStaticAnalysis `elem` options || not (null errors)) 
+      
+        -- Phase 3: Type inferencing
+        enterNewPhase "Type inferencing" options
+        
+        let (strategy,useTypeGraph)   
+               | AlgorithmW `elem` options = (algW,False)
+               | AlgorithmM `elem` options = (algM,False)
+               | otherwise                 = (algW,True ) -- default algorithm W + TypeGraphs
+                                    
+            completeEnvironment = foldr combineImportEnvironments collectEnvironment importEnvironments
                      
             (debugTypes, toplevelTypes, typeErrors, warnings2) = 
                 {-# SCC "StaticAnalysis" #-} 
                 TypeInferencing.sem_Module module_ 
                     completeEnvironment
                     strategy 
-                    useTypeGraph     
+                    useTypeGraph
         
-            finalEnvironment = foldr (uncurry addType) completeEnvironment (toList toplevelTypes)          
+            finalEnvironment = foldr (uncurry addType) completeEnvironment (toList toplevelTypes)    
 
-        when (DumpUHA `elem` options) $ 
-            putStrLn $ show $ PrettyPrinting.sem_Module module_
-        
-        when (StopAfterParser `elem` options) $ 
-            System.exitWith (ExitFailure 1)
-            
-        -- Static analysis
-        when verbose $ putStrLn "Static analysis..."
-        
-        (success, finalMessage) <-
-            if NoStaticAnalysis `elem` options
-            then return (True, "Compilation WITHOUT static analysis 'successful'. Run at your own risk.")
-            -- also performs the SA due to lazyness
-            else do 
-                    -- Optinonally dump type inference information
-                    when (null errors && DumpTypeDebug `elem` options) debugTypes                     
+        unless (null typeErrors) $
+           do 
+              putStr . unlines . ("":) . sortAndShow . take maximumNumberOfTypeErrors . reverse $ typeErrors
+              unless (NoLogging `elem` options) $ logger "T" (Just (doneModules,fullName))
+              let number = length typeErrors
+              when (number > maximumNumberOfTypeErrors) $ putStrLn "(...)\n" 
+              when (Interpreter `notElem` options) $ 
+                 putStrLn ("Compilation failed with " ++ show number ++ " type error" ++ if number == 1 then "" else "s")
+
+        -- Dump inferred top-level types
+        when (DumpTypes `elem` options) $
+            putStr . unlines $
+                map
+                    (\(name,tp) -> show name ++ " :: " ++ show tp)
+                    (toList toplevelTypes)                   
+
+        stopCompilingIf (StopAfterTypeInferencing `elem` options || not (null typeErrors))         
                     
-                    finalMessage <- showSAMessages
-                        options
-                        toplevelTypes
-                        errors
-                        typeErrors
-                        (warnings1 ++ warnings2)
-                        debugTypes
-                        doneModules
-                        fullName
-                    return (null errors && null typeErrors, finalMessage)
-                
-        when (not success || StopAfterStaticAnalysis `elem` options) $ do
-            when (Interpreter `notElem` options) $ putStrLn finalMessage
-            System.exitWith (ExitFailure 1)
+        -- Static Warnings        
+        let warnings = warnings1 ++ warnings2
             
-        when verbose $ putStrLn "Desugaring..."
+        unless (NoWarnings `elem` options) $
+            putStr . unlines . sortAndShow $ warnings
+                           
+        -- Phase 4: Desugaring
+        enterNewPhase "Desugaring" options
+        
         let coreModule = {-# SCC "CodeGeneration" #-}
-                            CodeGeneration.sem_Module module_ 
-                                (valueConstructors finalEnvironment) 
-                                indirectionDecls
-                                toplevelTypes
+                         CodeGeneration.sem_Module module_ 
+                             (valueConstructors finalEnvironment)
+                             indirectionDecls
+                             toplevelTypes
+                             
             strippedCoreModule = coreRemoveDead coreModule
 
-        when (DumpCore `elem` options) $ print.corePretty $ strippedCoreModule
+        when (DumpCore `elem` options) $ 
+            print.corePretty $ strippedCoreModule
 
         when (DumpCoreToFile `elem` options) $ do
             writeFile (fullNameNoExt ++ ".core") $ show.corePretty $ strippedCoreModule
             System.exitWith (ExitSuccess)
 
-        when (StopAfterDesugar `elem` options) $ 
-            System.exitWith (ExitFailure 1)
+        stopCompilingIf (StopAfterDesugar `elem` options)
         
-        when verbose $ putStrLn "Code generation..."
+        -- Phase 5: Code generation
+        enterNewPhase "Code generation" options
 
         catch ( {-# SCC "Daan" #-} coreToLvm fullNameNoExt strippedCoreModule
          ) (\ioError -> 
@@ -177,21 +203,35 @@ compile fullName options doneModules =
            )
         
         unless (NoLogging `elem` options) $ logger "C" Nothing
-        
-        when (Interpreter `notElem` options) $ putStrLn finalMessage
-        
-    where
-        verbose = Verbose `elem` options
 
-chaseImports :: String -> Module -> IO [Core.CoreDecl]
+        let number = length warnings
+        when (Interpreter `notElem` options) $ 
+           putStrLn $ "Compilation successful" ++ 
+                      if number == 0 || (NoWarnings `elem` options)   
+                        then "" 
+                        else " with " ++ show number ++ " warning" ++ if number == 1 then "" else "s"          
+
+enterNewPhase :: String -> [Option] -> IO ()
+enterNewPhase phase options = 
+   when (Interpreter `notElem` options && Verbose `elem` options) $
+      putStrLn (phase ++ "...")
+
+stopCompilingIf :: Bool -> IO ()
+stopCompilingIf bool = when bool (System.exitWith (ExitFailure 1))
+
+maximumNumberOfTypeErrors :: Int
+maximumNumberOfTypeErrors = 3
+
+chaseImports :: String -> Module -> IO [[Core.CoreDecl]]
 chaseImports filePath mod =
-    do
-        let coreImportDecls = ExtractImportDecls.sem_Module mod -- Expand imports
-            findModule paths id = searchPath paths ".lvm" (stringFromId id)
-            
-        chasedImps <- lvmImportDecls (findModule (".":filePath:lvmPath)) coreImportDecls
-        
-        return (concat chasedImps)
+   do 
+      lvmPath <- getLvmPath
+   
+      let paths           = ".":filePath:lvmPath
+          coreImportDecls = ExtractImportDecls.sem_Module mod -- Expand imports
+          findModule      = searchPath paths ".lvm" . stringFromId
+   
+      lvmImportDecls findModule coreImportDecls
 
 -- Expressions 
 resolveOperators :: Module -> OperatorTable -> Module
@@ -202,44 +242,7 @@ resolveOperators moduleBeforeResolve importOperatorTable =
             importOperatorTable
     in
         ResolveOperators.resolveOperators operatorTable moduleBeforeResolve
-
-maximumNumberOfTypeErrors = 3
-
-showSAMessages :: [Option] -> TypeEnvironment -> [Error] -> [TypeError] -> [Warning] -> IO () -> [String] -> String -> IO String
-showSAMessages options toplevelTypes errors typeErrors warnings debugTypes importedSourceFiles fullName 
-
-    | not (null errors) = do
-         -- Dump errors
-        putStr . unlines . sortAndShowErrors $ errors
-        unless (NoLogging `elem` options) $ logger ("S"++errorsLogCode errors) Nothing
-        let number = length errors
-        return $ "Compilation failed with " ++ show number ++ " error" ++ if number == 1 then "" else "s"
-        
-    | not (null typeErrors) = do
-        -- Dump (first three) type errors 
-        putStr . unlines . ("":) . sortAndShowTypeErrors . take maximumNumberOfTypeErrors . reverse $ typeErrors
-        unless (NoLogging `elem` options) $ logger "T" (Just (importedSourceFiles,fullName))
-        let number = length typeErrors
-        when (number > maximumNumberOfTypeErrors) $ putStrLn "(...)\n" 
-        return $ "Compilation failed with " ++ show number ++ " type error" ++ if number == 1 then "" else "s"
-    
-    | otherwise = do
-        -- Optionally dump types
-        when (DumpTypes `elem` options) $
-            putStr . unlines $
-                map
-                    (\(name,tp) -> show name ++ " :: " ++ show tp)
-                    (toList toplevelTypes)                   
-                    
-        -- Dump warnings
-        when (null typeErrors && NoWarnings `notElem` options) $
-            putStr . unlines . sortAndShowWarnings $ warnings
-        
-        let number = length warnings
-        return $ "Compilation successful" ++ if number == 0 then "" else
-                        " with " ++ show number ++ " warning" ++ if number == 1 then "" else "s"
-                         
-        
+                             
 -- Add "import Prelude" if
 --   the currently compiled module is not the Prelude and
 --   the Prelude is not explicitly imported
@@ -274,7 +277,3 @@ addImplicitImports m@(Module_Module moduleRange maybeName exports
             (Name_Identifier noRange [] moduleName)
             MaybeName_Nothing
             MaybeImportSpecification_Nothing
-
-lvmPath :: [String]
-lvmPath = unsafePerformIO getLvmPath
-

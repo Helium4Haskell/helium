@@ -1,4 +1,4 @@
-module CoreToImportEnv(getImportInfo) where
+module CoreToImportEnv(getImportEnvironment) where
 
 import SortedAssocList
 import UHA_Syntax(Name(..), Range(..), Position(..))
@@ -15,7 +15,7 @@ import Char
 import IOExts -- debug
 import qualified CoreParse as C
 import Messages -- debug (instance Show Range)
-import EnvironmentSynonyms
+import ImportEnvironment
 
 typeFromCustoms :: String -> [Custom] -> TpScheme
 typeFromCustoms n [] =
@@ -120,110 +120,89 @@ update name elt list =
         else
             add name elt list
 
-getImportInfo :: String -> [CoreDecl] ->
-                 ( TypeEnvironment
-                 , ConstructorEnvironment
-                 , TypeConstructorEnvironment
-                 , AssocList Name (Int,Tps -> Tp) -- TypeSynonymEnvironment
-                 , OperatorTable
-                 , [CoreDecl]
-                 )
-getImportInfo _ [] = (empty, empty, empty, empty, [], [])
-getImportInfo importedInMod (decl:decls) =
-    let envs@(g, c, t, s, o, d) = getImportInfo importedInMod decls in
-    case decl of
-        -- functions
-        DeclAbstract{ declName    = n
-                    , declAccess  = Imported{importModule = importedFromModId}
-                    , declCustoms = cs
-                    } ->
-            ( add
-                (makeImportName importedInMod importedFromModId n)
+getImportEnvironment :: String -> [CoreDecl] -> ImportEnvironment
+getImportEnvironment importedInModule = foldr insert emptyEnvironment
+   where
+      insert decl = 
+         case decl of 
+         
+           -- functions
+           DeclAbstract { declName    = n
+                        , declAccess  = Imported{importModule = importedFromModId}
+                        , declCustoms = cs
+                        } ->
+              addType
+                 (makeImportName importedInModule importedFromModId n)
+                 (typeFromCustoms (stringFromId n) cs)
+          
+           -- functions from non-core/non-lvm libraries and lvm-instructions
+           DeclExtern { declName = n
+                      , declAccess  = Imported{importModule = importedFromModId}
+                      , declCustoms = cs
+                      } ->
+              addType
+                 (makeImportName importedInModule importedFromModId n)
+                 (typeFromCustoms (stringFromId n) cs)
+            
+           -- constructors
+           DeclCon { declName    = n
+                   , declAccess  = Imported{importModule = importedFromModId}
+                   , declArity   = arity
+                   , declCustoms = cs
+                   } ->
+              addValueConstructor
+                (makeImportName importedInModule importedFromModId n)
                 (typeFromCustoms (stringFromId n) cs)
-                g
-            , c, t, s, o
-            , decl:d
-            )
-        -- functions from non-core/non-lvm libraries and lvm-instructions
-        DeclExtern  { declName = n
-                    , declAccess  = Imported{importModule = importedFromModId}
-                    , declCustoms = cs
-                    } ->
-            ( add
-                (makeImportName importedInMod importedFromModId n)
-                (typeFromCustoms (stringFromId n) cs) g
-            , c, t, s, o
-            , decl:d
-            )
-        -- constructors
-        DeclCon     { declName    = n
-                    , declAccess  = Imported{importModule = importedFromModId}
-                    , declArity   = arity
-                    , declCustoms = cs
-                    } ->
-            ( g
-            , add
-                (makeImportName importedInMod importedFromModId n)
-                (typeFromCustoms (stringFromId n) cs) c
-            , t, s, o
-            , decl:d
-            )
-        -- type constructor import
-        DeclCustom  { declName    = n
-                    , declAccess  = Imported{importModule = importedFromModId}
-                    , declKind    = DeclKindCustom id
-                    , declCustoms = cs }
-            | stringFromId id == "data" ->
-                ( g, c
-                , add
-                    (makeImportName importedInMod importedFromModId n)
-                    (arityFromCustoms (stringFromId n) cs) t
-                , s, o
-                , decl:d
-                )
-        -- type synonym declarations
-        DeclCustom  { declName    = n
-                    , declAccess  = Imported{importModule = importedFromModId}
-                    , declKind    = DeclKindCustom id
-                    , declCustoms = cs
-                    }
-            | stringFromId id == "typedecl" ->
-                ( g, c, t
-                , add
-                    (makeImportName importedInMod importedFromModId n)
-                    (typeSynFromCustoms (stringFromId n) cs) s
-                , o
-                , decl:d
-                )
-        -- infix decls
-        DeclCustom  { declName    = n
-                    , declKind    = DeclKindCustom id
-                    , declCustoms = cs
-                    }
-            | stringFromId id == "infix" ->
-                ( g, c, t, s
-                , makeOperatorTable (stringFromId n) cs ++ o
-                , decl:d
-                )
-        
-        -- !!! Print importedFromModId from "declAccess = Imported{importModule = importedFromModId}" as well
-        DeclAbstract{ declName = n } ->
-            intErr  ("don't know how to handle declared DeclAbstract: " ++ stringFromId n)
-        DeclExtern  { declName = n } ->
-            intErr  ("don't know how to handle declared DeclExtern: "   ++ stringFromId n)
-        DeclCon     { declName = n } ->
-            intErr  ("don't know how to handle declared DeclCon: "      ++ stringFromId n)
-        DeclCustom  { declName = n } ->
-            intErr  ("don't know how to handle DeclCustom: "            ++ stringFromId n)
-        DeclValue   { declName = n } ->
-            intErr  ("don't know how to handle DeclValue: "             ++ stringFromId n)
-        DeclImport  { declName = n } ->
-            intErr  ("don't know how to handle DeclImport: "            ++ stringFromId n)
-        _ ->
-            intErr "unknown kind of declaration in import declarations"
-    where
-        intErr = internalError "CoreToImportEnv" "convert"
 
+           -- type constructor import
+           DeclCustom { declName    = n
+                      , declAccess  = Imported{importModule = importedFromModId}
+                      , declKind    = DeclKindCustom id
+                      , declCustoms = cs 
+                      } 
+                      | stringFromId id == "data" ->
+              addTypeConstructor
+                 (makeImportName importedInModule importedFromModId n)
+                 (arityFromCustoms (stringFromId n) cs)
+            
+           -- type synonym declarations
+           -- important: a type synonym also introduces a new type constructor!
+           DeclCustom { declName    = n
+                      , declAccess  = Imported{importModule = importedFromModId}
+                      , declKind    = DeclKindCustom id
+                      , declCustoms = cs
+                      }
+                      | stringFromId id == "typedecl" ->
+              let name = makeImportName importedInModule importedFromModId n
+                  pair = typeSynFromCustoms (stringFromId n) cs
+              in addTypeSynonym name pair . addTypeConstructor name (fst pair)
+                             
+           -- infix decls
+           DeclCustom { declName    = n
+                      , declKind    = DeclKindCustom id
+                      , declCustoms = cs
+                      }
+                      | stringFromId id == "infix" ->
+              flip (foldr (uncurry addOperator)) (makeOperatorTable (stringFromId n) cs)
+
+           -- !!! Print importedFromModId from "declAccess = Imported{importModule = importedFromModId}" as well
+           DeclAbstract{ declName = n } ->
+              intErr  ("don't know how to handle declared DeclAbstract: " ++ stringFromId n)
+           DeclExtern  { declName = n } ->
+              intErr  ("don't know how to handle declared DeclExtern: "   ++ stringFromId n)
+           DeclCon     { declName = n } ->
+              intErr  ("don't know how to handle declared DeclCon: "      ++ stringFromId n)
+           DeclCustom  { declName = n } ->
+              intErr  ("don't know how to handle DeclCustom: "            ++ stringFromId n)
+           DeclValue   { declName = n } ->
+              intErr  ("don't know how to handle DeclValue: "             ++ stringFromId n)
+           DeclImport  { declName = n } ->
+              intErr  ("don't know how to handle DeclImport: "            ++ stringFromId n)
+           _ ->
+              intErr "unknown kind of declaration in import declarations"
+        
+      intErr = internalError "CoreToImportEnv" "getImportEnvironment"
+         
 stringToType :: String -> String -> Maybe [(Id, Tp)] -> Tp
 stringToType n typeStr table =
     let

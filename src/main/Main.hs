@@ -6,7 +6,7 @@ import UHA_Utils(stringFromImportDeclaration)
 import UHA_Syntax(Module(..), Body(..))
 
 -- Utilities
-import Standard(searchPathMaybe)
+import Standard(searchPathMaybe,getLvmPath)
 import Utils(splitFilePath)
 import Directory(doesFileExist)
 import System(exitWith, ExitCode(..), getArgs)
@@ -20,8 +20,9 @@ import Logger
 
 main :: IO ()
 main = do
-    args            <- getArgs
+    args                <- getArgs
     (options, fullName) <- processArgs args
+    lvmPath             <- getLvmPath
     let (filePath, moduleName, extension) = splitFilePath fullName
         searchPath = filter (not.null).nub $ ".":filePath:lvmPath
 

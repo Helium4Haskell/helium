@@ -147,6 +147,8 @@ SEM Expression | InfixApplication loc . cinfoEmpty =
                        , Size @size ]  
         }
 
+SEM Expression | InfixApplication loc . (cinfoLeftSection,cinfoRightSection) = internalError "TypeInferenceInfo.ag" "n/a" "todo: type error message for sections"
+
 SEM Expression | Do loc . cinfo =
   \tppair ->
   CInfo { info       = (NTExpression,AltDo,"")

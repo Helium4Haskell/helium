@@ -24,7 +24,7 @@ interpreterMain = "interpreter_main"
 -- The interpreter_main has te be wrapped inside unsafePerformIO etcetera, too
 -- We can't just call it main because we'll get import clashes.  Sigh!
 
-insertedMain :: TypeEnvironment -> CoreDecl
+insertedMain :: AssocList Name TpScheme -> CoreDecl
 insertedMain toplevelTypes =
     let maybeWrapMainAndType = 
             case lookupAL (Name_Identifier noRange [] "main") toplevelTypes of
@@ -82,7 +82,7 @@ SEM Module
 -- Since the parser cannot distinguish between types or constructors,
 -- or between types and type classes, wie do not have different cases (yet?).
 
-ATTR Body [ toplevelTypes : TypeEnvironment | | ]
+ATTR Body [ toplevelTypes : {AssocList Name TpScheme} | | ]
 
 ATTR Body Declarations Declaration
     [   types : { Maybe (AssocList String TpScheme) }

@@ -9,127 +9,123 @@
 --    2) type synonyms
 --    3) (value) constructors from a data type
 --    4) fixity declarations
---    5) names of imported modules
---    6) the derived show functions for data types
 --
 -- Distribute the collected environments 
---    7) value constructors
---    8) type constructors
+--    5) value constructors
+--    6) type constructors
 --
 -------------------------------------------------------------------------------
 
-imports {
-import ImportEnvironment
-}
+SEM Module
+  | Module   loc . collectEnvironment = setValueConstructors  @valueConstructors
+                                        . setTypeConstructors @typeConstructors
+                                        . setTypeSynonyms     (listToFM @orderedTypeSynonyms)
+                                        $ emptyEnvironment 
+                                        
+                 . derivedFunctions = let f (n,i) = ( nameOfShowFunction n
+                                                    , typeOfShowFunction n (take i [ nameFromString [c] | c <- ['a'..]])
+                                                    )
+                                          g (n,(i,_)) = f (n,i)
+                                      in map f @body.collectTypeConstructors ++
+                                         map g @body.collectTypeSynonyms
 
 -------------------------------------------
--- 1,2,3) Collecting type constructors, value constructors, and type synonyms
+-- 1) Collecting (data-)type constructors
 
-ATTR Body Declarations Declaration Constructors Constructor [ | collectEnvironment:ImportEnvironment | ]
+ATTR Body Declarations Declaration [ | collectTypeConstructors : {[(Name,Int)]} | ]
 
-SEM Module 
-  | Module   body . collectEnvironment = emptyEnvironment
-             
+SEM Module | Module   body . collectTypeConstructors = []
+
 SEM Declaration
-  | Data   lhs . collectEnvironment = addTypeConstructor @simpletype.name (length @simpletype.typevariables) @constructors.collectEnvironment
-  | Type   lhs . collectEnvironment = addTypeSynonym     @simpletype.name @typeSynonymInfo @lhs.collectEnvironment
-           loc . typeSynonymInfo = (length @simpletype.typevariables,\tps -> makeTpFromType (zip @simpletype.typevariables tps) @type.self)
+  | Data   lhs . collectTypeConstructors = (@simpletype.name,length @simpletype.typevariables) : @lhs.collectTypeConstructors
+
+-------------------------------------------
+-- 2) Collecting value constructors
+
+ATTR Body Declarations Declaration Constructors Constructor [ | collectValueConstructors : {[(Name,TpScheme)]} | ]
+
+SEM Module | Module   body . collectValueConstructors = []
 
 SEM Constructor
   | Constructor
-       lhs . collectEnvironment = addValueConstructor @constructor.self @typeScheme @lhs.collectEnvironment
+       lhs . collectValueConstructors = (@constructor.self, @typeScheme) : @lhs.collectValueConstructors
        loc . typeScheme = generalizeAll (foldr (.->.) @tp @tps)
            . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype @types.types
                   
   | Infix
-       lhs . collectEnvironment = addValueConstructor @constructorOperator.self @typeScheme @lhs.collectEnvironment
+       lhs . collectValueConstructors = (@constructorOperator.self, @typeScheme) : @lhs.collectValueConstructors
        loc . typeScheme = generalizeAll (foldr (.->.) @tp @tps)
            . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype [@leftType.type,@rightType.type] 
+
+-------------------------------------------
+-- 3) Collecting type synonyms
+
+ATTR Body Declarations Declaration [ | collectTypeSynonyms : {[(Name,(Int,Tps -> Tp))]} | ]
+           
+SEM Module | Module   body . collectTypeSynonyms = []                   
+
+SEM Declaration
+  | Type   lhs . collectTypeSynonyms = (@simpletype.name, @typeSynonymInfo) : @lhs.collectTypeSynonyms
+           loc . typeSynonymInfo = (length @simpletype.typevariables,\tps -> makeTpFromType (zip @simpletype.typevariables tps) @type.self)
            
 -------------------------------------------
 -- 4) Collecting Fixity Declarations
 
-ATTR Declarations Declaration [ | fixOps : Names | ]
-ATTR Body                     [ | | fixOps : Names ]
+ATTR Body Declarations Declaration [ | operatorFixities : {[(Name,(Int,Assoc))]} | ]
 
-SEM Body
-  | Body   declarations . fixOps = [] 
+SEM Module | Module   body . operatorFixities = [] 
 
 SEM Declaration
-    | Fixity lhs . fixOps = @operators.self ++ @lhs.fixOps
+  | Fixity   lhs . operatorFixities = [ (name,(0,AssocNone)) | name <- @operators.self ] ++ @lhs.operatorFixities
 
 -------------------------------------------
--- 5) Collecting the imported modules
+-- 5) Distributing Value Constructors
 
-ATTR ImportDeclarations ImportDeclaration  [ | importedModules : Names | ]
-ATTR Body                                  [ | | importedModules : Names ]  
+SEM Module
+  | Module   loc . (uniqueValueConstructors,duplicatedValueConstructors) = 
+                      uniqueKeys (  @body.collectValueConstructors 
+                                 ++ concatMap (fmToList . valueConstructors) @lhs.importEnvironments
+                                 )
+                 . allValueConstructors = map fst @uniqueValueConstructors ++ map head @duplicatedValueConstructors
+                 . valueConstructors    = listToFM @uniqueValueConstructors
 
-SEM Body
-  | Body    importdeclarations . importedModules = []
-    
-SEM ImportDeclaration
-  | Import   lhs . importedModules = @name.self : @lhs.importedModules
+ATTR Body Declarations Declaration Expressions Expression Patterns Pattern 
+     Statement Statements Qualifier Qualifiers
+     Alternative Alternatives Constructor Constructors
+     GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
+     LeftHandSide RightHandSide MaybeDeclarations MaybeExpression AnnotatedType AnnotatedTypes
+     [ valueConstructors : {FiniteMap Name TpScheme} allValueConstructors : Names | | ]
 
 -------------------------------------------
--- 6) Collecting derived show functions
-
-ATTR Declarations Declaration [ | derivedFunctions : TypeEnvironment | ]
-ATTR Body                     [ | | derivedFunctions : TypeEnvironment ]
-
-SEM Body
-    | Body declarations.derivedFunctions = empty
-    
-SEM Declaration
-    | Data lhs.derivedFunctions = 
-            add 
-                (nameOfShowFunction @simpletype.name) 
-                (typeOfShowFunction @simpletype.name @simpletype.typevariables)
-                @lhs.derivedFunctions
-    | Type lhs.derivedFunctions = 
-            add 
-                (nameOfShowFunction @simpletype.name) 
-                (typeOfShowFunction @simpletype.name @simpletype.typevariables)
-                @lhs.derivedFunctions
-
----------------------------------------------------------------
--- Distribution of collected environments (uniqueness is guaranteed!) 
-
--- 7) value constructors
-ATTR Expression Expressions Pattern Patterns MaybeExpression Alternative Alternatives Declaration Declarations
-     Constructors Constructor
-     Statement Statements FunctionBinding FunctionBindings LeftHandSide RightHandSide
-     MaybeDeclarations Qualifier Qualifiers GuardedExpression GuardedExpressions Body AnnotatedTypes AnnotatedType
-     [ constructorenv:ConstructorEnvironment | | ]
+-- 6) Distributing Type Constructors
 
 SEM Module
-  | Module   loc . (constructorenv,duplicatedValueConstructors) = 
-                        onlyUniqueKeys ( valueConstructors @body.collectEnvironment `combine` valueConstructors @lhs.importEnvironment )
+  | Module loc . (uniqueTypeConstructors,duplicatedTypeConstructors) =
+                    uniqueKeys (  @body.collectTypeConstructors
+                               ++ concatMap (fmToList . typeConstructors) @lhs.importEnvironments
+                               ++ [ (n,i) | (n,(i,f)) <- @body.collectTypeSynonyms ]
+                               )
+               . allTypeConstructors = map fst @uniqueTypeConstructors ++ map head @duplicatedTypeConstructors
+               . typeConstructors    = listToFM @uniqueTypeConstructors
 
--- 8) type constructors (!also from type synonyms!) and their arity
-ATTR Expression Expressions Alternative Alternatives Declaration Declarations MaybeExpression
-     Statement Statements FunctionBinding FunctionBindings RightHandSide
-     MaybeDeclarations Qualifier Qualifiers GuardedExpression GuardedExpressions
-     Type Types AnnotatedType AnnotatedTypes Constructor Constructors Body 
-     LeftHandSide Pattern Patterns
-     [ tyconEnv : TypeConstructorEnvironment | | ]
-
-SEM Module
-  | Module loc . (tyconEnv,duplicatedTypeConstructors) 
-                     = onlyUniqueKeys ( typeConstructors @body.collectEnvironment `combine`
-                                        typeConstructors @lhs.importEnvironment 
-                                      )
+ATTR Body Declarations Declaration Expressions Expression Patterns Pattern    
+     Statement Statements Qualifier Qualifiers 
+     Alternative Alternatives Constructor Constructors
+     GuardedExpressions GuardedExpression FunctionBinding FunctionBindings     
+     LeftHandSide RightHandSide MaybeDeclarations MaybeExpression AnnotatedType AnnotatedTypes
+     [ typeConstructors : {FiniteMap Name Int} allTypeConstructors : Names | | ]
 
 ------------------------------------------------------------------------------
--- 9) Check and order type synonyms 
+--  Check and order type synonyms 
 
 SEM Module
   | Module   loc . (orderedTypeSynonyms,recursiveTypeSynonyms) = 
-                       checkRecursionTypeSynonyms (typeSynonyms @body.collectEnvironment)
+                       checkRecursionTypeSynonyms @body.collectTypeSynonyms
                                               
 {
-checkRecursionTypeSynonyms :: TypeSynonymEnvironment -> (OrderedTypeSynonyms,[Names])
+checkRecursionTypeSynonyms :: [(Name,(Int,Tps -> Tp))] -> ([(Name,(Int,Tps -> Tp))],[Names])
 checkRecursionTypeSynonyms unordered =
-    let synonyms  = [ (n,(i,f)) | (n,i,f) <- unordered ]
+    let synonyms  = unordered
         nameTable = zip (map fst synonyms) [0..]
         synTable  = zip [0..] synonyms 
         edges = concat [ let Just i1 = lookup n1 nameTable
@@ -142,7 +138,7 @@ checkRecursionTypeSynonyms unordered =
         op [i] (as,bs)
            | (i,i) `elem` edges = (as,[ n | (n,i') <- nameTable, i==i' ] : bs)
            | otherwise          = let Just (name,(arity,tf)) = lookup i synTable
-                                  in ((show name,arity,tf):as,bs)
+                                  in ((name,(arity,tf)):as,bs)
         op is  (as,bs) = (as,[ n | i <- is, (n,i') <- nameTable, i==i'] : bs)
     in foldr op ([],[]) list
 }
@@ -176,3 +172,31 @@ SEM AnnotatedTypes
    
 SEM AnnotatedType
   | AnnotatedType  lhs . type = @type.self 
+
+{
+uniqueKeys :: Ord key => [(key,a)] -> ([(key,a)],[[key]])
+uniqueKeys = let comp (x,_) (y,_) = compare x y
+                 eq   (x,_) (y,_) = x == y
+                 predicate xs = length xs == 1 
+             in (\(xs, ys) -> (map head xs, map (map fst) ys)) 
+              . partition predicate 
+              . groupBy eq 
+              . sortBy comp
+}
+
+-------------------------------------------
+-- Collecting Type Signatures
+
+ATTR Declaration Declarations [ | typeSignatures:{AssocList Name TpScheme} | ]
+ATTR Body                     [ | | typeSignatures:{AssocList Name TpScheme} ]
+
+SEM Body              | Body    declarations . typeSignatures = empty
+SEM Expression        | Let     declarations . typeSignatures = empty
+SEM Statement         | Let     declarations . typeSignatures = empty
+SEM Qualifier         | Let     declarations . typeSignatures = empty
+SEM MaybeDeclarations | Just    declarations . typeSignatures = empty
+
+SEM Declaration
+  | TypeSignature
+      lhs . typeSignatures = foldr (uncurry add) @lhs.typeSignatures [ (n,@typeScheme) | n <- @names.self ]
+      loc . typeScheme     = makeTpSchemeFromType @type.self
