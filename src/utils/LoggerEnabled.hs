@@ -24,17 +24,18 @@ import Version
 
 loggerHOSTNAME :: String
 loggerHOSTNAME    = {- Bastiaan     -} -- "ikaria.cs.uu.nl" 
-                    {- Jurriaan     -} -- "ranum.cs.uu.nl" 
-                    {- StudentenNet -} "bellatrix.students.cs.uu.nl" 
+                    {- Jurriaan     -} -- "cox.cs.uu.nl" 
+                    {- Test         -} "localhost"
+                    {- StudentenNet -} -- "bellatrix.students.cs.uu.nl" 
                     
 loggerPORTNUMBER, loggerDELAY, loggerTRIES :: Int
 loggerPORTNUMBER  = 5010
 loggerDELAY       = 10000    -- in micro-seconds
 loggerTRIES       = 2
 
-loggerSPLITSTRING, loggerNOPROGRAMS, loggerUSERNAME :: String
-loggerSPLITSTRING = "\n\NUL\n"
-loggerNOPROGRAMS  = "\n\SOH\n"
+loggerSEPARATOR, loggerTERMINATOR, loggerUSERNAME :: String
+loggerSEPARATOR = "\NUL\NUL\n"
+loggerTERMINATOR  = "\SOH\SOH\n"
 loggerUSERNAME    = "USERNAME"
 
 loggerENABLED :: Bool
@@ -53,22 +54,24 @@ logger logcode maybeSources loggerDEBUGMODE
         username <- (getEnv loggerUSERNAME) `catch` (\_ -> return "unknown")
         sources  <- case maybeSources of 
             Nothing -> 
-                return (loggerNOPROGRAMS)
+                return (loggerTERMINATOR)
             Just (imports,hsFile) -> 
                let f name = do debug ("Logging file " ++ name) loggerDEBUGMODE
                                program <- readFile name                                                        
                                return (  fileNameWithoutPath name
                                       ++ "\n" 
-                                      ++ program                
-                                      ++ loggerSPLITSTRING 
+                                      ++ program
+                                      ++ "\n"                
+                                      ++ loggerSEPARATOR 
                                       )
                in (do 
                     xs <- mapM f imports
                     x  <- f hsFile
-                    return (concat (loggerSPLITSTRING:x:xs)) 
-                   ) `catch` (\_ -> return (loggerNOPROGRAMS) )
+                    return (concat (loggerSEPARATOR:x:xs)++loggerTERMINATOR) 
+                   ) `catch` (\_ -> return (loggerTERMINATOR) )
 
-        sendLogString (username++":"++logcode++":"++version++sources) loggerDEBUGMODE
+        --putStr (username++":"++logcode++":"++version++"\n"++sources)
+        sendLogString (username++":"++logcode++":"++version++"\n"++sources) loggerDEBUGMODE
 
 isInterpreterModule :: Maybe ([String],String) -> Bool
 isInterpreterModule Nothing = False
@@ -105,7 +108,7 @@ sendToAndFlush :: Handle        -- Hostname
                -> IO ()               
 sendToAndFlush handle msg loggerDEBUGMODE = do  
   hPutStr handle msg
-  hPutStr handle loggerSPLITSTRING
+  hPutStr handle loggerSEPARATOR
   hFlush handle
 --  b1 <- hIsWritable s
 --  b2 <- hIsReadable s
