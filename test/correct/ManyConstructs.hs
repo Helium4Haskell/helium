@@ -8,7 +8,7 @@ import Prelude((>), (+), dictNumInt, dictOrdInt)
 
 data A = A Int String
 
-main :: ([Int], [Int], Int, Int, [Int], A, Int, ())
+main :: ([Int], [Int], Int, Int, [Int], A, ())
 main = -- primUnsafePerformIO, primPutStrLn, primShowTuple8 in inserted main
     (   [1..5] -- primEnum...
     ,   [1,3..10]
@@ -16,7 +16,6 @@ main = -- primUnsafePerformIO, primPutStrLn, primShowTuple8 in inserted main
     ,   case [3,5..] of (_:_:y:_) -> y
     ,   [ y | x <- [1..10], x > 5, let { y :: Int; y = x + 1 }] -- primConcatMap
     ,   A 3 "bla" -- primConcat
-    ,   -3 -- primNegInt
     ,   primUnsafePerformIO 
             (do { primPutChar 'a'; primPutChar 'b' }) -- primBindIO
     )

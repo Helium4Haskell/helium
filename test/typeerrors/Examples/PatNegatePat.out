@@ -1,5 +1,5 @@
 Compiling typeerrors/Examples/PatNegatePat.hs
 (3,6): Syntax error: 
     unexpected string literal "schaap"
-    expecting integer literal
+    expecting numeric literal
 Compilation failed with 1 error

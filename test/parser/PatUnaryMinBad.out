@@ -1,5 +1,5 @@
 Compiling parser/PatUnaryMinBad.hs
 (1,5): Syntax error: 
     unexpected variable 'x'
-    expecting integer literal
+    expecting numeric literal
 Compilation failed with 1 error

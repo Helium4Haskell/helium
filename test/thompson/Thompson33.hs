@@ -1,1 +1,1 @@
-main = 3/0
+main = 3 `div` 0
