@@ -537,9 +537,7 @@ exprChain =
         e <- exp10
         es <- fmap concat $ many $
             do
-                o <- try (do { n <- varop; return (Expression_Variable noRange n) } )
-                     <|>
-                     do { n <- conop; return (Expression_Constructor noRange n) }
+                o <- operatorAsExpression False
                 u <- maybeUnaryMinus
                 e <- exp10
                 return ([o] ++ u ++ [e])
@@ -646,12 +644,16 @@ Last cases parsed as:
   | "(" ( exp_ )<sepBy ","> ")"
 -}
 
-operatorAsExpression :: HParser Expression
-operatorAsExpression =
-    try (fmap (\(n, r) -> Expression_Variable r n) (withRange varop))
-    <|>
-    fmap ((\(n, r) -> Expression_Constructor r n)) (withRange conop)
-    
+operatorAsExpression :: Bool -> HParser Expression
+operatorAsExpression storeRange = (do
+    (o, r) <- withRange ( fmap Left varsym <|> fmap Right consym 
+                      <|> lexBACKQUOTEs (fmap Left varid <|> fmap Right conid))
+    let range = if storeRange then r else noRange                      
+    return (case o of
+        Left  v -> Expression_Variable    range v
+        Right c -> Expression_Constructor range c
+     )) <?> "operator"
+                         
 aexp :: HParser Expression    
 aexp = addRange (
     do 
@@ -673,7 +675,7 @@ aexp = addRange (
             do      -- operator followed by optional expression
                     -- either full section (if there is no expression) or 
                     -- a left section (if there is)
-                opExpr <- operatorAsExpression
+                opExpr <- operatorAsExpression True
                 me <- option Nothing (fmap Just fexp)
                 lexRPAREN
                 return $ \r -> 
@@ -687,7 +689,7 @@ aexp = addRange (
             try (do -- right section, expression followed by operator
                     -- or a parenthesized expression (if no operator is found)
                 e <- fexp
-                mo <- option Nothing (fmap Just operatorAsExpression)
+                mo <- option Nothing (fmap Just (operatorAsExpression True))
                 lexRPAREN
                 return $ \r ->
                     case mo of

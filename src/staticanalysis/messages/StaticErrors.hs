@@ -15,7 +15,7 @@ import UHA_Range
 import Messages
 import List        (intersperse, sort, partition)
 import Maybe       (fromJust)
-import Utils       (commaList, internalError)
+import Utils       (commaList, internalError, minInt, maxInt)
 
 -------------------------------------------------------------
 -- (Static) Errors
@@ -31,6 +31,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | DefArityMismatch Name (Maybe Int) {- verwacht -} Range
             | RecursiveTypeSynonyms Names
             | PatternDefinesNoVars Range
+            | IntLiteralTooBig Range String
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -47,6 +48,7 @@ instance HasMessage Error where
       DefArityMismatch _ _ range  -> [range]
       RecursiveTypeSynonyms names -> sortRanges (map getNameRange names)
       PatternDefinesNoVars range  -> [range]
+      IntLiteralTooBig range _    -> [range]
       _                           -> internalError "Messages.hs" 
                                                    "instance IsMessage Error" 
                                                    "unknown type of Error"
@@ -144,6 +146,11 @@ showError anError = case anError of
 
    WrongFileName fileName moduleName range ->
       ( MessageString ("The file name " ++ show fileName ++ " doesn't match the module name " ++ show moduleName), [])
+      
+   IntLiteralTooBig _ value ->
+      ( MessageString ("Integer literal (" ++ value ++ ") too big")
+      , [ MessageString $ "Maximum is " ++ show maxInt ]
+      )
 
    _ -> internalError "Messages.hs" "showError" "unknown type of Error"
 

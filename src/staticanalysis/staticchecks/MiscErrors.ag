@@ -10,7 +10,7 @@
 ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alternatives
      Statement Statements Declaration Declarations MaybeDeclarations LeftHandSide RightHandSide
      FunctionBinding FunctionBindings Body Qualifier Qualifiers          
-     GuardedExpression GuardedExpressions
+     GuardedExpression GuardedExpressions Literal
      [ | miscerrors : {[Error]} | ]
 
 SEM Module
@@ -214,3 +214,16 @@ checkTypeSignatures declVarNames xs =
       , name `notElem` declVarNames
       ]
 }
+
+-----------------------------------------
+-- Literal
+
+SEM Literal
+  | Int loc . intLiteralTooBigErrors = 
+                 let val = read @value :: Integer in
+                 if length @value > 9 && (val > maxInt || val < minInt)  then 
+                    [ IntLiteralTooBig @range @value ]
+                 else 
+                    []
+        lhs . miscerrors = @intLiteralTooBigErrors ++ @lhs.miscerrors
+        

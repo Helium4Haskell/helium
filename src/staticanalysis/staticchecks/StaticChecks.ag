@@ -18,7 +18,7 @@ import Warnings
 import Messages
 import TopSort
 import List
-import Utils ( internalError, fst3 )
+import Utils ( internalError, fst3, minInt, maxInt )
 import TypeConversion
 import DerivingShow
 import LiftedConstraints

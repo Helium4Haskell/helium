@@ -43,9 +43,12 @@ var = varid <|> parens varsym
 
 -- con  ->  conid | ( consym )  (constructor)  
 con = conid <|> parens consym
+   <?> "constructor"
 
 -- op  ->  varop | conop  (operator)  
-op = try varop <|> conop
+-- expanded for better parse errors
+op = varsym <|> consym <|> lexBACKQUOTEs (varid <|> conid) 
+  <?> "operator"
 
 -- varop  ->  varsym | `varid ` (variable operator)  
 varop = varsym <|> lexBACKQUOTEs varid

@@ -1,5 +1,5 @@
 Compiling parser/LayoutBad6.hs
 (3,25): Syntax error: 
     unexpected ')'
-    expecting expression, operator, constructor operator, '::', keyword 'where', next in block (based on layout), ';' or end of block (based on layout)
+    expecting expression, operator, '::', keyword 'where', next in block (based on layout), ';' or end of block (based on layout)
 Compilation failed with 1 error

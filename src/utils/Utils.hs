@@ -129,3 +129,7 @@ doubleSizeOfSTArray unit starray =
                    writeSTArray newarray i value
       mapM_ f [lower..upper]
       return newarray
+
+maxInt, minInt :: Integer
+maxInt = 1073741823
+minInt = -1073741823

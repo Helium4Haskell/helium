@@ -11,7 +11,7 @@ import Warnings
 import Messages
 import TopSort
 import List
-import Utils ( internalError, fst3 )
+import Utils ( internalError, fst3, minInt, maxInt )
 import TypeConversion
 import DerivingShow
 import LiftedConstraints
@@ -1210,9 +1210,9 @@ sem_Expression_Literal (_range) (_literal) (_lhs_allTypeConstructors) (_lhs_allV
             Expression_Literal _range_self _literal_self
         ( _range_self) =
             (_range )
-        ( _literal_self) =
-            (_literal )
-    in  (_lhs_kindErrors,_lhs_miscerrors,_self,[],_lhs_warnings)
+        ( _literal_miscerrors,_literal_self) =
+            (_literal (_lhs_miscerrors))
+    in  (_lhs_kindErrors,_literal_miscerrors,_self,[],_lhs_warnings)
 sem_Expression_Negate :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
@@ -1804,7 +1804,8 @@ sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) (_lhs_allTyp
     in  (_patterns_miscerrors,_lefthandside_name,_lefthandside_numberOfPatterns + _patterns_numberOfPatterns,_lefthandside_patVarNames ++ _patterns_patVarNames,_self,_lefthandside_unboundNames ++ _patterns_unboundNames,_patterns_warnings)
 -- Literal -----------------------------------------------------
 -- semantic domain
-type T_Literal = ((Literal))
+type T_Literal = ([Error]) ->
+                 (([Error]),(Literal))
 -- cata
 sem_Literal :: (Literal) ->
                (T_Literal)
@@ -1819,39 +1820,45 @@ sem_Literal ((Literal_String (_range) (_value))) =
 sem_Literal_Char :: (T_Range) ->
                     (String) ->
                     (T_Literal)
-sem_Literal_Char (_range) (_value) =
+sem_Literal_Char (_range) (_value) (_lhs_miscerrors) =
     let (_self) =
             Literal_Char _range_self _value
         ( _range_self) =
             (_range )
-    in  (_self)
+    in  (_lhs_miscerrors,_self)
 sem_Literal_Float :: (T_Range) ->
                      (String) ->
                      (T_Literal)
-sem_Literal_Float (_range) (_value) =
+sem_Literal_Float (_range) (_value) (_lhs_miscerrors) =
     let (_self) =
             Literal_Float _range_self _value
         ( _range_self) =
             (_range )
-    in  (_self)
+    in  (_lhs_miscerrors,_self)
 sem_Literal_Int :: (T_Range) ->
                    (String) ->
                    (T_Literal)
-sem_Literal_Int (_range) (_value) =
+sem_Literal_Int (_range) (_value) (_lhs_miscerrors) =
     let (_self) =
             Literal_Int _range_self _value
+        (_intLiteralTooBigErrors) =
+            let val = read _value :: Integer in
+            if length _value > 9 && (val > maxInt || val < minInt)  then
+               [ IntLiteralTooBig _range _value ]
+            else
+               []
         ( _range_self) =
             (_range )
-    in  (_self)
+    in  (_intLiteralTooBigErrors ++ _lhs_miscerrors,_self)
 sem_Literal_String :: (T_Range) ->
                       (String) ->
                       (T_Literal)
-sem_Literal_String (_range) (_value) =
+sem_Literal_String (_range) (_value) (_lhs_miscerrors) =
     let (_self) =
             Literal_String _range_self _value
         ( _range_self) =
             (_range )
-    in  (_self)
+    in  (_lhs_miscerrors,_self)
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
 type T_MaybeDeclarations = (Names) ->
@@ -2381,9 +2388,9 @@ sem_Pattern_Literal (_range) (_literal) (_lhs_allTypeConstructors) (_lhs_allValu
             Pattern_Literal _range_self _literal_self
         ( _range_self) =
             (_range )
-        ( _literal_self) =
-            (_literal )
-    in  (_lhs_miscerrors,[],_self,[],_lhs_warnings)
+        ( _literal_miscerrors,_literal_self) =
+            (_literal (_lhs_miscerrors))
+    in  (_literal_miscerrors,[],_self,[],_lhs_warnings)
 sem_Pattern_Negate :: (T_Range) ->
                       (T_Literal) ->
                       (T_Pattern)
@@ -2392,9 +2399,9 @@ sem_Pattern_Negate (_range) (_literal) (_lhs_allTypeConstructors) (_lhs_allValue
             Pattern_Negate _range_self _literal_self
         ( _range_self) =
             (_range )
-        ( _literal_self) =
-            (_literal )
-    in  (_lhs_miscerrors,[],_self,[],_lhs_warnings)
+        ( _literal_miscerrors,_literal_self) =
+            (_literal (_lhs_miscerrors))
+    in  (_literal_miscerrors,[],_self,[],_lhs_warnings)
 sem_Pattern_NegateFloat :: (T_Range) ->
                            (T_Literal) ->
                            (T_Pattern)
@@ -2403,9 +2410,9 @@ sem_Pattern_NegateFloat (_range) (_literal) (_lhs_allTypeConstructors) (_lhs_all
             Pattern_NegateFloat _range_self _literal_self
         ( _range_self) =
             (_range )
-        ( _literal_self) =
-            (_literal )
-    in  (_lhs_miscerrors,[],_self,[],_lhs_warnings)
+        ( _literal_miscerrors,_literal_self) =
+            (_literal (_lhs_miscerrors))
+    in  (_literal_miscerrors,[],_self,[],_lhs_warnings)
 sem_Pattern_Parenthesized :: (T_Range) ->
                              (T_Pattern) ->
                              (T_Pattern)
@@ -2446,9 +2453,9 @@ sem_Pattern_Successor (_range) (_name) (_literal) (_lhs_allTypeConstructors) (_l
             (_range )
         ( _name_self) =
             (_name )
-        ( _literal_self) =
-            (_literal )
-    in  (_lhs_miscerrors,[],_self,[],_lhs_warnings)
+        ( _literal_miscerrors,_literal_self) =
+            (_literal (_lhs_miscerrors))
+    in  (_literal_miscerrors,[],_self,[],_lhs_warnings)
 sem_Pattern_Tuple :: (T_Range) ->
                      (T_Patterns) ->
                      (T_Pattern)
