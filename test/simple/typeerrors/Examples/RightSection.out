@@ -1,0 +1,7 @@
+Compiling typeerrors/Examples/RightSection.hs
+(4,15): Type error in right section
+ expression       : (False `eqBool`)
+   type           : Bool -> Bool
+   does not match : Int  -> Bool
+
+Compilation failed with 1 error

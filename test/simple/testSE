@@ -1,0 +1,1 @@
+for f in staticerrors/*.hs          ; do bash testOne ${f%.hs} ; done

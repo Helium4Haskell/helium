@@ -1,0 +1,11 @@
+Compiling runtimeerrors/PatBind3.hs
+Compilation successful
+[exception: pattern match failed at pattern binding ranging from (7,1) to (7,19) in module runtimeerrors/PatBind3.hs.
+
+trace:
+  demanded from "HeliumLang.primMap"
+  demanded from "HeliumLang.commaList"
+  demanded from "HeliumLang.primAppend"
+  demanded from "HeliumLang.primPutChars"
+  demanded from "LvmLang.bindIO"
+  demanded from "LvmLang.unsafePerformIO"

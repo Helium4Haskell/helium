@@ -1,0 +1,9 @@
+Compiling thompson/Thompson29.hs
+(1,5): Warning: Variable "x" is not used
+(1,12): Type error in constructor
+ expression       : :
+   type           : a     -> [a  ] -> [a]
+   expected type  : [Int] -> [Int] -> b  
+ probable fix     : use ++ instead
+
+Compilation failed with 1 error

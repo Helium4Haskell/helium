@@ -1,0 +1,7 @@
+Compiling parser/MaximalMunch2.hs
+(5,2): Warning: Syntax colouring usually can not handle names containing --
+  Hint: If you wanted to start a comment, write spaces around --
+(5,2): Warning: Missing type signature: (-->) :: Int -> Int -> Int
+(7,1): Warning: Missing type signature: main :: Int
+Compilation successful with 3 warnings
+3

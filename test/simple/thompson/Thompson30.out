@@ -1,0 +1,10 @@
+Compiling thompson/Thompson30.hs
+(2,17): Type error in application
+ expression       : ord n
+ function         : ord
+   type           : Char -> Int
+ 1st argument     : n
+   type           : Int 
+   does not match : Char
+
+Compilation failed with 1 error

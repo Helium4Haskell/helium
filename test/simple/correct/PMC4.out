@@ -1,0 +1,4 @@
+Compiling correct/PMC4.hs
+(9,6): Warning: Variable "f" is not used
+Compilation successful with 1 warning
+(Cons 2 Nil)

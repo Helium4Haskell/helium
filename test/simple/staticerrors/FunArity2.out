@@ -1,0 +1,4 @@
+Compiling staticerrors/FunArity2.hs
+(3,1): Arity mismatch in function bindings for "zipp"
+  Hint: 2 parameters in most of the clauses
+Compilation failed with 1 error

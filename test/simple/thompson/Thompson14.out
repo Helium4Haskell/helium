@@ -1,0 +1,8 @@
+Compiling thompson/Thompson14.hs
+(4,8): Type error in variable
+ expression       : double
+   type           : Int -> Int
+   expected type  : Int       
+ probable fix     : insert one argument
+
+Compilation failed with 1 error

@@ -231,6 +231,7 @@ $(LVMLIBDIR)/common/ghc/Special.hi: $(LVMLIBDIR)/common/ghc/Special.hs
 libraries:
 	# Building libraries
 	cd ../lib; $(MAKE) 
+	cd ../lib/simple; $(MAKE) 
 
 texthint: texthint/Main.hs utils/OSSpecific.hs
 	# GHC HeliumInterpreter

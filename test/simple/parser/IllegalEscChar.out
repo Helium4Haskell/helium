@@ -1,0 +1,4 @@
+Compiling parser/IllegalEscChar.hs
+(1,8): Illegal escape sequence in character literal
+  Hint: Correct examples of Chars: 'a' '\n' '&'
+Compilation failed with 1 error

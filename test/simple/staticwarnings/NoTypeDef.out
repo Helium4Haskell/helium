@@ -1,0 +1,5 @@
+Compiling staticwarnings/NoTypeDef.hs
+(10,11): Warning: Definition "monomorph" is not used
+(3,1): Warning: Missing type signature: toplevel :: Int
+Compilation successful with 2 warnings
+No 'main' function defined in this module

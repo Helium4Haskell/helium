@@ -1,0 +1,10 @@
+Compiling typeerrors/Edinburgh/Ex8.hs
+(3,6): Warning: Variable "h" is not used
+(3,13): Type error in application
+ expression       : t y
+ term             : t
+   type           : [a]   
+   does not match : b -> c
+ because          : it is not a function
+
+Compilation failed with 1 error

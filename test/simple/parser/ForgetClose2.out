@@ -1,0 +1,3 @@
+Compiling parser/ForgetClose2.hs
+(1,8): Bracket '[' is never closed
+Compilation failed with 1 error

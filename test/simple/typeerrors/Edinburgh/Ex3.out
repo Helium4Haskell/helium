@@ -1,0 +1,9 @@
+Compiling typeerrors/Edinburgh/Ex3.hs
+(3,19): Type error in application
+ expression       : f t
+ term             : f
+   type           : a   -> b  
+   does not match : [a] -> [b]
+ because          : unification would give infinite type
+
+Compilation failed with 1 error

@@ -1,0 +1,8 @@
+Compiling typeerrors/Heuristics/TupleInsert2.hs
+(4,8): Type error in tuple
+ expression       : ("hallo", True)
+   type           : (String, Bool)          
+   expected type  : (String, Int, Int, Bool)
+ probable fix     : insert a second and third element to the tuple
+
+Compilation failed with 1 error

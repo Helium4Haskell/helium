@@ -1,0 +1,10 @@
+Compiling typeerrors/Heuristics/AppNotEnough1.hs
+(4,9): Warning: Variable "xs" is not used
+(4,14): Type error in application
+ expression       : foldr (+) 0
+ term             : foldr
+   type           : (a   -> b   -> b  ) -> b   -> [a] -> b
+   does not match : (Int -> Int -> Int) -> Int -> Int     
+ probable fix     : insert a third argument
+
+Compilation failed with 1 error

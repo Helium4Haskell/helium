@@ -1,0 +1,4 @@
+Compiling staticerrors/PatConArity1.hs
+(9,12): Constructor "Leaf" should have 1 parameter, but has 2
+(10,12): Constructor "Bin" should have 2 parameters, but has 1
+Compilation failed with 2 errors

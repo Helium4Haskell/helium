@@ -1,0 +1,9 @@
+Compiling typeerrors/Heuristics/TupleRemove2.hs
+(4,10): Warning: Variable "b" is not used
+(7,14): Type error in tuple
+ expression       : (1, 2, "hello", "world")
+   type           : (Int, Int, String, String)
+   expected type  : (Int, Int)                
+ probable fix     : remove third and fourth element of tuple
+
+Compilation failed with 1 error

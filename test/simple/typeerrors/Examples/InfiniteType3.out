@@ -1,0 +1,10 @@
+Compiling typeerrors/Examples/InfiniteType3.hs
+(4,8): Warning: Variable "f" is not used
+(6,37): Type error in application
+ expression       : insert a xs
+ term             : insert
+   type           : (a -> a -> Bool) -> a   -> [a] -> [a]
+   does not match : b                -> [b] -> [b]       
+ because          : unification would give infinite type
+
+Compilation failed with 1 error

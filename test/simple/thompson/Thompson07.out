@@ -1,0 +1,3 @@
+Compiling thompson/Thompson07.hs
+(1,5): Bracket '(' is never closed
+Compilation failed with 1 error

@@ -1,0 +1,4 @@
+Compiling staticerrors/UndefinedConstructor.hs
+(7,8): Undefined constructor "Binn"
+  Hint: Did you mean "Bin" ?
+Compilation failed with 1 error

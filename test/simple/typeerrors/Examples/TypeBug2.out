@@ -1,0 +1,10 @@
+Compiling typeerrors/Examples/TypeBug2.hs
+(5,23): Type error in infix application
+ expression       : sep ++ f xs
+ operator         : ++
+   type           : [a] -> [a] -> [a]
+ right operand    : f xs
+   type           : [[b]] -> [[b]]
+   does not match : [a]           
+
+Compilation failed with 1 error

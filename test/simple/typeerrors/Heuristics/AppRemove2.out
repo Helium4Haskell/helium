@@ -1,0 +1,9 @@
+Compiling typeerrors/Heuristics/AppRemove2.hs
+(6,8): Type error in application
+ expression       : f 3 True False
+ term             : f
+   type           : Int -> Int              
+   does not match : Int -> Bool -> Bool -> a
+ probable fix     : remove second and third argument
+
+Compilation failed with 1 error

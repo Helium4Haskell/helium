@@ -1,0 +1,9 @@
+Compiling typeerrors/Heuristics/AppTooManyArguments1.hs
+(5,14): Type error in application
+ expression       : fac n 1
+ term             : fac
+   type           : Int -> Int       
+   does not match : Int -> Int -> Int
+ because          : too many arguments are given
+
+Compilation failed with 1 error

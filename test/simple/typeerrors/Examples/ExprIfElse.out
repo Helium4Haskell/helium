@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/ExprIfElse.hs
+(3,26): Type error in else branch of conditional
+ expression       : if True then 52 else "olifant met een lange slurf"
+ term             : "olifant met een lange slurf"
+   type           : String
+   does not match : Int   
+
+Compilation failed with 1 error

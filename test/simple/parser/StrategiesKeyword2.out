@@ -1,0 +1,4 @@
+Compiling parser/StrategiesKeyword2.hs
+(1,1): Warning: Missing type signature: constraints :: Int
+Compilation successful with 1 warning
+No 'main' function defined in this module

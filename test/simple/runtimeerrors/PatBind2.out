@@ -1,0 +1,10 @@
+Compiling runtimeerrors/PatBind2.hs
+Compilation successful
+exception: pattern match failed at pattern binding ranging from (7,1) to (7,19) in module runtimeerrors/PatBind2.hs.
+
+trace:
+  demanded from "LvmLang.<"
+  demanded from "HeliumLang.showInt"
+  demanded from "HeliumLang.primPutChars"
+  demanded from "LvmLang.bindIO"
+  demanded from "LvmLang.unsafePerformIO"

@@ -1,0 +1,16 @@
+Compiling typeerrors/Heuristics/SimilarNegation.hs
+(4,8): Type error in negation
+ expression       : -(3.0 +. 6.0)
+ operator         : -
+   type           : Int   -> Int  
+   does not match : Float -> Float
+ probable fix     : use float negation (-.) instead
+
+(7,9): Type error in negation
+ expression       : -.3
+ operator         : -.
+   type           : Float -> Float
+   does not match : Int   -> Int  
+ probable fix     : use int negation (-) instead
+
+Compilation failed with 2 errors

@@ -1,0 +1,4 @@
+Compiling parser/EOFInString.hs
+(1,8): End of file in string literal
+  Hint: Correct examples of Strings: "Helium is cool" "abc\ndef" ""
+Compilation failed with 1 error

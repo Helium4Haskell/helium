@@ -1,0 +1,7 @@
+Compiling typeerrors/Examples/ExprComprehension.hs
+(4,5): Type error in list comprehension
+ expression       : [ x | x <- [0 .. 9] ]
+   type           : [Int]
+   expected type  : Int  
+
+Compilation failed with 1 error

@@ -1,0 +1,159 @@
+module PreludePrim
+    ( 
+    -- Conversion
+      ord, chr, intToFloat, ceiling, floor, truncate, round
+    
+    -- Int
+    , (+), (-), (*), div, mod, quot, rem, negate
+    , (==), (/=), (<), (>), (<=), (>=)
+    
+    -- Float
+    , (+.), (-.), (*.), (/.)
+    , (==.), (/=.), (<.), (>.), (<=.), (>=.)
+    , sqrt, (**.), exp, log, sin, cos, tan
+        
+    -- IO
+    , return -- primUnsafePerformIO, primBindIO in HeliumLang
+    , getChar
+    
+    -- strictness
+    , ($!), seq
+    
+    -- misc
+    , error, catch
+    ) where
+
+import LvmLang 
+    ( return = returnIO
+
+    , (+), (-), (*), div = (/), mod = (%), quot, rem, negInt
+    , (==), (/=), (<), (>), (<=), (>=)
+
+    , (+.), (-.), (*.), (/.)
+    , (==.), (/=.), (<.), (>.), (<=.), (>=.)
+    
+    , ($!), seq
+    , True -- hack
+    )
+import LvmIO(stdin, inputChar)
+import LvmException(error, errorPacked {- hack -}, catch )
+
+custom infix (+)  : public [6,"left"]
+custom infix (-)  : public [6,"left"]
+custom infix (*)  : public [7,"left"]
+custom infix div  : public [7,"left"]
+custom infix mod  : public [7,"left"]
+custom infix quot : public [7,"left"]
+custom infix rem  : public [7,"left"]
+
+custom infix (==) : public [4,"none"]
+custom infix (/=) : public [4,"none"]
+custom infix (<)  : public [4,"none"]
+custom infix (>)  : public [4,"none"]
+custom infix (<=) : public [4,"none"]
+custom infix (>=) : public [4,"none"]
+
+custom infix (+.) : public [6,"left"]
+custom infix (-.) : public [6,"left"]
+custom infix (*.) : public [7,"left"]
+custom infix (/.) : public [7,"left"]
+
+custom infix (==.) : public [4,"none"]
+custom infix (/=.) : public [4,"none"]
+custom infix (<.)  : public [4,"none"]
+custom infix (>.)  : public [4,"none"]
+custom infix (<=.) : public [4,"none"]
+custom infix (>=.) : public [4,"none"]
+
+custom infix (**.) : public [8,"right"]
+custom infix ($!)  : public [0,"right"]
+
+ord :: Char -> Int
+ord x = x
+
+chr :: Int -> Char
+chr x = x
+
+getChar :: IO Char
+getChar = inputChar stdin
+
+-- Float
+
+extern primFloatSqrt "fp_sqrt" :: "FF"
+extern float_of_string_extern "float_of_string" :: "Fz"
+
+sqrt :: Float -> Float
+sqrt x = let! x = x 
+              y = float_of_string_extern "0.0"
+         in
+            case (>=.) x y of
+            {   True -> primFloatSqrt x
+            ;   _    -> errorPacked "Can't apply sqrt to negative floating-point number"
+            }
+
+extern primFloatPower "fp_pow" :: "FFF"
+
+(**.) :: Float -> Float -> Float
+(**.) x y = let! x = x in let! y = y in primFloatPower x y
+
+extern primFloatExp "fp_exp" :: "FF"
+
+exp :: Float -> Float
+exp x = let! x = x in primFloatExp x
+
+extern primFloatLog "fp_log" :: "FF"
+
+log :: Float -> Float
+log x = let! x = x in primFloatLog x
+
+extern primFloatSin "fp_sin" :: "FF"
+
+sin :: Float -> Float
+sin x = let! x = x in primFloatSin x
+
+extern primFloatCos "fp_cos" :: "FF"
+
+cos :: Float -> Float
+cos x = let! x = x in primFloatCos x
+
+extern primFloatTan "fp_tan" :: "FF"
+
+tan :: Float -> Float
+tan x = let! x = x in primFloatTan x
+
+extern primIntToFloat "float_of_int" :: "FI"
+
+intToFloat :: Int -> Float
+intToFloat x = let! x = x in primIntToFloat x
+
+extern primFloatCeil "fp_ceil" :: "FF"
+
+ceiling :: Float -> Int
+ceiling x = let! x = x 
+                 y = primFloatCeil x
+            in primFloatTruncateInt y
+
+extern primFloatFloor "fp_floor" :: "FF"
+
+floor :: Float -> Int
+floor x = let! x = x 
+               y = primFloatFloor x
+          in primFloatTruncateInt y
+
+extern primFloatTruncateInt "fp_trunc_int" :: "IF"
+
+truncate :: Float -> Int
+truncate x = let! x = x in primFloatTruncateInt x
+
+extern primFloatNear     "fp_near"      :: "FF"
+extern primFloatRoundInt "fp_round_int" :: "IF"
+
+round :: Float -> Int
+round x 
+    = let! y = x
+           z = primFloatNear     y
+           i = primFloatRoundInt z
+      in i
+
+negate :: Int -> Int
+negate x = negInt x

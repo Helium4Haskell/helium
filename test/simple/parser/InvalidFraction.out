@@ -1,0 +1,8 @@
+Compiling parser/InvalidFraction.hs
+(1,8): Warning: Integer immediately followed by function composition (.)
+  Hint: If a Float was meant, write "1.0"
+        Otherwise, insert a space for readability
+(1,11): Syntax error: 
+    unexpected operator '+.'
+    expecting expression
+Compilation failed with 1 error

@@ -1,0 +1,7 @@
+Compiling typeerrors/Examples/ExprEnumResult.hs
+(4,5): Type error in enumeration
+ expression       : [0 .. 9]
+   type           : [Int]
+   expected type  : Bool 
+
+Compilation failed with 1 error

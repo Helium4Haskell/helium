@@ -1,0 +1,5 @@
+Compiling parser/LayoutBad2.hs
+(5,5): Syntax error: 
+    unexpected '='
+    expecting expression, operator, '::', keyword 'where', next in block (based on layout), ';' or end of block (based on layout)
+Compilation failed with 1 error

@@ -1,0 +1,11 @@
+Compiling thompson/Thompson35.hs
+(1,1): Warning: Missing type signature: main :: Int
+Compilation successful with 1 warning
+exception: Prelude.(!!): index too large.
+
+trace:
+  demanded from "LvmLang.<"
+  demanded from "HeliumLang.showInt"
+  demanded from "HeliumLang.primPutChars"
+  demanded from "LvmLang.bindIO"
+  demanded from "LvmLang.unsafePerformIO"

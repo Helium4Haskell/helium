@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/Guardedexpression.hs
+(3,3): Warning: Variable "x" is not used
+(4,5): Type error in guarded expression
+ expression       : "aap"
+   type           : String
+   does not match : Int   
+
+Compilation failed with 1 error

@@ -1,0 +1,7 @@
+Compiling typeerrors/Examples/LeftSection.hs
+(4,12): Type error in left section
+ expression       : (+ 3)
+   type           : Int  -> Int
+   does not match : Bool -> Int
+
+Compilation failed with 1 error

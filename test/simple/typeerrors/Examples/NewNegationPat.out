@@ -1,0 +1,12 @@
+Compiling typeerrors/Examples/NewNegationPat.hs
+(2,1): Type error in pattern of function binding
+ pattern          : (-3)
+   type           : Int 
+   does not match : Bool
+
+(5,1): Type error in pattern of function binding
+ pattern          : (-.3.0)
+   type           : Float
+   does not match : Bool 
+
+Compilation failed with 2 errors

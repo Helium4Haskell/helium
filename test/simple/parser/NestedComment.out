@@ -1,0 +1,5 @@
+Compiling parser/NestedComment.hs
+(6,1), (2,1): Warning: Syntax colouring usually can not handle nested comments
+  Hint: Some of your code may be in comments but not visibly so
+(18,8): Undefined variable "x"
+Compilation failed with 1 error

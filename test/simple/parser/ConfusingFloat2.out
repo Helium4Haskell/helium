@@ -1,0 +1,8 @@
+Compiling parser/ConfusingFloat2.hs
+(1,5): Warning: Function composition (.) immediately followed by number
+  Hint: If a Float was meant, write "0.2"
+        Otherwise, insert a space for readability
+(1,5): Syntax error: 
+    unexpected operator '.'
+    expecting expression
+Compilation failed with 1 error

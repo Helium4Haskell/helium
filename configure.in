@@ -121,15 +121,15 @@ LVMPATH=${PWD}/lib
 AC_SUBST(HELIUM)
 AC_SUBST(COREASM)
 AC_SUBST(LVMPATH)
-HBINDIR=${bindir}
-HLIBDIR=${prefix}/helium/lib
-HDEMODIR=${prefix}/helium/demo
-AC_SUBST(HBINDIR)
-AC_SUBST(HLIBDIR)
-AC_SUBST(HDEMODIR)
+# HBINDIR=${bindir}
+# HLIBDIR=${prefix}/helium/lib
+# HDEMODIR=${prefix}/helium/demo
+# AC_SUBST(HBINDIR)
+# AC_SUBST(HLIBDIR)
+# AC_SUBST(HDEMODIR)
 
 # write output file
-AC_OUTPUT(src/Makefile lib/Makefile src/utils/OSSpecific.hs)
+AC_OUTPUT(src/Makefile lib/simple/Makefile lib/Makefile src/utils/OSSpecific.hs)
 
 echo "****************************************************"
 echo "Configuration done."

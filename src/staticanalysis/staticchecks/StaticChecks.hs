@@ -206,6 +206,7 @@ type T_Alternative = (Names) ->
                      ([Error]) ->
                      ([Error]) ->
                      (Names) ->
+                     ([Option]) ->
                      (FiniteMap Name Int) ->
                      (FiniteMap Name TpScheme) ->
                      ([Warning]) ->
@@ -228,15 +229,54 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Alternative)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _patternIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternImiscerrors :: ([Error])
+            _patternIpatVarNames :: (Names)
+            _patternIself :: (Pattern)
+            _patternIunboundNames :: (Names)
+            _patternIwarnings :: ([Warning])
+            _patternOallTypeConstructors :: (Names)
+            _patternOallValueConstructors :: (Names)
+            _patternOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternOlhsPattern :: (Bool)
+            _patternOmiscerrors :: ([Error])
+            _patternOnamesInScope :: (Names)
+            _patternOtypeConstructors :: (FiniteMap Name Int)
+            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOwarnings :: ([Warning])
+            _righthandsideIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _righthandsideIkindErrors :: ([Error])
+            _righthandsideImiscerrors :: ([Error])
+            _righthandsideIself :: (RightHandSide)
+            _righthandsideIunboundNames :: (Names)
+            _righthandsideIwarnings :: ([Warning])
+            _righthandsideOallTypeConstructors :: (Names)
+            _righthandsideOallValueConstructors :: (Names)
+            _righthandsideOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _righthandsideOkindErrors :: ([Error])
+            _righthandsideOmiscerrors :: ([Error])
+            _righthandsideOnamesInScope :: (Names)
+            _righthandsideOoptions :: ([Option])
+            _righthandsideOtypeConstructors :: (FiniteMap Name Int)
+            _righthandsideOvalueConstructors :: (FiniteMap Name TpScheme)
+            _righthandsideOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
                 (pattern_ (_patternOallTypeConstructors) (_patternOallValueConstructors) (_patternOcollectScopeInfos) (_patternOlhsPattern) (_patternOmiscerrors) (_patternOnamesInScope) (_patternOtypeConstructors) (_patternOvalueConstructors) (_patternOwarnings))
             ( _righthandsideIcollectScopeInfos,_righthandsideIkindErrors,_righthandsideImiscerrors,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIwarnings) =
-                (righthandside_ (_righthandsideOallTypeConstructors) (_righthandsideOallValueConstructors) (_righthandsideOcollectScopeInfos) (_righthandsideOkindErrors) (_righthandsideOmiscerrors) (_righthandsideOnamesInScope) (_righthandsideOtypeConstructors) (_righthandsideOvalueConstructors) (_righthandsideOwarnings))
+                (righthandside_ (_righthandsideOallTypeConstructors) (_righthandsideOallValueConstructors) (_righthandsideOcollectScopeInfos) (_righthandsideOkindErrors) (_righthandsideOmiscerrors) (_righthandsideOnamesInScope) (_righthandsideOoptions) (_righthandsideOtypeConstructors) (_righthandsideOvalueConstructors) (_righthandsideOwarnings))
             (_lhsOunboundNames@_) =
                 _unboundNames
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
@@ -283,6 +323,8 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
                 _patternImiscerrors
             (_righthandsideOnamesInScope@_) =
                 _namesInScope
+            (_righthandsideOoptions@_) =
+                _lhsIoptions
             (_righthandsideOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_righthandsideOvalueConstructors@_) =
@@ -299,10 +341,18 @@ sem_Alternative_Empty (range_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Alternative)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            ( _rangeIself) =
                 (range_ )
             (_lhsOunboundNames@_) =
                 []
@@ -327,6 +377,7 @@ type T_Alternatives = (Names) ->
                       ([Error]) ->
                       ([Error]) ->
                       (Names) ->
+                      ([Option]) ->
                       (FiniteMap Name Int) ->
                       (FiniteMap Name TpScheme) ->
                       ([Warning]) ->
@@ -346,13 +397,52 @@ sem_Alternatives_Cons (hd_) (tl_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Alternatives)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _hdIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdIkindErrors :: ([Error])
+            _hdImiscerrors :: ([Error])
+            _hdIself :: (Alternative)
+            _hdIunboundNames :: (Names)
+            _hdIwarnings :: ([Warning])
+            _hdOallTypeConstructors :: (Names)
+            _hdOallValueConstructors :: (Names)
+            _hdOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdOkindErrors :: ([Error])
+            _hdOmiscerrors :: ([Error])
+            _hdOnamesInScope :: (Names)
+            _hdOoptions :: ([Option])
+            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOwarnings :: ([Warning])
+            _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlIkindErrors :: ([Error])
+            _tlImiscerrors :: ([Error])
+            _tlIself :: (Alternatives)
+            _tlIunboundNames :: (Names)
+            _tlIwarnings :: ([Warning])
+            _tlOallTypeConstructors :: (Names)
+            _tlOallValueConstructors :: (Names)
+            _tlOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlOkindErrors :: ([Error])
+            _tlOmiscerrors :: ([Error])
+            _tlOnamesInScope :: (Names)
+            _tlOoptions :: ([Option])
+            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOwarnings :: ([Warning])
+            ( _hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -379,6 +469,8 @@ sem_Alternatives_Cons (hd_) (tl_) =
                 _lhsImiscerrors
             (_hdOnamesInScope@_) =
                 _lhsInamesInScope
+            (_hdOoptions@_) =
+                _lhsIoptions
             (_hdOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_hdOvalueConstructors@_) =
@@ -397,6 +489,8 @@ sem_Alternatives_Cons (hd_) (tl_) =
                 _hdImiscerrors
             (_tlOnamesInScope@_) =
                 _lhsInamesInScope
+            (_tlOoptions@_) =
+                _lhsIoptions
             (_tlOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_tlOvalueConstructors@_) =
@@ -412,10 +506,17 @@ sem_Alternatives_Nil  =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let (_lhsOunboundNames@_) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Alternatives)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            (_lhsOunboundNames@_) =
                 []
             (_self@_) =
                 []
@@ -437,6 +538,7 @@ type T_AnnotatedType = (Names) ->
                        ([Error]) ->
                        ([Error]) ->
                        (Names) ->
+                       ([Option]) ->
                        (FiniteMap Name Int) ->
                        (FiniteMap Name TpScheme) ->
                        ( ([Error]),([Error]),(AnnotatedType),(Type),(Names),(Names))
@@ -455,12 +557,25 @@ sem_AnnotatedType_AnnotatedType (range_) (strict_) (type_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors ->
-        let ( _rangeIself) =
+        let _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (AnnotatedType)
+            _lhsOtype :: (Type)
+            _lhsOtypevariables :: (Names)
+            _lhsOunboundNames :: (Names)
+            _rangeIself :: (Range)
+            _typeImiscerrors :: ([Error])
+            _typeIself :: (Type)
+            _typeItypevariables :: (Names)
+            _typeOmiscerrors :: ([Error])
+            _typeOoptions :: ([Option])
+            ( _rangeIself) =
                 (range_ )
             ( _typeImiscerrors,_typeIself,_typeItypevariables) =
-                (type_ (_typeOmiscerrors))
+                (type_ (_typeOmiscerrors) (_typeOoptions))
             (_lhsOtype@_) =
                 _typeIself
             (_newErrors@_) =
@@ -479,6 +594,8 @@ sem_AnnotatedType_AnnotatedType (range_) (strict_) (type_) =
                 _typeImiscerrors
             (_typeOmiscerrors@_) =
                 _lhsImiscerrors
+            (_typeOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOtype,_lhsOtypevariables,_lhsOunboundNames)
 -- AnnotatedTypes ----------------------------------------------
 -- semantic domain
@@ -487,6 +604,7 @@ type T_AnnotatedTypes = (Names) ->
                         ([Error]) ->
                         ([Error]) ->
                         (Names) ->
+                        ([Option]) ->
                         (FiniteMap Name Int) ->
                         (FiniteMap Name TpScheme) ->
                         ( ([Error]),([Error]),(AnnotatedTypes),(Types),(Names),(Names))
@@ -504,12 +622,47 @@ sem_AnnotatedTypes_Cons (hd_) (tl_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors ->
-        let ( _hdIkindErrors,_hdImiscerrors,_hdIself,_hdItype,_hdItypevariables,_hdIunboundNames) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOtypeConstructors) (_hdOvalueConstructors))
+        let _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (AnnotatedTypes)
+            _lhsOtypes :: (Types)
+            _lhsOtypevariables :: (Names)
+            _lhsOunboundNames :: (Names)
+            _hdIkindErrors :: ([Error])
+            _hdImiscerrors :: ([Error])
+            _hdIself :: (AnnotatedType)
+            _hdItype :: (Type)
+            _hdItypevariables :: (Names)
+            _hdIunboundNames :: (Names)
+            _hdOallTypeConstructors :: (Names)
+            _hdOallValueConstructors :: (Names)
+            _hdOkindErrors :: ([Error])
+            _hdOmiscerrors :: ([Error])
+            _hdOnamesInScope :: (Names)
+            _hdOoptions :: ([Option])
+            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlIkindErrors :: ([Error])
+            _tlImiscerrors :: ([Error])
+            _tlIself :: (AnnotatedTypes)
+            _tlItypes :: (Types)
+            _tlItypevariables :: (Names)
+            _tlIunboundNames :: (Names)
+            _tlOallTypeConstructors :: (Names)
+            _tlOallValueConstructors :: (Names)
+            _tlOkindErrors :: ([Error])
+            _tlOmiscerrors :: ([Error])
+            _tlOnamesInScope :: (Names)
+            _tlOoptions :: ([Option])
+            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            ( _hdIkindErrors,_hdImiscerrors,_hdIself,_hdItype,_hdItypevariables,_hdIunboundNames) =
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOtypeConstructors) (_hdOvalueConstructors))
             ( _tlIkindErrors,_tlImiscerrors,_tlIself,_tlItypes,_tlItypevariables,_tlIunboundNames) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOtypeConstructors) (_tlOvalueConstructors))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOtypeConstructors) (_tlOvalueConstructors))
             (_lhsOtypes@_) =
                 _hdItype : _tlItypes
             (_lhsOtypevariables@_) =
@@ -534,6 +687,8 @@ sem_AnnotatedTypes_Cons (hd_) (tl_) =
                 _lhsImiscerrors
             (_hdOnamesInScope@_) =
                 _lhsInamesInScope
+            (_hdOoptions@_) =
+                _lhsIoptions
             (_hdOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_hdOvalueConstructors@_) =
@@ -548,6 +703,8 @@ sem_AnnotatedTypes_Cons (hd_) (tl_) =
                 _hdImiscerrors
             (_tlOnamesInScope@_) =
                 _lhsInamesInScope
+            (_tlOoptions@_) =
+                _lhsIoptions
             (_tlOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_tlOvalueConstructors@_) =
@@ -560,9 +717,16 @@ sem_AnnotatedTypes_Nil  =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors ->
-        let (_lhsOtypes@_) =
+        let _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (AnnotatedTypes)
+            _lhsOtypes :: (Types)
+            _lhsOtypevariables :: (Names)
+            _lhsOunboundNames :: (Names)
+            (_lhsOtypes@_) =
                 []
             (_lhsOtypevariables@_) =
                 []
@@ -589,6 +753,7 @@ type T_Body = (Names) ->
               ([Error]) ->
               (Names) ->
               ([(Name,(Int,Assoc))]) ->
+              ([Option]) ->
               (FiniteMap Name Int) ->
               (FiniteMap Name TpScheme) ->
               ([Warning]) ->
@@ -613,10 +778,59 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoperatorFixities
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOcollectTypeConstructors :: ([(Name,Int)])
+            _lhsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOdeclVarNames :: (Names)
+            _lhsOimportedModules :: (Names)
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _lhsOself :: (Body)
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _importdeclarationsIimportedModules :: (Names)
+            _importdeclarationsIself :: (ImportDeclarations)
+            _importdeclarationsOimportedModules :: (Names)
+            _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _declarationsIcollectTypeConstructors :: ([(Name,Int)])
+            _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
+            _declarationsIdeclVarNames :: (Names)
+            _declarationsIkindErrors :: ([Error])
+            _declarationsImiscerrors :: ([Error])
+            _declarationsIoperatorFixities :: ([(Name,(Int,Assoc))])
+            _declarationsIpreviousWasAlsoFB :: (Maybe Name)
+            _declarationsIself :: (Declarations)
+            _declarationsIsuspiciousFBs :: ([(Name,Name)])
+            _declarationsItypeSignatures :: ([(Name,TpScheme)])
+            _declarationsIunboundNames :: (Names)
+            _declarationsIwarnings :: ([Warning])
+            _declarationsOallTypeConstructors :: (Names)
+            _declarationsOallValueConstructors :: (Names)
+            _declarationsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _declarationsOcollectTypeConstructors :: ([(Name,Int)])
+            _declarationsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _declarationsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _declarationsOkindErrors :: ([Error])
+            _declarationsOmiscerrors :: ([Error])
+            _declarationsOnamesInScope :: (Names)
+            _declarationsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _declarationsOoptions :: ([Option])
+            _declarationsOpreviousWasAlsoFB :: (Maybe Name)
+            _declarationsOsuspiciousFBs :: ([(Name,Name)])
+            _declarationsOtypeConstructors :: (FiniteMap Name Int)
+            _declarationsOtypeSignatures :: ([(Name,TpScheme)])
+            _declarationsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _declarationsOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _importdeclarationsIimportedModules,_importdeclarationsIself) =
                 (importdeclarations_ (_importdeclarationsOimportedModules))
@@ -631,6 +845,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                                (_declarationsOmiscerrors)
                                (_declarationsOnamesInScope)
                                (_declarationsOoperatorFixities)
+                               (_declarationsOoptions)
                                (_declarationsOpreviousWasAlsoFB)
                                (_declarationsOsuspiciousFBs)
                                (_declarationsOtypeConstructors)
@@ -698,6 +913,8 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                 _lhsInamesInScope
             (_declarationsOoperatorFixities@_) =
                 _lhsIoperatorFixities
+            (_declarationsOoptions@_) =
+                _lhsIoptions
             (_declarationsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_declarationsOvalueConstructors@_) =
@@ -713,6 +930,7 @@ type T_Constructor = (Names) ->
                      ([Error]) ->
                      ([Error]) ->
                      (Names) ->
+                     ([Option]) ->
                      (SimpleType) ->
                      (FiniteMap Name Int) ->
                      (FiniteMap Name TpScheme) ->
@@ -737,15 +955,38 @@ sem_Constructor_Constructor (range_) (constructor_) (types_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsIsimpletype
       _lhsItypeConstructors
       _lhsIvalueConstructors ->
-        let ( _rangeIself) =
+        let _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Constructor)
+            _lhsOtypevariables :: (Names)
+            _lhsOunboundNames :: (Names)
+            _rangeIself :: (Range)
+            _constructorIself :: (Name)
+            _typesIkindErrors :: ([Error])
+            _typesImiscerrors :: ([Error])
+            _typesIself :: (AnnotatedTypes)
+            _typesItypes :: (Types)
+            _typesItypevariables :: (Names)
+            _typesIunboundNames :: (Names)
+            _typesOallTypeConstructors :: (Names)
+            _typesOallValueConstructors :: (Names)
+            _typesOkindErrors :: ([Error])
+            _typesOmiscerrors :: ([Error])
+            _typesOnamesInScope :: (Names)
+            _typesOoptions :: ([Option])
+            _typesOtypeConstructors :: (FiniteMap Name Int)
+            _typesOvalueConstructors :: (FiniteMap Name TpScheme)
+            ( _rangeIself) =
                 (range_ )
             ( _constructorIself) =
                 (constructor_ )
             ( _typesIkindErrors,_typesImiscerrors,_typesIself,_typesItypes,_typesItypevariables,_typesIunboundNames) =
-                (types_ (_typesOallTypeConstructors) (_typesOallValueConstructors) (_typesOkindErrors) (_typesOmiscerrors) (_typesOnamesInScope) (_typesOtypeConstructors) (_typesOvalueConstructors))
+                (types_ (_typesOallTypeConstructors) (_typesOallValueConstructors) (_typesOkindErrors) (_typesOmiscerrors) (_typesOnamesInScope) (_typesOoptions) (_typesOtypeConstructors) (_typesOvalueConstructors))
             ((_tp@_,_tps@_)) =
                 convertFromSimpleTypeAndTypes _lhsIsimpletype _typesItypes
             (_typeScheme@_) =
@@ -774,6 +1015,8 @@ sem_Constructor_Constructor (range_) (constructor_) (types_) =
                 _lhsImiscerrors
             (_typesOnamesInScope@_) =
                 _lhsInamesInScope
+            (_typesOoptions@_) =
+                _lhsIoptions
             (_typesOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_typesOvalueConstructors@_) =
@@ -791,17 +1034,54 @@ sem_Constructor_Infix (range_) (leftType_) (constructorOperator_) (rightType_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsIsimpletype
       _lhsItypeConstructors
       _lhsIvalueConstructors ->
-        let ( _rangeIself) =
+        let _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Constructor)
+            _lhsOtypevariables :: (Names)
+            _lhsOunboundNames :: (Names)
+            _rangeIself :: (Range)
+            _leftTypeIkindErrors :: ([Error])
+            _leftTypeImiscerrors :: ([Error])
+            _leftTypeIself :: (AnnotatedType)
+            _leftTypeItype :: (Type)
+            _leftTypeItypevariables :: (Names)
+            _leftTypeIunboundNames :: (Names)
+            _leftTypeOallTypeConstructors :: (Names)
+            _leftTypeOallValueConstructors :: (Names)
+            _leftTypeOkindErrors :: ([Error])
+            _leftTypeOmiscerrors :: ([Error])
+            _leftTypeOnamesInScope :: (Names)
+            _leftTypeOoptions :: ([Option])
+            _leftTypeOtypeConstructors :: (FiniteMap Name Int)
+            _leftTypeOvalueConstructors :: (FiniteMap Name TpScheme)
+            _constructorOperatorIself :: (Name)
+            _rightTypeIkindErrors :: ([Error])
+            _rightTypeImiscerrors :: ([Error])
+            _rightTypeIself :: (AnnotatedType)
+            _rightTypeItype :: (Type)
+            _rightTypeItypevariables :: (Names)
+            _rightTypeIunboundNames :: (Names)
+            _rightTypeOallTypeConstructors :: (Names)
+            _rightTypeOallValueConstructors :: (Names)
+            _rightTypeOkindErrors :: ([Error])
+            _rightTypeOmiscerrors :: ([Error])
+            _rightTypeOnamesInScope :: (Names)
+            _rightTypeOoptions :: ([Option])
+            _rightTypeOtypeConstructors :: (FiniteMap Name Int)
+            _rightTypeOvalueConstructors :: (FiniteMap Name TpScheme)
+            ( _rangeIself) =
                 (range_ )
             ( _leftTypeIkindErrors,_leftTypeImiscerrors,_leftTypeIself,_leftTypeItype,_leftTypeItypevariables,_leftTypeIunboundNames) =
-                (leftType_ (_leftTypeOallTypeConstructors) (_leftTypeOallValueConstructors) (_leftTypeOkindErrors) (_leftTypeOmiscerrors) (_leftTypeOnamesInScope) (_leftTypeOtypeConstructors) (_leftTypeOvalueConstructors))
+                (leftType_ (_leftTypeOallTypeConstructors) (_leftTypeOallValueConstructors) (_leftTypeOkindErrors) (_leftTypeOmiscerrors) (_leftTypeOnamesInScope) (_leftTypeOoptions) (_leftTypeOtypeConstructors) (_leftTypeOvalueConstructors))
             ( _constructorOperatorIself) =
                 (constructorOperator_ )
             ( _rightTypeIkindErrors,_rightTypeImiscerrors,_rightTypeIself,_rightTypeItype,_rightTypeItypevariables,_rightTypeIunboundNames) =
-                (rightType_ (_rightTypeOallTypeConstructors) (_rightTypeOallValueConstructors) (_rightTypeOkindErrors) (_rightTypeOmiscerrors) (_rightTypeOnamesInScope) (_rightTypeOtypeConstructors) (_rightTypeOvalueConstructors))
+                (rightType_ (_rightTypeOallTypeConstructors) (_rightTypeOallValueConstructors) (_rightTypeOkindErrors) (_rightTypeOmiscerrors) (_rightTypeOnamesInScope) (_rightTypeOoptions) (_rightTypeOtypeConstructors) (_rightTypeOvalueConstructors))
             ((_tp@_,_tps@_)) =
                 convertFromSimpleTypeAndTypes _lhsIsimpletype [_leftTypeItype,_rightTypeItype]
             (_typeScheme@_) =
@@ -830,6 +1110,8 @@ sem_Constructor_Infix (range_) (leftType_) (constructorOperator_) (rightType_) =
                 _lhsImiscerrors
             (_leftTypeOnamesInScope@_) =
                 _lhsInamesInScope
+            (_leftTypeOoptions@_) =
+                _lhsIoptions
             (_leftTypeOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_leftTypeOvalueConstructors@_) =
@@ -844,6 +1126,8 @@ sem_Constructor_Infix (range_) (leftType_) (constructorOperator_) (rightType_) =
                 _leftTypeImiscerrors
             (_rightTypeOnamesInScope@_) =
                 _lhsInamesInScope
+            (_rightTypeOoptions@_) =
+                _lhsIoptions
             (_rightTypeOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_rightTypeOvalueConstructors@_) =
@@ -860,15 +1144,30 @@ sem_Constructor_Record (range_) (constructor_) (fieldDeclarations_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsIsimpletype
       _lhsItypeConstructors
       _lhsIvalueConstructors ->
-        let ( _rangeIself) =
+        let _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Constructor)
+            _lhsOtypevariables :: (Names)
+            _lhsOunboundNames :: (Names)
+            _rangeIself :: (Range)
+            _constructorIself :: (Name)
+            _fieldDeclarationsImiscerrors :: ([Error])
+            _fieldDeclarationsIself :: (FieldDeclarations)
+            _fieldDeclarationsIunboundNames :: (Names)
+            _fieldDeclarationsOmiscerrors :: ([Error])
+            _fieldDeclarationsOnamesInScope :: (Names)
+            _fieldDeclarationsOoptions :: ([Option])
+            ( _rangeIself) =
                 (range_ )
             ( _constructorIself) =
                 (constructor_ )
             ( _fieldDeclarationsImiscerrors,_fieldDeclarationsIself,_fieldDeclarationsIunboundNames) =
-                (fieldDeclarations_ (_fieldDeclarationsOmiscerrors) (_fieldDeclarationsOnamesInScope))
+                (fieldDeclarations_ (_fieldDeclarationsOmiscerrors) (_fieldDeclarationsOnamesInScope) (_fieldDeclarationsOoptions))
             (_lhsOtypevariables@_) =
                 []
             (_lhsOunboundNames@_) =
@@ -887,6 +1186,8 @@ sem_Constructor_Record (range_) (constructor_) (fieldDeclarations_) =
                 _lhsImiscerrors
             (_fieldDeclarationsOnamesInScope@_) =
                 _lhsInamesInScope
+            (_fieldDeclarationsOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOcollectValueConstructors,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOunboundNames)
 -- Constructors ------------------------------------------------
 -- semantic domain
@@ -896,6 +1197,7 @@ type T_Constructors = (Names) ->
                       ([Error]) ->
                       ([Error]) ->
                       (Names) ->
+                      ([Option]) ->
                       (SimpleType) ->
                       (FiniteMap Name Int) ->
                       (FiniteMap Name TpScheme) ->
@@ -915,13 +1217,52 @@ sem_Constructors_Cons (hd_) (tl_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsIsimpletype
       _lhsItypeConstructors
       _lhsIvalueConstructors ->
-        let ( _hdIcollectValueConstructors,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdItypevariables,_hdIunboundNames) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectValueConstructors) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOsimpletype) (_hdOtypeConstructors) (_hdOvalueConstructors))
+        let _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Constructors)
+            _lhsOtypevariables :: (Names)
+            _lhsOunboundNames :: (Names)
+            _hdIcollectValueConstructors :: ([(Name,TpScheme)])
+            _hdIkindErrors :: ([Error])
+            _hdImiscerrors :: ([Error])
+            _hdIself :: (Constructor)
+            _hdItypevariables :: (Names)
+            _hdIunboundNames :: (Names)
+            _hdOallTypeConstructors :: (Names)
+            _hdOallValueConstructors :: (Names)
+            _hdOcollectValueConstructors :: ([(Name,TpScheme)])
+            _hdOkindErrors :: ([Error])
+            _hdOmiscerrors :: ([Error])
+            _hdOnamesInScope :: (Names)
+            _hdOoptions :: ([Option])
+            _hdOsimpletype :: (SimpleType)
+            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlIcollectValueConstructors :: ([(Name,TpScheme)])
+            _tlIkindErrors :: ([Error])
+            _tlImiscerrors :: ([Error])
+            _tlIself :: (Constructors)
+            _tlItypevariables :: (Names)
+            _tlIunboundNames :: (Names)
+            _tlOallTypeConstructors :: (Names)
+            _tlOallValueConstructors :: (Names)
+            _tlOcollectValueConstructors :: ([(Name,TpScheme)])
+            _tlOkindErrors :: ([Error])
+            _tlOmiscerrors :: ([Error])
+            _tlOnamesInScope :: (Names)
+            _tlOoptions :: ([Option])
+            _tlOsimpletype :: (SimpleType)
+            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            ( _hdIcollectValueConstructors,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdItypevariables,_hdIunboundNames) =
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectValueConstructors) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOsimpletype) (_hdOtypeConstructors) (_hdOvalueConstructors))
             ( _tlIcollectValueConstructors,_tlIkindErrors,_tlImiscerrors,_tlIself,_tlItypevariables,_tlIunboundNames) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectValueConstructors) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOsimpletype) (_tlOtypeConstructors) (_tlOvalueConstructors))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectValueConstructors) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOsimpletype) (_tlOtypeConstructors) (_tlOvalueConstructors))
             (_lhsOtypevariables@_) =
                 _hdItypevariables  ++  _tlItypevariables
             (_lhsOunboundNames@_) =
@@ -948,6 +1289,8 @@ sem_Constructors_Cons (hd_) (tl_) =
                 _lhsImiscerrors
             (_hdOnamesInScope@_) =
                 _lhsInamesInScope
+            (_hdOoptions@_) =
+                _lhsIoptions
             (_hdOsimpletype@_) =
                 _lhsIsimpletype
             (_hdOtypeConstructors@_) =
@@ -966,6 +1309,8 @@ sem_Constructors_Cons (hd_) (tl_) =
                 _hdImiscerrors
             (_tlOnamesInScope@_) =
                 _lhsInamesInScope
+            (_tlOoptions@_) =
+                _lhsIoptions
             (_tlOsimpletype@_) =
                 _lhsIsimpletype
             (_tlOtypeConstructors@_) =
@@ -981,10 +1326,17 @@ sem_Constructors_Nil  =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsIsimpletype
       _lhsItypeConstructors
       _lhsIvalueConstructors ->
-        let (_lhsOtypevariables@_) =
+        let _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Constructors)
+            _lhsOtypevariables :: (Names)
+            _lhsOunboundNames :: (Names)
+            (_lhsOtypevariables@_) =
                 []
             (_lhsOunboundNames@_) =
                 []
@@ -1002,6 +1354,7 @@ sem_Constructors_Nil  =
 -- ContextItem -------------------------------------------------
 -- semantic domain
 type T_ContextItem = ([Error]) ->
+                     ([Option]) ->
                      ( ([Name]),([Error]),(ContextItem))
 -- cata
 sem_ContextItem :: (ContextItem) ->
@@ -1013,13 +1366,24 @@ sem_ContextItem_ContextItem :: (T_Range) ->
                                (T_Types) ->
                                (T_ContextItem)
 sem_ContextItem_ContextItem (range_) (name_) (types_) =
-    \ _lhsImiscerrors ->
-        let ( _rangeIself) =
+    \ _lhsImiscerrors
+      _lhsIoptions ->
+        let _lhsOcontextVars :: ([Name])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (ContextItem)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _typesImiscerrors :: ([Error])
+            _typesIself :: (Types)
+            _typesItypevariables :: (Names)
+            _typesOmiscerrors :: ([Error])
+            _typesOoptions :: ([Option])
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
             ( _typesImiscerrors,_typesIself,_typesItypevariables) =
-                (types_ (_typesOmiscerrors))
+                (types_ (_typesOmiscerrors) (_typesOoptions))
             (_lhsOmiscerrors@_) =
                 if elem (getNameName name_) (keysFM standardClasses)
                    then _typesImiscerrors
@@ -1034,10 +1398,13 @@ sem_ContextItem_ContextItem (range_) (name_) (types_) =
                 _self
             (_typesOmiscerrors@_) =
                 _lhsImiscerrors
+            (_typesOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOcontextVars,_lhsOmiscerrors,_lhsOself)
 -- ContextItems ------------------------------------------------
 -- semantic domain
 type T_ContextItems = ([Error]) ->
+                      ([Option]) ->
                       ( ([Name]),([Error]),(ContextItems))
 -- cata
 sem_ContextItems :: (ContextItems) ->
@@ -1048,11 +1415,25 @@ sem_ContextItems_Cons :: (T_ContextItem) ->
                          (T_ContextItems) ->
                          (T_ContextItems)
 sem_ContextItems_Cons (hd_) (tl_) =
-    \ _lhsImiscerrors ->
-        let ( _hdIcontextVars,_hdImiscerrors,_hdIself) =
-                (hd_ (_hdOmiscerrors))
+    \ _lhsImiscerrors
+      _lhsIoptions ->
+        let _lhsOcontextVars :: ([Name])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (ContextItems)
+            _hdIcontextVars :: ([Name])
+            _hdImiscerrors :: ([Error])
+            _hdIself :: (ContextItem)
+            _hdOmiscerrors :: ([Error])
+            _hdOoptions :: ([Option])
+            _tlIcontextVars :: ([Name])
+            _tlImiscerrors :: ([Error])
+            _tlIself :: (ContextItems)
+            _tlOmiscerrors :: ([Error])
+            _tlOoptions :: ([Option])
+            ( _hdIcontextVars,_hdImiscerrors,_hdIself) =
+                (hd_ (_hdOmiscerrors) (_hdOoptions))
             ( _tlIcontextVars,_tlImiscerrors,_tlIself) =
-                (tl_ (_tlOmiscerrors))
+                (tl_ (_tlOmiscerrors) (_tlOoptions))
             (_lhsOcontextVars@_) =
                 _hdIcontextVars  ++  _tlIcontextVars
             (_self@_) =
@@ -1063,13 +1444,21 @@ sem_ContextItems_Cons (hd_) (tl_) =
                 _tlImiscerrors
             (_hdOmiscerrors@_) =
                 _lhsImiscerrors
+            (_hdOoptions@_) =
+                _lhsIoptions
             (_tlOmiscerrors@_) =
                 _hdImiscerrors
+            (_tlOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOcontextVars,_lhsOmiscerrors,_lhsOself)
 sem_ContextItems_Nil :: (T_ContextItems)
 sem_ContextItems_Nil  =
-    \ _lhsImiscerrors ->
-        let (_lhsOcontextVars@_) =
+    \ _lhsImiscerrors
+      _lhsIoptions ->
+        let _lhsOcontextVars :: ([Name])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (ContextItems)
+            (_lhsOcontextVars@_) =
                 []
             (_self@_) =
                 []
@@ -1090,6 +1479,7 @@ type T_Declaration = (Names) ->
                      ([Error]) ->
                      (Names) ->
                      ([(Name,(Int,Assoc))]) ->
+                     ([Option]) ->
                      (Maybe Name) ->
                      ([(Name,Name)]) ->
                      (FiniteMap Name Int) ->
@@ -1138,20 +1528,62 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoperatorFixities
+      _lhsIoptions
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
       _lhsItypeSignatures
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOcollectTypeConstructors :: ([(Name,Int)])
+            _lhsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOdeclVarNames :: (Names)
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _lhsOpreviousWasAlsoFB :: (Maybe Name)
+            _lhsOself :: (Declaration)
+            _lhsOsuspiciousFBs :: ([(Name,Name)])
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _contextIcontextVars :: ([Name])
+            _contextImiscerrors :: ([Error])
+            _contextIself :: (ContextItems)
+            _contextOmiscerrors :: ([Error])
+            _contextOoptions :: ([Option])
+            _simpletypeIname :: (Name)
+            _simpletypeIself :: (SimpleType)
+            _simpletypeItypevariables :: (Names)
+            _whereIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _whereIkindErrors :: ([Error])
+            _whereImiscerrors :: ([Error])
+            _whereInamesInScope :: (Names)
+            _whereIself :: (MaybeDeclarations)
+            _whereIunboundNames :: (Names)
+            _whereIwarnings :: ([Warning])
+            _whereOallTypeConstructors :: (Names)
+            _whereOallValueConstructors :: (Names)
+            _whereOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _whereOkindErrors :: ([Error])
+            _whereOmiscerrors :: ([Error])
+            _whereOnamesInScope :: (Names)
+            _whereOoptions :: ([Option])
+            _whereOtypeConstructors :: (FiniteMap Name Int)
+            _whereOunboundNames :: (Names)
+            _whereOvalueConstructors :: (FiniteMap Name TpScheme)
+            _whereOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _contextIcontextVars,_contextImiscerrors,_contextIself) =
-                (context_ (_contextOmiscerrors))
+                (context_ (_contextOmiscerrors) (_contextOoptions))
             ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                 (simpletype_ )
             ( _whereIcollectScopeInfos,_whereIkindErrors,_whereImiscerrors,_whereInamesInScope,_whereIself,_whereIunboundNames,_whereIwarnings) =
-                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
+                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOoptions) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
             (_lhsOpreviousWasAlsoFB@_) =
                 Nothing
             ((_assumptions@_,_constraints@_,_unboundNames@_)) =
@@ -1186,6 +1618,8 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
                 _whereIwarnings
             (_contextOmiscerrors@_) =
                 _lhsImiscerrors
+            (_contextOoptions@_) =
+                _lhsIoptions
             (_whereOallTypeConstructors@_) =
                 _lhsIallTypeConstructors
             (_whereOallValueConstructors@_) =
@@ -1198,6 +1632,8 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
                 _contextImiscerrors
             (_whereOnamesInScope@_) =
                 _lhsInamesInScope
+            (_whereOoptions@_) =
+                _lhsIoptions
             (_whereOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_whereOunboundNames@_) =
@@ -1224,20 +1660,61 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoperatorFixities
+      _lhsIoptions
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
       _lhsItypeSignatures
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOcollectTypeConstructors :: ([(Name,Int)])
+            _lhsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOdeclVarNames :: (Names)
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _lhsOpreviousWasAlsoFB :: (Maybe Name)
+            _lhsOself :: (Declaration)
+            _lhsOsuspiciousFBs :: ([(Name,Name)])
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _contextIcontextVars :: ([Name])
+            _contextImiscerrors :: ([Error])
+            _contextIself :: (ContextItems)
+            _contextOmiscerrors :: ([Error])
+            _contextOoptions :: ([Option])
+            _simpletypeIname :: (Name)
+            _simpletypeIself :: (SimpleType)
+            _simpletypeItypevariables :: (Names)
+            _constructorsIcollectValueConstructors :: ([(Name,TpScheme)])
+            _constructorsIkindErrors :: ([Error])
+            _constructorsImiscerrors :: ([Error])
+            _constructorsIself :: (Constructors)
+            _constructorsItypevariables :: (Names)
+            _constructorsIunboundNames :: (Names)
+            _constructorsOallTypeConstructors :: (Names)
+            _constructorsOallValueConstructors :: (Names)
+            _constructorsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _constructorsOkindErrors :: ([Error])
+            _constructorsOmiscerrors :: ([Error])
+            _constructorsOnamesInScope :: (Names)
+            _constructorsOoptions :: ([Option])
+            _constructorsOsimpletype :: (SimpleType)
+            _constructorsOtypeConstructors :: (FiniteMap Name Int)
+            _constructorsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _derivingsIself :: (Names)
+            ( _rangeIself) =
                 (range_ )
             ( _contextIcontextVars,_contextImiscerrors,_contextIself) =
-                (context_ (_contextOmiscerrors))
+                (context_ (_contextOmiscerrors) (_contextOoptions))
             ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                 (simpletype_ )
             ( _constructorsIcollectValueConstructors,_constructorsIkindErrors,_constructorsImiscerrors,_constructorsIself,_constructorsItypevariables,_constructorsIunboundNames) =
-                (constructors_ (_constructorsOallTypeConstructors) (_constructorsOallValueConstructors) (_constructorsOcollectValueConstructors) (_constructorsOkindErrors) (_constructorsOmiscerrors) (_constructorsOnamesInScope) (_constructorsOsimpletype) (_constructorsOtypeConstructors) (_constructorsOvalueConstructors))
+                (constructors_ (_constructorsOallTypeConstructors) (_constructorsOallValueConstructors) (_constructorsOcollectValueConstructors) (_constructorsOkindErrors) (_constructorsOmiscerrors) (_constructorsOnamesInScope) (_constructorsOoptions) (_constructorsOsimpletype) (_constructorsOtypeConstructors) (_constructorsOvalueConstructors))
             ( _derivingsIself) =
                 (derivings_ )
             (_lhsOcollectTypeConstructors@_) =
@@ -1283,6 +1760,8 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
                 _lhsItypeSignatures
             (_contextOmiscerrors@_) =
                 _lhsImiscerrors
+            (_contextOoptions@_) =
+                _lhsIoptions
             (_constructorsOallTypeConstructors@_) =
                 _lhsIallTypeConstructors
             (_constructorsOallValueConstructors@_) =
@@ -1295,6 +1774,8 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
                 _contextImiscerrors
             (_constructorsOnamesInScope@_) =
                 _lhsInamesInScope
+            (_constructorsOoptions@_) =
+                _lhsIoptions
             (_constructorsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_constructorsOvalueConstructors@_) =
@@ -1314,16 +1795,37 @@ sem_Declaration_Default (range_) (types_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoperatorFixities
+      _lhsIoptions
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
       _lhsItypeSignatures
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOcollectTypeConstructors :: ([(Name,Int)])
+            _lhsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOdeclVarNames :: (Names)
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _lhsOpreviousWasAlsoFB :: (Maybe Name)
+            _lhsOself :: (Declaration)
+            _lhsOsuspiciousFBs :: ([(Name,Name)])
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _typesImiscerrors :: ([Error])
+            _typesIself :: (Types)
+            _typesItypevariables :: (Names)
+            _typesOmiscerrors :: ([Error])
+            _typesOoptions :: ([Option])
+            ( _rangeIself) =
                 (range_ )
             ( _typesImiscerrors,_typesIself,_typesItypevariables) =
-                (types_ (_typesOmiscerrors))
+                (types_ (_typesOmiscerrors) (_typesOoptions))
             (_lhsOpreviousWasAlsoFB@_) =
                 Nothing
             (_lhsOdeclVarNames@_) =
@@ -1356,6 +1858,8 @@ sem_Declaration_Default (range_) (types_) =
                 _lhsIwarnings
             (_typesOmiscerrors@_) =
                 _lhsImiscerrors
+            (_typesOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)
 sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
@@ -1370,13 +1874,29 @@ sem_Declaration_Empty (range_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoperatorFixities
+      _lhsIoptions
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
       _lhsItypeSignatures
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOcollectTypeConstructors :: ([(Name,Int)])
+            _lhsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOdeclVarNames :: (Names)
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _lhsOpreviousWasAlsoFB :: (Maybe Name)
+            _lhsOself :: (Declaration)
+            _lhsOsuspiciousFBs :: ([(Name,Name)])
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            ( _rangeIself) =
                 (range_ )
             (_lhsOdeclVarNames@_) =
                 []
@@ -1425,13 +1945,32 @@ sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoperatorFixities
+      _lhsIoptions
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
       _lhsItypeSignatures
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOcollectTypeConstructors :: ([(Name,Int)])
+            _lhsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOdeclVarNames :: (Names)
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _lhsOpreviousWasAlsoFB :: (Maybe Name)
+            _lhsOself :: (Declaration)
+            _lhsOsuspiciousFBs :: ([(Name,Name)])
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _fixityIself :: (Fixity)
+            _priorityIself :: (MaybeInt)
+            _operatorsIself :: (Names)
+            ( _rangeIself) =
                 (range_ )
             ( _fixityIself) =
                 (fixity_ )
@@ -1491,16 +2030,50 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoperatorFixities
+      _lhsIoptions
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
       _lhsItypeSignatures
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOcollectTypeConstructors :: ([(Name,Int)])
+            _lhsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOdeclVarNames :: (Names)
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _lhsOpreviousWasAlsoFB :: (Maybe Name)
+            _lhsOself :: (Declaration)
+            _lhsOsuspiciousFBs :: ([(Name,Name)])
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _bindingsIarities :: ( [Int] )
+            _bindingsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _bindingsIkindErrors :: ([Error])
+            _bindingsImiscerrors :: ([Error])
+            _bindingsIname :: (Name)
+            _bindingsIself :: (FunctionBindings)
+            _bindingsIunboundNames :: (Names)
+            _bindingsIwarnings :: ([Warning])
+            _bindingsOallTypeConstructors :: (Names)
+            _bindingsOallValueConstructors :: (Names)
+            _bindingsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _bindingsOkindErrors :: ([Error])
+            _bindingsOmiscerrors :: ([Error])
+            _bindingsOnamesInScope :: (Names)
+            _bindingsOoptions :: ([Option])
+            _bindingsOtypeConstructors :: (FiniteMap Name Int)
+            _bindingsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _bindingsOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _bindingsIarities,_bindingsIcollectScopeInfos,_bindingsIkindErrors,_bindingsImiscerrors,_bindingsIname,_bindingsIself,_bindingsIunboundNames,_bindingsIwarnings) =
-                (bindings_ (_bindingsOallTypeConstructors) (_bindingsOallValueConstructors) (_bindingsOcollectScopeInfos) (_bindingsOkindErrors) (_bindingsOmiscerrors) (_bindingsOnamesInScope) (_bindingsOtypeConstructors) (_bindingsOvalueConstructors) (_bindingsOwarnings))
+                (bindings_ (_bindingsOallTypeConstructors) (_bindingsOallValueConstructors) (_bindingsOcollectScopeInfos) (_bindingsOkindErrors) (_bindingsOmiscerrors) (_bindingsOnamesInScope) (_bindingsOoptions) (_bindingsOtypeConstructors) (_bindingsOvalueConstructors) (_bindingsOwarnings))
             (_lhsOdeclVarNames@_) =
                 [_bindingsIname]
             (_lhsOsuspiciousFBs@_) =
@@ -1550,6 +2123,8 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
                 _lhsImiscerrors
             (_bindingsOnamesInScope@_) =
                 _lhsInamesInScope
+            (_bindingsOoptions@_) =
+                _lhsIoptions
             (_bindingsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_bindingsOvalueConstructors@_) =
@@ -1574,22 +2149,67 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoperatorFixities
+      _lhsIoptions
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
       _lhsItypeSignatures
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOcollectTypeConstructors :: ([(Name,Int)])
+            _lhsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOdeclVarNames :: (Names)
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _lhsOpreviousWasAlsoFB :: (Maybe Name)
+            _lhsOself :: (Declaration)
+            _lhsOsuspiciousFBs :: ([(Name,Name)])
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _contextIcontextVars :: ([Name])
+            _contextImiscerrors :: ([Error])
+            _contextIself :: (ContextItems)
+            _contextOmiscerrors :: ([Error])
+            _contextOoptions :: ([Option])
+            _nameIself :: (Name)
+            _typesImiscerrors :: ([Error])
+            _typesIself :: (Types)
+            _typesItypevariables :: (Names)
+            _typesOmiscerrors :: ([Error])
+            _typesOoptions :: ([Option])
+            _whereIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _whereIkindErrors :: ([Error])
+            _whereImiscerrors :: ([Error])
+            _whereInamesInScope :: (Names)
+            _whereIself :: (MaybeDeclarations)
+            _whereIunboundNames :: (Names)
+            _whereIwarnings :: ([Warning])
+            _whereOallTypeConstructors :: (Names)
+            _whereOallValueConstructors :: (Names)
+            _whereOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _whereOkindErrors :: ([Error])
+            _whereOmiscerrors :: ([Error])
+            _whereOnamesInScope :: (Names)
+            _whereOoptions :: ([Option])
+            _whereOtypeConstructors :: (FiniteMap Name Int)
+            _whereOunboundNames :: (Names)
+            _whereOvalueConstructors :: (FiniteMap Name TpScheme)
+            _whereOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _contextIcontextVars,_contextImiscerrors,_contextIself) =
-                (context_ (_contextOmiscerrors))
+                (context_ (_contextOmiscerrors) (_contextOoptions))
             ( _nameIself) =
                 (name_ )
             ( _typesImiscerrors,_typesIself,_typesItypevariables) =
-                (types_ (_typesOmiscerrors))
+                (types_ (_typesOmiscerrors) (_typesOoptions))
             ( _whereIcollectScopeInfos,_whereIkindErrors,_whereImiscerrors,_whereInamesInScope,_whereIself,_whereIunboundNames,_whereIwarnings) =
-                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
+                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOoptions) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
             (_lhsOpreviousWasAlsoFB@_) =
                 Nothing
             ((_assumptions@_,_constraints@_,_unboundNames@_)) =
@@ -1624,8 +2244,12 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
                 _whereIwarnings
             (_contextOmiscerrors@_) =
                 _lhsImiscerrors
+            (_contextOoptions@_) =
+                _lhsIoptions
             (_typesOmiscerrors@_) =
                 _contextImiscerrors
+            (_typesOoptions@_) =
+                _lhsIoptions
             (_whereOallTypeConstructors@_) =
                 _lhsIallTypeConstructors
             (_whereOallValueConstructors@_) =
@@ -1638,6 +2262,8 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
                 _typesImiscerrors
             (_whereOnamesInScope@_) =
                 _lhsInamesInScope
+            (_whereOoptions@_) =
+                _lhsIoptions
             (_whereOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_whereOunboundNames@_) =
@@ -1664,20 +2290,61 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoperatorFixities
+      _lhsIoptions
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
       _lhsItypeSignatures
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOcollectTypeConstructors :: ([(Name,Int)])
+            _lhsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOdeclVarNames :: (Names)
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _lhsOpreviousWasAlsoFB :: (Maybe Name)
+            _lhsOself :: (Declaration)
+            _lhsOsuspiciousFBs :: ([(Name,Name)])
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _contextIcontextVars :: ([Name])
+            _contextImiscerrors :: ([Error])
+            _contextIself :: (ContextItems)
+            _contextOmiscerrors :: ([Error])
+            _contextOoptions :: ([Option])
+            _simpletypeIname :: (Name)
+            _simpletypeIself :: (SimpleType)
+            _simpletypeItypevariables :: (Names)
+            _constructorIcollectValueConstructors :: ([(Name,TpScheme)])
+            _constructorIkindErrors :: ([Error])
+            _constructorImiscerrors :: ([Error])
+            _constructorIself :: (Constructor)
+            _constructorItypevariables :: (Names)
+            _constructorIunboundNames :: (Names)
+            _constructorOallTypeConstructors :: (Names)
+            _constructorOallValueConstructors :: (Names)
+            _constructorOcollectValueConstructors :: ([(Name,TpScheme)])
+            _constructorOkindErrors :: ([Error])
+            _constructorOmiscerrors :: ([Error])
+            _constructorOnamesInScope :: (Names)
+            _constructorOoptions :: ([Option])
+            _constructorOsimpletype :: (SimpleType)
+            _constructorOtypeConstructors :: (FiniteMap Name Int)
+            _constructorOvalueConstructors :: (FiniteMap Name TpScheme)
+            _derivingsIself :: (Names)
+            ( _rangeIself) =
                 (range_ )
             ( _contextIcontextVars,_contextImiscerrors,_contextIself) =
-                (context_ (_contextOmiscerrors))
+                (context_ (_contextOmiscerrors) (_contextOoptions))
             ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                 (simpletype_ )
             ( _constructorIcollectValueConstructors,_constructorIkindErrors,_constructorImiscerrors,_constructorIself,_constructorItypevariables,_constructorIunboundNames) =
-                (constructor_ (_constructorOallTypeConstructors) (_constructorOallValueConstructors) (_constructorOcollectValueConstructors) (_constructorOkindErrors) (_constructorOmiscerrors) (_constructorOnamesInScope) (_constructorOsimpletype) (_constructorOtypeConstructors) (_constructorOvalueConstructors))
+                (constructor_ (_constructorOallTypeConstructors) (_constructorOallValueConstructors) (_constructorOcollectValueConstructors) (_constructorOkindErrors) (_constructorOmiscerrors) (_constructorOnamesInScope) (_constructorOoptions) (_constructorOsimpletype) (_constructorOtypeConstructors) (_constructorOvalueConstructors))
             ( _derivingsIself) =
                 (derivings_ )
             (_constructorOsimpletype@_) =
@@ -1714,6 +2381,8 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
                 _lhsIwarnings
             (_contextOmiscerrors@_) =
                 _lhsImiscerrors
+            (_contextOoptions@_) =
+                _lhsIoptions
             (_constructorOallTypeConstructors@_) =
                 _lhsIallTypeConstructors
             (_constructorOallValueConstructors@_) =
@@ -1726,6 +2395,8 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
                 _contextImiscerrors
             (_constructorOnamesInScope@_) =
                 _lhsInamesInScope
+            (_constructorOoptions@_) =
+                _lhsIoptions
             (_constructorOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_constructorOvalueConstructors@_) =
@@ -1746,18 +2417,65 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoperatorFixities
+      _lhsIoptions
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
       _lhsItypeSignatures
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOcollectTypeConstructors :: ([(Name,Int)])
+            _lhsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOdeclVarNames :: (Names)
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _lhsOpreviousWasAlsoFB :: (Maybe Name)
+            _lhsOself :: (Declaration)
+            _lhsOsuspiciousFBs :: ([(Name,Name)])
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _patternIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternImiscerrors :: ([Error])
+            _patternIpatVarNames :: (Names)
+            _patternIself :: (Pattern)
+            _patternIunboundNames :: (Names)
+            _patternIwarnings :: ([Warning])
+            _patternOallTypeConstructors :: (Names)
+            _patternOallValueConstructors :: (Names)
+            _patternOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternOlhsPattern :: (Bool)
+            _patternOmiscerrors :: ([Error])
+            _patternOnamesInScope :: (Names)
+            _patternOtypeConstructors :: (FiniteMap Name Int)
+            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOwarnings :: ([Warning])
+            _righthandsideIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _righthandsideIkindErrors :: ([Error])
+            _righthandsideImiscerrors :: ([Error])
+            _righthandsideIself :: (RightHandSide)
+            _righthandsideIunboundNames :: (Names)
+            _righthandsideIwarnings :: ([Warning])
+            _righthandsideOallTypeConstructors :: (Names)
+            _righthandsideOallValueConstructors :: (Names)
+            _righthandsideOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _righthandsideOkindErrors :: ([Error])
+            _righthandsideOmiscerrors :: ([Error])
+            _righthandsideOnamesInScope :: (Names)
+            _righthandsideOoptions :: ([Option])
+            _righthandsideOtypeConstructors :: (FiniteMap Name Int)
+            _righthandsideOvalueConstructors :: (FiniteMap Name TpScheme)
+            _righthandsideOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
                 (pattern_ (_patternOallTypeConstructors) (_patternOallValueConstructors) (_patternOcollectScopeInfos) (_patternOlhsPattern) (_patternOmiscerrors) (_patternOnamesInScope) (_patternOtypeConstructors) (_patternOvalueConstructors) (_patternOwarnings))
             ( _righthandsideIcollectScopeInfos,_righthandsideIkindErrors,_righthandsideImiscerrors,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIwarnings) =
-                (righthandside_ (_righthandsideOallTypeConstructors) (_righthandsideOallValueConstructors) (_righthandsideOcollectScopeInfos) (_righthandsideOkindErrors) (_righthandsideOmiscerrors) (_righthandsideOnamesInScope) (_righthandsideOtypeConstructors) (_righthandsideOvalueConstructors) (_righthandsideOwarnings))
+                (righthandside_ (_righthandsideOallTypeConstructors) (_righthandsideOallValueConstructors) (_righthandsideOcollectScopeInfos) (_righthandsideOkindErrors) (_righthandsideOmiscerrors) (_righthandsideOnamesInScope) (_righthandsideOoptions) (_righthandsideOtypeConstructors) (_righthandsideOvalueConstructors) (_righthandsideOwarnings))
             (_lhsOdeclVarNames@_) =
                 _patternIpatVarNames
             (_lhsOpreviousWasAlsoFB@_) =
@@ -1822,6 +2540,8 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
                 _patternImiscerrors
             (_righthandsideOnamesInScope@_) =
                 _lhsInamesInScope
+            (_righthandsideOoptions@_) =
+                _lhsIoptions
             (_righthandsideOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_righthandsideOvalueConstructors@_) =
@@ -1844,18 +2564,42 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoperatorFixities
+      _lhsIoptions
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
       _lhsItypeSignatures
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOcollectTypeConstructors :: ([(Name,Int)])
+            _lhsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOdeclVarNames :: (Names)
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _lhsOpreviousWasAlsoFB :: (Maybe Name)
+            _lhsOself :: (Declaration)
+            _lhsOsuspiciousFBs :: ([(Name,Name)])
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _simpletypeIname :: (Name)
+            _simpletypeIself :: (SimpleType)
+            _simpletypeItypevariables :: (Names)
+            _typeImiscerrors :: ([Error])
+            _typeIself :: (Type)
+            _typeItypevariables :: (Names)
+            _typeOmiscerrors :: ([Error])
+            _typeOoptions :: ([Option])
+            ( _rangeIself) =
                 (range_ )
             ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                 (simpletype_ )
             ( _typeImiscerrors,_typeIself,_typeItypevariables) =
-                (type_ (_typeOmiscerrors))
+                (type_ (_typeOmiscerrors) (_typeOoptions))
             (_typeSynonymInfo@_) =
                 (length _simpletypeItypevariables,\tps -> makeTpFromType (zip _simpletypeItypevariables tps) _typeIself)
             (_lhsOcollectTypeSynonyms@_) =
@@ -1901,6 +2645,8 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
                 _lhsItypeSignatures
             (_typeOmiscerrors@_) =
                 _lhsImiscerrors
+            (_typeOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)
 sem_Declaration_TypeSignature :: (T_Range) ->
                                  (T_Names) ->
@@ -1917,18 +2663,40 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoperatorFixities
+      _lhsIoptions
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
       _lhsItypeSignatures
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOcollectTypeConstructors :: ([(Name,Int)])
+            _lhsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOdeclVarNames :: (Names)
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _lhsOpreviousWasAlsoFB :: (Maybe Name)
+            _lhsOself :: (Declaration)
+            _lhsOsuspiciousFBs :: ([(Name,Name)])
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _namesIself :: (Names)
+            _typeImiscerrors :: ([Error])
+            _typeIself :: (Type)
+            _typeItypevariables :: (Names)
+            _typeOmiscerrors :: ([Error])
+            _typeOoptions :: ([Option])
+            ( _rangeIself) =
                 (range_ )
             ( _namesIself) =
                 (names_ )
             ( _typeImiscerrors,_typeIself,_typeItypevariables) =
-                (type_ (_typeOmiscerrors))
+                (type_ (_typeOmiscerrors) (_typeOoptions))
             (_typeScheme@_) =
                 makeTpSchemeFromType _typeIself
             (_lhsOtypeSignatures@_) =
@@ -1965,6 +2733,8 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
                 _lhsIwarnings
             (_typeOmiscerrors@_) =
                 _lhsImiscerrors
+            (_typeOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)
 -- Declarations ------------------------------------------------
 -- semantic domain
@@ -1978,6 +2748,7 @@ type T_Declarations = (Names) ->
                       ([Error]) ->
                       (Names) ->
                       ([(Name,(Int,Assoc))]) ->
+                      ([Option]) ->
                       (Maybe Name) ->
                       ([(Name,Name)]) ->
                       (FiniteMap Name Int) ->
@@ -2004,16 +2775,93 @@ sem_Declarations_Cons (hd_) (tl_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoperatorFixities
+      _lhsIoptions
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
       _lhsItypeSignatures
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _hdIcollectScopeInfos,_hdIcollectTypeConstructors,_hdIcollectTypeSynonyms,_hdIcollectValueConstructors,_hdIdeclVarNames,_hdIkindErrors,_hdImiscerrors,_hdIoperatorFixities,_hdIpreviousWasAlsoFB,_hdIself,_hdIsuspiciousFBs,_hdItypeSignatures,_hdIunboundNames,_hdIwarnings) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOcollectTypeConstructors) (_hdOcollectTypeSynonyms) (_hdOcollectValueConstructors) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoperatorFixities) (_hdOpreviousWasAlsoFB) (_hdOsuspiciousFBs) (_hdOtypeConstructors) (_hdOtypeSignatures) (_hdOvalueConstructors) (_hdOwarnings))
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOcollectTypeConstructors :: ([(Name,Int)])
+            _lhsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOdeclVarNames :: (Names)
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _lhsOpreviousWasAlsoFB :: (Maybe Name)
+            _lhsOself :: (Declarations)
+            _lhsOsuspiciousFBs :: ([(Name,Name)])
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _hdIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdIcollectTypeConstructors :: ([(Name,Int)])
+            _hdIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _hdIcollectValueConstructors :: ([(Name,TpScheme)])
+            _hdIdeclVarNames :: (Names)
+            _hdIkindErrors :: ([Error])
+            _hdImiscerrors :: ([Error])
+            _hdIoperatorFixities :: ([(Name,(Int,Assoc))])
+            _hdIpreviousWasAlsoFB :: (Maybe Name)
+            _hdIself :: (Declaration)
+            _hdIsuspiciousFBs :: ([(Name,Name)])
+            _hdItypeSignatures :: ([(Name,TpScheme)])
+            _hdIunboundNames :: (Names)
+            _hdIwarnings :: ([Warning])
+            _hdOallTypeConstructors :: (Names)
+            _hdOallValueConstructors :: (Names)
+            _hdOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdOcollectTypeConstructors :: ([(Name,Int)])
+            _hdOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _hdOcollectValueConstructors :: ([(Name,TpScheme)])
+            _hdOkindErrors :: ([Error])
+            _hdOmiscerrors :: ([Error])
+            _hdOnamesInScope :: (Names)
+            _hdOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _hdOoptions :: ([Option])
+            _hdOpreviousWasAlsoFB :: (Maybe Name)
+            _hdOsuspiciousFBs :: ([(Name,Name)])
+            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOtypeSignatures :: ([(Name,TpScheme)])
+            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOwarnings :: ([Warning])
+            _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlIcollectTypeConstructors :: ([(Name,Int)])
+            _tlIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _tlIcollectValueConstructors :: ([(Name,TpScheme)])
+            _tlIdeclVarNames :: (Names)
+            _tlIkindErrors :: ([Error])
+            _tlImiscerrors :: ([Error])
+            _tlIoperatorFixities :: ([(Name,(Int,Assoc))])
+            _tlIpreviousWasAlsoFB :: (Maybe Name)
+            _tlIself :: (Declarations)
+            _tlIsuspiciousFBs :: ([(Name,Name)])
+            _tlItypeSignatures :: ([(Name,TpScheme)])
+            _tlIunboundNames :: (Names)
+            _tlIwarnings :: ([Warning])
+            _tlOallTypeConstructors :: (Names)
+            _tlOallValueConstructors :: (Names)
+            _tlOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlOcollectTypeConstructors :: ([(Name,Int)])
+            _tlOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _tlOcollectValueConstructors :: ([(Name,TpScheme)])
+            _tlOkindErrors :: ([Error])
+            _tlOmiscerrors :: ([Error])
+            _tlOnamesInScope :: (Names)
+            _tlOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _tlOoptions :: ([Option])
+            _tlOpreviousWasAlsoFB :: (Maybe Name)
+            _tlOsuspiciousFBs :: ([(Name,Name)])
+            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOtypeSignatures :: ([(Name,TpScheme)])
+            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOwarnings :: ([Warning])
+            ( _hdIcollectScopeInfos,_hdIcollectTypeConstructors,_hdIcollectTypeSynonyms,_hdIcollectValueConstructors,_hdIdeclVarNames,_hdIkindErrors,_hdImiscerrors,_hdIoperatorFixities,_hdIpreviousWasAlsoFB,_hdIself,_hdIsuspiciousFBs,_hdItypeSignatures,_hdIunboundNames,_hdIwarnings) =
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOcollectTypeConstructors) (_hdOcollectTypeSynonyms) (_hdOcollectValueConstructors) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoperatorFixities) (_hdOoptions) (_hdOpreviousWasAlsoFB) (_hdOsuspiciousFBs) (_hdOtypeConstructors) (_hdOtypeSignatures) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIcollectScopeInfos,_tlIcollectTypeConstructors,_tlIcollectTypeSynonyms,_tlIcollectValueConstructors,_tlIdeclVarNames,_tlIkindErrors,_tlImiscerrors,_tlIoperatorFixities,_tlIpreviousWasAlsoFB,_tlIself,_tlIsuspiciousFBs,_tlItypeSignatures,_tlIunboundNames,_tlIwarnings) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOcollectTypeConstructors) (_tlOcollectTypeSynonyms) (_tlOcollectValueConstructors) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoperatorFixities) (_tlOpreviousWasAlsoFB) (_tlOsuspiciousFBs) (_tlOtypeConstructors) (_tlOtypeSignatures) (_tlOvalueConstructors) (_tlOwarnings))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOcollectTypeConstructors) (_tlOcollectTypeSynonyms) (_tlOcollectValueConstructors) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoperatorFixities) (_tlOoptions) (_tlOpreviousWasAlsoFB) (_tlOsuspiciousFBs) (_tlOtypeConstructors) (_tlOtypeSignatures) (_tlOvalueConstructors) (_tlOwarnings))
             (_lhsOdeclVarNames@_) =
                 _hdIdeclVarNames ++ _tlIdeclVarNames
             (_lhsOunboundNames@_) =
@@ -2064,6 +2912,8 @@ sem_Declarations_Cons (hd_) (tl_) =
                 _lhsInamesInScope
             (_hdOoperatorFixities@_) =
                 _lhsIoperatorFixities
+            (_hdOoptions@_) =
+                _lhsIoptions
             (_hdOpreviousWasAlsoFB@_) =
                 _lhsIpreviousWasAlsoFB
             (_hdOsuspiciousFBs@_) =
@@ -2096,6 +2946,8 @@ sem_Declarations_Cons (hd_) (tl_) =
                 _lhsInamesInScope
             (_tlOoperatorFixities@_) =
                 _hdIoperatorFixities
+            (_tlOoptions@_) =
+                _lhsIoptions
             (_tlOpreviousWasAlsoFB@_) =
                 _hdIpreviousWasAlsoFB
             (_tlOsuspiciousFBs@_) =
@@ -2121,13 +2973,28 @@ sem_Declarations_Nil  =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoperatorFixities
+      _lhsIoptions
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
       _lhsItypeSignatures
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let (_lhsOdeclVarNames@_) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOcollectTypeConstructors :: ([(Name,Int)])
+            _lhsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _lhsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _lhsOdeclVarNames :: (Names)
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _lhsOpreviousWasAlsoFB :: (Maybe Name)
+            _lhsOself :: (Declarations)
+            _lhsOsuspiciousFBs :: ([(Name,Name)])
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            (_lhsOdeclVarNames@_) =
                 []
             (_lhsOunboundNames@_) =
                 []
@@ -2184,7 +3051,11 @@ sem_Export_Module (range_) (name_) =
       _lhsImodulesInScope
       _lhsInamesInScop
       _lhsItyconsInScope ->
-        let ( _rangeIself) =
+        let _lhsOexportErrors :: ([Error])
+            _lhsOself :: (Export)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -2205,7 +3076,12 @@ sem_Export_TypeOrClass (range_) (name_) (names_) =
       _lhsImodulesInScope
       _lhsInamesInScop
       _lhsItyconsInScope ->
-        let ( _rangeIself) =
+        let _lhsOexportErrors :: ([Error])
+            _lhsOself :: (Export)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _namesIself :: (MaybeNames)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -2226,7 +3102,11 @@ sem_Export_TypeOrClassComplete (range_) (name_) =
       _lhsImodulesInScope
       _lhsInamesInScop
       _lhsItyconsInScope ->
-        let ( _rangeIself) =
+        let _lhsOexportErrors :: ([Error])
+            _lhsOself :: (Export)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -2245,7 +3125,11 @@ sem_Export_Variable (range_) (name_) =
       _lhsImodulesInScope
       _lhsInamesInScop
       _lhsItyconsInScope ->
-        let ( _rangeIself) =
+        let _lhsOexportErrors :: ([Error])
+            _lhsOself :: (Export)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -2277,7 +3161,21 @@ sem_Exports_Cons (hd_) (tl_) =
       _lhsImodulesInScope
       _lhsInamesInScop
       _lhsItyconsInScope ->
-        let ( _hdIexportErrors,_hdIself) =
+        let _lhsOexportErrors :: ([Error])
+            _lhsOself :: (Exports)
+            _hdIexportErrors :: ([Error])
+            _hdIself :: (Export)
+            _hdOconsInScope :: (Names)
+            _hdOmodulesInScope :: (Names)
+            _hdOnamesInScop :: (Names)
+            _hdOtyconsInScope :: (Names)
+            _tlIexportErrors :: ([Error])
+            _tlIself :: (Exports)
+            _tlOconsInScope :: (Names)
+            _tlOmodulesInScope :: (Names)
+            _tlOnamesInScop :: (Names)
+            _tlOtyconsInScope :: (Names)
+            ( _hdIexportErrors,_hdIself) =
                 (hd_ (_hdOconsInScope) (_hdOmodulesInScope) (_hdOnamesInScop) (_hdOtyconsInScope))
             ( _tlIexportErrors,_tlIself) =
                 (tl_ (_tlOconsInScope) (_tlOmodulesInScope) (_tlOnamesInScop) (_tlOtyconsInScope))
@@ -2310,7 +3208,9 @@ sem_Exports_Nil  =
       _lhsImodulesInScope
       _lhsInamesInScop
       _lhsItyconsInScope ->
-        let (_lhsOexportErrors@_) =
+        let _lhsOexportErrors :: ([Error])
+            _lhsOself :: (Exports)
+            (_lhsOexportErrors@_) =
                 []
             (_self@_) =
                 []
@@ -2325,6 +3225,7 @@ type T_Expression = (Names) ->
                     ([Error]) ->
                     ([Error]) ->
                     (Names) ->
+                    ([Option]) ->
                     (FiniteMap Name Int) ->
                     (FiniteMap Name TpScheme) ->
                     ([Warning]) ->
@@ -2383,15 +3284,55 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            _alternativesIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _alternativesIkindErrors :: ([Error])
+            _alternativesImiscerrors :: ([Error])
+            _alternativesIself :: (Alternatives)
+            _alternativesIunboundNames :: (Names)
+            _alternativesIwarnings :: ([Warning])
+            _alternativesOallTypeConstructors :: (Names)
+            _alternativesOallValueConstructors :: (Names)
+            _alternativesOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _alternativesOkindErrors :: ([Error])
+            _alternativesOmiscerrors :: ([Error])
+            _alternativesOnamesInScope :: (Names)
+            _alternativesOoptions :: ([Option])
+            _alternativesOtypeConstructors :: (FiniteMap Name Int)
+            _alternativesOvalueConstructors :: (FiniteMap Name TpScheme)
+            _alternativesOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ( _alternativesIcollectScopeInfos,_alternativesIkindErrors,_alternativesImiscerrors,_alternativesIself,_alternativesIunboundNames,_alternativesIwarnings) =
-                (alternatives_ (_alternativesOallTypeConstructors) (_alternativesOallValueConstructors) (_alternativesOcollectScopeInfos) (_alternativesOkindErrors) (_alternativesOmiscerrors) (_alternativesOnamesInScope) (_alternativesOtypeConstructors) (_alternativesOvalueConstructors) (_alternativesOwarnings))
+                (alternatives_ (_alternativesOallTypeConstructors) (_alternativesOallValueConstructors) (_alternativesOcollectScopeInfos) (_alternativesOkindErrors) (_alternativesOmiscerrors) (_alternativesOnamesInScope) (_alternativesOoptions) (_alternativesOtypeConstructors) (_alternativesOvalueConstructors) (_alternativesOwarnings))
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames ++ _alternativesIunboundNames
             (_self@_) =
@@ -2418,6 +3359,8 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
                 _lhsImiscerrors
             (_expressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -2436,6 +3379,8 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
                 _expressionImiscerrors
             (_alternativesOnamesInScope@_) =
                 _lhsInamesInScope
+            (_alternativesOoptions@_) =
+                _lhsIoptions
             (_alternativesOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_alternativesOvalueConstructors@_) =
@@ -2454,15 +3399,57 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            _qualifiersIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _qualifiersIkindErrors :: ([Error])
+            _qualifiersImiscerrors :: ([Error])
+            _qualifiersInamesInScope :: (Names)
+            _qualifiersIself :: (Qualifiers)
+            _qualifiersIunboundNames :: (Names)
+            _qualifiersIwarnings :: ([Warning])
+            _qualifiersOallTypeConstructors :: (Names)
+            _qualifiersOallValueConstructors :: (Names)
+            _qualifiersOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _qualifiersOkindErrors :: ([Error])
+            _qualifiersOmiscerrors :: ([Error])
+            _qualifiersOnamesInScope :: (Names)
+            _qualifiersOoptions :: ([Option])
+            _qualifiersOtypeConstructors :: (FiniteMap Name Int)
+            _qualifiersOunboundNames :: (Names)
+            _qualifiersOvalueConstructors :: (FiniteMap Name TpScheme)
+            _qualifiersOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ( _qualifiersIcollectScopeInfos,_qualifiersIkindErrors,_qualifiersImiscerrors,_qualifiersInamesInScope,_qualifiersIself,_qualifiersIunboundNames,_qualifiersIwarnings) =
-                (qualifiers_ (_qualifiersOallTypeConstructors) (_qualifiersOallValueConstructors) (_qualifiersOcollectScopeInfos) (_qualifiersOkindErrors) (_qualifiersOmiscerrors) (_qualifiersOnamesInScope) (_qualifiersOtypeConstructors) (_qualifiersOunboundNames) (_qualifiersOvalueConstructors) (_qualifiersOwarnings))
+                (qualifiers_ (_qualifiersOallTypeConstructors) (_qualifiersOallValueConstructors) (_qualifiersOcollectScopeInfos) (_qualifiersOkindErrors) (_qualifiersOmiscerrors) (_qualifiersOnamesInScope) (_qualifiersOoptions) (_qualifiersOtypeConstructors) (_qualifiersOunboundNames) (_qualifiersOvalueConstructors) (_qualifiersOwarnings))
             (_qualifiersOunboundNames@_) =
                 _expressionIunboundNames
             (_qualifiersOnamesInScope@_) =
@@ -2493,6 +3480,8 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
                 _lhsIkindErrors
             (_expressionOmiscerrors@_) =
                 _lhsImiscerrors
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -2509,6 +3498,8 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
                 _expressionIkindErrors
             (_qualifiersOmiscerrors@_) =
                 _expressionImiscerrors
+            (_qualifiersOoptions@_) =
+                _lhsIoptions
             (_qualifiersOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_qualifiersOvalueConstructors@_) =
@@ -2526,10 +3517,19 @@ sem_Expression_Constructor (range_) (name_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -2562,13 +3562,41 @@ sem_Expression_Do (range_) (statements_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _statementsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _statementsIkindErrors :: ([Error])
+            _statementsIlastStatementIsExpr :: (Bool)
+            _statementsImiscerrors :: ([Error])
+            _statementsInamesInScope :: (Names)
+            _statementsIself :: (Statements)
+            _statementsIunboundNames :: (Names)
+            _statementsIwarnings :: ([Warning])
+            _statementsOallTypeConstructors :: (Names)
+            _statementsOallValueConstructors :: (Names)
+            _statementsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _statementsOkindErrors :: ([Error])
+            _statementsOlastStatementIsExpr :: (Bool)
+            _statementsOmiscerrors :: ([Error])
+            _statementsOnamesInScope :: (Names)
+            _statementsOoptions :: ([Option])
+            _statementsOtypeConstructors :: (FiniteMap Name Int)
+            _statementsOunboundNames :: (Names)
+            _statementsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _statementsOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _statementsIcollectScopeInfos,_statementsIkindErrors,_statementsIlastStatementIsExpr,_statementsImiscerrors,_statementsInamesInScope,_statementsIself,_statementsIunboundNames,_statementsIwarnings) =
-                (statements_ (_statementsOallTypeConstructors) (_statementsOallValueConstructors) (_statementsOcollectScopeInfos) (_statementsOkindErrors) (_statementsOlastStatementIsExpr) (_statementsOmiscerrors) (_statementsOnamesInScope) (_statementsOtypeConstructors) (_statementsOunboundNames) (_statementsOvalueConstructors) (_statementsOwarnings))
+                (statements_ (_statementsOallTypeConstructors) (_statementsOallValueConstructors) (_statementsOcollectScopeInfos) (_statementsOkindErrors) (_statementsOlastStatementIsExpr) (_statementsOmiscerrors) (_statementsOnamesInScope) (_statementsOoptions) (_statementsOtypeConstructors) (_statementsOunboundNames) (_statementsOvalueConstructors) (_statementsOwarnings))
             (_statementsOunboundNames@_) =
                 []
             (_statementsOlastStatementIsExpr@_) =
@@ -2604,6 +3632,8 @@ sem_Expression_Do (range_) (statements_) =
                 _lhsImiscerrors
             (_statementsOnamesInScope@_) =
                 _lhsInamesInScope
+            (_statementsOoptions@_) =
+                _lhsIoptions
             (_statementsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_statementsOvalueConstructors@_) =
@@ -2623,17 +3653,73 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _fromIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _fromIkindErrors :: ([Error])
+            _fromImiscerrors :: ([Error])
+            _fromIself :: (Expression)
+            _fromIunboundNames :: (Names)
+            _fromIwarnings :: ([Warning])
+            _fromOallTypeConstructors :: (Names)
+            _fromOallValueConstructors :: (Names)
+            _fromOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _fromOkindErrors :: ([Error])
+            _fromOmiscerrors :: ([Error])
+            _fromOnamesInScope :: (Names)
+            _fromOoptions :: ([Option])
+            _fromOtypeConstructors :: (FiniteMap Name Int)
+            _fromOvalueConstructors :: (FiniteMap Name TpScheme)
+            _fromOwarnings :: ([Warning])
+            _thenIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _thenIkindErrors :: ([Error])
+            _thenImiscerrors :: ([Error])
+            _thenIself :: (MaybeExpression)
+            _thenIunboundNames :: (Names)
+            _thenIwarnings :: ([Warning])
+            _thenOallTypeConstructors :: (Names)
+            _thenOallValueConstructors :: (Names)
+            _thenOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _thenOkindErrors :: ([Error])
+            _thenOmiscerrors :: ([Error])
+            _thenOnamesInScope :: (Names)
+            _thenOoptions :: ([Option])
+            _thenOtypeConstructors :: (FiniteMap Name Int)
+            _thenOvalueConstructors :: (FiniteMap Name TpScheme)
+            _thenOwarnings :: ([Warning])
+            _toIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _toIkindErrors :: ([Error])
+            _toImiscerrors :: ([Error])
+            _toIself :: (MaybeExpression)
+            _toIunboundNames :: (Names)
+            _toIwarnings :: ([Warning])
+            _toOallTypeConstructors :: (Names)
+            _toOallValueConstructors :: (Names)
+            _toOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _toOkindErrors :: ([Error])
+            _toOmiscerrors :: ([Error])
+            _toOnamesInScope :: (Names)
+            _toOoptions :: ([Option])
+            _toOtypeConstructors :: (FiniteMap Name Int)
+            _toOvalueConstructors :: (FiniteMap Name TpScheme)
+            _toOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _fromIcollectScopeInfos,_fromIkindErrors,_fromImiscerrors,_fromIself,_fromIunboundNames,_fromIwarnings) =
-                (from_ (_fromOallTypeConstructors) (_fromOallValueConstructors) (_fromOcollectScopeInfos) (_fromOkindErrors) (_fromOmiscerrors) (_fromOnamesInScope) (_fromOtypeConstructors) (_fromOvalueConstructors) (_fromOwarnings))
+                (from_ (_fromOallTypeConstructors) (_fromOallValueConstructors) (_fromOcollectScopeInfos) (_fromOkindErrors) (_fromOmiscerrors) (_fromOnamesInScope) (_fromOoptions) (_fromOtypeConstructors) (_fromOvalueConstructors) (_fromOwarnings))
             ( _thenIcollectScopeInfos,_thenIkindErrors,_thenImiscerrors,_thenIself,_thenIunboundNames,_thenIwarnings) =
-                (then_ (_thenOallTypeConstructors) (_thenOallValueConstructors) (_thenOcollectScopeInfos) (_thenOkindErrors) (_thenOmiscerrors) (_thenOnamesInScope) (_thenOtypeConstructors) (_thenOvalueConstructors) (_thenOwarnings))
+                (then_ (_thenOallTypeConstructors) (_thenOallValueConstructors) (_thenOcollectScopeInfos) (_thenOkindErrors) (_thenOmiscerrors) (_thenOnamesInScope) (_thenOoptions) (_thenOtypeConstructors) (_thenOvalueConstructors) (_thenOwarnings))
             ( _toIcollectScopeInfos,_toIkindErrors,_toImiscerrors,_toIself,_toIunboundNames,_toIwarnings) =
-                (to_ (_toOallTypeConstructors) (_toOallValueConstructors) (_toOcollectScopeInfos) (_toOkindErrors) (_toOmiscerrors) (_toOnamesInScope) (_toOtypeConstructors) (_toOvalueConstructors) (_toOwarnings))
+                (to_ (_toOallTypeConstructors) (_toOallValueConstructors) (_toOcollectScopeInfos) (_toOkindErrors) (_toOmiscerrors) (_toOnamesInScope) (_toOoptions) (_toOtypeConstructors) (_toOvalueConstructors) (_toOwarnings))
             (_lhsOunboundNames@_) =
                 _fromIunboundNames ++ _thenIunboundNames ++ _toIunboundNames
             (_self@_) =
@@ -2660,6 +3746,8 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                 _lhsImiscerrors
             (_fromOnamesInScope@_) =
                 _lhsInamesInScope
+            (_fromOoptions@_) =
+                _lhsIoptions
             (_fromOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_fromOvalueConstructors@_) =
@@ -2678,6 +3766,8 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                 _fromImiscerrors
             (_thenOnamesInScope@_) =
                 _lhsInamesInScope
+            (_thenOoptions@_) =
+                _lhsIoptions
             (_thenOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_thenOvalueConstructors@_) =
@@ -2696,6 +3786,8 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                 _thenImiscerrors
             (_toOnamesInScope@_) =
                 _lhsInamesInScope
+            (_toOoptions@_) =
+                _lhsIoptions
             (_toOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_toOvalueConstructors@_) =
@@ -2715,17 +3807,73 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _guardExpressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _guardExpressionIkindErrors :: ([Error])
+            _guardExpressionImiscerrors :: ([Error])
+            _guardExpressionIself :: (Expression)
+            _guardExpressionIunboundNames :: (Names)
+            _guardExpressionIwarnings :: ([Warning])
+            _guardExpressionOallTypeConstructors :: (Names)
+            _guardExpressionOallValueConstructors :: (Names)
+            _guardExpressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _guardExpressionOkindErrors :: ([Error])
+            _guardExpressionOmiscerrors :: ([Error])
+            _guardExpressionOnamesInScope :: (Names)
+            _guardExpressionOoptions :: ([Option])
+            _guardExpressionOtypeConstructors :: (FiniteMap Name Int)
+            _guardExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _guardExpressionOwarnings :: ([Warning])
+            _thenExpressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _thenExpressionIkindErrors :: ([Error])
+            _thenExpressionImiscerrors :: ([Error])
+            _thenExpressionIself :: (Expression)
+            _thenExpressionIunboundNames :: (Names)
+            _thenExpressionIwarnings :: ([Warning])
+            _thenExpressionOallTypeConstructors :: (Names)
+            _thenExpressionOallValueConstructors :: (Names)
+            _thenExpressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _thenExpressionOkindErrors :: ([Error])
+            _thenExpressionOmiscerrors :: ([Error])
+            _thenExpressionOnamesInScope :: (Names)
+            _thenExpressionOoptions :: ([Option])
+            _thenExpressionOtypeConstructors :: (FiniteMap Name Int)
+            _thenExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _thenExpressionOwarnings :: ([Warning])
+            _elseExpressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _elseExpressionIkindErrors :: ([Error])
+            _elseExpressionImiscerrors :: ([Error])
+            _elseExpressionIself :: (Expression)
+            _elseExpressionIunboundNames :: (Names)
+            _elseExpressionIwarnings :: ([Warning])
+            _elseExpressionOallTypeConstructors :: (Names)
+            _elseExpressionOallValueConstructors :: (Names)
+            _elseExpressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _elseExpressionOkindErrors :: ([Error])
+            _elseExpressionOmiscerrors :: ([Error])
+            _elseExpressionOnamesInScope :: (Names)
+            _elseExpressionOoptions :: ([Option])
+            _elseExpressionOtypeConstructors :: (FiniteMap Name Int)
+            _elseExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _elseExpressionOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _guardExpressionIcollectScopeInfos,_guardExpressionIkindErrors,_guardExpressionImiscerrors,_guardExpressionIself,_guardExpressionIunboundNames,_guardExpressionIwarnings) =
-                (guardExpression_ (_guardExpressionOallTypeConstructors) (_guardExpressionOallValueConstructors) (_guardExpressionOcollectScopeInfos) (_guardExpressionOkindErrors) (_guardExpressionOmiscerrors) (_guardExpressionOnamesInScope) (_guardExpressionOtypeConstructors) (_guardExpressionOvalueConstructors) (_guardExpressionOwarnings))
+                (guardExpression_ (_guardExpressionOallTypeConstructors) (_guardExpressionOallValueConstructors) (_guardExpressionOcollectScopeInfos) (_guardExpressionOkindErrors) (_guardExpressionOmiscerrors) (_guardExpressionOnamesInScope) (_guardExpressionOoptions) (_guardExpressionOtypeConstructors) (_guardExpressionOvalueConstructors) (_guardExpressionOwarnings))
             ( _thenExpressionIcollectScopeInfos,_thenExpressionIkindErrors,_thenExpressionImiscerrors,_thenExpressionIself,_thenExpressionIunboundNames,_thenExpressionIwarnings) =
-                (thenExpression_ (_thenExpressionOallTypeConstructors) (_thenExpressionOallValueConstructors) (_thenExpressionOcollectScopeInfos) (_thenExpressionOkindErrors) (_thenExpressionOmiscerrors) (_thenExpressionOnamesInScope) (_thenExpressionOtypeConstructors) (_thenExpressionOvalueConstructors) (_thenExpressionOwarnings))
+                (thenExpression_ (_thenExpressionOallTypeConstructors) (_thenExpressionOallValueConstructors) (_thenExpressionOcollectScopeInfos) (_thenExpressionOkindErrors) (_thenExpressionOmiscerrors) (_thenExpressionOnamesInScope) (_thenExpressionOoptions) (_thenExpressionOtypeConstructors) (_thenExpressionOvalueConstructors) (_thenExpressionOwarnings))
             ( _elseExpressionIcollectScopeInfos,_elseExpressionIkindErrors,_elseExpressionImiscerrors,_elseExpressionIself,_elseExpressionIunboundNames,_elseExpressionIwarnings) =
-                (elseExpression_ (_elseExpressionOallTypeConstructors) (_elseExpressionOallValueConstructors) (_elseExpressionOcollectScopeInfos) (_elseExpressionOkindErrors) (_elseExpressionOmiscerrors) (_elseExpressionOnamesInScope) (_elseExpressionOtypeConstructors) (_elseExpressionOvalueConstructors) (_elseExpressionOwarnings))
+                (elseExpression_ (_elseExpressionOallTypeConstructors) (_elseExpressionOallValueConstructors) (_elseExpressionOcollectScopeInfos) (_elseExpressionOkindErrors) (_elseExpressionOmiscerrors) (_elseExpressionOnamesInScope) (_elseExpressionOoptions) (_elseExpressionOtypeConstructors) (_elseExpressionOvalueConstructors) (_elseExpressionOwarnings))
             (_lhsOunboundNames@_) =
                 _guardExpressionIunboundNames ++ _thenExpressionIunboundNames ++ _elseExpressionIunboundNames
             (_self@_) =
@@ -2752,6 +3900,8 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                 _lhsImiscerrors
             (_guardExpressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_guardExpressionOoptions@_) =
+                _lhsIoptions
             (_guardExpressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_guardExpressionOvalueConstructors@_) =
@@ -2770,6 +3920,8 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                 _guardExpressionImiscerrors
             (_thenExpressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_thenExpressionOoptions@_) =
+                _lhsIoptions
             (_thenExpressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_thenExpressionOvalueConstructors@_) =
@@ -2788,6 +3940,8 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                 _thenExpressionImiscerrors
             (_elseExpressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_elseExpressionOoptions@_) =
+                _lhsIoptions
             (_elseExpressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_elseExpressionOvalueConstructors@_) =
@@ -2807,17 +3961,73 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _leftExpressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _leftExpressionIkindErrors :: ([Error])
+            _leftExpressionImiscerrors :: ([Error])
+            _leftExpressionIself :: (MaybeExpression)
+            _leftExpressionIunboundNames :: (Names)
+            _leftExpressionIwarnings :: ([Warning])
+            _leftExpressionOallTypeConstructors :: (Names)
+            _leftExpressionOallValueConstructors :: (Names)
+            _leftExpressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _leftExpressionOkindErrors :: ([Error])
+            _leftExpressionOmiscerrors :: ([Error])
+            _leftExpressionOnamesInScope :: (Names)
+            _leftExpressionOoptions :: ([Option])
+            _leftExpressionOtypeConstructors :: (FiniteMap Name Int)
+            _leftExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _leftExpressionOwarnings :: ([Warning])
+            _operatorIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _operatorIkindErrors :: ([Error])
+            _operatorImiscerrors :: ([Error])
+            _operatorIself :: (Expression)
+            _operatorIunboundNames :: (Names)
+            _operatorIwarnings :: ([Warning])
+            _operatorOallTypeConstructors :: (Names)
+            _operatorOallValueConstructors :: (Names)
+            _operatorOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _operatorOkindErrors :: ([Error])
+            _operatorOmiscerrors :: ([Error])
+            _operatorOnamesInScope :: (Names)
+            _operatorOoptions :: ([Option])
+            _operatorOtypeConstructors :: (FiniteMap Name Int)
+            _operatorOvalueConstructors :: (FiniteMap Name TpScheme)
+            _operatorOwarnings :: ([Warning])
+            _rightExpressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _rightExpressionIkindErrors :: ([Error])
+            _rightExpressionImiscerrors :: ([Error])
+            _rightExpressionIself :: (MaybeExpression)
+            _rightExpressionIunboundNames :: (Names)
+            _rightExpressionIwarnings :: ([Warning])
+            _rightExpressionOallTypeConstructors :: (Names)
+            _rightExpressionOallValueConstructors :: (Names)
+            _rightExpressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _rightExpressionOkindErrors :: ([Error])
+            _rightExpressionOmiscerrors :: ([Error])
+            _rightExpressionOnamesInScope :: (Names)
+            _rightExpressionOoptions :: ([Option])
+            _rightExpressionOtypeConstructors :: (FiniteMap Name Int)
+            _rightExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _rightExpressionOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _leftExpressionIcollectScopeInfos,_leftExpressionIkindErrors,_leftExpressionImiscerrors,_leftExpressionIself,_leftExpressionIunboundNames,_leftExpressionIwarnings) =
-                (leftExpression_ (_leftExpressionOallTypeConstructors) (_leftExpressionOallValueConstructors) (_leftExpressionOcollectScopeInfos) (_leftExpressionOkindErrors) (_leftExpressionOmiscerrors) (_leftExpressionOnamesInScope) (_leftExpressionOtypeConstructors) (_leftExpressionOvalueConstructors) (_leftExpressionOwarnings))
+                (leftExpression_ (_leftExpressionOallTypeConstructors) (_leftExpressionOallValueConstructors) (_leftExpressionOcollectScopeInfos) (_leftExpressionOkindErrors) (_leftExpressionOmiscerrors) (_leftExpressionOnamesInScope) (_leftExpressionOoptions) (_leftExpressionOtypeConstructors) (_leftExpressionOvalueConstructors) (_leftExpressionOwarnings))
             ( _operatorIcollectScopeInfos,_operatorIkindErrors,_operatorImiscerrors,_operatorIself,_operatorIunboundNames,_operatorIwarnings) =
-                (operator_ (_operatorOallTypeConstructors) (_operatorOallValueConstructors) (_operatorOcollectScopeInfos) (_operatorOkindErrors) (_operatorOmiscerrors) (_operatorOnamesInScope) (_operatorOtypeConstructors) (_operatorOvalueConstructors) (_operatorOwarnings))
+                (operator_ (_operatorOallTypeConstructors) (_operatorOallValueConstructors) (_operatorOcollectScopeInfos) (_operatorOkindErrors) (_operatorOmiscerrors) (_operatorOnamesInScope) (_operatorOoptions) (_operatorOtypeConstructors) (_operatorOvalueConstructors) (_operatorOwarnings))
             ( _rightExpressionIcollectScopeInfos,_rightExpressionIkindErrors,_rightExpressionImiscerrors,_rightExpressionIself,_rightExpressionIunboundNames,_rightExpressionIwarnings) =
-                (rightExpression_ (_rightExpressionOallTypeConstructors) (_rightExpressionOallValueConstructors) (_rightExpressionOcollectScopeInfos) (_rightExpressionOkindErrors) (_rightExpressionOmiscerrors) (_rightExpressionOnamesInScope) (_rightExpressionOtypeConstructors) (_rightExpressionOvalueConstructors) (_rightExpressionOwarnings))
+                (rightExpression_ (_rightExpressionOallTypeConstructors) (_rightExpressionOallValueConstructors) (_rightExpressionOcollectScopeInfos) (_rightExpressionOkindErrors) (_rightExpressionOmiscerrors) (_rightExpressionOnamesInScope) (_rightExpressionOoptions) (_rightExpressionOtypeConstructors) (_rightExpressionOvalueConstructors) (_rightExpressionOwarnings))
             (_lhsOunboundNames@_) =
                 _leftExpressionIunboundNames ++ _operatorIunboundNames ++ _rightExpressionIunboundNames
             (_self@_) =
@@ -2844,6 +4054,8 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                 _lhsImiscerrors
             (_leftExpressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_leftExpressionOoptions@_) =
+                _lhsIoptions
             (_leftExpressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_leftExpressionOvalueConstructors@_) =
@@ -2862,6 +4074,8 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                 _leftExpressionImiscerrors
             (_operatorOnamesInScope@_) =
                 _lhsInamesInScope
+            (_operatorOoptions@_) =
+                _lhsIoptions
             (_operatorOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_operatorOvalueConstructors@_) =
@@ -2880,6 +4094,8 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                 _operatorImiscerrors
             (_rightExpressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_rightExpressionOoptions@_) =
+                _lhsIoptions
             (_rightExpressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_rightExpressionOvalueConstructors@_) =
@@ -2898,15 +4114,55 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _patternsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternsImiscerrors :: ([Error])
+            _patternsInumberOfPatterns :: (Int)
+            _patternsIpatVarNames :: (Names)
+            _patternsIself :: (Patterns)
+            _patternsIunboundNames :: (Names)
+            _patternsIwarnings :: ([Warning])
+            _patternsOallTypeConstructors :: (Names)
+            _patternsOallValueConstructors :: (Names)
+            _patternsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternsOlhsPattern :: (Bool)
+            _patternsOmiscerrors :: ([Error])
+            _patternsOnamesInScope :: (Names)
+            _patternsOtypeConstructors :: (FiniteMap Name Int)
+            _patternsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternsOwarnings :: ([Warning])
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _patternsIcollectScopeInfos,_patternsImiscerrors,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIself,_patternsIunboundNames,_patternsIwarnings) =
                 (patterns_ (_patternsOallTypeConstructors) (_patternsOallValueConstructors) (_patternsOcollectScopeInfos) (_patternsOlhsPattern) (_patternsOmiscerrors) (_patternsOnamesInScope) (_patternsOtypeConstructors) (_patternsOvalueConstructors) (_patternsOwarnings))
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_lhsOunboundNames@_) =
                 _unboundNames
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
@@ -2953,6 +4209,8 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
                 _patternsImiscerrors
             (_expressionOnamesInScope@_) =
                 _namesInScope
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -2971,10 +4229,65 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _declarationsIcollectTypeConstructors :: ([(Name,Int)])
+            _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
+            _declarationsIdeclVarNames :: (Names)
+            _declarationsIkindErrors :: ([Error])
+            _declarationsImiscerrors :: ([Error])
+            _declarationsIoperatorFixities :: ([(Name,(Int,Assoc))])
+            _declarationsIpreviousWasAlsoFB :: (Maybe Name)
+            _declarationsIself :: (Declarations)
+            _declarationsIsuspiciousFBs :: ([(Name,Name)])
+            _declarationsItypeSignatures :: ([(Name,TpScheme)])
+            _declarationsIunboundNames :: (Names)
+            _declarationsIwarnings :: ([Warning])
+            _declarationsOallTypeConstructors :: (Names)
+            _declarationsOallValueConstructors :: (Names)
+            _declarationsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _declarationsOcollectTypeConstructors :: ([(Name,Int)])
+            _declarationsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _declarationsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _declarationsOkindErrors :: ([Error])
+            _declarationsOmiscerrors :: ([Error])
+            _declarationsOnamesInScope :: (Names)
+            _declarationsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _declarationsOoptions :: ([Option])
+            _declarationsOpreviousWasAlsoFB :: (Maybe Name)
+            _declarationsOsuspiciousFBs :: ([(Name,Name)])
+            _declarationsOtypeConstructors :: (FiniteMap Name Int)
+            _declarationsOtypeSignatures :: ([(Name,TpScheme)])
+            _declarationsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _declarationsOwarnings :: ([Warning])
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _declarationsIcollectScopeInfos,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
                 (declarations_ (_declarationsOallTypeConstructors)
@@ -2987,6 +4300,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                                (_declarationsOmiscerrors)
                                (_declarationsOnamesInScope)
                                (_declarationsOoperatorFixities)
+                               (_declarationsOoptions)
                                (_declarationsOpreviousWasAlsoFB)
                                (_declarationsOsuspiciousFBs)
                                (_declarationsOtypeConstructors)
@@ -2994,7 +4308,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                                (_declarationsOvalueConstructors)
                                (_declarationsOwarnings))
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_declarationsOtypeSignatures@_) =
                 []
             (_lhsOunboundNames@_) =
@@ -3046,6 +4360,8 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                 _namesInScope
             (_declarationsOoperatorFixities@_) =
                 _operatorFixities
+            (_declarationsOoptions@_) =
+                _lhsIoptions
             (_declarationsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_declarationsOvalueConstructors@_) =
@@ -3064,6 +4380,8 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                 _declarationsImiscerrors
             (_expressionOnamesInScope@_) =
                 _namesInScope
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -3081,13 +4399,37 @@ sem_Expression_List (range_) (expressions_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _expressionsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionsIkindErrors :: ([Error])
+            _expressionsImiscerrors :: ([Error])
+            _expressionsIself :: (Expressions)
+            _expressionsIunboundNames :: (Names)
+            _expressionsIwarnings :: ([Warning])
+            _expressionsOallTypeConstructors :: (Names)
+            _expressionsOallValueConstructors :: (Names)
+            _expressionsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionsOkindErrors :: ([Error])
+            _expressionsOmiscerrors :: ([Error])
+            _expressionsOnamesInScope :: (Names)
+            _expressionsOoptions :: ([Option])
+            _expressionsOtypeConstructors :: (FiniteMap Name Int)
+            _expressionsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionsOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _expressionsIcollectScopeInfos,_expressionsIkindErrors,_expressionsImiscerrors,_expressionsIself,_expressionsIunboundNames,_expressionsIwarnings) =
-                (expressions_ (_expressionsOallTypeConstructors) (_expressionsOallValueConstructors) (_expressionsOcollectScopeInfos) (_expressionsOkindErrors) (_expressionsOmiscerrors) (_expressionsOnamesInScope) (_expressionsOtypeConstructors) (_expressionsOvalueConstructors) (_expressionsOwarnings))
+                (expressions_ (_expressionsOallTypeConstructors) (_expressionsOallValueConstructors) (_expressionsOcollectScopeInfos) (_expressionsOkindErrors) (_expressionsOmiscerrors) (_expressionsOnamesInScope) (_expressionsOoptions) (_expressionsOtypeConstructors) (_expressionsOvalueConstructors) (_expressionsOwarnings))
             (_lhsOunboundNames@_) =
                 _expressionsIunboundNames
             (_self@_) =
@@ -3114,6 +4456,8 @@ sem_Expression_List (range_) (expressions_) =
                 _lhsImiscerrors
             (_expressionsOnamesInScope@_) =
                 _lhsInamesInScope
+            (_expressionsOoptions@_) =
+                _lhsIoptions
             (_expressionsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionsOvalueConstructors@_) =
@@ -3131,10 +4475,23 @@ sem_Expression_Literal (range_) (literal_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _literalIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _literalImiscerrors :: ([Error])
+            _literalIself :: (Literal)
+            _literalOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _literalOmiscerrors :: ([Error])
+            ( _rangeIself) =
                 (range_ )
             ( _literalIcollectScopeInfos,_literalImiscerrors,_literalIself) =
                 (literal_ (_literalOcollectScopeInfos) (_literalOmiscerrors))
@@ -3167,13 +4524,37 @@ sem_Expression_Negate (range_) (expression_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_lhsOmiscerrors@_) =
                 ( if nameFromString "negate" `elem` _lhsInamesInScope
                   then []
@@ -3204,6 +4585,8 @@ sem_Expression_Negate (range_) (expression_) =
                 _lhsImiscerrors
             (_expressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -3221,13 +4604,37 @@ sem_Expression_NegateFloat (range_) (expression_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -3254,6 +4661,8 @@ sem_Expression_NegateFloat (range_) (expression_) =
                 _lhsImiscerrors
             (_expressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -3272,15 +4681,55 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _functionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _functionIkindErrors :: ([Error])
+            _functionImiscerrors :: ([Error])
+            _functionIself :: (Expression)
+            _functionIunboundNames :: (Names)
+            _functionIwarnings :: ([Warning])
+            _functionOallTypeConstructors :: (Names)
+            _functionOallValueConstructors :: (Names)
+            _functionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _functionOkindErrors :: ([Error])
+            _functionOmiscerrors :: ([Error])
+            _functionOnamesInScope :: (Names)
+            _functionOoptions :: ([Option])
+            _functionOtypeConstructors :: (FiniteMap Name Int)
+            _functionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _functionOwarnings :: ([Warning])
+            _argumentsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _argumentsIkindErrors :: ([Error])
+            _argumentsImiscerrors :: ([Error])
+            _argumentsIself :: (Expressions)
+            _argumentsIunboundNames :: (Names)
+            _argumentsIwarnings :: ([Warning])
+            _argumentsOallTypeConstructors :: (Names)
+            _argumentsOallValueConstructors :: (Names)
+            _argumentsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _argumentsOkindErrors :: ([Error])
+            _argumentsOmiscerrors :: ([Error])
+            _argumentsOnamesInScope :: (Names)
+            _argumentsOoptions :: ([Option])
+            _argumentsOtypeConstructors :: (FiniteMap Name Int)
+            _argumentsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _argumentsOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _functionIcollectScopeInfos,_functionIkindErrors,_functionImiscerrors,_functionIself,_functionIunboundNames,_functionIwarnings) =
-                (function_ (_functionOallTypeConstructors) (_functionOallValueConstructors) (_functionOcollectScopeInfos) (_functionOkindErrors) (_functionOmiscerrors) (_functionOnamesInScope) (_functionOtypeConstructors) (_functionOvalueConstructors) (_functionOwarnings))
+                (function_ (_functionOallTypeConstructors) (_functionOallValueConstructors) (_functionOcollectScopeInfos) (_functionOkindErrors) (_functionOmiscerrors) (_functionOnamesInScope) (_functionOoptions) (_functionOtypeConstructors) (_functionOvalueConstructors) (_functionOwarnings))
             ( _argumentsIcollectScopeInfos,_argumentsIkindErrors,_argumentsImiscerrors,_argumentsIself,_argumentsIunboundNames,_argumentsIwarnings) =
-                (arguments_ (_argumentsOallTypeConstructors) (_argumentsOallValueConstructors) (_argumentsOcollectScopeInfos) (_argumentsOkindErrors) (_argumentsOmiscerrors) (_argumentsOnamesInScope) (_argumentsOtypeConstructors) (_argumentsOvalueConstructors) (_argumentsOwarnings))
+                (arguments_ (_argumentsOallTypeConstructors) (_argumentsOallValueConstructors) (_argumentsOcollectScopeInfos) (_argumentsOkindErrors) (_argumentsOmiscerrors) (_argumentsOnamesInScope) (_argumentsOoptions) (_argumentsOtypeConstructors) (_argumentsOvalueConstructors) (_argumentsOwarnings))
             (_lhsOunboundNames@_) =
                 _functionIunboundNames ++ _argumentsIunboundNames
             (_self@_) =
@@ -3307,6 +4756,8 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
                 _lhsImiscerrors
             (_functionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_functionOoptions@_) =
+                _lhsIoptions
             (_functionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_functionOvalueConstructors@_) =
@@ -3325,6 +4776,8 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
                 _functionImiscerrors
             (_argumentsOnamesInScope@_) =
                 _lhsInamesInScope
+            (_argumentsOoptions@_) =
+                _lhsIoptions
             (_argumentsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_argumentsOvalueConstructors@_) =
@@ -3342,13 +4795,37 @@ sem_Expression_Parenthesized (range_) (expression_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -3375,6 +4852,8 @@ sem_Expression_Parenthesized (range_) (expression_) =
                 _lhsImiscerrors
             (_expressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -3393,15 +4872,30 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _recordExpressionBindingsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _recordExpressionBindingsIself :: (RecordExpressionBindings)
+            _recordExpressionBindingsIunboundNames :: (Names)
+            _recordExpressionBindingsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _recordExpressionBindingsOnamesInScope :: (Names)
+            _recordExpressionBindingsOoptions :: ([Option])
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
             ( _recordExpressionBindingsIcollectScopeInfos,_recordExpressionBindingsIself,_recordExpressionBindingsIunboundNames) =
-                (recordExpressionBindings_ (_recordExpressionBindingsOcollectScopeInfos) (_recordExpressionBindingsOnamesInScope))
+                (recordExpressionBindings_ (_recordExpressionBindingsOcollectScopeInfos) (_recordExpressionBindingsOnamesInScope) (_recordExpressionBindingsOoptions))
             ((_assumptions@_,_constraints@_,_beta@_)) =
                 internalError "PartialSyntax.ag" "n/a" "Expression.RecordConstruction"
             (_lhsOunboundNames@_) =
@@ -3422,6 +4916,8 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
                 _lhsIcollectScopeInfos
             (_recordExpressionBindingsOnamesInScope@_) =
                 _lhsInamesInScope
+            (_recordExpressionBindingsOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)
 sem_Expression_RecordUpdate :: (T_Range) ->
                                (T_Expression) ->
@@ -3434,15 +4930,45 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            _recordExpressionBindingsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _recordExpressionBindingsIself :: (RecordExpressionBindings)
+            _recordExpressionBindingsIunboundNames :: (Names)
+            _recordExpressionBindingsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _recordExpressionBindingsOnamesInScope :: (Names)
+            _recordExpressionBindingsOoptions :: ([Option])
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ( _recordExpressionBindingsIcollectScopeInfos,_recordExpressionBindingsIself,_recordExpressionBindingsIunboundNames) =
-                (recordExpressionBindings_ (_recordExpressionBindingsOcollectScopeInfos) (_recordExpressionBindingsOnamesInScope))
+                (recordExpressionBindings_ (_recordExpressionBindingsOcollectScopeInfos) (_recordExpressionBindingsOnamesInScope) (_recordExpressionBindingsOoptions))
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames ++ _recordExpressionBindingsIunboundNames
             (_self@_) =
@@ -3469,6 +4995,8 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
                 _lhsImiscerrors
             (_expressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -3479,6 +5007,8 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
                 _expressionIcollectScopeInfos
             (_recordExpressionBindingsOnamesInScope@_) =
                 _lhsInamesInScope
+            (_recordExpressionBindingsOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)
 sem_Expression_Tuple :: (T_Range) ->
                         (T_Expressions) ->
@@ -3490,13 +5020,37 @@ sem_Expression_Tuple (range_) (expressions_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _expressionsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionsIkindErrors :: ([Error])
+            _expressionsImiscerrors :: ([Error])
+            _expressionsIself :: (Expressions)
+            _expressionsIunboundNames :: (Names)
+            _expressionsIwarnings :: ([Warning])
+            _expressionsOallTypeConstructors :: (Names)
+            _expressionsOallValueConstructors :: (Names)
+            _expressionsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionsOkindErrors :: ([Error])
+            _expressionsOmiscerrors :: ([Error])
+            _expressionsOnamesInScope :: (Names)
+            _expressionsOoptions :: ([Option])
+            _expressionsOtypeConstructors :: (FiniteMap Name Int)
+            _expressionsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionsOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _expressionsIcollectScopeInfos,_expressionsIkindErrors,_expressionsImiscerrors,_expressionsIself,_expressionsIunboundNames,_expressionsIwarnings) =
-                (expressions_ (_expressionsOallTypeConstructors) (_expressionsOallValueConstructors) (_expressionsOcollectScopeInfos) (_expressionsOkindErrors) (_expressionsOmiscerrors) (_expressionsOnamesInScope) (_expressionsOtypeConstructors) (_expressionsOvalueConstructors) (_expressionsOwarnings))
+                (expressions_ (_expressionsOallTypeConstructors) (_expressionsOallValueConstructors) (_expressionsOcollectScopeInfos) (_expressionsOkindErrors) (_expressionsOmiscerrors) (_expressionsOnamesInScope) (_expressionsOoptions) (_expressionsOtypeConstructors) (_expressionsOvalueConstructors) (_expressionsOwarnings))
             (_lhsOunboundNames@_) =
                 _expressionsIunboundNames
             (_self@_) =
@@ -3523,6 +5077,8 @@ sem_Expression_Tuple (range_) (expressions_) =
                 _lhsImiscerrors
             (_expressionsOnamesInScope@_) =
                 _lhsInamesInScope
+            (_expressionsOoptions@_) =
+                _lhsIoptions
             (_expressionsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionsOvalueConstructors@_) =
@@ -3541,15 +5097,44 @@ sem_Expression_Typed (range_) (expression_) (type_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            _typeImiscerrors :: ([Error])
+            _typeIself :: (Type)
+            _typeItypevariables :: (Names)
+            _typeOmiscerrors :: ([Error])
+            _typeOoptions :: ([Option])
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ( _typeImiscerrors,_typeIself,_typeItypevariables) =
-                (type_ (_typeOmiscerrors))
+                (type_ (_typeOmiscerrors) (_typeOoptions))
             (_newErrors@_) =
                 checkType _lhsItypeConstructors (_lhsInamesInScope ++ _lhsIallValueConstructors) _typeIself
             (_lhsOkindErrors@_) =
@@ -3578,6 +5163,8 @@ sem_Expression_Typed (range_) (expression_) (type_) =
                 _lhsImiscerrors
             (_expressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -3586,6 +5173,8 @@ sem_Expression_Typed (range_) (expression_) (type_) =
                 _lhsIwarnings
             (_typeOmiscerrors@_) =
                 _expressionImiscerrors
+            (_typeOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)
 sem_Expression_Variable :: (T_Range) ->
                            (T_Name) ->
@@ -3597,10 +5186,19 @@ sem_Expression_Variable (range_) (name_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -3631,6 +5229,7 @@ type T_Expressions = (Names) ->
                      ([Error]) ->
                      ([Error]) ->
                      (Names) ->
+                     ([Option]) ->
                      (FiniteMap Name Int) ->
                      (FiniteMap Name TpScheme) ->
                      ([Warning]) ->
@@ -3650,13 +5249,52 @@ sem_Expressions_Cons (hd_) (tl_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expressions)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _hdIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdIkindErrors :: ([Error])
+            _hdImiscerrors :: ([Error])
+            _hdIself :: (Expression)
+            _hdIunboundNames :: (Names)
+            _hdIwarnings :: ([Warning])
+            _hdOallTypeConstructors :: (Names)
+            _hdOallValueConstructors :: (Names)
+            _hdOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdOkindErrors :: ([Error])
+            _hdOmiscerrors :: ([Error])
+            _hdOnamesInScope :: (Names)
+            _hdOoptions :: ([Option])
+            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOwarnings :: ([Warning])
+            _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlIkindErrors :: ([Error])
+            _tlImiscerrors :: ([Error])
+            _tlIself :: (Expressions)
+            _tlIunboundNames :: (Names)
+            _tlIwarnings :: ([Warning])
+            _tlOallTypeConstructors :: (Names)
+            _tlOallValueConstructors :: (Names)
+            _tlOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlOkindErrors :: ([Error])
+            _tlOmiscerrors :: ([Error])
+            _tlOnamesInScope :: (Names)
+            _tlOoptions :: ([Option])
+            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOwarnings :: ([Warning])
+            ( _hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -3683,6 +5321,8 @@ sem_Expressions_Cons (hd_) (tl_) =
                 _lhsImiscerrors
             (_hdOnamesInScope@_) =
                 _lhsInamesInScope
+            (_hdOoptions@_) =
+                _lhsIoptions
             (_hdOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_hdOvalueConstructors@_) =
@@ -3701,6 +5341,8 @@ sem_Expressions_Cons (hd_) (tl_) =
                 _hdImiscerrors
             (_tlOnamesInScope@_) =
                 _lhsInamesInScope
+            (_tlOoptions@_) =
+                _lhsIoptions
             (_tlOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_tlOvalueConstructors@_) =
@@ -3716,10 +5358,17 @@ sem_Expressions_Nil  =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let (_lhsOunboundNames@_) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Expressions)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            (_lhsOunboundNames@_) =
                 []
             (_self@_) =
                 []
@@ -3738,6 +5387,7 @@ sem_Expressions_Nil  =
 -- semantic domain
 type T_FieldDeclaration = ([Error]) ->
                           (Names) ->
+                          ([Option]) ->
                           ( ([Error]),(FieldDeclaration),(Names))
 -- cata
 sem_FieldDeclaration :: (FieldDeclaration) ->
@@ -3750,13 +5400,33 @@ sem_FieldDeclaration_FieldDeclaration :: (T_Range) ->
                                          (T_FieldDeclaration)
 sem_FieldDeclaration_FieldDeclaration (range_) (names_) (type_) =
     \ _lhsImiscerrors
-      _lhsInamesInScope ->
-        let ( _rangeIself) =
+      _lhsInamesInScope
+      _lhsIoptions ->
+        let _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (FieldDeclaration)
+            _lhsOunboundNames :: (Names)
+            _rangeIself :: (Range)
+            _namesIself :: (Names)
+            _typeIkindErrors :: ([Error])
+            _typeImiscerrors :: ([Error])
+            _typeIself :: (AnnotatedType)
+            _typeItype :: (Type)
+            _typeItypevariables :: (Names)
+            _typeIunboundNames :: (Names)
+            _typeOallTypeConstructors :: (Names)
+            _typeOallValueConstructors :: (Names)
+            _typeOkindErrors :: ([Error])
+            _typeOmiscerrors :: ([Error])
+            _typeOnamesInScope :: (Names)
+            _typeOoptions :: ([Option])
+            _typeOtypeConstructors :: (FiniteMap Name Int)
+            _typeOvalueConstructors :: (FiniteMap Name TpScheme)
+            ( _rangeIself) =
                 (range_ )
             ( _namesIself) =
                 (names_ )
             ( _typeIkindErrors,_typeImiscerrors,_typeIself,_typeItype,_typeItypevariables,_typeIunboundNames) =
-                (type_ (_typeOallTypeConstructors) (_typeOallValueConstructors) (_typeOkindErrors) (_typeOmiscerrors) (_typeOnamesInScope) (_typeOtypeConstructors) (_typeOvalueConstructors))
+                (type_ (_typeOallTypeConstructors) (_typeOallValueConstructors) (_typeOkindErrors) (_typeOmiscerrors) (_typeOnamesInScope) (_typeOoptions) (_typeOtypeConstructors) (_typeOvalueConstructors))
             ((_kindErrors@_,_tyconEnv@_,_constructorenv@_,_importEnvironment@_,_valueConstructors@_,_allValueConstructors@_,_typeConstructors@_,_allTypeConstructors@_)) =
                 internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
             (_lhsOunboundNames@_) =
@@ -3777,6 +5447,8 @@ sem_FieldDeclaration_FieldDeclaration (range_) (names_) (type_) =
                 _lhsImiscerrors
             (_typeOnamesInScope@_) =
                 _lhsInamesInScope
+            (_typeOoptions@_) =
+                _lhsIoptions
             (_typeOtypeConstructors@_) =
                 _typeConstructors
             (_typeOvalueConstructors@_) =
@@ -3786,6 +5458,7 @@ sem_FieldDeclaration_FieldDeclaration (range_) (names_) (type_) =
 -- semantic domain
 type T_FieldDeclarations = ([Error]) ->
                            (Names) ->
+                           ([Option]) ->
                            ( ([Error]),(FieldDeclarations),(Names))
 -- cata
 sem_FieldDeclarations :: (FieldDeclarations) ->
@@ -3797,11 +5470,27 @@ sem_FieldDeclarations_Cons :: (T_FieldDeclaration) ->
                               (T_FieldDeclarations)
 sem_FieldDeclarations_Cons (hd_) (tl_) =
     \ _lhsImiscerrors
-      _lhsInamesInScope ->
-        let ( _hdImiscerrors,_hdIself,_hdIunboundNames) =
-                (hd_ (_hdOmiscerrors) (_hdOnamesInScope))
+      _lhsInamesInScope
+      _lhsIoptions ->
+        let _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (FieldDeclarations)
+            _lhsOunboundNames :: (Names)
+            _hdImiscerrors :: ([Error])
+            _hdIself :: (FieldDeclaration)
+            _hdIunboundNames :: (Names)
+            _hdOmiscerrors :: ([Error])
+            _hdOnamesInScope :: (Names)
+            _hdOoptions :: ([Option])
+            _tlImiscerrors :: ([Error])
+            _tlIself :: (FieldDeclarations)
+            _tlIunboundNames :: (Names)
+            _tlOmiscerrors :: ([Error])
+            _tlOnamesInScope :: (Names)
+            _tlOoptions :: ([Option])
+            ( _hdImiscerrors,_hdIself,_hdIunboundNames) =
+                (hd_ (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions))
             ( _tlImiscerrors,_tlIself,_tlIunboundNames) =
-                (tl_ (_tlOmiscerrors) (_tlOnamesInScope))
+                (tl_ (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions))
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -3814,16 +5503,24 @@ sem_FieldDeclarations_Cons (hd_) (tl_) =
                 _lhsImiscerrors
             (_hdOnamesInScope@_) =
                 _lhsInamesInScope
+            (_hdOoptions@_) =
+                _lhsIoptions
             (_tlOmiscerrors@_) =
                 _hdImiscerrors
             (_tlOnamesInScope@_) =
                 _lhsInamesInScope
+            (_tlOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOmiscerrors,_lhsOself,_lhsOunboundNames)
 sem_FieldDeclarations_Nil :: (T_FieldDeclarations)
 sem_FieldDeclarations_Nil  =
     \ _lhsImiscerrors
-      _lhsInamesInScope ->
-        let (_lhsOunboundNames@_) =
+      _lhsInamesInScope
+      _lhsIoptions ->
+        let _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (FieldDeclarations)
+            _lhsOunboundNames :: (Names)
+            (_lhsOunboundNames@_) =
                 []
             (_self@_) =
                 []
@@ -3847,7 +5544,9 @@ sem_Fixity ((Fixity_Infixr (_range))) =
 sem_Fixity_Infix :: (T_Range) ->
                     (T_Fixity)
 sem_Fixity_Infix (range_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Fixity)
+        _rangeIself :: (Range)
+        ( _rangeIself) =
             (range_ )
         (_self@_) =
             Fixity_Infix _rangeIself
@@ -3857,7 +5556,9 @@ sem_Fixity_Infix (range_) =
 sem_Fixity_Infixl :: (T_Range) ->
                      (T_Fixity)
 sem_Fixity_Infixl (range_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Fixity)
+        _rangeIself :: (Range)
+        ( _rangeIself) =
             (range_ )
         (_self@_) =
             Fixity_Infixl _rangeIself
@@ -3867,7 +5568,9 @@ sem_Fixity_Infixl (range_) =
 sem_Fixity_Infixr :: (T_Range) ->
                      (T_Fixity)
 sem_Fixity_Infixr (range_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Fixity)
+        _rangeIself :: (Range)
+        ( _rangeIself) =
             (range_ )
         (_self@_) =
             Fixity_Infixr _rangeIself
@@ -3882,6 +5585,7 @@ type T_FunctionBinding = (Names) ->
                          ([Error]) ->
                          ([Error]) ->
                          (Names) ->
+                         ([Option]) ->
                          (FiniteMap Name Int) ->
                          (FiniteMap Name TpScheme) ->
                          ([Warning]) ->
@@ -3902,15 +5606,57 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOarity :: (Int)
+            _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOname :: (Name)
+            _lhsOself :: (FunctionBinding)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _lefthandsideIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lefthandsideImiscerrors :: ([Error])
+            _lefthandsideIname :: (Name)
+            _lefthandsideInumberOfPatterns :: (Int)
+            _lefthandsideIpatVarNames :: (Names)
+            _lefthandsideIself :: (LeftHandSide)
+            _lefthandsideIunboundNames :: (Names)
+            _lefthandsideIwarnings :: ([Warning])
+            _lefthandsideOallTypeConstructors :: (Names)
+            _lefthandsideOallValueConstructors :: (Names)
+            _lefthandsideOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lefthandsideOmiscerrors :: ([Error])
+            _lefthandsideOnamesInScope :: (Names)
+            _lefthandsideOtypeConstructors :: (FiniteMap Name Int)
+            _lefthandsideOvalueConstructors :: (FiniteMap Name TpScheme)
+            _lefthandsideOwarnings :: ([Warning])
+            _righthandsideIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _righthandsideIkindErrors :: ([Error])
+            _righthandsideImiscerrors :: ([Error])
+            _righthandsideIself :: (RightHandSide)
+            _righthandsideIunboundNames :: (Names)
+            _righthandsideIwarnings :: ([Warning])
+            _righthandsideOallTypeConstructors :: (Names)
+            _righthandsideOallValueConstructors :: (Names)
+            _righthandsideOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _righthandsideOkindErrors :: ([Error])
+            _righthandsideOmiscerrors :: ([Error])
+            _righthandsideOnamesInScope :: (Names)
+            _righthandsideOoptions :: ([Option])
+            _righthandsideOtypeConstructors :: (FiniteMap Name Int)
+            _righthandsideOvalueConstructors :: (FiniteMap Name TpScheme)
+            _righthandsideOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _lefthandsideIcollectScopeInfos,_lefthandsideImiscerrors,_lefthandsideIname,_lefthandsideInumberOfPatterns,_lefthandsideIpatVarNames,_lefthandsideIself,_lefthandsideIunboundNames,_lefthandsideIwarnings) =
                 (lefthandside_ (_lefthandsideOallTypeConstructors) (_lefthandsideOallValueConstructors) (_lefthandsideOcollectScopeInfos) (_lefthandsideOmiscerrors) (_lefthandsideOnamesInScope) (_lefthandsideOtypeConstructors) (_lefthandsideOvalueConstructors) (_lefthandsideOwarnings))
             ( _righthandsideIcollectScopeInfos,_righthandsideIkindErrors,_righthandsideImiscerrors,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIwarnings) =
-                (righthandside_ (_righthandsideOallTypeConstructors) (_righthandsideOallValueConstructors) (_righthandsideOcollectScopeInfos) (_righthandsideOkindErrors) (_righthandsideOmiscerrors) (_righthandsideOnamesInScope) (_righthandsideOtypeConstructors) (_righthandsideOvalueConstructors) (_righthandsideOwarnings))
+                (righthandside_ (_righthandsideOallTypeConstructors) (_righthandsideOallValueConstructors) (_righthandsideOcollectScopeInfos) (_righthandsideOkindErrors) (_righthandsideOmiscerrors) (_righthandsideOnamesInScope) (_righthandsideOoptions) (_righthandsideOtypeConstructors) (_righthandsideOvalueConstructors) (_righthandsideOwarnings))
             (_lhsOunboundNames@_) =
                 _unboundNames
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
@@ -3959,6 +5705,8 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
                 _lefthandsideImiscerrors
             (_righthandsideOnamesInScope@_) =
                 _namesInScope
+            (_righthandsideOoptions@_) =
+                _lhsIoptions
             (_righthandsideOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_righthandsideOvalueConstructors@_) =
@@ -3974,6 +5722,7 @@ type T_FunctionBindings = (Names) ->
                           ([Error]) ->
                           ([Error]) ->
                           (Names) ->
+                          ([Option]) ->
                           (FiniteMap Name Int) ->
                           (FiniteMap Name TpScheme) ->
                           ([Warning]) ->
@@ -3993,13 +5742,58 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _hdIarity,_hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIname,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
+        let _lhsOarities :: ( [Int] )
+            _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOname :: (Name)
+            _lhsOself :: (FunctionBindings)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _hdIarity :: (Int)
+            _hdIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdIkindErrors :: ([Error])
+            _hdImiscerrors :: ([Error])
+            _hdIname :: (Name)
+            _hdIself :: (FunctionBinding)
+            _hdIunboundNames :: (Names)
+            _hdIwarnings :: ([Warning])
+            _hdOallTypeConstructors :: (Names)
+            _hdOallValueConstructors :: (Names)
+            _hdOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdOkindErrors :: ([Error])
+            _hdOmiscerrors :: ([Error])
+            _hdOnamesInScope :: (Names)
+            _hdOoptions :: ([Option])
+            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOwarnings :: ([Warning])
+            _tlIarities :: ( [Int] )
+            _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlIkindErrors :: ([Error])
+            _tlImiscerrors :: ([Error])
+            _tlIname :: (Name)
+            _tlIself :: (FunctionBindings)
+            _tlIunboundNames :: (Names)
+            _tlIwarnings :: ([Warning])
+            _tlOallTypeConstructors :: (Names)
+            _tlOallValueConstructors :: (Names)
+            _tlOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlOkindErrors :: ([Error])
+            _tlOmiscerrors :: ([Error])
+            _tlOnamesInScope :: (Names)
+            _tlOoptions :: ([Option])
+            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOwarnings :: ([Warning])
+            ( _hdIarity,_hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIname,_hdIself,_hdIunboundNames,_hdIwarnings) =
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIarities,_tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlIname,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
             (_lhsOname@_) =
                 _hdIname
             (_lhsOarities@_) =
@@ -4030,6 +5824,8 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
                 _lhsImiscerrors
             (_hdOnamesInScope@_) =
                 _lhsInamesInScope
+            (_hdOoptions@_) =
+                _lhsIoptions
             (_hdOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_hdOvalueConstructors@_) =
@@ -4048,6 +5844,8 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
                 _hdImiscerrors
             (_tlOnamesInScope@_) =
                 _lhsInamesInScope
+            (_tlOoptions@_) =
+                _lhsIoptions
             (_tlOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_tlOvalueConstructors@_) =
@@ -4063,10 +5861,19 @@ sem_FunctionBindings_Nil  =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let (_lhsOname@_) =
+        let _lhsOarities :: ( [Int] )
+            _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOname :: (Name)
+            _lhsOself :: (FunctionBindings)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            (_lhsOname@_) =
                 internalError "StaticChecks.ag" "n/a" "empty FunctionBindings"
             (_lhsOarities@_) =
                 []
@@ -4093,6 +5900,7 @@ type T_GuardedExpression = (Names) ->
                            ([Error]) ->
                            ([Error]) ->
                            (Names) ->
+                           ([Option]) ->
                            (FiniteMap Name Int) ->
                            (FiniteMap Name TpScheme) ->
                            ([Warning]) ->
@@ -4113,15 +5921,55 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (GuardedExpression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _guardIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _guardIkindErrors :: ([Error])
+            _guardImiscerrors :: ([Error])
+            _guardIself :: (Expression)
+            _guardIunboundNames :: (Names)
+            _guardIwarnings :: ([Warning])
+            _guardOallTypeConstructors :: (Names)
+            _guardOallValueConstructors :: (Names)
+            _guardOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _guardOkindErrors :: ([Error])
+            _guardOmiscerrors :: ([Error])
+            _guardOnamesInScope :: (Names)
+            _guardOoptions :: ([Option])
+            _guardOtypeConstructors :: (FiniteMap Name Int)
+            _guardOvalueConstructors :: (FiniteMap Name TpScheme)
+            _guardOwarnings :: ([Warning])
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _guardIcollectScopeInfos,_guardIkindErrors,_guardImiscerrors,_guardIself,_guardIunboundNames,_guardIwarnings) =
-                (guard_ (_guardOallTypeConstructors) (_guardOallValueConstructors) (_guardOcollectScopeInfos) (_guardOkindErrors) (_guardOmiscerrors) (_guardOnamesInScope) (_guardOtypeConstructors) (_guardOvalueConstructors) (_guardOwarnings))
+                (guard_ (_guardOallTypeConstructors) (_guardOallValueConstructors) (_guardOcollectScopeInfos) (_guardOkindErrors) (_guardOmiscerrors) (_guardOnamesInScope) (_guardOoptions) (_guardOtypeConstructors) (_guardOvalueConstructors) (_guardOwarnings))
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_lhsOunboundNames@_) =
                 _guardIunboundNames ++ _expressionIunboundNames
             (_self@_) =
@@ -4148,6 +5996,8 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
                 _lhsImiscerrors
             (_guardOnamesInScope@_) =
                 _lhsInamesInScope
+            (_guardOoptions@_) =
+                _lhsIoptions
             (_guardOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_guardOvalueConstructors@_) =
@@ -4166,6 +6016,8 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
                 _guardImiscerrors
             (_expressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -4181,6 +6033,7 @@ type T_GuardedExpressions = (Names) ->
                             ([Error]) ->
                             ([Error]) ->
                             (Names) ->
+                            ([Option]) ->
                             (FiniteMap Name Int) ->
                             (FiniteMap Name TpScheme) ->
                             ([Warning]) ->
@@ -4200,13 +6053,52 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (GuardedExpressions)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _hdIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdIkindErrors :: ([Error])
+            _hdImiscerrors :: ([Error])
+            _hdIself :: (GuardedExpression)
+            _hdIunboundNames :: (Names)
+            _hdIwarnings :: ([Warning])
+            _hdOallTypeConstructors :: (Names)
+            _hdOallValueConstructors :: (Names)
+            _hdOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdOkindErrors :: ([Error])
+            _hdOmiscerrors :: ([Error])
+            _hdOnamesInScope :: (Names)
+            _hdOoptions :: ([Option])
+            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOwarnings :: ([Warning])
+            _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlIkindErrors :: ([Error])
+            _tlImiscerrors :: ([Error])
+            _tlIself :: (GuardedExpressions)
+            _tlIunboundNames :: (Names)
+            _tlIwarnings :: ([Warning])
+            _tlOallTypeConstructors :: (Names)
+            _tlOallValueConstructors :: (Names)
+            _tlOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlOkindErrors :: ([Error])
+            _tlOmiscerrors :: ([Error])
+            _tlOnamesInScope :: (Names)
+            _tlOoptions :: ([Option])
+            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOwarnings :: ([Warning])
+            ( _hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -4233,6 +6125,8 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
                 _lhsImiscerrors
             (_hdOnamesInScope@_) =
                 _lhsInamesInScope
+            (_hdOoptions@_) =
+                _lhsIoptions
             (_hdOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_hdOvalueConstructors@_) =
@@ -4251,6 +6145,8 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
                 _hdImiscerrors
             (_tlOnamesInScope@_) =
                 _lhsInamesInScope
+            (_tlOoptions@_) =
+                _lhsIoptions
             (_tlOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_tlOvalueConstructors@_) =
@@ -4266,10 +6162,17 @@ sem_GuardedExpressions_Nil  =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let (_lhsOunboundNames@_) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (GuardedExpressions)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            (_lhsOunboundNames@_) =
                 []
             (_self@_) =
                 []
@@ -4301,7 +6204,11 @@ sem_Import_TypeOrClass :: (T_Range) ->
                           (T_MaybeNames) ->
                           (T_Import)
 sem_Import_TypeOrClass (range_) (name_) (names_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Import)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        _namesIself :: (MaybeNames)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -4316,7 +6223,10 @@ sem_Import_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Import)
 sem_Import_TypeOrClassComplete (range_) (name_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Import)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -4329,7 +6239,10 @@ sem_Import_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Import)
 sem_Import_Variable (range_) (name_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Import)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -4353,7 +6266,10 @@ sem_ImportDeclaration_Empty :: (T_Range) ->
                                (T_ImportDeclaration)
 sem_ImportDeclaration_Empty (range_) =
     \ _lhsIimportedModules ->
-        let ( _rangeIself) =
+        let _lhsOimportedModules :: (Names)
+            _lhsOself :: (ImportDeclaration)
+            _rangeIself :: (Range)
+            ( _rangeIself) =
                 (range_ )
             (_self@_) =
                 ImportDeclaration_Empty _rangeIself
@@ -4370,7 +6286,13 @@ sem_ImportDeclaration_Import :: (T_Range) ->
                                 (T_ImportDeclaration)
 sem_ImportDeclaration_Import (range_) (qualified_) (name_) (asname_) (importspecification_) =
     \ _lhsIimportedModules ->
-        let ( _rangeIself) =
+        let _lhsOimportedModules :: (Names)
+            _lhsOself :: (ImportDeclaration)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _asnameIself :: (MaybeName)
+            _importspecificationIself :: (MaybeImportSpecification)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -4399,7 +6321,15 @@ sem_ImportDeclarations_Cons :: (T_ImportDeclaration) ->
                                (T_ImportDeclarations)
 sem_ImportDeclarations_Cons (hd_) (tl_) =
     \ _lhsIimportedModules ->
-        let ( _hdIimportedModules,_hdIself) =
+        let _lhsOimportedModules :: (Names)
+            _lhsOself :: (ImportDeclarations)
+            _hdIimportedModules :: (Names)
+            _hdIself :: (ImportDeclaration)
+            _hdOimportedModules :: (Names)
+            _tlIimportedModules :: (Names)
+            _tlIself :: (ImportDeclarations)
+            _tlOimportedModules :: (Names)
+            ( _hdIimportedModules,_hdIself) =
                 (hd_ (_hdOimportedModules))
             ( _tlIimportedModules,_tlIself) =
                 (tl_ (_tlOimportedModules))
@@ -4417,7 +6347,9 @@ sem_ImportDeclarations_Cons (hd_) (tl_) =
 sem_ImportDeclarations_Nil :: (T_ImportDeclarations)
 sem_ImportDeclarations_Nil  =
     \ _lhsIimportedModules ->
-        let (_self@_) =
+        let _lhsOimportedModules :: (Names)
+            _lhsOself :: (ImportDeclarations)
+            (_self@_) =
                 []
             (_lhsOself@_) =
                 _self
@@ -4437,7 +6369,10 @@ sem_ImportSpecification_Import :: (T_Range) ->
                                   (T_Imports) ->
                                   (T_ImportSpecification)
 sem_ImportSpecification_Import (range_) (hiding_) (imports_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (ImportSpecification)
+        _rangeIself :: (Range)
+        _importsIself :: (Imports)
+        ( _rangeIself) =
             (range_ )
         ( _importsIself) =
             (imports_ )
@@ -4458,7 +6393,10 @@ sem_Imports_Cons :: (T_Import) ->
                     (T_Imports) ->
                     (T_Imports)
 sem_Imports_Cons (hd_) (tl_) =
-    let ( _hdIself) =
+    let _lhsOself :: (Imports)
+        _hdIself :: (Import)
+        _tlIself :: (Imports)
+        ( _hdIself) =
             (hd_ )
         ( _tlIself) =
             (tl_ )
@@ -4469,7 +6407,8 @@ sem_Imports_Cons (hd_) (tl_) =
     in  ( _lhsOself)
 sem_Imports_Nil :: (T_Imports)
 sem_Imports_Nil  =
-    let (_self@_) =
+    let _lhsOself :: (Imports)
+        (_self@_) =
             []
         (_lhsOself@_) =
             _self
@@ -4507,7 +6446,33 @@ sem_LeftHandSide_Function (range_) (name_) (patterns_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOname :: (Name)
+            _lhsOnumberOfPatterns :: (Int)
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (LeftHandSide)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _patternsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternsImiscerrors :: ([Error])
+            _patternsInumberOfPatterns :: (Int)
+            _patternsIpatVarNames :: (Names)
+            _patternsIself :: (Patterns)
+            _patternsIunboundNames :: (Names)
+            _patternsIwarnings :: ([Warning])
+            _patternsOallTypeConstructors :: (Names)
+            _patternsOallValueConstructors :: (Names)
+            _patternsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternsOlhsPattern :: (Bool)
+            _patternsOmiscerrors :: ([Error])
+            _patternsOnamesInScope :: (Names)
+            _patternsOtypeConstructors :: (FiniteMap Name Int)
+            _patternsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternsOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -4564,7 +6529,47 @@ sem_LeftHandSide_Infix (range_) (leftPattern_) (operator_) (rightPattern_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOname :: (Name)
+            _lhsOnumberOfPatterns :: (Int)
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (LeftHandSide)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _leftPatternIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _leftPatternImiscerrors :: ([Error])
+            _leftPatternIpatVarNames :: (Names)
+            _leftPatternIself :: (Pattern)
+            _leftPatternIunboundNames :: (Names)
+            _leftPatternIwarnings :: ([Warning])
+            _leftPatternOallTypeConstructors :: (Names)
+            _leftPatternOallValueConstructors :: (Names)
+            _leftPatternOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _leftPatternOlhsPattern :: (Bool)
+            _leftPatternOmiscerrors :: ([Error])
+            _leftPatternOnamesInScope :: (Names)
+            _leftPatternOtypeConstructors :: (FiniteMap Name Int)
+            _leftPatternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _leftPatternOwarnings :: ([Warning])
+            _operatorIself :: (Name)
+            _rightPatternIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _rightPatternImiscerrors :: ([Error])
+            _rightPatternIpatVarNames :: (Names)
+            _rightPatternIself :: (Pattern)
+            _rightPatternIunboundNames :: (Names)
+            _rightPatternIwarnings :: ([Warning])
+            _rightPatternOallTypeConstructors :: (Names)
+            _rightPatternOallValueConstructors :: (Names)
+            _rightPatternOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _rightPatternOlhsPattern :: (Bool)
+            _rightPatternOmiscerrors :: ([Error])
+            _rightPatternOnamesInScope :: (Names)
+            _rightPatternOtypeConstructors :: (FiniteMap Name Int)
+            _rightPatternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _rightPatternOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _leftPatternIcollectScopeInfos,_leftPatternImiscerrors,_leftPatternIpatVarNames,_leftPatternIself,_leftPatternIunboundNames,_leftPatternIwarnings) =
                 (leftPattern_ (_leftPatternOallTypeConstructors) (_leftPatternOallValueConstructors) (_leftPatternOcollectScopeInfos) (_leftPatternOlhsPattern) (_leftPatternOmiscerrors) (_leftPatternOnamesInScope) (_leftPatternOtypeConstructors) (_leftPatternOvalueConstructors) (_leftPatternOwarnings))
@@ -4640,7 +6645,48 @@ sem_LeftHandSide_Parenthesized (range_) (lefthandside_) (patterns_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOname :: (Name)
+            _lhsOnumberOfPatterns :: (Int)
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (LeftHandSide)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _lefthandsideIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lefthandsideImiscerrors :: ([Error])
+            _lefthandsideIname :: (Name)
+            _lefthandsideInumberOfPatterns :: (Int)
+            _lefthandsideIpatVarNames :: (Names)
+            _lefthandsideIself :: (LeftHandSide)
+            _lefthandsideIunboundNames :: (Names)
+            _lefthandsideIwarnings :: ([Warning])
+            _lefthandsideOallTypeConstructors :: (Names)
+            _lefthandsideOallValueConstructors :: (Names)
+            _lefthandsideOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lefthandsideOmiscerrors :: ([Error])
+            _lefthandsideOnamesInScope :: (Names)
+            _lefthandsideOtypeConstructors :: (FiniteMap Name Int)
+            _lefthandsideOvalueConstructors :: (FiniteMap Name TpScheme)
+            _lefthandsideOwarnings :: ([Warning])
+            _patternsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternsImiscerrors :: ([Error])
+            _patternsInumberOfPatterns :: (Int)
+            _patternsIpatVarNames :: (Names)
+            _patternsIself :: (Patterns)
+            _patternsIunboundNames :: (Names)
+            _patternsIwarnings :: ([Warning])
+            _patternsOallTypeConstructors :: (Names)
+            _patternsOallValueConstructors :: (Names)
+            _patternsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternsOlhsPattern :: (Bool)
+            _patternsOmiscerrors :: ([Error])
+            _patternsOnamesInScope :: (Names)
+            _patternsOtypeConstructors :: (FiniteMap Name Int)
+            _patternsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternsOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _lefthandsideIcollectScopeInfos,_lefthandsideImiscerrors,_lefthandsideIname,_lefthandsideInumberOfPatterns,_lefthandsideIpatVarNames,_lefthandsideIself,_lefthandsideIunboundNames,_lefthandsideIwarnings) =
                 (lefthandside_ (_lefthandsideOallTypeConstructors) (_lefthandsideOallValueConstructors) (_lefthandsideOcollectScopeInfos) (_lefthandsideOmiscerrors) (_lefthandsideOnamesInScope) (_lefthandsideOtypeConstructors) (_lefthandsideOvalueConstructors) (_lefthandsideOwarnings))
@@ -4721,7 +6767,11 @@ sem_Literal_Char :: (T_Range) ->
 sem_Literal_Char (range_) (value_) =
     \ _lhsIcollectScopeInfos
       _lhsImiscerrors ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Literal)
+            _rangeIself :: (Range)
+            ( _rangeIself) =
                 (range_ )
             (_self@_) =
                 Literal_Char _rangeIself value_
@@ -4738,7 +6788,11 @@ sem_Literal_Float :: (T_Range) ->
 sem_Literal_Float (range_) (value_) =
     \ _lhsIcollectScopeInfos
       _lhsImiscerrors ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Literal)
+            _rangeIself :: (Range)
+            ( _rangeIself) =
                 (range_ )
             (_self@_) =
                 Literal_Float _rangeIself value_
@@ -4755,7 +6809,11 @@ sem_Literal_Int :: (T_Range) ->
 sem_Literal_Int (range_) (value_) =
     \ _lhsIcollectScopeInfos
       _lhsImiscerrors ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Literal)
+            _rangeIself :: (Range)
+            ( _rangeIself) =
                 (range_ )
             (_lhsOmiscerrors@_) =
                 _intLiteralTooBigErrors ++ _lhsImiscerrors
@@ -4778,7 +6836,11 @@ sem_Literal_String :: (T_Range) ->
 sem_Literal_String (range_) (value_) =
     \ _lhsIcollectScopeInfos
       _lhsImiscerrors ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Literal)
+            _rangeIself :: (Range)
+            ( _rangeIself) =
                 (range_ )
             (_self@_) =
                 Literal_String _rangeIself value_
@@ -4797,6 +6859,7 @@ type T_MaybeDeclarations = (Names) ->
                            ([Error]) ->
                            ([Error]) ->
                            (Names) ->
+                           ([Option]) ->
                            (FiniteMap Name Int) ->
                            (Names) ->
                            (FiniteMap Name TpScheme) ->
@@ -4818,11 +6881,50 @@ sem_MaybeDeclarations_Just (declarations_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _declarationsIcollectScopeInfos,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnamesInScope :: (Names)
+            _lhsOself :: (MaybeDeclarations)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _declarationsIcollectTypeConstructors :: ([(Name,Int)])
+            _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
+            _declarationsIdeclVarNames :: (Names)
+            _declarationsIkindErrors :: ([Error])
+            _declarationsImiscerrors :: ([Error])
+            _declarationsIoperatorFixities :: ([(Name,(Int,Assoc))])
+            _declarationsIpreviousWasAlsoFB :: (Maybe Name)
+            _declarationsIself :: (Declarations)
+            _declarationsIsuspiciousFBs :: ([(Name,Name)])
+            _declarationsItypeSignatures :: ([(Name,TpScheme)])
+            _declarationsIunboundNames :: (Names)
+            _declarationsIwarnings :: ([Warning])
+            _declarationsOallTypeConstructors :: (Names)
+            _declarationsOallValueConstructors :: (Names)
+            _declarationsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _declarationsOcollectTypeConstructors :: ([(Name,Int)])
+            _declarationsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _declarationsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _declarationsOkindErrors :: ([Error])
+            _declarationsOmiscerrors :: ([Error])
+            _declarationsOnamesInScope :: (Names)
+            _declarationsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _declarationsOoptions :: ([Option])
+            _declarationsOpreviousWasAlsoFB :: (Maybe Name)
+            _declarationsOsuspiciousFBs :: ([(Name,Name)])
+            _declarationsOtypeConstructors :: (FiniteMap Name Int)
+            _declarationsOtypeSignatures :: ([(Name,TpScheme)])
+            _declarationsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _declarationsOwarnings :: ([Warning])
+            ( _declarationsIcollectScopeInfos,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
                 (declarations_ (_declarationsOallTypeConstructors)
                                (_declarationsOallValueConstructors)
                                (_declarationsOcollectScopeInfos)
@@ -4833,6 +6935,7 @@ sem_MaybeDeclarations_Just (declarations_) =
                                (_declarationsOmiscerrors)
                                (_declarationsOnamesInScope)
                                (_declarationsOoperatorFixities)
+                               (_declarationsOoptions)
                                (_declarationsOpreviousWasAlsoFB)
                                (_declarationsOsuspiciousFBs)
                                (_declarationsOtypeConstructors)
@@ -4892,6 +6995,8 @@ sem_MaybeDeclarations_Just (declarations_) =
                 _namesInScope
             (_declarationsOoperatorFixities@_) =
                 _operatorFixities
+            (_declarationsOoptions@_) =
+                _lhsIoptions
             (_declarationsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_declarationsOvalueConstructors@_) =
@@ -4907,11 +7012,19 @@ sem_MaybeDeclarations_Nothing  =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let (_self@_) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnamesInScope :: (Names)
+            _lhsOself :: (MaybeDeclarations)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            (_self@_) =
                 MaybeDeclarations_Nothing
             (_lhsOself@_) =
                 _self
@@ -4949,7 +7062,15 @@ sem_MaybeExports_Just (exports_) =
       _lhsImodulesInScope
       _lhsInamesInScop
       _lhsItyconsInScope ->
-        let ( _exportsIexportErrors,_exportsIself) =
+        let _lhsOexportErrors :: ([Error])
+            _lhsOself :: (MaybeExports)
+            _exportsIexportErrors :: ([Error])
+            _exportsIself :: (Exports)
+            _exportsOconsInScope :: (Names)
+            _exportsOmodulesInScope :: (Names)
+            _exportsOnamesInScop :: (Names)
+            _exportsOtyconsInScope :: (Names)
+            ( _exportsIexportErrors,_exportsIself) =
                 (exports_ (_exportsOconsInScope) (_exportsOmodulesInScope) (_exportsOnamesInScop) (_exportsOtyconsInScope))
             (_lhsOexportErrors@_) =
                 _exportsIexportErrors
@@ -4972,7 +7093,9 @@ sem_MaybeExports_Nothing  =
       _lhsImodulesInScope
       _lhsInamesInScop
       _lhsItyconsInScope ->
-        let (_lhsOexportErrors@_) =
+        let _lhsOexportErrors :: ([Error])
+            _lhsOself :: (MaybeExports)
+            (_lhsOexportErrors@_) =
                 []
             (_self@_) =
                 MaybeExports_Nothing
@@ -4987,6 +7110,7 @@ type T_MaybeExpression = (Names) ->
                          ([Error]) ->
                          ([Error]) ->
                          (Names) ->
+                         ([Option]) ->
                          (FiniteMap Name Int) ->
                          (FiniteMap Name TpScheme) ->
                          ([Warning]) ->
@@ -5007,11 +7131,34 @@ sem_MaybeExpression_Just (expression_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (MaybeExpression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -5038,6 +7185,8 @@ sem_MaybeExpression_Just (expression_) =
                 _lhsImiscerrors
             (_expressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -5053,10 +7202,17 @@ sem_MaybeExpression_Nothing  =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let (_lhsOunboundNames@_) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (MaybeExpression)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            (_lhsOunboundNames@_) =
                 []
             (_self@_) =
                 MaybeExpression_Nothing
@@ -5084,7 +7240,9 @@ sem_MaybeImportSpecification ((MaybeImportSpecification_Nothing )) =
 sem_MaybeImportSpecification_Just :: (T_ImportSpecification) ->
                                      (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Just (importspecification_) =
-    let ( _importspecificationIself) =
+    let _lhsOself :: (MaybeImportSpecification)
+        _importspecificationIself :: (ImportSpecification)
+        ( _importspecificationIself) =
             (importspecification_ )
         (_self@_) =
             MaybeImportSpecification_Just _importspecificationIself
@@ -5093,7 +7251,8 @@ sem_MaybeImportSpecification_Just (importspecification_) =
     in  ( _lhsOself)
 sem_MaybeImportSpecification_Nothing :: (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Nothing  =
-    let (_self@_) =
+    let _lhsOself :: (MaybeImportSpecification)
+        (_self@_) =
             MaybeImportSpecification_Nothing
         (_lhsOself@_) =
             _self
@@ -5111,14 +7270,16 @@ sem_MaybeInt ((MaybeInt_Nothing )) =
 sem_MaybeInt_Just :: (Int) ->
                      (T_MaybeInt)
 sem_MaybeInt_Just (int_) =
-    let (_self@_) =
+    let _lhsOself :: (MaybeInt)
+        (_self@_) =
             MaybeInt_Just int_
         (_lhsOself@_) =
             _self
     in  ( _lhsOself)
 sem_MaybeInt_Nothing :: (T_MaybeInt)
 sem_MaybeInt_Nothing  =
-    let (_self@_) =
+    let _lhsOself :: (MaybeInt)
+        (_self@_) =
             MaybeInt_Nothing
         (_lhsOself@_) =
             _self
@@ -5136,7 +7297,9 @@ sem_MaybeName ((MaybeName_Nothing )) =
 sem_MaybeName_Just :: (T_Name) ->
                       (T_MaybeName)
 sem_MaybeName_Just (name_) =
-    let ( _nameIself) =
+    let _lhsOself :: (MaybeName)
+        _nameIself :: (Name)
+        ( _nameIself) =
             (name_ )
         (_self@_) =
             MaybeName_Just _nameIself
@@ -5145,7 +7308,8 @@ sem_MaybeName_Just (name_) =
     in  ( _lhsOself)
 sem_MaybeName_Nothing :: (T_MaybeName)
 sem_MaybeName_Nothing  =
-    let (_self@_) =
+    let _lhsOself :: (MaybeName)
+        (_self@_) =
             MaybeName_Nothing
         (_lhsOself@_) =
             _self
@@ -5163,7 +7327,9 @@ sem_MaybeNames ((MaybeNames_Nothing )) =
 sem_MaybeNames_Just :: (T_Names) ->
                        (T_MaybeNames)
 sem_MaybeNames_Just (names_) =
-    let ( _namesIself) =
+    let _lhsOself :: (MaybeNames)
+        _namesIself :: (Names)
+        ( _namesIself) =
             (names_ )
         (_self@_) =
             MaybeNames_Just _namesIself
@@ -5172,7 +7338,8 @@ sem_MaybeNames_Just (names_) =
     in  ( _lhsOself)
 sem_MaybeNames_Nothing :: (T_MaybeNames)
 sem_MaybeNames_Nothing  =
-    let (_self@_) =
+    let _lhsOself :: (MaybeNames)
+        (_self@_) =
             MaybeNames_Nothing
         (_lhsOself@_) =
             _self
@@ -5197,14 +7364,54 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
     \ _lhsIbaseName
       _lhsIimportEnvironments
       _lhsIoptions ->
-        let ( _rangeIself) =
+        let _lhsOcollectEnvironment :: (ImportEnvironment)
+            _lhsOerrors :: (Errors)
+            _lhsOself :: (Module)
+            _lhsOtypeSignatures :: ([(Name,TpScheme)])
+            _lhsOwarnings :: (Warnings)
+            _rangeIself :: (Range)
+            _nameIself :: (MaybeName)
+            _exportsIexportErrors :: ([Error])
+            _exportsIself :: (MaybeExports)
+            _exportsOconsInScope :: (Names)
+            _exportsOmodulesInScope :: (Names)
+            _exportsOnamesInScop :: (Names)
+            _exportsOtyconsInScope :: (Names)
+            _bodyIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _bodyIcollectTypeConstructors :: ([(Name,Int)])
+            _bodyIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _bodyIcollectValueConstructors :: ([(Name,TpScheme)])
+            _bodyIdeclVarNames :: (Names)
+            _bodyIimportedModules :: (Names)
+            _bodyIkindErrors :: ([Error])
+            _bodyImiscerrors :: ([Error])
+            _bodyIoperatorFixities :: ([(Name,(Int,Assoc))])
+            _bodyIself :: (Body)
+            _bodyItypeSignatures :: ([(Name,TpScheme)])
+            _bodyIunboundNames :: (Names)
+            _bodyIwarnings :: ([Warning])
+            _bodyOallTypeConstructors :: (Names)
+            _bodyOallValueConstructors :: (Names)
+            _bodyOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _bodyOcollectTypeConstructors :: ([(Name,Int)])
+            _bodyOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _bodyOcollectValueConstructors :: ([(Name,TpScheme)])
+            _bodyOkindErrors :: ([Error])
+            _bodyOmiscerrors :: ([Error])
+            _bodyOnamesInScope :: (Names)
+            _bodyOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _bodyOoptions :: ([Option])
+            _bodyOtypeConstructors :: (FiniteMap Name Int)
+            _bodyOvalueConstructors :: (FiniteMap Name TpScheme)
+            _bodyOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
             ( _exportsIexportErrors,_exportsIself) =
                 (exports_ (_exportsOconsInScope) (_exportsOmodulesInScope) (_exportsOnamesInScop) (_exportsOtyconsInScope))
             ( _bodyIcollectScopeInfos,_bodyIcollectTypeConstructors,_bodyIcollectTypeSynonyms,_bodyIcollectValueConstructors,_bodyIdeclVarNames,_bodyIimportedModules,_bodyIkindErrors,_bodyImiscerrors,_bodyIoperatorFixities,_bodyIself,_bodyItypeSignatures,_bodyIunboundNames,_bodyIwarnings) =
-                (body_ (_bodyOallTypeConstructors) (_bodyOallValueConstructors) (_bodyOcollectScopeInfos) (_bodyOcollectTypeConstructors) (_bodyOcollectTypeSynonyms) (_bodyOcollectValueConstructors) (_bodyOkindErrors) (_bodyOmiscerrors) (_bodyOnamesInScope) (_bodyOoperatorFixities) (_bodyOtypeConstructors) (_bodyOvalueConstructors) (_bodyOwarnings))
+                (body_ (_bodyOallTypeConstructors) (_bodyOallValueConstructors) (_bodyOcollectScopeInfos) (_bodyOcollectTypeConstructors) (_bodyOcollectTypeSynonyms) (_bodyOcollectValueConstructors) (_bodyOkindErrors) (_bodyOmiscerrors) (_bodyOnamesInScope) (_bodyOoperatorFixities) (_bodyOoptions) (_bodyOtypeConstructors) (_bodyOvalueConstructors) (_bodyOwarnings))
             (_initialScope@_) =
                 map fst _derivedFunctions ++
                 concatMap (keysFM . typeEnvironment) _lhsIimportEnvironments
@@ -5354,6 +7561,8 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 _allValueConstructors
             (_bodyOnamesInScope@_) =
                 _namesInScope
+            (_bodyOoptions@_) =
+                _lhsIoptions
             (_bodyOtypeConstructors@_) =
                 _typeConstructors
             (_bodyOvalueConstructors@_) =
@@ -5376,7 +7585,10 @@ sem_Name_Identifier :: (T_Range) ->
                        (String) ->
                        (T_Name)
 sem_Name_Identifier (range_) (module_) (name_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Name)
+        _rangeIself :: (Range)
+        _moduleIself :: (Strings)
+        ( _rangeIself) =
             (range_ )
         ( _moduleIself) =
             (module_ )
@@ -5390,7 +7602,10 @@ sem_Name_Operator :: (T_Range) ->
                      (String) ->
                      (T_Name)
 sem_Name_Operator (range_) (module_) (name_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Name)
+        _rangeIself :: (Range)
+        _moduleIself :: (Strings)
+        ( _rangeIself) =
             (range_ )
         ( _moduleIself) =
             (module_ )
@@ -5404,7 +7619,10 @@ sem_Name_Special :: (T_Range) ->
                     (String) ->
                     (T_Name)
 sem_Name_Special (range_) (module_) (name_) =
-    let ( _rangeIself) =
+    let _lhsOself :: (Name)
+        _rangeIself :: (Range)
+        _moduleIself :: (Strings)
+        ( _rangeIself) =
             (range_ )
         ( _moduleIself) =
             (module_ )
@@ -5425,7 +7643,10 @@ sem_Names_Cons :: (T_Name) ->
                   (T_Names) ->
                   (T_Names)
 sem_Names_Cons (hd_) (tl_) =
-    let ( _hdIself) =
+    let _lhsOself :: (Names)
+        _hdIself :: (Name)
+        _tlIself :: (Names)
+        ( _hdIself) =
             (hd_ )
         ( _tlIself) =
             (tl_ )
@@ -5436,7 +7657,8 @@ sem_Names_Cons (hd_) (tl_) =
     in  ( _lhsOself)
 sem_Names_Nil :: (T_Names)
 sem_Names_Nil  =
-    let (_self@_) =
+    let _lhsOself :: (Names)
+        (_self@_) =
             []
         (_lhsOself@_) =
             _self
@@ -5498,7 +7720,30 @@ sem_Pattern_As (range_) (name_) (pattern_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Pattern)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _patternIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternImiscerrors :: ([Error])
+            _patternIpatVarNames :: (Names)
+            _patternIself :: (Pattern)
+            _patternIunboundNames :: (Names)
+            _patternIwarnings :: ([Warning])
+            _patternOallTypeConstructors :: (Names)
+            _patternOallValueConstructors :: (Names)
+            _patternOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternOlhsPattern :: (Bool)
+            _patternOmiscerrors :: ([Error])
+            _patternOnamesInScope :: (Names)
+            _patternOtypeConstructors :: (FiniteMap Name Int)
+            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -5551,7 +7796,31 @@ sem_Pattern_Constructor (range_) (name_) (patterns_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Pattern)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _patternsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternsImiscerrors :: ([Error])
+            _patternsInumberOfPatterns :: (Int)
+            _patternsIpatVarNames :: (Names)
+            _patternsIself :: (Patterns)
+            _patternsIunboundNames :: (Names)
+            _patternsIwarnings :: ([Warning])
+            _patternsOallTypeConstructors :: (Names)
+            _patternsOallValueConstructors :: (Names)
+            _patternsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternsOlhsPattern :: (Bool)
+            _patternsOmiscerrors :: ([Error])
+            _patternsOnamesInScope :: (Names)
+            _patternsOtypeConstructors :: (FiniteMap Name Int)
+            _patternsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternsOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -5609,7 +7878,45 @@ sem_Pattern_InfixConstructor (range_) (leftPattern_) (constructorOperator_) (rig
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Pattern)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _leftPatternIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _leftPatternImiscerrors :: ([Error])
+            _leftPatternIpatVarNames :: (Names)
+            _leftPatternIself :: (Pattern)
+            _leftPatternIunboundNames :: (Names)
+            _leftPatternIwarnings :: ([Warning])
+            _leftPatternOallTypeConstructors :: (Names)
+            _leftPatternOallValueConstructors :: (Names)
+            _leftPatternOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _leftPatternOlhsPattern :: (Bool)
+            _leftPatternOmiscerrors :: ([Error])
+            _leftPatternOnamesInScope :: (Names)
+            _leftPatternOtypeConstructors :: (FiniteMap Name Int)
+            _leftPatternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _leftPatternOwarnings :: ([Warning])
+            _constructorOperatorIself :: (Name)
+            _rightPatternIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _rightPatternImiscerrors :: ([Error])
+            _rightPatternIpatVarNames :: (Names)
+            _rightPatternIself :: (Pattern)
+            _rightPatternIunboundNames :: (Names)
+            _rightPatternIwarnings :: ([Warning])
+            _rightPatternOallTypeConstructors :: (Names)
+            _rightPatternOallValueConstructors :: (Names)
+            _rightPatternOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _rightPatternOlhsPattern :: (Bool)
+            _rightPatternOmiscerrors :: ([Error])
+            _rightPatternOnamesInScope :: (Names)
+            _rightPatternOtypeConstructors :: (FiniteMap Name Int)
+            _rightPatternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _rightPatternOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _leftPatternIcollectScopeInfos,_leftPatternImiscerrors,_leftPatternIpatVarNames,_leftPatternIself,_leftPatternIunboundNames,_leftPatternIwarnings) =
                 (leftPattern_ (_leftPatternOallTypeConstructors) (_leftPatternOallValueConstructors) (_leftPatternOcollectScopeInfos) (_leftPatternOlhsPattern) (_leftPatternOmiscerrors) (_leftPatternOnamesInScope) (_leftPatternOtypeConstructors) (_leftPatternOvalueConstructors) (_leftPatternOwarnings))
@@ -5685,7 +7992,29 @@ sem_Pattern_Irrefutable (range_) (pattern_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Pattern)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _patternIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternImiscerrors :: ([Error])
+            _patternIpatVarNames :: (Names)
+            _patternIself :: (Pattern)
+            _patternIunboundNames :: (Names)
+            _patternIwarnings :: ([Warning])
+            _patternOallTypeConstructors :: (Names)
+            _patternOallValueConstructors :: (Names)
+            _patternOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternOlhsPattern :: (Bool)
+            _patternOmiscerrors :: ([Error])
+            _patternOnamesInScope :: (Names)
+            _patternOtypeConstructors :: (FiniteMap Name Int)
+            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
                 (pattern_ (_patternOallTypeConstructors) (_patternOallValueConstructors) (_patternOcollectScopeInfos) (_patternOlhsPattern) (_patternOmiscerrors) (_patternOnamesInScope) (_patternOtypeConstructors) (_patternOvalueConstructors) (_patternOwarnings))
@@ -5735,7 +8064,30 @@ sem_Pattern_List (range_) (patterns_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Pattern)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _patternsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternsImiscerrors :: ([Error])
+            _patternsInumberOfPatterns :: (Int)
+            _patternsIpatVarNames :: (Names)
+            _patternsIself :: (Patterns)
+            _patternsIunboundNames :: (Names)
+            _patternsIwarnings :: ([Warning])
+            _patternsOallTypeConstructors :: (Names)
+            _patternsOallValueConstructors :: (Names)
+            _patternsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternsOlhsPattern :: (Bool)
+            _patternsOmiscerrors :: ([Error])
+            _patternsOnamesInScope :: (Names)
+            _patternsOtypeConstructors :: (FiniteMap Name Int)
+            _patternsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternsOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _patternsIcollectScopeInfos,_patternsImiscerrors,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIself,_patternsIunboundNames,_patternsIwarnings) =
                 (patterns_ (_patternsOallTypeConstructors) (_patternsOallValueConstructors) (_patternsOcollectScopeInfos) (_patternsOlhsPattern) (_patternsOmiscerrors) (_patternsOnamesInScope) (_patternsOtypeConstructors) (_patternsOvalueConstructors) (_patternsOwarnings))
@@ -5785,7 +8137,19 @@ sem_Pattern_Literal (range_) (literal_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Pattern)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _literalIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _literalImiscerrors :: ([Error])
+            _literalIself :: (Literal)
+            _literalOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _literalOmiscerrors :: ([Error])
+            ( _rangeIself) =
                 (range_ )
             ( _literalIcollectScopeInfos,_literalImiscerrors,_literalIself) =
                 (literal_ (_literalOcollectScopeInfos) (_literalOmiscerrors))
@@ -5821,7 +8185,19 @@ sem_Pattern_Negate (range_) (literal_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Pattern)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _literalIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _literalImiscerrors :: ([Error])
+            _literalIself :: (Literal)
+            _literalOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _literalOmiscerrors :: ([Error])
+            ( _rangeIself) =
                 (range_ )
             ( _literalIcollectScopeInfos,_literalImiscerrors,_literalIself) =
                 (literal_ (_literalOcollectScopeInfos) (_literalOmiscerrors))
@@ -5857,7 +8233,19 @@ sem_Pattern_NegateFloat (range_) (literal_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Pattern)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _literalIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _literalImiscerrors :: ([Error])
+            _literalIself :: (Literal)
+            _literalOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _literalOmiscerrors :: ([Error])
+            ( _rangeIself) =
                 (range_ )
             ( _literalIcollectScopeInfos,_literalImiscerrors,_literalIself) =
                 (literal_ (_literalOcollectScopeInfos) (_literalOmiscerrors))
@@ -5893,7 +8281,29 @@ sem_Pattern_Parenthesized (range_) (pattern_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Pattern)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _patternIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternImiscerrors :: ([Error])
+            _patternIpatVarNames :: (Names)
+            _patternIself :: (Pattern)
+            _patternIunboundNames :: (Names)
+            _patternIwarnings :: ([Warning])
+            _patternOallTypeConstructors :: (Names)
+            _patternOallValueConstructors :: (Names)
+            _patternOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternOlhsPattern :: (Bool)
+            _patternOmiscerrors :: ([Error])
+            _patternOnamesInScope :: (Names)
+            _patternOtypeConstructors :: (FiniteMap Name Int)
+            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
                 (pattern_ (_patternOallTypeConstructors) (_patternOallValueConstructors) (_patternOcollectScopeInfos) (_patternOlhsPattern) (_patternOmiscerrors) (_patternOnamesInScope) (_patternOtypeConstructors) (_patternOvalueConstructors) (_patternOwarnings))
@@ -5944,7 +8354,20 @@ sem_Pattern_Record (range_) (name_) (recordPatternBindings_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Pattern)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _recordPatternBindingsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _recordPatternBindingsIself :: (RecordPatternBindings)
+            _recordPatternBindingsIunboundNames :: (Names)
+            _recordPatternBindingsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _recordPatternBindingsOnamesInScope :: (Names)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -5985,7 +8408,20 @@ sem_Pattern_Successor (range_) (name_) (literal_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Pattern)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _literalIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _literalImiscerrors :: ([Error])
+            _literalIself :: (Literal)
+            _literalOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _literalOmiscerrors :: ([Error])
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -6025,7 +8461,30 @@ sem_Pattern_Tuple (range_) (patterns_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Pattern)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _patternsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternsImiscerrors :: ([Error])
+            _patternsInumberOfPatterns :: (Int)
+            _patternsIpatVarNames :: (Names)
+            _patternsIself :: (Patterns)
+            _patternsIunboundNames :: (Names)
+            _patternsIwarnings :: ([Warning])
+            _patternsOallTypeConstructors :: (Names)
+            _patternsOallValueConstructors :: (Names)
+            _patternsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternsOlhsPattern :: (Bool)
+            _patternsOmiscerrors :: ([Error])
+            _patternsOnamesInScope :: (Names)
+            _patternsOtypeConstructors :: (FiniteMap Name Int)
+            _patternsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternsOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _patternsIcollectScopeInfos,_patternsImiscerrors,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIself,_patternsIunboundNames,_patternsIwarnings) =
                 (patterns_ (_patternsOallTypeConstructors) (_patternsOallValueConstructors) (_patternsOcollectScopeInfos) (_patternsOlhsPattern) (_patternsOmiscerrors) (_patternsOnamesInScope) (_patternsOtypeConstructors) (_patternsOvalueConstructors) (_patternsOwarnings))
@@ -6075,7 +8534,15 @@ sem_Pattern_Variable (range_) (name_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Pattern)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -6106,7 +8573,14 @@ sem_Pattern_Wildcard (range_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Pattern)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            ( _rangeIself) =
                 (range_ )
             (_lhsOpatVarNames@_) =
                 []
@@ -6153,7 +8627,45 @@ sem_Patterns_Cons (hd_) (tl_) =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _hdIcollectScopeInfos,_hdImiscerrors,_hdIpatVarNames,_hdIself,_hdIunboundNames,_hdIwarnings) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnumberOfPatterns :: (Int)
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Patterns)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _hdIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdImiscerrors :: ([Error])
+            _hdIpatVarNames :: (Names)
+            _hdIself :: (Pattern)
+            _hdIunboundNames :: (Names)
+            _hdIwarnings :: ([Warning])
+            _hdOallTypeConstructors :: (Names)
+            _hdOallValueConstructors :: (Names)
+            _hdOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdOlhsPattern :: (Bool)
+            _hdOmiscerrors :: ([Error])
+            _hdOnamesInScope :: (Names)
+            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOwarnings :: ([Warning])
+            _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlImiscerrors :: ([Error])
+            _tlInumberOfPatterns :: (Int)
+            _tlIpatVarNames :: (Names)
+            _tlIself :: (Patterns)
+            _tlIunboundNames :: (Names)
+            _tlIwarnings :: ([Warning])
+            _tlOallTypeConstructors :: (Names)
+            _tlOallValueConstructors :: (Names)
+            _tlOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlOlhsPattern :: (Bool)
+            _tlOmiscerrors :: ([Error])
+            _tlOnamesInScope :: (Names)
+            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOwarnings :: ([Warning])
+            ( _hdIcollectScopeInfos,_hdImiscerrors,_hdIpatVarNames,_hdIself,_hdIunboundNames,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOlhsPattern) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIcollectScopeInfos,_tlImiscerrors,_tlInumberOfPatterns,_tlIpatVarNames,_tlIself,_tlIunboundNames,_tlIwarnings) =
                 (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOlhsPattern) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
@@ -6221,7 +8733,14 @@ sem_Patterns_Nil  =
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let (_lhsOnumberOfPatterns@_) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnumberOfPatterns :: (Int)
+            _lhsOpatVarNames :: (Names)
+            _lhsOself :: (Patterns)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            (_lhsOnumberOfPatterns@_) =
                 0
             (_lhsOpatVarNames@_) =
                 []
@@ -6253,14 +8772,16 @@ sem_Position_Position :: (String) ->
                          (Int) ->
                          (T_Position)
 sem_Position_Position (filename_) (line_) (column_) =
-    let (_self@_) =
+    let _lhsOself :: (Position)
+        (_self@_) =
             Position_Position filename_ line_ column_
         (_lhsOself@_) =
             _self
     in  ( _lhsOself)
 sem_Position_Unknown :: (T_Position)
 sem_Position_Unknown  =
-    let (_self@_) =
+    let _lhsOself :: (Position)
+        (_self@_) =
             Position_Unknown
         (_lhsOself@_) =
             _self
@@ -6273,6 +8794,7 @@ type T_Qualifier = (Names) ->
                    ([Error]) ->
                    ([Error]) ->
                    (Names) ->
+                   ([Option]) ->
                    (FiniteMap Name Int) ->
                    (Names) ->
                    (FiniteMap Name TpScheme) ->
@@ -6298,11 +8820,20 @@ sem_Qualifier_Empty (range_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnamesInScope :: (Names)
+            _lhsOself :: (Qualifier)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            ( _rangeIself) =
                 (range_ )
             (_self@_) =
                 Qualifier_Empty _rangeIself
@@ -6332,16 +8863,56 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnamesInScope :: (Names)
+            _lhsOself :: (Qualifier)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _patternIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternImiscerrors :: ([Error])
+            _patternIpatVarNames :: (Names)
+            _patternIself :: (Pattern)
+            _patternIunboundNames :: (Names)
+            _patternIwarnings :: ([Warning])
+            _patternOallTypeConstructors :: (Names)
+            _patternOallValueConstructors :: (Names)
+            _patternOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternOlhsPattern :: (Bool)
+            _patternOmiscerrors :: ([Error])
+            _patternOnamesInScope :: (Names)
+            _patternOtypeConstructors :: (FiniteMap Name Int)
+            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOwarnings :: ([Warning])
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
                 (pattern_ (_patternOallTypeConstructors) (_patternOallValueConstructors) (_patternOcollectScopeInfos) (_patternOlhsPattern) (_patternOmiscerrors) (_patternOnamesInScope) (_patternOtypeConstructors) (_patternOvalueConstructors) (_patternOwarnings))
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
                 changeOfScope _patternIpatVarNames (_expressionIunboundNames  ++ _lhsIunboundNames)  _lhsInamesInScope
             (_expressionOnamesInScope@_) =
@@ -6390,6 +8961,8 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
                 _lhsIkindErrors
             (_expressionOmiscerrors@_) =
                 _patternImiscerrors
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -6407,14 +8980,39 @@ sem_Qualifier_Guard (range_) (guard_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnamesInScope :: (Names)
+            _lhsOself :: (Qualifier)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _guardIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _guardIkindErrors :: ([Error])
+            _guardImiscerrors :: ([Error])
+            _guardIself :: (Expression)
+            _guardIunboundNames :: (Names)
+            _guardIwarnings :: ([Warning])
+            _guardOallTypeConstructors :: (Names)
+            _guardOallValueConstructors :: (Names)
+            _guardOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _guardOkindErrors :: ([Error])
+            _guardOmiscerrors :: ([Error])
+            _guardOnamesInScope :: (Names)
+            _guardOoptions :: ([Option])
+            _guardOtypeConstructors :: (FiniteMap Name Int)
+            _guardOvalueConstructors :: (FiniteMap Name TpScheme)
+            _guardOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _guardIcollectScopeInfos,_guardIkindErrors,_guardImiscerrors,_guardIself,_guardIunboundNames,_guardIwarnings) =
-                (guard_ (_guardOallTypeConstructors) (_guardOallValueConstructors) (_guardOcollectScopeInfos) (_guardOkindErrors) (_guardOmiscerrors) (_guardOnamesInScope) (_guardOtypeConstructors) (_guardOvalueConstructors) (_guardOwarnings))
+                (guard_ (_guardOallTypeConstructors) (_guardOallValueConstructors) (_guardOcollectScopeInfos) (_guardOkindErrors) (_guardOmiscerrors) (_guardOnamesInScope) (_guardOoptions) (_guardOtypeConstructors) (_guardOvalueConstructors) (_guardOwarnings))
             (_lhsOunboundNames@_) =
                 _guardIunboundNames ++ _lhsIunboundNames
             (_self@_) =
@@ -6443,6 +9041,8 @@ sem_Qualifier_Guard (range_) (guard_) =
                 _lhsImiscerrors
             (_guardOnamesInScope@_) =
                 _lhsInamesInScope
+            (_guardOoptions@_) =
+                _lhsIoptions
             (_guardOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_guardOvalueConstructors@_) =
@@ -6460,11 +9060,51 @@ sem_Qualifier_Let (range_) (declarations_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnamesInScope :: (Names)
+            _lhsOself :: (Qualifier)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _declarationsIcollectTypeConstructors :: ([(Name,Int)])
+            _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
+            _declarationsIdeclVarNames :: (Names)
+            _declarationsIkindErrors :: ([Error])
+            _declarationsImiscerrors :: ([Error])
+            _declarationsIoperatorFixities :: ([(Name,(Int,Assoc))])
+            _declarationsIpreviousWasAlsoFB :: (Maybe Name)
+            _declarationsIself :: (Declarations)
+            _declarationsIsuspiciousFBs :: ([(Name,Name)])
+            _declarationsItypeSignatures :: ([(Name,TpScheme)])
+            _declarationsIunboundNames :: (Names)
+            _declarationsIwarnings :: ([Warning])
+            _declarationsOallTypeConstructors :: (Names)
+            _declarationsOallValueConstructors :: (Names)
+            _declarationsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _declarationsOcollectTypeConstructors :: ([(Name,Int)])
+            _declarationsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _declarationsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _declarationsOkindErrors :: ([Error])
+            _declarationsOmiscerrors :: ([Error])
+            _declarationsOnamesInScope :: (Names)
+            _declarationsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _declarationsOoptions :: ([Option])
+            _declarationsOpreviousWasAlsoFB :: (Maybe Name)
+            _declarationsOsuspiciousFBs :: ([(Name,Name)])
+            _declarationsOtypeConstructors :: (FiniteMap Name Int)
+            _declarationsOtypeSignatures :: ([(Name,TpScheme)])
+            _declarationsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _declarationsOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _declarationsIcollectScopeInfos,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
                 (declarations_ (_declarationsOallTypeConstructors)
@@ -6477,6 +9117,7 @@ sem_Qualifier_Let (range_) (declarations_) =
                                (_declarationsOmiscerrors)
                                (_declarationsOnamesInScope)
                                (_declarationsOoperatorFixities)
+                               (_declarationsOoptions)
                                (_declarationsOpreviousWasAlsoFB)
                                (_declarationsOsuspiciousFBs)
                                (_declarationsOtypeConstructors)
@@ -6536,6 +9177,8 @@ sem_Qualifier_Let (range_) (declarations_) =
                 _namesInScope
             (_declarationsOoperatorFixities@_) =
                 _operatorFixities
+            (_declarationsOoptions@_) =
+                _lhsIoptions
             (_declarationsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_declarationsOvalueConstructors@_) =
@@ -6551,6 +9194,7 @@ type T_Qualifiers = (Names) ->
                     ([Error]) ->
                     ([Error]) ->
                     (Names) ->
+                    ([Option]) ->
                     (FiniteMap Name Int) ->
                     (Names) ->
                     (FiniteMap Name TpScheme) ->
@@ -6571,14 +9215,58 @@ sem_Qualifiers_Cons (hd_) (tl_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdInamesInScope,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOtypeConstructors) (_hdOunboundNames) (_hdOvalueConstructors) (_hdOwarnings))
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnamesInScope :: (Names)
+            _lhsOself :: (Qualifiers)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _hdIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdIkindErrors :: ([Error])
+            _hdImiscerrors :: ([Error])
+            _hdInamesInScope :: (Names)
+            _hdIself :: (Qualifier)
+            _hdIunboundNames :: (Names)
+            _hdIwarnings :: ([Warning])
+            _hdOallTypeConstructors :: (Names)
+            _hdOallValueConstructors :: (Names)
+            _hdOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdOkindErrors :: ([Error])
+            _hdOmiscerrors :: ([Error])
+            _hdOnamesInScope :: (Names)
+            _hdOoptions :: ([Option])
+            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOunboundNames :: (Names)
+            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOwarnings :: ([Warning])
+            _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlIkindErrors :: ([Error])
+            _tlImiscerrors :: ([Error])
+            _tlInamesInScope :: (Names)
+            _tlIself :: (Qualifiers)
+            _tlIunboundNames :: (Names)
+            _tlIwarnings :: ([Warning])
+            _tlOallTypeConstructors :: (Names)
+            _tlOallValueConstructors :: (Names)
+            _tlOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlOkindErrors :: ([Error])
+            _tlOmiscerrors :: ([Error])
+            _tlOnamesInScope :: (Names)
+            _tlOoptions :: ([Option])
+            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOunboundNames :: (Names)
+            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOwarnings :: ([Warning])
+            ( _hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdInamesInScope,_hdIself,_hdIunboundNames,_hdIwarnings) =
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOtypeConstructors) (_hdOunboundNames) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlInamesInScope,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOtypeConstructors) (_tlOunboundNames) (_tlOvalueConstructors) (_tlOwarnings))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOtypeConstructors) (_tlOunboundNames) (_tlOvalueConstructors) (_tlOwarnings))
             (_hdOunboundNames@_) =
                 _tlIunboundNames
             (_tlOunboundNames@_) =
@@ -6611,6 +9299,8 @@ sem_Qualifiers_Cons (hd_) (tl_) =
                 _lhsImiscerrors
             (_hdOnamesInScope@_) =
                 _lhsInamesInScope
+            (_hdOoptions@_) =
+                _lhsIoptions
             (_hdOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_hdOvalueConstructors@_) =
@@ -6629,6 +9319,8 @@ sem_Qualifiers_Cons (hd_) (tl_) =
                 _hdImiscerrors
             (_tlOnamesInScope@_) =
                 _hdInamesInScope
+            (_tlOoptions@_) =
+                _lhsIoptions
             (_tlOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_tlOvalueConstructors@_) =
@@ -6644,11 +9336,19 @@ sem_Qualifiers_Nil  =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let (_lhsOunboundNames@_) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnamesInScope :: (Names)
+            _lhsOself :: (Qualifiers)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            (_lhsOunboundNames@_) =
                 _lhsIunboundNames
             (_self@_) =
                 []
@@ -6677,7 +9377,10 @@ sem_Range_Range :: (T_Position) ->
                    (T_Position) ->
                    (T_Range)
 sem_Range_Range (start_) (stop_) =
-    let ( _startIself) =
+    let _lhsOself :: (Range)
+        _startIself :: (Position)
+        _stopIself :: (Position)
+        ( _startIself) =
             (start_ )
         ( _stopIself) =
             (stop_ )
@@ -6690,6 +9393,7 @@ sem_Range_Range (start_) (stop_) =
 -- semantic domain
 type T_RecordExpressionBinding = ([(ScopeInfo, Entity)]) ->
                                  (Names) ->
+                                 ([Option]) ->
                                  ( ([(ScopeInfo, Entity)]),(RecordExpressionBinding),(Names))
 -- cata
 sem_RecordExpressionBinding :: (RecordExpressionBinding) ->
@@ -6702,13 +9406,35 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
                                                        (T_RecordExpressionBinding)
 sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression_) =
     \ _lhsIcollectScopeInfos
-      _lhsInamesInScope ->
-        let ( _rangeIself) =
+      _lhsInamesInScope
+      _lhsIoptions ->
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOself :: (RecordExpressionBinding)
+            _lhsOunboundNames :: (Names)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ((_monos@_,_constructorenv@_,_betaUnique@_,_miscerrors@_,_warnings@_,_kindErrors@_,_valueConstructors@_,_allValueConstructors@_,_typeConstructors@_,_allTypeConstructors@_,_importEnvironment@_)) =
                 internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
             (_lhsOunboundNames@_) =
@@ -6731,6 +9457,8 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
                 _miscerrors
             (_expressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _typeConstructors
             (_expressionOvalueConstructors@_) =
@@ -6742,6 +9470,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
 -- semantic domain
 type T_RecordExpressionBindings = ([(ScopeInfo, Entity)]) ->
                                   (Names) ->
+                                  ([Option]) ->
                                   ( ([(ScopeInfo, Entity)]),(RecordExpressionBindings),(Names))
 -- cata
 sem_RecordExpressionBindings :: (RecordExpressionBindings) ->
@@ -6753,11 +9482,27 @@ sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
                                      (T_RecordExpressionBindings)
 sem_RecordExpressionBindings_Cons (hd_) (tl_) =
     \ _lhsIcollectScopeInfos
-      _lhsInamesInScope ->
-        let ( _hdIcollectScopeInfos,_hdIself,_hdIunboundNames) =
-                (hd_ (_hdOcollectScopeInfos) (_hdOnamesInScope))
+      _lhsInamesInScope
+      _lhsIoptions ->
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOself :: (RecordExpressionBindings)
+            _lhsOunboundNames :: (Names)
+            _hdIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdIself :: (RecordExpressionBinding)
+            _hdIunboundNames :: (Names)
+            _hdOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdOnamesInScope :: (Names)
+            _hdOoptions :: ([Option])
+            _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlIself :: (RecordExpressionBindings)
+            _tlIunboundNames :: (Names)
+            _tlOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlOnamesInScope :: (Names)
+            _tlOoptions :: ([Option])
+            ( _hdIcollectScopeInfos,_hdIself,_hdIunboundNames) =
+                (hd_ (_hdOcollectScopeInfos) (_hdOnamesInScope) (_hdOoptions))
             ( _tlIcollectScopeInfos,_tlIself,_tlIunboundNames) =
-                (tl_ (_tlOcollectScopeInfos) (_tlOnamesInScope))
+                (tl_ (_tlOcollectScopeInfos) (_tlOnamesInScope) (_tlOoptions))
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -6770,16 +9515,24 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
                 _lhsIcollectScopeInfos
             (_hdOnamesInScope@_) =
                 _lhsInamesInScope
+            (_hdOoptions@_) =
+                _lhsIoptions
             (_tlOcollectScopeInfos@_) =
                 _hdIcollectScopeInfos
             (_tlOnamesInScope@_) =
                 _lhsInamesInScope
+            (_tlOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOcollectScopeInfos,_lhsOself,_lhsOunboundNames)
 sem_RecordExpressionBindings_Nil :: (T_RecordExpressionBindings)
 sem_RecordExpressionBindings_Nil  =
     \ _lhsIcollectScopeInfos
-      _lhsInamesInScope ->
-        let (_lhsOunboundNames@_) =
+      _lhsInamesInScope
+      _lhsIoptions ->
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOself :: (RecordExpressionBindings)
+            _lhsOunboundNames :: (Names)
+            (_lhsOunboundNames@_) =
                 []
             (_self@_) =
                 []
@@ -6805,7 +9558,27 @@ sem_RecordPatternBinding_RecordPatternBinding :: (T_Range) ->
 sem_RecordPatternBinding_RecordPatternBinding (range_) (name_) (pattern_) =
     \ _lhsIcollectScopeInfos
       _lhsInamesInScope ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOself :: (RecordPatternBinding)
+            _lhsOunboundNames :: (Names)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            _patternIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternImiscerrors :: ([Error])
+            _patternIpatVarNames :: (Names)
+            _patternIself :: (Pattern)
+            _patternIunboundNames :: (Names)
+            _patternIwarnings :: ([Warning])
+            _patternOallTypeConstructors :: (Names)
+            _patternOallValueConstructors :: (Names)
+            _patternOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternOlhsPattern :: (Bool)
+            _patternOmiscerrors :: ([Error])
+            _patternOnamesInScope :: (Names)
+            _patternOtypeConstructors :: (FiniteMap Name Int)
+            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -6856,7 +9629,20 @@ sem_RecordPatternBindings_Cons :: (T_RecordPatternBinding) ->
 sem_RecordPatternBindings_Cons (hd_) (tl_) =
     \ _lhsIcollectScopeInfos
       _lhsInamesInScope ->
-        let ( _hdIcollectScopeInfos,_hdIself,_hdIunboundNames) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOself :: (RecordPatternBindings)
+            _lhsOunboundNames :: (Names)
+            _hdIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdIself :: (RecordPatternBinding)
+            _hdIunboundNames :: (Names)
+            _hdOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdOnamesInScope :: (Names)
+            _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlIself :: (RecordPatternBindings)
+            _tlIunboundNames :: (Names)
+            _tlOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlOnamesInScope :: (Names)
+            ( _hdIcollectScopeInfos,_hdIself,_hdIunboundNames) =
                 (hd_ (_hdOcollectScopeInfos) (_hdOnamesInScope))
             ( _tlIcollectScopeInfos,_tlIself,_tlIunboundNames) =
                 (tl_ (_tlOcollectScopeInfos) (_tlOnamesInScope))
@@ -6881,7 +9667,10 @@ sem_RecordPatternBindings_Nil :: (T_RecordPatternBindings)
 sem_RecordPatternBindings_Nil  =
     \ _lhsIcollectScopeInfos
       _lhsInamesInScope ->
-        let (_lhsOunboundNames@_) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOself :: (RecordPatternBindings)
+            _lhsOunboundNames :: (Names)
+            (_lhsOunboundNames@_) =
                 []
             (_self@_) =
                 []
@@ -6898,6 +9687,7 @@ type T_RightHandSide = (Names) ->
                        ([Error]) ->
                        ([Error]) ->
                        (Names) ->
+                       ([Option]) ->
                        (FiniteMap Name Int) ->
                        (FiniteMap Name TpScheme) ->
                        ([Warning]) ->
@@ -6920,15 +9710,57 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (RightHandSide)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            _whereIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _whereIkindErrors :: ([Error])
+            _whereImiscerrors :: ([Error])
+            _whereInamesInScope :: (Names)
+            _whereIself :: (MaybeDeclarations)
+            _whereIunboundNames :: (Names)
+            _whereIwarnings :: ([Warning])
+            _whereOallTypeConstructors :: (Names)
+            _whereOallValueConstructors :: (Names)
+            _whereOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _whereOkindErrors :: ([Error])
+            _whereOmiscerrors :: ([Error])
+            _whereOnamesInScope :: (Names)
+            _whereOoptions :: ([Option])
+            _whereOtypeConstructors :: (FiniteMap Name Int)
+            _whereOunboundNames :: (Names)
+            _whereOvalueConstructors :: (FiniteMap Name TpScheme)
+            _whereOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ( _whereIcollectScopeInfos,_whereIkindErrors,_whereImiscerrors,_whereInamesInScope,_whereIself,_whereIunboundNames,_whereIwarnings) =
-                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
+                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOoptions) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
             (_whereOunboundNames@_) =
                 _expressionIunboundNames
             (_expressionOnamesInScope@_) =
@@ -6957,6 +9789,8 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
                 _lhsIkindErrors
             (_expressionOmiscerrors@_) =
                 _lhsImiscerrors
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -6975,6 +9809,8 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
                 _expressionImiscerrors
             (_whereOnamesInScope@_) =
                 _lhsInamesInScope
+            (_whereOoptions@_) =
+                _lhsIoptions
             (_whereOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_whereOvalueConstructors@_) =
@@ -6993,15 +9829,57 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
       _lhsIkindErrors
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (RightHandSide)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _guardedexpressionsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _guardedexpressionsIkindErrors :: ([Error])
+            _guardedexpressionsImiscerrors :: ([Error])
+            _guardedexpressionsIself :: (GuardedExpressions)
+            _guardedexpressionsIunboundNames :: (Names)
+            _guardedexpressionsIwarnings :: ([Warning])
+            _guardedexpressionsOallTypeConstructors :: (Names)
+            _guardedexpressionsOallValueConstructors :: (Names)
+            _guardedexpressionsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _guardedexpressionsOkindErrors :: ([Error])
+            _guardedexpressionsOmiscerrors :: ([Error])
+            _guardedexpressionsOnamesInScope :: (Names)
+            _guardedexpressionsOoptions :: ([Option])
+            _guardedexpressionsOtypeConstructors :: (FiniteMap Name Int)
+            _guardedexpressionsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _guardedexpressionsOwarnings :: ([Warning])
+            _whereIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _whereIkindErrors :: ([Error])
+            _whereImiscerrors :: ([Error])
+            _whereInamesInScope :: (Names)
+            _whereIself :: (MaybeDeclarations)
+            _whereIunboundNames :: (Names)
+            _whereIwarnings :: ([Warning])
+            _whereOallTypeConstructors :: (Names)
+            _whereOallValueConstructors :: (Names)
+            _whereOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _whereOkindErrors :: ([Error])
+            _whereOmiscerrors :: ([Error])
+            _whereOnamesInScope :: (Names)
+            _whereOoptions :: ([Option])
+            _whereOtypeConstructors :: (FiniteMap Name Int)
+            _whereOunboundNames :: (Names)
+            _whereOvalueConstructors :: (FiniteMap Name TpScheme)
+            _whereOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _guardedexpressionsIcollectScopeInfos,_guardedexpressionsIkindErrors,_guardedexpressionsImiscerrors,_guardedexpressionsIself,_guardedexpressionsIunboundNames,_guardedexpressionsIwarnings) =
-                (guardedexpressions_ (_guardedexpressionsOallTypeConstructors) (_guardedexpressionsOallValueConstructors) (_guardedexpressionsOcollectScopeInfos) (_guardedexpressionsOkindErrors) (_guardedexpressionsOmiscerrors) (_guardedexpressionsOnamesInScope) (_guardedexpressionsOtypeConstructors) (_guardedexpressionsOvalueConstructors) (_guardedexpressionsOwarnings))
+                (guardedexpressions_ (_guardedexpressionsOallTypeConstructors) (_guardedexpressionsOallValueConstructors) (_guardedexpressionsOcollectScopeInfos) (_guardedexpressionsOkindErrors) (_guardedexpressionsOmiscerrors) (_guardedexpressionsOnamesInScope) (_guardedexpressionsOoptions) (_guardedexpressionsOtypeConstructors) (_guardedexpressionsOvalueConstructors) (_guardedexpressionsOwarnings))
             ( _whereIcollectScopeInfos,_whereIkindErrors,_whereImiscerrors,_whereInamesInScope,_whereIself,_whereIunboundNames,_whereIwarnings) =
-                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
+                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOoptions) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
             (_whereOunboundNames@_) =
                 _guardedexpressionsIunboundNames
             (_guardedexpressionsOnamesInScope@_) =
@@ -7030,6 +9908,8 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
                 _lhsIkindErrors
             (_guardedexpressionsOmiscerrors@_) =
                 _lhsImiscerrors
+            (_guardedexpressionsOoptions@_) =
+                _lhsIoptions
             (_guardedexpressionsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_guardedexpressionsOvalueConstructors@_) =
@@ -7048,6 +9928,8 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
                 _guardedexpressionsImiscerrors
             (_whereOnamesInScope@_) =
                 _lhsInamesInScope
+            (_whereOoptions@_) =
+                _lhsIoptions
             (_whereOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_whereOvalueConstructors@_) =
@@ -7068,7 +9950,13 @@ sem_SimpleType_SimpleType :: (T_Range) ->
                              (T_Names) ->
                              (T_SimpleType)
 sem_SimpleType_SimpleType (range_) (name_) (typevariables_) =
-    let ( _rangeIself) =
+    let _lhsOname :: (Name)
+        _lhsOself :: (SimpleType)
+        _lhsOtypevariables :: (Names)
+        _rangeIself :: (Range)
+        _nameIself :: (Name)
+        _typevariablesIself :: (Names)
+        ( _rangeIself) =
             (range_ )
         ( _nameIself) =
             (name_ )
@@ -7092,6 +9980,7 @@ type T_Statement = (Names) ->
                    (Bool) ->
                    ([Error]) ->
                    (Names) ->
+                   ([Option]) ->
                    (FiniteMap Name Int) ->
                    (Names) ->
                    (FiniteMap Name TpScheme) ->
@@ -7118,11 +10007,21 @@ sem_Statement_Empty (range_) =
       _lhsIlastStatementIsExpr
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOlastStatementIsExpr :: (Bool)
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnamesInScope :: (Names)
+            _lhsOself :: (Statement)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            ( _rangeIself) =
                 (range_ )
             (_self@_) =
                 Statement_Empty _rangeIself
@@ -7154,14 +10053,40 @@ sem_Statement_Expression (range_) (expression_) =
       _lhsIlastStatementIsExpr
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOlastStatementIsExpr :: (Bool)
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnamesInScope :: (Names)
+            _lhsOself :: (Statement)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames ++ _lhsIunboundNames
             (_lhsOlastStatementIsExpr@_) =
@@ -7192,6 +10117,8 @@ sem_Statement_Expression (range_) (expression_) =
                 _lhsImiscerrors
             (_expressionOnamesInScope@_) =
                 _lhsInamesInScope
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -7211,16 +10138,57 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
       _lhsIlastStatementIsExpr
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOlastStatementIsExpr :: (Bool)
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnamesInScope :: (Names)
+            _lhsOself :: (Statement)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _patternIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternImiscerrors :: ([Error])
+            _patternIpatVarNames :: (Names)
+            _patternIself :: (Pattern)
+            _patternIunboundNames :: (Names)
+            _patternIwarnings :: ([Warning])
+            _patternOallTypeConstructors :: (Names)
+            _patternOallValueConstructors :: (Names)
+            _patternOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _patternOlhsPattern :: (Bool)
+            _patternOmiscerrors :: ([Error])
+            _patternOnamesInScope :: (Names)
+            _patternOtypeConstructors :: (FiniteMap Name Int)
+            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOwarnings :: ([Warning])
+            _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionIkindErrors :: ([Error])
+            _expressionImiscerrors :: ([Error])
+            _expressionIself :: (Expression)
+            _expressionIunboundNames :: (Names)
+            _expressionIwarnings :: ([Warning])
+            _expressionOallTypeConstructors :: (Names)
+            _expressionOallValueConstructors :: (Names)
+            _expressionOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _expressionOkindErrors :: ([Error])
+            _expressionOmiscerrors :: ([Error])
+            _expressionOnamesInScope :: (Names)
+            _expressionOoptions :: ([Option])
+            _expressionOtypeConstructors :: (FiniteMap Name Int)
+            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
                 (pattern_ (_patternOallTypeConstructors) (_patternOallValueConstructors) (_patternOcollectScopeInfos) (_patternOlhsPattern) (_patternOmiscerrors) (_patternOnamesInScope) (_patternOtypeConstructors) (_patternOvalueConstructors) (_patternOwarnings))
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
                 changeOfScope _patternIpatVarNames (_expressionIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
             (_expressionOnamesInScope@_) =
@@ -7271,6 +10239,8 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
                 _lhsIkindErrors
             (_expressionOmiscerrors@_) =
                 _patternImiscerrors
+            (_expressionOoptions@_) =
+                _lhsIoptions
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -7289,11 +10259,52 @@ sem_Statement_Let (range_) (declarations_) =
       _lhsIlastStatementIsExpr
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _rangeIself) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOlastStatementIsExpr :: (Bool)
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnamesInScope :: (Names)
+            _lhsOself :: (Statement)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _rangeIself :: (Range)
+            _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _declarationsIcollectTypeConstructors :: ([(Name,Int)])
+            _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
+            _declarationsIdeclVarNames :: (Names)
+            _declarationsIkindErrors :: ([Error])
+            _declarationsImiscerrors :: ([Error])
+            _declarationsIoperatorFixities :: ([(Name,(Int,Assoc))])
+            _declarationsIpreviousWasAlsoFB :: (Maybe Name)
+            _declarationsIself :: (Declarations)
+            _declarationsIsuspiciousFBs :: ([(Name,Name)])
+            _declarationsItypeSignatures :: ([(Name,TpScheme)])
+            _declarationsIunboundNames :: (Names)
+            _declarationsIwarnings :: ([Warning])
+            _declarationsOallTypeConstructors :: (Names)
+            _declarationsOallValueConstructors :: (Names)
+            _declarationsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _declarationsOcollectTypeConstructors :: ([(Name,Int)])
+            _declarationsOcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
+            _declarationsOcollectValueConstructors :: ([(Name,TpScheme)])
+            _declarationsOkindErrors :: ([Error])
+            _declarationsOmiscerrors :: ([Error])
+            _declarationsOnamesInScope :: (Names)
+            _declarationsOoperatorFixities :: ([(Name,(Int,Assoc))])
+            _declarationsOoptions :: ([Option])
+            _declarationsOpreviousWasAlsoFB :: (Maybe Name)
+            _declarationsOsuspiciousFBs :: ([(Name,Name)])
+            _declarationsOtypeConstructors :: (FiniteMap Name Int)
+            _declarationsOtypeSignatures :: ([(Name,TpScheme)])
+            _declarationsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _declarationsOwarnings :: ([Warning])
+            ( _rangeIself) =
                 (range_ )
             ( _declarationsIcollectScopeInfos,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
                 (declarations_ (_declarationsOallTypeConstructors)
@@ -7306,6 +10317,7 @@ sem_Statement_Let (range_) (declarations_) =
                                (_declarationsOmiscerrors)
                                (_declarationsOnamesInScope)
                                (_declarationsOoperatorFixities)
+                               (_declarationsOoptions)
                                (_declarationsOpreviousWasAlsoFB)
                                (_declarationsOsuspiciousFBs)
                                (_declarationsOtypeConstructors)
@@ -7367,6 +10379,8 @@ sem_Statement_Let (range_) (declarations_) =
                 _namesInScope
             (_declarationsOoperatorFixities@_) =
                 _operatorFixities
+            (_declarationsOoptions@_) =
+                _lhsIoptions
             (_declarationsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_declarationsOvalueConstructors@_) =
@@ -7383,6 +10397,7 @@ type T_Statements = (Names) ->
                     (Bool) ->
                     ([Error]) ->
                     (Names) ->
+                    ([Option]) ->
                     (FiniteMap Name Int) ->
                     (Names) ->
                     (FiniteMap Name TpScheme) ->
@@ -7404,14 +10419,63 @@ sem_Statements_Cons (hd_) (tl_) =
       _lhsIlastStatementIsExpr
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let ( _hdIcollectScopeInfos,_hdIkindErrors,_hdIlastStatementIsExpr,_hdImiscerrors,_hdInamesInScope,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOlastStatementIsExpr) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOtypeConstructors) (_hdOunboundNames) (_hdOvalueConstructors) (_hdOwarnings))
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOlastStatementIsExpr :: (Bool)
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnamesInScope :: (Names)
+            _lhsOself :: (Statements)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            _hdIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdIkindErrors :: ([Error])
+            _hdIlastStatementIsExpr :: (Bool)
+            _hdImiscerrors :: ([Error])
+            _hdInamesInScope :: (Names)
+            _hdIself :: (Statement)
+            _hdIunboundNames :: (Names)
+            _hdIwarnings :: ([Warning])
+            _hdOallTypeConstructors :: (Names)
+            _hdOallValueConstructors :: (Names)
+            _hdOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _hdOkindErrors :: ([Error])
+            _hdOlastStatementIsExpr :: (Bool)
+            _hdOmiscerrors :: ([Error])
+            _hdOnamesInScope :: (Names)
+            _hdOoptions :: ([Option])
+            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOunboundNames :: (Names)
+            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOwarnings :: ([Warning])
+            _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlIkindErrors :: ([Error])
+            _tlIlastStatementIsExpr :: (Bool)
+            _tlImiscerrors :: ([Error])
+            _tlInamesInScope :: (Names)
+            _tlIself :: (Statements)
+            _tlIunboundNames :: (Names)
+            _tlIwarnings :: ([Warning])
+            _tlOallTypeConstructors :: (Names)
+            _tlOallValueConstructors :: (Names)
+            _tlOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _tlOkindErrors :: ([Error])
+            _tlOlastStatementIsExpr :: (Bool)
+            _tlOmiscerrors :: ([Error])
+            _tlOnamesInScope :: (Names)
+            _tlOoptions :: ([Option])
+            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOunboundNames :: (Names)
+            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOwarnings :: ([Warning])
+            ( _hdIcollectScopeInfos,_hdIkindErrors,_hdIlastStatementIsExpr,_hdImiscerrors,_hdInamesInScope,_hdIself,_hdIunboundNames,_hdIwarnings) =
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOlastStatementIsExpr) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOtypeConstructors) (_hdOunboundNames) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIcollectScopeInfos,_tlIkindErrors,_tlIlastStatementIsExpr,_tlImiscerrors,_tlInamesInScope,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOlastStatementIsExpr) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOtypeConstructors) (_tlOunboundNames) (_tlOvalueConstructors) (_tlOwarnings))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOlastStatementIsExpr) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOtypeConstructors) (_tlOunboundNames) (_tlOvalueConstructors) (_tlOwarnings))
             (_hdOunboundNames@_) =
                 _tlIunboundNames
             (_tlOunboundNames@_) =
@@ -7448,6 +10512,8 @@ sem_Statements_Cons (hd_) (tl_) =
                 _lhsImiscerrors
             (_hdOnamesInScope@_) =
                 _lhsInamesInScope
+            (_hdOoptions@_) =
+                _lhsIoptions
             (_hdOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_hdOvalueConstructors@_) =
@@ -7468,6 +10534,8 @@ sem_Statements_Cons (hd_) (tl_) =
                 _hdImiscerrors
             (_tlOnamesInScope@_) =
                 _hdInamesInScope
+            (_tlOoptions@_) =
+                _lhsIoptions
             (_tlOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_tlOvalueConstructors@_) =
@@ -7484,11 +10552,20 @@ sem_Statements_Nil  =
       _lhsIlastStatementIsExpr
       _lhsImiscerrors
       _lhsInamesInScope
+      _lhsIoptions
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
       _lhsIwarnings ->
-        let (_lhsOunboundNames@_) =
+        let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
+            _lhsOkindErrors :: ([Error])
+            _lhsOlastStatementIsExpr :: (Bool)
+            _lhsOmiscerrors :: ([Error])
+            _lhsOnamesInScope :: (Names)
+            _lhsOself :: (Statements)
+            _lhsOunboundNames :: (Names)
+            _lhsOwarnings :: ([Warning])
+            (_lhsOunboundNames@_) =
                 _lhsIunboundNames
             (_self@_) =
                 []
@@ -7519,7 +10596,9 @@ sem_Strings_Cons :: (String) ->
                     (T_Strings) ->
                     (T_Strings)
 sem_Strings_Cons (hd_) (tl_) =
-    let ( _tlIself) =
+    let _lhsOself :: (Strings)
+        _tlIself :: (Strings)
+        ( _tlIself) =
             (tl_ )
         (_self@_) =
             (:) hd_ _tlIself
@@ -7528,7 +10607,8 @@ sem_Strings_Cons (hd_) (tl_) =
     in  ( _lhsOself)
 sem_Strings_Nil :: (T_Strings)
 sem_Strings_Nil  =
-    let (_self@_) =
+    let _lhsOself :: (Strings)
+        (_self@_) =
             []
         (_lhsOself@_) =
             _self
@@ -7536,6 +10616,7 @@ sem_Strings_Nil  =
 -- Type --------------------------------------------------------
 -- semantic domain
 type T_Type = ([Error]) ->
+              ([Option]) ->
               ( ([Error]),(Type),(Names))
 -- cata
 sem_Type :: (Type) ->
@@ -7560,13 +10641,28 @@ sem_Type_Application :: (T_Range) ->
                         (T_Types) ->
                         (T_Type)
 sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
-    \ _lhsImiscerrors ->
-        let ( _rangeIself) =
+    \ _lhsImiscerrors
+      _lhsIoptions ->
+        let _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Type)
+            _lhsOtypevariables :: (Names)
+            _rangeIself :: (Range)
+            _functionImiscerrors :: ([Error])
+            _functionIself :: (Type)
+            _functionItypevariables :: (Names)
+            _functionOmiscerrors :: ([Error])
+            _functionOoptions :: ([Option])
+            _argumentsImiscerrors :: ([Error])
+            _argumentsIself :: (Types)
+            _argumentsItypevariables :: (Names)
+            _argumentsOmiscerrors :: ([Error])
+            _argumentsOoptions :: ([Option])
+            ( _rangeIself) =
                 (range_ )
             ( _functionImiscerrors,_functionIself,_functionItypevariables) =
-                (function_ (_functionOmiscerrors))
+                (function_ (_functionOmiscerrors) (_functionOoptions))
             ( _argumentsImiscerrors,_argumentsIself,_argumentsItypevariables) =
-                (arguments_ (_argumentsOmiscerrors))
+                (arguments_ (_argumentsOmiscerrors) (_argumentsOoptions))
             (_lhsOtypevariables@_) =
                 _functionItypevariables  ++  _argumentsItypevariables
             (_self@_) =
@@ -7577,15 +10673,25 @@ sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
                 _argumentsImiscerrors
             (_functionOmiscerrors@_) =
                 _lhsImiscerrors
+            (_functionOoptions@_) =
+                _lhsIoptions
             (_argumentsOmiscerrors@_) =
                 _functionImiscerrors
+            (_argumentsOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables)
 sem_Type_Constructor :: (T_Range) ->
                         (T_Name) ->
                         (T_Type)
 sem_Type_Constructor (range_) (name_) =
-    \ _lhsImiscerrors ->
-        let ( _rangeIself) =
+    \ _lhsImiscerrors
+      _lhsIoptions ->
+        let _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Type)
+            _lhsOtypevariables :: (Names)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -7603,13 +10709,24 @@ sem_Type_Exists :: (T_Range) ->
                    (T_Type) ->
                    (T_Type)
 sem_Type_Exists (range_) (typevariables_) (type_) =
-    \ _lhsImiscerrors ->
-        let ( _rangeIself) =
+    \ _lhsImiscerrors
+      _lhsIoptions ->
+        let _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Type)
+            _lhsOtypevariables :: (Names)
+            _rangeIself :: (Range)
+            _typevariablesIself :: (Names)
+            _typeImiscerrors :: ([Error])
+            _typeIself :: (Type)
+            _typeItypevariables :: (Names)
+            _typeOmiscerrors :: ([Error])
+            _typeOoptions :: ([Option])
+            ( _rangeIself) =
                 (range_ )
             ( _typevariablesIself) =
                 (typevariables_ )
             ( _typeImiscerrors,_typeIself,_typeItypevariables) =
-                (type_ (_typeOmiscerrors))
+                (type_ (_typeOmiscerrors) (_typeOoptions))
             (_lhsOtypevariables@_) =
                 _typeItypevariables
             (_self@_) =
@@ -7620,19 +10737,32 @@ sem_Type_Exists (range_) (typevariables_) (type_) =
                 _typeImiscerrors
             (_typeOmiscerrors@_) =
                 _lhsImiscerrors
+            (_typeOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables)
 sem_Type_Forall :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
 sem_Type_Forall (range_) (typevariables_) (type_) =
-    \ _lhsImiscerrors ->
-        let ( _rangeIself) =
+    \ _lhsImiscerrors
+      _lhsIoptions ->
+        let _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Type)
+            _lhsOtypevariables :: (Names)
+            _rangeIself :: (Range)
+            _typevariablesIself :: (Names)
+            _typeImiscerrors :: ([Error])
+            _typeIself :: (Type)
+            _typeItypevariables :: (Names)
+            _typeOmiscerrors :: ([Error])
+            _typeOoptions :: ([Option])
+            ( _rangeIself) =
                 (range_ )
             ( _typevariablesIself) =
                 (typevariables_ )
             ( _typeImiscerrors,_typeIself,_typeItypevariables) =
-                (type_ (_typeOmiscerrors))
+                (type_ (_typeOmiscerrors) (_typeOoptions))
             (_lhsOtypevariables@_) =
                 _typeItypevariables
             (_self@_) =
@@ -7643,16 +10773,28 @@ sem_Type_Forall (range_) (typevariables_) (type_) =
                 _typeImiscerrors
             (_typeOmiscerrors@_) =
                 _lhsImiscerrors
+            (_typeOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables)
 sem_Type_Parenthesized :: (T_Range) ->
                           (T_Type) ->
                           (T_Type)
 sem_Type_Parenthesized (range_) (type_) =
-    \ _lhsImiscerrors ->
-        let ( _rangeIself) =
+    \ _lhsImiscerrors
+      _lhsIoptions ->
+        let _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Type)
+            _lhsOtypevariables :: (Names)
+            _rangeIself :: (Range)
+            _typeImiscerrors :: ([Error])
+            _typeIself :: (Type)
+            _typeItypevariables :: (Names)
+            _typeOmiscerrors :: ([Error])
+            _typeOoptions :: ([Option])
+            ( _rangeIself) =
                 (range_ )
             ( _typeImiscerrors,_typeIself,_typeItypevariables) =
-                (type_ (_typeOmiscerrors))
+                (type_ (_typeOmiscerrors) (_typeOoptions))
             (_lhsOtypevariables@_) =
                 _typeItypevariables
             (_self@_) =
@@ -7663,21 +10805,42 @@ sem_Type_Parenthesized (range_) (type_) =
                 _typeImiscerrors
             (_typeOmiscerrors@_) =
                 _lhsImiscerrors
+            (_typeOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables)
 sem_Type_Qualified :: (T_Range) ->
                       (T_ContextItems) ->
                       (T_Type) ->
                       (T_Type)
 sem_Type_Qualified (range_) (context_) (type_) =
-    \ _lhsImiscerrors ->
-        let ( _rangeIself) =
+    \ _lhsImiscerrors
+      _lhsIoptions ->
+        let _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Type)
+            _lhsOtypevariables :: (Names)
+            _rangeIself :: (Range)
+            _contextIcontextVars :: ([Name])
+            _contextImiscerrors :: ([Error])
+            _contextIself :: (ContextItems)
+            _contextOmiscerrors :: ([Error])
+            _contextOoptions :: ([Option])
+            _typeImiscerrors :: ([Error])
+            _typeIself :: (Type)
+            _typeItypevariables :: (Names)
+            _typeOmiscerrors :: ([Error])
+            _typeOoptions :: ([Option])
+            ( _rangeIself) =
                 (range_ )
             ( _contextIcontextVars,_contextImiscerrors,_contextIself) =
-                (context_ (_contextOmiscerrors))
+                (context_ (_contextOmiscerrors) (_contextOoptions))
             ( _typeImiscerrors,_typeIself,_typeItypevariables) =
-                (type_ (_typeOmiscerrors))
+                (type_ (_typeOmiscerrors) (_typeOoptions))
             (_lhsOmiscerrors@_) =
-                [ AmbiguousContext v | v <-  _contextIcontextVars, v `notElem` _typeItypevariables ]
+                ( if Overloading `elem` _lhsIoptions then
+                    [ AmbiguousContext v | v <-  _contextIcontextVars, v `notElem` _typeItypevariables ]
+                  else
+                    [ OverloadingDisabled range_ ]
+                )
                 ++
                 _typeImiscerrors
             (_lhsOtypevariables@_) =
@@ -7688,15 +10851,25 @@ sem_Type_Qualified (range_) (context_) (type_) =
                 _self
             (_contextOmiscerrors@_) =
                 _lhsImiscerrors
+            (_contextOoptions@_) =
+                _lhsIoptions
             (_typeOmiscerrors@_) =
                 _contextImiscerrors
+            (_typeOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables)
 sem_Type_Variable :: (T_Range) ->
                      (T_Name) ->
                      (T_Type)
 sem_Type_Variable (range_) (name_) =
-    \ _lhsImiscerrors ->
-        let ( _rangeIself) =
+    \ _lhsImiscerrors
+      _lhsIoptions ->
+        let _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Type)
+            _lhsOtypevariables :: (Names)
+            _rangeIself :: (Range)
+            _nameIself :: (Name)
+            ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
@@ -7712,6 +10885,7 @@ sem_Type_Variable (range_) (name_) =
 -- Types -------------------------------------------------------
 -- semantic domain
 type T_Types = ([Error]) ->
+               ([Option]) ->
                ( ([Error]),(Types),(Names))
 -- cata
 sem_Types :: (Types) ->
@@ -7722,11 +10896,25 @@ sem_Types_Cons :: (T_Type) ->
                   (T_Types) ->
                   (T_Types)
 sem_Types_Cons (hd_) (tl_) =
-    \ _lhsImiscerrors ->
-        let ( _hdImiscerrors,_hdIself,_hdItypevariables) =
-                (hd_ (_hdOmiscerrors))
+    \ _lhsImiscerrors
+      _lhsIoptions ->
+        let _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Types)
+            _lhsOtypevariables :: (Names)
+            _hdImiscerrors :: ([Error])
+            _hdIself :: (Type)
+            _hdItypevariables :: (Names)
+            _hdOmiscerrors :: ([Error])
+            _hdOoptions :: ([Option])
+            _tlImiscerrors :: ([Error])
+            _tlIself :: (Types)
+            _tlItypevariables :: (Names)
+            _tlOmiscerrors :: ([Error])
+            _tlOoptions :: ([Option])
+            ( _hdImiscerrors,_hdIself,_hdItypevariables) =
+                (hd_ (_hdOmiscerrors) (_hdOoptions))
             ( _tlImiscerrors,_tlIself,_tlItypevariables) =
-                (tl_ (_tlOmiscerrors))
+                (tl_ (_tlOmiscerrors) (_tlOoptions))
             (_lhsOtypevariables@_) =
                 _hdItypevariables  ++  _tlItypevariables
             (_self@_) =
@@ -7737,13 +10925,21 @@ sem_Types_Cons (hd_) (tl_) =
                 _tlImiscerrors
             (_hdOmiscerrors@_) =
                 _lhsImiscerrors
+            (_hdOoptions@_) =
+                _lhsIoptions
             (_tlOmiscerrors@_) =
                 _hdImiscerrors
+            (_tlOoptions@_) =
+                _lhsIoptions
         in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables)
 sem_Types_Nil :: (T_Types)
 sem_Types_Nil  =
-    \ _lhsImiscerrors ->
-        let (_lhsOtypevariables@_) =
+    \ _lhsImiscerrors
+      _lhsIoptions ->
+        let _lhsOmiscerrors :: ([Error])
+            _lhsOself :: (Types)
+            _lhsOtypevariables :: (Names)
+            (_lhsOtypevariables@_) =
                 []
             (_self@_) =
                 []
@@ -7752,4 +10948,5 @@ sem_Types_Nil  =
             (_lhsOmiscerrors@_) =
                 _lhsImiscerrors
         in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables)
+
 

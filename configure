@@ -1221,12 +1221,12 @@ LVMPATH=${PWD}/lib
 
 
 
-HBINDIR=${bindir}
-HLIBDIR=${prefix}/helium/lib
-HDEMODIR=${prefix}/helium/demo
-
-
-
+# HBINDIR=${bindir}
+# HLIBDIR=${prefix}/helium/lib
+# HDEMODIR=${prefix}/helium/demo
+# AC_SUBST(HBINDIR)
+# AC_SUBST(HLIBDIR)
+# AC_SUBST(HDEMODIR)
 
 # write output file
 trap '' 1 2 15
@@ -1342,7 +1342,7 @@ done
 ac_given_srcdir=$srcdir
 ac_given_INSTALL="$INSTALL"
 
-trap 'rm -fr `echo "src/Makefile lib/Makefile src/utils/OSSpecific.hs" | sed "s/:[^ ]*//g"` conftest*; exit 1' 1 2 15
+trap 'rm -fr `echo "src/Makefile lib/simple/Makefile lib/Makefile src/utils/OSSpecific.hs" | sed "s/:[^ ]*//g"` conftest*; exit 1' 1 2 15
 EOF
 cat >> $CONFIG_STATUS <<EOF
 
@@ -1391,9 +1391,6 @@ s%@logger@%$logger%g
 s%@HELIUM@%$HELIUM%g
 s%@COREASM@%$COREASM%g
 s%@LVMPATH@%$LVMPATH%g
-s%@HBINDIR@%$HBINDIR%g
-s%@HLIBDIR@%$HLIBDIR%g
-s%@HDEMODIR@%$HDEMODIR%g
 
 CEOF
 EOF
@@ -1435,7 +1432,7 @@ EOF
 
 cat >> $CONFIG_STATUS <<EOF
 
-CONFIG_FILES=\${CONFIG_FILES-"src/Makefile lib/Makefile src/utils/OSSpecific.hs"}
+CONFIG_FILES=\${CONFIG_FILES-"src/Makefile lib/simple/Makefile lib/Makefile src/utils/OSSpecific.hs"}
 EOF
 cat >> $CONFIG_STATUS <<\EOF
 for ac_file in .. $CONFIG_FILES; do if test "x$ac_file" != x..; then

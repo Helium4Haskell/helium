@@ -9,6 +9,8 @@ ATTR Module
      warnings              : Warnings
    ]
 
+ATTR Module -> Type [ options : {[Option]} || ]
+
 imports {
 import Similarity ( similar )
 import Args

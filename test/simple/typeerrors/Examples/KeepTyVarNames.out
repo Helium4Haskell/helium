@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/KeepTyVarNames.hs
+(7,5): Type error in variable
+ expression       : f
+   type           : (Int, a) -> aap -> noot -> mies
+   expected type  : b        -> Bool               
+ probable fix     : insert two arguments
+
+Compilation failed with 1 error

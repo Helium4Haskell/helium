@@ -1,0 +1,3 @@
+Compiling parser/UnclosedComment.hs
+(4,1): Unterminated comment
+Compilation failed with 1 error

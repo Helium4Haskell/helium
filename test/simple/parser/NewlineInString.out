@@ -1,0 +1,4 @@
+Compiling parser/NewlineInString.hs
+(1,8): Newline in string literal (expecting ")
+  Hint: Correct examples of Strings: "Helium is cool" "abc\ndef" ""
+Compilation failed with 1 error

@@ -1,0 +1,7 @@
+Compiling typeerrors/Examples/AltRight.hs
+(5,13): Type error in right-hand side of case alternative
+ expression       : 32
+   type           : Int   
+   does not match : String
+
+Compilation failed with 1 error

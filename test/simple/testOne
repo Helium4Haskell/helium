@@ -1,0 +1,4 @@
+echo $1
+bash compileAndRun $* > result.txt 2>&1
+diff result.txt $1.out
+rm result.txt

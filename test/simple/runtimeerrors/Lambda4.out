@@ -1,0 +1,11 @@
+Compiling runtimeerrors/Lambda4.hs
+(4,15): Warning: Variable "xs" is not used
+Compilation successful with 1 warning
+exception: pattern match failed at lambda expression ranging from (4,9) to (4,23) in module runtimeerrors/Lambda4.hs.
+
+trace:
+  demanded from "LvmLang.<"
+  demanded from "HeliumLang.showInt"
+  demanded from "HeliumLang.primPutChars"
+  demanded from "LvmLang.bindIO"
+  demanded from "LvmLang.unsafePerformIO"

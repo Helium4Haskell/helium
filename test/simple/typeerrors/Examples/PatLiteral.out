@@ -1,0 +1,7 @@
+Compiling typeerrors/Examples/PatLiteral.hs
+(4,1): Type error in pattern of function binding
+ pattern          : 1
+   type           : Int 
+   does not match : Bool
+
+Compilation failed with 1 error

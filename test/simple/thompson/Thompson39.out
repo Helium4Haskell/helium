@@ -1,0 +1,4 @@
+Compiling thompson/Thompson39.hs
+(1,1): Warning: Missing type signature: main :: (Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int)
+
+Fail: No show functions for tuples with more than 10 elements

@@ -1,0 +1,15 @@
+Compiling thompson/Thompson25.hs
+(3,19): Type error in application
+ expression       : a b
+ term             : a
+   type           : Int        
+   does not match : Int -> Bool
+ because          : it is not a function
+
+(4,19): Type error in application
+ expression       : b a
+ term             : b
+   type           : Int        
+   does not match : Int -> Bool
+
+Compilation failed with 2 errors

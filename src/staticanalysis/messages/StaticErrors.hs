@@ -34,6 +34,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | PatternDefinesNoVars Range
             | IntLiteralTooBig Range String
             | NegateNeeded Range
+            | OverloadingDisabled Range
             
             | AmbiguousContext Name
             | UnknownClass Name
@@ -55,6 +56,7 @@ instance HasMessage Error where
       PatternDefinesNoVars range  -> [range]
       IntLiteralTooBig range _    -> [range]
       NegateNeeded range          -> [range]
+      OverloadingDisabled range   -> [range]
       
       AmbiguousContext name       -> [getNameRange name]
       UnknownClass name           -> [getNameRange name]
@@ -166,6 +168,11 @@ showError anError = case anError of
       , []
       )
       
+   OverloadingDisabled range ->
+      ( MessageString ("Cannot handle contexts when overloading is disabled")
+      , [ ]
+      )
+
    AmbiguousContext name ->
       ( MessageString ("Type variable " ++ show (show name) ++ " appears in the context but not in the type")
       , []

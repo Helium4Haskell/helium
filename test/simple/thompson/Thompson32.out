@@ -1,0 +1,11 @@
+Compiling thompson/Thompson32.hs
+(2,11): Warning: Variable "x" is not used
+(2,13): Warning: Variable "y" is not used
+(8,5): Warning: Definition "g" is not used
+(7,5): Declared type is too general
+ expression       : g
+   declared type  : b  -> Float
+   inferred type  : _1 -> Float
+ hint             : try removing the type signature
+
+Compilation failed with 1 error

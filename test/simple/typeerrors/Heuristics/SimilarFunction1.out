@@ -1,0 +1,8 @@
+Compiling typeerrors/Heuristics/SimilarFunction1.hs
+(4,11): Type error in constructor
+ expression       : :
+   type           : a   -> [a  ] -> [a  ]
+   expected type  : [b] -> [Int] -> [Int]
+ probable fix     : use ++ instead
+
+Compilation failed with 1 error

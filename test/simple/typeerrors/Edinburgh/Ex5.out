@@ -1,0 +1,11 @@
+Compiling typeerrors/Edinburgh/Ex5.hs
+(3,32): Warning: Definition "wildcard" is not used
+(5,25): Type error in application
+ expression       : y True
+ function         : y
+   type           : Int -> a -> a
+ 1st argument     : True
+   type           : Bool
+   does not match : Int 
+
+Compilation failed with 1 error

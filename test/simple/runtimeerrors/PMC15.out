@@ -1,0 +1,9 @@
+Compiling runtimeerrors/PMC15.hs
+Compilation successful
+exception: pattern match failed at function bindings ranging from (7,1) to (7,18) in module runtimeerrors/PMC15.hs.
+
+trace:
+  demanded from "HeliumLang.showBool"
+  demanded from "HeliumLang.primPutChars"
+  demanded from "LvmLang.bindIO"
+  demanded from "LvmLang.unsafePerformIO"

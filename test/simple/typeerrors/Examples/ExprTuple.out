@@ -1,0 +1,7 @@
+Compiling typeerrors/Examples/ExprTuple.hs
+(4,5): Type error in tuple
+ expression       : ("aapje", "schaapje")
+   type           : (String, String)
+   expected type  : Int             
+
+Compilation failed with 1 error

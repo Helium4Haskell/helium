@@ -1,0 +1,5 @@
+Compiling parser/PatUnaryMinBad2.hs
+(1,6): Syntax error: 
+    unexpected constructor 'Nil'
+    expecting numeric literal
+Compilation failed with 1 error

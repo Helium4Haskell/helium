@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/Body.hs
+(4,6): Type error in variable
+ expression       : +
+   type           : Int -> Int -> Int
+   expected type  : Int              
+ probable fix     : insert two arguments
+
+Compilation failed with 1 error

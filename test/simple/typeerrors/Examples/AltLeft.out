@@ -1,0 +1,7 @@
+Compiling typeerrors/Examples/AltLeft.hs
+(4,7): Type error in case pattern
+ pattern          : True
+   type           : Bool  
+   does not match : String
+
+Compilation failed with 1 error

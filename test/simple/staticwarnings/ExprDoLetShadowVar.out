@@ -1,0 +1,4 @@
+Compiling staticwarnings/ExprDoLetShadowVar.hs
+(9,59): Warning: Variable "x" shadows the one at (9,28)
+Compilation successful with 1 warning
+1

@@ -1,0 +1,9 @@
+Compiling typeerrors/Examples/StatGenerator.hs
+(4,12): Warning: Variable "a" is not used
+(4,17): Type error in generator
+ expression       : a <- x
+ term             : x
+   type           : Bool
+   does not match : IO a
+
+Compilation failed with 1 error

@@ -1,0 +1,3 @@
+Compiling correct/Fixity.hs
+Compilation successful
+((A (A (AInt 1) (AInt 2)) (AInt 3)),(B (B (BInt 1) (BInt 2)) (BInt 3)),(C (CInt 1) (C (CInt 2) (CInt 3))),(Mix (B (BInt 1) (BInt 2)) (C (CInt 3) (CInt 4))))

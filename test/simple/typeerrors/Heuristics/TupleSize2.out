@@ -1,0 +1,10 @@
+Compiling typeerrors/Heuristics/TupleSize2.hs
+(4,18): Warning: Definition "y" is not used
+(4,20): Warning: Definition "z" is not used
+(4,15): Type error in pattern tuple
+ pattern          : (x, y, z)
+   type           : (a, b, c)
+   expected type  : (d, e)   
+ because          : a 3-tuple does not match a 2-tuple
+
+Compilation failed with 1 error

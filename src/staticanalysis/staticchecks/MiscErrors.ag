@@ -219,7 +219,11 @@ SEM Literal
 
 SEM Type -- does every type variable in the contexts appear in the type?
   | Qualified lhs.miscerrors =
-        [ AmbiguousContext v | v <-  @context.contextVars, v `notElem` @type.typevariables ]
+        ( if Overloading `elem` @lhs.options then
+            [ AmbiguousContext v | v <-  @context.contextVars, v `notElem` @type.typevariables ]
+          else 
+            [ OverloadingDisabled @range ]
+        )
         ++ 
         @type.miscerrors
                 

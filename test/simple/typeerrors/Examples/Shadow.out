@@ -1,0 +1,11 @@
+Compiling typeerrors/Examples/Shadow.hs
+(2,3): Warning: Variable "id" shadows the one at Prelude
+(2,12): Type error in application
+ expression       : map id "helium"
+ function         : map
+   type           : (a -> b) -> [a] -> [b]
+ 1st argument     : id
+   type           : String
+   does not match : a -> b
+
+Compilation failed with 1 error

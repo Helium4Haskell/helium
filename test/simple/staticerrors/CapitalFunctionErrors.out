@@ -1,0 +1,19 @@
+Compiling staticerrors/CapitalFunctionErrors.hs
+(1,1): Left hand side pattern defines no variables
+(1,1): Undefined constructor "X"
+  Hint: Use identifiers starting with a lower case letter to define a function
+        or a variable
+(3,1): Undefined constructor "Const"
+  Hint: Use identifiers starting with a lower case letter to define a function
+        or a variable
+(9,1): Left hand side pattern defines no variables
+(9,1): Constructor "BlaBla" should have 2 parameters, but has none
+(11,6): Undefined constructor "Id"
+(13,1): Undefined constructor "Exits"
+  Hint: Use identifiers starting with a lower case letter to define a function
+        or a variable
+        Did you mean "Exists" ?
+(15,11): Undefined constructor "Nee"
+  Hint: Use identifiers starting with a lower case letter to define a function
+        or a variable
+Compilation failed with 8 errors

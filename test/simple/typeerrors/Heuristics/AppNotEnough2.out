@@ -1,0 +1,9 @@
+Compiling typeerrors/Heuristics/AppNotEnough2.hs
+(3,28): Type error in application
+ expression       : (==) i
+ term             : (==)
+   type           : Int -> Int -> Bool
+   does not match : Int -> Bool       
+ because          : not enough arguments are given
+
+Compilation failed with 1 error

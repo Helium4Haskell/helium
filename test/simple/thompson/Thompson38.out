@@ -1,0 +1,4 @@
+Compiling thompson/Thompson38.hs
+(1,1): Warning: Missing type signature: main :: [a]
+Compilation successful with 1 warning
+[]

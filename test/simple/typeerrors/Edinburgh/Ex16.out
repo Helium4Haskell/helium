@@ -1,0 +1,22 @@
+Compiling typeerrors/Edinburgh/Ex16.hs
+(3,16): Type error in infix application
+ expression       : x + 1
+ operator         : +
+   type           : Int  -> Int -> Int   
+   does not match : Bool -> Int -> a -> b
+
+(3,31): Type error in infix application
+ expression       : x + 1
+ operator         : +
+   type           : Int -> Int -> Int
+ left operand     : x
+   type           : Bool
+   does not match : Int 
+
+(3,41): Type error in infix application
+ expression       : x - 2.2
+ operator         : -
+   type           : Int  -> Int   -> Int
+   does not match : Bool -> Float -> a  
+
+Compilation failed with 3 errors

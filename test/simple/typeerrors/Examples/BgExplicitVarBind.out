@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/BgExplicitVarBind.hs
+(6,22): Type error in else branch of conditional
+ expression       : if f then 3 else f
+ term             : f
+   type           : Bool
+   does not match : Int 
+
+Compilation failed with 1 error

@@ -1,0 +1,5 @@
+Compiling correct/DerivingShow.hs
+(11,1): Warning: Missing type signature: main :: B Int
+(15,1): Warning: Missing type signature: a :: A
+Compilation successful with 2 warnings
+(B <<function>> (3,'b') (A [1,2,3]) <<IO action>> () 3 (True,5) (Just 42) [[1,2],[3,4]])

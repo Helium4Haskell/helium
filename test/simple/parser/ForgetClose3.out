@@ -1,0 +1,4 @@
+Compiling parser/ForgetClose3.hs
+(1,14), (1,9): Unexpected close bracket ']'
+  Hint: Expecting a close bracket for '('
+Compilation failed with 1 error

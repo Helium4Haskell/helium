@@ -1,0 +1,311 @@
+----------------------------------------------------------------
+-- Daan Leijen (c) 2001
+--
+-- $Revision$
+-- $Author$
+-- $Date$
+----------------------------------------------------------------
+module LvmLang
+    ( Bytes, Int, Float
+    , Bool(True, False), '':[]''('':[]'', (:)), '':()''('':()'')
+    , IO, Char, Double, PackedString, String
+    
+    , packedFromString, stringFromPacked, packedLength
+    , ($!), seq
+    
+    -- IO
+    , bindIO, returnIO
+    , primIO, unsafePerformIO, unsafePerformStrictIO
+    
+    -- Int
+    , (+), (-), (*), (/), (%), quot, rem
+    , and, xor, or, shr, shl, shrNat, negInt
+    , (==), (/=), (<), (>), (<=), (>=)
+
+    -- Float
+    , (+.), (-.), (*.), (/.), negFloat
+    , (==.), (/=.), (<.), (>.), (<=.), (>=.)
+
+    ) where
+
+{----------------------------------------------------------
+  Instructions
+----------------------------------------------------------}
+instruction primAddInt  "addint" :: Int! -> Int! -> Int!
+instruction primSubInt  "subint" :: Int! -> Int! -> Int!
+instruction primMulInt  "mulint" :: Int! -> Int! -> Int!
+instruction primDivInt  "divint" :: Int! -> Int! -> Int!
+instruction primModInt  "modint" :: Int! -> Int! -> Int!
+instruction primQuotInt "quotint":: Int! -> Int! -> Int!
+instruction primRemInt  "remint" :: Int! -> Int! -> Int!
+instruction primAndInt  "andint" :: Int! -> Int! -> Int!
+instruction primXorInt  "xorint" :: Int! -> Int! -> Int!
+instruction primOrInt   "orint"  :: Int! -> Int! -> Int!
+instruction primShrInt  "shrint" :: Int! -> Int! -> Int!
+instruction primShlInt  "shlint" :: Int! -> Int! -> Int!
+instruction primShrNat  "shrnat" :: Int! -> Int! -> Int!
+instruction primNegInt  "negint" :: Int! -> Int!
+
+instruction primEqInt   "eqint"  :: Int! -> Int! -> Bool!
+instruction primNeInt   "neint"  :: Int! -> Int! -> Bool!
+instruction primLtInt   "ltint"  :: Int! -> Int! -> Bool!
+instruction primGtInt   "gtint"  :: Int! -> Int! -> Bool!
+instruction primLeInt   "leint"  :: Int! -> Int! -> Bool!
+instruction primGeInt   "geint"  :: Int! -> Int! -> Bool!
+
+instruction primAddFloat  "addfloat" :: Float! -> Float! -> Float!
+instruction primSubFloat  "subfloat" :: Float! -> Float! -> Float!
+instruction primMulFloat  "mulfloat" :: Float! -> Float! -> Float!
+instruction primDivFloat  "divfloat" :: Float! -> Float! -> Float!
+instruction primNegFloat  "negfloat" :: Float! -> Float!
+
+instruction primEqFloat   "eqfloat"  :: Float! -> Float! -> Bool!
+instruction primNeFloat   "nefloat"  :: Float! -> Float! -> Bool!
+instruction primLtFloat   "ltfloat"  :: Float! -> Float! -> Bool!
+instruction primGtFloat   "gtfloat"  :: Float! -> Float! -> Bool!
+instruction primLeFloat   "lefloat"  :: Float! -> Float! -> Bool!
+instruction primGeFloat   "gefloat"  :: Float! -> Float! -> Bool!
+
+instruction primAlloc   "alloc"  :: Int! {- tag -} -> Int! {- size -} -> a!
+instruction primGetTag  "gettag" :: a! -> Int!
+instruction primGetSize "getsize":: a! -> Int!
+-- instruction primNew     "new"    :: Int! {- tag -} -> Int! {- size -} -> {- x_1 ... x_n -> -} a!
+-- instruction primPack    "pack"   :: a! -> Int! {- size -} -> {- x_1 ... x_size -} ()
+-- instruction primUnPack  "unpack" :: a! -> (# x_1 ... x_size #)
+
+extern prim_chars_of_string :: "aa"
+extern prim_string_of_chars :: "ala"
+extern prim_string_length   :: "la"
+
+{----------------------------------------------------------
+  Basic data types
+----------------------------------------------------------}
+data Bytes
+data Int
+data Float
+data Bool       = False -- tag 0
+                | True  -- tag 1
+
+{-
+Be aware that de definition
+data Bool       = True  -- tag 0
+                | False -- tag 1
+is not allowed because the instructions
+eqint, neint etc. assume False has tag 0
+and True has tag 1.
+-}
+
+data '':[]'' a  = '':[]'' | (:) a [a]
+data '':()''    = '':()''
+
+data IORes a    = IORes a
+data IO a --    = () -> IORes a
+
+{----------------------------------------------------------
+  Type definitions
+----------------------------------------------------------}
+type Char         = Int
+type Double       = Float
+
+type PackedString = Bytes
+type String       = [Char]
+
+
+{----------------------------------------------------------
+  Strictness
+----------------------------------------------------------}
+($!) :: (a -> b) -> a -> b
+($!) f x   = let! x = x in f x
+
+seq :: a -> b -> b
+seq x y    = let! x = x in y
+
+{----------------------------------------------------------
+  Basic arithmetic on Int's
+----------------------------------------------------------}
+(+) :: Int -> Int -> Int!
+(+) x y    = let! y = y in let! x = x in primAddInt x y
+
+(-) :: Int -> Int -> Int!
+(-) x y    = let! y = y in let! x = x in primSubInt x y
+
+(*) :: Int -> Int -> Int!
+(*) x y    = let! y = y in let! x = x in primMulInt x y
+
+(/) :: Int -> Int -> Int!
+(/) x y    = let! y = y in let! x = x in primDivInt x y
+
+(%) :: Int -> Int -> Int!
+(%) x y    = let! y = y in let! x = x in primModInt x y
+
+quot :: Int -> Int -> Int!
+quot x y    = let! y = y in let! x = x in primQuotInt x y
+
+rem :: Int -> Int -> Int!
+rem x y    = let! y = y in let! x = x in primRemInt x y
+
+and :: Int -> Int -> Int!
+and x y    = let! y = y in let! x = x in primAndInt x y
+
+xor :: Int -> Int -> Int!
+xor x y    = let! y = y in let! x = x in primXorInt x y
+
+or :: Int -> Int -> Int!
+or x y    = let! y = y in let! x = x in primOrInt x y
+
+shr :: Int -> Int -> Int!
+shr x y    = let! y = y in let! x = x in primShrInt x y
+
+shl :: Int -> Int -> Int!
+shl x y    = let! y = y in let! x = x in primShlInt x y
+
+shrNat :: Int -> Int -> Int!
+shrNat x y = let! y = y in let! x = x in primShrNat x y
+
+negInt :: Int -> Int!
+negInt x      = let! x = x in primNegInt x
+
+{----------------------------------------------------------
+  Comparisons on Int's
+----------------------------------------------------------}
+(==) :: Int -> Int -> Bool!
+(==) x y   = let! y = y in let! x = x in primEqInt x y
+
+(/=) :: Int -> Int -> Bool!
+(/=) x y   = let! y = y in let! x = x in primNeInt x y
+
+(<) :: Int -> Int -> Bool!
+(<) x y   = let! y = y in let! x = x in primLtInt x y
+
+(>) :: Int -> Int -> Bool!
+(>) x y   = let! y = y in let! x = x in primGtInt x y
+
+(<=) :: Int -> Int -> Bool!
+(<=) x y   = let! y = y in let! x = x in primLeInt x y
+
+(>=) :: Int -> Int -> Bool!
+(>=) x y   = let! y = y in let! x = x in primGeInt x y
+
+{----------------------------------------------------------
+  Basic arithmetic on Float's
+----------------------------------------------------------}
+(+.) :: Float -> Float -> Float!
+(+.) x y    = let! y = y in let! x = x in primAddFloat x y
+
+(-.) :: Float -> Float -> Float!
+(-.) x y    = let! y = y in let! x = x in primSubFloat x y
+
+(*.) :: Float -> Float -> Float!
+(*.) x y    = let! y = y in let! x = x in primMulFloat x y
+
+(/.) :: Float -> Float -> Float!
+(/.) x y    = let! y = y in let! x = x in primDivFloat x y
+
+negFloat :: Float -> Float!
+negFloat x = let! x = x in primNegFloat x
+
+{----------------------------------------------------------
+  Comparisons on Float's
+----------------------------------------------------------}
+(==.) :: Float -> Float -> Bool!
+(==.) x y   = let! y = y in let! x = x in primEqFloat x y
+
+(/=.) :: Float -> Float -> Bool!
+(/=.) x y   = let! y = y in let! x = x in primNeFloat x y
+
+(<.) :: Float -> Float -> Bool!
+(<.) x y   = let! y = y in let! x = x in primLtFloat x y
+
+(>.) :: Float -> Float -> Bool!
+(>.) x y   = let! y = y in let! x = x in primGtFloat x y
+
+(<=.) :: Float -> Float -> Bool!
+(<=.) x y   = let! y = y in let! x = x in primLeFloat x y
+
+(>=.) :: Float -> Float -> Bool!
+(>=.) x y   = let! y = y in let! x = x in primGeFloat x y
+
+{----------------------------------------------------------
+  Boolean expressions
+----------------------------------------------------------}
+(&&) :: Bool -> Bool -> Bool
+(&&) x y
+  = case x of
+      False   -> False
+      True    -> y
+
+
+(||) :: Bool -> Bool -> Bool
+(||) x y
+  = case x of
+      True  -> True
+      False -> y
+
+not :: Bool -> Bool
+not x
+  = case x of
+      True  -> False
+      False -> True
+
+{----------------------------------------------------------
+  Packed strings
+----------------------------------------------------------}
+stringFromPacked :: PackedString -> String
+stringFromPacked packed
+  = let! packed = packed in prim_chars_of_string packed
+
+packedFromString :: String -> PackedString
+packedFromString s
+  = let forceLength n xs = case xs of
+                             (:) x xx -> seq x (forceLength ((+) n 1) xx)
+                             []       -> n 
+    in let! len = forceLength 0 s 
+            s   = s 
+       in prim_string_of_chars len s
+
+packedLength :: PackedString -> Int
+packedLength s
+  = let! s = s in prim_string_length s
+
+{----------------------------------------------------------
+  List helpers
+----------------------------------------------------------}
+{-
+length :: [a] -> Int
+length xs
+  = foldlStrict (+) 0 xs
+
+foldlStrict :: (b -> a -> b) -> b -> [a] -> b
+foldlStrict f z xs
+  = case xs of
+      (:) x xx -> case f z x of
+                    z -> foldlStrict f z xx
+      []       -> z
+-}
+
+
+{----------------------------------------------------------
+  The IO monad
+----------------------------------------------------------}
+bindIO :: IO a -> (a -> IO b) -> IO b
+bindIO io f
+  = \_ -> case io () of
+            IORes x -> f x ()
+
+returnIO :: a -> IO a
+returnIO x
+  = \_ -> IORes x
+
+primIO :: (() -> a) -> IO a
+primIO f
+  = \_ -> let! x = f () in IORes x
+
+unsafePerformIO :: IO a -> a
+unsafePerformIO io
+  = case io () of
+      IORes x -> x
+
+-- used to execute "main"
+unsafePerformStrictIO :: IO a -> a
+unsafePerformStrictIO io
+  = let! x = unsafePerformIO io in x

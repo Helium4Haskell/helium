@@ -1,0 +1,10 @@
+Compiling typeerrors/Examples/ExprInfixApplication.hs
+(5,11): Type error in infix application
+ expression       : 3 `A` True
+ operator         : `A`
+   type           : Int -> Int -> A
+ right operand    : True
+   type           : Bool
+   does not match : Int 
+
+Compilation failed with 1 error

@@ -48,6 +48,7 @@ processArgs args =
             ,   Option "M" ["algorithm-m"] (NoArg AlgorithmM)              "use algorithm M for type inferencing"
             ,   Option ""  ["no-directives" ] (NoArg DisableDirectives)    "disable type inference directives"
             ,   Option "K" ["kind-inferencing"] (NoArg KindInferencing)    "do kind inferencing"
+            ,   Option ""  ["overloading"] (NoArg Overloading)             "turn overloading on (experimental)"
 
             -- available solvers for type inferencing     
             ,   Option "" ["solver-simple"     ] (NoArg SolverSimple     ) "a straightforward implementation"
@@ -104,6 +105,8 @@ data Option
     | KindInferencing    
     -- other type inference options
     | RightToLeft | NoSpreading   
+    
+    | Overloading
     
     deriving Eq
 

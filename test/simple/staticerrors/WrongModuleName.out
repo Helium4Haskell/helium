@@ -1,0 +1,3 @@
+Compiling staticerrors/WrongModuleName.hs
+(1,8): The file name "WrongModuleName" doesn't match the module name "ModuleName"
+Compilation failed with 1 error

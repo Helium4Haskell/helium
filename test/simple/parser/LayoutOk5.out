@@ -1,0 +1,5 @@
+Compiling parser/LayoutOk5.hs
+(3,3): Warning: Missing type signature: x :: Int
+(5,3): Warning: Missing type signature: y :: Int
+Compilation successful with 2 warnings
+No 'main' function defined in this module

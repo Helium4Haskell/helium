@@ -1,0 +1,4 @@
+Compiling parser/EmptyChar.hs
+(1,8): Empty character literal
+  Hint: Correct examples of Chars: 'a' '\n' '&'
+Compilation failed with 1 error

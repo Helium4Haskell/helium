@@ -1,0 +1,3 @@
+Compiling staticerrors/ExprLambdaDupVar.hs
+(5,9), (5,11): Duplicated variable "a"
+Compilation failed with 1 error

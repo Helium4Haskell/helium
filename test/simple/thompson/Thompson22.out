@@ -1,0 +1,9 @@
+Compiling thompson/Thompson22.hs
+(2,22): Type error in application
+ expression       : x div 10
+ term             : x
+   type           : Int                              
+   does not match : (Int -> Int -> Int) -> Int -> Int
+ because          : it is not a function
+
+Compilation failed with 1 error

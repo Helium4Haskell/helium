@@ -1,0 +1,4 @@
+Compiling parser/MissingExp.hs
+(1,10): Missing digits in exponent in floating-point literal
+  Hint: Correct examples of Floats: 3.14 0.2 4e-13 5E+1 6.7e1
+Compilation failed with 1 error
