@@ -9,7 +9,7 @@ import HeliumConstraintInfo
 import TypeGraphConstraintInfo
 import Types
 import List
-import UHA_Utils (noRange)
+import UHA_Range (noRange)
 import Utils (internalError)
 import OneLiner
 import Messages

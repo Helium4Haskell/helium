@@ -15,7 +15,7 @@ import qualified PPrint
 import qualified OneLiner
 import List                (intersperse, zipWith4)
 import TypesToAlignedDocs  (typesToAlignedDocs)
-import UHA_Utils           (isImportRange)
+import UHA_Range           (isImportRange, showRanges)
 import Char                (isSpace)
 
 sortAndShowMessages :: HasMessage a => [a] -> String
@@ -45,7 +45,7 @@ showMessage :: HasMessage message => message -> String
 showMessage x = 
     let rangePart = MessageString $ case filter (not . isImportRange) (getRanges x) of
                        [] -> ""
-                       xs -> showPositions xs ++ ": "
+                       xs -> showRanges xs ++ ": "
         documentationLinkPart = maybe (MessageString "") MessageInfoLink (getDocumentationLink x)
         list = case getMessage x of
                   MessageOneLiner m:rest -> MessageOneLiner (MessageCompose [rangePart, documentationLinkPart, m]) : rest

@@ -6,7 +6,8 @@ import Strategy (algW)
 import TypeErrors
 import Types
 import FiniteMap
-import UHA_Utils (noRange, nameFromString)
+import UHA_Utils (nameFromString)
+import UHA_Range (noRange)
 import Utils (internalError)
 import UHA_Syntax
 

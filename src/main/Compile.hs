@@ -22,7 +22,8 @@ import Lexer
 
 -- UHA
 import UHA_Syntax
-import UHA_Utils(noRange, getNameName, stringFromImportDeclaration, isOperatorName)
+import UHA_Utils(getNameName, stringFromImportDeclaration, isOperatorName)
+import UHA_Range(noRange)
 
 -- LVM
 import Standard(getLvmPath, searchPath)

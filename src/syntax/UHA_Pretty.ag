@@ -1,7 +1,5 @@
 imports{
-import PPrint hiding (empty)
-import qualified PPrint
-import PPUtils hiding (empty)
+import PPrint
 import Char
 import List (intersperse)
 import Types (isTupleConstructor)
@@ -10,21 +8,32 @@ import Types (isTupleConstructor)
 {
 intErr = internalError "UHA_Pretty"
 
-emptyPP = PPrint.empty
-
-opt = maybe emptyPP id
+opt = maybe empty id
 
 parensIf     p  n  = if p then parens n else n
 parensIfList ps ns = map (uncurry parensIf) (zip ps ns)
 
-tupled1 []  = emptyPP
+tupled1 []  = empty
 tupled1 xs  = tupled xs
 
-tupled2 []  = emptyPP
+tupled2 []  = empty
 tupled2 xs  = tupledUnit xs
 
 tupledUnit [x] = x
 tupledUnit xs  = tupled xs
+
+commas :: [Doc] -> Doc
+commas docs =
+    hcat (punctuate (comma <+> empty) docs)
+
+utrechtList :: Doc -> Doc -> [Doc] -> Doc
+utrechtList start end []     = empty
+utrechtList start end (d:ds) =
+    let utrechtList' []     = end
+        utrechtList' (d:ds) = comma <+> d <$> utrechtList' ds
+    in
+        start <+> d <$> utrechtList' ds
+        
 }
 
 ATTR
@@ -107,7 +116,7 @@ SEM Module
                         (\x -> indent 4 (utrechtList (text "(") (text ")") x <+> text "where"))
                         @exports.text
                     )
-                <$> emptyPP <$>
+                <$> empty <$>
                 body
             )
             @name.text
@@ -126,7 +135,7 @@ SEM Export
     | Variable               loc.text = @name.text
     --  range                    : Range
     --  name                     : Name
-    | TypeOrClass            loc.text = @name.text <> maybe emptyPP tupled (@names.text)
+    | TypeOrClass            loc.text = @name.text <> maybe empty tupled (@names.text)
     --  range                    : Range
     --  name                     : Name
     --  names                    : MaybeNames  -- constructors or field names or class methods
@@ -148,20 +157,20 @@ SEM MaybeNames
 SEM Body
     | Body                     loc.text =  vcat
                                                     (   @importdeclarations.text
-                                                    ++  {-intersperse emptyPP-} @declarations.text
+                                                    ++  {-intersperse empty-} @declarations.text
                                                     )
     --  range                    : Range
     --  importdeclarations       : ImportDeclarations
     --  declarations             : Declarations
 
 SEM ImportDeclaration
-    | Import      loc.text = text "import" <+> (if @qualified then (text "qualified" <+>) else id) @name.text <+> maybe emptyPP id @importspecification.text 
+    | Import      loc.text = text "import" <+> (if @qualified then (text "qualified" <+>) else id) @name.text <+> maybe empty id @importspecification.text 
     --  range                    : Range
     --  qualified                : Bool
     --  name                     : Name
     --  asname                   : MaybeName
     --  importspecification      : MaybeImportSpecification
-    | Empty       loc.text = emptyPP
+    | Empty       loc.text = empty
 
 SEM MaybeImportSpecification
     | Nothing     loc.text = Nothing
@@ -179,7 +188,7 @@ SEM Import
     | Variable                loc.text = @name.text
     --  range                    : Range
     --  name                     : Name
-    | TypeOrClass             loc.text = @name.text <> maybe emptyPP tupled1 @names.text
+    | TypeOrClass             loc.text = @name.text <> maybe empty tupled1 @names.text
     --  range                    : Range
     --  name                     : Name
     --  names                    : Names  -- constructors or field names or class methods
@@ -221,14 +230,14 @@ SEM Declaration                                  {- *** -}
                                     )
                             )
                         loc.contextDoc   = case @context.text of
-                                            []  -> emptyPP
-                                            [x] -> x <+> text "=>" <+> emptyPP
-                                            xs  -> tupled xs <+> text "=>" <+> emptyPP
+                                            []  -> empty
+                                            [x] -> x <+> text "=>" <+> empty
+                                            xs  -> tupled xs <+> text "=>" <+> empty
                         loc.derivingDoc =
                             if null @derivings.text then
-                                emptyPP
+                                empty
                             else
-                                (    emptyPP
+                                (    empty
                                 <+>  text "deriving"
                                 <+>  tupledUnit @derivings.text
                                 )
@@ -247,14 +256,14 @@ SEM Declaration                                  {- *** -}
                                     <>
                                     @derivingDoc
                         loc.contextDoc   = case @context.text of
-                                            []  -> emptyPP
-                                            [x] -> x <+> text "=>" <+> emptyPP
-                                            xs  -> tupled xs <+> text "=>" <+> emptyPP
+                                            []  -> empty
+                                            [x] -> x <+> text "=>" <+> empty
+                                            xs  -> tupled xs <+> text "=>" <+> empty
                         loc.derivingDoc =
                             if null @derivings.text then
-                                emptyPP
+                                empty
                             else
-                                (    emptyPP
+                                (    empty
                                 <+>  text "deriving"
                                 <+>  tupledUnit @derivings.text
                                 )
@@ -305,7 +314,7 @@ SEM Declaration                                  {- *** -}
     --  fixity                   : Fixity
     --  priority                 : MaybeInt
     --  operators                : Names
-    | Empty             loc.text = emptyPP
+    | Empty             loc.text = empty
     --  range                    : Range
 
 SEM Fixity
@@ -444,7 +453,7 @@ SEM Expression                                   {- *** -}
     | If                 loc.text =  text "if" <+> @guardExpression.text <+> text "then" <$>
                                                     indent 4 @thenExpression.text <$>
                                                 text "else" <$>
-                                                    indent 4 @elseExpression.text <$> emptyPP
+                                                    indent 4 @elseExpression.text <$> empty
     --  range                    : Range
     --  guardExpression          : Expression
     --  thenExpression           : Expression
@@ -454,7 +463,7 @@ SEM Expression                                   {- *** -}
     --  patterns                 : Patterns
     --  expression               : Expression
     | Case               loc.text =  (text "case" <+> @expression.text <+> text "of" <$>
-                                                    (indent 4 $ vcat @alternatives.text) <$> emptyPP
+                                                    (indent 4 $ vcat @alternatives.text) <$> empty
                                                 )
     --  range                    : Range
     --  expression               : Expression
@@ -463,11 +472,11 @@ SEM Expression                                   {- *** -}
                                                     (indent 4 $ vcat @declarations.text) <$>
                                                  text "in" <$>
                                                     (indent 4 $ @expression.text)
-                                                ) <$> emptyPP
+                                                ) <$> empty
     --  range                    : Range
     --  declarations             : Declarations
     --  expression               : Expression
-    | Do                 loc.text = text "do" <$> (indent 4 $ vcat @statements.text) <$> emptyPP
+    | Do                 loc.text = text "do" <$> (indent 4 $ vcat @statements.text) <$> empty
     --  range                    : Range
     --  statements               : Statements
     | List               loc.text = list @expressions.text
@@ -496,7 +505,7 @@ SEM Expression                                   {- *** -}
     | Enum   loc.text =
                 text "[" <>
                 @from.text <>
-                maybe emptyPP (text "," <+>)  @then.text <+>
+                maybe empty (text "," <+>)  @then.text <+>
                 text ".." <+>
                 opt @to.text <>
                 text "]"
@@ -520,7 +529,7 @@ SEM Statement
     --  range                    : Range
     --  pattern                  : Pattern
     --  expression               : Expression
-    | Empty               loc.text = emptyPP
+    | Empty               loc.text = empty
     --  range                    : Range
 
 SEM Qualifier
@@ -534,7 +543,7 @@ SEM Qualifier
     --  range                    : Range
     --  pattern                  : Pattern
     --  expression               : Expression
-    | Empty               loc.text = emptyPP
+    | Empty               loc.text = empty
     --  range                    : Range
 
 SEM Alternative
@@ -542,7 +551,7 @@ SEM Alternative
     --  range                    : Range
     --  pattern                  : Pattern
     --  righthandside            : RightHandSide
-    | Empty             loc.text = emptyPP
+    | Empty             loc.text = empty
     --  range                    : Range
 
 SEM GuardedExpression -- ToDo: or _Guard?
@@ -591,7 +600,7 @@ SEM RightHandSide
                     indent 4
                         (  @expression.text
                         <> maybe
-                               emptyPP
+                               empty
                                (\ds -> PPrint.empty <$> text "where" <$> indent 4 (vcat ds))
                                @where.text
                         )
@@ -605,7 +614,7 @@ SEM RightHandSide
                     <$> vsep
                            (zipWith (\f x -> indent 4 (f x)) @guardedexpressions.text (repeat assign))
                     <>  maybe
-                           emptyPP
+                           empty
                            (\ds -> PPrint.empty <$> indent 4 (text "where" <$> indent 4 (vcat ds)))
                            @where.text
                     )

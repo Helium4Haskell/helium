@@ -2,12 +2,13 @@
 module ResolveOperators where
 
 import UHA_Utils
-import UHA_Syntax
+import UHA_Syntax 
+import UHA_Range
 import OperatorTable
 import Char
 import ParseLibrary(intUnaryMinusName, floatUnaryMinusName)
 import Utils
-import Messages hiding (showPosition)
+import Messages
 
 
 data ResolveError = 
@@ -191,12 +192,6 @@ strongerOp opTable op1 op2
     prio1 = prio opTable op1
     prio2 = prio opTable op2
 
-showPosition :: Position -> String
-showPosition p =
-    case p of
-        Position_Position _ row col -> "(" ++ show row ++ "," ++ show col ++ ")"
-        Position_Unknown -> "(unknown position)"
-        
 isUnary :: Name -> Bool
 isUnary name = getNameName name `elem` [ intUnaryMinusName, floatUnaryMinusName ]
 

@@ -1,22 +1,17 @@
 module Main where
 
-import Compile
 import Parser(parseOnlyImports)
-import UHA_Utils(stringFromImportDeclaration)
-import UHA_Syntax(Module(..), Body(..))
+import Compile(compile)
 
--- Utilities
-import Standard(searchPathMaybe,getLvmPath)
-import Utils(splitFilePath)
-import Directory(doesFileExist)
-import System(exitWith, ExitCode(..), getArgs)
-import Directory(getModificationTime)
-import Args
 import Monad(when, unless)
+import List(nub, elemIndex, isSuffixOf, intersperse)
+import System(exitWith, ExitCode(..), getArgs)
 import Maybe(fromJust, isNothing)
+import Standard(searchPathMaybe,getLvmPath)
+import Directory(doesFileExist, getModificationTime)
 import IOExts(writeIORef, newIORef, readIORef, IORef)
-import List(intersperse, isSuffixOf, nub, elemIndex)
-import Logger
+import Args
+import Utils(splitFilePath)
 
 main :: IO ()
 main = do

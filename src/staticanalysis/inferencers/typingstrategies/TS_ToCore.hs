@@ -8,7 +8,7 @@ import Types
 import HeliumConstraintInfo
 import Constraints
 import TypeGraphConstraintInfo
-import UHA_Utils (noRange)
+import UHA_Range (noRange)
 import TypeConversion
 import Utils (internalError)
 import List

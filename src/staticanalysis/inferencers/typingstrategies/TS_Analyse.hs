@@ -8,7 +8,8 @@ import TypeGraphConstraintInfo
 import TS_Syntax
 import TypeConversion
 import List
-import UHA_Utils (noRange, nameFromString)
+import UHA_Utils (nameFromString)
+import UHA_Range (noRange)
 import Messages
 import TypeErrors
 import TS_Messages

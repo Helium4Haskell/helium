@@ -55,7 +55,7 @@ import HeliumConstraintInfo
 import TopSort                 ( topSort )
 import Utils                   ( internalError )
 import DerivingShow            ( typeOfShowFunction, nameOfShowFunction ) 
-import UHA_Utils               ( noRange, getNameRange, getExprRange )
+import UHA_Range               ( noRange, getNameRange, getExprRange )
 import UHA_Syntax
 import ImportEnvironment
 import FiniteMap

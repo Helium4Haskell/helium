@@ -1,6 +1,7 @@
 module CoreToImportEnv(getImportEnvironment) where
 
 import UHA_Syntax(Name(..), Range(..), Position(..))
+import UHA_Range(makeImportRange, setNameRange)
 import UHA_Utils
 import OperatorTable
 import ParseLibrary(intUnaryMinusName, floatUnaryMinusName)
@@ -11,9 +12,7 @@ import Byte
 import Id
 import List(nubBy)
 import Char
-import IOExts -- debug
 import qualified CoreParse as C
-import Messages -- debug (instance Show Range)
 import ImportEnvironment
 
 typeFromCustoms :: String -> [Custom] -> TpScheme
@@ -86,9 +85,9 @@ makeOperatorTable op cs =
 
 makeImportName :: String -> Id -> Id -> Name
 makeImportName importedInMod importedFromMod n =
-    setRange 
-        (makeImportRange (idFromString importedInMod) importedFromMod)
+    setNameRange 
         (nameFromId n)
+        (makeImportRange (idFromString importedInMod) importedFromMod)
 
 getImportEnvironment :: String -> [CoreDecl] -> ImportEnvironment
 getImportEnvironment importedInModule = foldr insert emptyEnvironment

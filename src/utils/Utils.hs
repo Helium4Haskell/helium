@@ -1,25 +1,15 @@
-{---
+{-
 
-Utils: 
-    Some Prelude-like functions
+Utils: Some Prelude-like functions
     
-Changes:
-
-DATE        CHANGE
-05-05-2001  Cleanup
-06-05-2001  Added "import Char" for GHC
-16-05-2001  groupAllBy doesn't need Eq instance for a
 -}
 
 module Utils where
 
-import List hiding (intersectBy)
-import System
-import Char -- GHC
-import IdMap
 import IOExts
-import Logger
 import ST
+import List (group, groupBy, sort, elemIndex)
+import Logger
 
 -------------------------------------------------------
 -- String utils
@@ -40,15 +30,9 @@ commaList [x] = x
 commaList (x:xs) = x ++ ", " ++ commaList xs
 
 -------------------------------------------------------
--- From SAUtils
+-- Tuples
 -------------------------------------------------------
                 
-mapFst :: (a -> b) -> [(a, c)] -> [(b, c)]
-mapFst f xs = [ (f a, c) | (a, c) <- xs ]
-
-mapSnd :: (c -> b) -> [(a, c)] -> [(a, b)]
-mapSnd f xs = [ (a, f c) | (a, c) <- xs ]
-
 fst3 (a,_,_)   = a
 snd3 (_,a,_)   = a
 thd3 (_,_,a)   = a
@@ -59,32 +43,6 @@ thd4 (_,_,a,_) = a
 fth4 (_,_,_,a) = a
 
 -------------------------------------------------------
--- Debugging tools
--------------------------------------------------------
-traceList :: Show a => [a] -> b -> b
-traceList l s = trace (show (Table l)) s
-
-traceShowList :: Show a => [a] -> [a]
-traceShowList l = trace (show (Table l)) l
-
-data Table a = Table [a]
-
-fromTable :: Table a -> [a]
-fromTable (Table a) = a
-
-instance Show a => Show (Table a) where
-    show (Table (x:xs)) =
-        let show' (x:xs) = "\n, " ++ show x ++ show' xs
-            show' []     = ""
-        in
-            "[ " ++ show x ++ show' xs ++ "\n]\n"
-    show (Table []) =
-        "[\n]\n"
-
--------------------------------------------------------
-
-intersectBy :: (a -> b -> Bool) -> [a] -> [b] -> [a]
-intersectBy eq xs ys = [x | x <- xs, any (eq x) ys]
 
 throw :: String -> IO a
 throw = ioError . userError
@@ -168,9 +126,3 @@ doubleSizeOfSTArray unit starray =
                    writeSTArray newarray i value
       mapM_ f [lower..upper]
       return newarray
-
-elemBy :: (a -> a -> Bool) -> a -> [a] -> Bool
-elemBy _ _ [] = False
-elemBy eq x (y:ys) 
-  | x `eq` y = True
-  | otherwise = elemBy eq x ys

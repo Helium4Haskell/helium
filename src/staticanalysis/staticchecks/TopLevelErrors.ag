@@ -7,13 +7,6 @@
 --
 ------------------------------------------------------------------------------
 
-imports {
-import List       ( sort, group, nubBy )
-import UHA_Utils  ( getNameName, getPatRange, getStatementRange )
-import Utils      ( fst3 )
-import Similarity ( similar )
-}
-
 ------------------------------------------------------------------------------
 -- All Top-Level Errors
 

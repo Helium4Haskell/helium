@@ -3,8 +3,8 @@ module CodeGeneration where
 
 import UHA_Syntax
 import UHA_Utils
+import UHA_Range 
 import List (union)
-import Messages () -- instance Show Name
 import ImportEnvironment
 import FiniteMap
 import TypeConversion
@@ -133,15 +133,14 @@ throwException message =
 patternMatchFail :: String -> Range -> Core.Expr
 patternMatchFail nodeDescription range =
     var "primPatternFailPacked"
-        `app_` packedString (nodeDescription ++ " ranging from " ++ showRange range)
-
-showRange :: Range -> String
-showRange (Range_Range (Position_Position mod line column) 
-                       (Position_Position _ line' column')) = 
-    show (line, column) ++ " to " ++ show (line', column') ++ " in module " ++ mod
-showRange _ = "<<unknown position>>"
--- internalError "ToCorePat.ag" "showRange" "unknown position"
-
+        `app_` packedString (
+                    nodeDescription ++ " ranging from " ++ 
+                    showPosition start ++ " to " ++ 
+                    showPosition (getRangeEnd range) ++ " in module " ++
+                    moduleFromPosition start
+               )
+    where
+        start = getRangeStart range
 -- Alternative -------------------------------------------------
 -- semantic domain
 type T_Alternative = (( Core.Expr -> Core.Expr ),(Alternative))

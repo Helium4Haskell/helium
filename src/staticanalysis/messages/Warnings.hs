@@ -12,7 +12,7 @@ module Warnings where
 import UHA_Syntax
 import Types
 import Messages
-import UHA_Utils    (getNameRange)
+import UHA_Range    (getNameRange, showRange)
 import Utils        (internalError)
 
 -------------------------------------------------------------
@@ -44,7 +44,7 @@ showWarning warning = case warning of
    Shadow shadowee shadower ->
       MessageString ("Variable " ++ show (show shadower) ++
                      " shadows the one at " ++
-                     showPosition (getNameRange shadowee))
+                     showRange (getNameRange shadowee))
 
    Unused entity name toplevel ->
       MessageString (capitalize (show entity) ++ " " ++ show (show name) ++ " is not used")

@@ -20,8 +20,8 @@ INCLUDE "ToCoreName.ag"
 imports{
 import UHA_Syntax
 import UHA_Utils
+import UHA_Range 
 import List (union)
-import Messages () -- instance Show Name
 import ImportEnvironment
 import FiniteMap
 import TypeConversion

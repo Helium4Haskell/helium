@@ -11,6 +11,7 @@ module StaticErrors where
 
 import UHA_Syntax
 import UHA_Utils
+import UHA_Range
 import Messages
 import List        (intersperse, sort, partition)
 import Maybe       (fromJust)

@@ -4,30 +4,39 @@ module PrettyPrinting where
 import UHA_Syntax
 import Utils (internalError)
 
-import PPrint hiding (empty)
-import qualified PPrint
-import PPUtils hiding (empty)
+import PPrint
 import Char
 import List (intersperse)
 import Types (isTupleConstructor)
 
 intErr = internalError "UHA_Pretty"
 
-emptyPP = PPrint.empty
-
-opt = maybe emptyPP id
+opt = maybe empty id
 
 parensIf     p  n  = if p then parens n else n
 parensIfList ps ns = map (uncurry parensIf) (zip ps ns)
 
-tupled1 []  = emptyPP
+tupled1 []  = empty
 tupled1 xs  = tupled xs
 
-tupled2 []  = emptyPP
+tupled2 []  = empty
 tupled2 xs  = tupledUnit xs
 
 tupledUnit [x] = x
 tupledUnit xs  = tupled xs
+
+commas :: [Doc] -> Doc
+commas docs =
+    hcat (punctuate (comma <+> empty) docs)
+
+utrechtList :: Doc -> Doc -> [Doc] -> Doc
+utrechtList start end []     = empty
+utrechtList start end (d:ds) =
+    let utrechtList' []     = end
+        utrechtList' (d:ds) = comma <+> d <$> utrechtList' ds
+    in
+        start <+> d <$> utrechtList' ds
+        
 -- Alternative -------------------------------------------------
 -- semantic domain
 type T_Alternative = ((Doc))
@@ -56,7 +65,7 @@ sem_Alternative_Empty :: (T_Range) ->
                          (T_Alternative)
 sem_Alternative_Empty (_range) =
     let (_text) =
-            emptyPP
+            empty
         ( _range_text) =
             (_range )
     in  (_text)
@@ -138,7 +147,7 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) =
     let (_text) =
             vcat
                      (   _importdeclarations_text
-                     ++                          _declarations_text
+                     ++                        _declarations_text
                      )
         ( _range_text) =
             (_range )
@@ -339,14 +348,14 @@ sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivin
             )
         (_contextDoc) =
             case _context_text of
-             []  -> emptyPP
-             [x] -> x <+> text "=>" <+> emptyPP
-             xs  -> tupled xs <+> text "=>" <+> emptyPP
+             []  -> empty
+             [x] -> x <+> text "=>" <+> empty
+             xs  -> tupled xs <+> text "=>" <+> empty
         (_derivingDoc) =
             if null _derivings_text then
-                emptyPP
+                empty
             else
-                (    emptyPP
+                (    empty
                 <+>  text "deriving"
                 <+>  tupledUnit _derivings_text
                 )
@@ -376,7 +385,7 @@ sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
 sem_Declaration_Empty (_range) =
     let (_text) =
-            emptyPP
+            empty
         ( _range_text) =
             (_range )
     in  (_text)
@@ -458,14 +467,14 @@ sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_deriv
             _derivingDoc
         (_contextDoc) =
             case _context_text of
-             []  -> emptyPP
-             [x] -> x <+> text "=>" <+> emptyPP
-             xs  -> tupled xs <+> text "=>" <+> emptyPP
+             []  -> empty
+             [x] -> x <+> text "=>" <+> empty
+             xs  -> tupled xs <+> text "=>" <+> empty
         (_derivingDoc) =
             if null _derivings_text then
-                emptyPP
+                empty
             else
-                (    emptyPP
+                (    empty
                 <+>  text "deriving"
                 <+>  tupledUnit _derivings_text
                 )
@@ -576,7 +585,7 @@ sem_Export_TypeOrClass :: (T_Range) ->
                           (T_Export)
 sem_Export_TypeOrClass (_range) (_name) (_names) =
     let (_text) =
-            _name_text <> maybe emptyPP tupled (_names_text)
+            _name_text <> maybe empty tupled (_names_text)
         ( _range_text) =
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
@@ -680,7 +689,7 @@ sem_Expression_Case :: (T_Range) ->
 sem_Expression_Case (_range) (_expression) (_alternatives) =
     let (_text) =
             (text "case" <+> _expression_text <+> text "of" <$>
-                           (indent 4 $ vcat _alternatives_text) <$> emptyPP
+                           (indent 4 $ vcat _alternatives_text) <$> empty
                        )
         ( _range_text) =
             (_range )
@@ -720,7 +729,7 @@ sem_Expression_Do :: (T_Range) ->
                      (T_Expression)
 sem_Expression_Do (_range) (_statements) =
     let (_text) =
-            text "do" <$> (indent 4 $ vcat _statements_text) <$> emptyPP
+            text "do" <$> (indent 4 $ vcat _statements_text) <$> empty
         ( _range_text) =
             (_range )
         ( _statements_text) =
@@ -735,7 +744,7 @@ sem_Expression_Enum (_range) (_from) (_then) (_to) =
     let (_text) =
             text "[" <>
             _from_text <>
-            maybe emptyPP (text "," <+>)  _then_text <+>
+            maybe empty (text "," <+>)  _then_text <+>
             text ".." <+>
             opt _to_text <>
             text "]"
@@ -758,7 +767,7 @@ sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression
             text "if" <+> _guardExpression_text <+> text "then" <$>
                            indent 4 _thenExpression_text <$>
                        text "else" <$>
-                           indent 4 _elseExpression_text <$> emptyPP
+                           indent 4 _elseExpression_text <$> empty
         ( _range_text) =
             (_range )
         ( _guardExpression_text) =
@@ -824,7 +833,7 @@ sem_Expression_Let (_range) (_declarations) (_expression) =
                            (indent 4 $ vcat _declarations_text) <$>
                         text "in" <$>
                            (indent 4 $ _expression_text)
-                       ) <$> emptyPP
+                       ) <$> empty
         ( _range_text) =
             (_range )
         ( _declarations_text) =
@@ -1169,7 +1178,7 @@ sem_Import_TypeOrClass :: (T_Range) ->
                           (T_Import)
 sem_Import_TypeOrClass (_range) (_name) (_names) =
     let (_text) =
-            _name_text <> maybe emptyPP tupled1 _names_text
+            _name_text <> maybe empty tupled1 _names_text
         ( _range_text) =
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
@@ -1213,7 +1222,7 @@ sem_ImportDeclaration_Empty :: (T_Range) ->
                                (T_ImportDeclaration)
 sem_ImportDeclaration_Empty (_range) =
     let (_text) =
-            emptyPP
+            empty
         ( _range_text) =
             (_range )
     in  (_text)
@@ -1225,7 +1234,7 @@ sem_ImportDeclaration_Import :: (T_Range) ->
                                 (T_ImportDeclaration)
 sem_ImportDeclaration_Import (_range) (_qualified) (_name) (_asname) (_importspecification) =
     let (_text) =
-            text "import" <+> (if _qualified then (text "qualified" <+>) else id) _name_text <+> maybe emptyPP id _importspecification_text
+            text "import" <+> (if _qualified then (text "qualified" <+>) else id) _name_text <+> maybe empty id _importspecification_text
         ( _range_text) =
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
@@ -1588,7 +1597,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) =
                             (\x -> indent 4 (utrechtList (text "(") (text ")") x <+> text "where"))
                             _exports_text
                         )
-                    <$> emptyPP <$>
+                    <$> empty <$>
                     body
                 )
                 _name_text
@@ -1936,7 +1945,7 @@ sem_Qualifier_Empty :: (T_Range) ->
                        (T_Qualifier)
 sem_Qualifier_Empty (_range) =
     let (_text) =
-            emptyPP
+            empty
         ( _range_text) =
             (_range )
     in  (_text)
@@ -2123,7 +2132,7 @@ sem_RightHandSide_Expression (_range) (_expression) (_where) =
             indent 4
                 (  _expression_text
                 <> maybe
-                       emptyPP
+                       empty
                        (\ds -> PPrint.empty <$> text "where" <$> indent 4 (vcat ds))
                        _where_text
                 )
@@ -2145,7 +2154,7 @@ sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) =
                 <$> vsep
                        (zipWith (\f x -> indent 4 (f x)) _guardedexpressions_text (repeat assign))
                 <>  maybe
-                       emptyPP
+                       empty
                        (\ds -> PPrint.empty <$> indent 4 (text "where" <$> indent 4 (vcat ds)))
                        _where_text
                 )
@@ -2196,7 +2205,7 @@ sem_Statement_Empty :: (T_Range) ->
                        (T_Statement)
 sem_Statement_Empty (_range) =
     let (_text) =
-            emptyPP
+            empty
         ( _range_text) =
             (_range )
     in  (_text)

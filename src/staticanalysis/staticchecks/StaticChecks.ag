@@ -8,15 +8,17 @@ ATTR Module
    ]
 
 imports {
+import Similarity ( similar )
 import UHA_Syntax
+import UHA_Utils
+import UHA_Range
 import Types
 import StaticErrors
 import Warnings
 import Messages
-import UHA_Utils
 import TopSort
 import List
-import Utils ( internalError )
+import Utils ( internalError, fst3 )
 import TypeConversion
 import DerivingShow
 import LiftedConstraints

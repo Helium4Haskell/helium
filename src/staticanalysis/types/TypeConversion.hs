@@ -9,7 +9,8 @@
 
 module TypeConversion where
 
-import UHA_Utils (getNameName, nameFromString, noRange)
+import UHA_Utils (getNameName, nameFromString)
+import UHA_Range (noRange)
 import Utils (internalError)
 import List (union)
 import UHA_Syntax

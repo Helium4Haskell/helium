@@ -29,6 +29,7 @@ import ParsecPos
 
 import UHA_Syntax
 import UHA_Utils
+import UHA_Range
 
 import qualified CollectFunctionBindings
 import Utils

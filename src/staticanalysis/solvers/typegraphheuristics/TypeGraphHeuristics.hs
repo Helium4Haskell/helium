@@ -22,7 +22,7 @@ import Types
 import List
 import ConstraintInfo
 import SolverOptions        ( getTypeSynonyms, getTypeSignatures )
-import Utils                ( internalError )
+import Utils                ( internalError, fst4 )
 import SimilarFunctionTable ( similarFunctionTable )
 import UHA_Utils            ( nameFromString )
 import UHA_Syntax           ( Literal(..), Range(..), Position(..) )
@@ -560,8 +560,6 @@ safeApplySubst tp = case tp of
                       (Just t1',Just t2') -> return (Just $ TApp t1' t2')
                       _                   -> return Nothing
                       
-fst4 (a,_,_,_) = a
-
 type Permutation = [Int]
 
 permutationsForLength :: Int -> [Permutation]
