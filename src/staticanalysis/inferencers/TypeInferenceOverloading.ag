@@ -32,7 +32,9 @@ SEM Declaration
  
   | FunctionBindings
        loc      . declPredicates        = let scheme     = lookupWithDefaultFM @lhs.allTypeSchemes err (NameWithRange @bindings.name)
-                                              predicates = qualifiers (unquantify scheme)
+                                              predicates = matchTypeWithScheme @lhs.orderedTypeSynonyms 
+                                                              (@lhs.substitution |-> @beta) 
+                                                              (@lhs.substitution |-> scheme)
                                               err = internalError "TypeInferenceOverloading.ag" "n/a" "could not find type for function binding"
                                           in expandPredicates @lhs.orderedTypeSynonyms predicates      
        bindings . availablePredicates   = @declPredicates ++ @lhs.availablePredicates
@@ -42,10 +44,12 @@ SEM Declaration
        loc           . declPredicates = case @pattern.self of
                                           Pattern_Variable _ name -> 
                                              let scheme     = lookupWithDefaultFM @lhs.allTypeSchemes err (NameWithRange name)
-                                                 predicates = qualifiers (unquantify scheme)
+                                                 predicates = matchTypeWithScheme @lhs.orderedTypeSynonyms 
+                                                                 (@lhs.substitution |-> @betaRight)  
+                                                                 (@lhs.substitution |-> scheme)                                                                                                            
                                                  err = internalError "TypeInferenceOverloading.ag" "n/a" ("could not find type for pattern binding "++show name)
                                              in Just (name, expandPredicates @lhs.orderedTypeSynonyms predicates)
-                                          _                  -> Nothing
+                                          _ -> Nothing
        righthandside . availablePredicates = case @declPredicates of
                                                 Just (n, ps) -> ps ++ @lhs.availablePredicates
                                                 Nothing      -> @lhs.availablePredicates
@@ -65,12 +69,12 @@ SEM Expression
                                                 Nothing     -> [] 
                                                 Just scheme -> getRequiredDictionaries 
                                                                   (getOrderedTypeSynonyms @lhs.importEnvironment) 
-                                                                  @usedAsType
-                                                                  scheme
+                                                                  (@lhs.substitution |-> @usedAsType)
+                                                                  (@lhs.substitution |-> scheme)
                    . newDEnv               = resolveOverloading (classEnvironment @lhs.importEnvironment)
                                                                 @name.self 
-                                                                @lhs.availablePredicates 
-                                                                @requiredDictionaries 
+                                                                (@lhs.substitution |-> @lhs.availablePredicates)
+                                                                (@lhs.substitution |-> @requiredDictionaries)
                                                                 @lhs.dictionaryEnvironment 
                    . usedAsType            = @lhs.substitution |-> @beta
 
@@ -83,8 +87,8 @@ SEM Expression
                                               (True , True ) -> enumFromName 
                  . requiredDictionaries  = if @overloaded then @lhs.substitution |-> [Predicate "Enum" @elementType] else []
                  . newDEnv               = resolveOverloading (classEnvironment @lhs.importEnvironment)  @localName 
-                                                              @lhs.availablePredicates 
-                                                              @requiredDictionaries 
+                                                              (@lhs.substitution |-> @lhs.availablePredicates) 
+                                                              (@lhs.substitution |-> @requiredDictionaries) 
                                                               @to.dictionaryEnvironment 
 
   
@@ -95,24 +99,27 @@ SEM Expression
                                               Nothing     -> internalError "TypeInferenceOverloading.ag" "n/a" "type of negate unknown"
                  . requiredDictionaries  = getRequiredDictionaries 
                                               (getOrderedTypeSynonyms @lhs.importEnvironment) 
-                                              @usedAsType
-                                              @negateTypeScheme
+                                              (@lhs.substitution |-> @usedAsType)
+                                              (@lhs.substitution |-> @negateTypeScheme)
                  . usedAsType            = @lhs.substitution |-> (@expression.beta .->. @beta)
                  . newDEnv               = resolveOverloading (classEnvironment @lhs.importEnvironment)  @localName 
-                                                              @lhs.availablePredicates 
-                                                              @requiredDictionaries 
+                                                              (@lhs.substitution |-> @lhs.availablePredicates) 
+                                                              (@lhs.substitution |-> @requiredDictionaries)
                                                               @expression.dictionaryEnvironment                                              
              
 {         
 getRequiredDictionaries :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
-getRequiredDictionaries synonyms useType defType = 
-   let i  = nextFTV useType
-       (instantiatedPreds, instantiatedType) = split (snd (instantiate i defType))
-   in -- one-way unification is necessary!
-      case mguWithTypeSynonyms synonyms instantiatedType useType of
-         Left _ -> internalError "TypeInferenceOverloading.ag" "getRequiredDictionaries" "no unification"
+getRequiredDictionaries synonyms useType defType =
+   expandPredicates synonyms (matchTypeWithScheme synonyms useType defType)
+
+matchTypeWithScheme :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
+matchTypeWithScheme synonyms tp scheme =
+   let (ips, itp) = split . snd . instantiate 0 . freezeFTV $ scheme
+   in case mguWithTypeSynonyms synonyms itp (freezeVariablesInType tp) of
+         Left _ -> internalError "TypeInferenceOverloading.ag" "matchTypeWithScheme" "no unification"
          Right (_, sub) -> 
-            expandPredicates synonyms (sub |-> instantiatedPreds)
+            let f (Predicate s tp) = Predicate s (unfreezeVariablesInType $ sub |-> tp)
+            in map f ips
             
 resolveOverloading :: ClassEnvironment -> Name -> Predicates -> Predicates ->
                          DictionaryEnvironment -> DictionaryEnvironment
@@ -120,8 +127,8 @@ resolveOverloading classEnv name availablePredicates predicates dEnv =
    let maybeTrees = map (makeDictionaryTree classEnv availablePredicates) predicates
    in if all isJust maybeTrees
         then addForVariable name (map fromJust maybeTrees) dEnv
-        else dEnv -- error?
-
+        else internalError "TypeInferenceOverloading.ag" "resolveOverloading" "cannot resolve overloading"
+   
 expandPredicates :: OrderedTypeSynonyms -> Predicates -> Predicates
 expandPredicates synonyms = map (expandPredicate synonyms)
 

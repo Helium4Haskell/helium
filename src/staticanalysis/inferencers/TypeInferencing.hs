@@ -58,14 +58,17 @@ typeInferencing options importEnv module_ =
    in (debugIO, dictionaryEnv, inspectorIO, toplevelTypes, typeErrors, warnings)
          
 getRequiredDictionaries :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
-getRequiredDictionaries synonyms useType defType = 
-   let i  = nextFTV useType
-       (instantiatedPreds, instantiatedType) = split (snd (instantiate i defType))
-   in -- one-way unification is necessary!
-      case mguWithTypeSynonyms synonyms instantiatedType useType of
-         Left _ -> internalError "TypeInferenceOverloading.ag" "getRequiredDictionaries" "no unification"
+getRequiredDictionaries synonyms useType defType =
+   expandPredicates synonyms (matchTypeWithScheme synonyms useType defType)
+
+matchTypeWithScheme :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
+matchTypeWithScheme synonyms tp scheme =
+   let (ips, itp) = split . snd . instantiate 0 . freezeFTV $ scheme
+   in case mguWithTypeSynonyms synonyms itp (freezeVariablesInType tp) of
+         Left _ -> internalError "TypeInferenceOverloading.ag" "matchTypeWithScheme" "no unification"
          Right (_, sub) -> 
-            expandPredicates synonyms (sub |-> instantiatedPreds)
+            let f (Predicate s tp) = Predicate s (unfreezeVariablesInType $ sub |-> tp)
+            in map f ips
             
 resolveOverloading :: ClassEnvironment -> Name -> Predicates -> Predicates ->
                          DictionaryEnvironment -> DictionaryEnvironment
@@ -73,8 +76,8 @@ resolveOverloading classEnv name availablePredicates predicates dEnv =
    let maybeTrees = map (makeDictionaryTree classEnv availablePredicates) predicates
    in if all isJust maybeTrees
         then addForVariable name (map fromJust maybeTrees) dEnv
-        else dEnv -- error?
-
+        else internalError "TypeInferenceOverloading.ag" "resolveOverloading" "cannot resolve overloading"
+   
 expandPredicates :: OrderedTypeSynonyms -> Predicates -> Predicates
 expandPredicates synonyms = map (expandPredicate synonyms)
 
@@ -2234,7 +2237,9 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
                 _declPredicates ++ _lhsIavailablePredicates
             (_declPredicates@_) =
                 let scheme     = lookupWithDefaultFM _lhsIallTypeSchemes err (NameWithRange _bindingsIname)
-                    predicates = qualifiers (unquantify scheme)
+                    predicates = matchTypeWithScheme _lhsIorderedTypeSynonyms
+                                    (_lhsIsubstitution |-> _beta)
+                                    (_lhsIsubstitution |-> scheme)
                     err = internalError "TypeInferenceOverloading.ag" "n/a" "could not find type for function binding"
                 in expandPredicates _lhsIorderedTypeSynonyms predicates
             (_bindingsOcurrentChunk@_) =
@@ -2712,10 +2717,12 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
                 case _patternIself of
                   Pattern_Variable _ name ->
                      let scheme     = lookupWithDefaultFM _lhsIallTypeSchemes err (NameWithRange name)
-                         predicates = qualifiers (unquantify scheme)
+                         predicates = matchTypeWithScheme _lhsIorderedTypeSynonyms
+                                         (_lhsIsubstitution |-> _betaRight)
+                                         (_lhsIsubstitution |-> scheme)
                          err = internalError "TypeInferenceOverloading.ag" "n/a" ("could not find type for pattern binding "++show name)
                      in Just (name, expandPredicates _lhsIorderedTypeSynonyms predicates)
-                  _                  -> Nothing
+                  _ -> Nothing
             (_righthandsideOcurrentChunk@_) =
                 findCurrentChunk (head (keysFM _patternIenvironment)) _lhsIinheritedBDG
             (_cinfo@_) =
@@ -4463,8 +4470,8 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                 _lhsIbetaUnique + (if _overloaded then 2 else 1)
             (_newDEnv@_) =
                 resolveOverloading (classEnvironment _lhsIimportEnvironment)  _localName
-                                   _lhsIavailablePredicates
-                                   _requiredDictionaries
+                                   (_lhsIsubstitution |-> _lhsIavailablePredicates)
+                                   (_lhsIsubstitution |-> _requiredDictionaries)
                                    _toIdictionaryEnvironment
             (_requiredDictionaries@_) =
                 if _overloaded then _lhsIsubstitution |-> [Predicate "Enum" _elementType] else []
@@ -6317,16 +6324,16 @@ sem_Expression_Negate (range_) (expression_) =
                 _lhsIbetaUnique + 1
             (_newDEnv@_) =
                 resolveOverloading (classEnvironment _lhsIimportEnvironment)  _localName
-                                   _lhsIavailablePredicates
-                                   _requiredDictionaries
+                                   (_lhsIsubstitution |-> _lhsIavailablePredicates)
+                                   (_lhsIsubstitution |-> _requiredDictionaries)
                                    _expressionIdictionaryEnvironment
             (_usedAsType@_) =
                 _lhsIsubstitution |-> (_expressionIbeta .->. _beta)
             (_requiredDictionaries@_) =
                 getRequiredDictionaries
                    (getOrderedTypeSynonyms _lhsIimportEnvironment)
-                   _usedAsType
-                   _negateTypeScheme
+                   (_lhsIsubstitution |-> _usedAsType)
+                   (_lhsIsubstitution |-> _negateTypeScheme)
             (_negateTypeScheme@_) =
                 case lookupFM (typeEnvironment _lhsIimportEnvironment) _localName of
                    Just scheme -> scheme
@@ -7790,16 +7797,16 @@ sem_Expression_Variable (range_) (name_) =
             (_newDEnv@_) =
                 resolveOverloading (classEnvironment _lhsIimportEnvironment)
                                    _nameIself
-                                   _lhsIavailablePredicates
-                                   _requiredDictionaries
+                                   (_lhsIsubstitution |-> _lhsIavailablePredicates)
+                                   (_lhsIsubstitution |-> _requiredDictionaries)
                                    _lhsIdictionaryEnvironment
             (_requiredDictionaries@_) =
                 case _maybeInferredType of
                    Nothing     -> []
                    Just scheme -> getRequiredDictionaries
                                      (getOrderedTypeSynonyms _lhsIimportEnvironment)
-                                     _usedAsType
-                                     scheme
+                                     (_lhsIsubstitution |-> _usedAsType)
+                                     (_lhsIsubstitution |-> scheme)
             (_maybeInferredType@_) =
                 lookupFM _lhsIallTypeSchemes _nameInScope
             (_nameInScope@_) =
