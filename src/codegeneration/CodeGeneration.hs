@@ -677,7 +677,10 @@ sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_import
                       { Core.declName    = patBindId
                       , Core.declAccess  = Core.private
                       , Core.valueEnc    = Nothing
-                      , Core.valueValue  = _righthandside_core
+                      , Core.valueValue  =
+                          let_
+                              nextClauseId (patternMatchFail "pattern binding" _range_self)
+                              _righthandside_core
                       , Core.declCustoms = []
                       }
                   :

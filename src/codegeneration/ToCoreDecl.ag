@@ -93,7 +93,10 @@ SEM Declaration
                     { Core.declName    = patBindId
                     , Core.declAccess  = Core.private
                     , Core.valueEnc    = Nothing
-                    , Core.valueValue  = @righthandside.core
+                    , Core.valueValue  = 
+                        let_ 
+                            nextClauseId (patternMatchFail "pattern binding" @range.self)
+                            @righthandside.core
                     , Core.declCustoms = []
                     }
                 :
