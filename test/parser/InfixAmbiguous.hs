@@ -1,6 +1,7 @@
 module InfixAmbiguous where
 
-infix +
+infix +++
 
-main = 3 + 4 + 4
+main = 3 +++ 4 +++ 4
 
+(+++) x y = x

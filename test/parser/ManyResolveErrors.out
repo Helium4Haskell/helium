@@ -1,0 +1,6 @@
+Compiling parser/ManyResolveErrors.hs
+(2,8), (2,13): Ambiguous use of non-associative operator == with non-associative operator ==
+(2,19), (2,24): Ambiguous use of non-associative operator == with non-associative operator /=
+(3,7), (3,13): Ambiguous use of left-associative operator ++< with right-associative operator ++>
+(4,7), (4,13): Ambiguous use of left-associative operator ++< with non-associative operator ==
+Compilation failed with 4 errors

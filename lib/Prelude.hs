@@ -244,13 +244,16 @@ head _ = error "Prelude.head: empty list"
 last :: [a] -> a
 last [x] = x
 last (_:xs) = last xs
+last _ = error "Prelude.last: empty list"
 
 tail :: [a] -> [a]
 tail (_:xs) = xs
+tail _ = error "Prelude.tail: empty list"
 
 init :: [a] -> [a]
 init [_] = []
 init (x:xs) = x : init xs
+init _ = error "Prelude.init: empty list"
 
 null :: [a] -> Bool
 null [] = True
@@ -287,9 +290,10 @@ concat :: [[a]] -> [a]
 concat = foldr (++) []
 
 (!!) :: [a] -> Int -> a
-(x:_)  !! 0 = x
-(_:xs) !! n = xs !! (n - 1)
-[]     !! _ = error "Prelude.(!!): index too large"
+_      !! n | n < 0 = error "Prelude.(!!): negative index"
+(x:_)  !! 0         = x
+(_:xs) !! n         = xs !! (n - 1)
+[]     !! _         = error "Prelude.(!!): index too large"
 
 foldl :: (a -> b -> a) -> a -> [b] -> a
 foldl _ z [] = z

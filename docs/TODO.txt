@@ -36,6 +36,7 @@
 
 ---- DONE ----================================================================================
 
+* Compiler: EOF positie aan het eind van het laatste token (ipv op kolom 0 op de laatste regel +1)
 * Compiler: extra keywords voor lexer parametriseren!!!
 * Compiler: Als duplicated en undefined met hint dan dubbelen in hint, maybe you meant +! or +!
 * Compiler: x = 1111111111111111111111   wordt geparst...

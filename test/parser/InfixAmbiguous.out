@@ -1,4 +1,3 @@
 Compiling parser/InfixAmbiguous.hs
-(5,10), (5,14): Ambiguous use of non-associative operator +
-    with non-associative operator +
+(5,10), (5,16): Ambiguous use of non-associative operator +++ with non-associative operator +++
 Compilation failed with 1 error

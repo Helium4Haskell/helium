@@ -182,7 +182,7 @@ all: ag compiler coreasm lvmrun libraries texthint status
 
 coreasm:
 	# make core assembler
-	cd $(LVMLIBDIR); $(MAKE) EXTRA_HC_OPTS=$(EXTRA_HC_OPTS)
+	cd $(LVMLIBDIR); $(MAKE) EXTRA_HC_OPTS="$(EXTRA_HC_OPTS)"
 
 lvmrun:
 	# make lvmrun
@@ -200,7 +200,7 @@ libraries:
 
 texthint: texthint/Main.hs utils/OSSpecific.hs
 	# GHC HeliumInterpreter
-	$(HC) --make -iutils -o $(HELIUMBINDIR)/texthint$(EXE) texthint/Main.hs 
+	$(HC) $(HC_OPTS) --make -iutils -o $(HELIUMBINDIR)/texthint$(EXE) texthint/Main.hs 
 	$(STRIP) $(HELIUMBINDIR)/texthint$(EXE)
 
 # AG sources

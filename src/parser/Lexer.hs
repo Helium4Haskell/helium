@@ -13,6 +13,7 @@ import Utils(internalError)
 
 import Monad(when)
 import Char(ord)
+import List(isPrefixOf)
 
 lexer :: String -> [Char] -> Either LexerError ([Token], [LexerWarning])
 lexer fileName input = runLexerMonad fileName (mainLexer input)
@@ -88,11 +89,18 @@ mainLexer input@(c:cs)
 lexName :: (Char -> Bool) -> (String -> Lexeme) -> 
                 (String -> Lexeme) -> [String] -> Lexer
 lexName predicate normal reserved reserveds cs = do
-    let (name, rest) = span predicate cs
+    let (name@(first:_), rest) = span predicate cs
         lexeme = if name `elem` reserveds
                  then reserved name 
                  else normal   name
+    when ((isSymbol first || first == ':') && name `contains` "--") $ do
+        pos <- getPos
+        lexerWarning CommentOperator pos
     returnToken lexeme (length name) mainLexer rest
+
+contains :: Eq a => [a] -> [a] -> Bool
+[] `contains` _ = False
+xs@(_:rest) `contains` ys = ys `isPrefixOf` xs || rest `contains` ys
 
 -----------------------------------------------------------
 -- Numbers

@@ -9,7 +9,7 @@ comments
 
 -}
 
-are almost always incorrectly hightlighted by editors 
+are almost never supported by editors 
 
 x = 3
 

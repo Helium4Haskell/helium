@@ -113,6 +113,7 @@ data LexerWarningInfo
     | LooksLikeFloatNoFraction String
     | LooksLikeFloatNoDigits String
     | NestedComment SourcePos
+    | CommentOperator
 
 showLexerWarningInfo :: LexerWarningInfo -> [String]
 showLexerWarningInfo info = 
@@ -133,7 +134,14 @@ showLexerWarningInfo info =
             ]
 
         NestedComment _ ->
-            [ "Syntax colouring usually can not handle nested comments" ]
+            [ "Syntax colouring usually can not handle nested comments"
+            , "Some of your code may be in comments but not visibly so"
+            ]
+        
+        CommentOperator ->
+            [ "Syntax colouring usually can not handle names containing --" 
+            , "If you wanted to start a comment, write spaces around --"
+            ]
             
 keepOneTabWarning :: [LexerWarning] -> [LexerWarning]
 keepOneTabWarning = keepOneTab True
