@@ -7,7 +7,7 @@ import Monad(when, unless)
 import List(nub, elemIndex, isSuffixOf, intersperse)
 import System(exitWith, ExitCode(..), getArgs)
 import Maybe(fromJust, isNothing)
-import Standard(searchPathMaybe,getLvmPath)
+import Standard(searchPathMaybe,getLvmPath, splitPath)
 import Directory(doesFileExist, getModificationTime)
 import IOExts(writeIORef, newIORef, readIORef, IORef)
 import Args
@@ -17,9 +17,14 @@ main :: IO ()
 main = do
     args                <- getArgs
     (options, fullName) <- processArgs args
-    lvmPath             <- getLvmPath
+    
+    lvmPathFromOptionsOrEnv <- case lvmPathFromOptions options of 
+        Nothing -> getLvmPath
+        Just s  -> return (splitPath s)
+    
     let a@(filePath, moduleName, extension) = splitFilePath fullName
-        searchPath = filter (not.null).nub $ ".":filePath:lvmPath
+        lvmPath = filter (not.null) . nub 
+                $ (if null filePath then "." else filePath) : lvmPathFromOptionsOrEnv
 
     -- File must exist, this test doesn't use the search path
     fileExists <- doesFileExist fullName
@@ -35,15 +40,15 @@ main = do
             return filePlusHS
 
     -- Libraries must exist somewhere in the search path
-    mapM (checkExistence searchPath) 
+    mapM (checkExistence lvmPath) 
         ["Prelude", "PreludePrim", "HeliumLang", "LvmLang", "LvmIO", "LvmException"]
 
     doneRef <- newIORef []
-    make newFullName searchPath [moduleName] options doneRef
+    make newFullName lvmPath [moduleName] options doneRef
     return ()
     
 -- fullName = file name including path of ".hs" file that is to be compiled
--- searchPath = where to look for files
+-- lvmPath = where to look for files
 -- chain = chain of imports that led to the current module
 -- options = the compiler options
 -- doneRef = an IO ref to a list of already compiled files
@@ -52,7 +57,7 @@ main = do
 -- returns: recompiled or not? (true = recompiled)
 
 make :: String -> [String] -> [String] -> [Option] -> IORef [(String, Bool)] -> IO Bool
-make fullName searchPath chain options doneRef =
+make fullName lvmPath chain options doneRef =
     do
         -- If we already compiled this module, return the result we already now
         done <- readIORef doneRef
@@ -70,7 +75,7 @@ make fullName searchPath chain options doneRef =
                     return ()
 
             -- Find all imports in the search path
-            resolvedImports <- mapM (resolve searchPath) imports
+            resolvedImports <- mapM (resolve lvmPath) imports
             
             -- For each of the imports...
             compileResults <- foreach (zip imports resolvedImports) 
@@ -82,7 +87,7 @@ make fullName searchPath chain options doneRef =
                         putStrLn $ 
                             "Can't find module '" ++ importModuleName ++ "'\n" ++ 
                             "Import chain: \n\t" ++ showImportChain (chain ++ [importModuleName]) ++
-                            "\nSearch path:\n" ++ showSearchPath searchPath
+                            "\nSearch path:\n" ++ showSearchPath lvmPath
                         exitWith (ExitFailure 1)
                     Just _ -> return ()
 
@@ -92,7 +97,7 @@ make fullName searchPath chain options doneRef =
                 if ".lvm" `isSuffixOf` importFullName then
                     return False
                   else
-                    make importFullName searchPath (chain ++ [importModuleName]) options doneRef
+                    make importFullName lvmPath (chain ++ [importModuleName]) options doneRef
 
             -- Recompile the current module if:
             -- * any of the children was recompiled
@@ -109,7 +114,7 @@ make fullName searchPath chain options doneRef =
                     (BuildOne `elem` options && moduleName == head chain) ||
                     not upToDate 
                     then do
-                        compile fullName options (map fst newDone)
+                        compile fullName options lvmPath (map fst newDone)
                         return True
                       else do
                         putStrLn (moduleName ++ " is up to date")

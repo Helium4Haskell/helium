@@ -96,6 +96,8 @@ commasAnd [x] = x
 commasAnd (x:xs) = x ++ concatMap (", " ++) (init xs) ++ " and " ++ last xs
 
 instance HasMessage LexerWarning where
+    getRanges (LexerWarning pos (NestedComment pos2)) =
+       map sourcePosToRange [ pos, pos2 ]
     getRanges (LexerWarning pos _) =
         [ sourcePosToRange pos ]
     getMessage (LexerWarning _ info) = 
@@ -110,6 +112,7 @@ data LexerWarningInfo
     = TabCharacter
     | LooksLikeFloatNoFraction String
     | LooksLikeFloatNoDigits String
+    | NestedComment SourcePos
 
 showLexerWarningInfo :: LexerWarningInfo -> [String]
 showLexerWarningInfo info = 
@@ -128,7 +131,10 @@ showLexerWarningInfo info =
             , "If a Float was meant, write \"0." ++ fraction ++ "\""
             , "Otherwise, insert a space for readability" 
             ]
-        
+
+        NestedComment _ ->
+            [ "Syntax colouring usually can not handle nested comments" ]
+            
 keepOneTabWarning :: [LexerWarning] -> [LexerWarning]
 keepOneTabWarning = keepOneTab True
   where

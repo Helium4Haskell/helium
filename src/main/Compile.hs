@@ -13,8 +13,8 @@ import CompileUtils
 import Utils
 import IOExts(writeIORef)
 
-compile :: String -> [Option] -> [String] -> IO ()
-compile fullName options doneModules =
+compile :: String -> [Option] -> [String] -> [String] -> IO ()
+compile fullName options lvmPath doneModules =
     do
         putStrLn ("Compiling " ++ fullName)
 
@@ -38,7 +38,7 @@ compile fullName options doneModules =
 
         -- Phase 3: Importing
         (indirectionDecls, importEnvs) <-
-            phaseImport fullName parsedModule options
+            phaseImport fullName parsedModule lvmPath options
         
         -- Phase 4: Resolving operators
         resolvedModule <- 

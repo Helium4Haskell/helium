@@ -1,3 +1,2 @@
-export LVMPATH="${1%/*};../lib"
-../bin/helium -lT $1 && lvmrun $1
+../bin/helium -lT -P"../lib" $1 && lvmrun -P"${1%/*};../lib" $1
 rm -f ${1%/*}/*.lvm

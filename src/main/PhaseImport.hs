@@ -5,15 +5,15 @@ import Core(CoreDecl)
 import UHA_Syntax
 import UHA_Utils
 import UHA_Range(noRange)
-import Standard(getLvmPath, searchPath)
+import Standard(searchPath)
 import LvmImport(lvmImportDecls)
 import Id(stringFromId)
 import CoreToImportEnv(getImportEnvironment)
 import qualified ExtractImportDecls(sem_Module)
 
-phaseImport :: String -> Module -> [Option] -> 
+phaseImport :: String -> Module -> [String] -> [Option] -> 
                     IO ([CoreDecl], [ImportEnvironment])
-phaseImport fullName module_ options = do
+phaseImport fullName module_ lvmPath options = do
     enterNewPhase "Importing" options
 
     let (filePath, baseName, _) = splitFilePath fullName
@@ -22,7 +22,7 @@ phaseImport fullName module_ options = do
     let moduleWithExtraImports = addImplicitImports module_
 
     -- Chase imports
-    chasedImpsList <- chaseImports filePath moduleWithExtraImports
+    chasedImpsList <- chaseImports lvmPath moduleWithExtraImports
 
     let indirectionDecls   = concat chasedImpsList
         importEnvs = 
@@ -30,17 +30,11 @@ phaseImport fullName module_ options = do
     
     return (indirectionDecls, importEnvs)
 
-chaseImports :: String -> Module -> IO [[CoreDecl]]
-chaseImports filePath mod =
-   do
-      lvmPath <- getLvmPath
-
-      let paths           = ".":filePath:lvmPath
-          coreImportDecls = ExtractImportDecls.sem_Module mod -- Expand imports
-          findModule      = searchPath paths ".lvm" . stringFromId
-
-      lvmImportDecls findModule coreImportDecls
-
+chaseImports :: [String] -> Module -> IO [[CoreDecl]]
+chaseImports lvmPath mod = 
+    let coreImportDecls = ExtractImportDecls.sem_Module mod -- Expand imports
+        findModule      = searchPath lvmPath ".lvm" . stringFromId
+    in lvmImportDecls findModule coreImportDecls
 
 -- Add "import Prelude" if
 --   the currently compiled module is not the Prelude and

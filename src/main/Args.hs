@@ -1,4 +1,8 @@
-module Args(Option(..), processArgs) where
+module Args
+    ( Option(..)
+    , processArgs
+    , lvmPathFromOptions
+    ) where
 
 import System
 import Version
@@ -22,6 +26,7 @@ processArgs args =
             ,   Option "l" ["no-logging"] (NoArg NoLogging) "do not send log information"
             ,   Option "i" ["dump-information"]     (NoArg DumpInformationForThisModule) "show information about this module"
             ,   Option "I" ["dump-all-information"] (NoArg DumpInformationForAllModules) "show information about all imported modules"
+            ,   Option "P" ["lvmpath"] (ReqArg LvmPath "PATH") "use PATH as search path"
 
 #ifndef RELEASE
             ,   Option "t" ["dump-tokens"] (NoArg DumpTokens) "dump tokens to screen"
@@ -72,4 +77,11 @@ data Option
     | Verbose --
     | BuildOne --
     | BuildAll
+    
+    | LvmPath String
     deriving Eq
+
+lvmPathFromOptions :: [Option] -> Maybe String
+lvmPathFromOptions [] = Nothing
+lvmPathFromOptions (LvmPath s : _) = Just s
+lvmPathFromOptions (_ : rest) = lvmPathFromOptions rest

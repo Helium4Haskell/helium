@@ -238,6 +238,7 @@ lexMultiLineComment starts level input =
                 lexMultiLineComment (tail starts) (level - 1) cs
         '{':'-':cs -> do
             pos <- getPos
+            lexerWarning (NestedComment (head starts)) pos
             incPos 2
             lexMultiLineComment (pos:starts) (level+1) cs
         c:cs -> do
