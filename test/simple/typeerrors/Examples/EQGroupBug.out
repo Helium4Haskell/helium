@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/EQGroupBug.hs
+(4,17): Type error in infix application
+ expression       : p xs : rijen
+ constructor      : :
+   type           : a                                -> [a     ] -> [a]   
+   does not match : ([String] -> [String] -> String) -> [String] -> String
+
+Compilation failed with 1 error
