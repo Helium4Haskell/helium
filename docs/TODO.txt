@@ -1,3 +1,6 @@
+* Internationalisatie
+* Hints meer vragend brengen: Question: did you mean to use ++ ? o.i.d.
+
 * Bastiaan: warning bij type met kleine letter, bijv. not :: Bool -> bool
 * Bastiaan: type could be more general warning
 
