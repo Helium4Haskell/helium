@@ -27,7 +27,7 @@ import SATypes (isTupleConstructor)
 -}
 
 typingStrategyToCore :: TypingStrategy -> Core_TypingStrategy
-typingStrategyToCore = sem_TypingStrategy
+typingStrategyToCore = fst . sem_TypingStrategy
 
 algebraFromNameMap :: [(Name, Tp)] -> AttributeAlgebra String
 algebraFromNameMap table = ( id
@@ -124,7 +124,7 @@ sem_Alternatives_Cons :: (T_Alternative) ->
                          (T_Alternatives)
 sem_Alternatives_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_oneLineTree,_hd_self) =
             (_hd )
         ( _tl_oneLineTree,_tl_self) =
@@ -168,7 +168,7 @@ sem_AnnotatedTypes_Cons :: (T_AnnotatedType) ->
                            (T_AnnotatedTypes)
 sem_AnnotatedTypes_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -271,7 +271,7 @@ sem_Constructors_Cons :: (T_Constructor) ->
                          (T_Constructors)
 sem_Constructors_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -317,7 +317,7 @@ sem_ContextItems_Cons :: (T_ContextItem) ->
                          (T_ContextItems)
 sem_ContextItems_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -564,7 +564,7 @@ sem_Declarations_Cons :: (T_Declaration) ->
                          (T_Declarations)
 sem_Declarations_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_oneLineTree,_hd_self) =
             (_hd )
         ( _tl_oneLineTree,_tl_self) =
@@ -649,7 +649,7 @@ sem_Exports_Cons :: (T_Export) ->
                     (T_Exports)
 sem_Exports_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -1073,7 +1073,7 @@ sem_Expressions_Cons :: (T_Expression) ->
                         (T_Expressions)
 sem_Expressions_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_oneLineTree,_hd_self) =
             (_hd )
         ( _tl_oneLineTree,_tl_self) =
@@ -1119,7 +1119,7 @@ sem_FieldDeclarations_Cons :: (T_FieldDeclaration) ->
                               (T_FieldDeclarations)
 sem_FieldDeclarations_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -1203,7 +1203,7 @@ sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
                              (T_FunctionBindings)
 sem_FunctionBindings_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_oneLineTree,_hd_self) =
             (_hd )
         ( _tl_oneLineTree,_tl_self) =
@@ -1251,7 +1251,7 @@ sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
                                (T_GuardedExpressions)
 sem_GuardedExpressions_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_oneLineTree,_hd_self) =
             (_hd )
         ( _tl_oneLineTree,_tl_self) =
@@ -1359,7 +1359,7 @@ sem_ImportDeclarations_Cons :: (T_ImportDeclaration) ->
                                (T_ImportDeclarations)
 sem_ImportDeclarations_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -1403,7 +1403,7 @@ sem_Imports_Cons :: (T_Import) ->
                     (T_Imports)
 sem_Imports_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -1417,7 +1417,7 @@ sem_Imports_Nil  =
 -- Judgement ---------------------------------------------------
 -- semantic domain
 type T_Judgement = ([(Name,Tp)]) ->
-                   ( (Tp),(Core_Judgement),(Names))
+                   ( (Tp),(Core_Judgement),(Judgement),(Names))
 -- cata
 sem_Judgement :: (Judgement) ->
                  (T_Judgement)
@@ -1427,11 +1427,13 @@ sem_Judgement_Judgement :: (T_Expression) ->
                            (T_Type) ->
                            (T_Judgement)
 sem_Judgement_Judgement (_expression) (_type) (_lhs_nameMap) =
-    let ( _expression_oneLineTree,_expression_self) =
+    let (_self) =
+            Judgement_Judgement _expression_self _type_self
+        ( _expression_oneLineTree,_expression_self) =
             (_expression )
         ( _type_self,_type_typevariables) =
             (_type )
-    in  ( makeTpFromType _lhs_nameMap _type_self,Judgement (showOneLine 10000 _expression_oneLineTree) (makeTpFromType _lhs_nameMap _type_self),_type_typevariables)
+    in  ( makeTpFromType _lhs_nameMap _type_self,Judgement (showOneLine 10000 _expression_oneLineTree) (makeTpFromType _lhs_nameMap _type_self),_self,_type_typevariables)
 -- LeftHandSide ------------------------------------------------
 -- semantic domain
 type T_LeftHandSide = ( (Tree),(LeftHandSide))
@@ -1724,7 +1726,7 @@ sem_MaybeNames_Nothing  =
     in  ( _self)
 -- Module ------------------------------------------------------
 -- semantic domain
-type T_Module = ( )
+type T_Module = ( (Module))
 -- cata
 sem_Module :: (Module) ->
               (T_Module)
@@ -1746,7 +1748,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) =
             (_exports )
         ( _body_self) =
             (_body )
-    in  ( )
+    in  ( _self)
 -- Name --------------------------------------------------------
 -- semantic domain
 type T_Name = ( (Bool),(Bool),(Bool),(Tree),(Name))
@@ -1814,7 +1816,7 @@ sem_Names_Cons :: (T_Name) ->
                   (T_Names)
 sem_Names_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_isIdentifier,_hd_isOperator,_hd_isSpecial,_hd_oneLineTree,_hd_self) =
             (_hd )
         ( _tl_isIdentifier,_tl_isOperator,_tl_isSpecial,_tl_oneLineTree,_tl_self) =
@@ -2085,7 +2087,7 @@ sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns)
 sem_Patterns_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_oneLineTree,_hd_self) =
             (_hd )
         ( _tl_oneLineTree,_tl_self) =
@@ -2198,7 +2200,7 @@ sem_Qualifiers_Cons :: (T_Qualifier) ->
                        (T_Qualifiers)
 sem_Qualifiers_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_oneLineTree,_hd_self) =
             (_hd )
         ( _tl_oneLineTree,_tl_self) =
@@ -2263,7 +2265,7 @@ sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
                                      (T_RecordExpressionBindings)
 sem_RecordExpressionBindings_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -2309,7 +2311,7 @@ sem_RecordPatternBindings_Cons :: (T_RecordPatternBinding) ->
                                   (T_RecordPatternBindings)
 sem_RecordPatternBindings_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -2376,7 +2378,7 @@ sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) =
 -- semantic domain
 type T_SimpleJudgement = ([(Name,Tp)]) ->
                          ([(String,Tp)]) ->
-                         ( (Core_Judgement),([(String,Tp)]),(Names))
+                         ( (Core_Judgement),(SimpleJudgement),([(String,Tp)]),(Names))
 -- cata
 sem_SimpleJudgement :: (SimpleJudgement) ->
                        (T_SimpleJudgement)
@@ -2386,18 +2388,20 @@ sem_SimpleJudgement_SimpleJudgement :: (T_Name) ->
                                        (T_Type) ->
                                        (T_SimpleJudgement)
 sem_SimpleJudgement_SimpleJudgement (_name) (_type) (_lhs_nameMap) (_lhs_simpleJudgements) =
-    let (_newJudgement) =
+    let (_self) =
+            SimpleJudgement_SimpleJudgement _name_self _type_self
+        (_newJudgement) =
             (show _name_self, makeTpFromType _lhs_nameMap _type_self)
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
         ( _type_self,_type_typevariables) =
             (_type )
-    in  ( Judgement (show _name_self) (makeTpFromType _lhs_nameMap _type_self),_newJudgement : _lhs_simpleJudgements,_type_typevariables)
+    in  ( Judgement (show _name_self) (makeTpFromType _lhs_nameMap _type_self),_self,_newJudgement : _lhs_simpleJudgements,_type_typevariables)
 -- SimpleJudgements --------------------------------------------
 -- semantic domain
 type T_SimpleJudgements = ([(Name,Tp)]) ->
                           ([(String,Tp)]) ->
-                          ( (Core_Judgements),([(String,Tp)]),(Names))
+                          ( (Core_Judgements),(SimpleJudgements),([(String,Tp)]),(Names))
 -- cata
 sem_SimpleJudgements :: (SimpleJudgements) ->
                         (T_SimpleJudgements)
@@ -2407,15 +2411,18 @@ sem_SimpleJudgements_Cons :: (T_SimpleJudgement) ->
                              (T_SimpleJudgements) ->
                              (T_SimpleJudgements)
 sem_SimpleJudgements_Cons (_hd) (_tl) (_lhs_nameMap) (_lhs_simpleJudgements) =
-    let ( _hd_core,_hd_simpleJudgements,_hd_typevariables) =
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_core,_hd_self,_hd_simpleJudgements,_hd_typevariables) =
             (_hd (_lhs_nameMap) (_lhs_simpleJudgements))
-        ( _tl_core,_tl_simpleJudgements,_tl_typevariables) =
+        ( _tl_core,_tl_self,_tl_simpleJudgements,_tl_typevariables) =
             (_tl (_lhs_nameMap) (_hd_simpleJudgements))
-    in  ( _hd_core : _tl_core,_tl_simpleJudgements,_hd_typevariables  ++  _tl_typevariables)
+    in  ( _hd_core : _tl_core,_self,_tl_simpleJudgements,_hd_typevariables  ++  _tl_typevariables)
 sem_SimpleJudgements_Nil :: (T_SimpleJudgements)
 sem_SimpleJudgements_Nil (_lhs_nameMap) (_lhs_simpleJudgements) =
-    let 
-    in  ( [],_lhs_simpleJudgements,[])
+    let (_self) =
+            []
+    in  ( [],_self,_lhs_simpleJudgements,[])
 -- SimpleType --------------------------------------------------
 -- semantic domain
 type T_SimpleType = ( (SimpleType))
@@ -2517,7 +2524,7 @@ sem_Statements_Cons :: (T_Statement) ->
                        (T_Statements)
 sem_Statements_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_oneLineTree,_hd_self) =
             (_hd )
         ( _tl_oneLineTree,_tl_self) =
@@ -2541,7 +2548,7 @@ sem_Strings_Cons :: (String) ->
                     (T_Strings)
 sem_Strings_Cons (_hd) (_tl) =
     let (_self) =
-            _hd : _tl_self
+            (:) _hd _tl_self
         ( _tl_oneLineTree,_tl_self) =
             (_tl )
     in  ( _tl_oneLineTree,_self)
@@ -2664,7 +2671,7 @@ sem_Type_Variable (_range) (_name) =
 -- semantic domain
 type T_TypeRule = ([(Name,Tp)]) ->
                   ([(String,Tp)]) ->
-                  ( (Tp),(Core_TypeRule),([(String,Tp)]),(Names))
+                  ( (Tp),(Core_TypeRule),(TypeRule),([(String,Tp)]),(Names))
 -- cata
 sem_TypeRule :: (TypeRule) ->
                 (T_TypeRule)
@@ -2674,11 +2681,13 @@ sem_TypeRule_TypeRule :: (T_SimpleJudgements) ->
                          (T_Judgement) ->
                          (T_TypeRule)
 sem_TypeRule_TypeRule (_premises) (_conclusion) (_lhs_nameMap) (_lhs_simpleJudgements) =
-    let ( _premises_core,_premises_simpleJudgements,_premises_typevariables) =
+    let (_self) =
+            TypeRule_TypeRule _premises_self _conclusion_self
+        ( _premises_core,_premises_self,_premises_simpleJudgements,_premises_typevariables) =
             (_premises (_lhs_nameMap) (_lhs_simpleJudgements))
-        ( _conclusion_conclusionType,_conclusion_core,_conclusion_typevariables) =
+        ( _conclusion_conclusionType,_conclusion_core,_conclusion_self,_conclusion_typevariables) =
             (_conclusion (_lhs_nameMap))
-    in  ( _conclusion_conclusionType,TypeRule _premises_core _conclusion_core,_premises_simpleJudgements,_premises_typevariables  ++  _conclusion_typevariables)
+    in  ( _conclusion_conclusionType,TypeRule _premises_core _conclusion_core,_self,_premises_simpleJudgements,_premises_typevariables  ++  _conclusion_typevariables)
 -- Types -------------------------------------------------------
 -- semantic domain
 type T_Types = ( (Types),(Names))
@@ -2692,7 +2701,7 @@ sem_Types_Cons :: (T_Type) ->
                   (T_Types)
 sem_Types_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self,_hd_typevariables) =
             (_hd )
         ( _tl_self,_tl_typevariables) =
@@ -2705,7 +2714,7 @@ sem_Types_Nil  =
     in  ( _self,[])
 -- TypingStrategies --------------------------------------------
 -- semantic domain
-type T_TypingStrategies = ( )
+type T_TypingStrategies = ( (TypingStrategies))
 -- cata
 sem_TypingStrategies :: (TypingStrategies) ->
                         (T_TypingStrategies)
@@ -2715,16 +2724,21 @@ sem_TypingStrategies_Cons :: (T_TypingStrategy) ->
                              (T_TypingStrategies) ->
                              (T_TypingStrategies)
 sem_TypingStrategies_Cons (_hd) (_tl) =
-    let ( _hd_core) =
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_core,_hd_self) =
             (_hd )
-    in  ( )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_TypingStrategies_Nil :: (T_TypingStrategies)
 sem_TypingStrategies_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- TypingStrategy ----------------------------------------------
 -- semantic domain
-type T_TypingStrategy = ( (Core_TypingStrategy))
+type T_TypingStrategy = ( (Core_TypingStrategy),(TypingStrategy))
 -- cata
 sem_TypingStrategy :: (TypingStrategy) ->
                       (T_TypingStrategy)
@@ -2735,7 +2749,9 @@ sem_TypingStrategy_TypingStrategy :: (String) ->
                                      (T_UserStatements) ->
                                      (T_TypingStrategy)
 sem_TypingStrategy_TypingStrategy (_name) (_typerule) (_statements) =
-    let (_nameMap) =
+    let (_self) =
+            TypingStrategy_TypingStrategy _name _typerule_self _statements_self
+        (_nameMap) =
             zip _uniqueTypevariables (map TVar [0..])
         (_uniqueTypevariables) =
             nub (_typerule_typevariables ++ _statements_typevariables)
@@ -2747,11 +2763,11 @@ sem_TypingStrategy_TypingStrategy (_name) (_typerule) (_statements) =
             standardConstraintInfo
         (_attributeTable) =
             []
-        ( _typerule_conclusionType,_typerule_core,_typerule_simpleJudgements,_typerule_typevariables) =
+        ( _typerule_conclusionType,_typerule_core,_typerule_self,_typerule_simpleJudgements,_typerule_typevariables) =
             (_typerule (_nameMap) ([]))
-        ( _statements_core,_statements_metaVariableConstraintNames,_statements_typevariables,_statements_userConstraints) =
+        ( _statements_core,_statements_metaVariableConstraintNames,_statements_self,_statements_typevariables,_statements_userConstraints) =
             (_statements (_attributeTable) ([]) (_nameMap) (_standardConstraintInfo) ([]))
-    in  ( TypingStrategy _typerule_core _statements_core)
+    in  ( TypingStrategy _typerule_core _statements_core,_self)
 -- UserStatement -----------------------------------------------
 -- semantic domain
 type T_UserStatement = ([((String, Maybe String), MessageBlock)]) ->
@@ -2759,7 +2775,7 @@ type T_UserStatement = ([((String, Maybe String), MessageBlock)]) ->
                        ([(Name,Tp)]) ->
                        (((Tp, Tp) -> HeliumConstraintInfo)) ->
                        (Constraints HeliumConstraintInfo) ->
-                       ( (Core_UserStatement),(Names),(Names),(Constraints HeliumConstraintInfo))
+                       ( (Core_UserStatement),(Names),(UserStatement),(Names),(Constraints HeliumConstraintInfo))
 -- cata
 sem_UserStatement :: (UserStatement) ->
                      (T_UserStatement)
@@ -2774,7 +2790,9 @@ sem_UserStatement_Constraint :: (T_Type) ->
                                 (String) ->
                                 (T_UserStatement)
 sem_UserStatement_Constraint (_leftType) (_rightType) (_message) (_lhs_attributeTable) (_lhs_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_standardConstraintInfo) (_lhs_userConstraints) =
-    let (_newConstraint) =
+    let (_self) =
+            UserStatement_Constraint _leftType_self _rightType_self _message
+        (_newConstraint) =
             (makeTpFromType _lhs_nameMap _leftType_self .==. makeTpFromType _lhs_nameMap _rightType_self) _lhs_standardConstraintInfo
         ( _leftType_self,_leftType_typevariables) =
             (_leftType )
@@ -2785,20 +2803,24 @@ sem_UserStatement_Constraint (_leftType) (_rightType) (_message) (_lhs_attribute
             (makeTpFromType _lhs_nameMap _rightType_self)
             (concat (substituteAttributes (algebraFromNameMap _lhs_nameMap) _message))
          ,_lhs_metaVariableConstraintNames
+         ,_self
          ,_leftType_typevariables  ++  _rightType_typevariables
          ,_newConstraint : _lhs_userConstraints
          )
 sem_UserStatement_MetaVariableConstraints :: (T_Name) ->
                                              (T_UserStatement)
 sem_UserStatement_MetaVariableConstraints (_name) (_lhs_attributeTable) (_lhs_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_standardConstraintInfo) (_lhs_userConstraints) =
-    let ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+    let (_self) =
+            UserStatement_MetaVariableConstraints _name_self
+        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
-    in  ( MetaVariableConstraints (show _name_self),_name_self : _lhs_metaVariableConstraintNames,[],_lhs_userConstraints)
+    in  ( MetaVariableConstraints (show _name_self),_name_self : _lhs_metaVariableConstraintNames,_self,[],_lhs_userConstraints)
 sem_UserStatement_Phase :: (Int) ->
                            (T_UserStatement)
 sem_UserStatement_Phase (_phase) (_lhs_attributeTable) (_lhs_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_standardConstraintInfo) (_lhs_userConstraints) =
-    let 
-    in  ( Phase _phase,_lhs_metaVariableConstraintNames,[],_lhs_userConstraints)
+    let (_self) =
+            UserStatement_Phase _phase
+    in  ( Phase _phase,_lhs_metaVariableConstraintNames,_self,[],_lhs_userConstraints)
 -- UserStatements ----------------------------------------------
 -- semantic domain
 type T_UserStatements = ([((String, Maybe String), MessageBlock)]) ->
@@ -2806,7 +2828,7 @@ type T_UserStatements = ([((String, Maybe String), MessageBlock)]) ->
                         ([(Name,Tp)]) ->
                         (((Tp, Tp) -> HeliumConstraintInfo)) ->
                         (Constraints HeliumConstraintInfo) ->
-                        ( (Core_UserStatements),(Names),(Names),(Constraints HeliumConstraintInfo))
+                        ( (Core_UserStatements),(Names),(UserStatements),(Names),(Constraints HeliumConstraintInfo))
 -- cata
 sem_UserStatements :: (UserStatements) ->
                       (T_UserStatements)
@@ -2816,13 +2838,16 @@ sem_UserStatements_Cons :: (T_UserStatement) ->
                            (T_UserStatements) ->
                            (T_UserStatements)
 sem_UserStatements_Cons (_hd) (_tl) (_lhs_attributeTable) (_lhs_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_standardConstraintInfo) (_lhs_userConstraints) =
-    let ( _hd_core,_hd_metaVariableConstraintNames,_hd_typevariables,_hd_userConstraints) =
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_core,_hd_metaVariableConstraintNames,_hd_self,_hd_typevariables,_hd_userConstraints) =
             (_hd (_lhs_attributeTable) (_lhs_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_standardConstraintInfo) (_lhs_userConstraints))
-        ( _tl_core,_tl_metaVariableConstraintNames,_tl_typevariables,_tl_userConstraints) =
+        ( _tl_core,_tl_metaVariableConstraintNames,_tl_self,_tl_typevariables,_tl_userConstraints) =
             (_tl (_lhs_attributeTable) (_hd_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_standardConstraintInfo) (_hd_userConstraints))
-    in  ( _hd_core : _tl_core,_tl_metaVariableConstraintNames,_hd_typevariables  ++  _tl_typevariables,_tl_userConstraints)
+    in  ( _hd_core : _tl_core,_tl_metaVariableConstraintNames,_self,_hd_typevariables  ++  _tl_typevariables,_tl_userConstraints)
 sem_UserStatements_Nil :: (T_UserStatements)
 sem_UserStatements_Nil (_lhs_attributeTable) (_lhs_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_standardConstraintInfo) (_lhs_userConstraints) =
-    let 
-    in  ( [],_lhs_metaVariableConstraintNames,[],_lhs_userConstraints)
+    let (_self) =
+            []
+    in  ( [],_lhs_metaVariableConstraintNames,_self,[],_lhs_userConstraints)
 

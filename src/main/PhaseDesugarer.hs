@@ -19,7 +19,7 @@ phaseDesugarer fullName module_ extraDecls finalEnv toplevelTypes options = do
 
         moduleWithName = fixModuleName module_ baseName
 
-        coreModule = 
+        coreModule = fst $
             CodeGeneration.sem_Module moduleWithName
                 extraDecls
                 finalEnv

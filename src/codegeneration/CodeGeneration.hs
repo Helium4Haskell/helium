@@ -195,7 +195,7 @@ sem_Alternatives_Cons :: (T_Alternative) ->
                          (T_Alternatives)
 sem_Alternatives_Cons (_hd) (_tl) (_lhs_caseRange) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_core,_hd_self) =
             (_hd )
         ( _tl_core,_tl_self) =
@@ -239,7 +239,7 @@ sem_AnnotatedTypes_Cons :: (T_AnnotatedType) ->
                            (T_AnnotatedTypes)
 sem_AnnotatedTypes_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_length,_tl_self) =
@@ -369,7 +369,7 @@ sem_Constructors_Cons :: (T_Constructor) ->
                          (T_Constructors)
 sem_Constructors_Cons (_hd) (_tl) (_lhs_importEnv) (_lhs_tag) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_cons,_hd_self) =
             (_hd (_lhs_importEnv) (_lhs_tag))
         ( _tl_cons,_tl_self) =
@@ -415,7 +415,7 @@ sem_ContextItems_Cons :: (T_ContextItem) ->
                          (T_ContextItems)
 sem_ContextItems_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -758,7 +758,7 @@ sem_Declarations_Cons :: (T_Declaration) ->
                          (T_Declarations)
 sem_Declarations_Cons (_hd) (_tl) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_decls,_hd_patBindNr,_hd_self) =
             (_hd (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr))
         ( _tl_decls,_tl_patBindNr,_tl_self) =
@@ -843,7 +843,7 @@ sem_Exports_Cons :: (T_Export) ->
                     (T_Exports)
 sem_Exports_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_cons,_hd_mods,_hd_self,_hd_types,_hd_values) =
             (_hd )
         ( _tl_cons,_tl_mods,_tl_self,_tl_types,_tl_values) =
@@ -1051,10 +1051,10 @@ sem_Expression_Let :: (T_Range) ->
                       (T_Expression) ->
                       (T_Expression)
 sem_Expression_Let (_range) (_declarations) (_expression) =
-    let (_importEnv) =
-            intErr "CodeGeneration.ag" "Expression.Let" ""
-        (_self) =
+    let (_self) =
             Expression_Let _range_self _declarations_self _expression_self
+        (_importEnv) =
+            intErr "CodeGeneration.ag" "Expression.Let" ""
         ( _range_self) =
             (_range )
         ( _declarations_decls,_declarations_patBindNr,_declarations_self) =
@@ -1218,7 +1218,7 @@ sem_Expressions_Cons :: (T_Expression) ->
                         (T_Expressions)
 sem_Expressions_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_core,_hd_self) =
             (_hd )
         ( _tl_core,_tl_self) =
@@ -1264,7 +1264,7 @@ sem_FieldDeclarations_Cons :: (T_FieldDeclaration) ->
                               (T_FieldDeclarations)
 sem_FieldDeclarations_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -1364,7 +1364,7 @@ sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
                              (T_FunctionBindings)
 sem_FunctionBindings_Cons (_hd) (_tl) (_lhs_ids) (_lhs_range) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_arity,_hd_core,_hd_id,_hd_self) =
             (_hd (_lhs_ids))
         ( _tl_arity,_tl_core,_tl_id,_tl_self) =
@@ -1410,7 +1410,7 @@ sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
                                (T_GuardedExpressions)
 sem_GuardedExpressions_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_core,_hd_self) =
             (_hd )
         ( _tl_core,_tl_self) =
@@ -1518,7 +1518,7 @@ sem_ImportDeclarations_Cons :: (T_ImportDeclaration) ->
                                (T_ImportDeclarations)
 sem_ImportDeclarations_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -1562,7 +1562,7 @@ sem_Imports_Cons :: (T_Import) ->
                     (T_Imports)
 sem_Imports_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -1699,10 +1699,10 @@ sem_MaybeDeclarations ((MaybeDeclarations_Nothing )) =
 sem_MaybeDeclarations_Just :: (T_Declarations) ->
                               (T_MaybeDeclarations)
 sem_MaybeDeclarations_Just (_declarations) =
-    let (_importEnv) =
-            intErr "CodeGeneration.ag" "MaybeDeclarations.Just" ""
-        (_self) =
+    let (_self) =
             MaybeDeclarations_Just _declarations_self
+        (_importEnv) =
+            intErr "CodeGeneration.ag" "MaybeDeclarations.Just" ""
         ( _declarations_decls,_declarations_patBindNr,_declarations_self) =
             (_declarations (_importEnv) (False) (0))
     in  ( \continue -> letrec_ _declarations_decls continue,_self)
@@ -1852,7 +1852,7 @@ sem_MaybeNames_Nothing  =
 type T_Module = ( [Core.CoreDecl] ) ->
                 (ImportEnvironment) ->
                 (TypeEnvironment) ->
-                ( ( Core.CoreModule ))
+                ( ( Core.CoreModule ),(Module))
 -- cata
 sem_Module :: (Module) ->
               (T_Module)
@@ -1891,6 +1891,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_additionalDecls) (_l
             (_body (_lhs_importEnv))
     in  ( _module_ { Module.moduleDecls =
                insertedMain _lhs_toplevelTypes : Module.moduleDecls _module_ }
+         ,_self
          )
 -- Name --------------------------------------------------------
 -- semantic domain
@@ -1953,7 +1954,7 @@ sem_Names_Cons :: (T_Name) ->
                   (T_Names)
 sem_Names_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_id,_hd_self) =
             (_hd )
         ( _tl_ids,_tl_self) =
@@ -2180,7 +2181,7 @@ sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns)
 sem_Patterns_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self,_hd_vars) =
             (_hd )
         ( _tl_length,_tl_self,_tl_vars) =
@@ -2278,10 +2279,10 @@ sem_Qualifier_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Qualifier)
 sem_Qualifier_Let (_range) (_declarations) =
-    let (_importEnv) =
-            intErr "CodeGeneration.ag" "Qualifier.Let" ""
-        (_self) =
+    let (_self) =
             Qualifier_Let _range_self _declarations_self
+        (_importEnv) =
+            intErr "CodeGeneration.ag" "Qualifier.Let" ""
         ( _range_self) =
             (_range )
         ( _declarations_decls,_declarations_patBindNr,_declarations_self) =
@@ -2300,7 +2301,7 @@ sem_Qualifiers_Cons :: (T_Qualifier) ->
                        (T_Qualifiers)
 sem_Qualifiers_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_core,_hd_self) =
             (_hd )
         ( _tl_core,_tl_self) =
@@ -2365,7 +2366,7 @@ sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
                                      (T_RecordExpressionBindings)
 sem_RecordExpressionBindings_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -2411,7 +2412,7 @@ sem_RecordPatternBindings_Cons :: (T_RecordPatternBinding) ->
                                   (T_RecordPatternBindings)
 sem_RecordPatternBindings_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -2555,10 +2556,10 @@ sem_Statement_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Statement)
 sem_Statement_Let (_range) (_declarations) =
-    let (_importEnv) =
-            intErr "CodeGeneration.ag" "Statement.Let" ""
-        (_self) =
+    let (_self) =
             Statement_Let _range_self _declarations_self
+        (_importEnv) =
+            intErr "CodeGeneration.ag" "Statement.Let" ""
         ( _range_self) =
             (_range )
         ( _declarations_decls,_declarations_patBindNr,_declarations_self) =
@@ -2582,7 +2583,7 @@ sem_Statements_Cons :: (T_Statement) ->
                        (T_Statements)
 sem_Statements_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_core,_hd_self) =
             (_hd )
         ( _tl_core,_tl_self) =
@@ -2606,7 +2607,7 @@ sem_Strings_Cons :: (String) ->
                     (T_Strings)
 sem_Strings_Cons (_hd) (_tl) =
     let (_self) =
-            _hd : _tl_self
+            (:) _hd _tl_self
         ( _tl_self) =
             (_tl )
     in  ( _self)
@@ -2738,7 +2739,7 @@ sem_Types_Cons :: (T_Type) ->
                   (T_Types)
 sem_Types_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =

@@ -243,7 +243,7 @@ sem_Alternatives_Cons :: (T_Alternative) ->
                          (T_Alternatives)
 sem_Alternatives_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_resolveErrors,_hd_self) =
             (_hd (_lhs_opTable) (_lhs_resolveErrors))
         ( _tl_resolveErrors,_tl_self) =
@@ -287,7 +287,7 @@ sem_AnnotatedTypes_Cons :: (T_AnnotatedType) ->
                            (T_AnnotatedTypes)
 sem_AnnotatedTypes_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -392,7 +392,7 @@ sem_Constructors_Cons :: (T_Constructor) ->
                          (T_Constructors)
 sem_Constructors_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -438,7 +438,7 @@ sem_ContextItems_Cons :: (T_ContextItem) ->
                          (T_ContextItems)
 sem_ContextItems_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -660,7 +660,7 @@ sem_Declarations_Cons :: (T_Declaration) ->
                          (T_Declarations)
 sem_Declarations_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_resolveErrors,_hd_self) =
             (_hd (_lhs_opTable) (_lhs_resolveErrors))
         ( _tl_resolveErrors,_tl_self) =
@@ -745,7 +745,7 @@ sem_Exports_Cons :: (T_Export) ->
                     (T_Exports)
 sem_Exports_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -1084,7 +1084,7 @@ sem_Expressions_Cons :: (T_Expression) ->
                         (T_Expressions)
 sem_Expressions_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_resolveErrors,_hd_self) =
             (_hd (_lhs_opTable) (_lhs_resolveErrors))
         ( _tl_resolveErrors,_tl_self) =
@@ -1130,7 +1130,7 @@ sem_FieldDeclarations_Cons :: (T_FieldDeclaration) ->
                               (T_FieldDeclarations)
 sem_FieldDeclarations_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -1216,7 +1216,7 @@ sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
                              (T_FunctionBindings)
 sem_FunctionBindings_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_resolveErrors,_hd_self) =
             (_hd (_lhs_opTable) (_lhs_resolveErrors))
         ( _tl_resolveErrors,_tl_self) =
@@ -1266,7 +1266,7 @@ sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
                                (T_GuardedExpressions)
 sem_GuardedExpressions_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_resolveErrors,_hd_self) =
             (_hd (_lhs_opTable) (_lhs_resolveErrors))
         ( _tl_resolveErrors,_tl_self) =
@@ -1374,7 +1374,7 @@ sem_ImportDeclarations_Cons :: (T_ImportDeclaration) ->
                                (T_ImportDeclarations)
 sem_ImportDeclarations_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -1418,7 +1418,7 @@ sem_Imports_Cons :: (T_Import) ->
                     (T_Imports)
 sem_Imports_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -1789,7 +1789,7 @@ sem_Names_Cons :: (T_Name) ->
                   (T_Names)
 sem_Names_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =
@@ -2024,7 +2024,7 @@ sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns)
 sem_Patterns_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_resolveErrors,_hd_self) =
             (_hd (_lhs_opTable) (_lhs_resolveErrors))
         ( _tl_resolveErrors,_tl_self) =
@@ -2133,7 +2133,7 @@ sem_Qualifiers_Cons :: (T_Qualifier) ->
                        (T_Qualifiers)
 sem_Qualifiers_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_resolveErrors,_hd_self) =
             (_hd (_lhs_opTable) (_lhs_resolveErrors))
         ( _tl_resolveErrors,_tl_self) =
@@ -2202,7 +2202,7 @@ sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
                                      (T_RecordExpressionBindings)
 sem_RecordExpressionBindings_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_resolveErrors,_hd_self) =
             (_hd (_lhs_opTable) (_lhs_resolveErrors))
         ( _tl_resolveErrors,_tl_self) =
@@ -2252,7 +2252,7 @@ sem_RecordPatternBindings_Cons :: (T_RecordPatternBinding) ->
                                   (T_RecordPatternBindings)
 sem_RecordPatternBindings_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_resolveErrors,_hd_self) =
             (_hd (_lhs_opTable) (_lhs_resolveErrors))
         ( _tl_resolveErrors,_tl_self) =
@@ -2400,7 +2400,7 @@ sem_Statements_Cons :: (T_Statement) ->
                        (T_Statements)
 sem_Statements_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_resolveErrors,_hd_self) =
             (_hd (_lhs_opTable) (_lhs_resolveErrors))
         ( _tl_resolveErrors,_tl_self) =
@@ -2424,7 +2424,7 @@ sem_Strings_Cons :: (String) ->
                     (T_Strings)
 sem_Strings_Cons (_hd) (_tl) =
     let (_self) =
-            _hd : _tl_self
+            (:) _hd _tl_self
         ( _tl_self) =
             (_tl )
     in  ( _self)
@@ -2556,7 +2556,7 @@ sem_Types_Cons :: (T_Type) ->
                   (T_Types)
 sem_Types_Cons (_hd) (_tl) =
     let (_self) =
-            _hd_self : _tl_self
+            (:) _hd_self _tl_self
         ( _hd_self) =
             (_hd )
         ( _tl_self) =

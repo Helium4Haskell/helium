@@ -16,7 +16,7 @@ phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv
             | AlgorithmM `elem` options = (algM,False)
             | otherwise                 = (algW,True ) -- default algorithm W + TypeGraphs
 
-        (debugTypes, toplevelTypes, typeErrors, warnings) =
+        (debugTypes, _, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_
                 completeEnv
                 strategy

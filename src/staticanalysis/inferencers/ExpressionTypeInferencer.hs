@@ -33,7 +33,7 @@ expressionTypeInferencer importEnvironment expression =
                                   expression
                                   MaybeDeclarations_Nothing)])
                          
-       (_, typeEnvironment, errors, _) 
+       (_, _, typeEnvironment, errors, _) 
                 = sem_Module 
                      module_
                      importEnvironment

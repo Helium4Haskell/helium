@@ -8,7 +8,6 @@ ATTR Module
 
 -- UHA
 INCLUDE "../syntax/UHA_Syntax.ag"
-INCLUDE "../syntax/UHA_Self.ag"
 
 -- Transformation into Core
 INCLUDE "ToCoreModule.ag"

@@ -23,7 +23,6 @@ INCLUDE "TypeInferenceInfo.ag"
 INCLUDE "../staticchecks/HeliumPartialSyntax.ag"
 INCLUDE "../../syntax/UHA_OneLine.ag"
 INCLUDE "../../syntax/UHA_Syntax.ag"
-INCLUDE "../../syntax/UHA_Self.ag"
 
 imports {
 

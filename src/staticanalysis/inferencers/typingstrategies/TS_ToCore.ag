@@ -1,12 +1,11 @@
 {
 typingStrategyToCore :: TypingStrategy -> Core_TypingStrategy
-typingStrategyToCore = sem_TypingStrategy
+typingStrategyToCore = fst . sem_TypingStrategy
 }
 
 INCLUDE "TS_Syntax.ag"
 INCLUDE "TS_Collect.ag"
 INCLUDE "../../../syntax/UHA_Syntax.ag"
-INCLUDE "../../../syntax/UHA_Self.ag"
 INCLUDE "../../../syntax/UHA_OneLine.ag"
 
 imports {

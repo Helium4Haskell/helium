@@ -214,7 +214,7 @@ ifdef AG
 parser/ResolveOperators.hs : \
 		parser/ResolveOperators.ag syntax/UHA_Syntax.ag
 	# AG ResolveOperators
-	cd parser;$(AG) $(AG_OPTS) ResolveOperators.ag;cd ..
+	cd parser;$(AG) $(AG_OPTS) --self ResolveOperators.ag;cd ..
 
 utils/PrettyPrinting.hs : \
 		utils/PrettyPrinting.ag syntax/UHA_Pretty.ag syntax/UHA_Syntax.ag
@@ -231,11 +231,10 @@ staticanalysis/staticchecks/StaticChecks.hs : \
                 staticanalysis/staticchecks/Collect.ag \
                 staticanalysis/staticchecks/HeliumPartialSyntax.ag \
                 staticanalysis/staticchecks/Scope.ag \
-		syntax/UHA_Syntax.ag \
-                syntax/UHA_Self.ag \
+		syntax/UHA_Syntax.ag 
                 
 	# AG StaticAnalysis
-	cd staticanalysis/staticchecks;$(AG) $(AG_OPTS) StaticChecks.ag;cd ../..
+	cd staticanalysis/staticchecks;$(AG) $(AG_OPTS) --self StaticChecks.ag;cd ../..
 
 staticanalysis/inferencers/TypeInferencing.hs : \
 		staticanalysis/inferencers/TypeInferencing.ag \
@@ -243,19 +242,18 @@ staticanalysis/inferencers/TypeInferencing.hs : \
                 staticanalysis/inferencers/TypeInferenceInfo.ag \
                 staticanalysis/staticchecks/HeliumPartialSyntax.ag \
 		syntax/UHA_Syntax.ag \
-                syntax/UHA_Self.ag \
                 syntax/UHA_OneLine.ag \
                 staticanalysis/inferencers/typingstrategies/TS_PatternMatching.ag
                 
 	# AG StaticAnalysis
-	cd staticanalysis/inferencers;$(AG) $(AG_OPTS) TypeInferencing.ag;cd ../..
+	cd staticanalysis/inferencers;$(AG) $(AG_OPTS) --self TypeInferencing.ag;cd ../..
         
 codegeneration/CodeGeneration.hs : \
-		codegeneration/CodeGeneration.ag syntax/UHA_Pretty.ag syntax/UHA_Self.ag \
-		syntax/UHA_Syntax.ag syntax/UHA_Self.ag codegeneration/ToCoreModule.ag codegeneration/ToCoreDecl.ag \
+		codegeneration/CodeGeneration.ag syntax/UHA_Pretty.ag \
+		syntax/UHA_Syntax.ag codegeneration/ToCoreModule.ag codegeneration/ToCoreDecl.ag \
 		codegeneration/ToCoreExpr.ag codegeneration/ToCorePat.ag codegeneration/ToCoreName.ag
 	# AG CodeGeneration
-	cd codegeneration;$(AG) $(AG_OPTS) CodeGeneration.ag;cd ..
+	cd codegeneration;$(AG) $(AG_OPTS) --self CodeGeneration.ag;cd ..
 
 syntax/UHA_Syntax.hs : syntax/UHA_Syntax.ag
 	# AG UHA_Syntax
@@ -275,10 +273,9 @@ staticanalysis/inferencers/typingstrategies/TS_Analyse.hs : \
         staticanalysis/inferencers/typingstrategies/TS_Syntax.ag \
         staticanalysis/inferencers/typingstrategies/TS_Collect.ag \
         staticanalysis/inferencers/typingstrategies/TS_Analyse.ag \
-        syntax/UHA_Syntax.ag \
-        syntax/UHA_Self.ag \
+        syntax/UHA_Syntax.ag 
 	# AG TS_Syntax
-	cd staticanalysis/inferencers/typingstrategies;$(AG) $(AG_OPTS) TS_Analyse.ag;cd ../../..
+	cd staticanalysis/inferencers/typingstrategies;$(AG) $(AG_OPTS) --self TS_Analyse.ag;cd ../../..
 
 staticanalysis/inferencers/typingstrategies/TS_Apply.hs : \
         staticanalysis/inferencers/typingstrategies/TS_Syntax.ag \
@@ -286,7 +283,6 @@ staticanalysis/inferencers/typingstrategies/TS_Apply.hs : \
         staticanalysis/inferencers/typingstrategies/TS_Apply.ag \
         staticanalysis/inferencers/typingstrategies/TS_AG_CoreSyntax.ag \
         syntax/UHA_Syntax.ag \
-        syntax/UHA_Self.ag \
 	# AG TS_Syntax
 	cd staticanalysis/inferencers/typingstrategies;$(AG) -mscf TS_Apply.ag;cd ../../..
 
@@ -295,10 +291,9 @@ staticanalysis/inferencers/typingstrategies/TS_ToCore.hs : \
         staticanalysis/inferencers/typingstrategies/TS_Collect.ag \
         staticanalysis/inferencers/typingstrategies/TS_ToCore.ag \
         syntax/UHA_Syntax.ag \
-        syntax/UHA_Self.ag \
-        syntax/UHA_OneLine.ag \
+        syntax/UHA_OneLine.ag 
 	# AG TS_Syntax
-	cd staticanalysis/inferencers/typingstrategies;$(AG) -mscrf TS_ToCore.ag;cd ../../..
+	cd staticanalysis/inferencers/typingstrategies;$(AG) -mscrf --self TS_ToCore.ag;cd ../../..
                         
 endif
 
