@@ -1,7 +1,11 @@
-{-
+{-| Module      :  Utils
+    License     :  GPL
 
-Utils: Some Prelude-like functions
-    
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+
+	Some Prelude-like functions
 -}
 
 module Utils where

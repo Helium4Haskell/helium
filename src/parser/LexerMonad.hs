@@ -1,3 +1,11 @@
+{-| Module      :  LexerMonad
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module LexerMonad
     ( LexerMonad
     , getPos, incPos, nextPos, addPos

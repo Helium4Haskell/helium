@@ -1,3 +1,11 @@
+{-| Module      :  Lexer
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module Lexer
     ( lexer, strategiesLexer
     , Token, Lexeme(..)

@@ -1,13 +1,12 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Select the type constraint solver of your own liking
---
------------------------------------------------------------------------------
+{-| Module      :  SelectConstraintSolver
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    Select the type constraint solver of your own liking
+-}
 
 module SelectConstraintSolver (selectConstraintSolver) where
 

@@ -1,14 +1,13 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- The UHA_Source data type is the union of several data types from the abstract
--- syntax (UHA),  including expressions and patterns.
---
------------------------------------------------------------------------------
+{-| Module      :  UHA_Source
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    The UHA_Source data type is the union of several data types from the abstract
+	syntax (UHA),  including expressions and patterns.
+-}
 
 module UHA_Source where
 

@@ -1,3 +1,11 @@
+{-| Module      :  UHA_Range
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module UHA_Range where
 
 import UHA_Syntax

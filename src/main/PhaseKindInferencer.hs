@@ -1,3 +1,11 @@
+{-| Module      :  PhaseKindInferencer
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module PhaseKindInferencer (phaseKindInferencer) where
 
 import Args

@@ -1,15 +1,14 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Contains instance declarations. he type graph heuristics can be deployed 
--- using the additional information that is stored by the Helium compiler for 
--- each type constraint
---
------------------------------------------------------------------------------
+{-| Module      :  HeuristicsInfo
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    Contains instance declarations. he type graph heuristics can be deployed 
+	using the additional information that is stored by the Helium compiler for 
+	each type constraint
+-}
 
 module HeuristicsInfo where
 

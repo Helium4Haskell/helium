@@ -1,14 +1,13 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- An area is a list of ranges which can be used, for instance, to highlight
--- parts of a program.
---
------------------------------------------------------------------------------
+{-| Module      :  HighLightArea
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+	
+	An area is a list of ranges which can be used, for instance, to highlight
+	parts of a program.
+-}
 
 module HighLightArea where
 

@@ -1,13 +1,12 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Error messages repoted by kind inference.
---
------------------------------------------------------------------------------
+{-| Module      :  KindErrors
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    Error messages repoted by kind inference.
+-}
 
 module KindErrors where
 

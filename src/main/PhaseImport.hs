@@ -1,3 +1,11 @@
+{-| Module      :  PhaseImport
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module PhaseImport(phaseImport) where
 
 import CompileUtils

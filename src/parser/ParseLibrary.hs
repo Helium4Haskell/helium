@@ -1,3 +1,11 @@
+{-| Module      :  ParseLibrary
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module ParseLibrary where 
 
 import Text.ParserCombinators.Parsec hiding (satisfy)

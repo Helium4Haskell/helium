@@ -1,3 +1,11 @@
+{-| Module      :  CompileUtils
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module CompileUtils
     ( module CompileUtils
     , Option(..)

@@ -1,3 +1,10 @@
+{-| Module      :  Main
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
 module Main where
 
 import Compile(compile)

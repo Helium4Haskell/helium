@@ -1,14 +1,14 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
---
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Substitute the attributes in a user defined error message.
---
--- (directives based on "Scripting the Type Inference Process", ICFP 2003)
------------------------------------------------------------------------------
+{-| Module      :  TS_Attributes
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    Substitute the attributes in a user defined error message.
+	
+	(directives based on "Scripting the Type Inference Process", ICFP 2003)
+-}
 
 module TS_Attributes where
 

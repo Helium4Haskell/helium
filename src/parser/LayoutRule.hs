@@ -1,3 +1,11 @@
+{-| Module      :  LayoutRule
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module LayoutRule(layout) where
 
 import LexerToken(Token, Lexeme(..), lexemeLength)

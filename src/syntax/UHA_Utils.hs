@@ -1,4 +1,13 @@
--- Utilities to extract data from the syntax tree
+{-| Module      :  UHA_Utils
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+
+	Utilities to extract data from the syntax tree
+-}
+
 module UHA_Utils where
 
 import UHA_Range(noRange, getNameRange)

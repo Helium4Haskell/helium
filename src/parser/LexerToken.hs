@@ -1,3 +1,11 @@
+{-| Module      :  LexerToken
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module LexerToken where
 
 import Text.ParserCombinators.Parsec.Pos(SourcePos)

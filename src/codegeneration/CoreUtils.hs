@@ -1,3 +1,11 @@
+{-| Module      :  CoreUtils
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module CoreUtils
     (   custom, customStrategy
     ,   stringToCore, coreList

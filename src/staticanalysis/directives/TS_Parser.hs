@@ -1,14 +1,14 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
---
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- The parser of a .type file.
---
--- (directives based on "Scripting the Type Inference Process", ICFP 2003)
------------------------------------------------------------------------------
+{-| Module      :  TS_Parser
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    The parser of a .type file.
+	
+	(directives based on "Scripting the Type Inference Process", ICFP 2003) 
+-}
 
 module TS_Parser where
  

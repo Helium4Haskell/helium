@@ -1,15 +1,14 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- The type constraints used by the Helium compiler (all derived from the
--- basic constraints that are supplied by the Top framework). Some constraints
--- are lifted to work on finite maps as well.
---
------------------------------------------------------------------------------
+{-| Module      :  TypeConstraints
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    The type constraints used by the Helium compiler (all derived from the
+	basic constraints that are supplied by the Top framework). Some constraints
+	are lifted to work on finite maps as well.
+-}
 
 module TypeConstraints where
 

@@ -1,3 +1,11 @@
+{-| Module      :  PhaseTypeInferencer
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module PhaseTypeInferencer (phaseTypeInferencer) where
 
 import CompileUtils

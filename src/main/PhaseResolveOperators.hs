@@ -1,3 +1,11 @@
+{-| Module      :  PhaseResolveOperators
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module PhaseResolveOperators(phaseResolveOperators) where
 
 import CompileUtils

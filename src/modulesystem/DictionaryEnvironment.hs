@@ -1,3 +1,11 @@
+{-| Module      :  DictionaryEnvironment
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module DictionaryEnvironment 
    ( DictionaryEnvironment, DictionaryTree(..) 
    , emptyDictionaryEnvironment, addForDeclaration, addForVariable

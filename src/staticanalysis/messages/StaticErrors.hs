@@ -1,13 +1,12 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Collection of static error messages.
---
------------------------------------------------------------------------------
+{-| Module      :  StaticErrors
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+
+	Collection of static error messages.
+-}
 
 module StaticErrors where
 

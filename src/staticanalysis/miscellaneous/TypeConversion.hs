@@ -1,13 +1,12 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- The conversion from UHA types to Tp (a simpler representation), and vice versa.
---
------------------------------------------------------------------------------
+{-| Module      :  TypeConversion
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    The conversion from UHA types to Tp (a simpler representation), and vice versa.
+-}
 
 module TypeConversion where
 

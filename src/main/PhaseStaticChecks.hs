@@ -1,3 +1,11 @@
+{-| Module      :  PhaseStaticChecks
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module PhaseStaticChecks(phaseStaticChecks) where
 
 import CompileUtils

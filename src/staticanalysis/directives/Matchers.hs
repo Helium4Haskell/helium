@@ -1,14 +1,14 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
---
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Matching expressions
---
--- (directives based on "Scripting the Type Inference Process", ICFP 2003)
------------------------------------------------------------------------------
+{-| Module      :  Matchers
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+
+	Matching expressions
+
+    (directives based on "Scripting the Type Inference Process", ICFP 2003)
+-}
 
 module Matchers where
 

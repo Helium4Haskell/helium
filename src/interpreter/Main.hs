@@ -1,3 +1,13 @@
+{-| Module      :  Main
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    The textual Helium interpreter
+-}
+
 module Main where
 
 import Char

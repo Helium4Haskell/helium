@@ -1,13 +1,13 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Binding groups (mutually recursive function definitions)
---
------------------------------------------------------------------------------
+{-| Module      :  BindingGroupAnalysis
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    Binding groups (mutually recursive function definitions)
+-}
+
 -- To do: clean up this module. Also see BGA for kind inferencing
 
 module BindingGroupAnalysis where

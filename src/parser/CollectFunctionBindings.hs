@@ -1,3 +1,11 @@
+{-| Module      :  CollectFunctionBindings
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module CollectFunctionBindings where
 
 import UHA_Syntax

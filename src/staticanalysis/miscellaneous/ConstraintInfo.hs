@@ -1,14 +1,13 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- The information that is stored with each type constraint that is constructed
--- during type inference.
---
------------------------------------------------------------------------------
+{-| Module      :  ConstraintInfo
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+
+    The information that is stored with each type constraint that is constructed
+	during type inference.
+-}
 
 module ConstraintInfo where
 

@@ -1,13 +1,12 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Functions to align and show types.
---
------------------------------------------------------------------------------
+{-| Module      :  TypesToAlignedDocs
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    Functions to align and show types.
+-}
 
 module TypesToAlignedDocs (qualifiedTypesToAlignedDocs, typesToAlignedDocs) where
 

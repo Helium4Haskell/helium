@@ -1,14 +1,14 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
---
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Compile a .type file.
---
--- (directives based on "Scripting the Type Inference Process", ICFP 2003)
------------------------------------------------------------------------------
+{-| Module      :  TS_Compile
+    License     :  GPL
+
+    Maintainer  :  bastiaan@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+
+	Compile a .type file.
+	
+	(directives based on "Scripting the Type Inference Process", ICFP 2003)
+-}
 
 module TS_Compile where
 

@@ -1,3 +1,11 @@
+{-| Module      :  OneLiner
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module OneLiner(OneLineTree(..), showOneLine) where
 
 import List

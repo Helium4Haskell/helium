@@ -1,14 +1,13 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- In a doubly linked, every node has access to its parent and its children. 
--- At each node, extra information (attributes) can be stored.
---
------------------------------------------------------------------------------
+{-| Module      :  DoublyLinkedTree
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    In a doubly linked, every node has access to its parent and its children. 
+	At each node, extra information (attributes) can be stored.
+-}
 
 module DoublyLinkedTree where
 

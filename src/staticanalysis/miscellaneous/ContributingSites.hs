@@ -1,15 +1,14 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Based on the pair of types that is stored with each constraint info, two areas are
--- computed that contain all the sites that contribute to the types as they are in the
--- type graph. 
---
------------------------------------------------------------------------------
+{-| Module      :  ContributingSites
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    Based on the pair of types that is stored with each constraint info, two areas are
+	computed that contain all the sites that contribute to the types as they are in the
+	type graph. 
+-}
 
 module ContributingSites (contributingSites) where
 

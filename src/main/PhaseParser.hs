@@ -1,3 +1,11 @@
+{-| Module      :  PhaseParser
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module PhaseParser(phaseParser) where
 
 import CompileUtils

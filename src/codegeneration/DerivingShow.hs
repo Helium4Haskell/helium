@@ -1,3 +1,11 @@
+{-| Module      :  DerivingShow
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module DerivingShow(derivingShow, nameOfShowFunction, typeOfShowFunction, showFunctionOfType) where
 
 import qualified UHA_Syntax as UHA

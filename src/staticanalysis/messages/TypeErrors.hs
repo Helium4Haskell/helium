@@ -1,13 +1,12 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Errors that are constructed during type inferece.
---
------------------------------------------------------------------------------
+{-| Module      :  TypeErrors
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    Errors that are constructed during type inferece.
+-}
 
 module TypeErrors where
 

@@ -1,3 +1,11 @@
+{-| Module      :  OperatorTable
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module OperatorTable
     (   Assoc(..)
     ,   OperatorTable

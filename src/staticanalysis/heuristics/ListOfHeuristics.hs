@@ -1,13 +1,12 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- A list of all type graph heuristics that will be used.
---
------------------------------------------------------------------------------
+{-| Module      :  ListOfHeuristics
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    A list of all type graph heuristics that will be used.
+-}
 
 module ListOfHeuristics (listOfHeuristics) where
 

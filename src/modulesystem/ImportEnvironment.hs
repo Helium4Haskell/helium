@@ -1,3 +1,11 @@
+{-| Module      :  ImportEnvironment
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module ImportEnvironment where
 
 import Data.FiniteMap

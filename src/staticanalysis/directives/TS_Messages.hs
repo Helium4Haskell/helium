@@ -1,15 +1,15 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
---
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- The error messages and warnings that are produced when a .type file is
--- compiled.
---
--- (directives based on "Scripting the Type Inference Process", ICFP 2003)
------------------------------------------------------------------------------
+{-| Module      :  TS_Messages
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    The error messages and warnings that are produced when a .type file is
+	compiled.
+
+	(directives based on "Scripting the Type Inference Process", ICFP 2003)
+-}
 
 module TS_Messages where
 

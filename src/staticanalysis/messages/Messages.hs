@@ -1,15 +1,14 @@
--- ---------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Datatype to represent error messages. One abstraction is the datatype
--- MessageBlock, which contains (atomic) pieces of information that are
--- reported in the error messages such as types, ranges and code fragments.
---
--- ---------------------------------------------------------------------------
+{-| Module      :  Messages
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+
+	Datatype to represent error messages. One abstraction is the datatype
+	MessageBlock, which contains (atomic) pieces of information that are
+	reported in the error messages such as types, ranges and code fragments.
+-}
 
 module Messages where
 

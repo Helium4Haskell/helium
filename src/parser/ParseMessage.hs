@@ -1,3 +1,11 @@
+{-| Module      :  ParseMessage
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module ParseMessage() where
 
 import Messages hiding (Message)

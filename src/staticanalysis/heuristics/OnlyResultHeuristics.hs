@@ -1,14 +1,13 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Two (filter) heuristics that prevent an application or a negation to be 
--- reported as incorrect if only the result type is reponsible for non-unifiability.
---
------------------------------------------------------------------------------
+{-| Module      :  OnlyResultHeuristics
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+
+	Two (filter) heuristics that prevent an application or a negation to be 
+	reported as incorrect if only the result type is reponsible for non-unifiability.
+-}
 
 module OnlyResultHeuristics where
 

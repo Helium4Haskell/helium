@@ -1,3 +1,11 @@
+{-| Module      :  LexerMessage
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module LexerMessage
     ( LexerError(..)
     , LexerErrorInfo(..)

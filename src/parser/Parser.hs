@@ -1,3 +1,11 @@
+{-| Module      :  Parser
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module Parser
     ( module_, exp_, exp0, type_, contextAndType
     , parseOnlyImports

@@ -1,3 +1,11 @@
+{-| Module      :  PhaseDesugarer
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module PhaseDesugarer(phaseDesugarer) where
 
 import CompileUtils

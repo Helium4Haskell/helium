@@ -1,3 +1,11 @@
+{-| Module      :  PatternMatch
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module PatternMatch(patternToCore, patternsToCore, nextClauseId, freshIds) where
 
 import qualified Core

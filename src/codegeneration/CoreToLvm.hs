@@ -1,3 +1,11 @@
+{-| Module      :  CoreToLvm
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module CoreToLvm ( coreToLvm ) where
 
 import Id         ( newNameSupply )

@@ -1,3 +1,11 @@
+{-| Module      :  PhaseTypingStrategies
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module PhaseTypingStrategies(phaseTypingStrategies) where
 
 import CompileUtils

@@ -1,3 +1,11 @@
+{-| Module      :  Compile
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module Compile where
 
 import PhaseLexer

@@ -1,14 +1,13 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Defines how the (error) messages should be reported by the Helium compiler.
--- (For instance, one could define another layout, or produce XML-like output).
---
------------------------------------------------------------------------------
+{-| Module      :  HeliumMessages
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    Defines how the (error) messages should be reported by the Helium compiler.
+	(For instance, one could define another layout, or produce XML-like output).
+-}
 
 module HeliumMessages where
 

@@ -1,14 +1,13 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- A tie-breaker heuristic will be used if all other heuristics cannot decide on
--- which error to report. 
---
------------------------------------------------------------------------------
+{-| Module      :  TieBreakerHeuristics
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    A tie-breaker heuristic will be used if all other heuristics cannot decide on
+	which error to report. 
+-}
 
 module TieBreakerHeuristics where
 

@@ -1,14 +1,13 @@
------------------------------------------------------------------------------
--- The Helium Compiler : Static Analysis
--- 
--- Maintainer  :  bastiaan@cs.uu.nl
--- Stability   :  experimental
--- Portability :  unknown
---
--- Heuristics that supply additional hints with a type error how a program
--- can be corrected.
---
------------------------------------------------------------------------------
+{-| Module      :  RepairHeuristics
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    Heuristics that supply additional hints with a type error how a program
+	can be corrected.
+-}
 
 module RepairHeuristics where
 

@@ -1,3 +1,11 @@
+{-| Module      :  CoreToImportEnv
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module CoreToImportEnv(getImportEnvironment) where
 
 import Core

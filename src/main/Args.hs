@@ -1,3 +1,11 @@
+{-| Module      :  Args
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
 module Args
     ( Option(..)
     , processArgs
