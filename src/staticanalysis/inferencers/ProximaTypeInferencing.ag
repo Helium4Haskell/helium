@@ -69,49 +69,49 @@ SEM MaybeExpression
     | Nothing            loc.typeEnvPrx = []
 
 SEM Expression                                   {- *** -}
-    | Literal            loc.typeEnvPrx = [(@range,generalize [] @lhs.predicates (@lhs.substitution |-> @beta))]
+    | Literal            loc.typeEnvPrx = [(@range,generalize' @lhs.predicates (@lhs.substitution |-> @beta))]
     --  range                    : Range
     --  literal                  : Literal
-    | Variable           loc.typeEnvPrx = [(@range,generalize [] @lhs.predicates (@lhs.substitution |-> @beta))]
+    | Variable           loc.typeEnvPrx = [(@range,generalize' @lhs.predicates (@lhs.substitution |-> @beta))]
                                           ++ @name.typeEnvPrx
     --  range                    : Range
     --  name                     : Name
-    | Constructor        loc.typeEnvPrx = [(@range,generalize [] @lhs.predicates (@lhs.substitution |-> @beta))]
+    | Constructor        loc.typeEnvPrx = [(@range,generalize' @lhs.predicates (@lhs.substitution |-> @beta))]
                                           ++ @name.typeEnvPrx
     --  range                    : Range
     --  name                     : Name
-    | Parenthesized      loc.typeEnvPrx = [] --[(@range,generalize [] @lhs.predicates (@lhs.substitution |-> @beta))]
+    | Parenthesized      loc.typeEnvPrx = [] --[(@range,generalize' @lhs.predicates (@lhs.substitution |-> @beta))]
                                           ++ @expression.typeEnvPrx
     --  range                    : Range
     --  expression               : Expression
-    | NormalApplication  loc.typeEnvPrx = [(@range,generalize [] @lhs.predicates (@lhs.substitution |-> @beta))]
+    | NormalApplication  loc.typeEnvPrx = [(@range,generalize' @lhs.predicates (@lhs.substitution |-> @beta))]
                                           ++ @function.typeEnvPrx ++ @arguments.typeEnvPrx 
     --  range                    : Range
     --  function                 : Expression
     --  arguments                : Expressions
-    | InfixApplication   loc.typeEnvPrx = [(@range,generalize [] @lhs.predicates (@lhs.substitution |-> @beta))]
+    | InfixApplication   loc.typeEnvPrx = [(@range,generalize' @lhs.predicates (@lhs.substitution |-> @beta))]
                                           ++ @leftExpression.typeEnvPrx ++ @rightExpression.typeEnvPrx
     --  range                    : Range
     --  leftExpression           : MaybeExpression
     --  operator                 : Expression
     --  rightExpression          : MaybeExpression
-    | If                 loc.typeEnvPrx = [(@range,generalize [] @lhs.predicates (@lhs.substitution |-> @beta))]
+    | If                 loc.typeEnvPrx = [(@range,generalize' @lhs.predicates (@lhs.substitution |-> @beta))]
                                           ++ @guardExpression.typeEnvPrx ++ @thenExpression.typeEnvPrx ++ @elseExpression.typeEnvPrx
     --  range                    : Range
     --  guardExpression          : Expression
     --  thenExpression           : Expression
     --  elseExpression           : Expression
-    | Lambda             loc.typeEnvPrx = [(@range,generalize [] @lhs.predicates (@lhs.substitution |-> @beta))]
+    | Lambda             loc.typeEnvPrx = [(@range,generalize' @lhs.predicates (@lhs.substitution |-> @beta))]
                                           ++ @patterns.typeEnvPrx ++ @expression.typeEnvPrx
     --  range                    : Range
     --  patterns                 : Patterns
     --  expression               : Expression
-    | Case               loc.typeEnvPrx = [(@range,generalize [] @lhs.predicates (@lhs.substitution |-> @beta))]
+    | Case               loc.typeEnvPrx = [(@range,generalize' @lhs.predicates (@lhs.substitution |-> @beta))]
                                           ++ @expression.typeEnvPrx ++ @alternatives.typeEnvPrx
     --  range                    : Range
     --  expression               : Expression
     --  alternatives             : Alternatives
-    | Let                loc.typeEnvPrx = [(@range,generalize [] @lhs.predicates (@lhs.substitution |-> @beta))]
+    | Let                loc.typeEnvPrx = [(@range,generalize' @lhs.predicates (@lhs.substitution |-> @beta))]
                                           ++ @declarations.typeEnvPrx ++ @expression.typeEnvPrx
     --  range                    : Range
     --  declarations             : Declarations
@@ -119,11 +119,11 @@ SEM Expression                                   {- *** -}
     | Do                 loc.typeEnvPrx = []
     --  range                    : Range
     --  statements               : Statements
-    | List               loc.typeEnvPrx = [(@range,generalize [] @lhs.predicates (@lhs.substitution |-> @beta))]
+    | List               loc.typeEnvPrx = [(@range,generalize' @lhs.predicates (@lhs.substitution |-> @beta))]
                                           ++ @expressions.typeEnvPrx
     --  range                    : Range
     --  expressions              : Expressions
-    | Tuple              loc.typeEnvPrx = [(@range,generalize [] @lhs.predicates (@lhs.substitution |-> @beta))]
+    | Tuple              loc.typeEnvPrx = [(@range,generalize' @lhs.predicates (@lhs.substitution |-> @beta))]
                                           ++ @expressions.typeEnvPrx
     --  range                    : Range
     --  expressions              : Expressions
@@ -157,7 +157,7 @@ SEM Expression                                   {- *** -}
 
 
 SEM Alternative
-    | Alternative       loc.typeEnvPrx = -- (@range, generalize [] @lhs.predicates (@lhs.substitution |-> @beta))
+    | Alternative       loc.typeEnvPrx = -- (@range, generalize' @lhs.predicates (@lhs.substitution |-> @beta))
                                           @pattern.typeEnvPrx ++ @righthandside.typeEnvPrx
     --  range                    : Range
     --  pattern                  : Pattern
@@ -170,7 +170,7 @@ SEM Pattern
     | Literal               loc.typeEnvPrx = []
     --  range                    : Range
     --  literal                  : Literal
-    | Variable              loc.typeEnvPrx = [] -- (@range,generalize [] @predicates (@lhs.substitution |-> @beta))] 
+    | Variable              loc.typeEnvPrx = [] -- (@range,generalize' @predicates (@lhs.substitution |-> @beta))] 
     --  range                    : Range
     --  name                     : Name
     | Constructor           loc.typeEnvPrx = [] 
@@ -216,7 +216,7 @@ SEM Pattern
     --  literal                  : Literal -- only integers allowed here
 
 SEM Name                                         {- *** -}
-    | Identifier               loc.typeEnvPrx = [] --[(@range,generalize [] @lhs.predicates (@lhs.substitution |-> @beta))]
+    | Identifier               loc.typeEnvPrx = [] --[(@range,generalize' @lhs.predicates (@lhs.substitution |-> @beta))]
     --  range                    : Range
     --  module                   : Strings
     --  name                     : String
@@ -229,7 +229,9 @@ SEM Name                                         {- *** -}
     --  module                   : Strings
     --  name                     : String
 
-
-
+{
+generalize' :: Predicates -> Tp -> TpScheme
+generalize' predicates tp = generalizeAll (predicates .=>. tp)
+}
 
 
