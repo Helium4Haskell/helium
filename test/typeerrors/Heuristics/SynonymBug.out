@@ -1,0 +1,10 @@
+Compiling typeerrors/Heuristics/SynonymBug.hs
+(8,11): Type error in application
+ expression       : foo [3]
+ function         : foo
+   type           : Fun
+ 1st argument     : [3]
+   type           : [Int]
+   does not match : Int  
+
+Compilation failed with 1 error
