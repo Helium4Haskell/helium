@@ -1,5 +1,5 @@
 Compiling typeerrors/Examples/TooGenTyped.hs
-(3,11): Declared type is too general
+(3,27): Type annotation is too general
  expression       : \y -> [x, y]
    declared type  : a  -> [a ]
    inferred type  : _1 -> [_1]

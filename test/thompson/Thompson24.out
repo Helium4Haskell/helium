@@ -1,9 +1,9 @@
 Compiling thompson/Thompson24.hs
-(1,1): Missing class constraint in declared type
+(1,1): Missing class constraint in type signature
  function         : compress
-   declared type  :         [a] -> [a]
-   inferred type  : Eq b => [b] -> [b]
- hint             : add a class constraint to the type signature for compress
-                    (see inferred type)
+   declared type  : [a] -> [a]
+ class constraint : Eq a
+   arising from   : ==
+ hint             : add the class constraint to the type signature
 
 Compilation failed with 1 error

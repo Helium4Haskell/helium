@@ -1,15 +1,15 @@
 Compiling parser/Contexts.hs
-(8,5): Declared type is too general
+(8,10): Type annotation is too general
  expression       : 3
    declared type  : Num a => a  
    inferred type  :          Int
 
-(10,1): Declared type is too general
+(10,1): Type signature is too general
  function         : a
    declared type  : Show a => a  
    inferred type  :           Int
 
-(10,4): Declared type is too general
+(10,4): Type signature is too general
  function         : b
    declared type  : Show a => a  
    inferred type  :           Int
