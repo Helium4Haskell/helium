@@ -4,22 +4,26 @@ module Parser
     ) where
 
 {-
-Verschillen:
-- geen records
-- geen classes (class, instance, default...)
-- geen irrefutable patterns
-- geen "newtype"
-- geen strictness annotaties
-- geen n+k patterns
-- [] en (,) en (,,,) enz niet toegestaan als (type) constructor
-- vereenvoudigde funlhs ( bijv. x:xs +++ ys = ...   mag niet, ronde haken om x:xs nodig)
-- patroon binding met pat10 i.p.v. pat0 
-        e.g. (x:xs) = [1..] (ronde haakjes zijn nodig in Helium)
+Absent:
+- records
+- classes (class, instance, default...)
+- irrefutable patterns
+- "newtype"
+- strictness annotations
+- n+k patterns
+- [] and (,) and (,,,) etc as (type) constructor
+- empty declarations, qualifiers, alternatives or statements
+- hiding, qualified, as in imports
+- (..) in imports and exports
 
-- geen sections
-- geen lege declaraties, qualifiers, alternatieven of statements
-- geen guarded alternatives in case
-- geen "where" bij alternatieven
+Simplified:
+- funlhs 
+    For example   x:xs +++ ys = ...  is not allowed, parentheses around x:xs necessary
+- pattern binding met pat10 i.p.v. pat0 
+    For example   (x:xs) = [1..] (parenthesis are obligatory)
+- sections: (fexp op) and (op fexp)
+    For example   (+2*3)   is not allowed, should be (+(2*3)) 
+- fixity declarations only at top-level
 -}
 
 import ParseLibrary hiding (satisfy)
@@ -551,11 +555,11 @@ unaryMinus :: HParser Expression
 unaryMinus = 
     do
         (_, r) <- withRange lexMINDOT 
-        return (Expression_Variable noRange (Name_Identifier r [] floatUnaryMinusName))
+        return (Expression_Variable noRange (setNameRange floatUnaryMinusName r))
     <|>
     do 
         (_, r) <- withRange lexMIN 
-        return (Expression_Variable noRange (Name_Identifier r [] intUnaryMinusName))
+        return (Expression_Variable noRange (setNameRange intUnaryMinusName r))
 
 {-       
 exp10   ->  "\" apat1 ... apatn "->" exp  (lambda abstraction, n>=1)  
@@ -912,7 +916,7 @@ unaryMinusPat =
         (_, mr) <- withRange (lexMINDOT)
         (d, dr) <- withRange lexDouble <?> "floating-point literal"
         return 
-            [ Pattern_Variable noRange (Name_Identifier mr [] floatUnaryMinusName)
+            [ Pattern_Variable noRange (setNameRange floatUnaryMinusName mr)
             , Pattern_Literal dr (Literal_Float dr d)
             ]
     <|>
@@ -920,7 +924,7 @@ unaryMinusPat =
         (_, mr) <- withRange (lexMIN) 
         (i, ir) <- withRange lexInt <?> "integer literal"
         return 
-            [ Pattern_Variable noRange (Name_Identifier mr [] intUnaryMinusName)
+            [ Pattern_Variable noRange (setNameRange intUnaryMinusName mr)
             , Pattern_Literal ir (Literal_Int ir i)
             ]
     <|>

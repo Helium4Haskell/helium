@@ -21,7 +21,7 @@ SEM Module
                                         . setTypeConstructors (listToFM @body.collectTypeConstructors)
                                         . setTypeSynonyms     (listToFM @body.collectTypeSynonyms)
                                         . setTypeEnvironment  (listToFM @body.typeSignatures)
-                                        . setOperatorTable [ (show name, info) | (name, info) <- @body.operatorFixities ]
+                                        . setOperatorTable              @body.operatorFixities 
                                         $ emptyEnvironment 
                                         
                  . derivedFunctions = let f (n,i) = ( nameOfShowFunction n

@@ -59,7 +59,7 @@ addValueConstructor :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironmen
 addValueConstructor name tpscheme importenv = 
    importenv {valueConstructors = addToFM (valueConstructors importenv) name tpscheme} 
 
-addOperator :: String -> (Int,Assoc) -> ImportEnvironment -> ImportEnvironment  
+addOperator :: Name -> (Int,Assoc) -> ImportEnvironment -> ImportEnvironment  
 addOperator name pair importenv = 
    importenv {operatorTable = (name,pair) : operatorTable importenv } 
    
@@ -113,7 +113,7 @@ instance Show ImportEnvironment where
     
        fixities =    
           let sorted  = let cmp (name, (prio, assoc)) = (10 - prio, assoc, not (isOperatorName name), name)
-                        in sortBy (\x y -> cmp x `compare` cmp y) [ (nameFromString s, x) | (s, x) <- ot ]
+                        in sortBy (\x y -> cmp x `compare` cmp y) ot
               grouped = groupBy (\x y -> snd x == snd y) sorted
               list = let f ((name, (prio, assoc)) : rest) =
                             let names  = name : map fst rest 

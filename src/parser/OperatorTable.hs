@@ -7,7 +7,7 @@ module OperatorTable
 import UHA_Syntax
 import UHA_Utils
 
-type OperatorTable = [(String, (Int, Assoc))]
+type OperatorTable = [(Name, (Int, Assoc))]
 
 -- From ParsecExpr
 data Assoc              = AssocNone
@@ -16,13 +16,13 @@ data Assoc              = AssocNone
 
 assoc :: OperatorTable -> Name -> Assoc
 assoc ops name =
-    case lookup (getNameName name) ops of
+    case lookup name ops of
         Nothing -> AssocLeft -- default associativity, if unspecified
         Just (_, a) -> a
 
 prio :: OperatorTable -> Name -> Int
 prio ops name =
-    case lookup (getNameName name) ops of
+    case lookup name ops of
         Nothing        -> 9 -- default priority, if unspecified
         Just    (p, _) -> p
 

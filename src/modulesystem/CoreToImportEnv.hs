@@ -61,7 +61,7 @@ arityFromCustoms n ( CustomDecl (DeclKindCustom id) [CustomBytes bytes] : cs )
         -- the number of stars minus 1 is the arity
 arityFromCustoms n (_:cs) = arityFromCustoms n cs
 
-makeOperatorTable :: String -> [Custom] -> [(String, (Int, Assoc))]
+makeOperatorTable :: Name -> [Custom] -> OperatorTable
 makeOperatorTable op (Core.CustomInt i : Core.CustomBytes bs : cs) =
     let
         assoc =
@@ -73,15 +73,18 @@ makeOperatorTable op (Core.CustomInt i : Core.CustomBytes bs : cs) =
         
         intErr = internalError "CoreToImportEnv" "makeOperatorTable"
     in
-        if op == "-" then
+        if getNameName op == "-" then
             -- special rule: unary minus has the assoc
             -- and the priority of the infix operator -
-            [(op, (i, assoc)), (intUnaryMinusName, (i, assoc)), (floatUnaryMinusName, (i, assoc))]
+            [ (op, (i, assoc))
+            , (intUnaryMinusName, (i, assoc))
+            , (floatUnaryMinusName, (i, assoc))
+            ]
         else
             [(op, (i, assoc))]
 makeOperatorTable op cs = 
     internalError "CoreToImportEnv" "makeOperatorTable"
-        ("infix decl missing priority or associativity: " ++ op)
+        ("infix decl missing priority or associativity: " ++ show op)
 
 makeImportName :: String -> Id -> Id -> Name
 makeImportName importedInMod importedFromMod n =
@@ -152,7 +155,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                       , declCustoms = cs
                       }
                       | stringFromId id == "infix" ->
-              flip (foldr (uncurry addOperator)) (makeOperatorTable (stringFromId n) cs)
+              flip (foldr (uncurry addOperator)) (makeOperatorTable (nameFromId n) cs)
 
            -- typing strategies
            DeclCustom { declName    = _

@@ -4,6 +4,7 @@ import Parsec hiding (satisfy)
 import ParsecPos(newPos)
 import Lexer
 import UHA_Syntax(Name(..), Range(..), Position(..))
+import UHA_Utils
 
 type HParser a = GenParser Token SourcePos a
 
@@ -91,9 +92,9 @@ brackets   p = between lexLBRACKET  lexRBRACKET  p
 commas  p = p `sepBy`  lexCOMMA
 commas1 p = p `sepBy1` lexCOMMA
 
-intUnaryMinusName, floatUnaryMinusName :: String
-intUnaryMinusName = "intUnaryMinus"
-floatUnaryMinusName = "floatUnaryMinus"
+intUnaryMinusName, floatUnaryMinusName :: Name
+intUnaryMinusName   = nameFromString "intUnaryMinus"
+floatUnaryMinusName = nameFromString "floatUnaryMinus"
 
 lexINSERTED_SEMI     = lexeme LexInsertedSemicolon
 lexINSERTED_LBRACE   = lexeme LexInsertedOpenBrace

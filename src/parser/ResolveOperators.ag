@@ -30,12 +30,12 @@ instance HasMessage ResolveError where
                     "Ambiguous use of "
                 ++  assocString (assoc1)
                 ++  " operator "
-                ++  getNameName op1
+                ++  show op1
             secondLine = 
                     "with "
                 ++  assocString (assoc2)
                 ++  " operator "
-                ++  getNameName op2
+                ++  show op2
         in [ MessageOneLiner ( MessageString firstLine) 
            , MessageOneLiner ( MessageString ("    " ++ secondLine ))
            ]
@@ -54,7 +54,7 @@ operatorsFromModule m =
     concatMap declToOps (collectInfixdecls m)
   where
     declToOps (Declaration_Fixity _ f (MaybeInt_Just p) os) = 
-        [ (getNameName o, (p, fixityToAssoc f)) | o <- os ]
+        [ (o, (p, fixityToAssoc f)) | o <- os ]
     fixityToAssoc f = case f of
         Fixity_Infixl _ -> AssocLeft
         Fixity_Infixr _ -> AssocRight
@@ -112,9 +112,9 @@ resolveExpression opTable es = resolve opTable es (getOp, applyMinus, applyBinar
     
     applyMinus :: Name -> Expression -> Expression
     applyMinus n e
-        | getNameName n == intUnaryMinusName =
+        | n == intUnaryMinusName =
             Expression_Negate      (mergeRanges (getNameRange n) (getExprRange e)) e
-        | getNameName n == floatUnaryMinusName = 
+        | n == floatUnaryMinusName = 
             Expression_NegateFloat (mergeRanges (getNameRange n) (getExprRange e)) e
         | otherwise = internalError 
             "ResolveOperators.hs" "resolveExpression.applyMinus" "unknown unary operator"        
@@ -124,12 +124,8 @@ resolveExpression opTable es = resolve opTable es (getOp, applyMinus, applyBinar
         Expression_InfixApplication 
             (mergeRanges (getExprRange e1) (getExprRange e2)) 
             (MaybeExpression_Just e1) 
-            ((if isConOp n then Expression_Constructor else Expression_Variable) (getNameRange n) n)
+            ((if isConstructor n then Expression_Constructor else Expression_Variable) (getNameRange n) n)
             (MaybeExpression_Just e2)
-
-    isConOp n = isUpper firstLetter || firstLetter == ':'
-      where
-        firstLetter = head (getNameName n)
         
 resolvePattern :: OperatorTable -> [Pattern] -> (Pattern, [ResolveError])
 resolvePattern opTable ps = resolve opTable ps (getOp, applyMinus, applyBinary) ([], [], []) 
@@ -139,9 +135,9 @@ resolvePattern opTable ps = resolve opTable ps (getOp, applyMinus, applyBinary) 
     
     applyMinus :: Name -> Pattern -> Pattern
     applyMinus n p@(Pattern_Literal r l) 
-        | getNameName n == intUnaryMinusName =
+        | n == intUnaryMinusName =
             Pattern_Negate (mergeRanges (getNameRange n) r) l
-        | getNameName n == floatUnaryMinusName = 
+        | n == floatUnaryMinusName = 
             Pattern_NegateFloat (mergeRanges (getNameRange n) r) l            
         | otherwise = internalError 
                 "ResolveOperators.hs" "resolvePattern.applyMinus" "unknown unary operator"        
@@ -175,7 +171,7 @@ resolve opTable exprs fs@(getOp, applyMinus, applyBinary) state =
   where
 --    popOp :: State expr -> State expr
     popOp (op:ops, exprs, errs) 
-        | getNameName op == intUnaryMinusName || getNameName op == floatUnaryMinusName =
+        | isUnary op =
             case exprs of
                 (expr:rest) -> (ops, applyMinus op expr : rest, errs)
                 _ -> internalError "ResolveOperators" "popOp" "1"
@@ -225,7 +221,7 @@ strongerOp opTable op1 op2
     prio2 = prio opTable op2
 
 isUnary :: Name -> Bool
-isUnary name = getNameName name `elem` [ intUnaryMinusName, floatUnaryMinusName ]
+isUnary name = name `elem` [ intUnaryMinusName, floatUnaryMinusName ]
 
 isBinary :: Name -> Bool
 isBinary = not . isUnary

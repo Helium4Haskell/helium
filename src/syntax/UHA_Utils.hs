@@ -4,7 +4,7 @@ module UHA_Utils where
 import UHA_Range(noRange)
 import UHA_Syntax(Name(..), ImportDeclaration(..))
 import Id(Id, idFromString, stringFromId)
-import Char(isAlpha)
+import Char
 import Types(isTupleConstructor)
 import Utils(internalError)
 
@@ -42,6 +42,15 @@ isOperatorName :: Name -> Bool
 isOperatorName (Name_Operator _ _ _) = True
 isOperatorName _ = False
 
+isConstructor :: Name -> Bool
+isConstructor name = 
+    case name of
+        Name_Operator   _ _ (':':_)   -> True
+        Name_Identifier _ _ (first:_) -> isUpper first
+        Name_Special    _ _ "()"      -> True
+        Name_Special    _ _ "[]"      -> True
+        _                             -> False
+        
 isIdentifierName :: Name -> Bool
 isIdentifierName (Name_Identifier _ _ _) = True
 isIdentifierName _ = False
