@@ -55,7 +55,10 @@ min :: Int -> Int -> Int
 min x y = if x < y then x else y
 
 abs :: Int -> Int
-abs x = if x < 0 then negate x else x
+abs x = if x < 0 then - x else x
+
+absFloat :: Float -> Float
+absFloat x = if x <. 0.0 then -. x else x
 
 signum :: Int -> Int
 signum x =

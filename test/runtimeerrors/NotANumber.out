@@ -1,4 +1,4 @@
-Compiling correct/NotANumber.hs
+Compiling runtimeerrors/NotANumber.hs
 Compilation successful
 [exception: Can't apply sqrt to negative floating-point number.
 

@@ -1,6 +1,6 @@
-Compiling correct/PMFailure.hs
+Compiling runtimeerrors/PMFailure.hs
 Compilation successful
-exception: pattern match failed at function bindings ranging from (7,1) to (10,16) in module correct/PMFailure.hs.
+exception: pattern match failed at function bindings ranging from (7,1) to (10,16) in module runtimeerrors/PMFailure.hs.
 
 trace:
   demanded from "LvmLang.<"
