@@ -13,6 +13,7 @@ data State =
     { maybeModName :: Maybe String
     , maybeFileName :: Maybe String
     , tempDir :: String
+    , binDir :: String
     }
 
 header :: String
@@ -38,10 +39,15 @@ main = do
                             '/' : _ -> dir
                             '\\' : _ -> dir
                             _ -> dir ++ [slash] -- "\\" for Windows, "/" for UNIX
+
+    binDirFromEnv <- getEnv "HELIUMPATH" `catch` (\_ -> return "")
     
-    -- State is temp dir and maybe a currently loaded module
     let initialState = 
-         State { tempDir = dirPlusSlash, maybeModName = Nothing, maybeFileName = Nothing }
+         State { tempDir = dirPlusSlash
+               , maybeModName = Nothing
+               , maybeFileName = Nothing
+               , binDir = binDirFromEnv 
+               }
     
     -- Logo
     putStrLn header
@@ -254,18 +260,18 @@ compileInternalModule options state =
 compileModule :: String -> String -> State -> IO (Bool, String)
 compileModule fileName options state = do
     let outputFilePath = tempDir state ++ outputFileName
-    exitCode <- system ("helium " ++ options ++ " " ++ fileName ++ "> " ++ outputFilePath)
+    exitCode <- system ("\"" ++ binDir state ++ "helium\" " ++ options ++ " " ++ fileName ++ "> " ++ outputFilePath)
     contents <- readFile outputFilePath
                 `catch` (\_ -> fatal ("Unable to read from file \"" ++ outputFilePath ++ "\""))
     return (exitCode == ExitSuccess, contents)
 
 executeInternalModule :: State -> IO ()
 executeInternalModule state =
-    executeModule (internalModulePath state)
+    executeModule (internalModulePath state) state
 
-executeModule :: String -> IO ()
-executeModule fileName = do
-    system ("lvmrun " ++ fileName)
+executeModule :: String -> State -> IO ()
+executeModule fileName state = do
+    system ("\"" ++ binDir state ++ "lvmrun\" " ++ fileName)
     return ()
         
 removeLVM :: State -> IO ()
