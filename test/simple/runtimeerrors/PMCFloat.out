@@ -9,6 +9,6 @@ trace:
   demanded from "PMCFloat.f"
   demanded from "LvmLang.<"
   demanded from "HeliumLang.showInt"
-  demanded from "HeliumLang.primPutChars"
+  demanded from "HeliumLang.$primPutChars"
   demanded from "LvmLang.bindIO"
   demanded from "LvmLang.unsafePerformIO"

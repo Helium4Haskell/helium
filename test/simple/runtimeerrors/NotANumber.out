@@ -5,7 +5,7 @@ Compilation successful
 trace:
   demanded from "LvmLang.+."
   demanded from "LvmLang./."
-  demanded from "HeliumLang.primShowFloat"
+  demanded from "HeliumLang.$primShowFloat"
   demanded from "HeliumLang.hasPointOrE"
   demanded from "HeliumLang.addPointZero"
   ...

@@ -6,6 +6,6 @@ exception: pattern match failed at function bindings ranging from (7,1) to (10,1
 trace:
   demanded from "LvmLang.<"
   demanded from "HeliumLang.showInt"
-  demanded from "HeliumLang.primPutChars"
+  demanded from "HeliumLang.$primPutChars"
   demanded from "LvmLang.bindIO"
   demanded from "LvmLang.unsafePerformIO"

@@ -5,6 +5,6 @@ exception: Number 3 is three.
 trace:
   demanded from "LvmLang.<"
   demanded from "HeliumLang.showInt"
-  demanded from "HeliumLang.primPutChars"
+  demanded from "HeliumLang.$primPutChars"
   demanded from "LvmLang.bindIO"
   demanded from "LvmLang.unsafePerformIO"
