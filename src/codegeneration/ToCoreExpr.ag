@@ -68,26 +68,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  literal                  : Literal
 
     | Variable           lhs.core = insertDictionaries @lhs.predicates @lhs.importEnv
-                                                       @lhs.overloadedVars @lhs.inferredTypes @name.self
-    {-
-        case lookupFM @lhs.overloadedVars (NameWithRange @name.self) of
-            Nothing -> Core.Var (idFromName @name.self)
-            Just (defName, _ :=> useType) ->
-                case lookupFM @lhs.inferredTypes defName of
-                    Nothing -> internalError "ToCoreExpr" "Expression.Variable" ("can't find: " ++ show defName ++ " in " ++ show (fmToList @lhs.inferredTypes))
-                    Just defType -> 
-                        let i  = maximum (0 : ftv useType) + 1
-                            (_, instantiatedPreds, instantiatedType) = instantiate i defType
-                            synonyms = getOrderedTypeSynonyms @lhs.importEnv
-                        in -- one-way unification is necessary!
-                           case mguWithTypeSynonyms synonyms instantiatedType useType of
-                              Left _ -> internalError "ToCoreExpr" "Expression.Variable" ("unify: " ++ show useType ++ " with " ++ show instantiatedType)
-                              Right (_, sub) ->
-                                 foldl Core.Ap (Core.Var (idFromName @name.self))
-                                               (getDictionaries synonyms @lhs.predicates (sub |-> instantiatedPreds))
-                                               -}
-                        
-
+                                                       @lhs.overloadedVars @lhs.inferredTypes @name.self                        
     --  range                    : Range
     --  name                     : Name
 

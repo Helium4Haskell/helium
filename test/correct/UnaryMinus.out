@@ -1,0 +1,10 @@
+Compiling correct/UnaryMinus.hs
+(2,1): Warning: Missing type signature: main :: [Char]
+(4,1): Warning: Missing type signature: f :: Int -> String
+(4,1): Warning: Missing pattern in function bindings: 
+  f _ = ...
+(7,1): Warning: Missing type signature: g :: Float -> String
+(7,1): Warning: Missing pattern in function bindings: 
+  g _ = ...
+Compilation successful with 5 warnings
+"ja dit klopt"
