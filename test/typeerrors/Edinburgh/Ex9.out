@@ -13,5 +13,6 @@ Compiling typeerrors/Edinburgh/Ex9.hs
  term             : f5
    type           : Int -> a -> [b]
    does not match : Int -> [b]     
+ probable fix     : insert a second argument
 
 Compilation failed with 2 errors

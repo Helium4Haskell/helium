@@ -1,7 +1,7 @@
 Compiling typeerrors/Edinburgh/Ex16.hs
-(3,14): Type error in application
+(3,15): Type error in application
  expression       : (x + 1) (if x then x + 1 else x - 2.2)
- term             : (x + 1)
+ term             : x + 1
    type           : Int     
    does not match : Int -> a
 
@@ -11,10 +11,10 @@ Compiling typeerrors/Edinburgh/Ex16.hs
    type           : Int 
    does not match : Bool
 
-(3,42): Type error in literal
- expression       : 2.2
-   type           : Float
-   expected type  : Int  
- probable fix     : use an int literal instead
+(3,41): Type error in infix application
+ expression       : x - 2.2
+ operator         : -
+   type           : a   -> a     -> a  
+   does not match : Int -> Float -> Int
 
 Compilation failed with 3 errors

@@ -1,8 +1,8 @@
 Compiling typeerrors/Examples/Body.hs
 (4,6): Type error in variable
  expression       : +
- type             : Num a => a -> a -> a
-   expected type  : Int
+   type           : Num a => a -> a -> a
+   expected type  :          Int        
  probable fix     : insert two arguments
 
 Compilation failed with 1 error

@@ -1,6 +1,6 @@
 Compiling typeerrors/Examples/BgExplicitTypedBinding.hs
 (4,1): Type error in explicitly typed binding
- term             : f
+ expression       : f
    type           : Bool      
    does not match : Int -> Int
  because          : the function binding has 1 pattern, but its type

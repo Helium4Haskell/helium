@@ -1,6 +1,6 @@
 Compiling typeerrors/Examples/PatNegateResult.hs
-(4,1): Type error in pattern of function binding
- pattern          : (-3)
+(4,4): Type error in pattern of function binding
+ pattern          : -3
    type           : Int 
    does not match : Bool
 

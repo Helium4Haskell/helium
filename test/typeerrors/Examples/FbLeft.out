@@ -1,8 +1,8 @@
 Compiling typeerrors/Examples/FbLeft.hs
 (3,5): Warning: Variable "y" is not used
-(5,1): Type error in pattern of function binding
- pattern          : True
+(4,12): Type error in variable
+ expression       : a
    type           : Bool
-   does not match : Int 
+   expected type  : Int 
 
 Compilation failed with 1 error

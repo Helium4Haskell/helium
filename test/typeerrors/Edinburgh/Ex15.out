@@ -1,16 +1,14 @@
 Compiling typeerrors/Edinburgh/Ex15.hs
-(3,24): Type error in infix application
+(3,25): Type error in infix application
  expression       : x + 1
  operator         : +
-   type           : Int -> Int -> Int
- left operand     : x
-   type           : Bool
-   does not match : Int 
+   type           : a    -> a   -> a
+   does not match : Bool -> Int -> b
 
 (3,34): Type error in infix application
  expression       : x - 2.2
  operator         : -
-   type           : Int  -> Int   -> Int
-   does not match : Bool -> Float -> a  
+   type           : a    -> a     -> a
+   does not match : Bool -> Float -> b
 
 Compilation failed with 2 errors

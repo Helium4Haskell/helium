@@ -1,9 +1,9 @@
 Compiling typeerrors/Edinburgh/Ex14.hs
-(3,41): Type error in application
+(3,42): Type error in application
  expression       : fac (n == 1)
  function         : fac
    type           : Int -> Int
- 1st argument     : (n == 1)
+ 1st argument     : n == 1
    type           : Bool
    does not match : Int 
 
