@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/EnumString.hs
+(1,8): Type error in overloaded enumeration
+ expression       : ["a" .. "z"]
+   type           : [String]
+ problem          : String is not an instance of class Enum
+ hint             : valid instances of Enum are (), Char, Int, Float and Bool
+
+Compilation failed with 1 error
