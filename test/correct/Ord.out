@@ -1,0 +1,4 @@
+Compiling correct/Ord.hs
+(1,1): Warning: Missing type signature: main :: ([[Bool]], [[Ordering]], [[Ordering]], [[Bool]])
+Compilation successful with 1 warning
+([[False,False,True],[True,False,False],[True,True,False],[False,True,True]],[[LT,EQ,GT],[LT,EQ,GT]],[[EQ,GT,LT,EQ],[EQ,EQ],[EQ,GT,EQ,LT,GT,LT],[EQ,LT,LT,LT],[EQ,LT,LT,LT,LT],[EQ,LT,LT,LT,LT,LT],[EQ,LT,LT,LT,LT,LT,LT],[EQ,LT,LT,LT,LT,LT,LT,LT],[EQ,LT,LT,LT,LT,LT,LT,LT,LT],[EQ,LT,LT,LT,LT,LT,LT,LT,LT,LT],[EQ,LT,LT,LT,LT,LT,LT,LT,LT,LT,LT]],[[True,True,False,False,True,True,False]])

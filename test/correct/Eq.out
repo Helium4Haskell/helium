@@ -1,0 +1,4 @@
+Compiling correct/Eq.hs
+(1,1): Warning: Missing type signature: main :: [[Bool]]
+Compilation successful with 1 warning
+[[True,False,False,True],[True,False,False,True],[True,False,False,True],[True,False,False,True],[True,False],[True,False,False,True,False,False],[True,False,False,False],[True,False,False,False,False],[True,False,False,False,False,False],[True,False,False,False,False,False,False],[True,False,False,False,False,False,False,False],[True,False,False,False,False,False,False,False,False],[True,False,False,False,False,False,False,False,False,False],[True,False,False,False,False,False,False,False,False,False,False],[True,False,False,True]]

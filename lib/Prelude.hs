@@ -6,7 +6,7 @@ import PreludePrim
 
 infixr 9  .
 infixl 9  !!
-infixr 8  ^, ^. -- , **.
+infixr 8  ^ -- , **.
 -- infixl 7  *, `quot`, `rem`, `div`, `mod`,  /                [PreludePrim]
 -- infixl 6  +, -                                              [PreludePrim]
 infixr 5  ++
@@ -66,10 +66,11 @@ lookup k ((x,y):xys)
 
 {- imported from PreludePrim
 
-(<)  :: Ord a => a -> a -> Bool
-(<=) :: Ord a => a -> a -> Bool
-(>)  :: Ord a => a -> a -> Bool
-(>=) :: Ord a => a -> a -> Bool
+(<)     :: Ord a => a -> a -> Bool
+(<=)    :: Ord a => a -> a -> Bool
+(>)     :: Ord a => a -> a -> Bool
+(>=)    :: Ord a => a -> a -> Bool
+compare :: Ord a => a -> a -> Ordering
 -}
 
 max :: Ord a => a -> a -> a
@@ -83,11 +84,6 @@ maximum = foldl1 max
 
 minimum :: Ord a => [a] -> a
 minimum = foldl1 min
-
-compare :: Ord a => a -> a -> Ordering
-compare x y | x < y     = LT
-            | x > y     = GT
-            | otherwise = EQ
 
 {-----------------------------------------------
  -- Int
@@ -131,14 +127,12 @@ lcm _ 0 = 0
 lcm 0 _ = 0
 lcm x y = abs ((x `quot` gcd x y) * y)
 
-(^) :: Int -> Int -> Int
-_ ^ 0           = 1
+(^) :: Num a => a -> Int -> a
+_ ^ 0           = fromInt 1
 i ^ n  | n > 0  = f i (n-1) i
-          where f :: Int -> Int -> Int -> Int
-                f _ 0 y = y
+          where f _ 0 y = y
                 f x m y = g x m
-                          where g :: Int -> Int -> Int
-                                g x' m' | even m'    = g (x' * x') (m' `quot` 2)
+                          where g x' m' | even m'    = g (x' * x') (m' `quot` 2)
                                         | otherwise  = f x' (m' - 1) (x' * y)
 _ ^ _           = error "Prelude.^: negative exponent"
 
@@ -168,6 +162,7 @@ signumFloat x =
         EQ ->  0
         GT ->  1
 
+{-
 (^.) :: Float -> Int -> Float
 _ ^. 0           = 1.0
 i ^. n  | n > 0  = f i (n-1) i
@@ -178,6 +173,7 @@ i ^. n  | n > 0  = f i (n-1) i
                                 g x' m' | even m'    = g (x' * x') (m' `quot` 2)
                                         | otherwise  = f x' (m' - 1) (x' * y)
 _ ^. _           = error "Prelude.^.: negative exponent"
+-}
 
 pi :: Float
 pi = 3.141592653589793
@@ -229,7 +225,10 @@ either l r e =
  -- Ordering
  -----------------------------------------------}
 
-data Ordering = LT | EQ | GT
+{- imported from PreludePrim
+
+data Ordering = LT | EQ | GT 
+-}
 
 {-----------------------------------------------
  -- Tuple

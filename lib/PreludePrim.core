@@ -10,7 +10,7 @@ module PreludePrim
     , (==), (/=)
     
     -- Ord
-    , (<), (>), (<=), (>=)
+    , (<), (>), (<=), (>=), compare
 
     -- Show
     , show
@@ -32,9 +32,17 @@ module PreludePrim
     -- misc
     , error, catch
     
-    , dictEqInt, ''dictEq[]'', dictEqChar, dictEqFloat
+    , dictEqInt, dictEqFloat, dictEqChar, dictEqBool, ''dictEq[]''
+    , ''dictEq()'', ''dictEq(,)'', ''dictEq(,,)'', ''dictEq(,,,)'', ''dictEq(,,,,)'', ''dictEq(,,,,,)''
+    , ''dictEq(,,,,,,)'', ''dictEq(,,,,,,,)'', ''dictEq(,,,,,,,,)'', ''dictEq(,,,,,,,,,)''
+    
     , dictNumInt, dictNumFloat
-    , dictOrdInt, dictOrdFloat
+    
+    , dictOrdInt, dictOrdFloat, dictOrdChar, dictOrdBool, ''dictOrd[]''
+    , ''dictOrd()'', ''dictOrd(,)'', ''dictOrd(,,)'', ''dictOrd(,,,)'', ''dictOrd(,,,,)'', ''dictOrd(,,,,,)''
+    , ''dictOrd(,,,,,,)'', ''dictOrd(,,,,,,,)'', ''dictOrd(,,,,,,,,)'', ''dictOrd(,,,,,,,,,)''
+    , Ordering(EQ, LT, GT), showOrdering
+    
     ) where
 
 import HeliumLang
@@ -246,29 +254,98 @@ fromInt dNum =
 {- Eq -}
 
 dictEqInt :: "DictEqInt"
-dictEqInt    = (@0, 2) (==#) (/=#)
+dictEqInt    = (==#)
 
 dictEqFloat :: "DictEqFloat"
-dictEqFloat  = (@0, 2) (==.) (/=.)
+dictEqFloat  = (==.)
 
 dictEqBool :: "DictEqBool"
-dictEqBool   = (@0, 2) eqBool (\x y -> not (eqBool x y))
+dictEqBool   = eqBool
 
 ''dictEq[]'' :: "DictEqList"
-''dictEq[]'' dict = (@0, 2) (eqList dict) (\xs ys -> not (eqList dict xs ys))
+''dictEq[]'' dict = eqList dict
 
 dictEqChar :: "DictEqChar"
 dictEqChar   = dictEqInt
 
+''dictEq()'' :: "DictEqTuple0"
+''dictEq()'' = \x y -> 
+    case x of { '':()'' -> case y of { '':()'' -> True } }
+
+''dictEq(,)'' :: "DictEqTuple2"
+''dictEq(,)'' d1 d2 = \x y -> 
+    case x of { (@0, 2) x1 x2 -> case y of { (@0, 2) y1 y2 ->
+        allTrue [ (==) d1 x1 y1, (==) d2 x2 y2 ] } }
+
+''dictEq(,,)'' :: "DictEqTuple3"
+''dictEq(,,)'' d1 d2 d3 = \x y -> 
+    case x of { (@0, 3) x1 x2 x3 -> 
+        case y of { (@0, 3) y1 y2 y3 ->
+            allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3 ] } }
+
+''dictEq(,,,)'' :: "DictEqTuple4"
+''dictEq(,,,)'' d1 d2 d3 d4 = \x y -> 
+    case x of { (@0, 4) x1 x2 x3 x4 -> 
+        case y of { (@0, 4) y1 y2 y3 y4 ->
+            allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3, (==) d4 x4 y4 ] } }
+
+''dictEq(,,,,)'' :: "DictEqTuple5"
+''dictEq(,,,,)'' d1 d2 d3 d4 d5 = \x y -> 
+    case x of { (@0, 5) x1 x2 x3 x4 x5 -> 
+        case y of { (@0, 5) y1 y2 y3 y4 y5 ->
+            allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3, (==) d4 x4 y4
+                    , (==) d5 x5 y5 ] } }
+
+''dictEq(,,,,,)'' :: "DictEqTuple6"
+''dictEq(,,,,,)'' d1 d2 d3 d4 d5 d6 = \x y -> 
+    case x of { (@0, 6) x1 x2 x3 x4 x5 x6 -> 
+        case y of { (@0, 6) y1 y2 y3 y4 y5 y6 ->
+            allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3, (==) d4 x4 y4
+                    , (==) d5 x5 y5, (==) d6 x6 y6 ] } }
+
+''dictEq(,,,,,,)'' :: "DictEqTuple7"
+''dictEq(,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 = \x y -> 
+    case x of { (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> 
+        case y of { (@0, 7) y1 y2 y3 y4 y5 y6 y7 ->
+            allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3, (==) d4 x4 y4
+                    , (==) d5 x5 y5, (==) d6 x6 y6, (==) d7 x7 y7 ] } }
+
+''dictEq(,,,,,,,)'' :: "DictEqTuple8"
+''dictEq(,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 = \x y -> 
+    case x of { (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> 
+        case y of { (@0, 8) y1 y2 y3 y4 y5 y6 y7 y8 ->
+            allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3, (==) d4 x4 y4
+                    , (==) d5 x5 y5, (==) d6 x6 y6, (==) d7 x7 y7, (==) d8 x8 y8
+                    ] } }
+
+''dictEq(,,,,,,,,)'' :: "DictEqTuple9"
+''dictEq(,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 = \x y -> 
+    case x of { (@0, 9) x1 x2 x3 x4 x5 x6 x7 x8 x9 -> 
+        case y of { (@0, 9) y1 y2 y3 y4 y5 y6 y7 y8 y9 ->
+            allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3, (==) d4 x4 y4
+                    , (==) d5 x5 y5, (==) d6 x6 y6, (==) d7 x7 y7, (==) d8 x8 y8
+                    , (==) d9 x9 y9 ] } }
+
+''dictEq(,,,,,,,,,)'' :: "DictEqTuple10"
+''dictEq(,,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 = \x y -> 
+    case x of { (@0, 10) x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 -> 
+        case y of { (@0, 10) y1 y2 y3 y4 y5 y6 y7 y8 y9 y10 ->
+            allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3, (==) d4 x4 y4
+                    , (==) d5 x5 y5, (==) d6 x6 y6, (==) d7 x7 y7, (==) d8 x8 y8
+                    , (==) d9 x9 y9, (==) d10 x10 y10 ] } }
+
+allTrue xs =
+    case xs of
+        [] -> True
+        (:) b bs -> case b of False -> False
+                              _     -> allTrue bs
+
+
 (==) :: "Eq a => a -> a -> Bool"
-(==) dEq =
-    case dEq of
-        (@0, 2) x1 x2 -> x1
+(==) dEq = dEq
         
 (/=) :: "Eq a => a -> a -> Bool"
-(/=) dEq =
-    case dEq of
-        (@0, 2) x1 x2 -> x2
+(/=) dEq = \x y -> not (dEq x y)
 
 eqBool x y = 
     case x of
@@ -295,41 +372,205 @@ not x = case x of True -> False
 {- Ord -}
 
 dictOrdInt :: "DictOrdInt"
-dictOrdInt   = (@0, 5) dictEqInt   (<#) (<=#) (>=#) (>#) 
+dictOrdInt   = (@0, 2) dictEqInt   compareInt
 
 
 dictOrdFloat :: "DictOrdFloat"
-dictOrdFloat = (@0, 5) dictEqFloat (<.) (<=.) (>=.) (>.) 
+dictOrdFloat = (@0, 2) dictEqFloat compareFloat
 
+dictOrdChar  :: "DictOrdChar"
 dictOrdChar  = dictOrdInt
+
+dictOrdBool  :: "DictOrdBool"
+dictOrdBool  = (@0, 2) dictEqBool compareBool
+
+''dictOrd[]'' :: "DictOrdList"
+''dictOrd[]'' dict = (@0, 2) ''dictEq[]'' (compareList dict)
+
+''dictOrd()'' :: "DictOrdTuple0"
+''dictOrd()'' = 
+    (@0, 2) ''dictEq()'' 
+        (\x y -> 
+        case x of { '':()'' -> 
+            case y of { '':()'' ->
+                EQ } } )
+
+''dictOrd(,)'' :: "DictOrdTuple2"
+''dictOrd(,)'' d1 d2 = 
+    (@0, 2) ''dictEq(,)'' 
+        (\x y -> 
+        case x of { (@0, 2) x1 x2 -> 
+            case y of { (@0, 2) y1 y2 ->
+                lexico  [ compare d1 x1 y1, compare d2 x2 y2 ] } } )
+
+''dictOrd(,,)'' :: "DictOrdTuple3"
+''dictOrd(,,)'' d1 d2 d3 = 
+    (@0, 2) ''dictEq(,,)'' 
+        (\x y -> 
+        case x of { (@0, 3) x1 x2 x3 -> 
+            case y of { (@0, 3) y1 y2 y3 ->
+                lexico  [ compare d1 x1 y1, compare d2 x2 y2, compare d3 x3 y3 ] } } )
+
+''dictOrd(,,,)'' :: "DictOrdTuple4"
+''dictOrd(,,,)'' d1 d2 d3 d4 = 
+    (@0, 2) ''dictEq(,,,)'' 
+        (\x y -> 
+        case x of { (@0, 4) x1 x2 x3 x4 -> 
+            case y of { (@0, 4) y1 y2 y3 y4 ->
+                lexico  [ compare d1 x1 y1, compare d2 x2 y2, compare d3 x3 y3, compare d4 x4 y4
+                        ] } } )
+
+''dictOrd(,,,,)'' :: "DictOrdTuple5"
+''dictOrd(,,,,)'' d1 d2 d3 d4 d5 = 
+    (@0, 2) ''dictEq(,,,,)'' 
+        (\x y -> 
+        case x of { (@0, 5) x1 x2 x3 x4 x5 -> 
+            case y of { (@0, 5) y1 y2 y3 y4 y5 ->
+                lexico  [ compare d1 x1 y1, compare d2 x2 y2, compare d3 x3 y3, compare d4 x4 y4
+                        , compare d5 x5 y5 ] } } )
+
+''dictOrd(,,,,,)'' :: "DictOrdTuple6"
+''dictOrd(,,,,,)'' d1 d2 d3 d4 d5 d6 = 
+    (@0, 2) ''dictEq(,,,,,)'' 
+        (\x y -> 
+        case x of { (@0, 6) x1 x2 x3 x4 x5 x6 -> 
+            case y of { (@0, 6) y1 y2 y3 y4 y5 y6 ->
+                lexico  [ compare d1 x1 y1, compare d2 x2 y2, compare d3 x3 y3, compare d4 x4 y4
+                        , compare d5 x5 y5, compare d6 x6 y6 ] } } )
+                        
+''dictOrd(,,,,,,)'' :: "DictOrdTuple7"
+''dictOrd(,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 = 
+    (@0, 2) ''dictEq(,,,,,,)'' 
+        (\x y -> 
+        case x of { (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> 
+            case y of { (@0, 7) y1 y2 y3 y4 y5 y6 y7 ->
+                lexico  [ compare d1 x1 y1, compare d2 x2 y2, compare d3 x3 y3, compare d4 x4 y4
+                        , compare d5 x5 y5, compare d6 x6 y6, compare d7 x7 y7 ] } } )
+
+''dictOrd(,,,,,,,)'' :: "DictOrdTuple8"
+''dictOrd(,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 = 
+    (@0, 2) ''dictEq(,,,,,,,)'' 
+        (\x y -> 
+        case x of { (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> 
+            case y of { (@0, 8) y1 y2 y3 y4 y5 y6 y7 y8 ->
+                lexico  [ compare d1 x1 y1, compare d2 x2 y2, compare d3 x3 y3, compare d4 x4 y4
+                        , compare d5 x5 y5, compare d6 x6 y6, compare d7 x7 y7, compare d8 x8 y8
+                        ] } } )
+
+''dictOrd(,,,,,,,,)'' :: "DictOrdTuple9"
+''dictOrd(,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 = 
+    (@0, 2) ''dictEq(,,,,,,,,)'' 
+        (\x y -> 
+        case x of { (@0, 9) x1 x2 x3 x4 x5 x6 x7 x8 x9  -> 
+            case y of { (@0, 9) y1 y2 y3 y4 y5 y6 y7 y8 y9 ->
+                lexico  [ compare d1 x1 y1, compare d2 x2 y2, compare d3 x3 y3, compare d4 x4 y4
+                        , compare d5 x5 y5, compare d6 x6 y6, compare d7 x7 y7, compare d8 x8 y8
+                        , compare d9 x9 y9 ] } } )
+
+''dictOrd(,,,,,,,,,)'' :: "DictOrdTuple10"
+''dictOrd(,,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 = 
+    (@0, 2) ''dictEq(,,,,,,,,,)'' 
+        (\x y -> 
+        case x of { (@0, 10) x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 -> 
+            case y of { (@0, 10) y1 y2 y3 y4 y5 y6 y7 y8 y9 y10 ->
+                lexico  [ compare d1 x1 y1, compare d2 x2 y2, compare d3 x3 y3, compare d4 x4 y4
+                        , compare d5 x5 y5, compare d6 x6 y6, compare d7 x7 y7, compare d8 x8 y8
+                        , compare d9 x9 y9, compare d10 x10 y10 ] } } )
+
+lexico xs = 
+    case xs of
+        [] -> EQ
+        (:) o os -> 
+            case o of
+                EQ -> lexico os
+                _  -> o
 
 getEqFromOrd dOrd = 
     case dOrd of
-        (@0, 5) x1 x2 x3 x4 x5 -> x1
-
+        (@0, 2) eq cmp -> eq
+        
 (<) :: "Ord a => a -> a -> Bool"
-(<) dOrd = 
+(<) dOrd x y = 
     case dOrd of
-        (@0, 5) x1 x2 x3 x4 x5 -> x2
+        (@0, 2) eq cmp -> 
+            case cmp x y of
+                LT -> True
+                _  -> False
 
 (<=) :: "Ord a => a -> a -> Bool"
-(<=) dOrd = 
+(<=) dOrd x y = 
     case dOrd of
-        (@0, 5) x1 x2 x3 x4 x5 -> x3
+        (@0, 2) eq cmp -> 
+            case cmp x y of
+                GT -> False
+                _  -> True
 
 (>=) :: "Ord a => a -> a -> Bool"
-(>=) dOrd = 
+(>=) dOrd x y = 
     case dOrd of
-        (@0, 5) x1 x2 x3 x4 x5 -> x4
+        (@0, 2) eq cmp -> 
+            case cmp x y of
+                LT -> False
+                _  -> True
 
 (>) :: "Ord a => a -> a -> Bool"
-(>) dOrd = 
+(>) dOrd x y = 
     case dOrd of
-        (@0, 5) x1 x2 x3 x4 x5 -> x5
+        (@0, 2) eq cmp -> 
+            case cmp x y of
+                GT -> True
+                _  -> False
 
+compare :: "Ord a => a -> a -> Ordering"
+compare dOrd =
+    case dOrd of
+        (@0, 2) eq cmp -> cmp
+               
 
+compareInt x y = 
+    case (<#) x y of
+        True -> LT
+        _    -> case (==#) x y of
+                    True -> EQ
+                    _    -> GT
 
+compareFloat x y = 
+    case (<.) x y of
+        True -> LT
+        _    -> case (==.) x y of
+                    True -> EQ
+                    _    -> GT
+                    
+compareBool x y =
+    case x of 
+        True -> case y of True -> EQ
+                          _    -> GT
+        _    -> case y of True -> LT
+                          _    -> EQ
+                          
+data Ordering = LT | EQ | GT 
 
+showOrdering :: Ordering -> String
+showOrdering x = 
+    case x of
+        LT -> primPackedToString "LT"
+        EQ -> primPackedToString "EQ"
+        GT -> primPackedToString "GT"
+
+compareList dictElem xs ys =
+    case xs of
+        [] -> 
+            case ys of
+                (:) yh yt -> LT
+                _         -> EQ
+        (:) xh xt ->
+            case ys of
+                [] -> GT
+                (:) yh yt ->
+                    case compare dictElem xh yh of
+                        GT -> GT
+                        LT -> LT
+                        EQ -> compareList dictElem xt yt
 
 {- misc -}
 
