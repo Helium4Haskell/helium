@@ -23,6 +23,7 @@ import Utils (internalError)
 import List
 import TypeErrors
 import OneLiner
+import TS_Attributes
 }
 
 SEM TypingStrategy [ | | core : Core_TypingStrategy ]
@@ -51,7 +52,17 @@ SEM UserStatements [ | | core : Core_UserStatements ]
   | Nil   lhs . core = []
 
 SEM UserStatement [ | | core : Core_UserStatement ]
-  | Constraint                lhs . core = Constraint (makeTpFromType @lhs.nameMap @leftType.self) (makeTpFromType @lhs.nameMap @rightType.self) @message
+  | Constraint                lhs . core = Constraint 
+                                             (makeTpFromType @lhs.nameMap @leftType.self) 
+                                             (makeTpFromType @lhs.nameMap @rightType.self) 
+                                             (concat (substituteAttributes (algebraFromNameMap @lhs.nameMap) @message))
   | MetaVariableConstraints   lhs . core = MetaVariableConstraints (show @name.self)
   | Phase                     lhs . core = Phase @phase
        
+{
+algebraFromNameMap :: [(Name, Tp)] -> AttributeAlgebra String
+algebraFromNameMap table = ( id
+                           , [ ((show name, Nothing), showAttribute (show i, Nothing)) | (name, TVar i) <- table ]
+                           , showAttribute
+                           )
+}

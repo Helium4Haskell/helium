@@ -111,7 +111,8 @@ STATICANALYSIS = \
         staticanalysis/inferencers/typingstrategies/TS_Analyse.hs \
         staticanalysis/inferencers/typingstrategies/TS_CoreSyntax.hs \
         staticanalysis/inferencers/typingstrategies/TS_ToCore.hs \
-        staticanalysis/inferencers/typingstrategies/TS_Compile.hs        
+        staticanalysis/inferencers/typingstrategies/TS_Compile.hs \
+        staticanalysis/inferencers/typingstrategies/TS_Attributes.hs        
 
 UHA = \
 	syntax/UHA_Syntax.hs syntax/UHA_Utils.hs
@@ -285,6 +286,7 @@ staticanalysis/inferencers/typingstrategies/TS_Apply.hs : \
 staticanalysis/inferencers/typingstrategies/TS_ToCore.hs : \
         staticanalysis/inferencers/typingstrategies/TS_Syntax.ag \
         staticanalysis/inferencers/typingstrategies/TS_Collect.ag \
+        staticanalysis/inferencers/typingstrategies/TS_ToCore.ag \
         syntax/UHA_Syntax.ag \
         syntax/UHA_Self.ag \
         syntax/UHA_OneLine.ag \

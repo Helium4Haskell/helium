@@ -45,7 +45,8 @@ heuristics = do conflicts <- getConflicts
 
 heuristicsInfiniteType :: (TypeGraph EquivalenceGroups info, TypeGraphConstraintInfo info, Show info) =>  [Int] -> SolveState EquivalenceGroups info [(Float,[EdgeID],[info])]
 heuristicsInfiniteType is = 
-   do pathsList <- mapM infinitePaths is
+   do addDebug (putStrLn "Infinite Type") 
+      pathsList <- mapM infinitePaths is
       let selectTheBest path =  
              do let f (v1,v2) = getPathsFrom v1 [v2]                               
                 xs <- mapM f (shift path)
@@ -107,10 +108,10 @@ heuristicsConstantClash is =
          in 
             rec (upperbound_GOODPATHS,upperbound_ERRORPATHS) is            
                
-      addDebug . putStrLn  . unlines $ 
-         ("*** Error Paths in Type Graph ***\n") : 
-         zipWith (\i p -> "Path #"++show i++"\n"++replicate 25 '='++"\n"++showPath p) [1..] [ p | ((_,_,_),p) <- errorPaths ]      
-     
+      --addDebug . putStrLn  . unlines $ 
+      --   ("*** Error Paths in Type Graph ***\n") : 
+      --   zipWith (\i p -> "Path #"++show i++"\n"++replicate 25 '='++"\n"++showPath p) [1..] [ p | ((_,_,_),p) <- errorPaths ]      
+      
           -- important: the removal of one edge can remove several inconsistencies in different groups. only the edges that remove 
           --            the maximum number of inconsistencies are considered. (see Edinburgh-example #12)
       let sourceInfosToInt :: [((Int,Int),Int,Bool)] -> (Int,Float)

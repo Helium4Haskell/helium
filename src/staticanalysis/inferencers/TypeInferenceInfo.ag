@@ -79,22 +79,7 @@ SEM FunctionBinding | FunctionBinding loc . cinfoLeft =
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Expression
 
-SEM Expression | Lambda loc . cinfoBind = 
-   variableBindingCInfo (NTExpression,AltLambda)
-
-SEM Expression | Constructor loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTExpression,AltConstructor,"")
-        , location   = "constructor"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @name.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , HighlyTrusted
-                       , IsImported @name.self 
-                       , Size @size ]
-        }
-
+-- Expression.Literal     
 SEM Expression | Literal loc . cinfo =
   \tppair ->
   CInfo { info       = (NTExpression,AltLiteral,"")
@@ -107,20 +92,36 @@ SEM Expression | Literal loc . cinfo =
                        , IsLiteral @literal.self 
                        , Size @size ]  
         }
+                       
+-- Expression.Variable                  
 
-
-SEM Expression | Let loc . cinfoType =
+-- Expression.Constructor       
+SEM Expression | Constructor loc . cinfo =
   \tppair ->
-  CInfo { info       = (NTExpression,AltLet,"")
-        , location   = "let expression (INTERNAL ERROR)"
+  CInfo { info       = (NTExpression,AltConstructor,"")
+        , location   = "constructor"
         , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
+        , sources    = [ sourceExpression @name.oneLineTree ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
-                       , SuperHighlyTrusted 
+                       , HighlyTrusted
+                       , IsImported @name.self 
+                       , Size @size ]
+        }
+        
+-- Expression.NormalApplication    
+SEM Expression | NormalApplication loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltNormalApplication,"")
+        , location   = "application"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @function.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ ApplicationEdge False (zip @arguments.oneLineTree @arguments.betas)  
                        , Size @size ]  
         }
-
+        
+-- Expression.InfixApplication
 SEM Expression | InfixApplication loc . cinfoComplete =
   \tppair ->
   CInfo { info       = (NTExpression,AltInfixApplication,"")
@@ -154,7 +155,7 @@ SEM Expression | InfixApplication loc . cinfoLeftSection =
         , typepair   = tppair
         , properties = [ Size @size ]  
         }
-
+        
 SEM Expression | InfixApplication loc . cinfoRightSection = 
   \tppair ->
   CInfo { info       = (NTExpression,AltInfixApplication,"right")
@@ -163,8 +164,96 @@ SEM Expression | InfixApplication loc . cinfoRightSection =
         , sources    = [ sourceExpression @oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size ]  
+        }        
+
+SEM Expression | InfixApplication loc . cinfoOperator =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltInfixApplication,"operator")
+        , location   = "infix application"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm (@operator.oneLineTree)]
+        , typepair   = tppair
+        , properties = (if @leftExpression.section || @rightExpression.section 
+                          then [ HighlyTrusted ] 
+                          else [ ApplicationEdge True
+                                         [ (convertMaybeOneLineTree @leftExpression.oneLineTree ,@leftExpression.beta )
+                                         , (convertMaybeOneLineTree @rightExpression.oneLineTree,@rightExpression.beta)
+                                         ] ]) 
+                       ++
+                       [ Size @size ]
         }
         
+-- Expression.If
+SEM Expression | If loc . cinfoGuard =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltIf,"guard")
+        , location   = "conditional"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @guardExpression.oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ Size @size ]    
+        }
+
+SEM Expression | If loc . cinfoThen =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltIf,"then")
+        , location   = "then branch of conditional"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @thenExpression.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size ]    
+        }
+
+SEM Expression | If loc . cinfoElse =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltIf,"else")
+        , location   = "else branch of conditional"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @elseExpression.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size ]   
+        }
+                
+-- Expression.Lambda                
+SEM Expression | Lambda loc . cinfoBind = 
+   variableBindingCInfo (NTExpression,AltLambda)
+
+SEM Expression | Lambda loc . cinfoType =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltLambda,"type")
+        , location   = "lambda abstraction"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint 
+                       , Size @size ]    
+        }
+           
+-- Expression.Case              
+SEM Expression | Case loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltCase,"")
+        , location   = "scrutinee of case expression"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size ]    
+        }
+        
+-- Expression.Let                 
+SEM Expression | Let loc . cinfoType =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltLet,"")
+        , location   = "let expression (INTERNAL ERROR)"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , SuperHighlyTrusted 
+                       , Size @size ]  
+        }
+        
+-- Expression.Do    
 SEM Expression | Do loc . cinfo =
   \tppair ->
   CInfo { info       = (NTExpression,AltDo,"")
@@ -176,17 +265,76 @@ SEM Expression | Do loc . cinfo =
                        , SuperHighlyTrusted 
                        , Size @size ]
         }
-
-SEM Expression | If loc . cinfoGuard =
+        
+-- Expression.List  
+SEM Expression | List loc . cinfoResult =
   \tppair ->
-  CInfo { info       = (NTExpression,AltIf,"guard")
-        , location   = "conditional"
+  CInfo { info       = (NTExpression,AltList,"result")
+        , location   = "list"
         , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @guardExpression.oneLineTree  ]
+        , sources    = [ sourceExpression @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ Size @size 
+                       , FolkloreConstraint ]   
+        }
+        
+SEM Expression | List loc . cinfoElem =
+  \elemtext tppair ->
+  CInfo { info       = (NTExpression,AltList,"element") 
+        , location   = "element of list"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm elemtext ]
+        , typepair   = tppair
+        , properties = [ Size @size ]
+        }
+                
+-- Expression.Tuple   
+SEM Expression | Tuple loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltTuple,"")
+        , location   = "tuple"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ Size @size 
+                       , FolkloreConstraint
+                       , IsTupleEdge ]   
+        }
+        
+-- Expression.Comprehension   
+SEM Expression | Comprehension loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltComprehension,"")
+        , location   = "list comprehension"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint 
+                       , Size @size ]    
+        }
+        
+-- Expression.Typed                       
+SEM Expression | Typed loc . cinfoExpr =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltTyped,"expression")
+        , location   = "type annotation"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree  ]
         , typepair   = tppair
         , properties = [ Size @size ]    
         }
-
+        
+SEM Expression | Typed loc . cinfoResult =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltTyped,"result")
+        , location   = "type annotation"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ Size @size, FolkloreConstraint ]     {- ??? -}
+        }
+              
+-- Expression.Enum                   
 SEM Expression | Enum loc . cinfoFrom =
   \tppair ->
   CInfo { info       = (NTExpression,AltEnum,"from")
@@ -217,50 +365,6 @@ SEM Expression | Enum loc . cinfoTo =
         , properties = [ Size @size ]    
         }
 
-SEM Expression | Typed loc . cinfoExpr =
-  \tppair ->
-  CInfo { info       = (NTExpression,AltTyped,"expression")
-        , location   = "type annotation"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ Size @size ]    
-        }
-
-SEM Expression | List loc . cinfoResult =
-  \tppair ->
-  CInfo { info       = (NTExpression,AltList,"result")
-        , location   = "list"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ Size @size 
-                       , FolkloreConstraint ]   
-        }
-
-SEM Expression | Tuple loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTExpression,AltTuple,"")
-        , location   = "tuple"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ Size @size 
-                       , FolkloreConstraint
-                       , IsTupleEdge ]   
-        }
-
-SEM Expression | Comprehension loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTExpression,AltComprehension,"")
-        , location   = "list comprehension"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint 
-                       , Size @size ]    
-        }
-
 SEM Expression | Enum loc . cinfoResult =
   \tppair ->
   CInfo { info       = (NTExpression,AltEnum,"result")
@@ -271,7 +375,8 @@ SEM Expression | Enum loc . cinfoResult =
         , properties = [ FolkloreConstraint
                        , Size @size ]    
         }
-
+                
+-- Expression.Negate
 SEM Expression | Negate loc . cinfoResult =
   \tppair ->
   CInfo { info       = (NTExpression,AltNegate,"result")
@@ -295,6 +400,7 @@ SEM Expression | Negate loc . cinfoExpr =
                        , Negation (tpToInt @beta) ]    
         }
         
+-- Expression.NegateFloat          
 SEM Expression | NegateFloat loc . cinfoResult =
   \tppair ->
   CInfo { info       = (NTExpression,AltNegateFloat,"result")
@@ -316,96 +422,7 @@ SEM Expression | NegateFloat loc . cinfoExpr =
         , typepair   = tppair
         , properties = [ Size @size 
                        , Negation (tpToInt @beta) ]    
-        }        
-        
-SEM Expression | Lambda loc . cinfoType =
-  \tppair ->
-  CInfo { info       = (NTExpression,AltLambda,"type")
-        , location   = "lambda abstraction"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint 
-                       , Size @size ]    
-        }
-
-SEM Expression | Typed loc . cinfoResult =
-  \tppair ->
-  CInfo { info       = (NTExpression,AltTyped,"result")
-        , location   = "type annotation"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ Size @size, FolkloreConstraint ]     {- ??? -}
-        }
-
-SEM Expression | NormalApplication loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTExpression,AltNormalApplication,"")
-        , location   = "application"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @function.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ ApplicationEdge False (zip @arguments.oneLineTree @arguments.betas)  
-                       , Size @size ]  
-        }
-
-SEM Expression | If loc . cinfoThen =
-  \tppair ->
-  CInfo { info       = (NTExpression,AltIf,"then")
-        , location   = "then branch of conditional"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @thenExpression.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ Size @size ]    
-        }
-
-SEM Expression | If loc . cinfoElse =
-  \tppair ->
-  CInfo { info       = (NTExpression,AltIf,"else")
-        , location   = "else branch of conditional"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @elseExpression.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ Size @size ]   
-        }
-
-SEM Expression | Case loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTExpression,AltCase,"")
-        , location   = "scrutinee of case expression"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ Size @size ]    
-        }
-
-SEM Expression | List loc . cinfoElem =
-  \elemtext tppair ->
-  CInfo { info       = (NTExpression,AltList,"element") 
-        , location   = "element of list"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm elemtext ]
-        , typepair   = tppair
-        , properties = [ Size @size ]
-        }
-
-SEM Expression | InfixApplication loc . cinfoOperator =
-  \tppair ->
-  CInfo { info       = (NTExpression,AltInfixApplication,"operator")
-        , location   = "infix application"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm (@operator.oneLineTree)]
-        , typepair   = tppair
-        , properties = (if @leftExpression.section || @rightExpression.section 
-                          then [ HighlyTrusted ] 
-                          else [ ApplicationEdge True
-                                         [ (convertMaybeOneLineTree @leftExpression.oneLineTree ,@leftExpression.beta )
-                                         , (convertMaybeOneLineTree @rightExpression.oneLineTree,@rightExpression.beta)
-                                         ] ]) 
-                       ++
-                       [ Size @size ]
-        }
+        }  
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : GuardedExpression

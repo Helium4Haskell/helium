@@ -11,22 +11,24 @@ import OperatorTable
 import Char
 import qualified ResolveOperators
 
-
+import IOExts
+import TS_CoreSyntax
+import qualified TS_ToCore
 {-
 --ultimate :: Core_TypingStrategy
 ultimate = let ts = head (map TS_ToCore.typingStrategyToCore tmp)
                ts2 :: Core_TypingStrategy
                ts2 = read $ show $ head $ map TS_ToCore.typingStrategyToCore tmp :: Core_TypingStrategy
-           in show ts == show ts2
+           in show ts == show ts2 
 
 s = "TypingStrategy (TypeRule [Judgement \"f\" (TVar 0),Judgement \"p\" (TVar 1),Judgement \"q\" (TVar 2)] Judgement \"f <$> p <*> q\" (TVar 3)) [Constraint (TCon \"Int\") (TCon \"Int\") \"???\",MetaVariableConstraints \"f\",Constraint (TVar 0) (TApp (TApp (TCon \"->\") (TVar 4)) (TApp (TApp (TCon \"->\") (TVar 5)) (TVar 6))) \"combi(1)\",Phase 5,Constraint (TVar 1) (TApp (TApp (TCon \"Parser\") (TVar 7)) (TVar 4)) \"combi(2)\",Constraint (TVar 2) (TApp (TApp (TCon \"Parser\") (TVar 7)) (TVar 5)) \"@@ @f.pp@ @p.pp@ @q.pp@ \\n@f.range@ @p.range@ @q.range@ \\n@f.type@ @p.type@ @q.type@ \\n{@t1@} {@t2@} {@t3@} {@t4@} {@s@} {@c@} {@a@} {@b@}\",Constraint (TCon \"Char\") (TCon \"Char\") \"???\",Phase 3,MetaVariableConstraints \"q\",Constraint (TVar 3) (TApp (TApp (TCon \"Parser\") (TVar 7)) (TVar 6)) \"combi(4)\",Constraint (TCon \"Bool\") (TCon \"Bool\") \"???\"]"
 s1 = "Judgement \"f\" (TVar 0)"
 s2 = "[Constraint (TCon \"Int\") (TCon \"Int\") \"???\",MetaVariableConstraints \"f\",Constraint (TVar 0) (TApp (TApp (TCon \"->\") (TVar 4)) (TApp (TApp (TCon \"->\") (TVar 5)) (TVar 6))) \"combi(1)\",Phase 5,Constraint (TVar 1) (TApp (TApp (TCon \"Parser\") (TVar 7)) (TVar 4)) \"combi(2)\",Constraint (TVar 2) (TApp (TApp (TCon \"Parser\") (TVar 7)) (TVar 5)) \"@@ @f.pp@ @p.pp@ @q.pp@ \\n@f.range@ @p.range@ @q.range@ \\n@f.type@ @p.type@ @q.type@ \\n{@t1@} {@t2@} {@t3@} {@t4@} {@s@} {@c@} {@a@} {@b@}\",Constraint (TCon \"Char\") (TCon \"Char\") \"???\",Phase 3,MetaVariableConstraints \"q\",Constraint (TVar 3) (TApp (TApp (TCon \"Parser\") (TVar 7)) (TVar 6)) \"combi(4)\",Constraint (TCon \"Bool\") (TCon \"Bool\") \"???\"]"
 s3 = "(TypeRule [Judgement \"f\" (TVar 0),Judgement \"p\" (TVar 1),Judgement \"q\" (TVar 2)] (Judgement \"f <$> p <*> q\" (TVar 3)))"
 tmp = unsafePerformIO 
-     (do input <- readFile "special.ti"
+     (do input <- readFile "Test.type"
          let Right ts = parseTypingStrategies [] "" input 
-         return ts) -}
+         return ts)-}
 
 parseTypingStrategies :: OperatorTable -> String -> String -> Either ParseError TypingStrategies
 parseTypingStrategies operatorTable filename input = 
@@ -44,26 +46,17 @@ parseTypingStrategies operatorTable filename input =
 
    parseTypeRule :: HParser TypeRule
    parseTypeRule =         
-      do premises   <- commas parseSimpleJudgement
-         reservedOp ";"
-         conclusion <- parseJudgement
-         reservedOp ";"      
-         return (TypeRule_TypeRule premises conclusion)
+      do judgements <- many1 parseJudgement
+         reservedOp ";" 
+         let (premises, conclusion) = (init judgements, last judgements)
+         return (TypeRule_TypeRule (map judgementToSimpleJudgement premises) conclusion)
 
    parseJudgement :: HParser Judgement
    parseJudgement =         
       do expression <- exp_ 
-         reservedOp ";"
-         uhaType    <- type_
+         reservedOp ";"      
          let resolvedExpression = ResolveOperators.expression operatorTable expression
-         return (Judgement_Judgement resolvedExpression uhaType)
-
-   parseSimpleJudgement :: HParser SimpleJudgement
-   parseSimpleJudgement =         
-      do name    <- varid
-         reservedOp ";"
-         uhaType <- type_
-         return (SimpleJudgement_SimpleJudgement name uhaType)      
+         return (expressionToJudgement resolvedExpression)     
 
    parseConstraint :: HParser UserStatement
    parseConstraint = 
@@ -84,3 +77,15 @@ parseTypingStrategies operatorTable filename input =
          reservedOp ":"
          message   <- stringLiteral
          return (UserStatement_Constraint leftType rightType message)
+
+judgementToSimpleJudgement :: Judgement -> SimpleJudgement
+judgementToSimpleJudgement judgement = 
+   case judgement of
+      Judgement_Judgement (Expression_Variable _ name) tp -> SimpleJudgement_SimpleJudgement name tp
+      _                                                   -> error "judgementToSimpleJudgement"
+      
+expressionToJudgement :: Expression -> Judgement
+expressionToJudgement expression =
+   case expression of
+      Expression_Typed _ expression tp -> Judgement_Judgement expression tp
+      _                                -> error "expressionToJudgement"

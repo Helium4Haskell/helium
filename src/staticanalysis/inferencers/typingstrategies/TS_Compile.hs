@@ -33,8 +33,12 @@ readTypingStrategiesFromFile options filename importEnvironment =
                     unless (Args.NoWarnings `elem` options || null warnings) $
                        do putStrLn "\nWarnings in typing strategies:"
                           putStrLn . sortAndShowMessages $ warnings
-                       
-                    when (Args.Verbose `elem` options) $
-                       putStrLn ("Included " ++ show (length typingStrategies) ++ " typing strategies...")
+
+                    let number = length typingStrategies
+                    when (Args.Verbose `elem` options && number > 0) $
+                       putStrLn ("Typing strategies...   (" ++ 
+                          (if number == 1
+                             then "1 strategy is included)"
+                             else show number ++ " strategies are included)"))
               
                     return (map typingStrategyToCore typingStrategies)

@@ -14,12 +14,12 @@ import Utils (internalError)
 import OneLiner
 import Messages
 import TypeErrors
-import Char (isAlphaNum)
 import ImportEnvironment
 import OperatorTable (OperatorTable)
 import ParseDeclExp (exp_)
 import HaskellLexer (runHParser)
 import qualified ResolveOperators
+import TS_Attributes
 }
 
 {
@@ -95,8 +95,7 @@ SEM Core_TypingStrategy
        statements . collectConstraints = []
                   . currentPhase       = Nothing
                   . metavarConstraints = [ (s,cs) | (s,(cs,_)) <- @lhs.metaVariableTable ] 
-                  . attributeTable     = makeAttributeTable (snd @lhs.localInfo) @lhs.metaVariableTable ++
-                                         @typerule.attributeTable
+                  . attributeTable     = makeAttributeTable (snd @lhs.localInfo) @lhs.metaVariableTable @substitution
 
 SEM Core_UserStatement
   | Constraint
@@ -118,11 +117,7 @@ SEM Core_UserStatement
        loc . newConstraint = 
           let cinfo   = addProperty (WithTypeError (CustomTypeError [] message)) . standardConstraintInfo       
                            -- (setCustomTypeError (snd @lhs.localInfo) . standardConstraintInfo)
-              message = case makeMessageBlockWithAttributes @lhs.attributeTable @message of
-                           Just mb -> [MessageOneLiner mb]
-                           Nothing -> internalError "TypingStrategies" "n/a" 
-                                                    ("unknown attribute: " ++ @message ++ 
-                                                     "\nknown attributes: " ++ show (map fst @lhs.attributeTable))                             
+              message = [MessageOneLiner (MessageCompose (substituteAttributes (makeMessageAlgebra @lhs.attributeTable) @message))]                       
           in (@lhs.substitution |-> @leftType .==. @lhs.substitution |-> @rightType) cinfo
 
 {
@@ -179,36 +174,25 @@ setCustomTypeError (tp, tree, range) cinfo =
                        ]                     
                      ]  
 
-makeMessageBlockWithAttributes :: [((String, Maybe String), MessageBlock)] -> String -> Maybe MessageBlock
-makeMessageBlockWithAttributes table = rec
-   where rec "" = Just (MessageString "")
-         rec xs = let (begin, rest) = span (/= '@') xs
-                  in case rest of
-                        []           -> Just (MessageString begin)
-                        '@':'@':rest -> do result <- rec rest
-                                           return (MessageCompose [MessageString (begin++"@"), result])
-                        '@':rest     -> let (variableName, as) = span isAlphaNum rest
-                                        in case as of
-                                              '@':rest -> do mb <- lookup (variableName, Nothing) table
-                                                             result <- rec rest                                                               
-                                                             return (MessageCompose [MessageString begin, mb, result])
-                                              '.':rest -> let (fieldName, bs) = span isAlphaNum rest
-                                                          in case bs of
-                                                                '@':rest -> do mb <- lookup (variableName, Just fieldName) table
-                                                                               result <- rec rest                                                               
-                                                                               return (MessageCompose [MessageString begin, mb, result])
-                                                                _ -> Nothing
-                                              _ -> Nothing
+makeMessageAlgebra :: AttributeTable MessageBlock -> AttributeAlgebra MessageBlock
+makeMessageAlgebra table = ( MessageString
+                           , table
+                           , \attribute -> internalError 
+                                              "TS_Apply" "makeMessageAlgebra"
+                                              ("unknown attribute " ++ showAttribute attribute ++
+                                               "; known attributes are " ++ show (map (showAttribute . fst) table))
+                           )
 
-makeAttributeTable :: MetaVariableInfo -> MetaVariableTable MetaVariableInfo -> [((String, Maybe String), MessageBlock)]
-makeAttributeTable local table = 
+makeAttributeTable :: MetaVariableInfo -> MetaVariableTable MetaVariableInfo -> FiniteMapSubstitution -> [((String, Maybe String), MessageBlock)]
+makeAttributeTable local table substitution = 
    let f :: String -> MetaVariableInfo -> [((String, Maybe String), MessageBlock)]
        f string (tp, tree, range) = [ ((string, Just "type" ), MessageType tp)
                                     , ((string, Just "pp"   ), MessageOneLineTree tree)
                                     , ((string, Just "range"), MessageRange range)
                                     ]
    in f "expr" local 
-   ++ concatMap (\(s,(_,info)) -> f s info) table                     
+   ++ concatMap (\(s,(_,info)) -> f s info) table 
+   ++ [ ((show i, Nothing), MessageType (substitution |-> TVar i)) | i <- dom substitution ]  
 }
 
 ATTR Core_Judgements Core_Judgement [ | | judgements USE {++} {[]} : {[(String, Tp)]} ]
@@ -218,11 +202,3 @@ ATTR Core_Judgements Core_Judgement [ | | judgements USE {++} {[]} : {[(String, 
 SEM Core_Judgement
   | Judgement
        lhs . judgements = [(@expression, @type)]
-
-ATTR Core_TypeRule [ | | attributeTable     : {[((String, Maybe String), MessageBlock)]} ]
-
-SEM Core_TypeRule
-  | TypeRule 
-       lhs . attributeTable = [ ((show i, Nothing), MessageType (@lhs.substitution |-> tp)) 
-                              | (_, tp@(TVar i)) <- @premises.judgements ++ @conclusion.judgements 
-                              ]

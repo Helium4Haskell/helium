@@ -14,12 +14,12 @@ import Utils (internalError)
 import OneLiner
 import Messages
 import TypeErrors
-import Char (isAlphaNum)
 import ImportEnvironment
 import OperatorTable (OperatorTable)
 import ParseDeclExp (exp_)
 import HaskellLexer (runHParser)
 import qualified ResolveOperators
+import TS_Attributes
 
 type MetaVariableTable info = [(String, (ConstraintSet, info))]
 type MetaVariableInfo = (Tp, Tree, Range)
@@ -79,36 +79,25 @@ setCustomTypeError (tp, tree, range) cinfo =
                        ]                     
                      ]  
 
-makeMessageBlockWithAttributes :: [((String, Maybe String), MessageBlock)] -> String -> Maybe MessageBlock
-makeMessageBlockWithAttributes table = rec
-   where rec "" = Just (MessageString "")
-         rec xs = let (begin, rest) = span (/= '@') xs
-                  in case rest of
-                        []           -> Just (MessageString begin)
-                        '@':'@':rest -> do result <- rec rest
-                                           return (MessageCompose [MessageString (begin++"@"), result])
-                        '@':rest     -> let (variableName, as) = span isAlphaNum rest
-                                        in case as of
-                                              '@':rest -> do mb <- lookup (variableName, Nothing) table
-                                                             result <- rec rest                                                               
-                                                             return (MessageCompose [MessageString begin, mb, result])
-                                              '.':rest -> let (fieldName, bs) = span isAlphaNum rest
-                                                          in case bs of
-                                                                '@':rest -> do mb <- lookup (variableName, Just fieldName) table
-                                                                               result <- rec rest                                                               
-                                                                               return (MessageCompose [MessageString begin, mb, result])
-                                                                _ -> Nothing
-                                              _ -> Nothing
+makeMessageAlgebra :: AttributeTable MessageBlock -> AttributeAlgebra MessageBlock
+makeMessageAlgebra table = ( MessageString
+                           , table
+                           , \attribute -> internalError 
+                                              "TS_Apply" "makeMessageAlgebra"
+                                              ("unknown attribute " ++ showAttribute attribute ++
+                                               "; known attributes are " ++ show (map (showAttribute . fst) table))
+                           )
 
-makeAttributeTable :: MetaVariableInfo -> MetaVariableTable MetaVariableInfo -> [((String, Maybe String), MessageBlock)]
-makeAttributeTable local table = 
+makeAttributeTable :: MetaVariableInfo -> MetaVariableTable MetaVariableInfo -> FiniteMapSubstitution -> [((String, Maybe String), MessageBlock)]
+makeAttributeTable local table substitution = 
    let f :: String -> MetaVariableInfo -> [((String, Maybe String), MessageBlock)]
        f string (tp, tree, range) = [ ((string, Just "type" ), MessageType tp)
                                     , ((string, Just "pp"   ), MessageOneLineTree tree)
                                     , ((string, Just "range"), MessageRange range)
                                     ]
    in f "expr" local 
-   ++ concatMap (\(s,(_,info)) -> f s info) table                     
+   ++ concatMap (\(s,(_,info)) -> f s info) table 
+   ++ [ ((show i, Nothing), MessageType (substitution |-> TVar i)) | i <- dom substitution ]  
 -- Core_Judgement ----------------------------------------------
 -- semantic domain
 type T_Core_Judgement = ((ConstraintSet, MetaVariableInfo)) ->
@@ -155,7 +144,7 @@ sem_Core_Judgements_Nil (_lhs_localInfo) (_lhs_metaVariableTable) (_lhs_substitu
 type T_Core_TypeRule = ((ConstraintSet, MetaVariableInfo)) ->
                        (MetaVariableTable MetaVariableInfo) ->
                        (FiniteMapSubstitution) ->
-                       (([((String, Maybe String), MessageBlock)]),(Constraints HeliumConstraintInfo),([Int]))
+                       ((Constraints HeliumConstraintInfo),([Int]))
 -- cata
 sem_Core_TypeRule :: (Core_TypeRule) ->
                      (T_Core_TypeRule)
@@ -169,10 +158,7 @@ sem_Core_TypeRule_TypeRule (_premises) (_conclusion) (_lhs_localInfo) (_lhs_meta
             (_premises (_lhs_localInfo) (_lhs_metaVariableTable) (_lhs_substitution))
         ( _conclusion_ftv,_conclusion_judgements) =
             (_conclusion (_lhs_localInfo) (_lhs_metaVariableTable) (_lhs_substitution))
-    in  ([ ((show i, Nothing), MessageType (_lhs_substitution |-> tp))
-         | (_, tp@(TVar i)) <- _premises_judgements ++ _conclusion_judgements
-         ]
-        ,[ (_lhs_substitution |-> tp1 .==. tp2) (typeRuleCInfo "conclusion" mvinfo)
+    in  ([ (_lhs_substitution |-> tp1 .==. tp2) (typeRuleCInfo "conclusion" mvinfo)
          | (s1, tp1) <- _conclusion_judgements
          , let (_, mvinfo@(tp2,_,_)) = _lhs_localInfo
          ]
@@ -207,17 +193,10 @@ sem_Core_TypingStrategy_TypingStrategy (_typerule) (_statements) (_lhs_localInfo
             ctSingle (reverse _typerule_constraints) :
             (map snd _statements_metavarConstraints) ++
             (reverse _statements_collectConstraints)
-        ( _typerule_attributeTable,_typerule_constraints,_typerule_ftv) =
+        ( _typerule_constraints,_typerule_ftv) =
             (_typerule (_lhs_localInfo) (_lhs_metaVariableTable) (_substitution))
         ( _statements_collectConstraints,_statements_currentPhase,_statements_ftv,_statements_metavarConstraints) =
-            (_statements (makeAttributeTable (snd _lhs_localInfo) _lhs_metaVariableTable ++
-                          _typerule_attributeTable)
-                         ([])
-                         (Nothing)
-                         (_lhs_localInfo)
-                         (_lhs_metaVariableTable)
-                         ([ (s,cs) | (s,(cs,_)) <- _lhs_metaVariableTable ])
-                         (_substitution))
+            (_statements (makeAttributeTable (snd _lhs_localInfo) _lhs_metaVariableTable _substitution) ([]) (Nothing) (_lhs_localInfo) (_lhs_metaVariableTable) ([ (s,cs) | (s,(cs,_)) <- _lhs_metaVariableTable ]) (_substitution))
     in  (ctNode _allConstraintTrees,putStrLn "applying typing strategy",length _ftv + _lhs_unique)
 -- Core_UserStatement ------------------------------------------
 -- semantic domain
@@ -245,11 +224,7 @@ sem_Core_UserStatement_Constraint :: (Tp) ->
 sem_Core_UserStatement_Constraint (_leftType) (_rightType) (_message) (_lhs_attributeTable) (_lhs_collectConstraints) (_lhs_currentPhase) (_lhs_localInfo) (_lhs_metaVariableTable) (_lhs_metavarConstraints) (_lhs_substitution) =
     let (_newConstraint) =
             let cinfo   = addProperty (WithTypeError (CustomTypeError [] message)) . standardConstraintInfo
-                message = case makeMessageBlockWithAttributes _lhs_attributeTable _message of
-                             Just mb -> [MessageOneLiner mb]
-                             Nothing -> internalError "TypingStrategies" "n/a"
-                                                      ("unknown attribute: " ++ _message ++
-                                                       "\nknown attributes: " ++ show (map fst _lhs_attributeTable))
+                message = [MessageOneLiner (MessageCompose (substituteAttributes (makeMessageAlgebra _lhs_attributeTable) _message))]
             in (_lhs_substitution |-> _leftType .==. _lhs_substitution |-> _rightType) cinfo
     in  (case _lhs_currentPhase of
             Just phase -> ctPhased phase [ _newConstraint ] : _lhs_collectConstraints

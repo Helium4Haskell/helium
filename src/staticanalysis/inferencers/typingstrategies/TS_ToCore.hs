@@ -14,6 +14,7 @@ import Utils (internalError)
 import List
 import TypeErrors
 import OneLiner
+import TS_Attributes
 
 import UHA_Syntax
  
@@ -26,6 +27,12 @@ import SATypes (isTupleConstructor)
 
 typingStrategyToCore :: TypingStrategy -> Core_TypingStrategy
 typingStrategyToCore = sem_TypingStrategy
+
+algebraFromNameMap :: [(Name, Tp)] -> AttributeAlgebra String
+algebraFromNameMap table = ( id
+                           , [ ((show name, Nothing), showAttribute (show i, Nothing)) | (name, TVar i) <- table ]
+                           , showAttribute
+                           )
      
 standardConstraintInfo :: (Tp, Tp) -> HeliumConstraintInfo
 standardConstraintInfo tppair =
@@ -2775,7 +2782,14 @@ sem_UserStatement_Constraint (_leftType) (_rightType) (_message) (_lhs_attribute
             (_leftType )
         ( _rightType_self,_rightType_typevariables) =
             (_rightType )
-    in  (Constraint (makeTpFromType _lhs_nameMap _leftType_self) (makeTpFromType _lhs_nameMap _rightType_self) _message,_lhs_metaVariableConstraintNames,_leftType_typevariables  ++  _rightType_typevariables,_newConstraint : _lhs_userConstraints)
+    in  (Constraint
+           (makeTpFromType _lhs_nameMap _leftType_self)
+           (makeTpFromType _lhs_nameMap _rightType_self)
+           (concat (substituteAttributes (algebraFromNameMap _lhs_nameMap) _message))
+        ,_lhs_metaVariableConstraintNames
+        ,_leftType_typevariables  ++  _rightType_typevariables
+        ,_newConstraint : _lhs_userConstraints
+        )
 sem_UserStatement_MetaVariableConstraints :: (T_Name) ->
                                              (T_UserStatement)
 sem_UserStatement_MetaVariableConstraints (_name) (_lhs_attributeTable) (_lhs_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_standardConstraintInfo) (_lhs_userConstraints) =

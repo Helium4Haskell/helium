@@ -62,9 +62,9 @@ SEM TypingStrategy
                             [ DuplicatedMetaVariableConstraints @name (show x) 
                             | x:_ <- findDuplicates @statements.metaVariableConstraintNames
                             ]
-           . warnings     = case @constraintsNotExplicit of 
+           . warnings     = [] {-case @constraintsNotExplicit of 
                               [] -> []
-                              xs -> [ MetaVariableConstraintsNotExplicit @name xs ] 
+                              xs -> [ MetaVariableConstraintsNotExplicit @name xs ]  -}
 
            -- Solve the constraint set.           
            . (_, substitution, solveErrors, _) = solveGreedy (length @uniqueTypevariables) [] (reverse @statements.userConstraints)

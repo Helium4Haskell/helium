@@ -42,6 +42,9 @@ expandTypeConstructorOneStep synonyms tp =
    case leftSpine tp of 
       (TCon s, tps) -> case lookupFM synonyms s of
                           Just (i, f) | i == length tps -> Just (f tps)
+                                      | otherwise       -> internalError "TypeSynonyms.hs" 
+                                                                         "expandTypeConstructorOneStep" 
+                                                                         "invalid arity of type synonym"
                           Nothing     -> Nothing
       _             -> Nothing     
 
@@ -84,7 +87,7 @@ getTypeSynonymOrdering synonyms =
                       in foldr add es cs
                in foldFM op [] synonyms
 
-       list = topSort (sizeFM synonyms - 1) edges         
+       list = reverse (topSort (sizeFM synonyms - 1) edges)
 
        (ordering, recursive, _) =  
           let op ints (os, rs, counter) = 
@@ -92,6 +95,6 @@ getTypeSynonymOrdering synonyms =
                     [int] | (int, int) `notElem` edges     -- correct type synonym
                       -> (addToFM os (lookupInt int) counter, rs, counter + 1)
                     _ -> (os, map lookupInt ints : rs, counter)
-          in foldr op (emptyFM, [], 0) list    
+          in foldr op (emptyFM, [], 0) list
    in 
       (ordering, recursive)

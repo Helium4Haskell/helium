@@ -2500,9 +2500,7 @@ sem_TypingStrategy_TypingStrategy (_name) (_typerule) (_statements) (_lhs_import
             | x:_ <- findDuplicates _statements_metaVariableConstraintNames
             ]
         (_warnings) =
-            case _constraintsNotExplicit of
-              [] -> []
-              xs -> [ MetaVariableConstraintsNotExplicit _name xs ]
+            []
         ((_,_substitution,_solveErrors,_)) =
             solveGreedy (length _uniqueTypevariables) [] (reverse _statements_userConstraints)
         (_soundnessErrors) =

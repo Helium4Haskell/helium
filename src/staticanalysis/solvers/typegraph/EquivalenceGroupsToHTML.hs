@@ -8,7 +8,7 @@
 --
 ------------------------------------------------------------------------------
 
-module EquivalenceGroupsToHTML ( equivalenceGroupsToHTML ) where
+module EquivalenceGroupsToHTML ( equivalenceGroupsToHTML, equivalenceGroupsToHTML_And_Stop ) where
 
 import Types
 import SolveState
@@ -19,6 +19,12 @@ import Monad
 import ConstraintInfo
 import TypeGraphConstraintInfo
 import SolveConstraints
+import IOExts
+
+equivalenceGroupsToHTML_And_Stop :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => SolveState EquivalenceGroups info ()
+equivalenceGroupsToHTML_And_Stop = do equivalenceGroupsToHTML
+                                      io <- getDebug
+                                      error (show (unsafePerformIO io))
 
 equivalenceGroupsToHTML :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => SolveState EquivalenceGroups info ()
 equivalenceGroupsToHTML = do unique <- getUnique
@@ -33,7 +39,7 @@ equivalenceGroupsToHTML = do unique <- getUnique
 
 showOneGroup :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => Int -> SolveState EquivalenceGroups info ()
 showOneGroup i = 
-   do stp <- findSubstForVar i
+   do -- stp <- findSubstForVar i
       msg <- useSolver (\groups -> 
       
        do eqc <- equivalenceGroupOf i groups
