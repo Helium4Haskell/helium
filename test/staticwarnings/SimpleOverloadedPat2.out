@@ -1,0 +1,7 @@
+Compiling staticwarnings/SimpleOverloadedPat2.hs
+(2,1): Warning: Missing type signature: main :: Bool
+(2,12): Warning: Missing type signature: eq :: Eq a => a -> a -> Bool
+  Hint: Because eq has an overloaded type, computations may be repeated. Insert
+        the missing type signature if this is indeed your intention.
+Compilation successful with 2 warnings
+False
