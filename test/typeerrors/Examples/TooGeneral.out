@@ -1,0 +1,7 @@
+Compiling typeerrors/Examples/TooGeneral.hs
+(1,1): Type signature is too general
+ function         : f
+   declared type  : a   -> b   -> Bool
+   inferred type  : Int -> Int -> Bool
+
+Compilation failed with 1 error
