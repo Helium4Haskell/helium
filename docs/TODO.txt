@@ -15,10 +15,10 @@ INTERPRETER
 
 COMPILER
 
-! infix constructoren infix tonen
+DONE infix constructoren infix tonen
 ! parse error tests (zie Thompson)
 ! file IO exceptions; * EOF in getChar. How?
-! module header overbodig en dus optioneel in parser
+DONE module header overbodig en dus optioneel in parser
 ! corrupte lvm mededeling is lelijk
 ! pattern-match failure beter presenteren (niet alleen begin)
 ! installer voor Windows

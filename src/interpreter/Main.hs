@@ -177,8 +177,9 @@ fatal msg = do
 makeModule :: String -> State -> String
 makeModule expression state =
     unlines
-    (  [ "module " ++ internalModule ++ " where" ]
-    ++ (case modName state of Nothing -> []; Just modName -> [ "import " ++ modName ])
+    (  {- [ "module " ++ internalModule ++ " where" ]
+    ++  -}
+       (case modName state of Nothing -> []; Just modName -> [ "import " ++ modName ])
     ++ [ interpreterMain ++ " = " ++ expression ]
     )
 

@@ -83,13 +83,11 @@ module_ = addRange $
         b <- body
         return (\r ->
             Module_Module r (MaybeName_Just n) mes b)
-{- Module without a name is not supported
     <|>
     do 
         b <- body
         return (\r ->
             Module_Module r MaybeName_Nothing MaybeExports_Nothing b)
--}
 
 onlyImports :: HParser [ImportDeclaration]
 onlyImports = 
