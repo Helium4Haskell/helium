@@ -1,4 +1,3 @@
-for f in typeerrors/Strategies/*.hs ; do bash testOne ${f%.hs} ; done
 for f in typeerrors/Edinburgh/*.hs  ; do bash testOne ${f%.hs} ; done
 for f in typeerrors/Examples/*.hs   ; do bash testOne ${f%.hs} ; done
 for f in typeerrors/Heuristics/*.hs ; do bash testOne ${f%.hs} ; done

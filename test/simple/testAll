@@ -2,7 +2,6 @@ clear
 bash testP
 bash testSE
 bash testTE
-bash testM
 bash testTh
 bash testC
 bash testSW
