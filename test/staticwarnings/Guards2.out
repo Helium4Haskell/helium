@@ -1,0 +1,4 @@
+Compiling staticwarnings/Guards2.hs
+(4,8): Warning: Unreachable guard: | False
+Compilation successful with 1 warning
+<<function>>

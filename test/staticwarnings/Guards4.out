@@ -1,0 +1,4 @@
+Compiling staticwarnings/Guards4.hs
+(3,11): Warning: Possible fallthrough
+Compilation successful with 1 warning
+<<function>>

@@ -1,6 +1,6 @@
 Compiling parser/LayoutOk13.hs
 (3,1): Warning: Missing type signature: x :: Int
-(3,9): Warning: Some case-patterns are missing here: Int
-_
+(3,9): Warning: Missing pattern in case expression: 
+  _ -> ...
 Compilation successful with 2 warnings
 No 'main' function defined in this module

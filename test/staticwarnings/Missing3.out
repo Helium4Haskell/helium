@@ -1,5 +1,5 @@
 Compiling staticwarnings/Missing3.hs
-(3,1): Warning: Some lhs-patterns are missing here: Int -> ()
-main _ 
+(3,1): Warning: Missing pattern in function bindings: 
+  main _ = ...
 Compilation successful with 1 warning
 <<function>>

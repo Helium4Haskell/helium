@@ -1,0 +1,7 @@
+Compiling staticwarnings/Guards7.hs
+(4,9): Warning: Variable "xs" is not used
+(3,1): Warning: Missing pattern in function bindings: 
+  main (_ : _) = ...
+(4,13): Warning: Possible fallthrough
+Compilation successful with 3 warnings
+<<function>>

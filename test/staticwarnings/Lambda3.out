@@ -1,0 +1,7 @@
+Compiling staticwarnings/Lambda3.hs
+(3,8): Warning: Missing pattern in lambda expression: 
+  \ False -> ...
+(3,17): Warning: Missing pattern in lambda expression: 
+  \ True -> ...
+Compilation successful with 2 warnings
+<<function>>

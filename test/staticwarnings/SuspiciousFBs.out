@@ -6,12 +6,12 @@ Compiling staticwarnings/SuspiciousFBs.hs
 (3,1): Warning: Missing type signature: fun :: a -> a
 (4,1): Warning: Missing type signature: funs :: a -> [a]
 (6,1): Warning: Missing type signature: test :: a
-(7,12): Warning: Some lhs-patterns are missing here: Int -> Bool
-suspiciuos _ 
-(14,1): Warning: Some lhs-patterns are missing here: Int -> [v114] -> [v114]
-deleteIndex _ (_ : _) 
+(7,12): Warning: Missing pattern in function bindings: 
+  suspiciuos _ = ...
+(14,1): Warning: Missing pattern in function bindings: 
+  deleteIndex _ (_ : _) = ...
 (16,1): Warning: Missing type signature: deleteindex :: Int -> [a] -> [a]
-(16,1): Warning: Some lhs-patterns are missing here: Int -> [v78] -> [v78]
-deleteindex _ [] 
+(16,1): Warning: Missing pattern in function bindings: 
+  deleteindex _ [] = ...
 Compilation successful with 11 warnings
 No 'main' function defined in this module

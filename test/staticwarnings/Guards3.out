@@ -1,0 +1,4 @@
+Compiling staticwarnings/Guards3.hs
+(4,1): Warning: Unreachable pattern: main True
+Compilation successful with 1 warning
+<<function>>

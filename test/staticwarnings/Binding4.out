@@ -1,0 +1,4 @@
+Compiling staticwarnings/Binding4.hs
+(3,8): Warning: Possible fallthrough
+Compilation successful with 1 warning
+No 'main' function defined in this module

@@ -1,7 +1,7 @@
 Compiling staticwarnings/Missing4.hs
-(3,1): Warning: Some lhs-patterns are missing here: [Bool] -> ()
-main (False : _) 
-main (True : (_ : _)) 
-main [] 
+(3,1): Warning: Missing patterns in function bindings: 
+  main (False : _) = ...
+  main (True : (_ : _)) = ...
+  main [] = ...
 Compilation successful with 1 warning
 <<function>>

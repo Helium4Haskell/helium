@@ -39,7 +39,7 @@ ATTR FunctionBinding FunctionBindings LeftHandSide [ || argcount : Int]
 SEM FunctionBindings
   | Nil              lhs . elementss = []
                      lhs . unrwars   = []
-                     lhs . argcount  = pmError "FunctionBindings_Nil.argcount" "?empty list of functionbindings?"
+                     lhs . argcount  = pmError "FunctionBindings_Nil.argcount" "?empty list of function bindings?"
   | Cons             lhs . elementss = @hd.elements : @tl.elementss
                      lhs . unrwars   = @hd.unrwar   : @tl.unrwars
                      lhs . argcount  = @hd.argcount
@@ -154,7 +154,7 @@ SEM Declaration
                                                                        (Just @bindings.name)
                                                                        True
                                                                        @bindings.unrwars
-                                                                       "functionbindings"
+                                                                       "function bindings"
                                                                        "="
                                                   ++ @bindings.patternMatchWarnings 
   | PatternBinding   lhs . patternMatchWarnings = patternMatchWarnings @lhs.importEnvironment
@@ -166,7 +166,7 @@ SEM Declaration
                                                                        Nothing
                                                                        False
                                                                        []
-                                                                       "patternbinding"
+                                                                       "pattern binding"
                                                                        "="
                                                   ++ @righthandside.patternMatchWarnings
 

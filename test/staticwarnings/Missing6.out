@@ -1,6 +1,6 @@
 Compiling staticwarnings/Missing6.hs
-(3,1): Warning: Some lhs-patterns are missing here: [Char] -> ()
-main (_ : _) 
-main [] 
+(3,1): Warning: Missing patterns in function bindings: 
+  main (_ : _) = ...
+  main [] = ...
 Compilation successful with 1 warning
 <<function>>

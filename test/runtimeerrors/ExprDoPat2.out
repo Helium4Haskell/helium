@@ -1,5 +1,8 @@
 Compiling runtimeerrors/ExprDoPat2.hs
-Compilation successful
+(6,9): Warning: Missing patterns in generator: 
+  _ : (_ : _) <- ...
+  [] <- ...
+Compilation successful with 1 warning
 exception: pattern match failed at generator ranging from (6,9) to (6,32) in module runtimeerrors/ExprDoPat2.hs.
 
 trace:

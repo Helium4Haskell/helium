@@ -1,5 +1,6 @@
 Compiling runtimeerrors/PMFailure.hs
-Compilation successful
+(10,5): Warning: Possible fallthrough
+Compilation successful with 1 warning
 exception: pattern match failed at function bindings ranging from (7,1) to (10,16) in module runtimeerrors/PMFailure.hs.
 
 trace:

@@ -1,0 +1,4 @@
+Compiling staticwarnings/Generator2.hs
+(3,11): Warning: Missing pattern in generator: 
+  (False,_) <- ...
+Compilation successful with 1 warning

@@ -1,5 +1,5 @@
 Compiling staticwarnings/Missing9.hs
-(5,10): Warning: Some case-patterns are missing here: T
-B (B _ _) (B L (B _ _))
+(5,10): Warning: Missing pattern in case expression: 
+  B (B _ _) (B L (B _ _)) -> ...
 Compilation successful with 1 warning
 <<function>>

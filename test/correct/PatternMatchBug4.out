@@ -1,9 +1,9 @@
 Compiling correct/PatternMatchBug4.hs
 (3,1): Warning: Missing type signature: main :: String
 (5,1): Warning: Missing type signature: f :: [String] -> String
-(5,1): Warning: Some lhs-patterns are missing here: [[Char]] -> [Char]
-f ((_ : _) : _) 
-f ([] : _) 
-f [] 
+(5,1): Warning: Missing patterns in function bindings: 
+  f ((_ : _) : _) = ...
+  f ([] : _) = ...
+  f [] = ...
 Compilation successful with 3 warnings
 "a"

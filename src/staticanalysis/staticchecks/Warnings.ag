@@ -6,9 +6,9 @@
 -- Warnings.ag : The warnings that are collected are the following:
 --    1) A variable shadows another variable
 --    2) An entity is not used (except top level entities, since these can be exported)
---    3) Suspicious function bindings (two groups of functionbindings are next to each 
+--    3) Suspicious function bindings (two groups of function bindings are next to each 
 --               other in the program; the names are similar, but only one has an
---               explicit type signature. Perhaps only one group of functionbindings was intended?)
+--               explicit type signature. Perhaps only one group of function bindings was intended?)
 --
 -------------------------------------------------------------------------------
 

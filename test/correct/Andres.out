@@ -5,8 +5,10 @@ Compiling correct/Andres.hs
 (7,16): Warning: Variable "x" is not used
 (3,1): Warning: Missing type signature: test1 :: Int
 (5,1): Warning: Missing type signature: test2 :: Int
+(5,13): Warning: Missing pattern in pattern binding: 
+  [] = ...
 (7,1): Warning: Missing type signature: test3 :: Int
 (9,1): Warning: Missing type signature: test4 :: IO ()
 (11,1): Warning: Missing type signature: main :: (Int, Int, Int)
-Compilation successful with 9 warnings
+Compilation successful with 10 warnings
 ((-2),2,(-5))

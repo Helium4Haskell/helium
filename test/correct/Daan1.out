@@ -1,5 +1,5 @@
 Compiling correct/Daan1.hs
-(7,9): Warning: Some case-patterns are missing here: Bool
-False
+(7,9): Warning: Missing pattern in case expression: 
+  False -> ...
 Compilation successful with 1 warning
 0

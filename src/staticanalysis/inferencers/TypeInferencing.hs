@@ -1132,7 +1132,7 @@ sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_allPatterns) (_lhs_b
                                (Just _bindings_name)
                                True
                                _bindings_unrwars
-                               "functionbindings"
+                               "function bindings"
                                "="
           ++ _bindings_patternMatchWarnings
          ,_self
@@ -1238,7 +1238,7 @@ sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_allPat
                                Nothing
                                False
                                []
-                               "patternbinding"
+                               "pattern binding"
                                "="
           ++ _righthandside_patternMatchWarnings
          ,_self
@@ -2633,7 +2633,7 @@ sem_FunctionBindings_Nil :: (T_FunctionBindings)
 sem_FunctionBindings_Nil (_lhs_allPatterns) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_betasLeft) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             []
-    in  ( pmError "FunctionBindings_Nil.argcount" "?empty list of functionbindings?",noAssumptions,_lhs_betaUnique,_lhs_collectednotypedef,[],[],_lhs_matchIO,internalError "TypeInferencing.ag" "n/a" "FunctionBindings(2)",internalError "TypeInferencing.ag" "n/a" "FunctionBindings(1)",[],_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound,[])
+    in  ( pmError "FunctionBindings_Nil.argcount" "?empty list of function bindings?",noAssumptions,_lhs_betaUnique,_lhs_collectednotypedef,[],[],_lhs_matchIO,internalError "TypeInferencing.ag" "n/a" "FunctionBindings(2)",internalError "TypeInferencing.ag" "n/a" "FunctionBindings(1)",[],_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound,[])
 -- GuardedExpression -------------------------------------------
 -- semantic domain
 type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->

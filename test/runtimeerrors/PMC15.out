@@ -1,6 +1,6 @@
 Compiling runtimeerrors/PMC15.hs
-(7,1): Warning: Some lhs-patterns are missing here: Bool -> Bool
-not2 False 
+(7,1): Warning: Missing pattern in function bindings: 
+  not2 False = ...
 Compilation successful with 1 warning
 exception: pattern match failed at function bindings ranging from (7,1) to (7,18) in module runtimeerrors/PMC15.hs.
 

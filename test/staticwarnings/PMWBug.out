@@ -1,0 +1,7 @@
+Compiling staticwarnings/PMWBug.hs
+(1,1): Warning: Missing type signature: f :: String -> Int
+(1,1): Warning: Missing patterns in function bindings: 
+  f (_ : _) = ...
+  f [] = ...
+Compilation successful with 2 warnings
+No 'main' function defined in this module
