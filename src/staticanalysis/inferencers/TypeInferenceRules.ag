@@ -867,11 +867,13 @@ SEM Qualifier
   
 SEM Module 
   | Module loc . warnings  = 
-        -- only a warning for type definitions without monomorphic type variables 
-        let f (n,ms,t,b) = let ms'    = @substitution |-> ms
+        -- only a warning for top-level type definitions without 
+        -- monomorphic type variables 
+        let f (n,ms,t,isToplevel) = 
+                           let ms'    = @substitution |-> ms
                                t'     = @substitution |-> t
                                scheme = generalize (ftv ms') t'
-                           in if null (ftv scheme) 
-                                then [NoTypeDef n scheme b] 
+                           in if null (ftv scheme) && isToplevel
+                                then [NoTypeDef n scheme isToplevel] 
                                 else []
         in concatMap f @body.collectednotypedef

@@ -1,4 +1,3 @@
 Compiling correct/Comprehension1.hs
-(4,45): Warning: Missing type signature: z :: Char
-Compilation successful with 1 warning
+Compilation successful
 ["axa","aya","bxb","byb"]

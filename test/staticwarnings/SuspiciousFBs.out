@@ -6,7 +6,6 @@ Compiling staticwarnings/SuspiciousFBs.hs
 (3,1): Warning: Missing type signature: fun :: a -> a
 (4,1): Warning: Missing type signature: funs :: a -> [a]
 (6,1): Warning: Missing type signature: test :: a
-(7,12): Warning: Missing type signature: suspiciuos :: Int -> Bool
 (16,1): Warning: Missing type signature: deleteindex :: Int -> [a] -> [a]
-Compilation successful with 9 warnings
+Compilation successful with 8 warnings
 No 'main' function defined in this module

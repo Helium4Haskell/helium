@@ -2,7 +2,5 @@ Compiling parser/LayoutOk7.hs
 (3,11): Warning: Definition "x" is not used
 (3,18): Warning: Definition "y" is not used
 (3,1): Warning: Missing type signature: f :: Int
-(3,11): Warning: Missing type signature: x :: Int
-(3,18): Warning: Missing type signature: y :: Int
-Compilation successful with 5 warnings
+Compilation successful with 3 warnings
 No 'main' function defined in this module

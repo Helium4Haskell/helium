@@ -2910,11 +2910,12 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
         (_toplevelTypes) =
             addListToFM _body_typeSignatures _inferredgamma
         (_warnings) =
-            let f (n,ms,t,b) = let ms'    = _substitution |-> ms
+            let f (n,ms,t,isToplevel) =
+                               let ms'    = _substitution |-> ms
                                    t'     = _substitution |-> t
                                    scheme = generalize (ftv ms') t'
-                               in if null (ftv scheme)
-                                    then [NoTypeDef n scheme b]
+                               in if null (ftv scheme) && isToplevel
+                                    then [NoTypeDef n scheme isToplevel]
                                     else []
             in concatMap f _body_collectednotypedef
         (_self) =
