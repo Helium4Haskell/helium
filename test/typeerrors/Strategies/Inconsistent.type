@@ -1,0 +1,6 @@
+
+  x :: Int ; y :: Int ; 
+  ---------------------
+     x +++ y :: Int;;
+     
+Bool == Int : "linkerkant moet een Int zijn, sukkel!";

@@ -1,0 +1,6 @@
+
+      x :: a ;
+  -------------------------
+    x +++ True :: Bool;;
+     
+a == Int : "linkerkant moet een Int zijn";

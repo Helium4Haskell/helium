@@ -1,0 +1,9 @@
+
+       x :: a ; y :: b ;
+  -------------------------
+        x +++ y :: Int;;
+
+constraints x
+a == Int : "linkerkant moet een Int zijn"
+constraints x
+b == Int : "rechterkant moet een Int zijn";

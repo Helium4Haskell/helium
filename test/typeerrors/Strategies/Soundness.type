@@ -1,0 +1,7 @@
+
+      x :: a ; y :: b ;
+  -------------------------
+        x +++ y :: Int;;
+     
+a == Bool : "linkerkant moet een Bool zijn"
+b == Bool : "rechterkant moet een Bool zijn";

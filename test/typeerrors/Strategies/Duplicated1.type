@@ -1,0 +1,7 @@
+
+  x :: a ; y :: b ; y :: c ;
+  -------------------------
+        x +++ y :: Int;;
+     
+a == Int : "linkerkant moet een Int zijn"
+b == Int : "rechterkant moet een Int zijn";
