@@ -1,0 +1,5 @@
+#!/bin/bash
+clear
+for f in typeerrors/Edinburgh/*.hs     	; do echo ${f%.hs}; ./MakeOutput ${f%.hs} ; done
+for f in typeerrors/Examples/*.hs     	; do echo ${f%.hs}; ./MakeOutput ${f%.hs} ; done
+for f in typeerrors/Heuristics/*.hs     ; do echo ${f%.hs}; ./MakeOutput ${f%.hs} ; done

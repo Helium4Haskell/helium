@@ -20,6 +20,7 @@ INTERPRETER
 * Ctrl-C stopt niet alleen lvmrun maar ook hint
 * JCreator: Rijk-Jan
 * Wat voor een voorzieningen nodig in de compiler?
+* :r
 
 DAAN
 ! file IO exceptions; * EOF in getChar. How? catch werkt niet

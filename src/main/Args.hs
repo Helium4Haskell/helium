@@ -24,7 +24,7 @@ processArgs args =
 #ifndef RELEASE
             ,   Option "u" ["dump-uha"] (NoArg DumpUHA) "pretty print abstract syntax tree"
             ,   Option "c" ["dump-core"] (NoArg DumpCore) "pretty print Core program"
-            ,   Option "C" ["dump-core-to-file"] (NoArg DumpCoreToFile) "write Core program to file"
+            ,   Option "C" ["save-core"] (NoArg DumpCoreToFile) "write Core program to file"
             ,   Option "d" ["dump-type-debug"] (NoArg DumpTypeDebug) "show type checker debugging information"
             
 --            ,   Option "s" ["no-static-analysis"] (NoArg NoStaticAnalysis) "do not perform static analysis (dangerous!)"
