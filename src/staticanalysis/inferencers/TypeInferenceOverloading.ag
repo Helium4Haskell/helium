@@ -18,16 +18,26 @@ ATTR Declarations Declaration Expressions Expression Statements Statement
         | dictionaryEnvironment : DictionaryEnvironment          
         | 
         ]
-          
+ATTR Module -> Expression [ | unresolvedErrors:TypeErrors | ]
+	
 SEM Module
   | Module
        -- return an empty dictionary environment for the non-overloading setting
        lhs  . dictionaryEnvironment = if Overloading `elem` @lhs.options 
                                         then @body.dictionaryEnvironment
 					else emptyDictionaryEnvironment
+       loc  . unresolvedErrors      = if Overloading `elem` @lhs.options 
+                                        then @body.unresolvedErrors
+					else []
        body . dictionaryEnvironment = emptyDictionaryEnvironment
 	    . availablePredicates   = []
+	    . unresolvedErrors      = []
 
+-- collecting the unresolved overloading errors 
+SEM Expression
+  | Variable   lhs . unresolvedErrors = @overloadingErrors ++ @lhs.unresolvedErrors
+  | Negate     lhs . unresolvedErrors = @overloadingErrors ++ @expression.unresolvedErrors
+	    
 SEM Declaration   
  
   | FunctionBindings
@@ -59,14 +69,23 @@ SEM Expression
                loc . nameInScope           = case filter (@name.self==) @lhs.namesInScope of 
                                                 [name] -> NameWithRange name
                                                 _      -> internalError "TypeInferenceOverloading.ag" "n/a" "name not in scope"
-                   . requiredDictionaries  = case lookupFM @lhs.inferredTypes @nameInScope of
-                                                Nothing     -> [] -- if not in finitemap then this is bound by a monomorphic pattern variable
+		   . maybeInferredType     = lookupFM @lhs.inferredTypes @nameInScope
+                   . requiredDictionaries  = -- if not in finitemap then this is bound by a monomorphic pattern variable
+                                             case @maybeInferredType of
+                                                Nothing     -> [] 
                                                 Just scheme -> getRequiredDictionaries 
                                                                   (getOrderedTypeSynonyms @lhs.importEnvironment) 
-                                                                  (@lhs.substitution |-> @beta)
+                                                                  @usedAsType
                                                                   scheme
-                   . (newDEnv, overloadingErrors) = resolveOverloading @name.self @lhs.availablePredicates @requiredDictionaries @lhs.dictionaryEnvironment 
-
+                   . (newDEnv, overloadingErrors) = resolveOverloading @name.self 
+                                                                       @lhs.availablePredicates 
+								       @requiredDictionaries 
+								       @unresolvedMessage
+								       @lhs.dictionaryEnvironment 
+                   . usedAsType        = @lhs.substitution |-> @beta
+		   . unresolvedMessage = makeUnresolvedOverloadingError (self @localInfo) "overloaded function" 
+		                            (maybe (internalError "TypeInferenceOverloading.ag" "n/a" "inferred type is unknown") id @maybeInferredType, toTpScheme @usedAsType)
+		   
   | Negate   lhs . dictionaryEnvironment = @newDEnv
              loc . localName             = setNameRange intUnaryMinusName @range.self
                  . negateTypeScheme      = case lookupFM (typeEnvironment @lhs.importEnvironment) @localName of 
@@ -74,11 +93,17 @@ SEM Expression
                                               Nothing     -> internalError "TypeInferenceOverloading.ag" "n/a" "type of negate unknown"
                  . requiredDictionaries  = getRequiredDictionaries 
                                               (getOrderedTypeSynonyms @lhs.importEnvironment) 
-                                              (@lhs.substitution |-> (@expression.beta .->. @beta))
+                                              @usedAsType
                                               @negateTypeScheme
-                 . (newDEnv, overloadingErrors) = resolveOverloading @localName @lhs.availablePredicates @requiredDictionaries @expression.dictionaryEnvironment                                              
+                 . usedAsType      = @lhs.substitution |-> (@expression.beta .->. @beta)
+		 . unresolvedMessage = makeUnresolvedOverloadingError (nameToUHA_Expr (nameFromString "-")) "negation"
+		                          (@negateTypeScheme, toTpScheme @usedAsType)
+                 . (newDEnv, overloadingErrors) = resolveOverloading @localName 
+		                                                     @lhs.availablePredicates 
+								     @requiredDictionaries 
+								     @unresolvedMessage
+								     @expression.dictionaryEnvironment                                              
              
-
 {         
 getRequiredDictionaries :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
 getRequiredDictionaries synonyms useType defType = 
@@ -90,12 +115,13 @@ getRequiredDictionaries synonyms useType defType =
          Right (_, sub) -> 
             expandPredicates synonyms (sub |-> instantiatedPreds)
             
-resolveOverloading :: Name -> Predicates -> Predicates -> DictionaryEnvironment -> (DictionaryEnvironment, Predicates {- errors -})
-resolveOverloading name availablePredicates predicates dEnv = 
+resolveOverloading :: Name -> Predicates -> Predicates -> TypeError -> DictionaryEnvironment 
+                         -> (DictionaryEnvironment, [TypeError])
+resolveOverloading name availablePredicates predicates message dEnv = 
    let maybeTrees = map (makeDictionaryTree availablePredicates) predicates
    in if all isJust maybeTrees
         then (addForVariable name (map fromJust maybeTrees) dEnv, [])
-        else (dEnv, [ predicate | (predicate, mt) <- zip predicates maybeTrees, isNothing mt ])
+        else (dEnv, [message])
 
 expandPredicates :: OrderedTypeSynonyms -> Predicates -> Predicates
 expandPredicates synonyms = map (expandPredicate synonyms)

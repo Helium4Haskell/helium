@@ -24,7 +24,11 @@ SEM Module
                    
            . orderedTypeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment                         
  	   . checkedSolveErrors = makeTypeErrors @orderedTypeSynonyms @substitution @solveErrors
-           . typeErrors         = if null @checkedSolveErrors then @body.collectErrors else @checkedSolveErrors
+           . typeErrors         = if null @checkedSolveErrors 
+	                            then if null @body.collectErrors 
+				           then @unresolvedErrors
+					   else @body.collectErrors 
+                                    else @checkedSolveErrors
            . warnings           = @body.collectWarnings
            . debugIO            = putStrLn @debugString
            . initialScope       = keysFM (typeEnvironment @lhs.importEnvironment)           

@@ -94,14 +94,9 @@ getInferredTypes monos substitution predicates groups =
 ----------------------------------------------------------------------------------------
 -- Collecting additional type errors and warnings
 
--- unresolved overloading
 SEM Module
   | Module  body . collectErrors   = []
                  . collectWarnings = []
-
-SEM Expression
-  | Variable   lhs . collectErrors = map (makeUnresolvedOverloadingError (self @localInfo)) @overloadingErrors ++ @lhs.collectErrors
-  | Negate     lhs . collectErrors = map (makeUnresolvedOverloadingError (self @localInfo)) @overloadingErrors ++ @expression.collectErrors                              
 
 -- declared type too general / missing type signature
 SEM Body
@@ -123,7 +118,7 @@ SEM Expression
                                           monos' = ftv (@lhs.substitution |-> @lhs.monos)
                                           tp'    = @lhs.substitution |-> @expression.beta
                                           info   = (self . attribute) @expression.infoTree
-                                      in checkNotTooGeneral info @lhs.orderedTypeSynonyms @typeScheme scheme
+                                      in checkNotTooGeneral (Right info) @lhs.orderedTypeSynonyms @typeScheme scheme
            lhs . collectErrors      = @errors ++ @expression.collectErrors
 
                                      
@@ -146,10 +141,9 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
           
              Just signature ->
                 -- is the signature not too general?
-                let info = nameToUHA_Expr nameOfSignature
-                    -- this name has a different range!
+                let -- this name has a different range!
                     nameOfSignature = head [ n | n <- keysFM typeSignatures, n == nameWithRangeToName nameWR ]      
-                    newErrors = checkNotTooGeneral info synonyms signature scheme             
+                    newErrors = checkNotTooGeneral (Left nameOfSignature) synonyms signature scheme             
                 in (newErrors ++ errors, warnings)               
                        
              Nothing 
@@ -160,11 +154,20 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
                      
              _ -> pair      
 
-checkNotTooGeneral :: UHA_Source -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
-checkNotTooGeneral source synonyms signature scheme = 
-   [ makeNotGeneralEnoughTypeError source scheme signature
-   | not (genericInstanceOf synonyms standardClasses signature scheme)
-   ]       
+checkNotTooGeneral :: Either Name UHA_Source -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
+checkNotTooGeneral mySource synonyms signature scheme
+   | genericInstanceOf synonyms standardClasses signature scheme = []
+   | genericInstanceOf synonyms standardClasses (removePredicates signature) (removePredicates scheme) = 
+        [makeMissingConstraintTypeError mySource scheme signature]
+   | otherwise = 
+        [makeNotGeneralEnoughTypeError source scheme signature]
+
+ where 
+   source = either nameToUHA_Expr id mySource
+   removePredicates :: TpScheme ->  TpScheme
+   removePredicates (Quantification (is, qm, a)) = 
+      Quantification (is, qm, [] .=>. unqualify a)
+      
 }
 
 -------------------------------------------

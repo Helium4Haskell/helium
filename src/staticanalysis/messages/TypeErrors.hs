@@ -47,18 +47,37 @@ makeNotGeneralEnoughTypeError source tpscheme1 tpscheme2 =
        ts1      = skolemizeFTV (sub |-> tpscheme1)
        ts2      = skolemizeFTV (sub |-> tpscheme2)
        oneliner = MessageOneLiner (MessageString "Declared type is too general")
-       table    = [ ("expression"   , MessageOneLineTree (oneLinerSource source))
+       table    = [ ("function"     , MessageOneLineTree (oneLinerSource source))
                   , ("declared type", MessageType ts2)
 		  , ("inferred type", MessageType ts1)
                   ]
        hints    = [ ("hint", MessageString "try removing the type signature") | not (null (ftv tpscheme1)) ] 
    in TypeError [rangeOfSource source] [oneliner] table hints
    
-makeUnresolvedOverloadingError :: UHA_Source -> Predicate -> TypeError
-makeUnresolvedOverloadingError source predicate =
-   let message = [ MessageOneLiner (MessageString "Unresolved overloading") ]
+makeMissingConstraintTypeError :: Either Name UHA_Source -> TpScheme -> TpScheme -> TypeError
+makeMissingConstraintTypeError mySource tpscheme1 tpscheme2 =
+   let source   = either nameToUHA_Expr id mySource
+       sub      = listToSubstitution (zip (ftv [tpscheme1, tpscheme2]) [ TVar i | i <- [1..] ])
+       ts1      = skolemizeFTV (sub |-> tpscheme1)
+       ts2      = skolemizeFTV (sub |-> tpscheme2)
+       oneliner = MessageOneLiner (MessageString "Missing class constraint in declared type")
+       table    = [ ("function"     , MessageOneLineTree (oneLinerSource source))
+                  , ("declared type", MessageType ts2)
+		  , ("inferred type", MessageType ts1)
+                  ]
+       hint     = ("hint", MessageString ("add a class constraint to the type signature" ++
+                                          special ++ " (see inferred type)"))
+       special  = either (\n -> " for " ++ show n) (const "") mySource
+   in TypeError [rangeOfSource source] [oneliner] table [hint]
+   
+makeUnresolvedOverloadingError :: UHA_Source -> String -> (TpScheme, TpScheme) -> TypeError
+makeUnresolvedOverloadingError source description (functionType, usedAsType) =
+   let message = [ MessageOneLiner (MessageString ("Don't know which instance to choose for " ++ description)) ]
        table   = [ ("function" , MessageOneLineTree (oneLinerSource source)) 
-                 , ("predicate", MessagePredicate predicate)
+                 , ("type"     , MessageType functionType)
+		 , ("used as"  , MessageType usedAsType)
+                 , ("hint"     , MessageString ( "write an explicit type for this function" ++ 
+		                                 "\n   e.g. (show :: [Int] -> String)")) 
                  ]
    in TypeError [rangeOfSource source] message table []
       
