@@ -5,5 +5,6 @@ Compiling typeerrors/Examples/TypeBug8.hs
    type           : (a        -> b -> b) -> b        -> [a] -> b
    does not match : ((c -> d) -> c -> d) -> [e -> e] -> e   -> e
  because          : unification would give infinite type
+ probable fix     : re-order arguments
 
 Compilation failed with 1 error

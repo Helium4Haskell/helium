@@ -1,7 +1,7 @@
 Compiling typeerrors/Examples/LotsOfTypeErrors.hs
 (3,14): Type error in element of list
  expression       : [True, 1, 2, 3, 4, "hello world!"]
- term             : True
+ constructor      : True
    type           : Bool
    does not match : Int 
 
@@ -11,10 +11,12 @@ Compiling typeerrors/Examples/LotsOfTypeErrors.hs
    type           : String
    does not match : Int   
 
-(6,7): Type error in right-hand side
- expression       : True
-   type           : Bool
-   does not match : Int 
+(11,20): Type error in application
+ expression       : "hello" "world"
+ term             : "hello"
+   type           : String     
+   does not match : String -> a
+ because          : it is not a function
 
 (...)
 

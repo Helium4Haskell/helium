@@ -1,7 +1,7 @@
 Compiling typeerrors/Examples/InfixTest.hs
 (9,8): Type error in infix application
  expression       : True `f` 3
- operator         : f
+ function         : f
    type           : Int -> Int -> Int
  left operand     : True
    type           : Bool
@@ -9,7 +9,7 @@ Compiling typeerrors/Examples/InfixTest.hs
 
 (11,10): Type error in infix pattern application
  pattern          : True `C` False
- term             : C
+ constructor      : C
    type           : Int  -> Int  -> C
    does not match : Bool -> Bool -> a
 

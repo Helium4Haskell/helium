@@ -1,9 +1,10 @@
 Compiling typeerrors/Examples/TypeBug1.hs
 (4,3): Warning: Variable "x" is not used
-(4,7): Type error in right-hand side
+(4,7): Type error in variable
  expression       : f
    type           : a -> a        -> [(a, b)] -> Bool
-   does not match : c -> [(c, d)] -> Bool            
+   expected type  : c -> [(c, d)] -> Bool            
  because          : unification would give infinite type
+ probable fix     : insert one argument
 
 Compilation failed with 1 error
