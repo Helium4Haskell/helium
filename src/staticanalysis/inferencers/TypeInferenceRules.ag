@@ -64,7 +64,7 @@ SEM Body
       loc . constraints               = @csetBinds .>>. @cset
                                            
       (loc.aset, loc.cset, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) = 
-         let inputBDG = (@lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, @declarations.typeSignatures, Nothing, @declarations.betaUnique)
+         let inputBDG = (True, @lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, @declarations.typeSignatures, Nothing, @declarations.betaUnique)
          in performBindingGroup inputBDG @declarations.bindingGroups  
                         
       
@@ -113,7 +113,7 @@ SEM MaybeDeclarations
   | Just
       declarations . bindingGroups  = []
       (lhs.assumptions, lhs.constraints, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) = 
-         let inputBDG   = (@lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, @declarations.typeSignatures, mybdggroup, @declarations.betaUnique)
+         let inputBDG   = (False, @lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, @declarations.typeSignatures, mybdggroup, @declarations.betaUnique)
              mybdggroup = Just (@lhs.assumptions, [@lhs.constraints])
          in performBindingGroup inputBDG @declarations.bindingGroups
                                                                    
@@ -295,7 +295,7 @@ SEM Expression
                    . beta           = TVar @lhs.betaUnique                   
                    
       (loc.assumptions, loc.cset, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) =
-         let inputBDG   = (@lhs.currentChunk, @expression.uniqueChunk, @lhs.monos, @declarations.typeSignatures, mybdggroup, @expression.betaUnique)
+         let inputBDG   = (False, @lhs.currentChunk, @expression.uniqueChunk, @lhs.monos, @declarations.typeSignatures, mybdggroup, @expression.betaUnique)
              mybdggroup = Just (@expression.assumptions, [@expression.constraints])
          in performBindingGroup inputBDG @declarations.bindingGroups
 
@@ -606,7 +606,7 @@ SEM Statement
       lhs          . generatorBeta  = Nothing
       declarations . bindingGroups  = []      
       (lhs.assumptions, lhs.constraints, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) = 
-         let inputBDG    = (@lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, @declarations.typeSignatures, mybdggroup, @declarations.betaUnique)
+         let inputBDG    = (False, @lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, @declarations.typeSignatures, mybdggroup, @declarations.betaUnique)
              mybdggroup = Just (@lhs.assumptions, [@lhs.constraints])
          in performBindingGroup inputBDG @declarations.bindingGroups
                         
@@ -647,7 +647,7 @@ SEM Qualifier
 
   | Let   declarations . bindingGroups  = []
           (lhs.assumptions, lhs.constraints, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) = 
-             let inputBDG   = (@lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, @declarations.typeSignatures, mybdggroup, @declarations.betaUnique)
+             let inputBDG   = (False, @lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, @declarations.typeSignatures, mybdggroup, @declarations.betaUnique)
                  mybdggroup = Just (@lhs.assumptions, [@lhs.constraints])
              in performBindingGroup inputBDG @declarations.bindingGroups
 

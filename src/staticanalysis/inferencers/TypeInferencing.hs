@@ -76,7 +76,7 @@ resolveOverloading classEnv name availablePredicates predicates dEnv =
    let maybeTrees = map (makeDictionaryTree classEnv availablePredicates) predicates
    in if all isJust maybeTrees
         then addForVariable name (map fromJust maybeTrees) dEnv
-        else internalError "TypeInferenceOverloading.ag" "resolveOverloading" "cannot resolve overloading"
+        else internalError "TypeInferenceOverloading.ag" "resolveOverloading" ("cannot resolve overloading (" ++ show name ++ ")")
    
 expandPredicates :: OrderedTypeSynonyms -> Predicates -> Predicates
 expandPredicates synonyms = map (expandPredicate synonyms)
@@ -1400,7 +1400,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                                (_declarationsOtypeschemeMap)
                                (_declarationsOuniqueChunk))
             ((_aset@_,_cset@_,_inheritedBDG@_,_chunkNr@_,_lhsObetaUnique@_,_implicitsFM@_)) =
-                let inputBDG = (_lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, Nothing, _declarationsIbetaUnique)
+                let inputBDG = (True, _lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, Nothing, _declarationsIbetaUnique)
                 in performBindingGroup inputBDG _declarationsIbindingGroups
             (_constraints@_) =
                 _csetBinds .>>. _cset
@@ -6582,7 +6582,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                              (_expressionOuniqueChunk)
                              (_expressionOuniqueSecondRound))
             ((_assumptions@_,_cset@_,_inheritedBDG@_,_chunkNr@_,_lhsObetaUnique@_,_implicitsFM@_)) =
-                let inputBDG   = (_lhsIcurrentChunk, _expressionIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _expressionIbetaUnique)
+                let inputBDG   = (False, _lhsIcurrentChunk, _expressionIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _expressionIbetaUnique)
                     mybdggroup = Just (_expressionIassumptions, [_expressionIconstraints])
                 in performBindingGroup inputBDG _declarationsIbindingGroups
             (_beta@_) =
@@ -11498,7 +11498,7 @@ sem_MaybeDeclarations_Just (declarations_) =
                                (_declarationsOtypeschemeMap)
                                (_declarationsOuniqueChunk))
             ((_lhsOassumptions@_,_lhsOconstraints@_,_inheritedBDG@_,_chunkNr@_,_lhsObetaUnique@_,_implicitsFM@_)) =
-                let inputBDG   = (_lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _declarationsIbetaUnique)
+                let inputBDG   = (False, _lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _declarationsIbetaUnique)
                     mybdggroup = Just (_lhsIassumptions, [_lhsIconstraints])
                 in performBindingGroup inputBDG _declarationsIbindingGroups
             (_declarationsObindingGroups@_) =
@@ -14430,7 +14430,7 @@ sem_Qualifier_Let (range_) (declarations_) =
                                (_declarationsOtypeschemeMap)
                                (_declarationsOuniqueChunk))
             ((_lhsOassumptions@_,_lhsOconstraints@_,_inheritedBDG@_,_chunkNr@_,_lhsObetaUnique@_,_implicitsFM@_)) =
-                let inputBDG   = (_lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _declarationsIbetaUnique)
+                let inputBDG   = (False, _lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _declarationsIbetaUnique)
                     mybdggroup = Just (_lhsIassumptions, [_lhsIconstraints])
                 in performBindingGroup inputBDG _declarationsIbindingGroups
             (_declarationsObindingGroups@_) =
@@ -16869,7 +16869,7 @@ sem_Statement_Let (range_) (declarations_) =
                                (_declarationsOtypeschemeMap)
                                (_declarationsOuniqueChunk))
             ((_lhsOassumptions@_,_lhsOconstraints@_,_inheritedBDG@_,_chunkNr@_,_lhsObetaUnique@_,_implicitsFM@_)) =
-                let inputBDG    = (_lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _declarationsIbetaUnique)
+                let inputBDG    = (False, _lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _declarationsIbetaUnique)
                     mybdggroup = Just (_lhsIassumptions, [_lhsIconstraints])
                 in performBindingGroup inputBDG _declarationsIbindingGroups
             (_declarationsObindingGroups@_) =

@@ -54,11 +54,11 @@ concatBindingGroups :: BindingGroups -> BindingGroup
 concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
 
 -- |Input for binding group analysis
-type InputBDG     = (Int, Int, Monos, FiniteMap Name TpScheme, Maybe (Assumptions, ConstraintSets), Int)
+type InputBDG     = (Bool, Int, Int, Monos, FiniteMap Name TpScheme, Maybe (Assumptions, ConstraintSets), Int)
 type OutputBDG    = (Assumptions, ConstraintSet, InheritedBDG, Int, Int, FiniteMap Name (Sigma Predicates))
 
 performBindingGroup :: InputBDG -> BindingGroups -> OutputBDG
-performBindingGroup (currentChunk, uniqueChunk, monos, typeSignatures, chunkContext, unique) groups = 
+performBindingGroup (topLevel, currentChunk, uniqueChunk, monos, typeSignatures, chunkContext, unique) groups = 
    variableDependencies 
 
    where   
@@ -110,7 +110,8 @@ performBindingGroup (currentChunk, uniqueChunk, monos, typeSignatures, chunkCont
                    cset4          = genConstraints monos cinfoGeneralize implicits                   
                    (cset5, aset') = (implicitsFM .<==. aset) cinfoBindingGroupImplicit
                                     
-                   monomorphic    = any (`elem` monomorphicNames) (keysFM e) || cnr == currentChunk
+                   monomorphic    = not topLevel -- simplification: was 
+                                                 -- any (`elem` monomorphicNames) (keysFM e) || cnr == currentChunk
 
                    constraintTree =
                       StrictOrder 

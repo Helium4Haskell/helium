@@ -85,8 +85,7 @@ selectConstraintSolver options importenv classEnv synonyms unique constraintTree
        combinedSolver =
           (if SignatureWarnings `elem` options then warnForTooSpecificSignatures runGreedy else runGreedy)   
              |>>| typegraphSolver
-   in 
-      selectedSolver classEnv synonyms unique constraints
+   in selectedSolver classEnv synonyms unique constraints
 
 warnForTooSpecificSignatures :: SolverX (TypeConstraint ConstraintInfo) ConstraintInfo Predicates Warnings -> SolverX (TypeConstraint ConstraintInfo) ConstraintInfo Predicates Warnings
 warnForTooSpecificSignatures solver classEnv synonyms unique constraints =
