@@ -96,7 +96,7 @@ missingTypeSignature :: Bool -> Names -> TypeEnvironment -> Warnings
 missingTypeSignature topLevel simplePats = 
    let -- for the moment, only missing type signature for top-level functions are reported (unless monomorphic).
       makeWarning (name, scheme) =
-         let fromSimple = name `elem` simplePats
+         let fromSimple = name `elem` simplePats && isOverloaded scheme
          in [ NoTypeDef name scheme topLevel fromSimple | null (ftv scheme) && (topLevel || fromSimple)  ]
    in concatMap makeWarning . fmToList
    

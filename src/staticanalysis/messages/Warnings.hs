@@ -23,7 +23,7 @@ import qualified UHA_Pretty as PP (sem_Pattern, sem_LeftHandSide, sem_Expression
 -- (Static) Warnings
 
 type Warnings = [Warning]
-data Warning  = NoTypeDef Name TpScheme Bool{- toplevel? -} Bool{- simple pat? -}
+data Warning  = NoTypeDef Name TpScheme Bool{- toplevel? -} Bool{- simple pat and overloaded? -}
               | Shadow Name Name
               | Unused Entity Name
               | SimilarFunctionBindings Name {- without typesignature -} Name {- with type signature -}
@@ -66,7 +66,7 @@ showWarning warning = case warning of
       ( MessageString ("Missing type signature: " ++ showNameAsVariable name ++ " :: " ++ show tpscheme)
       , let hint = "Because " ++ showNameAsVariable name ++ " has an overloaded type, computations may be repeated. " ++
                    "Insert the missing type signature if this is indeed your intention."
-        in [ MessageString hint | simplePat, isOverloaded tpscheme ]
+        in [ MessageString hint | simplePat ]
       )
 
    Shadow shadowee shadower ->
