@@ -450,6 +450,21 @@ SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Pattern
 
+-- Pattern.Literal
+SEM Pattern | Literal loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltLiteral,"")
+        , location   = "literal pattern"
+        , errorrange = @range.self
+        , sources    = [ sourcePattern @oneLineTree ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , HighlyTrusted
+                       , IsLiteral @literal.self
+                       , Size @size ]   
+        }   
+        
+-- Pattern.Constructor
 SEM Pattern | Constructor loc . cinfoConstructor =
   \tppair ->
   CInfo { info       = (NTPattern,AltConstructor,"") 
@@ -462,100 +477,6 @@ SEM Pattern | Constructor loc . cinfoConstructor =
                        , Size @size ]  
         }
 
-SEM Pattern | InfixConstructor loc . cinfoConstructor =
-  \tppair ->
-  CInfo { info       = (NTPattern,AltInfixConstructor,"")
-        , location   = "pattern constructor"
-        , errorrange = getNameRange @constructorOperator.self
-        , sources    = [ sourcePattern @constructorOperator.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , HighlyTrusted
-                       , Size @size ]   
-        }
-        
-SEM Pattern | Literal loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTPattern,AltLiteral,"")
-        , location   = "literal pattern"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , HighlyTrusted
-                       , IsLiteral @literal.self
-                       , Size @size ]   
-        }        
-       
-SEM Pattern | List loc . cinfoResult =
-  \tppair ->
-  CInfo { info       = (NTPattern,AltList,"result")
-        , location   = "pattern list"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint 
-                       , Size @patterns.size ]   
-        }
-
-SEM Pattern | Tuple loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTPattern,AltTuple,"result")
-        , location   = "pattern tuple"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , IsTupleEdge
-                       , Size @patterns.size ]    
-        }
-
-SEM Pattern | Negate loc . cinfoResult =
-  \tppair ->
-  CInfo { info       = (NTPattern,AltNegate,"result")
-        , location   = "pattern negation"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , Size @size
-                       , NegationResult ] 
-        } 
-        
-SEM Pattern | Negate loc . cinfoPat =
-  \tppair ->
-   CInfo { info       = (NTPattern,AltNegate,"pattern")
-        , location   = "pattern negation "
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree, sourceTerm @literal.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ Size @size 
-                       , Negation (tpToInt @beta) ]    
-        }
-
-SEM Pattern | NegateFloat loc . cinfoResult =
-  \tppair ->
-  CInfo { info       = (NTPattern,AltNegateFloat,"result")
-        , location   = "pattern negation"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , Size @size 
-                       , NegationResult ] 
-        } 
-        
-SEM Pattern | NegateFloat loc . cinfoPat =
-  \tppair ->
-   CInfo { info       = (NTPattern,AltNegateFloat,"pattern")
-        , location   = "pattern negation "
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree, sourceTerm @literal.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ Size @size 
-                       , Negation (tpToInt @beta) ]    
-        }
-        
 SEM Pattern | Constructor loc . cinfoApply =
   \tppair ->
   CInfo { info       = (NTPattern,AltConstructor,"apply")
@@ -569,26 +490,18 @@ SEM Pattern | Constructor loc . cinfoApply =
         , typepair   = tppair
         , properties = [ Size @size ]    
         }
-
-SEM Pattern | List loc . cinfoElem =
-  \elemtext tppair ->
-  CInfo { info       = (NTPattern,AltList,"element")
-        , location   = "element of pattern list"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree, sourceTerm elemtext ]
-        , typepair   = tppair
-        , properties = [ Size @patterns.size
-                       ]
-        }               
-
-SEM Pattern |  As loc . cinfo =
+                
+-- Pattern.InfixConstructor
+SEM Pattern | InfixConstructor loc . cinfoConstructor =
   \tppair ->
-  CInfo { info       = (NTPattern,AltAs,"")
-        , location   = "as pattern"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm (Text (show @name.self)) ]
+  CInfo { info       = (NTPattern,AltInfixConstructor,"")
+        , location   = "pattern constructor"
+        , errorrange = getNameRange @constructorOperator.self
+        , sources    = [ sourcePattern @constructorOperator.oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @size ] 
+        , properties = [ FolkloreConstraint
+                       , HighlyTrusted
+                       , Size @size ]   
         }
 
 SEM Pattern | InfixConstructor loc . cinfoApply =
@@ -603,6 +516,101 @@ SEM Pattern | InfixConstructor loc . cinfoApply =
                                  [ (@leftPattern.oneLineTree ,@leftPattern.beta )
                                  , (@rightPattern.oneLineTree,@rightPattern.beta)
                                  ] -}       
+        }
+        
+-- Pattern.List
+SEM Pattern | List loc . cinfoResult =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltList,"result")
+        , location   = "pattern list"
+        , errorrange = @range.self
+        , sources    = [ sourcePattern @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint 
+                       , Size @patterns.size ]   
+        }
+        
+SEM Pattern | List loc . cinfoElem =
+  \elemtext tppair ->
+  CInfo { info       = (NTPattern,AltList,"element")
+        , location   = "element of pattern list"
+        , errorrange = @range.self
+        , sources    = [ sourcePattern @oneLineTree, sourceTerm elemtext ]
+        , typepair   = tppair
+        , properties = [ Size @patterns.size
+                       ]
+        } 
+        
+-- Pattern.Tuple
+SEM Pattern | Tuple loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltTuple,"result")
+        , location   = "pattern tuple"
+        , errorrange = @range.self
+        , sources    = [ sourcePattern @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , IsTupleEdge
+                       , Size @patterns.size ]    
+        }
+        
+-- Pattern.Negate
+SEM Pattern | Negate loc . cinfoResult =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltNegate,"result")
+        , location   = "pattern negation"
+        , errorrange = @range.self
+        , sources    = [ sourcePattern @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , Size @size
+                       , NegationResult ] 
+        } 
+
+SEM Pattern | Negate loc . cinfoPat =
+  \tppair ->
+   CInfo { info       = (NTPattern,AltNegate,"pattern")
+        , location   = "pattern negation "
+        , errorrange = @range.self
+        , sources    = [ sourcePattern @oneLineTree, sourceTerm @literal.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size 
+                       , Negation (tpToInt @beta) ]    
+        }
+        
+-- Pattern.As 
+SEM Pattern |  As loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltAs,"")
+        , location   = "as pattern"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm (Text (show @name.self)) ]
+        , typepair   = tppair
+        , properties = [ Size @size ] 
+        }
+       
+-- Pattern.NegateFloat  
+SEM Pattern | NegateFloat loc . cinfoResult =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltNegateFloat,"result")
+        , location   = "pattern negation"
+        , errorrange = @range.self
+        , sources    = [ sourcePattern @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , Size @size 
+                       , NegationResult ] 
+        } 
+
+SEM Pattern | NegateFloat loc . cinfoPat =
+  \tppair ->
+   CInfo { info       = (NTPattern,AltNegateFloat,"pattern")
+        , location   = "pattern negation "
+        , errorrange = @range.self
+        , sources    = [ sourcePattern @oneLineTree, sourceTerm @literal.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size 
+                       , Negation (tpToInt @beta) ]    
         }
 
 ---------------------------------------------------------------------------------------

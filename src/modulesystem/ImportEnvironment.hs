@@ -2,11 +2,12 @@ module ImportEnvironment where
 
 import FiniteMap
 import UHA_Syntax  ( Names, Name )
+import UHA_Utils
 import Types
 import OperatorTable
 import Messages -- instance Show Name
 import TS_CoreSyntax (Core_TypingStrategies)
-import List (sortBy)
+import List (sortBy, partition, groupBy)
 
 type TypeEnvironment             = FiniteMap Name TpScheme
 type ValueConstructorEnvironment = FiniteMap Name TpScheme
@@ -101,28 +102,59 @@ combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 xs1) (Import
       (xs1 ++ xs2)
       
 instance Show ImportEnvironment where
-   show (ImportEnvironment tcs tss te vcs ot xs) = 
-      let fixlist = case sortBy  (\x y -> fst x `compare` fst y) ot of
-                       [] -> []
-                       xs -> let f (s, (i, a)) = case a of
-                                                    AssocRight -> "   infixr " ++ show i ++ " " ++ s
-                                                    AssocLeft  -> "   infixl " ++ show i ++ " " ++ s
-                                                    AssocNone  -> "   infix "  ++ show i ++ " " ++ s
-                             in "Fixity declarations:" : map f xs
-          tclist = let datas    = map f . filter p . fmToList $ tcs
-                         where p = (`notElem` syns) . fst
-                               f (n,i) = "   data "++show n++concatMap (\t -> " " ++ [t])  (take i ['a'..])
-                       syns = [ n | (n,(i,f)) <- fmToList tss ]
-                       synonyms = map (\(n,(i,f)) -> "   type "++show n++" "++pretty i f) (fmToList tss)
-                         where pretty i f = let list = take i [ TCon [c] | c <- ['a'..]]
-                                            in concatMap (\t -> show t ++ " ") list ++ "= " ++ show (f list)
-                   in case datas ++ synonyms of 
-                         [] -> []
-                         xs -> "Type constructors:" : xs
-          vclist = case fmToList vcs of
-                      [] -> []
-                      xs -> "Value constructors:" : map (\(n,ts) -> "   " ++ show n ++ " :: "++show ts) xs 
-          telist = case fmToList te of
-                      [] -> []
-                      xs -> "Functions:" : map (\(n,ts) -> "   " ++ show n ++ " :: "++show ts) xs 
-      in unlines (concat [fixlist,tclist,vclist,telist])
+   show (ImportEnvironment tcs tss te vcs ot _) = 
+      unlines (concat [ fixities
+                      , datatypes
+                      , typesynonyms
+                      , valueConstructors
+                      , functions
+                      ])
+    where
+    
+       fixities =    
+          let sorted  = let cmp (name, (prio, assoc)) = (10 - prio, assoc, not (isOperatorName name), name)
+                        in sortBy (\x y -> cmp x `compare` cmp y) [ (nameFromString s, x) | (s, x) <- ot ]
+              grouped = groupBy (\x y -> snd x == snd y) sorted
+              list = let f ((name, (prio, assoc)) : rest) =
+                            let names  = name : map fst rest 
+                                prefix = (case assoc of
+                                             AssocRight -> "infixr"
+                                             AssocLeft  -> "infixl"
+                                             AssocNone  -> "infix "
+                                         )++" "++ show prio ++ " "
+                            in prefix ++ foldr1 (\x y -> x++", "++y) (map showNameAsOperator names)
+                     in map f grouped          
+          in showWithTitle "Fixity declarations" list
+       
+       datatypes = 
+          let allDatas = filter ((`notElem` keysFM tss). fst) (fmToList tcs)
+              (xs, ys) = partition (isIdentifierName . fst) allDatas
+              list     = map (\(n,i) -> "data "++showNameAsVariable n++concatMap (\t -> " " ++ [t])  (take i ['a'..])) (ys++xs)
+          in showWithTitle "Data types" list
+       
+       typesynonyms =
+          let (xs, ys) = partition (isIdentifierName . fst) (fmToList tss)
+              list     = map (\(n,(i,f)) -> "type "++showNameAsVariable n++" "++pretty i f) (ys++xs)
+              pretty i f = let list = take i [ TCon [c] | c <- ['a'..]]
+                           in concatMap (\t -> show t ++ " ") list ++ "= " ++ show (f list)                   
+          in showWithTitle "Type synonyms" list  
+                 
+       valueConstructors =
+          let (xs, ys) = partition (isIdentifierName . fst) (fmToList vcs)
+              list     = map (\(n,t) -> showNameAsVariable n ++ " :: "++show t) (ys++xs)         
+          in showWithTitle "Value constructors" list    
+                 
+       functions = 
+          let (xs, ys) = partition (isIdentifierName . fst) (fmToList te)
+              list     = map (\(n,t) -> showNameAsVariable n ++ " :: "++show t) (ys++xs)
+          in showWithTitle "Functions" list                  
+       
+       showWithTitle title xs
+          | null xs   = []
+          | otherwise = (title++":") : map ("   "++) xs
+       
+instance Ord Assoc where
+  x <= y = let f AssocLeft  = 0
+               f AssocRight = 1
+               f AssocNone  = 2
+           in f x <= f y

@@ -231,11 +231,7 @@ compile fullName options doneModules =
         putStrLn $ "Compilation successful" ++ 
                       if number == 0 || (NoWarnings `elem` options)   
                         then "" 
-                        else " with " ++ show number ++ " warning" ++ if number == 1 then "" else "s"          
-
-parensIfOperator :: Name -> String
-parensIfOperator n = 
-    if isOperatorName n then "(" ++ show n ++ ")" else show n
+                        else " with " ++ show number ++ " warning" ++ if number == 1 then "" else "s"
 
 enterNewPhase :: String -> [Option] -> IO ()
 enterNewPhase phase options = 

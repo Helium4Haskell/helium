@@ -20,6 +20,9 @@ module UHA_Utils
     , stringFromImportDeclaration
     , rangeFromImportDeclaration
     , isOperatorName
+    , isIdentifierName    
+    , showNameAsOperator
+    , showNameAsVariable
     -- These functions misuse ranges
     , makeImportRange, isImportRange, isImportName, modulesFromImportRange
     , nameFromString
@@ -221,3 +224,51 @@ nameFromString s = Name_Identifier noRange [] s
 isOperatorName :: Name -> Bool
 isOperatorName (Name_Operator   _ _ name) = True
 isOperatorName _ = False
+
+isIdentifierName :: Name -> Bool
+isIdentifierName (Name_Identifier   _ _ name) = True
+isIdentifierName _ = False
+
+showNameAsOperator :: Name -> String
+showNameAsOperator name
+   | isIdentifierName name = "`"++show name++"`"
+   | otherwise             = show name
+
+showNameAsVariable :: Name -> String
+showNameAsVariable name
+   | isOperatorName name = "("++show name++")"
+   | otherwise           = show name
+
+instance Show Range where
+    show (Range_Range begin end) = "<" ++ show begin ++ "," ++ show end ++ ">"
+instance Show Position where
+    show (Position_Position _ begin end) = "<" ++ show begin ++ "," ++ show end ++ ">"
+    show (Position_Unknown) = "<unknown>"
+
+instance Eq Range where
+    Range_Range start1 stop1 == Range_Range start2 stop2 =
+        start1 == start2 && stop1 == stop2
+
+instance Ord Range where
+    Range_Range start1 stop1 <= Range_Range start2 stop2 =
+        (start1 < start2)
+        ||
+        (start1 == start2 && stop1 <= stop2)
+
+instance Eq Position where
+    Position_Position m1 l1 c1 == Position_Position m2 l2 c2 =
+        m1 == m2 && l1 == l2 && c1 == c2
+    Position_Unknown           == Position_Unknown        = False
+    Position_Unknown           == Position_Position _ _ _ = False
+    Position_Position _ _ _    == Position_Unknown        = False
+
+instance Ord Position where
+    Position_Position _ l1 c1 <= Position_Position _ l2 c2 =
+        (l1 < l2)
+        ||
+        (l1 == l2 && c1 <= c2)
+    Position_Unknown        <= Position_Unknown        = False
+    Position_Unknown        <= Position_Position _ _ _ = True
+    Position_Position _ _ _ <= Position_Unknown        = False   
+
+instance Show Name where show = getNameName  
