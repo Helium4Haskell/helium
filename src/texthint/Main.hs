@@ -197,7 +197,7 @@ cmdReloadModule state =
         Just name -> cmdLoadModule name state
 
 ------------------------
--- Command :?
+-- Command :b
 ------------------------
 
 cmdBrowse :: State -> IO State
