@@ -1,3 +1,6 @@
+* Bastiaan: warning bij type met kleine letter, bijv. not :: Bool -> bool
+* Bastiaan: type could be more general warning
+
 * $main = putStr (show main) (toplevelTypes wordt dan onnodig in code generator)
 
 * Testscript in Haskell
