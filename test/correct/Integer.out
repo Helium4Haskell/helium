@@ -1,0 +1,4 @@
+Compiling correct/Integer.hs
+(4,1): Warning: Missing type signature: main :: Integer
+Compilation successful with 1 warning
+169

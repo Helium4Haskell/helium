@@ -1,0 +1,4 @@
+Compiling correct/DerivableSyn.hs
+(5,1): Warning: Missing type signature: main :: String
+Compilation successful with 1 warning
+"(B 100)"

@@ -1,4 +1,4 @@
 data A = A (Int -> Int)
-  deriving Show
-  
+   deriving Show
+
 main = show (A id)

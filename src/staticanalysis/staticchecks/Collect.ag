@@ -59,17 +59,20 @@ SEM Declaration
 -- 2) Collecting value constructors
 
 ATTR Body Declarations Declaration Constructors Constructor [ | collectValueConstructors : {[(Name,TpScheme)]} | ]
+ATTR Constructor Constructors [ | | parameterTypes USE { ++ } { [] } : Tps ]
 
 SEM Module | Module   body . collectValueConstructors = []
 
 SEM Constructor
   | Constructor
        lhs . collectValueConstructors = (@constructor.self, @typeScheme) : @lhs.collectValueConstructors
+           . parameterTypes = @tps
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
            . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype @types.types
                   
   | Infix
        lhs . collectValueConstructors = (@constructorOperator.self, @typeScheme) : @lhs.collectValueConstructors
+           . parameterTypes = @tps
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
            . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype [@leftType.type,@rightType.type] 
 
@@ -151,6 +154,26 @@ SEM Module
                           fmlist   = listToFM [ (show name, t) | (name, t) <- list ]
                           ordering = fst (getTypeSynonymOrdering fmlist)
                       in (ordering, fmlist)
+
+--------------------------------
+-- Derived instances (see also TypeInferenceCollect.ag)
+
+ATTR Module -> Declaration [ classEnvironment:ClassEnvironment | | collectInstances USE { ++ } { [] } : {[(Name, Instance)]} ]
+
+SEM Module
+  | Module
+       body.classEnvironment = 
+          let importEnv = foldr combineImportEnvironments emptyEnvironment @lhs.importEnvironments
+          in foldr (\(n, i) -> insertInstance (show n) i) 
+                   (createClassEnvironment importEnv) 
+                   @body.collectInstances
+
+SEM Declaration
+  | Data
+       lhs . collectInstances = [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) ) 
+                                | cl <- @derivings 
+                                ]
+
 
 -------------------------------------------------------
 -- utility attributes for types and constructors

@@ -1,0 +1,4 @@
+Compiling correct/Derivable.hs
+(7,1): Warning: Missing type signature: main :: String
+Compilation successful with 1 warning
+"(A B)"

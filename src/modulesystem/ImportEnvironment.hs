@@ -125,7 +125,7 @@ getSiblings importenv =
                     , lookupFM (typeEnvironment   importenv) n
                     ]
    in map (concatMap f) (getSiblingGroups importenv) 
-            
+         
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
 combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 xs2) = 
    ImportEnvironment 
@@ -204,7 +204,7 @@ superClassRelation = listToFM $
    , ("Show", ( [],              []))
    ]
 
-makeInstance :: String -> Int -> String -> (Predicate, Predicates)
+makeInstance :: String -> Int -> String -> Instance
 makeInstance className nrOfArgs tp =
    let tps = take nrOfArgs [ TVar i | i <- [0..] ] 
    in ( Predicate className (foldl TApp (TCon tp) tps)

@@ -28,6 +28,9 @@ infixr 0  $ --, $!                                             [PreludePrim]
 
 -}
 
+-- for compatibility with Haskell textbooks
+type Integer = Int
+
 (/) :: Int -> Int -> Int
 (/) = div
 

@@ -24,7 +24,11 @@ SEM Module
                    @body.constraints
                    
            . orderedTypeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment   
-           . classEnv            = createClassEnvironment @lhs.importEnvironment -- fix the type class environment        
+           . classEnv            = -- extend the set of imported instance declarations with the 
+                                   -- derived instances
+                                   foldr (\(n, i) -> insertInstance (show n) i) 
+                                         (createClassEnvironment @lhs.importEnvironment) 
+                                         @body.collectInstances
            . typeErrors          = case makeTypeErrors @classEnv @orderedTypeSynonyms @substitution @solveErrors of
                                       []   -> @body.collectErrors
                                       errs -> errs

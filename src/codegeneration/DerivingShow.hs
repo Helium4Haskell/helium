@@ -29,10 +29,11 @@ typeOfShowFunction name names =
     in generalizeAll ([] .=>. foldr1 (.->.) (map (.->. stringType) types))
 
 derivingShow :: UHA.Declaration -> [CoreDecl]
-derivingShow (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
+derivingShow (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors derivings) =
     let typeString = show (typeOfShowFunction name names)
         nameId     = idFromString ("show" ++ getNameName name)
         valueId    = idFromString "value$"
+        withDictionary = "Show" `elem` map show derivings
     in
        [ -- derive the show function 
          DeclValue 
@@ -49,7 +50,8 @@ derivingShow (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) 
                 (map idFromName names ++ [valueId])
           , declCustoms = [ custom "type" typeString ] 
           }
-       , -- derive the dictionary
+       ] ++
+       [ -- derive the dictionary
          DeclValue 
           { declName    = idFromString ("$dictShow" ++ getNameName name)
           , declAccess  = public
@@ -57,6 +59,7 @@ derivingShow (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) 
           , valueValue  = makeShowDictionary (length names) nameId
           , declCustoms = [ custom "type" ("DictShow" ++ getNameName name) ] 
           }
+       | withDictionary
        ]
        
 -- type T a b = (b, a) 

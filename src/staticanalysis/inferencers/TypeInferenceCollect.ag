@@ -187,7 +187,23 @@ SEM Declaration
   | TypeSignature
       lhs . typeSignatures = addListToFM @lhs.typeSignatures [ (name, @typeScheme) | name <- @names.self ]
       loc . typeScheme     = makeTpSchemeFromType @type.self
-           
+
+--------------------------------
+-- Derived instances
+
+ATTR Module -> Declaration [ | | collectInstances USE { ++ } { [] } : {[(Name, Instance)]} ]
+
+SEM Declaration
+  | Data
+       lhs . collectInstances = [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) ) 
+                                | cl <- @derivings 
+                                ]
+
+ATTR SimpleType [ | | name:Name typevariables:Names ]
+SEM SimpleType
+  | SimpleType  lhs . name          = @name.self                   
+                    . typevariables = @typevariables.self
+                    
 --------------------------------
 -- Chunks
 

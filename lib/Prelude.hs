@@ -112,6 +112,9 @@ mod  :: Int -> Int -> Int
 quot :: Int -> Int -> Int
 -}
 
+-- for compatibility with Haskell textbooks
+type Integer = Int
+
 abs :: Int -> Int
 abs x = if x < 0 then - x else x
 
@@ -205,7 +208,8 @@ otherwise = True
 data Maybe a
     = Nothing
     | Just a
-
+    deriving Show
+ 
 maybe :: b -> (a -> b) -> Maybe a -> b
 maybe e f m =
     case m of 
@@ -216,7 +220,7 @@ maybe e f m =
  -- Either
  -----------------------------------------------}
 
-data Either a b = Left a | Right b
+data Either a b = Left a | Right b deriving Show
 
 either :: (a -> c) -> (b -> c) -> Either a b -> c
 either l r e =

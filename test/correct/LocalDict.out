@@ -1,0 +1,4 @@
+Compiling correct/LocalDict.hs
+(4,1): Warning: Missing type signature: main :: String
+Compilation successful with 1 warning
+"(A 3)"

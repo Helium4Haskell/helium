@@ -1,4 +1,4 @@
 module ExportShowInstance2 where
 
-data A = MkA Int 
+data A = MkA Int deriving Show
 

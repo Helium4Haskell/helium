@@ -521,6 +521,7 @@ type T_Alternative = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (Tp) ->
                      (Tp) ->
                      (Int) ->
+                     (ClassEnvironment) ->
                      (TypeErrors) ->
                      (Warnings) ->
                      (Int) ->
@@ -535,7 +536,7 @@ type T_Alternative = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (FixpointSubstitution) ->
                      (FiniteMap Int (Scheme Predicates)) ->
                      (Int) ->
-                     ( (Assumptions),(Int),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),( ([PatternElement], Bool) ),(InfoTrees),(IO ()),([Warning]),(Alternative),(Names),(Int),(Warning))
+                     ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),( ([PatternElement], Bool) ),(InfoTrees),(IO ()),([Warning]),(Alternative),(Names),(Int),(Warning))
 -- cata
 sem_Alternative :: (Alternative) ->
                    (T_Alternative)
@@ -554,6 +555,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
       _lhsIbetaLeft
       _lhsIbetaRight
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -571,6 +573,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -602,6 +605,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
             _righthandsideIassumptions :: (Assumptions)
             _righthandsideIbetaUnique :: (Int)
             _righthandsideIcollectErrors :: (TypeErrors)
+            _righthandsideIcollectInstances :: ([(Name, Instance)])
             _righthandsideIcollectWarnings :: (Warnings)
             _righthandsideIconstraints :: (ConstraintSet)
             _righthandsideIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -617,6 +621,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
             _righthandsideOavailablePredicates :: (Predicates)
             _righthandsideObetaRight :: (Tp)
             _righthandsideObetaUnique :: (Int)
+            _righthandsideOclassEnvironment :: (ClassEnvironment)
             _righthandsideOcollectErrors :: (TypeErrors)
             _righthandsideOcollectWarnings :: (Warnings)
             _righthandsideOcurrentChunk :: (Int)
@@ -635,12 +640,13 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
                 (range_ )
             ( _patternIbeta,_patternIbetaUnique,_patternIconstraints,_patternIelements,_patternIenvironment,_patternIinfoTree,_patternIpatVarNames,_patternIpatternMatchWarnings,_patternIself,_patternIunboundNames) =
                 (pattern_ (_patternObetaUnique) (_patternOimportEnvironment) (_patternOmonos) (_patternOnamesInScope) (_patternOparentTree) (_patternOpatternMatchWarnings))
-            ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectErrors,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTree,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
+            ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectErrors,_righthandsideIcollectInstances,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTree,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
                 (righthandside_ (_righthandsideOallPatterns)
                                 (_righthandsideOallTypeSchemes)
                                 (_righthandsideOavailablePredicates)
                                 (_righthandsideObetaRight)
                                 (_righthandsideObetaUnique)
+                                (_righthandsideOclassEnvironment)
                                 (_righthandsideOcollectErrors)
                                 (_righthandsideOcollectWarnings)
                                 (_righthandsideOcurrentChunk)
@@ -684,6 +690,8 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
                 UnreachablePatternCase range_ _patternIself
             (_lhsOelements@_) =
                 (_patternIelements, _righthandsideIfallthrough)
+            (_lhsOcollectInstances@_) =
+                _righthandsideIcollectInstances
             (_self@_) =
                 Alternative_Alternative _rangeIself _patternIself _righthandsideIself
             (_lhsOself@_) =
@@ -726,6 +734,8 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
                 _lhsIbetaRight
             (_righthandsideObetaUnique@_) =
                 _patternIbetaUnique
+            (_righthandsideOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_righthandsideOcollectErrors@_) =
                 _lhsIcollectErrors
             (_righthandsideOcollectWarnings@_) =
@@ -752,7 +762,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
                 _lhsItypeschemeMap
             (_righthandsideOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOelements,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwar)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOelements,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwar)
 sem_Alternative_Empty :: (T_Range) ->
                          (T_Alternative)
 sem_Alternative_Empty (range_) =
@@ -762,6 +772,7 @@ sem_Alternative_Empty (range_) =
       _lhsIbetaLeft
       _lhsIbetaRight
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -779,6 +790,7 @@ sem_Alternative_Empty (range_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -803,6 +815,8 @@ sem_Alternative_Empty (range_) =
                 pmError "Alternative_Empty.unrwar" "empty alternative"
             (_lhsOelements@_) =
                 ([], False)
+            (_lhsOcollectInstances@_) =
+                []
             (_lhsOunboundNames@_) =
                 []
             (_self@_) =
@@ -825,7 +839,7 @@ sem_Alternative_Empty (range_) =
                 _lhsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOelements,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwar)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOelements,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwar)
 -- Alternatives ------------------------------------------------
 -- semantic domain
 type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -834,6 +848,7 @@ type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (Tp) ->
                       (Tp) ->
                       (Int) ->
+                      (ClassEnvironment) ->
                       (TypeErrors) ->
                       (Warnings) ->
                       (Int) ->
@@ -848,7 +863,7 @@ type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (FixpointSubstitution) ->
                       (FiniteMap Int (Scheme Predicates)) ->
                       (Int) ->
-                      ( (Assumptions),(Int),(TypeErrors),(Warnings),(ConstraintSets),(DictionaryEnvironment),([([PatternElement], Bool)]),(InfoTrees),(IO ()),([Warning]),(Alternatives),(Names),(Int),([Warning]))
+                      ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSets),(DictionaryEnvironment),([([PatternElement], Bool)]),(InfoTrees),(IO ()),([Warning]),(Alternatives),(Names),(Int),([Warning]))
 -- cata
 sem_Alternatives :: (Alternatives) ->
                     (T_Alternatives)
@@ -864,6 +879,7 @@ sem_Alternatives_Cons (hd_) (tl_) =
       _lhsIbetaLeft
       _lhsIbetaRight
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -881,6 +897,7 @@ sem_Alternatives_Cons (hd_) (tl_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraintslist :: (ConstraintSets)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -895,6 +912,7 @@ sem_Alternatives_Cons (hd_) (tl_) =
             _hdIassumptions :: (Assumptions)
             _hdIbetaUnique :: (Int)
             _hdIcollectErrors :: (TypeErrors)
+            _hdIcollectInstances :: ([(Name, Instance)])
             _hdIcollectWarnings :: (Warnings)
             _hdIconstraints :: (ConstraintSet)
             _hdIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -912,6 +930,7 @@ sem_Alternatives_Cons (hd_) (tl_) =
             _hdObetaLeft :: (Tp)
             _hdObetaRight :: (Tp)
             _hdObetaUnique :: (Int)
+            _hdOclassEnvironment :: (ClassEnvironment)
             _hdOcollectErrors :: (TypeErrors)
             _hdOcollectWarnings :: (Warnings)
             _hdOcurrentChunk :: (Int)
@@ -929,6 +948,7 @@ sem_Alternatives_Cons (hd_) (tl_) =
             _tlIassumptions :: (Assumptions)
             _tlIbetaUnique :: (Int)
             _tlIcollectErrors :: (TypeErrors)
+            _tlIcollectInstances :: ([(Name, Instance)])
             _tlIcollectWarnings :: (Warnings)
             _tlIconstraintslist :: (ConstraintSets)
             _tlIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -946,6 +966,7 @@ sem_Alternatives_Cons (hd_) (tl_) =
             _tlObetaLeft :: (Tp)
             _tlObetaRight :: (Tp)
             _tlObetaUnique :: (Int)
+            _tlOclassEnvironment :: (ClassEnvironment)
             _tlOcollectErrors :: (TypeErrors)
             _tlOcollectWarnings :: (Warnings)
             _tlOcurrentChunk :: (Int)
@@ -960,10 +981,10 @@ sem_Alternatives_Cons (hd_) (tl_) =
             _tlOsubstitution :: (FixpointSubstitution)
             _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
             _tlOuniqueChunk :: (Int)
-            ( _hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIelements,_hdIinfoTrees,_hdImatchIO,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIunrwar) =
-                (hd_ (_hdOallPatterns) (_hdOallTypeSchemes) (_hdOavailablePredicates) (_hdObetaLeft) (_hdObetaRight) (_hdObetaUnique) (_hdOcollectErrors) (_hdOcollectWarnings) (_hdOcurrentChunk) (_hdOdictionaryEnvironment) (_hdOimportEnvironment) (_hdOmatchIO) (_hdOmonos) (_hdOnamesInScope) (_hdOorderedTypeSynonyms) (_hdOparentTree) (_hdOpatternMatchWarnings) (_hdOsubstitution) (_hdOtypeschemeMap) (_hdOuniqueChunk))
-            ( _tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectWarnings,_tlIconstraintslist,_tlIdictionaryEnvironment,_tlIelementss,_tlIinfoTrees,_tlImatchIO,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIunrwars) =
-                (tl_ (_tlOallPatterns) (_tlOallTypeSchemes) (_tlOavailablePredicates) (_tlObetaLeft) (_tlObetaRight) (_tlObetaUnique) (_tlOcollectErrors) (_tlOcollectWarnings) (_tlOcurrentChunk) (_tlOdictionaryEnvironment) (_tlOimportEnvironment) (_tlOmatchIO) (_tlOmonos) (_tlOnamesInScope) (_tlOorderedTypeSynonyms) (_tlOparentTree) (_tlOpatternMatchWarnings) (_tlOsubstitution) (_tlOtypeschemeMap) (_tlOuniqueChunk))
+            ( _hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIelements,_hdIinfoTrees,_hdImatchIO,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIunrwar) =
+                (hd_ (_hdOallPatterns) (_hdOallTypeSchemes) (_hdOavailablePredicates) (_hdObetaLeft) (_hdObetaRight) (_hdObetaUnique) (_hdOclassEnvironment) (_hdOcollectErrors) (_hdOcollectWarnings) (_hdOcurrentChunk) (_hdOdictionaryEnvironment) (_hdOimportEnvironment) (_hdOmatchIO) (_hdOmonos) (_hdOnamesInScope) (_hdOorderedTypeSynonyms) (_hdOparentTree) (_hdOpatternMatchWarnings) (_hdOsubstitution) (_hdOtypeschemeMap) (_hdOuniqueChunk))
+            ( _tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIconstraintslist,_tlIdictionaryEnvironment,_tlIelementss,_tlIinfoTrees,_tlImatchIO,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIunrwars) =
+                (tl_ (_tlOallPatterns) (_tlOallTypeSchemes) (_tlOavailablePredicates) (_tlObetaLeft) (_tlObetaRight) (_tlObetaUnique) (_tlOclassEnvironment) (_tlOcollectErrors) (_tlOcollectWarnings) (_tlOcurrentChunk) (_tlOdictionaryEnvironment) (_tlOimportEnvironment) (_tlOmatchIO) (_tlOmonos) (_tlOnamesInScope) (_tlOorderedTypeSynonyms) (_tlOparentTree) (_tlOpatternMatchWarnings) (_tlOsubstitution) (_tlOtypeschemeMap) (_tlOuniqueChunk))
             (_lhsOconstraintslist@_) =
                 _hdIconstraints : _tlIconstraintslist
             (_lhsOassumptions@_) =
@@ -974,6 +995,8 @@ sem_Alternatives_Cons (hd_) (tl_) =
                 _hdIunrwar   : _tlIunrwars
             (_lhsOelementss@_) =
                 _hdIelements : _tlIelementss
+            (_lhsOcollectInstances@_) =
+                _hdIcollectInstances  ++  _tlIcollectInstances
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -1006,6 +1029,8 @@ sem_Alternatives_Cons (hd_) (tl_) =
                 _lhsIbetaRight
             (_hdObetaUnique@_) =
                 _lhsIbetaUnique
+            (_hdOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_hdOcollectErrors@_) =
                 _lhsIcollectErrors
             (_hdOcollectWarnings@_) =
@@ -1046,6 +1071,8 @@ sem_Alternatives_Cons (hd_) (tl_) =
                 _lhsIbetaRight
             (_tlObetaUnique@_) =
                 _hdIbetaUnique
+            (_tlOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_tlOcollectErrors@_) =
                 _hdIcollectErrors
             (_tlOcollectWarnings@_) =
@@ -1074,7 +1101,7 @@ sem_Alternatives_Cons (hd_) (tl_) =
                 _lhsItypeschemeMap
             (_tlOuniqueChunk@_) =
                 _hdIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOelementss,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwars)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOelementss,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwars)
 sem_Alternatives_Nil :: (T_Alternatives)
 sem_Alternatives_Nil  =
     \ _lhsIallPatterns
@@ -1083,6 +1110,7 @@ sem_Alternatives_Nil  =
       _lhsIbetaLeft
       _lhsIbetaRight
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -1100,6 +1128,7 @@ sem_Alternatives_Nil  =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraintslist :: (ConstraintSets)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -1121,6 +1150,8 @@ sem_Alternatives_Nil  =
                 []
             (_lhsOelementss@_) =
                 []
+            (_lhsOcollectInstances@_) =
+                []
             (_lhsOunboundNames@_) =
                 []
             (_self@_) =
@@ -1141,7 +1172,7 @@ sem_Alternatives_Nil  =
                 _lhsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOelementss,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwars)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOelementss,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwars)
 -- AnnotatedType -----------------------------------------------
 -- semantic domain
 type T_AnnotatedType = (Names) ->
@@ -1227,6 +1258,7 @@ type T_Body = ([((Expression, [String]), Core_TypingStrategy)]) ->
               (FiniteMap NameWithRange TpScheme) ->
               (Predicates) ->
               (Int) ->
+              (ClassEnvironment) ->
               (TypeErrors) ->
               (Warnings) ->
               (Int) ->
@@ -1240,7 +1272,7 @@ type T_Body = ([((Expression, [String]), Core_TypingStrategy)]) ->
               (FixpointSubstitution) ->
               (FiniteMap Int (Scheme Predicates)) ->
               (Int) ->
-              ( (Assumptions),(Int),(TypeErrors),(Warnings),(ConstraintSet),(Names),(DictionaryEnvironment),(IO ()),([Warning]),(InfoTree),(Body),(TypeEnvironment),(Names),(Int))
+              ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(Names),(DictionaryEnvironment),(IO ()),([Warning]),(InfoTree),(Body),(TypeEnvironment),(Names),(Int))
 -- cata
 sem_Body :: (Body) ->
             (T_Body)
@@ -1255,6 +1287,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -1271,6 +1304,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdeclVarNames :: (Names)
@@ -1287,6 +1321,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             _declarationsIbetaUnique :: (Int)
             _declarationsIbindingGroups :: (BindingGroups)
             _declarationsIcollectErrors :: (TypeErrors)
+            _declarationsIcollectInstances :: ([(Name, Instance)])
             _declarationsIcollectWarnings :: (Warnings)
             _declarationsIdeclVarNames :: (Names)
             _declarationsIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -1304,6 +1339,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             _declarationsOavailablePredicates :: (Predicates)
             _declarationsObetaUnique :: (Int)
             _declarationsObindingGroups :: (BindingGroups)
+            _declarationsOclassEnvironment :: (ClassEnvironment)
             _declarationsOcollectErrors :: (TypeErrors)
             _declarationsOcollectWarnings :: (Warnings)
             _declarationsOcurrentChunk :: (Int)
@@ -1324,12 +1360,29 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                 (range_ )
             ( _importdeclarationsIself) =
                 (importdeclarations_ )
-            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
+            ( _declarationsIbetaUnique
+             ,_declarationsIbindingGroups
+             ,_declarationsIcollectErrors
+             ,_declarationsIcollectInstances
+             ,_declarationsIcollectWarnings
+             ,_declarationsIdeclVarNames
+             ,_declarationsIdictionaryEnvironment
+             ,_declarationsIinfoTrees
+             ,_declarationsImatchIO
+             ,_declarationsIpatternMatchWarnings
+             ,_declarationsIrestrictedNames
+             ,_declarationsIself
+             ,_declarationsIsimplePatNames
+             ,_declarationsItypeSignatures
+             ,_declarationsIunboundNames
+             ,_declarationsIuniqueChunk
+             ) =
                 (declarations_ (_declarationsOallPatterns)
                                (_declarationsOallTypeSchemes)
                                (_declarationsOavailablePredicates)
                                (_declarationsObetaUnique)
                                (_declarationsObindingGroups)
+                               (_declarationsOclassEnvironment)
                                (_declarationsOcollectErrors)
                                (_declarationsOcollectWarnings)
                                (_declarationsOcurrentChunk)
@@ -1385,6 +1438,8 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                 _parentTree
             (_parentTree@_) =
                 root _declInfo _declarationsIinfoTrees
+            (_lhsOcollectInstances@_) =
+                _declarationsIcollectInstances
             (_lhsOdeclVarNames@_) =
                 _declarationsIdeclVarNames
             (_lhsOunboundNames@_) =
@@ -1409,6 +1464,8 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                 _lhsIavailablePredicates
             (_declarationsObetaUnique@_) =
                 _lhsIbetaUnique
+            (_declarationsOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_declarationsOcollectErrors@_) =
                 _lhsIcollectErrors
             (_declarationsOcollectWarnings@_) =
@@ -1439,7 +1496,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                 _lhsItypeschemeMap
             (_declarationsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOroot,_lhsOself,_lhsOtoplevelTypes,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOroot,_lhsOself,_lhsOtoplevelTypes,_lhsOunboundNames,_lhsOuniqueChunk)
 -- Constructor -------------------------------------------------
 -- semantic domain
 type T_Constructor = (Names) ->
@@ -1663,6 +1720,7 @@ type T_Declaration = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (Predicates) ->
                      (Int) ->
                      (BindingGroups) ->
+                     (ClassEnvironment) ->
                      (TypeErrors) ->
                      (Warnings) ->
                      (Int) ->
@@ -1679,7 +1737,7 @@ type T_Declaration = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (TypeEnvironment) ->
                      (FiniteMap Int (Scheme Predicates)) ->
                      (Int) ->
-                     ( (Int),(BindingGroups),(TypeErrors),(Warnings),(Names),(DictionaryEnvironment),(InfoTrees),(IO ()),([Warning]),(Names),(Declaration),(Names),(TypeEnvironment),(Names),(Int))
+                     ( (Int),(BindingGroups),(TypeErrors),([(Name, Instance)]),(Warnings),(Names),(DictionaryEnvironment),(InfoTrees),(IO ()),([Warning]),(Names),(Declaration),(Names),(TypeEnvironment),(Names),(Int))
 -- cata
 sem_Declaration :: (Declaration) ->
                    (T_Declaration)
@@ -1716,6 +1774,7 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
       _lhsIavailablePredicates
       _lhsIbetaUnique
       _lhsIbindingGroups
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -1735,6 +1794,7 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
         let _lhsObetaUnique :: (Int)
             _lhsObindingGroups :: (BindingGroups)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdeclVarNames :: (Names)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -1749,10 +1809,13 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
             _lhsOuniqueChunk :: (Int)
             _rangeIself :: (Range)
             _contextIself :: (ContextItems)
+            _simpletypeIname :: (Name)
             _simpletypeIself :: (SimpleType)
+            _simpletypeItypevariables :: (Names)
             _whereIassumptions :: (Assumptions)
             _whereIbetaUnique :: (Int)
             _whereIcollectErrors :: (TypeErrors)
+            _whereIcollectInstances :: ([(Name, Instance)])
             _whereIcollectWarnings :: (Warnings)
             _whereIconstraints :: (ConstraintSet)
             _whereIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -1769,6 +1832,7 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
             _whereOassumptions :: (Assumptions)
             _whereOavailablePredicates :: (Predicates)
             _whereObetaUnique :: (Int)
+            _whereOclassEnvironment :: (ClassEnvironment)
             _whereOcollectErrors :: (TypeErrors)
             _whereOcollectWarnings :: (Warnings)
             _whereOconstraints :: (ConstraintSet)
@@ -1789,14 +1853,15 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
                 (range_ )
             ( _contextIself) =
                 (context_ )
-            ( _simpletypeIself) =
+            ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                 (simpletype_ )
-            ( _whereIassumptions,_whereIbetaUnique,_whereIcollectErrors,_whereIcollectWarnings,_whereIconstraints,_whereIdictionaryEnvironment,_whereIinfoTrees,_whereIlocalTypes,_whereImatchIO,_whereInamesInScope,_whereIpatternMatchWarnings,_whereIself,_whereIunboundNames,_whereIuniqueChunk) =
+            ( _whereIassumptions,_whereIbetaUnique,_whereIcollectErrors,_whereIcollectInstances,_whereIcollectWarnings,_whereIconstraints,_whereIdictionaryEnvironment,_whereIinfoTrees,_whereIlocalTypes,_whereImatchIO,_whereInamesInScope,_whereIpatternMatchWarnings,_whereIself,_whereIunboundNames,_whereIuniqueChunk) =
                 (where_ (_whereOallPatterns)
                         (_whereOallTypeSchemes)
                         (_whereOassumptions)
                         (_whereOavailablePredicates)
                         (_whereObetaUnique)
+                        (_whereOclassEnvironment)
                         (_whereOcollectErrors)
                         (_whereOcollectWarnings)
                         (_whereOconstraints)
@@ -1815,6 +1880,8 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
                         (_whereOuniqueChunk))
             ((_assumptions@_,_constraints@_,_unboundNames@_)) =
                 internalError "PartialSyntax.ag" "n/a" "Declaration.Class"
+            (_lhsOcollectInstances@_) =
+                _whereIcollectInstances
             (_lhsOdeclVarNames@_) =
                 []
             (_lhsOrestrictedNames@_) =
@@ -1857,6 +1924,8 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
                 _lhsIavailablePredicates
             (_whereObetaUnique@_) =
                 _lhsIbetaUnique
+            (_whereOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_whereOcollectErrors@_) =
                 _lhsIcollectErrors
             (_whereOcollectWarnings@_) =
@@ -1889,7 +1958,7 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
                 _unboundNames
             (_whereOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_Data :: (T_Range) ->
                         (T_ContextItems) ->
                         (T_SimpleType) ->
@@ -1902,6 +1971,7 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
       _lhsIavailablePredicates
       _lhsIbetaUnique
       _lhsIbindingGroups
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -1921,6 +1991,7 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
         let _lhsObetaUnique :: (Int)
             _lhsObindingGroups :: (BindingGroups)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdeclVarNames :: (Names)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -1935,7 +2006,9 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
             _lhsOuniqueChunk :: (Int)
             _rangeIself :: (Range)
             _contextIself :: (ContextItems)
+            _simpletypeIname :: (Name)
             _simpletypeIself :: (SimpleType)
+            _simpletypeItypevariables :: (Names)
             _constructorsIself :: (Constructors)
             _constructorsIunboundNames :: (Names)
             _constructorsOnamesInScope :: (Names)
@@ -1944,12 +2017,16 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
                 (range_ )
             ( _contextIself) =
                 (context_ )
-            ( _simpletypeIself) =
+            ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                 (simpletype_ )
             ( _constructorsIself,_constructorsIunboundNames) =
                 (constructors_ (_constructorsOnamesInScope))
             ( _derivingsIself) =
                 (derivings_ )
+            (_lhsOcollectInstances@_) =
+                [ (cl, makeInstance (show cl) (length _simpletypeItypevariables) (show _simpletypeIname) )
+                | cl <- derivings_
+                ]
             (_lhsOinfoTrees@_) =
                 []
             (_lhsOdeclVarNames@_) =
@@ -1984,7 +2061,7 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
                 _lhsIuniqueChunk
             (_constructorsOnamesInScope@_) =
                 _lhsInamesInScope
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_Default :: (T_Range) ->
                            (T_Types) ->
                            (T_Declaration)
@@ -1994,6 +2071,7 @@ sem_Declaration_Default (range_) (types_) =
       _lhsIavailablePredicates
       _lhsIbetaUnique
       _lhsIbindingGroups
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -2013,6 +2091,7 @@ sem_Declaration_Default (range_) (types_) =
         let _lhsObetaUnique :: (Int)
             _lhsObindingGroups :: (BindingGroups)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdeclVarNames :: (Names)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -2033,6 +2112,8 @@ sem_Declaration_Default (range_) (types_) =
                 (types_ )
             (_infoTrees@_) =
                 globalInfoError
+            (_lhsOcollectInstances@_) =
+                []
             (_lhsOdeclVarNames@_) =
                 []
             (_lhsOrestrictedNames@_) =
@@ -2065,7 +2146,7 @@ sem_Declaration_Default (range_) (types_) =
                 _lhsItypeSignatures
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
 sem_Declaration_Empty (range_) =
@@ -2074,6 +2155,7 @@ sem_Declaration_Empty (range_) =
       _lhsIavailablePredicates
       _lhsIbetaUnique
       _lhsIbindingGroups
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -2093,6 +2175,7 @@ sem_Declaration_Empty (range_) =
         let _lhsObetaUnique :: (Int)
             _lhsObindingGroups :: (BindingGroups)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdeclVarNames :: (Names)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -2109,6 +2192,8 @@ sem_Declaration_Empty (range_) =
             ( _rangeIself) =
                 (range_ )
             (_lhsOinfoTrees@_) =
+                []
+            (_lhsOcollectInstances@_) =
                 []
             (_lhsOdeclVarNames@_) =
                 []
@@ -2140,7 +2225,7 @@ sem_Declaration_Empty (range_) =
                 _lhsItypeSignatures
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_Fixity :: (T_Range) ->
                           (T_Fixity) ->
                           (T_MaybeInt) ->
@@ -2152,6 +2237,7 @@ sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
       _lhsIavailablePredicates
       _lhsIbetaUnique
       _lhsIbindingGroups
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -2171,6 +2257,7 @@ sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
         let _lhsObetaUnique :: (Int)
             _lhsObindingGroups :: (BindingGroups)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdeclVarNames :: (Names)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -2196,6 +2283,8 @@ sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
             ( _operatorsIself) =
                 (operators_ )
             (_lhsOinfoTrees@_) =
+                []
+            (_lhsOcollectInstances@_) =
                 []
             (_lhsOdeclVarNames@_) =
                 []
@@ -2227,7 +2316,7 @@ sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
                 _lhsItypeSignatures
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)
@@ -2237,6 +2326,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
       _lhsIavailablePredicates
       _lhsIbetaUnique
       _lhsIbindingGroups
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -2256,6 +2346,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
         let _lhsObetaUnique :: (Int)
             _lhsObindingGroups :: (BindingGroups)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdeclVarNames :: (Names)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -2273,6 +2364,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
             _bindingsIassumptions :: (Assumptions)
             _bindingsIbetaUnique :: (Int)
             _bindingsIcollectErrors :: (TypeErrors)
+            _bindingsIcollectInstances :: ([(Name, Instance)])
             _bindingsIcollectWarnings :: (Warnings)
             _bindingsIconstraintslist :: (ConstraintSets)
             _bindingsIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -2292,6 +2384,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
             _bindingsObetaRight :: (Tp)
             _bindingsObetaUnique :: (Int)
             _bindingsObetasLeft :: (Tps)
+            _bindingsOclassEnvironment :: (ClassEnvironment)
             _bindingsOcollectErrors :: (TypeErrors)
             _bindingsOcollectWarnings :: (Warnings)
             _bindingsOcurrentChunk :: (Int)
@@ -2308,13 +2401,14 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
             _bindingsOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _bindingsIargcount,_bindingsIassumptions,_bindingsIbetaUnique,_bindingsIcollectErrors,_bindingsIcollectWarnings,_bindingsIconstraintslist,_bindingsIdictionaryEnvironment,_bindingsIelementss,_bindingsIinfoTrees,_bindingsImatchIO,_bindingsIname,_bindingsInumberOfPatterns,_bindingsIpatternMatchWarnings,_bindingsIself,_bindingsIunboundNames,_bindingsIuniqueChunk,_bindingsIunrwars) =
+            ( _bindingsIargcount,_bindingsIassumptions,_bindingsIbetaUnique,_bindingsIcollectErrors,_bindingsIcollectInstances,_bindingsIcollectWarnings,_bindingsIconstraintslist,_bindingsIdictionaryEnvironment,_bindingsIelementss,_bindingsIinfoTrees,_bindingsImatchIO,_bindingsIname,_bindingsInumberOfPatterns,_bindingsIpatternMatchWarnings,_bindingsIself,_bindingsIunboundNames,_bindingsIuniqueChunk,_bindingsIunrwars) =
                 (bindings_ (_bindingsOallPatterns)
                            (_bindingsOallTypeSchemes)
                            (_bindingsOavailablePredicates)
                            (_bindingsObetaRight)
                            (_bindingsObetaUnique)
                            (_bindingsObetasLeft)
+                           (_bindingsOclassEnvironment)
                            (_bindingsOcollectErrors)
                            (_bindingsOcollectWarnings)
                            (_bindingsOcurrentChunk)
@@ -2392,6 +2486,8 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
                                      "function bindings"
                                      "="
                 ++ _bindingsIpatternMatchWarnings
+            (_lhsOcollectInstances@_) =
+                _bindingsIcollectInstances
             (_lhsOrestrictedNames@_) =
                 []
             (_lhsOsimplePatNames@_) =
@@ -2422,6 +2518,8 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
                 _betaRight
             (_bindingsObetasLeft@_) =
                 _betasLeft
+            (_bindingsOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_bindingsOcollectErrors@_) =
                 _lhsIcollectErrors
             (_bindingsOcollectWarnings@_) =
@@ -2446,7 +2544,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
                 _lhsItypeschemeMap
             (_bindingsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_Instance :: (T_Range) ->
                             (T_ContextItems) ->
                             (T_Name) ->
@@ -2459,6 +2557,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
       _lhsIavailablePredicates
       _lhsIbetaUnique
       _lhsIbindingGroups
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -2478,6 +2577,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
         let _lhsObetaUnique :: (Int)
             _lhsObindingGroups :: (BindingGroups)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdeclVarNames :: (Names)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -2497,6 +2597,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
             _whereIassumptions :: (Assumptions)
             _whereIbetaUnique :: (Int)
             _whereIcollectErrors :: (TypeErrors)
+            _whereIcollectInstances :: ([(Name, Instance)])
             _whereIcollectWarnings :: (Warnings)
             _whereIconstraints :: (ConstraintSet)
             _whereIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -2513,6 +2614,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
             _whereOassumptions :: (Assumptions)
             _whereOavailablePredicates :: (Predicates)
             _whereObetaUnique :: (Int)
+            _whereOclassEnvironment :: (ClassEnvironment)
             _whereOcollectErrors :: (TypeErrors)
             _whereOcollectWarnings :: (Warnings)
             _whereOconstraints :: (ConstraintSet)
@@ -2537,12 +2639,13 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
                 (name_ )
             ( _typesIself) =
                 (types_ )
-            ( _whereIassumptions,_whereIbetaUnique,_whereIcollectErrors,_whereIcollectWarnings,_whereIconstraints,_whereIdictionaryEnvironment,_whereIinfoTrees,_whereIlocalTypes,_whereImatchIO,_whereInamesInScope,_whereIpatternMatchWarnings,_whereIself,_whereIunboundNames,_whereIuniqueChunk) =
+            ( _whereIassumptions,_whereIbetaUnique,_whereIcollectErrors,_whereIcollectInstances,_whereIcollectWarnings,_whereIconstraints,_whereIdictionaryEnvironment,_whereIinfoTrees,_whereIlocalTypes,_whereImatchIO,_whereInamesInScope,_whereIpatternMatchWarnings,_whereIself,_whereIunboundNames,_whereIuniqueChunk) =
                 (where_ (_whereOallPatterns)
                         (_whereOallTypeSchemes)
                         (_whereOassumptions)
                         (_whereOavailablePredicates)
                         (_whereObetaUnique)
+                        (_whereOclassEnvironment)
                         (_whereOcollectErrors)
                         (_whereOcollectWarnings)
                         (_whereOconstraints)
@@ -2561,6 +2664,8 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
                         (_whereOuniqueChunk))
             ((_assumptions@_,_constraints@_,_unboundNames@_)) =
                 internalError "PartialSyntax.ag" "n/a" "Declaration.Instance"
+            (_lhsOcollectInstances@_) =
+                _whereIcollectInstances
             (_lhsOdeclVarNames@_) =
                 []
             (_lhsOrestrictedNames@_) =
@@ -2603,6 +2708,8 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
                 _lhsIavailablePredicates
             (_whereObetaUnique@_) =
                 _lhsIbetaUnique
+            (_whereOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_whereOcollectErrors@_) =
                 _lhsIcollectErrors
             (_whereOcollectWarnings@_) =
@@ -2635,7 +2742,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
                 _unboundNames
             (_whereOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_Newtype :: (T_Range) ->
                            (T_ContextItems) ->
                            (T_SimpleType) ->
@@ -2648,6 +2755,7 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
       _lhsIavailablePredicates
       _lhsIbetaUnique
       _lhsIbindingGroups
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -2667,6 +2775,7 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
         let _lhsObetaUnique :: (Int)
             _lhsObindingGroups :: (BindingGroups)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdeclVarNames :: (Names)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -2681,7 +2790,9 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
             _lhsOuniqueChunk :: (Int)
             _rangeIself :: (Range)
             _contextIself :: (ContextItems)
+            _simpletypeIname :: (Name)
             _simpletypeIself :: (SimpleType)
+            _simpletypeItypevariables :: (Names)
             _constructorIself :: (Constructor)
             _constructorIunboundNames :: (Names)
             _constructorOnamesInScope :: (Names)
@@ -2690,7 +2801,7 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
                 (range_ )
             ( _contextIself) =
                 (context_ )
-            ( _simpletypeIself) =
+            ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                 (simpletype_ )
             ( _constructorIself,_constructorIunboundNames) =
                 (constructor_ (_constructorOnamesInScope))
@@ -2698,6 +2809,8 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
                 (derivings_ )
             (_infoTrees@_) =
                 globalInfoError
+            (_lhsOcollectInstances@_) =
+                []
             (_lhsOdeclVarNames@_) =
                 []
             (_lhsOrestrictedNames@_) =
@@ -2732,7 +2845,7 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
                 _lhsIuniqueChunk
             (_constructorOnamesInScope@_) =
                 _lhsInamesInScope
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_PatternBinding :: (T_Range) ->
                                   (T_Pattern) ->
                                   (T_RightHandSide) ->
@@ -2743,6 +2856,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
       _lhsIavailablePredicates
       _lhsIbetaUnique
       _lhsIbindingGroups
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -2762,6 +2876,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
         let _lhsObetaUnique :: (Int)
             _lhsObindingGroups :: (BindingGroups)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdeclVarNames :: (Names)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -2794,6 +2909,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             _righthandsideIassumptions :: (Assumptions)
             _righthandsideIbetaUnique :: (Int)
             _righthandsideIcollectErrors :: (TypeErrors)
+            _righthandsideIcollectInstances :: ([(Name, Instance)])
             _righthandsideIcollectWarnings :: (Warnings)
             _righthandsideIconstraints :: (ConstraintSet)
             _righthandsideIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -2809,6 +2925,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             _righthandsideOavailablePredicates :: (Predicates)
             _righthandsideObetaRight :: (Tp)
             _righthandsideObetaUnique :: (Int)
+            _righthandsideOclassEnvironment :: (ClassEnvironment)
             _righthandsideOcollectErrors :: (TypeErrors)
             _righthandsideOcollectWarnings :: (Warnings)
             _righthandsideOcurrentChunk :: (Int)
@@ -2827,12 +2944,13 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
                 (range_ )
             ( _patternIbeta,_patternIbetaUnique,_patternIconstraints,_patternIelements,_patternIenvironment,_patternIinfoTree,_patternIpatVarNames,_patternIpatternMatchWarnings,_patternIself,_patternIunboundNames) =
                 (pattern_ (_patternObetaUnique) (_patternOimportEnvironment) (_patternOmonos) (_patternOnamesInScope) (_patternOparentTree) (_patternOpatternMatchWarnings))
-            ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectErrors,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTree,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
+            ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectErrors,_righthandsideIcollectInstances,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTree,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
                 (righthandside_ (_righthandsideOallPatterns)
                                 (_righthandsideOallTypeSchemes)
                                 (_righthandsideOavailablePredicates)
                                 (_righthandsideObetaRight)
                                 (_righthandsideObetaUnique)
+                                (_righthandsideOclassEnvironment)
                                 (_righthandsideOcollectErrors)
                                 (_righthandsideOcollectWarnings)
                                 (_righthandsideOcurrentChunk)
@@ -2917,6 +3035,8 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
                                      "pattern binding"
                                      "="
                 ++ _righthandsideIpatternMatchWarnings
+            (_lhsOcollectInstances@_) =
+                _righthandsideIcollectInstances
             (_lhsOunboundNames@_) =
                 _patternIunboundNames ++ _righthandsideIunboundNames
             (_self@_) =
@@ -2953,6 +3073,8 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
                 _betaRight
             (_righthandsideObetaUnique@_) =
                 _patternIbetaUnique
+            (_righthandsideOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_righthandsideOcollectErrors@_) =
                 _lhsIcollectErrors
             (_righthandsideOcollectWarnings@_) =
@@ -2977,7 +3099,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
                 _lhsItypeschemeMap
             (_righthandsideOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_Type :: (T_Range) ->
                         (T_SimpleType) ->
                         (T_Type) ->
@@ -2988,6 +3110,7 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
       _lhsIavailablePredicates
       _lhsIbetaUnique
       _lhsIbindingGroups
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -3007,6 +3130,7 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
         let _lhsObetaUnique :: (Int)
             _lhsObindingGroups :: (BindingGroups)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdeclVarNames :: (Names)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -3020,15 +3144,19 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
             _rangeIself :: (Range)
+            _simpletypeIname :: (Name)
             _simpletypeIself :: (SimpleType)
+            _simpletypeItypevariables :: (Names)
             _typeIself :: (Type)
             ( _rangeIself) =
                 (range_ )
-            ( _simpletypeIself) =
+            ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                 (simpletype_ )
             ( _typeIself) =
                 (type_ )
             (_lhsOinfoTrees@_) =
+                []
+            (_lhsOcollectInstances@_) =
                 []
             (_lhsOdeclVarNames@_) =
                 []
@@ -3060,7 +3188,7 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
                 _lhsItypeSignatures
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declaration_TypeSignature :: (T_Range) ->
                                  (T_Names) ->
                                  (T_Type) ->
@@ -3071,6 +3199,7 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
       _lhsIavailablePredicates
       _lhsIbetaUnique
       _lhsIbindingGroups
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -3090,6 +3219,7 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
         let _lhsObetaUnique :: (Int)
             _lhsObindingGroups :: (BindingGroups)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdeclVarNames :: (Names)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -3116,6 +3246,8 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
             (_lhsOtypeSignatures@_) =
                 addListToFM _lhsItypeSignatures [ (name, _typeScheme) | name <- _namesIself ]
             (_lhsOinfoTrees@_) =
+                []
+            (_lhsOcollectInstances@_) =
                 []
             (_lhsOdeclVarNames@_) =
                 []
@@ -3145,7 +3277,7 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
                 _lhsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 -- Declarations ------------------------------------------------
 -- semantic domain
 type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -3153,6 +3285,7 @@ type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (Predicates) ->
                       (Int) ->
                       (BindingGroups) ->
+                      (ClassEnvironment) ->
                       (TypeErrors) ->
                       (Warnings) ->
                       (Int) ->
@@ -3169,7 +3302,7 @@ type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (TypeEnvironment) ->
                       (FiniteMap Int (Scheme Predicates)) ->
                       (Int) ->
-                      ( (Int),(BindingGroups),(TypeErrors),(Warnings),(Names),(DictionaryEnvironment),(InfoTrees),(IO ()),([Warning]),(Names),(Declarations),(Names),(TypeEnvironment),(Names),(Int))
+                      ( (Int),(BindingGroups),(TypeErrors),([(Name, Instance)]),(Warnings),(Names),(DictionaryEnvironment),(InfoTrees),(IO ()),([Warning]),(Names),(Declarations),(Names),(TypeEnvironment),(Names),(Int))
 -- cata
 sem_Declarations :: (Declarations) ->
                     (T_Declarations)
@@ -3184,6 +3317,7 @@ sem_Declarations_Cons (hd_) (tl_) =
       _lhsIavailablePredicates
       _lhsIbetaUnique
       _lhsIbindingGroups
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -3203,6 +3337,7 @@ sem_Declarations_Cons (hd_) (tl_) =
         let _lhsObetaUnique :: (Int)
             _lhsObindingGroups :: (BindingGroups)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdeclVarNames :: (Names)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -3218,6 +3353,7 @@ sem_Declarations_Cons (hd_) (tl_) =
             _hdIbetaUnique :: (Int)
             _hdIbindingGroups :: (BindingGroups)
             _hdIcollectErrors :: (TypeErrors)
+            _hdIcollectInstances :: ([(Name, Instance)])
             _hdIcollectWarnings :: (Warnings)
             _hdIdeclVarNames :: (Names)
             _hdIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -3235,6 +3371,7 @@ sem_Declarations_Cons (hd_) (tl_) =
             _hdOavailablePredicates :: (Predicates)
             _hdObetaUnique :: (Int)
             _hdObindingGroups :: (BindingGroups)
+            _hdOclassEnvironment :: (ClassEnvironment)
             _hdOcollectErrors :: (TypeErrors)
             _hdOcollectWarnings :: (Warnings)
             _hdOcurrentChunk :: (Int)
@@ -3254,6 +3391,7 @@ sem_Declarations_Cons (hd_) (tl_) =
             _tlIbetaUnique :: (Int)
             _tlIbindingGroups :: (BindingGroups)
             _tlIcollectErrors :: (TypeErrors)
+            _tlIcollectInstances :: ([(Name, Instance)])
             _tlIcollectWarnings :: (Warnings)
             _tlIdeclVarNames :: (Names)
             _tlIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -3271,6 +3409,7 @@ sem_Declarations_Cons (hd_) (tl_) =
             _tlOavailablePredicates :: (Predicates)
             _tlObetaUnique :: (Int)
             _tlObindingGroups :: (BindingGroups)
+            _tlOclassEnvironment :: (ClassEnvironment)
             _tlOcollectErrors :: (TypeErrors)
             _tlOcollectWarnings :: (Warnings)
             _tlOcurrentChunk :: (Int)
@@ -3287,12 +3426,56 @@ sem_Declarations_Cons (hd_) (tl_) =
             _tlOtypeSignatures :: (TypeEnvironment)
             _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
             _tlOuniqueChunk :: (Int)
-            ( _hdIbetaUnique,_hdIbindingGroups,_hdIcollectErrors,_hdIcollectWarnings,_hdIdeclVarNames,_hdIdictionaryEnvironment,_hdIinfoTrees,_hdImatchIO,_hdIpatternMatchWarnings,_hdIrestrictedNames,_hdIself,_hdIsimplePatNames,_hdItypeSignatures,_hdIunboundNames,_hdIuniqueChunk) =
-                (hd_ (_hdOallPatterns) (_hdOallTypeSchemes) (_hdOavailablePredicates) (_hdObetaUnique) (_hdObindingGroups) (_hdOcollectErrors) (_hdOcollectWarnings) (_hdOcurrentChunk) (_hdOdictionaryEnvironment) (_hdOimportEnvironment) (_hdOinheritedBDG) (_hdOmatchIO) (_hdOmonos) (_hdOnamesInScope) (_hdOorderedTypeSynonyms) (_hdOparentTree) (_hdOpatternMatchWarnings) (_hdOsubstitution) (_hdOtypeSignatures) (_hdOtypeschemeMap) (_hdOuniqueChunk))
-            ( _tlIbetaUnique,_tlIbindingGroups,_tlIcollectErrors,_tlIcollectWarnings,_tlIdeclVarNames,_tlIdictionaryEnvironment,_tlIinfoTrees,_tlImatchIO,_tlIpatternMatchWarnings,_tlIrestrictedNames,_tlIself,_tlIsimplePatNames,_tlItypeSignatures,_tlIunboundNames,_tlIuniqueChunk) =
-                (tl_ (_tlOallPatterns) (_tlOallTypeSchemes) (_tlOavailablePredicates) (_tlObetaUnique) (_tlObindingGroups) (_tlOcollectErrors) (_tlOcollectWarnings) (_tlOcurrentChunk) (_tlOdictionaryEnvironment) (_tlOimportEnvironment) (_tlOinheritedBDG) (_tlOmatchIO) (_tlOmonos) (_tlOnamesInScope) (_tlOorderedTypeSynonyms) (_tlOparentTree) (_tlOpatternMatchWarnings) (_tlOsubstitution) (_tlOtypeSignatures) (_tlOtypeschemeMap) (_tlOuniqueChunk))
+            ( _hdIbetaUnique,_hdIbindingGroups,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIdeclVarNames,_hdIdictionaryEnvironment,_hdIinfoTrees,_hdImatchIO,_hdIpatternMatchWarnings,_hdIrestrictedNames,_hdIself,_hdIsimplePatNames,_hdItypeSignatures,_hdIunboundNames,_hdIuniqueChunk) =
+                (hd_ (_hdOallPatterns)
+                     (_hdOallTypeSchemes)
+                     (_hdOavailablePredicates)
+                     (_hdObetaUnique)
+                     (_hdObindingGroups)
+                     (_hdOclassEnvironment)
+                     (_hdOcollectErrors)
+                     (_hdOcollectWarnings)
+                     (_hdOcurrentChunk)
+                     (_hdOdictionaryEnvironment)
+                     (_hdOimportEnvironment)
+                     (_hdOinheritedBDG)
+                     (_hdOmatchIO)
+                     (_hdOmonos)
+                     (_hdOnamesInScope)
+                     (_hdOorderedTypeSynonyms)
+                     (_hdOparentTree)
+                     (_hdOpatternMatchWarnings)
+                     (_hdOsubstitution)
+                     (_hdOtypeSignatures)
+                     (_hdOtypeschemeMap)
+                     (_hdOuniqueChunk))
+            ( _tlIbetaUnique,_tlIbindingGroups,_tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIdeclVarNames,_tlIdictionaryEnvironment,_tlIinfoTrees,_tlImatchIO,_tlIpatternMatchWarnings,_tlIrestrictedNames,_tlIself,_tlIsimplePatNames,_tlItypeSignatures,_tlIunboundNames,_tlIuniqueChunk) =
+                (tl_ (_tlOallPatterns)
+                     (_tlOallTypeSchemes)
+                     (_tlOavailablePredicates)
+                     (_tlObetaUnique)
+                     (_tlObindingGroups)
+                     (_tlOclassEnvironment)
+                     (_tlOcollectErrors)
+                     (_tlOcollectWarnings)
+                     (_tlOcurrentChunk)
+                     (_tlOdictionaryEnvironment)
+                     (_tlOimportEnvironment)
+                     (_tlOinheritedBDG)
+                     (_tlOmatchIO)
+                     (_tlOmonos)
+                     (_tlOnamesInScope)
+                     (_tlOorderedTypeSynonyms)
+                     (_tlOparentTree)
+                     (_tlOpatternMatchWarnings)
+                     (_tlOsubstitution)
+                     (_tlOtypeSignatures)
+                     (_tlOtypeschemeMap)
+                     (_tlOuniqueChunk))
             (_lhsOinfoTrees@_) =
                 _hdIinfoTrees ++ _tlIinfoTrees
+            (_lhsOcollectInstances@_) =
+                _hdIcollectInstances  ++  _tlIcollectInstances
             (_lhsOdeclVarNames@_) =
                 _hdIdeclVarNames ++ _tlIdeclVarNames
             (_lhsOrestrictedNames@_) =
@@ -3333,6 +3516,8 @@ sem_Declarations_Cons (hd_) (tl_) =
                 _lhsIbetaUnique
             (_hdObindingGroups@_) =
                 _lhsIbindingGroups
+            (_hdOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_hdOcollectErrors@_) =
                 _lhsIcollectErrors
             (_hdOcollectWarnings@_) =
@@ -3375,6 +3560,8 @@ sem_Declarations_Cons (hd_) (tl_) =
                 _hdIbetaUnique
             (_tlObindingGroups@_) =
                 _hdIbindingGroups
+            (_tlOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_tlOcollectErrors@_) =
                 _hdIcollectErrors
             (_tlOcollectWarnings@_) =
@@ -3407,7 +3594,7 @@ sem_Declarations_Cons (hd_) (tl_) =
                 _lhsItypeschemeMap
             (_tlOuniqueChunk@_) =
                 _hdIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_Declarations_Nil :: (T_Declarations)
 sem_Declarations_Nil  =
     \ _lhsIallPatterns
@@ -3415,6 +3602,7 @@ sem_Declarations_Nil  =
       _lhsIavailablePredicates
       _lhsIbetaUnique
       _lhsIbindingGroups
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -3434,6 +3622,7 @@ sem_Declarations_Nil  =
         let _lhsObetaUnique :: (Int)
             _lhsObindingGroups :: (BindingGroups)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdeclVarNames :: (Names)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -3447,6 +3636,8 @@ sem_Declarations_Nil  =
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
             (_lhsOinfoTrees@_) =
+                []
+            (_lhsOcollectInstances@_) =
                 []
             (_lhsOdeclVarNames@_) =
                 []
@@ -3478,7 +3669,7 @@ sem_Declarations_Nil  =
                 _lhsItypeSignatures
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)
 -- Export ------------------------------------------------------
 -- semantic domain
 type T_Export = ( (Export))
@@ -3599,6 +3790,7 @@ type T_Expression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (FiniteMap NameWithRange TpScheme) ->
                     (Predicates) ->
                     (Int) ->
+                    (ClassEnvironment) ->
                     (TypeErrors) ->
                     (Warnings) ->
                     (Int) ->
@@ -3615,7 +3807,7 @@ type T_Expression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (FiniteMap Int (Scheme Predicates)) ->
                     (Int) ->
                     (Int) ->
-                    ( (Assumptions),(Tp),(Int),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTree),(IO ()),([Maybe MetaVariableTable]),([Warning]),(Expression),(Names),(Int),(Int))
+                    ( (Assumptions),(Tp),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTree),(IO ()),([Maybe MetaVariableTable]),([Warning]),(Expression),(Names),(Int),(Int))
 -- cata
 sem_Expression :: (Expression) ->
                   (T_Expression)
@@ -3668,6 +3860,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -3688,6 +3881,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -3704,6 +3898,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -3719,6 +3914,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -3738,6 +3934,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _alternativesIassumptions :: (Assumptions)
             _alternativesIbetaUnique :: (Int)
             _alternativesIcollectErrors :: (TypeErrors)
+            _alternativesIcollectInstances :: ([(Name, Instance)])
             _alternativesIcollectWarnings :: (Warnings)
             _alternativesIconstraintslist :: (ConstraintSets)
             _alternativesIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -3755,6 +3952,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _alternativesObetaLeft :: (Tp)
             _alternativesObetaRight :: (Tp)
             _alternativesObetaUnique :: (Int)
+            _alternativesOclassEnvironment :: (ClassEnvironment)
             _alternativesOcollectErrors :: (TypeErrors)
             _alternativesOcollectWarnings :: (Warnings)
             _alternativesOcurrentChunk :: (Int)
@@ -3771,11 +3969,12 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _alternativesOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -3792,13 +3991,14 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
                              (_expressionOtypeschemeMap)
                              (_expressionOuniqueChunk)
                              (_expressionOuniqueSecondRound))
-            ( _alternativesIassumptions,_alternativesIbetaUnique,_alternativesIcollectErrors,_alternativesIcollectWarnings,_alternativesIconstraintslist,_alternativesIdictionaryEnvironment,_alternativesIelementss,_alternativesIinfoTrees,_alternativesImatchIO,_alternativesIpatternMatchWarnings,_alternativesIself,_alternativesIunboundNames,_alternativesIuniqueChunk,_alternativesIunrwars) =
+            ( _alternativesIassumptions,_alternativesIbetaUnique,_alternativesIcollectErrors,_alternativesIcollectInstances,_alternativesIcollectWarnings,_alternativesIconstraintslist,_alternativesIdictionaryEnvironment,_alternativesIelementss,_alternativesIinfoTrees,_alternativesImatchIO,_alternativesIpatternMatchWarnings,_alternativesIself,_alternativesIunboundNames,_alternativesIuniqueChunk,_alternativesIunrwars) =
                 (alternatives_ (_alternativesOallPatterns)
                                (_alternativesOallTypeSchemes)
                                (_alternativesOavailablePredicates)
                                (_alternativesObetaLeft)
                                (_alternativesObetaRight)
                                (_alternativesObetaUnique)
+                               (_alternativesOclassEnvironment)
                                (_alternativesOcollectErrors)
                                (_alternativesOcollectWarnings)
                                (_alternativesOcurrentChunk)
@@ -3861,6 +4061,8 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
                                      "case expression"
                                      "->"
                 ++ _alternativesIpatternMatchWarnings
+            (_lhsOcollectInstances@_) =
+                _expressionIcollectInstances  ++  _alternativesIcollectInstances
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames ++ _alternativesIunboundNames
             (_self@_) =
@@ -3893,6 +4095,8 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
                 _lhsIallTypeSchemes
             (_expressionOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -3931,6 +4135,8 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
                 _lhsIavailablePredicates
             (_alternativesObetaUnique@_) =
                 _expressionIbetaUnique
+            (_alternativesOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_alternativesOcollectErrors@_) =
                 _expressionIcollectErrors
             (_alternativesOcollectWarnings@_) =
@@ -3959,7 +4165,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
                 _lhsItypeschemeMap
             (_alternativesOuniqueChunk@_) =
                 _expressionIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_Comprehension :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Qualifiers) ->
@@ -3969,6 +4175,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -3989,6 +4196,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -4005,6 +4213,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -4020,6 +4229,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -4039,6 +4249,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _qualifiersIassumptions :: (Assumptions)
             _qualifiersIbetaUnique :: (Int)
             _qualifiersIcollectErrors :: (TypeErrors)
+            _qualifiersIcollectInstances :: ([(Name, Instance)])
             _qualifiersIcollectWarnings :: (Warnings)
             _qualifiersIconstraints :: (ConstraintSet)
             _qualifiersIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -4056,6 +4267,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _qualifiersOassumptions :: (Assumptions)
             _qualifiersOavailablePredicates :: (Predicates)
             _qualifiersObetaUnique :: (Int)
+            _qualifiersOclassEnvironment :: (ClassEnvironment)
             _qualifiersOcollectErrors :: (TypeErrors)
             _qualifiersOcollectWarnings :: (Warnings)
             _qualifiersOconstraints :: (ConstraintSet)
@@ -4075,11 +4287,12 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _qualifiersOuniqueSecondRound :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -4096,12 +4309,13 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
                              (_expressionOtypeschemeMap)
                              (_expressionOuniqueChunk)
                              (_expressionOuniqueSecondRound))
-            ( _qualifiersIassumptions,_qualifiersIbetaUnique,_qualifiersIcollectErrors,_qualifiersIcollectWarnings,_qualifiersIconstraints,_qualifiersIdictionaryEnvironment,_qualifiersIinfoTrees,_qualifiersImatchIO,_qualifiersImonos,_qualifiersInamesInScope,_qualifiersIpatternMatchWarnings,_qualifiersIself,_qualifiersIunboundNames,_qualifiersIuniqueChunk,_qualifiersIuniqueSecondRound) =
+            ( _qualifiersIassumptions,_qualifiersIbetaUnique,_qualifiersIcollectErrors,_qualifiersIcollectInstances,_qualifiersIcollectWarnings,_qualifiersIconstraints,_qualifiersIdictionaryEnvironment,_qualifiersIinfoTrees,_qualifiersImatchIO,_qualifiersImonos,_qualifiersInamesInScope,_qualifiersIpatternMatchWarnings,_qualifiersIself,_qualifiersIunboundNames,_qualifiersIuniqueChunk,_qualifiersIuniqueSecondRound) =
                 (qualifiers_ (_qualifiersOallPatterns)
                              (_qualifiersOallTypeSchemes)
                              (_qualifiersOassumptions)
                              (_qualifiersOavailablePredicates)
                              (_qualifiersObetaUnique)
+                             (_qualifiersOclassEnvironment)
                              (_qualifiersOcollectErrors)
                              (_qualifiersOcollectWarnings)
                              (_qualifiersOconstraints)
@@ -4162,6 +4376,8 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
                 in matchOnlyVariable infoTuple _lhsItryPatterns
             (_expressionOtryPatterns@_) =
                 []
+            (_lhsOcollectInstances@_) =
+                _expressionIcollectInstances  ++  _qualifiersIcollectInstances
             (_self@_) =
                 Expression_Comprehension _rangeIself _expressionIself _qualifiersIself
             (_lhsOself@_) =
@@ -4194,6 +4410,8 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
                 _lhsIallTypeSchemes
             (_expressionOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -4228,6 +4446,8 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
                 _lhsIavailablePredicates
             (_qualifiersObetaUnique@_) =
                 _expressionIbetaUnique
+            (_qualifiersOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_qualifiersOcollectErrors@_) =
                 _expressionIcollectErrors
             (_qualifiersOcollectWarnings@_) =
@@ -4254,7 +4474,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
                 _expressionIuniqueChunk
             (_qualifiersOuniqueSecondRound@_) =
                 _expressionIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_Constructor :: (T_Range) ->
                               (T_Name) ->
                               (T_Expression)
@@ -4263,6 +4483,7 @@ sem_Expression_Constructor (range_) (name_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -4283,6 +4504,7 @@ sem_Expression_Constructor (range_) (name_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -4332,6 +4554,8 @@ sem_Expression_Constructor (range_) (name_) =
                           []
             (_lhsOmatchIO@_) =
                 _lhsImatchIO             >> _ioMatch
+            (_lhsOcollectInstances@_) =
+                []
             (_lhsOunboundNames@_) =
                 []
             (_self@_) =
@@ -4350,7 +4574,7 @@ sem_Expression_Constructor (range_) (name_) =
                 _lhsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_Do :: (T_Range) ->
                      (T_Statements) ->
                      (T_Expression)
@@ -4359,6 +4583,7 @@ sem_Expression_Do (range_) (statements_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -4379,6 +4604,7 @@ sem_Expression_Do (range_) (statements_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -4394,6 +4620,7 @@ sem_Expression_Do (range_) (statements_) =
             _statementsIassumptions :: (Assumptions)
             _statementsIbetaUnique :: (Int)
             _statementsIcollectErrors :: (TypeErrors)
+            _statementsIcollectInstances :: ([(Name, Instance)])
             _statementsIcollectWarnings :: (Warnings)
             _statementsIconstraints :: (ConstraintSet)
             _statementsIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -4411,6 +4638,7 @@ sem_Expression_Do (range_) (statements_) =
             _statementsOassumptions :: (Assumptions)
             _statementsOavailablePredicates :: (Predicates)
             _statementsObetaUnique :: (Int)
+            _statementsOclassEnvironment :: (ClassEnvironment)
             _statementsOcollectErrors :: (TypeErrors)
             _statementsOcollectWarnings :: (Warnings)
             _statementsOconstraints :: (ConstraintSet)
@@ -4431,12 +4659,13 @@ sem_Expression_Do (range_) (statements_) =
             _statementsOuniqueSecondRound :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _statementsIassumptions,_statementsIbetaUnique,_statementsIcollectErrors,_statementsIcollectWarnings,_statementsIconstraints,_statementsIdictionaryEnvironment,_statementsIgeneratorBeta,_statementsIinfoTrees,_statementsImatchIO,_statementsInamesInScope,_statementsIpatternMatchWarnings,_statementsIself,_statementsIunboundNames,_statementsIuniqueChunk,_statementsIuniqueSecondRound) =
+            ( _statementsIassumptions,_statementsIbetaUnique,_statementsIcollectErrors,_statementsIcollectInstances,_statementsIcollectWarnings,_statementsIconstraints,_statementsIdictionaryEnvironment,_statementsIgeneratorBeta,_statementsIinfoTrees,_statementsImatchIO,_statementsInamesInScope,_statementsIpatternMatchWarnings,_statementsIself,_statementsIunboundNames,_statementsIuniqueChunk,_statementsIuniqueSecondRound) =
                 (statements_ (_statementsOallPatterns)
                              (_statementsOallTypeSchemes)
                              (_statementsOassumptions)
                              (_statementsOavailablePredicates)
                              (_statementsObetaUnique)
+                             (_statementsOclassEnvironment)
                              (_statementsOcollectErrors)
                              (_statementsOcollectWarnings)
                              (_statementsOconstraints)
@@ -4490,6 +4719,8 @@ sem_Expression_Do (range_) (statements_) =
             (_lhsOmatches@_) =
                 let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                 in matchOnlyVariable infoTuple _lhsItryPatterns
+            (_lhsOcollectInstances@_) =
+                _statementsIcollectInstances
             (_lhsOunboundNames@_) =
                 _statementsIunboundNames
             (_self@_) =
@@ -4522,6 +4753,8 @@ sem_Expression_Do (range_) (statements_) =
                 _lhsIallTypeSchemes
             (_statementsOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_statementsOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_statementsOcollectErrors@_) =
                 _lhsIcollectErrors
             (_statementsOcollectWarnings@_) =
@@ -4554,7 +4787,7 @@ sem_Expression_Do (range_) (statements_) =
                 _lhsIuniqueChunk
             (_statementsOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_Enum :: (T_Range) ->
                        (T_Expression) ->
                        (T_MaybeExpression) ->
@@ -4565,6 +4798,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -4585,6 +4819,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -4601,6 +4836,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _fromIbeta :: (Tp)
             _fromIbetaUnique :: (Int)
             _fromIcollectErrors :: (TypeErrors)
+            _fromIcollectInstances :: ([(Name, Instance)])
             _fromIcollectWarnings :: (Warnings)
             _fromIconstraints :: (ConstraintSet)
             _fromIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -4616,6 +4852,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _fromOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _fromOavailablePredicates :: (Predicates)
             _fromObetaUnique :: (Int)
+            _fromOclassEnvironment :: (ClassEnvironment)
             _fromOcollectErrors :: (TypeErrors)
             _fromOcollectWarnings :: (Warnings)
             _fromOcurrentChunk :: (Int)
@@ -4636,6 +4873,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _thenIbeta :: (Tp)
             _thenIbetaUnique :: (Int)
             _thenIcollectErrors :: (TypeErrors)
+            _thenIcollectInstances :: ([(Name, Instance)])
             _thenIcollectWarnings :: (Warnings)
             _thenIconstraints :: (ConstraintSet)
             _thenIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -4652,6 +4890,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _thenOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _thenOavailablePredicates :: (Predicates)
             _thenObetaUnique :: (Int)
+            _thenOclassEnvironment :: (ClassEnvironment)
             _thenOcollectErrors :: (TypeErrors)
             _thenOcollectWarnings :: (Warnings)
             _thenOcurrentChunk :: (Int)
@@ -4672,6 +4911,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _toIbeta :: (Tp)
             _toIbetaUnique :: (Int)
             _toIcollectErrors :: (TypeErrors)
+            _toIcollectInstances :: ([(Name, Instance)])
             _toIcollectWarnings :: (Warnings)
             _toIconstraints :: (ConstraintSet)
             _toIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -4688,6 +4928,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _toOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _toOavailablePredicates :: (Predicates)
             _toObetaUnique :: (Int)
+            _toOclassEnvironment :: (ClassEnvironment)
             _toOcollectErrors :: (TypeErrors)
             _toOcollectWarnings :: (Warnings)
             _toOcurrentChunk :: (Int)
@@ -4706,11 +4947,12 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _toOuniqueSecondRound :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _fromIassumptions,_fromIbeta,_fromIbetaUnique,_fromIcollectErrors,_fromIcollectWarnings,_fromIconstraints,_fromIdictionaryEnvironment,_fromIinfoTree,_fromImatchIO,_fromImatches,_fromIpatternMatchWarnings,_fromIself,_fromIunboundNames,_fromIuniqueChunk,_fromIuniqueSecondRound) =
+            ( _fromIassumptions,_fromIbeta,_fromIbetaUnique,_fromIcollectErrors,_fromIcollectInstances,_fromIcollectWarnings,_fromIconstraints,_fromIdictionaryEnvironment,_fromIinfoTree,_fromImatchIO,_fromImatches,_fromIpatternMatchWarnings,_fromIself,_fromIunboundNames,_fromIuniqueChunk,_fromIuniqueSecondRound) =
                 (from_ (_fromOallPatterns)
                        (_fromOallTypeSchemes)
                        (_fromOavailablePredicates)
                        (_fromObetaUnique)
+                       (_fromOclassEnvironment)
                        (_fromOcollectErrors)
                        (_fromOcollectWarnings)
                        (_fromOcurrentChunk)
@@ -4727,11 +4969,12 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                        (_fromOtypeschemeMap)
                        (_fromOuniqueChunk)
                        (_fromOuniqueSecondRound))
-            ( _thenIassumptions,_thenIbeta,_thenIbetaUnique,_thenIcollectErrors,_thenIcollectWarnings,_thenIconstraints,_thenIdictionaryEnvironment,_thenIinfoTrees,_thenImatchIO,_thenImatches,_thenIpatternMatchWarnings,_thenIsection,_thenIself,_thenIunboundNames,_thenIuniqueChunk,_thenIuniqueSecondRound) =
+            ( _thenIassumptions,_thenIbeta,_thenIbetaUnique,_thenIcollectErrors,_thenIcollectInstances,_thenIcollectWarnings,_thenIconstraints,_thenIdictionaryEnvironment,_thenIinfoTrees,_thenImatchIO,_thenImatches,_thenIpatternMatchWarnings,_thenIsection,_thenIself,_thenIunboundNames,_thenIuniqueChunk,_thenIuniqueSecondRound) =
                 (then_ (_thenOallPatterns)
                        (_thenOallTypeSchemes)
                        (_thenOavailablePredicates)
                        (_thenObetaUnique)
+                       (_thenOclassEnvironment)
                        (_thenOcollectErrors)
                        (_thenOcollectWarnings)
                        (_thenOcurrentChunk)
@@ -4748,8 +4991,28 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                        (_thenOtypeschemeMap)
                        (_thenOuniqueChunk)
                        (_thenOuniqueSecondRound))
-            ( _toIassumptions,_toIbeta,_toIbetaUnique,_toIcollectErrors,_toIcollectWarnings,_toIconstraints,_toIdictionaryEnvironment,_toIinfoTrees,_toImatchIO,_toImatches,_toIpatternMatchWarnings,_toIsection,_toIself,_toIunboundNames,_toIuniqueChunk,_toIuniqueSecondRound) =
-                (to_ (_toOallPatterns) (_toOallTypeSchemes) (_toOavailablePredicates) (_toObetaUnique) (_toOcollectErrors) (_toOcollectWarnings) (_toOcurrentChunk) (_toOdictionaryEnvironment) (_toOimportEnvironment) (_toOmatchIO) (_toOmonos) (_toOnamesInScope) (_toOorderedTypeSynonyms) (_toOparentTree) (_toOpatternMatchWarnings) (_toOsubstitution) (_toOtryPatterns) (_toOtypeschemeMap) (_toOuniqueChunk) (_toOuniqueSecondRound))
+            ( _toIassumptions,_toIbeta,_toIbetaUnique,_toIcollectErrors,_toIcollectInstances,_toIcollectWarnings,_toIconstraints,_toIdictionaryEnvironment,_toIinfoTrees,_toImatchIO,_toImatches,_toIpatternMatchWarnings,_toIsection,_toIself,_toIunboundNames,_toIuniqueChunk,_toIuniqueSecondRound) =
+                (to_ (_toOallPatterns)
+                     (_toOallTypeSchemes)
+                     (_toOavailablePredicates)
+                     (_toObetaUnique)
+                     (_toOclassEnvironment)
+                     (_toOcollectErrors)
+                     (_toOcollectWarnings)
+                     (_toOcurrentChunk)
+                     (_toOdictionaryEnvironment)
+                     (_toOimportEnvironment)
+                     (_toOmatchIO)
+                     (_toOmonos)
+                     (_toOnamesInScope)
+                     (_toOorderedTypeSynonyms)
+                     (_toOparentTree)
+                     (_toOpatternMatchWarnings)
+                     (_toOsubstitution)
+                     (_toOtryPatterns)
+                     (_toOtypeschemeMap)
+                     (_toOuniqueChunk)
+                     (_toOuniqueSecondRound))
             (_conTo@_) =
                 [ (_toIbeta   .==. _elementType) _cinfoTo   ]
             (_conThen@_) =
@@ -4779,7 +5042,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             (_fromObetaUnique@_) =
                 _lhsIbetaUnique + (if _overloaded then 2 else 1)
             (_newDEnv@_) =
-                resolveOverloading (createClassEnvironment _lhsIimportEnvironment)  _localName
+                resolveOverloading (_lhsIclassEnvironment)  _localName
                                    (_lhsIsubstitution |-> _lhsIavailablePredicates)
                                    (_lhsIsubstitution |-> _requiredDictionaries)
                                    _toIdictionaryEnvironment
@@ -4828,6 +5091,8 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                           [_fromImatches, _thenImatches, _toImatches]
             (_lhsOmatchIO@_) =
                 _toImatchIO              >> _ioMatch
+            (_lhsOcollectInstances@_) =
+                _fromIcollectInstances  ++  _thenIcollectInstances  ++  _toIcollectInstances
             (_lhsOunboundNames@_) =
                 _fromIunboundNames ++ _thenIunboundNames ++ _toIunboundNames
             (_self@_) =
@@ -4852,6 +5117,8 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                 _lhsIallTypeSchemes
             (_fromOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_fromOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_fromOcollectErrors@_) =
                 _lhsIcollectErrors
             (_fromOcollectWarnings@_) =
@@ -4890,6 +5157,8 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                 _lhsIavailablePredicates
             (_thenObetaUnique@_) =
                 _fromIbetaUnique
+            (_thenOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_thenOcollectErrors@_) =
                 _fromIcollectErrors
             (_thenOcollectWarnings@_) =
@@ -4928,6 +5197,8 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                 _lhsIavailablePredicates
             (_toObetaUnique@_) =
                 _thenIbetaUnique
+            (_toOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_toOcollectErrors@_) =
                 _thenIcollectErrors
             (_toOcollectWarnings@_) =
@@ -4958,7 +5229,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                 _thenIuniqueChunk
             (_toOuniqueSecondRound@_) =
                 _thenIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_If :: (T_Range) ->
                      (T_Expression) ->
                      (T_Expression) ->
@@ -4969,6 +5240,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -4989,6 +5261,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -5005,6 +5278,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _guardExpressionIbeta :: (Tp)
             _guardExpressionIbetaUnique :: (Int)
             _guardExpressionIcollectErrors :: (TypeErrors)
+            _guardExpressionIcollectInstances :: ([(Name, Instance)])
             _guardExpressionIcollectWarnings :: (Warnings)
             _guardExpressionIconstraints :: (ConstraintSet)
             _guardExpressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -5020,6 +5294,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _guardExpressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _guardExpressionOavailablePredicates :: (Predicates)
             _guardExpressionObetaUnique :: (Int)
+            _guardExpressionOclassEnvironment :: (ClassEnvironment)
             _guardExpressionOcollectErrors :: (TypeErrors)
             _guardExpressionOcollectWarnings :: (Warnings)
             _guardExpressionOcurrentChunk :: (Int)
@@ -5040,6 +5315,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _thenExpressionIbeta :: (Tp)
             _thenExpressionIbetaUnique :: (Int)
             _thenExpressionIcollectErrors :: (TypeErrors)
+            _thenExpressionIcollectInstances :: ([(Name, Instance)])
             _thenExpressionIcollectWarnings :: (Warnings)
             _thenExpressionIconstraints :: (ConstraintSet)
             _thenExpressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -5055,6 +5331,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _thenExpressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _thenExpressionOavailablePredicates :: (Predicates)
             _thenExpressionObetaUnique :: (Int)
+            _thenExpressionOclassEnvironment :: (ClassEnvironment)
             _thenExpressionOcollectErrors :: (TypeErrors)
             _thenExpressionOcollectWarnings :: (Warnings)
             _thenExpressionOcurrentChunk :: (Int)
@@ -5075,6 +5352,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _elseExpressionIbeta :: (Tp)
             _elseExpressionIbetaUnique :: (Int)
             _elseExpressionIcollectErrors :: (TypeErrors)
+            _elseExpressionIcollectInstances :: ([(Name, Instance)])
             _elseExpressionIcollectWarnings :: (Warnings)
             _elseExpressionIconstraints :: (ConstraintSet)
             _elseExpressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -5090,6 +5368,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _elseExpressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _elseExpressionOavailablePredicates :: (Predicates)
             _elseExpressionObetaUnique :: (Int)
+            _elseExpressionOclassEnvironment :: (ClassEnvironment)
             _elseExpressionOcollectErrors :: (TypeErrors)
             _elseExpressionOcollectWarnings :: (Warnings)
             _elseExpressionOcurrentChunk :: (Int)
@@ -5112,6 +5391,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
              ,_guardExpressionIbeta
              ,_guardExpressionIbetaUnique
              ,_guardExpressionIcollectErrors
+             ,_guardExpressionIcollectInstances
              ,_guardExpressionIcollectWarnings
              ,_guardExpressionIconstraints
              ,_guardExpressionIdictionaryEnvironment
@@ -5128,6 +5408,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                                   (_guardExpressionOallTypeSchemes)
                                   (_guardExpressionOavailablePredicates)
                                   (_guardExpressionObetaUnique)
+                                  (_guardExpressionOclassEnvironment)
                                   (_guardExpressionOcollectErrors)
                                   (_guardExpressionOcollectWarnings)
                                   (_guardExpressionOcurrentChunk)
@@ -5144,11 +5425,28 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                                   (_guardExpressionOtypeschemeMap)
                                   (_guardExpressionOuniqueChunk)
                                   (_guardExpressionOuniqueSecondRound))
-            ( _thenExpressionIassumptions,_thenExpressionIbeta,_thenExpressionIbetaUnique,_thenExpressionIcollectErrors,_thenExpressionIcollectWarnings,_thenExpressionIconstraints,_thenExpressionIdictionaryEnvironment,_thenExpressionIinfoTree,_thenExpressionImatchIO,_thenExpressionImatches,_thenExpressionIpatternMatchWarnings,_thenExpressionIself,_thenExpressionIunboundNames,_thenExpressionIuniqueChunk,_thenExpressionIuniqueSecondRound) =
+            ( _thenExpressionIassumptions
+             ,_thenExpressionIbeta
+             ,_thenExpressionIbetaUnique
+             ,_thenExpressionIcollectErrors
+             ,_thenExpressionIcollectInstances
+             ,_thenExpressionIcollectWarnings
+             ,_thenExpressionIconstraints
+             ,_thenExpressionIdictionaryEnvironment
+             ,_thenExpressionIinfoTree
+             ,_thenExpressionImatchIO
+             ,_thenExpressionImatches
+             ,_thenExpressionIpatternMatchWarnings
+             ,_thenExpressionIself
+             ,_thenExpressionIunboundNames
+             ,_thenExpressionIuniqueChunk
+             ,_thenExpressionIuniqueSecondRound
+             ) =
                 (thenExpression_ (_thenExpressionOallPatterns)
                                  (_thenExpressionOallTypeSchemes)
                                  (_thenExpressionOavailablePredicates)
                                  (_thenExpressionObetaUnique)
+                                 (_thenExpressionOclassEnvironment)
                                  (_thenExpressionOcollectErrors)
                                  (_thenExpressionOcollectWarnings)
                                  (_thenExpressionOcurrentChunk)
@@ -5165,11 +5463,28 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                                  (_thenExpressionOtypeschemeMap)
                                  (_thenExpressionOuniqueChunk)
                                  (_thenExpressionOuniqueSecondRound))
-            ( _elseExpressionIassumptions,_elseExpressionIbeta,_elseExpressionIbetaUnique,_elseExpressionIcollectErrors,_elseExpressionIcollectWarnings,_elseExpressionIconstraints,_elseExpressionIdictionaryEnvironment,_elseExpressionIinfoTree,_elseExpressionImatchIO,_elseExpressionImatches,_elseExpressionIpatternMatchWarnings,_elseExpressionIself,_elseExpressionIunboundNames,_elseExpressionIuniqueChunk,_elseExpressionIuniqueSecondRound) =
+            ( _elseExpressionIassumptions
+             ,_elseExpressionIbeta
+             ,_elseExpressionIbetaUnique
+             ,_elseExpressionIcollectErrors
+             ,_elseExpressionIcollectInstances
+             ,_elseExpressionIcollectWarnings
+             ,_elseExpressionIconstraints
+             ,_elseExpressionIdictionaryEnvironment
+             ,_elseExpressionIinfoTree
+             ,_elseExpressionImatchIO
+             ,_elseExpressionImatches
+             ,_elseExpressionIpatternMatchWarnings
+             ,_elseExpressionIself
+             ,_elseExpressionIunboundNames
+             ,_elseExpressionIuniqueChunk
+             ,_elseExpressionIuniqueSecondRound
+             ) =
                 (elseExpression_ (_elseExpressionOallPatterns)
                                  (_elseExpressionOallTypeSchemes)
                                  (_elseExpressionOavailablePredicates)
                                  (_elseExpressionObetaUnique)
+                                 (_elseExpressionOclassEnvironment)
                                  (_elseExpressionOcollectErrors)
                                  (_elseExpressionOcollectWarnings)
                                  (_elseExpressionOcurrentChunk)
@@ -5229,6 +5544,8 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                           [_guardExpressionImatches,_thenExpressionImatches,_elseExpressionImatches]
             (_lhsOmatchIO@_) =
                 _elseExpressionImatchIO  >> _ioMatch
+            (_lhsOcollectInstances@_) =
+                _guardExpressionIcollectInstances  ++  _thenExpressionIcollectInstances  ++  _elseExpressionIcollectInstances
             (_lhsOunboundNames@_) =
                 _guardExpressionIunboundNames ++ _thenExpressionIunboundNames ++ _elseExpressionIunboundNames
             (_self@_) =
@@ -5255,6 +5572,8 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                 _lhsIallTypeSchemes
             (_guardExpressionOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_guardExpressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_guardExpressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_guardExpressionOcollectWarnings@_) =
@@ -5293,6 +5612,8 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                 _lhsIavailablePredicates
             (_thenExpressionObetaUnique@_) =
                 _guardExpressionIbetaUnique
+            (_thenExpressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_thenExpressionOcollectErrors@_) =
                 _guardExpressionIcollectErrors
             (_thenExpressionOcollectWarnings@_) =
@@ -5331,6 +5652,8 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                 _lhsIavailablePredicates
             (_elseExpressionObetaUnique@_) =
                 _thenExpressionIbetaUnique
+            (_elseExpressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_elseExpressionOcollectErrors@_) =
                 _thenExpressionIcollectErrors
             (_elseExpressionOcollectWarnings@_) =
@@ -5361,7 +5684,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                 _thenExpressionIuniqueChunk
             (_elseExpressionOuniqueSecondRound@_) =
                 _thenExpressionIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_InfixApplication :: (T_Range) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression) ->
@@ -5372,6 +5695,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -5392,6 +5716,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -5408,6 +5733,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _leftExpressionIbeta :: (Tp)
             _leftExpressionIbetaUnique :: (Int)
             _leftExpressionIcollectErrors :: (TypeErrors)
+            _leftExpressionIcollectInstances :: ([(Name, Instance)])
             _leftExpressionIcollectWarnings :: (Warnings)
             _leftExpressionIconstraints :: (ConstraintSet)
             _leftExpressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -5424,6 +5750,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _leftExpressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _leftExpressionOavailablePredicates :: (Predicates)
             _leftExpressionObetaUnique :: (Int)
+            _leftExpressionOclassEnvironment :: (ClassEnvironment)
             _leftExpressionOcollectErrors :: (TypeErrors)
             _leftExpressionOcollectWarnings :: (Warnings)
             _leftExpressionOcurrentChunk :: (Int)
@@ -5444,6 +5771,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _operatorIbeta :: (Tp)
             _operatorIbetaUnique :: (Int)
             _operatorIcollectErrors :: (TypeErrors)
+            _operatorIcollectInstances :: ([(Name, Instance)])
             _operatorIcollectWarnings :: (Warnings)
             _operatorIconstraints :: (ConstraintSet)
             _operatorIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -5459,6 +5787,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _operatorOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _operatorOavailablePredicates :: (Predicates)
             _operatorObetaUnique :: (Int)
+            _operatorOclassEnvironment :: (ClassEnvironment)
             _operatorOcollectErrors :: (TypeErrors)
             _operatorOcollectWarnings :: (Warnings)
             _operatorOcurrentChunk :: (Int)
@@ -5479,6 +5808,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _rightExpressionIbeta :: (Tp)
             _rightExpressionIbetaUnique :: (Int)
             _rightExpressionIcollectErrors :: (TypeErrors)
+            _rightExpressionIcollectInstances :: ([(Name, Instance)])
             _rightExpressionIcollectWarnings :: (Warnings)
             _rightExpressionIconstraints :: (ConstraintSet)
             _rightExpressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -5495,6 +5825,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _rightExpressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _rightExpressionOavailablePredicates :: (Predicates)
             _rightExpressionObetaUnique :: (Int)
+            _rightExpressionOclassEnvironment :: (ClassEnvironment)
             _rightExpressionOcollectErrors :: (TypeErrors)
             _rightExpressionOcollectWarnings :: (Warnings)
             _rightExpressionOcurrentChunk :: (Int)
@@ -5517,6 +5848,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
              ,_leftExpressionIbeta
              ,_leftExpressionIbetaUnique
              ,_leftExpressionIcollectErrors
+             ,_leftExpressionIcollectInstances
              ,_leftExpressionIcollectWarnings
              ,_leftExpressionIconstraints
              ,_leftExpressionIdictionaryEnvironment
@@ -5534,6 +5866,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                                  (_leftExpressionOallTypeSchemes)
                                  (_leftExpressionOavailablePredicates)
                                  (_leftExpressionObetaUnique)
+                                 (_leftExpressionOclassEnvironment)
                                  (_leftExpressionOcollectErrors)
                                  (_leftExpressionOcollectWarnings)
                                  (_leftExpressionOcurrentChunk)
@@ -5550,11 +5883,12 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                                  (_leftExpressionOtypeschemeMap)
                                  (_leftExpressionOuniqueChunk)
                                  (_leftExpressionOuniqueSecondRound))
-            ( _operatorIassumptions,_operatorIbeta,_operatorIbetaUnique,_operatorIcollectErrors,_operatorIcollectWarnings,_operatorIconstraints,_operatorIdictionaryEnvironment,_operatorIinfoTree,_operatorImatchIO,_operatorImatches,_operatorIpatternMatchWarnings,_operatorIself,_operatorIunboundNames,_operatorIuniqueChunk,_operatorIuniqueSecondRound) =
+            ( _operatorIassumptions,_operatorIbeta,_operatorIbetaUnique,_operatorIcollectErrors,_operatorIcollectInstances,_operatorIcollectWarnings,_operatorIconstraints,_operatorIdictionaryEnvironment,_operatorIinfoTree,_operatorImatchIO,_operatorImatches,_operatorIpatternMatchWarnings,_operatorIself,_operatorIunboundNames,_operatorIuniqueChunk,_operatorIuniqueSecondRound) =
                 (operator_ (_operatorOallPatterns)
                            (_operatorOallTypeSchemes)
                            (_operatorOavailablePredicates)
                            (_operatorObetaUnique)
+                           (_operatorOclassEnvironment)
                            (_operatorOcollectErrors)
                            (_operatorOcollectWarnings)
                            (_operatorOcurrentChunk)
@@ -5575,6 +5909,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
              ,_rightExpressionIbeta
              ,_rightExpressionIbetaUnique
              ,_rightExpressionIcollectErrors
+             ,_rightExpressionIcollectInstances
              ,_rightExpressionIcollectWarnings
              ,_rightExpressionIconstraints
              ,_rightExpressionIdictionaryEnvironment
@@ -5592,6 +5927,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                                   (_rightExpressionOallTypeSchemes)
                                   (_rightExpressionOavailablePredicates)
                                   (_rightExpressionObetaUnique)
+                                  (_rightExpressionOclassEnvironment)
                                   (_rightExpressionOcollectErrors)
                                   (_rightExpressionOcollectWarnings)
                                   (_rightExpressionOcurrentChunk)
@@ -5671,6 +6007,8 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                           [_leftExpressionImatches, _operatorImatches,_rightExpressionImatches]
             (_lhsOmatchIO@_) =
                 _rightExpressionImatchIO >> _ioMatch
+            (_lhsOcollectInstances@_) =
+                _leftExpressionIcollectInstances  ++  _operatorIcollectInstances  ++  _rightExpressionIcollectInstances
             (_lhsOunboundNames@_) =
                 _leftExpressionIunboundNames ++ _operatorIunboundNames ++ _rightExpressionIunboundNames
             (_self@_) =
@@ -5697,6 +6035,8 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                 _lhsIallTypeSchemes
             (_leftExpressionOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_leftExpressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_leftExpressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_leftExpressionOcollectWarnings@_) =
@@ -5735,6 +6075,8 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                 _lhsIavailablePredicates
             (_operatorObetaUnique@_) =
                 _leftExpressionIbetaUnique
+            (_operatorOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_operatorOcollectErrors@_) =
                 _leftExpressionIcollectErrors
             (_operatorOcollectWarnings@_) =
@@ -5773,6 +6115,8 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                 _lhsIavailablePredicates
             (_rightExpressionObetaUnique@_) =
                 _operatorIbetaUnique
+            (_rightExpressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_rightExpressionOcollectErrors@_) =
                 _operatorIcollectErrors
             (_rightExpressionOcollectWarnings@_) =
@@ -5803,7 +6147,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                 _operatorIuniqueChunk
             (_rightExpressionOuniqueSecondRound@_) =
                 _operatorIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_Lambda :: (T_Range) ->
                          (T_Patterns) ->
                          (T_Expression) ->
@@ -5813,6 +6157,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -5833,6 +6178,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -5866,6 +6212,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -5881,6 +6228,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -5901,11 +6249,12 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
                 (range_ )
             ( _patternsIbetaUnique,_patternsIbetas,_patternsIconstraintslist,_patternsIelementss,_patternsIenvironment,_patternsIinfoTrees,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIpatternMatchWarnings,_patternsIself,_patternsIunboundNames) =
                 (patterns_ (_patternsObetaUnique) (_patternsOimportEnvironment) (_patternsOmonos) (_patternsOnamesInScope) (_patternsOparentTree) (_patternsOpatternMatchWarnings))
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -5976,6 +6325,8 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
                                      "lambda expression"
                                      "->"
                 ++ _expressionIpatternMatchWarnings
+            (_lhsOcollectInstances@_) =
+                _expressionIcollectInstances
             (_self@_) =
                 Expression_Lambda _rangeIself _patternsIself _expressionIself
             (_lhsOself@_) =
@@ -6018,6 +6369,8 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
                 _lhsIavailablePredicates
             (_expressionObetaUnique@_) =
                 _patternsIbetaUnique
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -6046,7 +6399,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
                 _lhsIuniqueChunk
             (_expressionOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_Let :: (T_Range) ->
                       (T_Declarations) ->
                       (T_Expression) ->
@@ -6056,6 +6409,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -6076,6 +6430,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -6091,6 +6446,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _declarationsIbetaUnique :: (Int)
             _declarationsIbindingGroups :: (BindingGroups)
             _declarationsIcollectErrors :: (TypeErrors)
+            _declarationsIcollectInstances :: ([(Name, Instance)])
             _declarationsIcollectWarnings :: (Warnings)
             _declarationsIdeclVarNames :: (Names)
             _declarationsIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -6108,6 +6464,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _declarationsOavailablePredicates :: (Predicates)
             _declarationsObetaUnique :: (Int)
             _declarationsObindingGroups :: (BindingGroups)
+            _declarationsOclassEnvironment :: (ClassEnvironment)
             _declarationsOcollectErrors :: (TypeErrors)
             _declarationsOcollectWarnings :: (Warnings)
             _declarationsOcurrentChunk :: (Int)
@@ -6128,6 +6485,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -6143,6 +6501,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -6161,12 +6520,29 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
+            ( _declarationsIbetaUnique
+             ,_declarationsIbindingGroups
+             ,_declarationsIcollectErrors
+             ,_declarationsIcollectInstances
+             ,_declarationsIcollectWarnings
+             ,_declarationsIdeclVarNames
+             ,_declarationsIdictionaryEnvironment
+             ,_declarationsIinfoTrees
+             ,_declarationsImatchIO
+             ,_declarationsIpatternMatchWarnings
+             ,_declarationsIrestrictedNames
+             ,_declarationsIself
+             ,_declarationsIsimplePatNames
+             ,_declarationsItypeSignatures
+             ,_declarationsIunboundNames
+             ,_declarationsIuniqueChunk
+             ) =
                 (declarations_ (_declarationsOallPatterns)
                                (_declarationsOallTypeSchemes)
                                (_declarationsOavailablePredicates)
                                (_declarationsObetaUnique)
                                (_declarationsObindingGroups)
+                               (_declarationsOclassEnvironment)
                                (_declarationsOcollectErrors)
                                (_declarationsOcollectWarnings)
                                (_declarationsOcurrentChunk)
@@ -6183,11 +6559,12 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                                (_declarationsOtypeSignatures)
                                (_declarationsOtypeschemeMap)
                                (_declarationsOuniqueChunk))
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -6266,6 +6643,8 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                 in matchOnlyVariable infoTuple _lhsItryPatterns
             (_expressionOtryPatterns@_) =
                 []
+            (_lhsOcollectInstances@_) =
+                _declarationsIcollectInstances  ++  _expressionIcollectInstances
             (_self@_) =
                 Expression_Let _rangeIself _declarationsIself _expressionIself
             (_lhsOself@_) =
@@ -6290,6 +6669,8 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                 _allTypeSchemes
             (_declarationsOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_declarationsOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_declarationsOcollectErrors@_) =
                 _lhsIcollectErrors
             (_declarationsOcollectWarnings@_) =
@@ -6326,6 +6707,8 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                 _lhsIavailablePredicates
             (_expressionObetaUnique@_) =
                 _declarationsIbetaUnique
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _declarationsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -6354,7 +6737,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                 _declarationsIuniqueChunk
             (_expressionOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_List :: (T_Range) ->
                        (T_Expressions) ->
                        (T_Expression)
@@ -6363,6 +6746,7 @@ sem_Expression_List (range_) (expressions_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -6383,6 +6767,7 @@ sem_Expression_List (range_) (expressions_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -6399,6 +6784,7 @@ sem_Expression_List (range_) (expressions_) =
             _expressionsIbetaUnique :: (Int)
             _expressionsIbetas :: (Tps)
             _expressionsIcollectErrors :: (TypeErrors)
+            _expressionsIcollectInstances :: ([(Name, Instance)])
             _expressionsIcollectWarnings :: (Warnings)
             _expressionsIconstraintslist :: (ConstraintSets)
             _expressionsIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -6414,6 +6800,7 @@ sem_Expression_List (range_) (expressions_) =
             _expressionsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionsOavailablePredicates :: (Predicates)
             _expressionsObetaUnique :: (Int)
+            _expressionsOclassEnvironment :: (ClassEnvironment)
             _expressionsOcollectErrors :: (TypeErrors)
             _expressionsOcollectWarnings :: (Warnings)
             _expressionsOcurrentChunk :: (Int)
@@ -6432,11 +6819,12 @@ sem_Expression_List (range_) (expressions_) =
             _expressionsOuniqueSecondRound :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _expressionsIassumptions,_expressionsIbetaUnique,_expressionsIbetas,_expressionsIcollectErrors,_expressionsIcollectWarnings,_expressionsIconstraintslist,_expressionsIdictionaryEnvironment,_expressionsIinfoTrees,_expressionsImatchIO,_expressionsImatches,_expressionsIpatternMatchWarnings,_expressionsIself,_expressionsIunboundNames,_expressionsIuniqueChunk,_expressionsIuniqueSecondRound) =
+            ( _expressionsIassumptions,_expressionsIbetaUnique,_expressionsIbetas,_expressionsIcollectErrors,_expressionsIcollectInstances,_expressionsIcollectWarnings,_expressionsIconstraintslist,_expressionsIdictionaryEnvironment,_expressionsIinfoTrees,_expressionsImatchIO,_expressionsImatches,_expressionsIpatternMatchWarnings,_expressionsIself,_expressionsIunboundNames,_expressionsIuniqueChunk,_expressionsIuniqueSecondRound) =
                 (expressions_ (_expressionsOallPatterns)
                               (_expressionsOallTypeSchemes)
                               (_expressionsOavailablePredicates)
                               (_expressionsObetaUnique)
+                              (_expressionsOclassEnvironment)
                               (_expressionsOcollectErrors)
                               (_expressionsOcollectWarnings)
                               (_expressionsOcurrentChunk)
@@ -6491,6 +6879,8 @@ sem_Expression_List (range_) (expressions_) =
                           [_expressionsImatches]
             (_lhsOmatchIO@_) =
                 _expressionsImatchIO     >> _ioMatch
+            (_lhsOcollectInstances@_) =
+                _expressionsIcollectInstances
             (_lhsOunboundNames@_) =
                 _expressionsIunboundNames
             (_self@_) =
@@ -6517,6 +6907,8 @@ sem_Expression_List (range_) (expressions_) =
                 _lhsIallTypeSchemes
             (_expressionsOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_expressionsOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionsOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionsOcollectWarnings@_) =
@@ -6547,7 +6939,7 @@ sem_Expression_List (range_) (expressions_) =
                 _lhsIuniqueChunk
             (_expressionsOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_Literal :: (T_Range) ->
                           (T_Literal) ->
                           (T_Expression)
@@ -6556,6 +6948,7 @@ sem_Expression_Literal (range_) (literal_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -6576,6 +6969,7 @@ sem_Expression_Literal (range_) (literal_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -6623,6 +7017,8 @@ sem_Expression_Literal (range_) (literal_) =
                           []
             (_lhsOmatchIO@_) =
                 _lhsImatchIO             >> _ioMatch
+            (_lhsOcollectInstances@_) =
+                []
             (_lhsOunboundNames@_) =
                 []
             (_self@_) =
@@ -6641,7 +7037,7 @@ sem_Expression_Literal (range_) (literal_) =
                 _lhsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_Negate :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
@@ -6650,6 +7046,7 @@ sem_Expression_Negate (range_) (expression_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -6670,6 +7067,7 @@ sem_Expression_Negate (range_) (expression_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -6686,6 +7084,7 @@ sem_Expression_Negate (range_) (expression_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -6701,6 +7100,7 @@ sem_Expression_Negate (range_) (expression_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -6719,11 +7119,12 @@ sem_Expression_Negate (range_) (expression_) =
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -6751,7 +7152,7 @@ sem_Expression_Negate (range_) (expression_) =
             (_expressionObetaUnique@_) =
                 _lhsIbetaUnique + 1
             (_newDEnv@_) =
-                resolveOverloading (createClassEnvironment _lhsIimportEnvironment)  _localName
+                resolveOverloading (_lhsIclassEnvironment)  _localName
                                    (_lhsIsubstitution |-> _lhsIavailablePredicates)
                                    (_lhsIsubstitution |-> _requiredDictionaries)
                                    _expressionIdictionaryEnvironment
@@ -6791,6 +7192,8 @@ sem_Expression_Negate (range_) (expression_) =
                           [_expressionImatches]
             (_lhsOmatchIO@_) =
                 _expressionImatchIO      >> _ioMatch
+            (_lhsOcollectInstances@_) =
+                _expressionIcollectInstances
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -6815,6 +7218,8 @@ sem_Expression_Negate (range_) (expression_) =
                 _lhsIallTypeSchemes
             (_expressionOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -6845,7 +7250,7 @@ sem_Expression_Negate (range_) (expression_) =
                 _lhsIuniqueChunk
             (_expressionOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
@@ -6854,6 +7259,7 @@ sem_Expression_NegateFloat (range_) (expression_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -6874,6 +7280,7 @@ sem_Expression_NegateFloat (range_) (expression_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -6890,6 +7297,7 @@ sem_Expression_NegateFloat (range_) (expression_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -6905,6 +7313,7 @@ sem_Expression_NegateFloat (range_) (expression_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -6923,11 +7332,12 @@ sem_Expression_NegateFloat (range_) (expression_) =
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -6973,6 +7383,8 @@ sem_Expression_NegateFloat (range_) (expression_) =
                           [_expressionImatches]
             (_lhsOmatchIO@_) =
                 _expressionImatchIO      >> _ioMatch
+            (_lhsOcollectInstances@_) =
+                _expressionIcollectInstances
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -6999,6 +7411,8 @@ sem_Expression_NegateFloat (range_) (expression_) =
                 _lhsIallTypeSchemes
             (_expressionOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -7029,7 +7443,7 @@ sem_Expression_NegateFloat (range_) (expression_) =
                 _lhsIuniqueChunk
             (_expressionOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_NormalApplication :: (T_Range) ->
                                     (T_Expression) ->
                                     (T_Expressions) ->
@@ -7039,6 +7453,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -7059,6 +7474,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -7075,6 +7491,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _functionIbeta :: (Tp)
             _functionIbetaUnique :: (Int)
             _functionIcollectErrors :: (TypeErrors)
+            _functionIcollectInstances :: ([(Name, Instance)])
             _functionIcollectWarnings :: (Warnings)
             _functionIconstraints :: (ConstraintSet)
             _functionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -7090,6 +7507,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _functionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _functionOavailablePredicates :: (Predicates)
             _functionObetaUnique :: (Int)
+            _functionOclassEnvironment :: (ClassEnvironment)
             _functionOcollectErrors :: (TypeErrors)
             _functionOcollectWarnings :: (Warnings)
             _functionOcurrentChunk :: (Int)
@@ -7110,6 +7528,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _argumentsIbetaUnique :: (Int)
             _argumentsIbetas :: (Tps)
             _argumentsIcollectErrors :: (TypeErrors)
+            _argumentsIcollectInstances :: ([(Name, Instance)])
             _argumentsIcollectWarnings :: (Warnings)
             _argumentsIconstraintslist :: (ConstraintSets)
             _argumentsIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -7125,6 +7544,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _argumentsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _argumentsOavailablePredicates :: (Predicates)
             _argumentsObetaUnique :: (Int)
+            _argumentsOclassEnvironment :: (ClassEnvironment)
             _argumentsOcollectErrors :: (TypeErrors)
             _argumentsOcollectWarnings :: (Warnings)
             _argumentsOcurrentChunk :: (Int)
@@ -7143,11 +7563,12 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _argumentsOuniqueSecondRound :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _functionIassumptions,_functionIbeta,_functionIbetaUnique,_functionIcollectErrors,_functionIcollectWarnings,_functionIconstraints,_functionIdictionaryEnvironment,_functionIinfoTree,_functionImatchIO,_functionImatches,_functionIpatternMatchWarnings,_functionIself,_functionIunboundNames,_functionIuniqueChunk,_functionIuniqueSecondRound) =
+            ( _functionIassumptions,_functionIbeta,_functionIbetaUnique,_functionIcollectErrors,_functionIcollectInstances,_functionIcollectWarnings,_functionIconstraints,_functionIdictionaryEnvironment,_functionIinfoTree,_functionImatchIO,_functionImatches,_functionIpatternMatchWarnings,_functionIself,_functionIunboundNames,_functionIuniqueChunk,_functionIuniqueSecondRound) =
                 (function_ (_functionOallPatterns)
                            (_functionOallTypeSchemes)
                            (_functionOavailablePredicates)
                            (_functionObetaUnique)
+                           (_functionOclassEnvironment)
                            (_functionOcollectErrors)
                            (_functionOcollectWarnings)
                            (_functionOcurrentChunk)
@@ -7164,11 +7585,12 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
                            (_functionOtypeschemeMap)
                            (_functionOuniqueChunk)
                            (_functionOuniqueSecondRound))
-            ( _argumentsIassumptions,_argumentsIbetaUnique,_argumentsIbetas,_argumentsIcollectErrors,_argumentsIcollectWarnings,_argumentsIconstraintslist,_argumentsIdictionaryEnvironment,_argumentsIinfoTrees,_argumentsImatchIO,_argumentsImatches,_argumentsIpatternMatchWarnings,_argumentsIself,_argumentsIunboundNames,_argumentsIuniqueChunk,_argumentsIuniqueSecondRound) =
+            ( _argumentsIassumptions,_argumentsIbetaUnique,_argumentsIbetas,_argumentsIcollectErrors,_argumentsIcollectInstances,_argumentsIcollectWarnings,_argumentsIconstraintslist,_argumentsIdictionaryEnvironment,_argumentsIinfoTrees,_argumentsImatchIO,_argumentsImatches,_argumentsIpatternMatchWarnings,_argumentsIself,_argumentsIunboundNames,_argumentsIuniqueChunk,_argumentsIuniqueSecondRound) =
                 (arguments_ (_argumentsOallPatterns)
                             (_argumentsOallTypeSchemes)
                             (_argumentsOavailablePredicates)
                             (_argumentsObetaUnique)
+                            (_argumentsOclassEnvironment)
                             (_argumentsOcollectErrors)
                             (_argumentsOcollectWarnings)
                             (_argumentsOcurrentChunk)
@@ -7218,6 +7640,8 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
                           [_functionImatches, _argumentsImatches]
             (_lhsOmatchIO@_) =
                 _argumentsImatchIO       >> _ioMatch
+            (_lhsOcollectInstances@_) =
+                _functionIcollectInstances  ++  _argumentsIcollectInstances
             (_lhsOunboundNames@_) =
                 _functionIunboundNames ++ _argumentsIunboundNames
             (_self@_) =
@@ -7244,6 +7668,8 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
                 _lhsIallTypeSchemes
             (_functionOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_functionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_functionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_functionOcollectWarnings@_) =
@@ -7282,6 +7708,8 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
                 _lhsIavailablePredicates
             (_argumentsObetaUnique@_) =
                 _functionIbetaUnique
+            (_argumentsOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_argumentsOcollectErrors@_) =
                 _functionIcollectErrors
             (_argumentsOcollectWarnings@_) =
@@ -7312,7 +7740,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
                 _functionIuniqueChunk
             (_argumentsOuniqueSecondRound@_) =
                 _functionIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_Parenthesized :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Expression)
@@ -7321,6 +7749,7 @@ sem_Expression_Parenthesized (range_) (expression_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -7341,6 +7770,7 @@ sem_Expression_Parenthesized (range_) (expression_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -7357,6 +7787,7 @@ sem_Expression_Parenthesized (range_) (expression_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -7372,6 +7803,7 @@ sem_Expression_Parenthesized (range_) (expression_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -7390,11 +7822,12 @@ sem_Expression_Parenthesized (range_) (expression_) =
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -7411,6 +7844,8 @@ sem_Expression_Parenthesized (range_) (expression_) =
                              (_expressionOtypeschemeMap)
                              (_expressionOuniqueChunk)
                              (_expressionOuniqueSecondRound))
+            (_lhsOcollectInstances@_) =
+                _expressionIcollectInstances
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -7451,6 +7886,8 @@ sem_Expression_Parenthesized (range_) (expression_) =
                 _lhsIavailablePredicates
             (_expressionObetaUnique@_) =
                 _lhsIbetaUnique
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -7483,7 +7920,7 @@ sem_Expression_Parenthesized (range_) (expression_) =
                 _lhsIuniqueChunk
             (_expressionOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_RecordConstruction :: (T_Range) ->
                                      (T_Name) ->
                                      (T_RecordExpressionBindings) ->
@@ -7493,6 +7930,7 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -7513,6 +7951,7 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -7527,6 +7966,7 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
             _rangeIself :: (Range)
             _nameIself :: (Name)
             _recordExpressionBindingsIcollectErrors :: (TypeErrors)
+            _recordExpressionBindingsIcollectInstances :: ([(Name, Instance)])
             _recordExpressionBindingsIcollectWarnings :: (Warnings)
             _recordExpressionBindingsIdictionaryEnvironment :: (DictionaryEnvironment)
             _recordExpressionBindingsIpatternMatchWarnings :: ([Warning])
@@ -7535,6 +7975,7 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
             _recordExpressionBindingsIuniqueChunk :: (Int)
             _recordExpressionBindingsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _recordExpressionBindingsOavailablePredicates :: (Predicates)
+            _recordExpressionBindingsOclassEnvironment :: (ClassEnvironment)
             _recordExpressionBindingsOcollectErrors :: (TypeErrors)
             _recordExpressionBindingsOcollectWarnings :: (Warnings)
             _recordExpressionBindingsOcurrentChunk :: (Int)
@@ -7550,9 +7991,10 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
-            ( _recordExpressionBindingsIcollectErrors,_recordExpressionBindingsIcollectWarnings,_recordExpressionBindingsIdictionaryEnvironment,_recordExpressionBindingsIpatternMatchWarnings,_recordExpressionBindingsIself,_recordExpressionBindingsIunboundNames,_recordExpressionBindingsIuniqueChunk) =
+            ( _recordExpressionBindingsIcollectErrors,_recordExpressionBindingsIcollectInstances,_recordExpressionBindingsIcollectWarnings,_recordExpressionBindingsIdictionaryEnvironment,_recordExpressionBindingsIpatternMatchWarnings,_recordExpressionBindingsIself,_recordExpressionBindingsIunboundNames,_recordExpressionBindingsIuniqueChunk) =
                 (recordExpressionBindings_ (_recordExpressionBindingsOallTypeSchemes)
                                            (_recordExpressionBindingsOavailablePredicates)
+                                           (_recordExpressionBindingsOclassEnvironment)
                                            (_recordExpressionBindingsOcollectErrors)
                                            (_recordExpressionBindingsOcollectWarnings)
                                            (_recordExpressionBindingsOcurrentChunk)
@@ -7570,6 +8012,8 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
                 internalError "PartialSyntax.ag" "n/a" "Expression.RecordConstruction"
             (_matches@_) =
                 internalError "TS_PatternMatching.ag" "n/a" "RecordConstruction is not supported"
+            (_lhsOcollectInstances@_) =
+                _recordExpressionBindingsIcollectInstances
             (_lhsOunboundNames@_) =
                 _recordExpressionBindingsIunboundNames
             (_self@_) =
@@ -7606,6 +8050,8 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
                 _lhsIallTypeSchemes
             (_recordExpressionBindingsOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_recordExpressionBindingsOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_recordExpressionBindingsOcollectErrors@_) =
                 _lhsIcollectErrors
             (_recordExpressionBindingsOcollectWarnings@_) =
@@ -7628,7 +8074,7 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
                 _lhsItypeschemeMap
             (_recordExpressionBindingsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_RecordUpdate :: (T_Range) ->
                                (T_Expression) ->
                                (T_RecordExpressionBindings) ->
@@ -7638,6 +8084,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -7658,6 +8105,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -7674,6 +8122,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -7689,6 +8138,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -7706,6 +8156,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             _recordExpressionBindingsIcollectErrors :: (TypeErrors)
+            _recordExpressionBindingsIcollectInstances :: ([(Name, Instance)])
             _recordExpressionBindingsIcollectWarnings :: (Warnings)
             _recordExpressionBindingsIdictionaryEnvironment :: (DictionaryEnvironment)
             _recordExpressionBindingsIpatternMatchWarnings :: ([Warning])
@@ -7714,6 +8165,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _recordExpressionBindingsIuniqueChunk :: (Int)
             _recordExpressionBindingsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _recordExpressionBindingsOavailablePredicates :: (Predicates)
+            _recordExpressionBindingsOclassEnvironment :: (ClassEnvironment)
             _recordExpressionBindingsOcollectErrors :: (TypeErrors)
             _recordExpressionBindingsOcollectWarnings :: (Warnings)
             _recordExpressionBindingsOcurrentChunk :: (Int)
@@ -7727,11 +8179,12 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _recordExpressionBindingsOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -7748,9 +8201,10 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
                              (_expressionOtypeschemeMap)
                              (_expressionOuniqueChunk)
                              (_expressionOuniqueSecondRound))
-            ( _recordExpressionBindingsIcollectErrors,_recordExpressionBindingsIcollectWarnings,_recordExpressionBindingsIdictionaryEnvironment,_recordExpressionBindingsIpatternMatchWarnings,_recordExpressionBindingsIself,_recordExpressionBindingsIunboundNames,_recordExpressionBindingsIuniqueChunk) =
+            ( _recordExpressionBindingsIcollectErrors,_recordExpressionBindingsIcollectInstances,_recordExpressionBindingsIcollectWarnings,_recordExpressionBindingsIdictionaryEnvironment,_recordExpressionBindingsIpatternMatchWarnings,_recordExpressionBindingsIself,_recordExpressionBindingsIunboundNames,_recordExpressionBindingsIuniqueChunk) =
                 (recordExpressionBindings_ (_recordExpressionBindingsOallTypeSchemes)
                                            (_recordExpressionBindingsOavailablePredicates)
+                                           (_recordExpressionBindingsOclassEnvironment)
                                            (_recordExpressionBindingsOcollectErrors)
                                            (_recordExpressionBindingsOcollectWarnings)
                                            (_recordExpressionBindingsOcurrentChunk)
@@ -7762,6 +8216,8 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
                                            (_recordExpressionBindingsOsubstitution)
                                            (_recordExpressionBindingsOtypeschemeMap)
                                            (_recordExpressionBindingsOuniqueChunk))
+            (_lhsOcollectInstances@_) =
+                _expressionIcollectInstances  ++  _recordExpressionBindingsIcollectInstances
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames ++ _recordExpressionBindingsIunboundNames
             (_self@_) =
@@ -7802,6 +8258,8 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
                 _lhsIavailablePredicates
             (_expressionObetaUnique@_) =
                 _lhsIbetaUnique
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -7838,6 +8296,8 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
                 _lhsIallTypeSchemes
             (_recordExpressionBindingsOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_recordExpressionBindingsOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_recordExpressionBindingsOcollectErrors@_) =
                 _expressionIcollectErrors
             (_recordExpressionBindingsOcollectWarnings@_) =
@@ -7860,7 +8320,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
                 _lhsItypeschemeMap
             (_recordExpressionBindingsOuniqueChunk@_) =
                 _expressionIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_Tuple :: (T_Range) ->
                         (T_Expressions) ->
                         (T_Expression)
@@ -7869,6 +8329,7 @@ sem_Expression_Tuple (range_) (expressions_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -7889,6 +8350,7 @@ sem_Expression_Tuple (range_) (expressions_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -7905,6 +8367,7 @@ sem_Expression_Tuple (range_) (expressions_) =
             _expressionsIbetaUnique :: (Int)
             _expressionsIbetas :: (Tps)
             _expressionsIcollectErrors :: (TypeErrors)
+            _expressionsIcollectInstances :: ([(Name, Instance)])
             _expressionsIcollectWarnings :: (Warnings)
             _expressionsIconstraintslist :: (ConstraintSets)
             _expressionsIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -7920,6 +8383,7 @@ sem_Expression_Tuple (range_) (expressions_) =
             _expressionsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionsOavailablePredicates :: (Predicates)
             _expressionsObetaUnique :: (Int)
+            _expressionsOclassEnvironment :: (ClassEnvironment)
             _expressionsOcollectErrors :: (TypeErrors)
             _expressionsOcollectWarnings :: (Warnings)
             _expressionsOcurrentChunk :: (Int)
@@ -7938,11 +8402,12 @@ sem_Expression_Tuple (range_) (expressions_) =
             _expressionsOuniqueSecondRound :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _expressionsIassumptions,_expressionsIbetaUnique,_expressionsIbetas,_expressionsIcollectErrors,_expressionsIcollectWarnings,_expressionsIconstraintslist,_expressionsIdictionaryEnvironment,_expressionsIinfoTrees,_expressionsImatchIO,_expressionsImatches,_expressionsIpatternMatchWarnings,_expressionsIself,_expressionsIunboundNames,_expressionsIuniqueChunk,_expressionsIuniqueSecondRound) =
+            ( _expressionsIassumptions,_expressionsIbetaUnique,_expressionsIbetas,_expressionsIcollectErrors,_expressionsIcollectInstances,_expressionsIcollectWarnings,_expressionsIconstraintslist,_expressionsIdictionaryEnvironment,_expressionsIinfoTrees,_expressionsImatchIO,_expressionsImatches,_expressionsIpatternMatchWarnings,_expressionsIself,_expressionsIunboundNames,_expressionsIuniqueChunk,_expressionsIuniqueSecondRound) =
                 (expressions_ (_expressionsOallPatterns)
                               (_expressionsOallTypeSchemes)
                               (_expressionsOavailablePredicates)
                               (_expressionsObetaUnique)
+                              (_expressionsOclassEnvironment)
                               (_expressionsOcollectErrors)
                               (_expressionsOcollectWarnings)
                               (_expressionsOcurrentChunk)
@@ -7987,6 +8452,8 @@ sem_Expression_Tuple (range_) (expressions_) =
                           [_expressionsImatches]
             (_lhsOmatchIO@_) =
                 _expressionsImatchIO     >> _ioMatch
+            (_lhsOcollectInstances@_) =
+                _expressionsIcollectInstances
             (_lhsOunboundNames@_) =
                 _expressionsIunboundNames
             (_self@_) =
@@ -8013,6 +8480,8 @@ sem_Expression_Tuple (range_) (expressions_) =
                 _lhsIallTypeSchemes
             (_expressionsOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_expressionsOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionsOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionsOcollectWarnings@_) =
@@ -8043,7 +8512,7 @@ sem_Expression_Tuple (range_) (expressions_) =
                 _lhsIuniqueChunk
             (_expressionsOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_Typed :: (T_Range) ->
                         (T_Expression) ->
                         (T_Type) ->
@@ -8053,6 +8522,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -8073,6 +8543,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -8089,6 +8560,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -8104,6 +8576,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -8123,11 +8596,12 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             _typeIself :: (Type)
             ( _rangeIself) =
                 (range_ )
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -8181,6 +8655,8 @@ sem_Expression_Typed (range_) (expression_) (type_) =
                 in matchOnlyVariable infoTuple _lhsItryPatterns
             (_expressionOtryPatterns@_) =
                 []
+            (_lhsOcollectInstances@_) =
+                _expressionIcollectInstances
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -8215,6 +8691,8 @@ sem_Expression_Typed (range_) (expression_) (type_) =
                 _lhsIallTypeSchemes
             (_expressionOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -8245,7 +8723,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
                 _lhsIuniqueChunk
             (_expressionOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expression_Variable :: (T_Range) ->
                            (T_Name) ->
                            (T_Expression)
@@ -8254,6 +8732,7 @@ sem_Expression_Variable (range_) (name_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -8274,6 +8753,7 @@ sem_Expression_Variable (range_) (name_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -8302,7 +8782,7 @@ sem_Expression_Variable (range_) (name_) =
             (_usedAsType@_) =
                 _lhsIsubstitution |-> _beta
             (_newDEnv@_) =
-                resolveOverloading (createClassEnvironment _lhsIimportEnvironment)
+                resolveOverloading (_lhsIclassEnvironment)
                                    _nameIself
                                    (_lhsIsubstitution |-> _lhsIavailablePredicates)
                                    (_lhsIsubstitution |-> _requiredDictionaries)
@@ -8341,6 +8821,8 @@ sem_Expression_Variable (range_) (name_) =
                           []
             (_lhsOmatchIO@_) =
                 _lhsImatchIO             >> _ioMatch
+            (_lhsOcollectInstances@_) =
+                []
             (_self@_) =
                 Expression_Variable _rangeIself _nameIself
             (_lhsOself@_) =
@@ -8355,13 +8837,14 @@ sem_Expression_Variable (range_) (name_) =
                 _lhsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 -- Expressions -------------------------------------------------
 -- semantic domain
 type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (FiniteMap NameWithRange TpScheme) ->
                      (Predicates) ->
                      (Int) ->
+                     (ClassEnvironment) ->
                      (TypeErrors) ->
                      (Warnings) ->
                      (Int) ->
@@ -8378,7 +8861,7 @@ type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (FiniteMap Int (Scheme Predicates)) ->
                      (Int) ->
                      (Int) ->
-                     ( (Assumptions),(Int),(Tps),(TypeErrors),(Warnings),(ConstraintSets),(DictionaryEnvironment),(InfoTrees),(IO ()),([Maybe MetaVariableTable]),([Warning]),(Expressions),(Names),(Int),(Int))
+                     ( (Assumptions),(Int),(Tps),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSets),(DictionaryEnvironment),(InfoTrees),(IO ()),([Maybe MetaVariableTable]),([Warning]),(Expressions),(Names),(Int),(Int))
 -- cata
 sem_Expressions :: (Expressions) ->
                    (T_Expressions)
@@ -8392,6 +8875,7 @@ sem_Expressions_Cons (hd_) (tl_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -8412,6 +8896,7 @@ sem_Expressions_Cons (hd_) (tl_) =
             _lhsObetaUnique :: (Int)
             _lhsObetas :: (Tps)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraintslist :: (ConstraintSets)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -8427,6 +8912,7 @@ sem_Expressions_Cons (hd_) (tl_) =
             _hdIbeta :: (Tp)
             _hdIbetaUnique :: (Int)
             _hdIcollectErrors :: (TypeErrors)
+            _hdIcollectInstances :: ([(Name, Instance)])
             _hdIcollectWarnings :: (Warnings)
             _hdIconstraints :: (ConstraintSet)
             _hdIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -8442,6 +8928,7 @@ sem_Expressions_Cons (hd_) (tl_) =
             _hdOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _hdOavailablePredicates :: (Predicates)
             _hdObetaUnique :: (Int)
+            _hdOclassEnvironment :: (ClassEnvironment)
             _hdOcollectErrors :: (TypeErrors)
             _hdOcollectWarnings :: (Warnings)
             _hdOcurrentChunk :: (Int)
@@ -8462,6 +8949,7 @@ sem_Expressions_Cons (hd_) (tl_) =
             _tlIbetaUnique :: (Int)
             _tlIbetas :: (Tps)
             _tlIcollectErrors :: (TypeErrors)
+            _tlIcollectInstances :: ([(Name, Instance)])
             _tlIcollectWarnings :: (Warnings)
             _tlIconstraintslist :: (ConstraintSets)
             _tlIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -8477,6 +8965,7 @@ sem_Expressions_Cons (hd_) (tl_) =
             _tlOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _tlOavailablePredicates :: (Predicates)
             _tlObetaUnique :: (Int)
+            _tlOclassEnvironment :: (ClassEnvironment)
             _tlOcollectErrors :: (TypeErrors)
             _tlOcollectWarnings :: (Warnings)
             _tlOcurrentChunk :: (Int)
@@ -8493,10 +8982,50 @@ sem_Expressions_Cons (hd_) (tl_) =
             _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
             _tlOuniqueChunk :: (Int)
             _tlOuniqueSecondRound :: (Int)
-            ( _hdIassumptions,_hdIbeta,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIinfoTree,_hdImatchIO,_hdImatches,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIuniqueSecondRound) =
-                (hd_ (_hdOallPatterns) (_hdOallTypeSchemes) (_hdOavailablePredicates) (_hdObetaUnique) (_hdOcollectErrors) (_hdOcollectWarnings) (_hdOcurrentChunk) (_hdOdictionaryEnvironment) (_hdOimportEnvironment) (_hdOmatchIO) (_hdOmonos) (_hdOnamesInScope) (_hdOorderedTypeSynonyms) (_hdOparentTree) (_hdOpatternMatchWarnings) (_hdOsubstitution) (_hdOtryPatterns) (_hdOtypeschemeMap) (_hdOuniqueChunk) (_hdOuniqueSecondRound))
-            ( _tlIassumptions,_tlIbetaUnique,_tlIbetas,_tlIcollectErrors,_tlIcollectWarnings,_tlIconstraintslist,_tlIdictionaryEnvironment,_tlIinfoTrees,_tlImatchIO,_tlImatches,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIuniqueSecondRound) =
-                (tl_ (_tlOallPatterns) (_tlOallTypeSchemes) (_tlOavailablePredicates) (_tlObetaUnique) (_tlOcollectErrors) (_tlOcollectWarnings) (_tlOcurrentChunk) (_tlOdictionaryEnvironment) (_tlOimportEnvironment) (_tlOmatchIO) (_tlOmonos) (_tlOnamesInScope) (_tlOorderedTypeSynonyms) (_tlOparentTree) (_tlOpatternMatchWarnings) (_tlOsubstitution) (_tlOtryPatterns) (_tlOtypeschemeMap) (_tlOuniqueChunk) (_tlOuniqueSecondRound))
+            ( _hdIassumptions,_hdIbeta,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIinfoTree,_hdImatchIO,_hdImatches,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIuniqueSecondRound) =
+                (hd_ (_hdOallPatterns)
+                     (_hdOallTypeSchemes)
+                     (_hdOavailablePredicates)
+                     (_hdObetaUnique)
+                     (_hdOclassEnvironment)
+                     (_hdOcollectErrors)
+                     (_hdOcollectWarnings)
+                     (_hdOcurrentChunk)
+                     (_hdOdictionaryEnvironment)
+                     (_hdOimportEnvironment)
+                     (_hdOmatchIO)
+                     (_hdOmonos)
+                     (_hdOnamesInScope)
+                     (_hdOorderedTypeSynonyms)
+                     (_hdOparentTree)
+                     (_hdOpatternMatchWarnings)
+                     (_hdOsubstitution)
+                     (_hdOtryPatterns)
+                     (_hdOtypeschemeMap)
+                     (_hdOuniqueChunk)
+                     (_hdOuniqueSecondRound))
+            ( _tlIassumptions,_tlIbetaUnique,_tlIbetas,_tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIconstraintslist,_tlIdictionaryEnvironment,_tlIinfoTrees,_tlImatchIO,_tlImatches,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIuniqueSecondRound) =
+                (tl_ (_tlOallPatterns)
+                     (_tlOallTypeSchemes)
+                     (_tlOavailablePredicates)
+                     (_tlObetaUnique)
+                     (_tlOclassEnvironment)
+                     (_tlOcollectErrors)
+                     (_tlOcollectWarnings)
+                     (_tlOcurrentChunk)
+                     (_tlOdictionaryEnvironment)
+                     (_tlOimportEnvironment)
+                     (_tlOmatchIO)
+                     (_tlOmonos)
+                     (_tlOnamesInScope)
+                     (_tlOorderedTypeSynonyms)
+                     (_tlOparentTree)
+                     (_tlOpatternMatchWarnings)
+                     (_tlOsubstitution)
+                     (_tlOtryPatterns)
+                     (_tlOtypeschemeMap)
+                     (_tlOuniqueChunk)
+                     (_tlOuniqueSecondRound))
             (_lhsOconstraintslist@_) =
                 _hdIconstraints : _tlIconstraintslist
             (_lhsOassumptions@_) =
@@ -8507,6 +9036,8 @@ sem_Expressions_Cons (hd_) (tl_) =
                 _hdIinfoTree : _tlIinfoTrees
             (((_hdOtryPatterns@_,_tlOtryPatterns@_),_lhsOmatches@_,_,_,_,_)) =
                 match2' match_Expressions_Cons _lhsItryPatterns [] [_hdImatches, _tlImatches]
+            (_lhsOcollectInstances@_) =
+                _hdIcollectInstances  ++  _tlIcollectInstances
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -8537,6 +9068,8 @@ sem_Expressions_Cons (hd_) (tl_) =
                 _lhsIavailablePredicates
             (_hdObetaUnique@_) =
                 _lhsIbetaUnique
+            (_hdOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_hdOcollectErrors@_) =
                 _lhsIcollectErrors
             (_hdOcollectWarnings@_) =
@@ -8575,6 +9108,8 @@ sem_Expressions_Cons (hd_) (tl_) =
                 _lhsIavailablePredicates
             (_tlObetaUnique@_) =
                 _hdIbetaUnique
+            (_tlOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_tlOcollectErrors@_) =
                 _hdIcollectErrors
             (_tlOcollectWarnings@_) =
@@ -8605,13 +9140,14 @@ sem_Expressions_Cons (hd_) (tl_) =
                 _hdIuniqueChunk
             (_tlOuniqueSecondRound@_) =
                 _hdIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsObetas,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsObetas,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Expressions_Nil :: (T_Expressions)
 sem_Expressions_Nil  =
     \ _lhsIallPatterns
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -8632,6 +9168,7 @@ sem_Expressions_Nil  =
             _lhsObetaUnique :: (Int)
             _lhsObetas :: (Tps)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraintslist :: (ConstraintSets)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -8653,6 +9190,8 @@ sem_Expressions_Nil  =
                 []
             (((),_lhsOmatches@_,_,_,_,_)) =
                 match0' match_Expressions_Nil _lhsItryPatterns [] []
+            (_lhsOcollectInstances@_) =
+                []
             (_lhsOunboundNames@_) =
                 []
             (_self@_) =
@@ -8675,7 +9214,7 @@ sem_Expressions_Nil  =
                 _lhsIuniqueChunk
             (_lhsOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsObetas,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsObetas,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 -- FieldDeclaration --------------------------------------------
 -- semantic domain
 type T_FieldDeclaration = (Names) ->
@@ -8820,6 +9359,7 @@ type T_FunctionBinding = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (Tp) ->
                          (Int) ->
                          (Tps) ->
+                         (ClassEnvironment) ->
                          (TypeErrors) ->
                          (Warnings) ->
                          (Int) ->
@@ -8834,7 +9374,7 @@ type T_FunctionBinding = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (FixpointSubstitution) ->
                          (FiniteMap Int (Scheme Predicates)) ->
                          (Int) ->
-                         ( (Int),(Assumptions),(Int),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),( ([PatternElement], Bool) ),(InfoTree),(IO ()),(Name),(Int),([Warning]),(FunctionBinding),(Names),(Int),(Warning))
+                         ( (Int),(Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),( ([PatternElement], Bool) ),(InfoTree),(IO ()),(Name),(Int),([Warning]),(FunctionBinding),(Names),(Int),(Warning))
 -- cata
 sem_FunctionBinding :: (FunctionBinding) ->
                        (T_FunctionBinding)
@@ -8851,6 +9391,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
       _lhsIbetaRight
       _lhsIbetaUnique
       _lhsIbetasLeft
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -8869,6 +9410,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
             _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -8905,6 +9447,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
             _righthandsideIassumptions :: (Assumptions)
             _righthandsideIbetaUnique :: (Int)
             _righthandsideIcollectErrors :: (TypeErrors)
+            _righthandsideIcollectInstances :: ([(Name, Instance)])
             _righthandsideIcollectWarnings :: (Warnings)
             _righthandsideIconstraints :: (ConstraintSet)
             _righthandsideIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -8920,6 +9463,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
             _righthandsideOavailablePredicates :: (Predicates)
             _righthandsideObetaRight :: (Tp)
             _righthandsideObetaUnique :: (Int)
+            _righthandsideOclassEnvironment :: (ClassEnvironment)
             _righthandsideOcollectErrors :: (TypeErrors)
             _righthandsideOcollectWarnings :: (Warnings)
             _righthandsideOcurrentChunk :: (Int)
@@ -8938,12 +9482,13 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
                 (range_ )
             ( _lefthandsideIargcount,_lefthandsideIbetaUnique,_lefthandsideIbetas,_lefthandsideIconstraints,_lefthandsideIelements,_lefthandsideIenvironment,_lefthandsideIinfoTrees,_lefthandsideIname,_lefthandsideInumberOfPatterns,_lefthandsideIpatVarNames,_lefthandsideIpatternMatchWarnings,_lefthandsideIself,_lefthandsideIunboundNames) =
                 (lefthandside_ (_lefthandsideObetaUnique) (_lefthandsideOimportEnvironment) (_lefthandsideOmonos) (_lefthandsideOnamesInScope) (_lefthandsideOparentTree) (_lefthandsideOpatternMatchWarnings))
-            ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectErrors,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTree,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
+            ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectErrors,_righthandsideIcollectInstances,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTree,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
                 (righthandside_ (_righthandsideOallPatterns)
                                 (_righthandsideOallTypeSchemes)
                                 (_righthandsideOavailablePredicates)
                                 (_righthandsideObetaRight)
                                 (_righthandsideObetaUnique)
+                                (_righthandsideOclassEnvironment)
                                 (_righthandsideOcollectErrors)
                                 (_righthandsideOcollectWarnings)
                                 (_righthandsideOcurrentChunk)
@@ -8995,6 +9540,8 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
                 (_lefthandsideIelements, _righthandsideIfallthrough)
             (_lhsOunrwar@_) =
                 UnreachablePatternLHS _lefthandsideIself
+            (_lhsOcollectInstances@_) =
+                _righthandsideIcollectInstances
             (_self@_) =
                 FunctionBinding_FunctionBinding _rangeIself _lefthandsideIself _righthandsideIself
             (_lhsOself@_) =
@@ -9043,6 +9590,8 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
                 _lhsIbetaRight
             (_righthandsideObetaUnique@_) =
                 _lefthandsideIbetaUnique
+            (_righthandsideOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_righthandsideOcollectErrors@_) =
                 _lhsIcollectErrors
             (_righthandsideOcollectWarnings@_) =
@@ -9069,7 +9618,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
                 _lhsItypeschemeMap
             (_righthandsideOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOargcount,_lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOelements,_lhsOinfoTree,_lhsOmatchIO,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwar)
+        in  ( _lhsOargcount,_lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOelements,_lhsOinfoTree,_lhsOmatchIO,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwar)
 -- FunctionBindings --------------------------------------------
 -- semantic domain
 type T_FunctionBindings = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -9078,6 +9627,7 @@ type T_FunctionBindings = ([((Expression, [String]), Core_TypingStrategy)]) ->
                           (Tp) ->
                           (Int) ->
                           (Tps) ->
+                          (ClassEnvironment) ->
                           (TypeErrors) ->
                           (Warnings) ->
                           (Int) ->
@@ -9092,7 +9642,7 @@ type T_FunctionBindings = ([((Expression, [String]), Core_TypingStrategy)]) ->
                           (FixpointSubstitution) ->
                           (FiniteMap Int (Scheme Predicates)) ->
                           (Int) ->
-                          ( (Int),(Assumptions),(Int),(TypeErrors),(Warnings),(ConstraintSets),(DictionaryEnvironment),([([PatternElement], Bool)]),(InfoTrees),(IO ()),(Name),(Int),([Warning]),(FunctionBindings),(Names),(Int),([Warning]))
+                          ( (Int),(Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSets),(DictionaryEnvironment),([([PatternElement], Bool)]),(InfoTrees),(IO ()),(Name),(Int),([Warning]),(FunctionBindings),(Names),(Int),([Warning]))
 -- cata
 sem_FunctionBindings :: (FunctionBindings) ->
                         (T_FunctionBindings)
@@ -9108,6 +9658,7 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
       _lhsIbetaRight
       _lhsIbetaUnique
       _lhsIbetasLeft
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -9126,6 +9677,7 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraintslist :: (ConstraintSets)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -9143,6 +9695,7 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _hdIassumptions :: (Assumptions)
             _hdIbetaUnique :: (Int)
             _hdIcollectErrors :: (TypeErrors)
+            _hdIcollectInstances :: ([(Name, Instance)])
             _hdIcollectWarnings :: (Warnings)
             _hdIconstraints :: (ConstraintSet)
             _hdIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -9162,6 +9715,7 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _hdObetaRight :: (Tp)
             _hdObetaUnique :: (Int)
             _hdObetasLeft :: (Tps)
+            _hdOclassEnvironment :: (ClassEnvironment)
             _hdOcollectErrors :: (TypeErrors)
             _hdOcollectWarnings :: (Warnings)
             _hdOcurrentChunk :: (Int)
@@ -9180,6 +9734,7 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _tlIassumptions :: (Assumptions)
             _tlIbetaUnique :: (Int)
             _tlIcollectErrors :: (TypeErrors)
+            _tlIcollectInstances :: ([(Name, Instance)])
             _tlIcollectWarnings :: (Warnings)
             _tlIconstraintslist :: (ConstraintSets)
             _tlIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -9199,6 +9754,7 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _tlObetaRight :: (Tp)
             _tlObetaUnique :: (Int)
             _tlObetasLeft :: (Tps)
+            _tlOclassEnvironment :: (ClassEnvironment)
             _tlOcollectErrors :: (TypeErrors)
             _tlOcollectWarnings :: (Warnings)
             _tlOcurrentChunk :: (Int)
@@ -9213,10 +9769,10 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _tlOsubstitution :: (FixpointSubstitution)
             _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
             _tlOuniqueChunk :: (Int)
-            ( _hdIargcount,_hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIelements,_hdIinfoTree,_hdImatchIO,_hdIname,_hdInumberOfPatterns,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIunrwar) =
-                (hd_ (_hdOallPatterns) (_hdOallTypeSchemes) (_hdOavailablePredicates) (_hdObetaRight) (_hdObetaUnique) (_hdObetasLeft) (_hdOcollectErrors) (_hdOcollectWarnings) (_hdOcurrentChunk) (_hdOdictionaryEnvironment) (_hdOimportEnvironment) (_hdOmatchIO) (_hdOmonos) (_hdOnamesInScope) (_hdOorderedTypeSynonyms) (_hdOparentTree) (_hdOpatternMatchWarnings) (_hdOsubstitution) (_hdOtypeschemeMap) (_hdOuniqueChunk))
-            ( _tlIargcount,_tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectWarnings,_tlIconstraintslist,_tlIdictionaryEnvironment,_tlIelementss,_tlIinfoTrees,_tlImatchIO,_tlIname,_tlInumberOfPatterns,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIunrwars) =
-                (tl_ (_tlOallPatterns) (_tlOallTypeSchemes) (_tlOavailablePredicates) (_tlObetaRight) (_tlObetaUnique) (_tlObetasLeft) (_tlOcollectErrors) (_tlOcollectWarnings) (_tlOcurrentChunk) (_tlOdictionaryEnvironment) (_tlOimportEnvironment) (_tlOmatchIO) (_tlOmonos) (_tlOnamesInScope) (_tlOorderedTypeSynonyms) (_tlOparentTree) (_tlOpatternMatchWarnings) (_tlOsubstitution) (_tlOtypeschemeMap) (_tlOuniqueChunk))
+            ( _hdIargcount,_hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIelements,_hdIinfoTree,_hdImatchIO,_hdIname,_hdInumberOfPatterns,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIunrwar) =
+                (hd_ (_hdOallPatterns) (_hdOallTypeSchemes) (_hdOavailablePredicates) (_hdObetaRight) (_hdObetaUnique) (_hdObetasLeft) (_hdOclassEnvironment) (_hdOcollectErrors) (_hdOcollectWarnings) (_hdOcurrentChunk) (_hdOdictionaryEnvironment) (_hdOimportEnvironment) (_hdOmatchIO) (_hdOmonos) (_hdOnamesInScope) (_hdOorderedTypeSynonyms) (_hdOparentTree) (_hdOpatternMatchWarnings) (_hdOsubstitution) (_hdOtypeschemeMap) (_hdOuniqueChunk))
+            ( _tlIargcount,_tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIconstraintslist,_tlIdictionaryEnvironment,_tlIelementss,_tlIinfoTrees,_tlImatchIO,_tlIname,_tlInumberOfPatterns,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIunrwars) =
+                (tl_ (_tlOallPatterns) (_tlOallTypeSchemes) (_tlOavailablePredicates) (_tlObetaRight) (_tlObetaUnique) (_tlObetasLeft) (_tlOclassEnvironment) (_tlOcollectErrors) (_tlOcollectWarnings) (_tlOcurrentChunk) (_tlOdictionaryEnvironment) (_tlOimportEnvironment) (_tlOmatchIO) (_tlOmonos) (_tlOnamesInScope) (_tlOorderedTypeSynonyms) (_tlOparentTree) (_tlOpatternMatchWarnings) (_tlOsubstitution) (_tlOtypeschemeMap) (_tlOuniqueChunk))
             (_lhsOconstraintslist@_) =
                 _hdIconstraints : _tlIconstraintslist
             (_lhsOname@_) =
@@ -9233,6 +9789,8 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
                 _hdIunrwar   : _tlIunrwars
             (_lhsOelementss@_) =
                 _hdIelements : _tlIelementss
+            (_lhsOcollectInstances@_) =
+                _hdIcollectInstances  ++  _tlIcollectInstances
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -9265,6 +9823,8 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
                 _lhsIbetaUnique
             (_hdObetasLeft@_) =
                 _lhsIbetasLeft
+            (_hdOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_hdOcollectErrors@_) =
                 _lhsIcollectErrors
             (_hdOcollectWarnings@_) =
@@ -9305,6 +9865,8 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
                 _hdIbetaUnique
             (_tlObetasLeft@_) =
                 _lhsIbetasLeft
+            (_tlOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_tlOcollectErrors@_) =
                 _hdIcollectErrors
             (_tlOcollectWarnings@_) =
@@ -9333,7 +9895,7 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
                 _lhsItypeschemeMap
             (_tlOuniqueChunk@_) =
                 _hdIuniqueChunk
-        in  ( _lhsOargcount,_lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOelementss,_lhsOinfoTrees,_lhsOmatchIO,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwars)
+        in  ( _lhsOargcount,_lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOelementss,_lhsOinfoTrees,_lhsOmatchIO,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwars)
 sem_FunctionBindings_Nil :: (T_FunctionBindings)
 sem_FunctionBindings_Nil  =
     \ _lhsIallPatterns
@@ -9342,6 +9904,7 @@ sem_FunctionBindings_Nil  =
       _lhsIbetaRight
       _lhsIbetaUnique
       _lhsIbetasLeft
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -9360,6 +9923,7 @@ sem_FunctionBindings_Nil  =
             _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraintslist :: (ConstraintSets)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -9389,6 +9953,8 @@ sem_FunctionBindings_Nil  =
                 []
             (_lhsOelementss@_) =
                 []
+            (_lhsOcollectInstances@_) =
+                []
             (_lhsOunboundNames@_) =
                 []
             (_self@_) =
@@ -9409,7 +9975,7 @@ sem_FunctionBindings_Nil  =
                 _lhsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOargcount,_lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOelementss,_lhsOinfoTrees,_lhsOmatchIO,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwars)
+        in  ( _lhsOargcount,_lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOelementss,_lhsOinfoTrees,_lhsOmatchIO,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwars)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
 type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -9417,6 +9983,7 @@ type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (Predicates) ->
                            (Tp) ->
                            (Int) ->
+                           (ClassEnvironment) ->
                            (TypeErrors) ->
                            (Warnings) ->
                            (Int) ->
@@ -9433,7 +10000,7 @@ type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (FiniteMap Int (Scheme Predicates)) ->
                            (Int) ->
                            (Int) ->
-                           ( (Assumptions),(Int),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Bool),(InfoTrees),(IO ()),([Warning]),(Range),(GuardedExpression),(Names),(Int),(Int),(Warning))
+                           ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Bool),(InfoTrees),(IO ()),([Warning]),(Range),(GuardedExpression),(Names),(Int),(Int),(Warning))
 -- cata
 sem_GuardedExpression :: (GuardedExpression) ->
                          (T_GuardedExpression)
@@ -9449,6 +10016,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
       _lhsIavailablePredicates
       _lhsIbetaRight
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -9468,6 +10036,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -9486,6 +10055,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _guardIbeta :: (Tp)
             _guardIbetaUnique :: (Int)
             _guardIcollectErrors :: (TypeErrors)
+            _guardIcollectInstances :: ([(Name, Instance)])
             _guardIcollectWarnings :: (Warnings)
             _guardIconstraints :: (ConstraintSet)
             _guardIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -9501,6 +10071,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _guardOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _guardOavailablePredicates :: (Predicates)
             _guardObetaUnique :: (Int)
+            _guardOclassEnvironment :: (ClassEnvironment)
             _guardOcollectErrors :: (TypeErrors)
             _guardOcollectWarnings :: (Warnings)
             _guardOcurrentChunk :: (Int)
@@ -9521,6 +10092,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -9536,6 +10108,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -9554,11 +10127,12 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _guardIassumptions,_guardIbeta,_guardIbetaUnique,_guardIcollectErrors,_guardIcollectWarnings,_guardIconstraints,_guardIdictionaryEnvironment,_guardIinfoTree,_guardImatchIO,_guardImatches,_guardIpatternMatchWarnings,_guardIself,_guardIunboundNames,_guardIuniqueChunk,_guardIuniqueSecondRound) =
+            ( _guardIassumptions,_guardIbeta,_guardIbetaUnique,_guardIcollectErrors,_guardIcollectInstances,_guardIcollectWarnings,_guardIconstraints,_guardIdictionaryEnvironment,_guardIinfoTree,_guardImatchIO,_guardImatches,_guardIpatternMatchWarnings,_guardIself,_guardIunboundNames,_guardIuniqueChunk,_guardIuniqueSecondRound) =
                 (guard_ (_guardOallPatterns)
                         (_guardOallTypeSchemes)
                         (_guardOavailablePredicates)
                         (_guardObetaUnique)
+                        (_guardOclassEnvironment)
                         (_guardOcollectErrors)
                         (_guardOcollectWarnings)
                         (_guardOcurrentChunk)
@@ -9575,11 +10149,12 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
                         (_guardOtypeschemeMap)
                         (_guardOuniqueChunk)
                         (_guardOuniqueSecondRound))
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -9628,6 +10203,8 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
                    _                                                          -> True
             (_lhsOrange@_) =
                 range_
+            (_lhsOcollectInstances@_) =
+                _guardIcollectInstances  ++  _expressionIcollectInstances
             (_lhsOunboundNames@_) =
                 _guardIunboundNames ++ _expressionIunboundNames
             (_self@_) =
@@ -9658,6 +10235,8 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
                 _lhsIavailablePredicates
             (_guardObetaUnique@_) =
                 _lhsIbetaUnique
+            (_guardOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_guardOcollectErrors@_) =
                 _lhsIcollectErrors
             (_guardOcollectWarnings@_) =
@@ -9696,6 +10275,8 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
                 _lhsIavailablePredicates
             (_expressionObetaUnique@_) =
                 _guardIbetaUnique
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _guardIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -9726,7 +10307,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
                 _guardIuniqueChunk
             (_expressionOuniqueSecondRound@_) =
                 _guardIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrange,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound,_lhsOunrwar)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrange,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound,_lhsOunrwar)
 -- GuardedExpressions ------------------------------------------
 -- semantic domain
 type T_GuardedExpressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -9734,6 +10315,7 @@ type T_GuardedExpressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                             (Predicates) ->
                             (Tp) ->
                             (Int) ->
+                            (ClassEnvironment) ->
                             (TypeErrors) ->
                             (Warnings) ->
                             (Int) ->
@@ -9751,7 +10333,7 @@ type T_GuardedExpressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                             (FiniteMap Int (Scheme Predicates)) ->
                             (Int) ->
                             (Int) ->
-                            ( (Assumptions),(Int),(TypeErrors),(Warnings),(ConstraintSets),(DictionaryEnvironment),(Bool),(InfoTrees),(IO ()),([Warning]),(GuardedExpressions),(Names),(Int),(Int))
+                            ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSets),(DictionaryEnvironment),(Bool),(InfoTrees),(IO ()),([Warning]),(GuardedExpressions),(Names),(Int),(Int))
 -- cata
 sem_GuardedExpressions :: (GuardedExpressions) ->
                           (T_GuardedExpressions)
@@ -9766,6 +10348,7 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
       _lhsIavailablePredicates
       _lhsIbetaRight
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -9786,6 +10369,7 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraintslist :: (ConstraintSets)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -9800,6 +10384,7 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
             _hdIassumptions :: (Assumptions)
             _hdIbetaUnique :: (Int)
             _hdIcollectErrors :: (TypeErrors)
+            _hdIcollectInstances :: ([(Name, Instance)])
             _hdIcollectWarnings :: (Warnings)
             _hdIconstraints :: (ConstraintSet)
             _hdIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -9818,6 +10403,7 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
             _hdOavailablePredicates :: (Predicates)
             _hdObetaRight :: (Tp)
             _hdObetaUnique :: (Int)
+            _hdOclassEnvironment :: (ClassEnvironment)
             _hdOcollectErrors :: (TypeErrors)
             _hdOcollectWarnings :: (Warnings)
             _hdOcurrentChunk :: (Int)
@@ -9837,6 +10423,7 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
             _tlIassumptions :: (Assumptions)
             _tlIbetaUnique :: (Int)
             _tlIcollectErrors :: (TypeErrors)
+            _tlIcollectInstances :: ([(Name, Instance)])
             _tlIcollectWarnings :: (Warnings)
             _tlIconstraintslist :: (ConstraintSets)
             _tlIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -9853,6 +10440,7 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
             _tlOavailablePredicates :: (Predicates)
             _tlObetaRight :: (Tp)
             _tlObetaUnique :: (Int)
+            _tlOclassEnvironment :: (ClassEnvironment)
             _tlOcollectErrors :: (TypeErrors)
             _tlOcollectWarnings :: (Warnings)
             _tlOcurrentChunk :: (Int)
@@ -9870,14 +10458,36 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
             _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
             _tlOuniqueChunk :: (Int)
             _tlOuniqueSecondRound :: (Int)
-            ( _hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIfallthrough,_hdIinfoTrees,_hdImatchIO,_hdIpatternMatchWarnings,_hdIrange,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIuniqueSecondRound,_hdIunrwar) =
-                (hd_ (_hdOallPatterns) (_hdOallTypeSchemes) (_hdOavailablePredicates) (_hdObetaRight) (_hdObetaUnique) (_hdOcollectErrors) (_hdOcollectWarnings) (_hdOcurrentChunk) (_hdOdictionaryEnvironment) (_hdOimportEnvironment) (_hdOmatchIO) (_hdOmonos) (_hdOnamesInScope) (_hdOnumberOfGuards) (_hdOorderedTypeSynonyms) (_hdOparentTree) (_hdOpatternMatchWarnings) (_hdOsubstitution) (_hdOtypeschemeMap) (_hdOuniqueChunk) (_hdOuniqueSecondRound))
-            ( _tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectWarnings,_tlIconstraintslist,_tlIdictionaryEnvironment,_tlIfallthrough,_tlIinfoTrees,_tlImatchIO,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIuniqueSecondRound) =
+            ( _hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIfallthrough,_hdIinfoTrees,_hdImatchIO,_hdIpatternMatchWarnings,_hdIrange,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIuniqueSecondRound,_hdIunrwar) =
+                (hd_ (_hdOallPatterns)
+                     (_hdOallTypeSchemes)
+                     (_hdOavailablePredicates)
+                     (_hdObetaRight)
+                     (_hdObetaUnique)
+                     (_hdOclassEnvironment)
+                     (_hdOcollectErrors)
+                     (_hdOcollectWarnings)
+                     (_hdOcurrentChunk)
+                     (_hdOdictionaryEnvironment)
+                     (_hdOimportEnvironment)
+                     (_hdOmatchIO)
+                     (_hdOmonos)
+                     (_hdOnamesInScope)
+                     (_hdOnumberOfGuards)
+                     (_hdOorderedTypeSynonyms)
+                     (_hdOparentTree)
+                     (_hdOpatternMatchWarnings)
+                     (_hdOsubstitution)
+                     (_hdOtypeschemeMap)
+                     (_hdOuniqueChunk)
+                     (_hdOuniqueSecondRound))
+            ( _tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIconstraintslist,_tlIdictionaryEnvironment,_tlIfallthrough,_tlIinfoTrees,_tlImatchIO,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIuniqueSecondRound) =
                 (tl_ (_tlOallPatterns)
                      (_tlOallTypeSchemes)
                      (_tlOavailablePredicates)
                      (_tlObetaRight)
                      (_tlObetaUnique)
+                     (_tlOclassEnvironment)
                      (_tlOcollectErrors)
                      (_tlOcollectWarnings)
                      (_tlOcurrentChunk)
@@ -9908,6 +10518,8 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
                 _hdIfallthrough && _lhsIopen
             (_lhsOfallthrough@_) =
                 _hdIfallthrough && _tlIfallthrough
+            (_lhsOcollectInstances@_) =
+                _hdIcollectInstances  ++  _tlIcollectInstances
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -9938,6 +10550,8 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
                 _lhsIbetaRight
             (_hdObetaUnique@_) =
                 _lhsIbetaUnique
+            (_hdOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_hdOcollectErrors@_) =
                 _lhsIcollectErrors
             (_hdOcollectWarnings@_) =
@@ -9980,6 +10594,8 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
                 _lhsIbetaRight
             (_tlObetaUnique@_) =
                 _hdIbetaUnique
+            (_tlOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_tlOcollectErrors@_) =
                 _hdIcollectErrors
             (_tlOcollectWarnings@_) =
@@ -10012,7 +10628,7 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
                 _hdIuniqueChunk
             (_tlOuniqueSecondRound@_) =
                 _hdIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_GuardedExpressions_Nil :: (T_GuardedExpressions)
 sem_GuardedExpressions_Nil  =
     \ _lhsIallPatterns
@@ -10020,6 +10636,7 @@ sem_GuardedExpressions_Nil  =
       _lhsIavailablePredicates
       _lhsIbetaRight
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -10040,6 +10657,7 @@ sem_GuardedExpressions_Nil  =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraintslist :: (ConstraintSets)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -10059,6 +10677,8 @@ sem_GuardedExpressions_Nil  =
                 []
             (_lhsOfallthrough@_) =
                 True
+            (_lhsOcollectInstances@_) =
+                []
             (_lhsOunboundNames@_) =
                 []
             (_self@_) =
@@ -10081,7 +10701,7 @@ sem_GuardedExpressions_Nil  =
                 _lhsIuniqueChunk
             (_lhsOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 -- Import ------------------------------------------------------
 -- semantic domain
 type T_Import = ( (Import))
@@ -10735,6 +11355,7 @@ type T_MaybeDeclarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (Assumptions) ->
                            (Predicates) ->
                            (Int) ->
+                           (ClassEnvironment) ->
                            (TypeErrors) ->
                            (Warnings) ->
                            (ConstraintSet) ->
@@ -10751,7 +11372,7 @@ type T_MaybeDeclarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (FiniteMap Int (Scheme Predicates)) ->
                            (Names) ->
                            (Int) ->
-                           ( (Assumptions),(Int),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTrees),(FiniteMap NameWithRange TpScheme),(IO ()),(Names),([Warning]),(MaybeDeclarations),(Names),(Int))
+                           ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTrees),(FiniteMap NameWithRange TpScheme),(IO ()),(Names),([Warning]),(MaybeDeclarations),(Names),(Int))
 -- cata
 sem_MaybeDeclarations :: (MaybeDeclarations) ->
                          (T_MaybeDeclarations)
@@ -10767,6 +11388,7 @@ sem_MaybeDeclarations_Just (declarations_) =
       _lhsIassumptions
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIconstraints
@@ -10786,6 +11408,7 @@ sem_MaybeDeclarations_Just (declarations_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -10800,6 +11423,7 @@ sem_MaybeDeclarations_Just (declarations_) =
             _declarationsIbetaUnique :: (Int)
             _declarationsIbindingGroups :: (BindingGroups)
             _declarationsIcollectErrors :: (TypeErrors)
+            _declarationsIcollectInstances :: ([(Name, Instance)])
             _declarationsIcollectWarnings :: (Warnings)
             _declarationsIdeclVarNames :: (Names)
             _declarationsIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -10817,6 +11441,7 @@ sem_MaybeDeclarations_Just (declarations_) =
             _declarationsOavailablePredicates :: (Predicates)
             _declarationsObetaUnique :: (Int)
             _declarationsObindingGroups :: (BindingGroups)
+            _declarationsOclassEnvironment :: (ClassEnvironment)
             _declarationsOcollectErrors :: (TypeErrors)
             _declarationsOcollectWarnings :: (Warnings)
             _declarationsOcurrentChunk :: (Int)
@@ -10833,12 +11458,29 @@ sem_MaybeDeclarations_Just (declarations_) =
             _declarationsOtypeSignatures :: (TypeEnvironment)
             _declarationsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
             _declarationsOuniqueChunk :: (Int)
-            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
+            ( _declarationsIbetaUnique
+             ,_declarationsIbindingGroups
+             ,_declarationsIcollectErrors
+             ,_declarationsIcollectInstances
+             ,_declarationsIcollectWarnings
+             ,_declarationsIdeclVarNames
+             ,_declarationsIdictionaryEnvironment
+             ,_declarationsIinfoTrees
+             ,_declarationsImatchIO
+             ,_declarationsIpatternMatchWarnings
+             ,_declarationsIrestrictedNames
+             ,_declarationsIself
+             ,_declarationsIsimplePatNames
+             ,_declarationsItypeSignatures
+             ,_declarationsIunboundNames
+             ,_declarationsIuniqueChunk
+             ) =
                 (declarations_ (_declarationsOallPatterns)
                                (_declarationsOallTypeSchemes)
                                (_declarationsOavailablePredicates)
                                (_declarationsObetaUnique)
                                (_declarationsObindingGroups)
+                               (_declarationsOclassEnvironment)
                                (_declarationsOcollectErrors)
                                (_declarationsOcollectWarnings)
                                (_declarationsOcurrentChunk)
@@ -10892,6 +11534,8 @@ sem_MaybeDeclarations_Just (declarations_) =
                 _unboundNames
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
                 changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
+            (_lhsOcollectInstances@_) =
+                _declarationsIcollectInstances
             (_self@_) =
                 MaybeDeclarations_Just _declarationsIself
             (_lhsOself@_) =
@@ -10912,6 +11556,8 @@ sem_MaybeDeclarations_Just (declarations_) =
                 _lhsIavailablePredicates
             (_declarationsObetaUnique@_) =
                 _lhsIbetaUnique
+            (_declarationsOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_declarationsOcollectErrors@_) =
                 _lhsIcollectErrors
             (_declarationsOcollectWarnings@_) =
@@ -10940,7 +11586,7 @@ sem_MaybeDeclarations_Just (declarations_) =
                 _lhsItypeschemeMap
             (_declarationsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOlocalTypes,_lhsOmatchIO,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOlocalTypes,_lhsOmatchIO,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
 sem_MaybeDeclarations_Nothing  =
     \ _lhsIallPatterns
@@ -10948,6 +11594,7 @@ sem_MaybeDeclarations_Nothing  =
       _lhsIassumptions
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIconstraints
@@ -10967,6 +11614,7 @@ sem_MaybeDeclarations_Nothing  =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -10981,6 +11629,8 @@ sem_MaybeDeclarations_Nothing  =
             (_lhsOlocalTypes@_) =
                 emptyFM
             (_lhsOinfoTrees@_) =
+                []
+            (_lhsOcollectInstances@_) =
                 []
             (_self@_) =
                 MaybeDeclarations_Nothing
@@ -11008,7 +11658,7 @@ sem_MaybeDeclarations_Nothing  =
                 _lhsIunboundNames
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOlocalTypes,_lhsOmatchIO,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOlocalTypes,_lhsOmatchIO,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
 -- MaybeExports ------------------------------------------------
 -- semantic domain
 type T_MaybeExports = ( (MaybeExports))
@@ -11045,6 +11695,7 @@ type T_MaybeExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (FiniteMap NameWithRange TpScheme) ->
                          (Predicates) ->
                          (Int) ->
+                         (ClassEnvironment) ->
                          (TypeErrors) ->
                          (Warnings) ->
                          (Int) ->
@@ -11061,7 +11712,7 @@ type T_MaybeExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (FiniteMap Int (Scheme Predicates)) ->
                          (Int) ->
                          (Int) ->
-                         ( (Assumptions),(Tp),(Int),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTrees),(IO ()),([Maybe MetaVariableTable]),([Warning]),(Bool),(MaybeExpression),(Names),(Int),(Int))
+                         ( (Assumptions),(Tp),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTrees),(IO ()),([Maybe MetaVariableTable]),([Warning]),(Bool),(MaybeExpression),(Names),(Int),(Int))
 -- cata
 sem_MaybeExpression :: (MaybeExpression) ->
                        (T_MaybeExpression)
@@ -11076,6 +11727,7 @@ sem_MaybeExpression_Just (expression_) =
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -11096,6 +11748,7 @@ sem_MaybeExpression_Just (expression_) =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -11112,6 +11765,7 @@ sem_MaybeExpression_Just (expression_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -11127,6 +11781,7 @@ sem_MaybeExpression_Just (expression_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -11143,11 +11798,12 @@ sem_MaybeExpression_Just (expression_) =
             _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -11170,6 +11826,8 @@ sem_MaybeExpression_Just (expression_) =
                 [_expressionIinfoTree]
             ((_expressionOtryPatterns@_,_lhsOmatches@_,_,_,_,_)) =
                 match1' match_MaybeExpression_Just _lhsItryPatterns [] [_expressionImatches]
+            (_lhsOcollectInstances@_) =
+                _expressionIcollectInstances
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -11206,6 +11864,8 @@ sem_MaybeExpression_Just (expression_) =
                 _lhsIavailablePredicates
             (_expressionObetaUnique@_) =
                 _lhsIbetaUnique
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -11236,13 +11896,14 @@ sem_MaybeExpression_Just (expression_) =
                 _lhsIuniqueChunk
             (_expressionOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOsection,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOsection,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_MaybeExpression_Nothing :: (T_MaybeExpression)
 sem_MaybeExpression_Nothing  =
     \ _lhsIallPatterns
       _lhsIallTypeSchemes
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -11263,6 +11924,7 @@ sem_MaybeExpression_Nothing  =
             _lhsObeta :: (Tp)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -11289,6 +11951,8 @@ sem_MaybeExpression_Nothing  =
                 []
             (((),_lhsOmatches@_,_,_,_,_)) =
                 match0' match_MaybeExpression_Nothing _lhsItryPatterns [] []
+            (_lhsOcollectInstances@_) =
+                []
             (_lhsOunboundNames@_) =
                 []
             (_self@_) =
@@ -11311,7 +11975,7 @@ sem_MaybeExpression_Nothing  =
                 _lhsIuniqueChunk
             (_lhsOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOsection,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOsection,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 -- MaybeImportSpecification ------------------------------------
 -- semantic domain
 type T_MaybeImportSpecification = ( (MaybeImportSpecification))
@@ -11461,6 +12125,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             _bodyIassumptions :: (Assumptions)
             _bodyIbetaUnique :: (Int)
             _bodyIcollectErrors :: (TypeErrors)
+            _bodyIcollectInstances :: ([(Name, Instance)])
             _bodyIcollectWarnings :: (Warnings)
             _bodyIconstraints :: (ConstraintSet)
             _bodyIdeclVarNames :: (Names)
@@ -11476,6 +12141,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             _bodyOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _bodyOavailablePredicates :: (Predicates)
             _bodyObetaUnique :: (Int)
+            _bodyOclassEnvironment :: (ClassEnvironment)
             _bodyOcollectErrors :: (TypeErrors)
             _bodyOcollectWarnings :: (Warnings)
             _bodyOcurrentChunk :: (Int)
@@ -11495,8 +12161,8 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 (name_ )
             ( _exportsIself) =
                 (exports_ )
-            ( _bodyIassumptions,_bodyIbetaUnique,_bodyIcollectErrors,_bodyIcollectWarnings,_bodyIconstraints,_bodyIdeclVarNames,_bodyIdictionaryEnvironment,_bodyImatchIO,_bodyIpatternMatchWarnings,_bodyIroot,_bodyIself,_bodyItoplevelTypes,_bodyIunboundNames,_bodyIuniqueChunk) =
-                (body_ (_bodyOallPatterns) (_bodyOallTypeSchemes) (_bodyOavailablePredicates) (_bodyObetaUnique) (_bodyOcollectErrors) (_bodyOcollectWarnings) (_bodyOcurrentChunk) (_bodyOdictionaryEnvironment) (_bodyOimportEnvironment) (_bodyOmatchIO) (_bodyOmonos) (_bodyOnamesInScope) (_bodyOorderedTypeSynonyms) (_bodyOpatternMatchWarnings) (_bodyOsubstitution) (_bodyOtypeschemeMap) (_bodyOuniqueChunk))
+            ( _bodyIassumptions,_bodyIbetaUnique,_bodyIcollectErrors,_bodyIcollectInstances,_bodyIcollectWarnings,_bodyIconstraints,_bodyIdeclVarNames,_bodyIdictionaryEnvironment,_bodyImatchIO,_bodyIpatternMatchWarnings,_bodyIroot,_bodyIself,_bodyItoplevelTypes,_bodyIunboundNames,_bodyIuniqueChunk) =
+                (body_ (_bodyOallPatterns) (_bodyOallTypeSchemes) (_bodyOavailablePredicates) (_bodyObetaUnique) (_bodyOclassEnvironment) (_bodyOcollectErrors) (_bodyOcollectWarnings) (_bodyOcurrentChunk) (_bodyOdictionaryEnvironment) (_bodyOimportEnvironment) (_bodyOmatchIO) (_bodyOmonos) (_bodyOnamesInScope) (_bodyOorderedTypeSynonyms) (_bodyOpatternMatchWarnings) (_bodyOsubstitution) (_bodyOtypeschemeMap) (_bodyOuniqueChunk))
             (_lhsOdebugIO@_) =
                 _debugIO >> putStrLn "Inference Strategies:" >> _bodyImatchIO
             (_lhsOinspectorIO@_) =
@@ -11527,7 +12193,9 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                    []   -> _bodyIcollectErrors
                    errs -> errs
             (_classEnv@_) =
-                createClassEnvironment _lhsIimportEnvironment
+                foldr (\(n, i) -> insertInstance (show n) i)
+                      (createClassEnvironment _lhsIimportEnvironment)
+                      _bodyIcollectInstances
             (_orderedTypeSynonyms@_) =
                 getOrderedTypeSynonyms _lhsIimportEnvironment
             ((SolveResult (_betaUniqueAtTheEnd@_)(_substitution@_)(_typeschemeMap@_)(_solveErrors@_)(_debugString@_)(_tooSpecificWarnings@_))) =
@@ -11538,6 +12206,8 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                    _bodyIconstraints
             (_bodyOavailablePredicates@_) =
                 []
+            (_bodyOclassEnvironment@_) =
+                _classEnv
             (_bodyOdictionaryEnvironment@_) =
                 emptyDictionaryEnvironment
             (_lhsOdictionaryEnvironment@_) =
@@ -13070,6 +13740,7 @@ type T_Qualifier = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (Assumptions) ->
                    (Predicates) ->
                    (Int) ->
+                   (ClassEnvironment) ->
                    (TypeErrors) ->
                    (Warnings) ->
                    (ConstraintSet) ->
@@ -13087,7 +13758,7 @@ type T_Qualifier = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (Names) ->
                    (Int) ->
                    (Int) ->
-                   ( (Assumptions),(Int),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTree),(IO ()),(Monos),(Names),([Warning]),(Qualifier),(Names),(Int),(Int))
+                   ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTree),(IO ()),(Monos),(Names),([Warning]),(Qualifier),(Names),(Int),(Int))
 -- cata
 sem_Qualifier :: (Qualifier) ->
                  (T_Qualifier)
@@ -13107,6 +13778,7 @@ sem_Qualifier_Empty (range_) =
       _lhsIassumptions
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIconstraints
@@ -13127,6 +13799,7 @@ sem_Qualifier_Empty (range_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -13151,6 +13824,8 @@ sem_Qualifier_Empty (range_) =
                 _parentTree
             (_parentTree@_) =
                 node _lhsIparentTree _localInfo []
+            (_lhsOcollectInstances@_) =
+                []
             (_self@_) =
                 Qualifier_Empty _rangeIself
             (_lhsOself@_) =
@@ -13181,7 +13856,7 @@ sem_Qualifier_Empty (range_) =
                 _lhsIuniqueChunk
             (_lhsOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Qualifier_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
@@ -13192,6 +13867,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
       _lhsIassumptions
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIconstraints
@@ -13212,6 +13888,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -13245,6 +13922,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -13260,6 +13938,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -13280,11 +13959,12 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
                 (range_ )
             ( _patternIbeta,_patternIbetaUnique,_patternIconstraints,_patternIelements,_patternIenvironment,_patternIinfoTree,_patternIpatVarNames,_patternIpatternMatchWarnings,_patternIself,_patternIunboundNames) =
                 (pattern_ (_patternObetaUnique) (_patternOimportEnvironment) (_patternOmonos) (_patternOnamesInScope) (_patternOparentTree) (_patternOpatternMatchWarnings))
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -13357,6 +14037,8 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
                                      "generator"
                                      "<-"
                 ++ _expressionIpatternMatchWarnings
+            (_lhsOcollectInstances@_) =
+                _expressionIcollectInstances
             (_self@_) =
                 Qualifier_Generator _rangeIself _patternIself _expressionIself
             (_lhsOself@_) =
@@ -13395,6 +14077,8 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
                 _lhsIavailablePredicates
             (_expressionObetaUnique@_) =
                 _patternIbetaUnique
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -13423,7 +14107,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
                 _lhsIuniqueChunk
             (_expressionOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Qualifier_Guard :: (T_Range) ->
                        (T_Expression) ->
                        (T_Qualifier)
@@ -13433,6 +14117,7 @@ sem_Qualifier_Guard (range_) (guard_) =
       _lhsIassumptions
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIconstraints
@@ -13453,6 +14138,7 @@ sem_Qualifier_Guard (range_) (guard_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -13470,6 +14156,7 @@ sem_Qualifier_Guard (range_) (guard_) =
             _guardIbeta :: (Tp)
             _guardIbetaUnique :: (Int)
             _guardIcollectErrors :: (TypeErrors)
+            _guardIcollectInstances :: ([(Name, Instance)])
             _guardIcollectWarnings :: (Warnings)
             _guardIconstraints :: (ConstraintSet)
             _guardIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -13485,6 +14172,7 @@ sem_Qualifier_Guard (range_) (guard_) =
             _guardOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _guardOavailablePredicates :: (Predicates)
             _guardObetaUnique :: (Int)
+            _guardOclassEnvironment :: (ClassEnvironment)
             _guardOcollectErrors :: (TypeErrors)
             _guardOcollectWarnings :: (Warnings)
             _guardOcurrentChunk :: (Int)
@@ -13503,11 +14191,12 @@ sem_Qualifier_Guard (range_) (guard_) =
             _guardOuniqueSecondRound :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _guardIassumptions,_guardIbeta,_guardIbetaUnique,_guardIcollectErrors,_guardIcollectWarnings,_guardIconstraints,_guardIdictionaryEnvironment,_guardIinfoTree,_guardImatchIO,_guardImatches,_guardIpatternMatchWarnings,_guardIself,_guardIunboundNames,_guardIuniqueChunk,_guardIuniqueSecondRound) =
+            ( _guardIassumptions,_guardIbeta,_guardIbetaUnique,_guardIcollectErrors,_guardIcollectInstances,_guardIcollectWarnings,_guardIconstraints,_guardIdictionaryEnvironment,_guardIinfoTree,_guardImatchIO,_guardImatches,_guardIpatternMatchWarnings,_guardIself,_guardIunboundNames,_guardIuniqueChunk,_guardIuniqueSecondRound) =
                 (guard_ (_guardOallPatterns)
                         (_guardOallTypeSchemes)
                         (_guardOavailablePredicates)
                         (_guardObetaUnique)
+                        (_guardOclassEnvironment)
                         (_guardOcollectErrors)
                         (_guardOcollectWarnings)
                         (_guardOcurrentChunk)
@@ -13550,6 +14239,8 @@ sem_Qualifier_Guard (range_) (guard_) =
                 _guardIunboundNames ++ _lhsIunboundNames
             (_guardOtryPatterns@_) =
                 []
+            (_lhsOcollectInstances@_) =
+                _guardIcollectInstances
             (_self@_) =
                 Qualifier_Guard _rangeIself _guardIself
             (_lhsOself@_) =
@@ -13582,6 +14273,8 @@ sem_Qualifier_Guard (range_) (guard_) =
                 _lhsIavailablePredicates
             (_guardObetaUnique@_) =
                 _lhsIbetaUnique
+            (_guardOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_guardOcollectErrors@_) =
                 _lhsIcollectErrors
             (_guardOcollectWarnings@_) =
@@ -13612,7 +14305,7 @@ sem_Qualifier_Guard (range_) (guard_) =
                 _lhsIuniqueChunk
             (_guardOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Qualifier_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Qualifier)
@@ -13622,6 +14315,7 @@ sem_Qualifier_Let (range_) (declarations_) =
       _lhsIassumptions
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIconstraints
@@ -13642,6 +14336,7 @@ sem_Qualifier_Let (range_) (declarations_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -13658,6 +14353,7 @@ sem_Qualifier_Let (range_) (declarations_) =
             _declarationsIbetaUnique :: (Int)
             _declarationsIbindingGroups :: (BindingGroups)
             _declarationsIcollectErrors :: (TypeErrors)
+            _declarationsIcollectInstances :: ([(Name, Instance)])
             _declarationsIcollectWarnings :: (Warnings)
             _declarationsIdeclVarNames :: (Names)
             _declarationsIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -13675,6 +14371,7 @@ sem_Qualifier_Let (range_) (declarations_) =
             _declarationsOavailablePredicates :: (Predicates)
             _declarationsObetaUnique :: (Int)
             _declarationsObindingGroups :: (BindingGroups)
+            _declarationsOclassEnvironment :: (ClassEnvironment)
             _declarationsOcollectErrors :: (TypeErrors)
             _declarationsOcollectWarnings :: (Warnings)
             _declarationsOcurrentChunk :: (Int)
@@ -13693,12 +14390,29 @@ sem_Qualifier_Let (range_) (declarations_) =
             _declarationsOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
+            ( _declarationsIbetaUnique
+             ,_declarationsIbindingGroups
+             ,_declarationsIcollectErrors
+             ,_declarationsIcollectInstances
+             ,_declarationsIcollectWarnings
+             ,_declarationsIdeclVarNames
+             ,_declarationsIdictionaryEnvironment
+             ,_declarationsIinfoTrees
+             ,_declarationsImatchIO
+             ,_declarationsIpatternMatchWarnings
+             ,_declarationsIrestrictedNames
+             ,_declarationsIself
+             ,_declarationsIsimplePatNames
+             ,_declarationsItypeSignatures
+             ,_declarationsIunboundNames
+             ,_declarationsIuniqueChunk
+             ) =
                 (declarations_ (_declarationsOallPatterns)
                                (_declarationsOallTypeSchemes)
                                (_declarationsOavailablePredicates)
                                (_declarationsObetaUnique)
                                (_declarationsObindingGroups)
+                               (_declarationsOclassEnvironment)
                                (_declarationsOcollectErrors)
                                (_declarationsOcollectWarnings)
                                (_declarationsOcurrentChunk)
@@ -13761,6 +14475,8 @@ sem_Qualifier_Let (range_) (declarations_) =
                 changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
             (_lhsOunboundNames@_) =
                 _unboundNames
+            (_lhsOcollectInstances@_) =
+                _declarationsIcollectInstances
             (_self@_) =
                 Qualifier_Let _rangeIself _declarationsIself
             (_lhsOself@_) =
@@ -13785,6 +14501,8 @@ sem_Qualifier_Let (range_) (declarations_) =
                 _lhsIavailablePredicates
             (_declarationsObetaUnique@_) =
                 _lhsIbetaUnique
+            (_declarationsOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_declarationsOcollectErrors@_) =
                 _lhsIcollectErrors
             (_declarationsOcollectWarnings@_) =
@@ -13813,7 +14531,7 @@ sem_Qualifier_Let (range_) (declarations_) =
                 _lhsItypeschemeMap
             (_declarationsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
 type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -13821,6 +14539,7 @@ type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (Assumptions) ->
                     (Predicates) ->
                     (Int) ->
+                    (ClassEnvironment) ->
                     (TypeErrors) ->
                     (Warnings) ->
                     (ConstraintSet) ->
@@ -13838,7 +14557,7 @@ type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (Names) ->
                     (Int) ->
                     (Int) ->
-                    ( (Assumptions),(Int),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTrees),(IO ()),(Monos),(Names),([Warning]),(Qualifiers),(Names),(Int),(Int))
+                    ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTrees),(IO ()),(Monos),(Names),([Warning]),(Qualifiers),(Names),(Int),(Int))
 -- cata
 sem_Qualifiers :: (Qualifiers) ->
                   (T_Qualifiers)
@@ -13853,6 +14572,7 @@ sem_Qualifiers_Cons (hd_) (tl_) =
       _lhsIassumptions
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIconstraints
@@ -13873,6 +14593,7 @@ sem_Qualifiers_Cons (hd_) (tl_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -13888,6 +14609,7 @@ sem_Qualifiers_Cons (hd_) (tl_) =
             _hdIassumptions :: (Assumptions)
             _hdIbetaUnique :: (Int)
             _hdIcollectErrors :: (TypeErrors)
+            _hdIcollectInstances :: ([(Name, Instance)])
             _hdIcollectWarnings :: (Warnings)
             _hdIconstraints :: (ConstraintSet)
             _hdIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -13905,6 +14627,7 @@ sem_Qualifiers_Cons (hd_) (tl_) =
             _hdOassumptions :: (Assumptions)
             _hdOavailablePredicates :: (Predicates)
             _hdObetaUnique :: (Int)
+            _hdOclassEnvironment :: (ClassEnvironment)
             _hdOcollectErrors :: (TypeErrors)
             _hdOcollectWarnings :: (Warnings)
             _hdOconstraints :: (ConstraintSet)
@@ -13925,6 +14648,7 @@ sem_Qualifiers_Cons (hd_) (tl_) =
             _tlIassumptions :: (Assumptions)
             _tlIbetaUnique :: (Int)
             _tlIcollectErrors :: (TypeErrors)
+            _tlIcollectInstances :: ([(Name, Instance)])
             _tlIcollectWarnings :: (Warnings)
             _tlIconstraints :: (ConstraintSet)
             _tlIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -13942,6 +14666,7 @@ sem_Qualifiers_Cons (hd_) (tl_) =
             _tlOassumptions :: (Assumptions)
             _tlOavailablePredicates :: (Predicates)
             _tlObetaUnique :: (Int)
+            _tlOclassEnvironment :: (ClassEnvironment)
             _tlOcollectErrors :: (TypeErrors)
             _tlOcollectWarnings :: (Warnings)
             _tlOconstraints :: (ConstraintSet)
@@ -13959,12 +14684,13 @@ sem_Qualifiers_Cons (hd_) (tl_) =
             _tlOunboundNames :: (Names)
             _tlOuniqueChunk :: (Int)
             _tlOuniqueSecondRound :: (Int)
-            ( _hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIinfoTree,_hdImatchIO,_hdImonos,_hdInamesInScope,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIuniqueSecondRound) =
+            ( _hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIinfoTree,_hdImatchIO,_hdImonos,_hdInamesInScope,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIuniqueSecondRound) =
                 (hd_ (_hdOallPatterns)
                      (_hdOallTypeSchemes)
                      (_hdOassumptions)
                      (_hdOavailablePredicates)
                      (_hdObetaUnique)
+                     (_hdOclassEnvironment)
                      (_hdOcollectErrors)
                      (_hdOcollectWarnings)
                      (_hdOconstraints)
@@ -13982,12 +14708,13 @@ sem_Qualifiers_Cons (hd_) (tl_) =
                      (_hdOunboundNames)
                      (_hdOuniqueChunk)
                      (_hdOuniqueSecondRound))
-            ( _tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectWarnings,_tlIconstraints,_tlIdictionaryEnvironment,_tlIinfoTrees,_tlImatchIO,_tlImonos,_tlInamesInScope,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIuniqueSecondRound) =
+            ( _tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIconstraints,_tlIdictionaryEnvironment,_tlIinfoTrees,_tlImatchIO,_tlImonos,_tlInamesInScope,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIuniqueSecondRound) =
                 (tl_ (_tlOallPatterns)
                      (_tlOallTypeSchemes)
                      (_tlOassumptions)
                      (_tlOavailablePredicates)
                      (_tlObetaUnique)
+                     (_tlOclassEnvironment)
                      (_tlOcollectErrors)
                      (_tlOcollectWarnings)
                      (_tlOconstraints)
@@ -14025,6 +14752,8 @@ sem_Qualifiers_Cons (hd_) (tl_) =
                 _lhsIunboundNames
             (_lhsOunboundNames@_) =
                 _hdIunboundNames
+            (_lhsOcollectInstances@_) =
+                _hdIcollectInstances  ++  _tlIcollectInstances
             (_self@_) =
                 (:) _hdIself _tlIself
             (_lhsOself@_) =
@@ -14057,6 +14786,8 @@ sem_Qualifiers_Cons (hd_) (tl_) =
                 _lhsIavailablePredicates
             (_hdObetaUnique@_) =
                 _lhsIbetaUnique
+            (_hdOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_hdOcollectErrors@_) =
                 _lhsIcollectErrors
             (_hdOcollectWarnings@_) =
@@ -14095,6 +14826,8 @@ sem_Qualifiers_Cons (hd_) (tl_) =
                 _lhsIavailablePredicates
             (_tlObetaUnique@_) =
                 _hdIbetaUnique
+            (_tlOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_tlOcollectErrors@_) =
                 _hdIcollectErrors
             (_tlOcollectWarnings@_) =
@@ -14125,7 +14858,7 @@ sem_Qualifiers_Cons (hd_) (tl_) =
                 _hdIuniqueChunk
             (_tlOuniqueSecondRound@_) =
                 _hdIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Qualifiers_Nil :: (T_Qualifiers)
 sem_Qualifiers_Nil  =
     \ _lhsIallPatterns
@@ -14133,6 +14866,7 @@ sem_Qualifiers_Nil  =
       _lhsIassumptions
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIconstraints
@@ -14153,6 +14887,7 @@ sem_Qualifiers_Nil  =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -14169,6 +14904,8 @@ sem_Qualifiers_Nil  =
                 []
             (_lhsOunboundNames@_) =
                 _lhsIunboundNames
+            (_lhsOcollectInstances@_) =
+                []
             (_self@_) =
                 []
             (_lhsOself@_) =
@@ -14197,7 +14934,7 @@ sem_Qualifiers_Nil  =
                 _lhsIuniqueChunk
             (_lhsOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 -- Range -------------------------------------------------------
 -- semantic domain
 type T_Range = ( (Range))
@@ -14226,6 +14963,7 @@ sem_Range_Range (start_) (stop_) =
 -- semantic domain
 type T_RecordExpressionBinding = (FiniteMap NameWithRange TpScheme) ->
                                  (Predicates) ->
+                                 (ClassEnvironment) ->
                                  (TypeErrors) ->
                                  (Warnings) ->
                                  (Int) ->
@@ -14237,7 +14975,7 @@ type T_RecordExpressionBinding = (FiniteMap NameWithRange TpScheme) ->
                                  (FixpointSubstitution) ->
                                  (FiniteMap Int (Scheme Predicates)) ->
                                  (Int) ->
-                                 ( (TypeErrors),(Warnings),(DictionaryEnvironment),([Warning]),(RecordExpressionBinding),(Names),(Int))
+                                 ( (TypeErrors),([(Name, Instance)]),(Warnings),(DictionaryEnvironment),([Warning]),(RecordExpressionBinding),(Names),(Int))
 -- cata
 sem_RecordExpressionBinding :: (RecordExpressionBinding) ->
                                (T_RecordExpressionBinding)
@@ -14250,6 +14988,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
 sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression_) =
     \ _lhsIallTypeSchemes
       _lhsIavailablePredicates
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -14262,6 +15001,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
       _lhsItypeschemeMap
       _lhsIuniqueChunk ->
         let _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOpatternMatchWarnings :: ([Warning])
@@ -14274,6 +15014,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -14289,6 +15030,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -14309,11 +15051,12 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
                 (range_ )
             ( _nameIself) =
                 (name_ )
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -14336,6 +15079,8 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
                 internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
             ((_allPatterns@_,_tryPatterns@_,_matchIO@_,_uniqueSecondRound@_)) =
                 internalError "TS_PatternMatching.ag" "n/a" "RecordExpressionBinding is not supported"
+            (_lhsOcollectInstances@_) =
+                _expressionIcollectInstances
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -14360,6 +15105,8 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
                 _lhsIavailablePredicates
             (_expressionObetaUnique@_) =
                 _betaUnique
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -14392,11 +15139,12 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
                 _lhsIuniqueChunk
             (_expressionOuniqueSecondRound@_) =
                 _uniqueSecondRound
-        in  ( _lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdictionaryEnvironment,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdictionaryEnvironment,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
 type T_RecordExpressionBindings = (FiniteMap NameWithRange TpScheme) ->
                                   (Predicates) ->
+                                  (ClassEnvironment) ->
                                   (TypeErrors) ->
                                   (Warnings) ->
                                   (Int) ->
@@ -14408,7 +15156,7 @@ type T_RecordExpressionBindings = (FiniteMap NameWithRange TpScheme) ->
                                   (FixpointSubstitution) ->
                                   (FiniteMap Int (Scheme Predicates)) ->
                                   (Int) ->
-                                  ( (TypeErrors),(Warnings),(DictionaryEnvironment),([Warning]),(RecordExpressionBindings),(Names),(Int))
+                                  ( (TypeErrors),([(Name, Instance)]),(Warnings),(DictionaryEnvironment),([Warning]),(RecordExpressionBindings),(Names),(Int))
 -- cata
 sem_RecordExpressionBindings :: (RecordExpressionBindings) ->
                                 (T_RecordExpressionBindings)
@@ -14420,6 +15168,7 @@ sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
 sem_RecordExpressionBindings_Cons (hd_) (tl_) =
     \ _lhsIallTypeSchemes
       _lhsIavailablePredicates
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -14432,6 +15181,7 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
       _lhsItypeschemeMap
       _lhsIuniqueChunk ->
         let _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOpatternMatchWarnings :: ([Warning])
@@ -14439,6 +15189,7 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
             _hdIcollectErrors :: (TypeErrors)
+            _hdIcollectInstances :: ([(Name, Instance)])
             _hdIcollectWarnings :: (Warnings)
             _hdIdictionaryEnvironment :: (DictionaryEnvironment)
             _hdIpatternMatchWarnings :: ([Warning])
@@ -14447,6 +15198,7 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
             _hdIuniqueChunk :: (Int)
             _hdOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _hdOavailablePredicates :: (Predicates)
+            _hdOclassEnvironment :: (ClassEnvironment)
             _hdOcollectErrors :: (TypeErrors)
             _hdOcollectWarnings :: (Warnings)
             _hdOcurrentChunk :: (Int)
@@ -14459,6 +15211,7 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
             _hdOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
             _hdOuniqueChunk :: (Int)
             _tlIcollectErrors :: (TypeErrors)
+            _tlIcollectInstances :: ([(Name, Instance)])
             _tlIcollectWarnings :: (Warnings)
             _tlIdictionaryEnvironment :: (DictionaryEnvironment)
             _tlIpatternMatchWarnings :: ([Warning])
@@ -14467,6 +15220,7 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
             _tlIuniqueChunk :: (Int)
             _tlOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _tlOavailablePredicates :: (Predicates)
+            _tlOclassEnvironment :: (ClassEnvironment)
             _tlOcollectErrors :: (TypeErrors)
             _tlOcollectWarnings :: (Warnings)
             _tlOcurrentChunk :: (Int)
@@ -14478,10 +15232,12 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
             _tlOsubstitution :: (FixpointSubstitution)
             _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
             _tlOuniqueChunk :: (Int)
-            ( _hdIcollectErrors,_hdIcollectWarnings,_hdIdictionaryEnvironment,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk) =
-                (hd_ (_hdOallTypeSchemes) (_hdOavailablePredicates) (_hdOcollectErrors) (_hdOcollectWarnings) (_hdOcurrentChunk) (_hdOdictionaryEnvironment) (_hdOimportEnvironment) (_hdOnamesInScope) (_hdOorderedTypeSynonyms) (_hdOpatternMatchWarnings) (_hdOsubstitution) (_hdOtypeschemeMap) (_hdOuniqueChunk))
-            ( _tlIcollectErrors,_tlIcollectWarnings,_tlIdictionaryEnvironment,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk) =
-                (tl_ (_tlOallTypeSchemes) (_tlOavailablePredicates) (_tlOcollectErrors) (_tlOcollectWarnings) (_tlOcurrentChunk) (_tlOdictionaryEnvironment) (_tlOimportEnvironment) (_tlOnamesInScope) (_tlOorderedTypeSynonyms) (_tlOpatternMatchWarnings) (_tlOsubstitution) (_tlOtypeschemeMap) (_tlOuniqueChunk))
+            ( _hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIdictionaryEnvironment,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk) =
+                (hd_ (_hdOallTypeSchemes) (_hdOavailablePredicates) (_hdOclassEnvironment) (_hdOcollectErrors) (_hdOcollectWarnings) (_hdOcurrentChunk) (_hdOdictionaryEnvironment) (_hdOimportEnvironment) (_hdOnamesInScope) (_hdOorderedTypeSynonyms) (_hdOpatternMatchWarnings) (_hdOsubstitution) (_hdOtypeschemeMap) (_hdOuniqueChunk))
+            ( _tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIdictionaryEnvironment,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk) =
+                (tl_ (_tlOallTypeSchemes) (_tlOavailablePredicates) (_tlOclassEnvironment) (_tlOcollectErrors) (_tlOcollectWarnings) (_tlOcurrentChunk) (_tlOdictionaryEnvironment) (_tlOimportEnvironment) (_tlOnamesInScope) (_tlOorderedTypeSynonyms) (_tlOpatternMatchWarnings) (_tlOsubstitution) (_tlOtypeschemeMap) (_tlOuniqueChunk))
+            (_lhsOcollectInstances@_) =
+                _hdIcollectInstances  ++  _tlIcollectInstances
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -14502,6 +15258,8 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
                 _lhsIallTypeSchemes
             (_hdOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_hdOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_hdOcollectErrors@_) =
                 _lhsIcollectErrors
             (_hdOcollectWarnings@_) =
@@ -14528,6 +15286,8 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
                 _lhsIallTypeSchemes
             (_tlOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_tlOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_tlOcollectErrors@_) =
                 _hdIcollectErrors
             (_tlOcollectWarnings@_) =
@@ -14550,11 +15310,12 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
                 _lhsItypeschemeMap
             (_tlOuniqueChunk@_) =
                 _hdIuniqueChunk
-        in  ( _lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdictionaryEnvironment,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdictionaryEnvironment,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_RecordExpressionBindings_Nil :: (T_RecordExpressionBindings)
 sem_RecordExpressionBindings_Nil  =
     \ _lhsIallTypeSchemes
       _lhsIavailablePredicates
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -14567,12 +15328,15 @@ sem_RecordExpressionBindings_Nil  =
       _lhsItypeschemeMap
       _lhsIuniqueChunk ->
         let _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (RecordExpressionBindings)
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
+            (_lhsOcollectInstances@_) =
+                []
             (_lhsOunboundNames@_) =
                 []
             (_self@_) =
@@ -14589,7 +15353,7 @@ sem_RecordExpressionBindings_Nil  =
                 _lhsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOcollectErrors,_lhsOcollectWarnings,_lhsOdictionaryEnvironment,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdictionaryEnvironment,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
 -- RecordPatternBinding ----------------------------------------
 -- semantic domain
 type T_RecordPatternBinding = (Names) ->
@@ -14732,6 +15496,7 @@ type T_RightHandSide = ([((Expression, [String]), Core_TypingStrategy)]) ->
                        (Predicates) ->
                        (Tp) ->
                        (Int) ->
+                       (ClassEnvironment) ->
                        (TypeErrors) ->
                        (Warnings) ->
                        (Int) ->
@@ -14746,7 +15511,7 @@ type T_RightHandSide = ([((Expression, [String]), Core_TypingStrategy)]) ->
                        (FixpointSubstitution) ->
                        (FiniteMap Int (Scheme Predicates)) ->
                        (Int) ->
-                       ( (Assumptions),(Int),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Bool),(InfoTree),(IO ()),([Warning]),(RightHandSide),(Names),(Int))
+                       ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Bool),(InfoTree),(IO ()),([Warning]),(RightHandSide),(Names),(Int))
 -- cata
 sem_RightHandSide :: (RightHandSide) ->
                      (T_RightHandSide)
@@ -14764,6 +15529,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
       _lhsIavailablePredicates
       _lhsIbetaRight
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -14781,6 +15547,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -14796,6 +15563,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -14811,6 +15579,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -14830,6 +15599,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _whereIassumptions :: (Assumptions)
             _whereIbetaUnique :: (Int)
             _whereIcollectErrors :: (TypeErrors)
+            _whereIcollectInstances :: ([(Name, Instance)])
             _whereIcollectWarnings :: (Warnings)
             _whereIconstraints :: (ConstraintSet)
             _whereIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -14846,6 +15616,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _whereOassumptions :: (Assumptions)
             _whereOavailablePredicates :: (Predicates)
             _whereObetaUnique :: (Int)
+            _whereOclassEnvironment :: (ClassEnvironment)
             _whereOcollectErrors :: (TypeErrors)
             _whereOcollectWarnings :: (Warnings)
             _whereOconstraints :: (ConstraintSet)
@@ -14864,11 +15635,12 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _whereOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -14885,12 +15657,13 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
                              (_expressionOtypeschemeMap)
                              (_expressionOuniqueChunk)
                              (_expressionOuniqueSecondRound))
-            ( _whereIassumptions,_whereIbetaUnique,_whereIcollectErrors,_whereIcollectWarnings,_whereIconstraints,_whereIdictionaryEnvironment,_whereIinfoTrees,_whereIlocalTypes,_whereImatchIO,_whereInamesInScope,_whereIpatternMatchWarnings,_whereIself,_whereIunboundNames,_whereIuniqueChunk) =
+            ( _whereIassumptions,_whereIbetaUnique,_whereIcollectErrors,_whereIcollectInstances,_whereIcollectWarnings,_whereIconstraints,_whereIdictionaryEnvironment,_whereIinfoTrees,_whereIlocalTypes,_whereImatchIO,_whereInamesInScope,_whereIpatternMatchWarnings,_whereIself,_whereIunboundNames,_whereIuniqueChunk) =
                 (where_ (_whereOallPatterns)
                         (_whereOallTypeSchemes)
                         (_whereOassumptions)
                         (_whereOavailablePredicates)
                         (_whereObetaUnique)
+                        (_whereOclassEnvironment)
                         (_whereOcollectErrors)
                         (_whereOcollectWarnings)
                         (_whereOconstraints)
@@ -14945,6 +15718,8 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
                 []
             (_lhsOfallthrough@_) =
                 False
+            (_lhsOcollectInstances@_) =
+                _expressionIcollectInstances  ++  _whereIcollectInstances
             (_self@_) =
                 RightHandSide_Expression _rangeIself _expressionIself _whereIself
             (_lhsOself@_) =
@@ -14971,6 +15746,8 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
                 _lhsIavailablePredicates
             (_expressionObetaUnique@_) =
                 _lhsIbetaUnique
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -15003,6 +15780,8 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
                 _allTypeSchemes
             (_whereOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_whereOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_whereOcollectErrors@_) =
                 _expressionIcollectErrors
             (_whereOcollectWarnings@_) =
@@ -15031,7 +15810,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
                 _lhsItypeschemeMap
             (_whereOuniqueChunk@_) =
                 _expressionIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTree,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTree,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
 sem_RightHandSide_Guarded :: (T_Range) ->
                              (T_GuardedExpressions) ->
                              (T_MaybeDeclarations) ->
@@ -15042,6 +15821,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
       _lhsIavailablePredicates
       _lhsIbetaRight
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIcurrentChunk
@@ -15059,6 +15839,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -15073,6 +15854,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _guardedexpressionsIassumptions :: (Assumptions)
             _guardedexpressionsIbetaUnique :: (Int)
             _guardedexpressionsIcollectErrors :: (TypeErrors)
+            _guardedexpressionsIcollectInstances :: ([(Name, Instance)])
             _guardedexpressionsIcollectWarnings :: (Warnings)
             _guardedexpressionsIconstraintslist :: (ConstraintSets)
             _guardedexpressionsIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -15089,6 +15871,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _guardedexpressionsOavailablePredicates :: (Predicates)
             _guardedexpressionsObetaRight :: (Tp)
             _guardedexpressionsObetaUnique :: (Int)
+            _guardedexpressionsOclassEnvironment :: (ClassEnvironment)
             _guardedexpressionsOcollectErrors :: (TypeErrors)
             _guardedexpressionsOcollectWarnings :: (Warnings)
             _guardedexpressionsOcurrentChunk :: (Int)
@@ -15109,6 +15892,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _whereIassumptions :: (Assumptions)
             _whereIbetaUnique :: (Int)
             _whereIcollectErrors :: (TypeErrors)
+            _whereIcollectInstances :: ([(Name, Instance)])
             _whereIcollectWarnings :: (Warnings)
             _whereIconstraints :: (ConstraintSet)
             _whereIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -15125,6 +15909,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _whereOassumptions :: (Assumptions)
             _whereOavailablePredicates :: (Predicates)
             _whereObetaUnique :: (Int)
+            _whereOclassEnvironment :: (ClassEnvironment)
             _whereOcollectErrors :: (TypeErrors)
             _whereOcollectWarnings :: (Warnings)
             _whereOconstraints :: (ConstraintSet)
@@ -15146,6 +15931,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             ( _guardedexpressionsIassumptions
              ,_guardedexpressionsIbetaUnique
              ,_guardedexpressionsIcollectErrors
+             ,_guardedexpressionsIcollectInstances
              ,_guardedexpressionsIcollectWarnings
              ,_guardedexpressionsIconstraintslist
              ,_guardedexpressionsIdictionaryEnvironment
@@ -15163,6 +15949,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
                                      (_guardedexpressionsOavailablePredicates)
                                      (_guardedexpressionsObetaRight)
                                      (_guardedexpressionsObetaUnique)
+                                     (_guardedexpressionsOclassEnvironment)
                                      (_guardedexpressionsOcollectErrors)
                                      (_guardedexpressionsOcollectWarnings)
                                      (_guardedexpressionsOcurrentChunk)
@@ -15180,12 +15967,13 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
                                      (_guardedexpressionsOtypeschemeMap)
                                      (_guardedexpressionsOuniqueChunk)
                                      (_guardedexpressionsOuniqueSecondRound))
-            ( _whereIassumptions,_whereIbetaUnique,_whereIcollectErrors,_whereIcollectWarnings,_whereIconstraints,_whereIdictionaryEnvironment,_whereIinfoTrees,_whereIlocalTypes,_whereImatchIO,_whereInamesInScope,_whereIpatternMatchWarnings,_whereIself,_whereIunboundNames,_whereIuniqueChunk) =
+            ( _whereIassumptions,_whereIbetaUnique,_whereIcollectErrors,_whereIcollectInstances,_whereIcollectWarnings,_whereIconstraints,_whereIdictionaryEnvironment,_whereIinfoTrees,_whereIlocalTypes,_whereImatchIO,_whereInamesInScope,_whereIpatternMatchWarnings,_whereIself,_whereIunboundNames,_whereIuniqueChunk) =
                 (where_ (_whereOallPatterns)
                         (_whereOallTypeSchemes)
                         (_whereOassumptions)
                         (_whereOavailablePredicates)
                         (_whereObetaUnique)
+                        (_whereOclassEnvironment)
                         (_whereOcollectErrors)
                         (_whereOcollectWarnings)
                         (_whereOconstraints)
@@ -15240,6 +16028,8 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
                 True
             (_lhsOfallthrough@_) =
                 _guardedexpressionsIfallthrough
+            (_lhsOcollectInstances@_) =
+                _guardedexpressionsIcollectInstances  ++  _whereIcollectInstances
             (_self@_) =
                 RightHandSide_Guarded _rangeIself _guardedexpressionsIself _whereIself
             (_lhsOself@_) =
@@ -15266,6 +16056,8 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
                 _lhsIbetaRight
             (_guardedexpressionsObetaUnique@_) =
                 _lhsIbetaUnique
+            (_guardedexpressionsOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_guardedexpressionsOcollectErrors@_) =
                 _lhsIcollectErrors
             (_guardedexpressionsOcollectWarnings@_) =
@@ -15298,6 +16090,8 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
                 _allTypeSchemes
             (_whereOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_whereOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_whereOcollectErrors@_) =
                 _guardedexpressionsIcollectErrors
             (_whereOcollectWarnings@_) =
@@ -15326,10 +16120,10 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
                 _lhsItypeschemeMap
             (_whereOuniqueChunk@_) =
                 _guardedexpressionsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTree,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTree,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
 -- SimpleType --------------------------------------------------
 -- semantic domain
-type T_SimpleType = ( (SimpleType))
+type T_SimpleType = ( (Name),(SimpleType),(Names))
 -- cata
 sem_SimpleType :: (SimpleType) ->
                   (T_SimpleType)
@@ -15340,7 +16134,9 @@ sem_SimpleType_SimpleType :: (T_Range) ->
                              (T_Names) ->
                              (T_SimpleType)
 sem_SimpleType_SimpleType (range_) (name_) (typevariables_) =
-    let _lhsOself :: (SimpleType)
+    let _lhsOname :: (Name)
+        _lhsOself :: (SimpleType)
+        _lhsOtypevariables :: (Names)
         _rangeIself :: (Range)
         _nameIself :: (Name)
         _typevariablesIself :: (Names)
@@ -15350,11 +16146,15 @@ sem_SimpleType_SimpleType (range_) (name_) (typevariables_) =
             (name_ )
         ( _typevariablesIself) =
             (typevariables_ )
+        (_lhsOtypevariables@_) =
+            _typevariablesIself
+        (_lhsOname@_) =
+            _nameIself
         (_self@_) =
             SimpleType_SimpleType _rangeIself _nameIself _typevariablesIself
         (_lhsOself@_) =
             _self
-    in  ( _lhsOself)
+    in  ( _lhsOname,_lhsOself,_lhsOtypevariables)
 -- Statement ---------------------------------------------------
 -- semantic domain
 type T_Statement = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -15362,6 +16162,7 @@ type T_Statement = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (Assumptions) ->
                    (Predicates) ->
                    (Int) ->
+                   (ClassEnvironment) ->
                    (TypeErrors) ->
                    (Warnings) ->
                    (ConstraintSet) ->
@@ -15380,7 +16181,7 @@ type T_Statement = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (Names) ->
                    (Int) ->
                    (Int) ->
-                   ( (Assumptions),(Int),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Maybe Tp),(InfoTree),(IO ()),(Monos),(Names),([Warning]),(Statement),(Names),(Int),(Int))
+                   ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Maybe Tp),(InfoTree),(IO ()),(Monos),(Names),([Warning]),(Statement),(Names),(Int),(Int))
 -- cata
 sem_Statement :: (Statement) ->
                  (T_Statement)
@@ -15400,6 +16201,7 @@ sem_Statement_Empty (range_) =
       _lhsIassumptions
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIconstraints
@@ -15421,6 +16223,7 @@ sem_Statement_Empty (range_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -15446,6 +16249,8 @@ sem_Statement_Empty (range_) =
                 _parentTree
             (_parentTree@_) =
                 node _lhsIparentTree _localInfo []
+            (_lhsOcollectInstances@_) =
+                []
             (_self@_) =
                 Statement_Empty _rangeIself
             (_lhsOself@_) =
@@ -15478,7 +16283,7 @@ sem_Statement_Empty (range_) =
                 _lhsIuniqueChunk
             (_lhsOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Statement_Expression :: (T_Range) ->
                             (T_Expression) ->
                             (T_Statement)
@@ -15488,6 +16293,7 @@ sem_Statement_Expression (range_) (expression_) =
       _lhsIassumptions
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIconstraints
@@ -15509,6 +16315,7 @@ sem_Statement_Expression (range_) (expression_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -15527,6 +16334,7 @@ sem_Statement_Expression (range_) (expression_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -15542,6 +16350,7 @@ sem_Statement_Expression (range_) (expression_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -15560,11 +16369,12 @@ sem_Statement_Expression (range_) (expression_) =
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -15613,6 +16423,8 @@ sem_Statement_Expression (range_) (expression_) =
                 _expressionIunboundNames ++ _lhsIunboundNames
             (_expressionOtryPatterns@_) =
                 []
+            (_lhsOcollectInstances@_) =
+                _expressionIcollectInstances
             (_self@_) =
                 Statement_Expression _rangeIself _expressionIself
             (_lhsOself@_) =
@@ -15643,6 +16455,8 @@ sem_Statement_Expression (range_) (expression_) =
                 _lhsIallTypeSchemes
             (_expressionOavailablePredicates@_) =
                 _lhsIavailablePredicates
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -15673,7 +16487,7 @@ sem_Statement_Expression (range_) (expression_) =
                 _lhsIuniqueChunk
             (_expressionOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Statement_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
@@ -15684,6 +16498,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
       _lhsIassumptions
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIconstraints
@@ -15705,6 +16520,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -15739,6 +16555,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
             _expressionIbeta :: (Tp)
             _expressionIbetaUnique :: (Int)
             _expressionIcollectErrors :: (TypeErrors)
+            _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectWarnings :: (Warnings)
             _expressionIconstraints :: (ConstraintSet)
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -15754,6 +16571,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
             _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
+            _expressionOclassEnvironment :: (ClassEnvironment)
             _expressionOcollectErrors :: (TypeErrors)
             _expressionOcollectWarnings :: (Warnings)
             _expressionOcurrentChunk :: (Int)
@@ -15774,11 +16592,12 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
                 (range_ )
             ( _patternIbeta,_patternIbetaUnique,_patternIconstraints,_patternIelements,_patternIenvironment,_patternIinfoTree,_patternIpatVarNames,_patternIpatternMatchWarnings,_patternIself,_patternIunboundNames) =
                 (pattern_ (_patternObetaUnique) (_patternOimportEnvironment) (_patternOmonos) (_patternOnamesInScope) (_patternOparentTree) (_patternOpatternMatchWarnings))
-            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
+            ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
                 (expression_ (_expressionOallPatterns)
                              (_expressionOallTypeSchemes)
                              (_expressionOavailablePredicates)
                              (_expressionObetaUnique)
+                             (_expressionOclassEnvironment)
                              (_expressionOcollectErrors)
                              (_expressionOcollectWarnings)
                              (_expressionOcurrentChunk)
@@ -15853,6 +16672,8 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
                                      "generator"
                                      "<-"
                 ++ _expressionIpatternMatchWarnings
+            (_lhsOcollectInstances@_) =
+                _expressionIcollectInstances
             (_self@_) =
                 Statement_Generator _rangeIself _patternIself _expressionIself
             (_lhsOself@_) =
@@ -15891,6 +16712,8 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
                 _lhsIavailablePredicates
             (_expressionObetaUnique@_) =
                 _patternIbetaUnique
+            (_expressionOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_expressionOcollectErrors@_) =
                 _lhsIcollectErrors
             (_expressionOcollectWarnings@_) =
@@ -15919,7 +16742,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
                 _lhsIuniqueChunk
             (_expressionOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Statement_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Statement)
@@ -15929,6 +16752,7 @@ sem_Statement_Let (range_) (declarations_) =
       _lhsIassumptions
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIconstraints
@@ -15950,6 +16774,7 @@ sem_Statement_Let (range_) (declarations_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -15967,6 +16792,7 @@ sem_Statement_Let (range_) (declarations_) =
             _declarationsIbetaUnique :: (Int)
             _declarationsIbindingGroups :: (BindingGroups)
             _declarationsIcollectErrors :: (TypeErrors)
+            _declarationsIcollectInstances :: ([(Name, Instance)])
             _declarationsIcollectWarnings :: (Warnings)
             _declarationsIdeclVarNames :: (Names)
             _declarationsIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -15984,6 +16810,7 @@ sem_Statement_Let (range_) (declarations_) =
             _declarationsOavailablePredicates :: (Predicates)
             _declarationsObetaUnique :: (Int)
             _declarationsObindingGroups :: (BindingGroups)
+            _declarationsOclassEnvironment :: (ClassEnvironment)
             _declarationsOcollectErrors :: (TypeErrors)
             _declarationsOcollectWarnings :: (Warnings)
             _declarationsOcurrentChunk :: (Int)
@@ -16002,12 +16829,29 @@ sem_Statement_Let (range_) (declarations_) =
             _declarationsOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
-            ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
+            ( _declarationsIbetaUnique
+             ,_declarationsIbindingGroups
+             ,_declarationsIcollectErrors
+             ,_declarationsIcollectInstances
+             ,_declarationsIcollectWarnings
+             ,_declarationsIdeclVarNames
+             ,_declarationsIdictionaryEnvironment
+             ,_declarationsIinfoTrees
+             ,_declarationsImatchIO
+             ,_declarationsIpatternMatchWarnings
+             ,_declarationsIrestrictedNames
+             ,_declarationsIself
+             ,_declarationsIsimplePatNames
+             ,_declarationsItypeSignatures
+             ,_declarationsIunboundNames
+             ,_declarationsIuniqueChunk
+             ) =
                 (declarations_ (_declarationsOallPatterns)
                                (_declarationsOallTypeSchemes)
                                (_declarationsOavailablePredicates)
                                (_declarationsObetaUnique)
                                (_declarationsObindingGroups)
+                               (_declarationsOclassEnvironment)
                                (_declarationsOcollectErrors)
                                (_declarationsOcollectWarnings)
                                (_declarationsOcurrentChunk)
@@ -16072,6 +16916,8 @@ sem_Statement_Let (range_) (declarations_) =
                 changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
             (_lhsOunboundNames@_) =
                 _unboundNames
+            (_lhsOcollectInstances@_) =
+                _declarationsIcollectInstances
             (_self@_) =
                 Statement_Let _rangeIself _declarationsIself
             (_lhsOself@_) =
@@ -16096,6 +16942,8 @@ sem_Statement_Let (range_) (declarations_) =
                 _lhsIavailablePredicates
             (_declarationsObetaUnique@_) =
                 _lhsIbetaUnique
+            (_declarationsOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_declarationsOcollectErrors@_) =
                 _lhsIcollectErrors
             (_declarationsOcollectWarnings@_) =
@@ -16124,7 +16972,7 @@ sem_Statement_Let (range_) (declarations_) =
                 _lhsItypeschemeMap
             (_declarationsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 -- Statements --------------------------------------------------
 -- semantic domain
 type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -16132,6 +16980,7 @@ type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (Assumptions) ->
                     (Predicates) ->
                     (Int) ->
+                    (ClassEnvironment) ->
                     (TypeErrors) ->
                     (Warnings) ->
                     (ConstraintSet) ->
@@ -16150,7 +16999,7 @@ type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (Names) ->
                     (Int) ->
                     (Int) ->
-                    ( (Assumptions),(Int),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Maybe Tp),(InfoTrees),(IO ()),(Names),([Warning]),(Statements),(Names),(Int),(Int))
+                    ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Maybe Tp),(InfoTrees),(IO ()),(Names),([Warning]),(Statements),(Names),(Int),(Int))
 -- cata
 sem_Statements :: (Statements) ->
                   (T_Statements)
@@ -16165,6 +17014,7 @@ sem_Statements_Cons (hd_) (tl_) =
       _lhsIassumptions
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIconstraints
@@ -16186,6 +17036,7 @@ sem_Statements_Cons (hd_) (tl_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -16201,6 +17052,7 @@ sem_Statements_Cons (hd_) (tl_) =
             _hdIassumptions :: (Assumptions)
             _hdIbetaUnique :: (Int)
             _hdIcollectErrors :: (TypeErrors)
+            _hdIcollectInstances :: ([(Name, Instance)])
             _hdIcollectWarnings :: (Warnings)
             _hdIconstraints :: (ConstraintSet)
             _hdIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -16219,6 +17071,7 @@ sem_Statements_Cons (hd_) (tl_) =
             _hdOassumptions :: (Assumptions)
             _hdOavailablePredicates :: (Predicates)
             _hdObetaUnique :: (Int)
+            _hdOclassEnvironment :: (ClassEnvironment)
             _hdOcollectErrors :: (TypeErrors)
             _hdOcollectWarnings :: (Warnings)
             _hdOconstraints :: (ConstraintSet)
@@ -16240,6 +17093,7 @@ sem_Statements_Cons (hd_) (tl_) =
             _tlIassumptions :: (Assumptions)
             _tlIbetaUnique :: (Int)
             _tlIcollectErrors :: (TypeErrors)
+            _tlIcollectInstances :: ([(Name, Instance)])
             _tlIcollectWarnings :: (Warnings)
             _tlIconstraints :: (ConstraintSet)
             _tlIdictionaryEnvironment :: (DictionaryEnvironment)
@@ -16257,6 +17111,7 @@ sem_Statements_Cons (hd_) (tl_) =
             _tlOassumptions :: (Assumptions)
             _tlOavailablePredicates :: (Predicates)
             _tlObetaUnique :: (Int)
+            _tlOclassEnvironment :: (ClassEnvironment)
             _tlOcollectErrors :: (TypeErrors)
             _tlOcollectWarnings :: (Warnings)
             _tlOconstraints :: (ConstraintSet)
@@ -16275,12 +17130,13 @@ sem_Statements_Cons (hd_) (tl_) =
             _tlOunboundNames :: (Names)
             _tlOuniqueChunk :: (Int)
             _tlOuniqueSecondRound :: (Int)
-            ( _hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIgeneratorBeta,_hdIinfoTree,_hdImatchIO,_hdImonos,_hdInamesInScope,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIuniqueSecondRound) =
+            ( _hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIgeneratorBeta,_hdIinfoTree,_hdImatchIO,_hdImonos,_hdInamesInScope,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIuniqueSecondRound) =
                 (hd_ (_hdOallPatterns)
                      (_hdOallTypeSchemes)
                      (_hdOassumptions)
                      (_hdOavailablePredicates)
                      (_hdObetaUnique)
+                     (_hdOclassEnvironment)
                      (_hdOcollectErrors)
                      (_hdOcollectWarnings)
                      (_hdOconstraints)
@@ -16299,12 +17155,13 @@ sem_Statements_Cons (hd_) (tl_) =
                      (_hdOunboundNames)
                      (_hdOuniqueChunk)
                      (_hdOuniqueSecondRound))
-            ( _tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectWarnings,_tlIconstraints,_tlIdictionaryEnvironment,_tlIgeneratorBeta,_tlIinfoTrees,_tlImatchIO,_tlInamesInScope,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIuniqueSecondRound) =
+            ( _tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIconstraints,_tlIdictionaryEnvironment,_tlIgeneratorBeta,_tlIinfoTrees,_tlImatchIO,_tlInamesInScope,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIuniqueSecondRound) =
                 (tl_ (_tlOallPatterns)
                      (_tlOallTypeSchemes)
                      (_tlOassumptions)
                      (_tlOavailablePredicates)
                      (_tlObetaUnique)
+                     (_tlOclassEnvironment)
                      (_tlOcollectErrors)
                      (_tlOcollectWarnings)
                      (_tlOconstraints)
@@ -16343,6 +17200,8 @@ sem_Statements_Cons (hd_) (tl_) =
                 _lhsIunboundNames
             (_lhsOunboundNames@_) =
                 _hdIunboundNames
+            (_lhsOcollectInstances@_) =
+                _hdIcollectInstances  ++  _tlIcollectInstances
             (_self@_) =
                 (:) _hdIself _tlIself
             (_lhsOself@_) =
@@ -16375,6 +17234,8 @@ sem_Statements_Cons (hd_) (tl_) =
                 _lhsIavailablePredicates
             (_hdObetaUnique@_) =
                 _lhsIbetaUnique
+            (_hdOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_hdOcollectErrors@_) =
                 _lhsIcollectErrors
             (_hdOcollectWarnings@_) =
@@ -16415,6 +17276,8 @@ sem_Statements_Cons (hd_) (tl_) =
                 _lhsIavailablePredicates
             (_tlObetaUnique@_) =
                 _hdIbetaUnique
+            (_tlOclassEnvironment@_) =
+                _lhsIclassEnvironment
             (_tlOcollectErrors@_) =
                 _hdIcollectErrors
             (_tlOcollectWarnings@_) =
@@ -16447,7 +17310,7 @@ sem_Statements_Cons (hd_) (tl_) =
                 _hdIuniqueChunk
             (_tlOuniqueSecondRound@_) =
                 _hdIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTrees,_lhsOmatchIO,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTrees,_lhsOmatchIO,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 sem_Statements_Nil :: (T_Statements)
 sem_Statements_Nil  =
     \ _lhsIallPatterns
@@ -16455,6 +17318,7 @@ sem_Statements_Nil  =
       _lhsIassumptions
       _lhsIavailablePredicates
       _lhsIbetaUnique
+      _lhsIclassEnvironment
       _lhsIcollectErrors
       _lhsIcollectWarnings
       _lhsIconstraints
@@ -16476,6 +17340,7 @@ sem_Statements_Nil  =
         let _lhsOassumptions :: (Assumptions)
             _lhsObetaUnique :: (Int)
             _lhsOcollectErrors :: (TypeErrors)
+            _lhsOcollectInstances :: ([(Name, Instance)])
             _lhsOcollectWarnings :: (Warnings)
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
@@ -16492,6 +17357,8 @@ sem_Statements_Nil  =
                 []
             (_lhsOunboundNames@_) =
                 _lhsIunboundNames
+            (_lhsOcollectInstances@_) =
+                []
             (_self@_) =
                 []
             (_lhsOself@_) =
@@ -16520,7 +17387,7 @@ sem_Statements_Nil  =
                 _lhsIuniqueChunk
             (_lhsOuniqueSecondRound@_) =
                 _lhsIuniqueSecondRound
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTrees,_lhsOmatchIO,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTrees,_lhsOmatchIO,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)
 -- Strings -----------------------------------------------------
 -- semantic domain
 type T_Strings = ( (Strings))

@@ -46,6 +46,7 @@ SEM Declaration
                                        , makeUndefined TypeVariable @undef @simpletype.typevariables
                                        , @lhs.miscerrors 
                                        , @unknCls
+                                       , if null @unknCls then @cantDer else []
                                        ]
              loc . unused  = filter (`notElem` @constructors.typevariables) @simpletype.typevariables
                  . doubles = filter ((>1) . length) . group . sort $        @simpletype.typevariables
@@ -56,7 +57,13 @@ SEM Declaration
                              | c <- @derivings
                              , show c /= "Show"
                              ]
-
+                 . cantDer = [ CannotDerive c [ tp | ReductionError (Predicate _ tp) <- errs ]
+                             | c <- @derivings
+                             , let preds     = map (Predicate (show c)) @constructors.parameterTypes
+                                   (_, errs) = contextReduction @lhs.orderedTypeSynonyms @lhs.classEnvironment preds
+                             , not (null errs)
+                             ]
+                       
     | Type   lhs . miscerrors = concat [ makeDuplicated TypeVariable @doubles
                                        , makeUndefined TypeVariable @undef @simpletype.typevariables
                                        , @lhs.miscerrors

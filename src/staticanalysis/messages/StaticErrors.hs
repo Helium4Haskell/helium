@@ -40,6 +40,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | AmbiguousContext Name
             | UnknownClass Name
             | NonDerivableClass Name
+            | CannotDerive Name Tps
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -62,7 +63,8 @@ instance HasMessage Error where
       WrongOverloadingFlag flag   -> [emptyRange]
       AmbiguousContext name       -> [getNameRange name]
       UnknownClass name           -> [getNameRange name]
-      NonDerivableClass name   -> [getNameRange name]
+      NonDerivableClass name      -> [getNameRange name]
+      CannotDerive name _         -> [getNameRange name]
       _                           -> internalError "StaticErrors.hs" 
                                                    "instance IsMessage Error" 
                                                    "unknown type of Error"
@@ -200,7 +202,22 @@ showError anError = case anError of
    NonDerivableClass name ->
       ( MessageString ("Cannot derive class " ++ show (show name))
       , [MessageString "Only Show instances can be derived"]
-      )        
+      )   
+
+   CannotDerive name tps ->
+      ( MessageString ("Cannot derive instance for class " ++ show (show name))
+      , let msg = MessageCompose (intersperse (MessageString ", ") (map (MessageType . toTpScheme) tps))
+            
+        in [ MessageCompose
+            [ MessageString "There "
+            , MessageString ( if length tps == 1 then "is " else "are ")
+            , MessageString ("no " ++ (show name) ++ " instance")
+            , MessageString ( if length tps == 1 then " " else "s ")
+            , MessageString "for "
+            , msg
+            ]
+           ]
+      )      
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -255,6 +272,7 @@ errorLogCode anError = case anError of
           AmbiguousContext _      -> "ac"
           UnknownClass _          -> "uc"
           NonDerivableClass _     -> "nd"
+          CannotDerive _ _        -> "cd"
           _                       -> "??"
    where code entity = maybe "??" id
                      . lookup entity 

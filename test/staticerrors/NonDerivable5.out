@@ -1,0 +1,4 @@
+Compiling staticerrors/NonDerivable5.hs
+(2,13): Cannot derive instance for class "Show"
+  Hint: There are no Show instances for a -> b, b -> a
+Compilation failed with 1 error

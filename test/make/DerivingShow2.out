@@ -1,0 +1,12 @@
+Compiling make/DerivingShow1.hs
+Compilation successful
+Compiling make/DerivingShow2.hs
+(3,8): Type error in overloaded function
+ function         : show
+   type           : Show a => a -> String
+   used as        :           A -> String
+ problem          : A is not an instance of class Show
+ hint             : valid instances of Show are B, Bool, Char, Either a b,
+                    Float, Int, Maybe a, Ordering, [a] and tuples
+
+Compilation failed with 1 error

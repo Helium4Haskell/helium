@@ -1,3 +1,3 @@
 type P = Int -> Int
 
-data A = A
+data A = A deriving Show
