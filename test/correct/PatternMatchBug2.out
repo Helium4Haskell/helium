@@ -1,3 +1,7 @@
 Compiling correct/PatternMatchBug2.hs
-Compilation successful
+(5,5): Warning: Some case-patterns are missing here: [[Char]]
+(_ : _) : _
+[] : _
+[]
+Compilation successful with 1 warning
 "a"

@@ -1,5 +1,8 @@
 Compiling correct/PatternMatchBug3.hs
 (3,1): Warning: Missing type signature: main :: String
 (5,1): Warning: Missing type signature: f :: String -> a -> a
-Compilation successful with 2 warnings
+(5,1): Warning: Some lhs-patterns are missing here: [Char] -> v11 -> v11
+f (_ : _) _ 
+f [] _ 
+Compilation successful with 3 warnings
 "a"

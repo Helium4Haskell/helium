@@ -1,0 +1,4 @@
+Compiling staticwarnings/Overlap5.hs
+(4,1): Warning: Unreachable pattern: main [True,False]
+Compilation successful with 1 warning
+<<function>>

@@ -1,3 +1,5 @@
 Compiling correct/PMC6.hs
-Compilation successful
+(9,1): Warning: Some lhs-patterns are missing here: [v28] -> MyTuple2 v28 [v28]
+headAndList [] 
+Compilation successful with 1 warning
 0

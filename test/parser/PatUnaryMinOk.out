@@ -1,4 +1,6 @@
 Compiling parser/PatUnaryMinOk.hs
 (1,1): Warning: Missing type signature: f :: Float -> Int
-Compilation successful with 1 warning
+(1,1): Warning: Some lhs-patterns are missing here: Float -> Int
+f _ 
+Compilation successful with 2 warnings
 No 'main' function defined in this module

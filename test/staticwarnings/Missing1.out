@@ -1,0 +1,5 @@
+Compiling staticwarnings/Missing1.hs
+(3,1): Warning: Some lhs-patterns are missing here: Bool -> ()
+main False 
+Compilation successful with 1 warning
+<<function>>

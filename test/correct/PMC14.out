@@ -1,3 +1,6 @@
 Compiling correct/PMC14.hs
-Compilation successful
+(7,1): Warning: Some lhs-patterns are missing here: [Char] -> Int
+a (_ : _) 
+a [] 
+Compilation successful with 1 warning
 4

@@ -1,6 +1,8 @@
 Compiling thompson/Thompson37.hs
+(2,1): Warning: Some lhs-patterns are missing here: [Bool] -> [Bool]
+test (_ : _) 
 (4,1): Warning: Missing type signature: main :: [Bool]
-Compilation successful with 1 warning
+Compilation successful with 2 warnings
 [exception: pattern match failed at function bindings ranging from (2,1) to (2,18) in module thompson/Thompson37.hs.
 
 trace:

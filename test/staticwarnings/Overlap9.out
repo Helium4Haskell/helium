@@ -1,0 +1,5 @@
+Compiling staticwarnings/Overlap9.hs
+(9,1): Warning: Unreachable pattern: main (B L (B _ L))
+(11,1): Warning: Unreachable pattern: main (B (B L L) (B (B L L) L))
+Compilation successful with 2 warnings
+<<function>>

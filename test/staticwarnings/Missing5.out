@@ -1,0 +1,6 @@
+Compiling staticwarnings/Missing5.hs
+(3,1): Warning: Some lhs-patterns are missing here: [v10] -> ()
+main (_ : (_ : (_ : _))) 
+main [_] 
+Compilation successful with 1 warning
+<<function>>

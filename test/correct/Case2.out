@@ -3,5 +3,7 @@ Compiling correct/Case2.hs
 (6,14): Warning: Variable "ys" is not used
 (8,10): Warning: Variable "x" is not used
 (8,12): Warning: Variable "xs" is not used
-Compilation successful with 4 warnings
+(5,5): Warning: Some case-patterns are missing here: [Int]
+[]
+Compilation successful with 5 warnings
 32
