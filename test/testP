@@ -1,2 +1,2 @@
-#!/bin/bash
+#!/bin/sh
 for f in parser/*.hs          ; do ./testOne ${f%.hs} ; done

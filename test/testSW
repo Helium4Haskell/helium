@@ -1,2 +1,2 @@
-#!/bin/bash
+#!/bin/sh
 for f in staticwarnings/*.hs          ; do ./testOne ${f%.hs} ; done
