@@ -4,10 +4,10 @@ Compiling typeerrors/Examples/Bug1.hs
    type           : [[a] -> a]
    does not match : Table     
 
-(4,53): Type error in constructor
- expression       : :
+(4,53): Type error in infix application
+ expression       : (take x tabel) : (drop (x - 1) tabel)
+ constructor      : :
    type           : a          -> [a       ] -> [a       ]
-   expected type  : [[String]] -> [[String]] -> [[b] -> b]
- probable fix     : use ++ instead
+   does not match : [[String]] -> [[String]] -> [[b] -> b]
 
 Compilation failed with 2 errors

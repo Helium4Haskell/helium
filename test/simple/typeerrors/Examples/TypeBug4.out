@@ -1,8 +1,8 @@
 Compiling typeerrors/Examples/TypeBug4.hs
 (4,1): Type error in explicitly typed binding
- expression       : sp
-   type           : ([a] -> Int -> String) -> [a] -> String
-   does not match : [b]                    -> [c] -> [b]   
+ definition       : sp
+   inferred type  : [b]                    -> [c] -> [b]   
+   declared type  : ([a] -> Int -> String) -> [a] -> String
 
 (4,21): Type error in application
  expression       : max length k (max . map (length l))
