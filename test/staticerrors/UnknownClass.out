@@ -1,0 +1,3 @@
+Compiling staticerrors/UnknownClass.hs
+(1,6): Unknown class "Strange" (Helium only supports Eq, Ord, Num, Show)
+Compilation failed with 1 error
