@@ -83,11 +83,25 @@ SEM UserStatement [ | | core : Core_UserStatement ]
   | Phase                     lhs . core = CorePhase @phase
   
 -- collecting the fixed constant types
+--
+-- This approach to determine the types of the fixed constants does not work in general!
+-- For the moment, the type variables assigned to the premises and the conclusion are skolemized 
+-- (in particular, when building the newEnvironment). In some cases however, this results in
+-- a type inconsistency:
+-- For instance: 
+--    f : t1   =>   f id ::t2     (f is a meta-variable, id has the type forall a . a -> a)
+--   in this case, the type for id cannot be expressed in t1 and t2    (since t1 is in fact a function type)
+--
+-- Todo: fix this problem.
+
 SEM TypingStrategy
   | TypingStrategy
        loc . typeEnv = 
-          let newEnvironment = @lhs.importEnvironment
-                                  { typeEnvironment = listToFM [ (nameFromString s, toTpScheme tp) | (s, tp) <- ("_", @typerule.conclusionType) : @typerule.simpleJudgements ] }
+          let newEnvironment = 
+                 let list = [ (nameFromString s, toTpScheme $ freezeVariablesInType tp) 
+                            | (s, tp) <- ("$$conclusion", @typerule.conclusionType) : @typerule.simpleJudgements 
+                            ]
+                 in @lhs.importEnvironment { typeEnvironment = listToFM list }
               (inferredType, freeVariables, _) = expressionTypeInferencer newEnvironment @typerule.conclusionExpression
               monoType = unqualify (unquantify inferredType)
               synonyms = getOrderedTypeSynonyms @lhs.importEnvironment

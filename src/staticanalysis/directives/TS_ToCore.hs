@@ -3482,8 +3482,11 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
             (_lhsOcore@_) =
                 TypingStrategy _typeEnv _typeruleIcore _statementsIcore
             (_typeEnv@_) =
-                let newEnvironment = _lhsIimportEnvironment
-                                        { typeEnvironment = listToFM [ (nameFromString s, toTpScheme tp) | (s, tp) <- ("_", _typeruleIconclusionType) : _typeruleIsimpleJudgements ] }
+                let newEnvironment =
+                       let list = [ (nameFromString s, toTpScheme $ freezeVariablesInType tp)
+                                  | (s, tp) <- ("$$conclusion", _typeruleIconclusionType) : _typeruleIsimpleJudgements
+                                  ]
+                       in _lhsIimportEnvironment { typeEnvironment = listToFM list }
                     (inferredType, freeVariables, _) = expressionTypeInferencer newEnvironment _typeruleIconclusionExpression
                     monoType = unqualify (unquantify inferredType)
                     synonyms = getOrderedTypeSynonyms _lhsIimportEnvironment
