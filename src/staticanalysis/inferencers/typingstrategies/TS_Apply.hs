@@ -2,11 +2,9 @@
 module TS_Apply where
 
 import UHA_Syntax
-import TS_CoreSyntax
-import TypeConstraints
+import LiftedConstraints
 import HeliumConstraintInfo
-import TypeGraphConstraintInfo
-import Types
+import Top.Types
 import List
 import UHA_Range (noRange)
 import Utils (internalError, fst3)
@@ -20,8 +18,11 @@ import Lexer (strategiesLexer)
 import ParseLibrary (runHParser)
 import qualified ResolveOperators
 import TS_Attributes
-import Tree
+import TS_CoreSyntax
+import Top.ComposedSolvers.Tree
 import UHA_Source
+import Data.FiniteMap
+import DoublyLinkedTree (root)
 
 type MetaVariableTable info = [(String, (ConstraintSet, info))]
 type MetaVariableInfo = (Tp, UHA_Source, Range)
@@ -54,17 +55,18 @@ expressionParser operatorTable string =
 standardConstraintInfo :: (Int, Int) -> (Tp, Tp) -> HeliumConstraintInfo
 standardConstraintInfo pos tppair =
    CInfo { location   = "Typing Strategy"
-         , sources    = undefined -- [ ]
+         , sources    = (UHA_Decls [], Nothing)
          , typepair   = tppair
+         , localInfo  = root (LocalInfo (UHA_Decls []) Nothing emptyFM) []
          , properties = [ ]
          }
 
 typeRuleCInfo :: String -> Maybe (String, UHA_Source) -> MetaVariableInfo -> (Tp, Tp) -> HeliumConstraintInfo
 typeRuleCInfo loc mTuple (tp1,tree,range) tppair =
    CInfo { location   = loc
-         , sources    = undefined -- srcs
+         , sources    = (UHA_Decls [], Nothing)
          , typepair   = tppair
-         , properties = undefined -- props
+         , properties = []
          }
 -- where (infoString, srcs, props) = case mTuple of 
 --          Just (s,t) -> ("meta variable "++s, [sourceExpression t, sourceTerm tree], [])

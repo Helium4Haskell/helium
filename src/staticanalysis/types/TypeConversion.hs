@@ -14,7 +14,7 @@ import UHA_Range (noRange)
 import Utils (internalError)
 import List (union)
 import UHA_Syntax
-import Types
+import Top.Types
 
 ----------------------------------------------------------------------
 -- conversion functions from and to UHA

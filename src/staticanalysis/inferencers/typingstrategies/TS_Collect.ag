@@ -72,10 +72,8 @@ SEM TypingStrategy
 standardConstraintInfo :: (Tp, Tp) -> HeliumConstraintInfo
 standardConstraintInfo tppair =
    CInfo { location   = "Typing Strategy"
-         , sources    = undefined
+         , sources    = (UHA_Decls [], Nothing)
          , typepair   = tppair
          , properties = [ ]
-         }
-
-
+         }      
 }                                                                       

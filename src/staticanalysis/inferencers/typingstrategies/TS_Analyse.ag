@@ -14,22 +14,22 @@ INCLUDE "TS_Syntax.ag"
 INCLUDE "TS_Collect.ag"
 
 imports {
-import Types
-import TypeConstraints
+import Top.Types
+import Top.Solvers.GreedySolver
+import Top.Solvers.SolveConstraints
+import Top.States.TIState
+import LiftedConstraints
 import HeliumConstraintInfo
-import TypeGraphConstraintInfo
 import TS_Syntax
 import TypeConversion
 import List
 import UHA_Utils (nameFromString)
 import UHA_Range (noRange)
+import UHA_Source
 import Messages
 import TypeErrors
 import TS_Messages
-import ImportEnvironment
-import Constraints
-import SolveGreedy
-import SolveState
+import ImportEnvironment hiding (setTypeSynonyms)
 import ExpressionTypeInferencer (expressionTypeInferencer)
 import Data.FiniteMap
 import Char (isAlphaNum)
@@ -76,10 +76,11 @@ SEM TypingStrategy
                               xs -> [ MetaVariableConstraintsNotExplicit @name xs ]  -}
 
            -- Solve the constraint set.           
-           . (_, substitution, _, solveErrors, _) =    
-                solveGreedy (getOrderedTypeSynonyms @lhs.importEnvironment)
-                            (length @uniqueTypevariables) 
-                            (reverse @statements.userConstraints)        
+           . (SolveResult _ substitution _ solveErrors _) =    
+                solveGreedy
+                   (getOrderedTypeSynonyms @lhs.importEnvironment)
+                   (length @uniqueTypevariables) 
+                   (reverse @statements.userConstraints)        
                                    
            . soundnessErrors = 
                 if not (null @staticErrors)
@@ -127,11 +128,11 @@ SEM TypeRule  | TypeRule   lhs . conclusionExpression = @conclusion.theExpressio
 SEM Judgement | Judgement  lhs . theExpression = @expression.self
 
 -- prevent AG-warnings
-SEM TypingStrategies | Cons  loc . importEnvironment = undefined
+SEM TypingStrategies | Cons  loc . importEnvironment = error "TS_Analyse.ag"
 
 {
 findDuplicates :: Ord a => [a] -> [[a]]
 findDuplicates = filter (not . isSingleton) . group . sort
    where isSingleton [_] = True
-         isSingleton _   = False
+         isSingleton _   = False        
 }

@@ -10,7 +10,7 @@
 module HeliumMessages where
 
 import Messages 
-import Types
+import Top.Types
 import qualified PPrint
 import qualified OneLiner
 import List                (intersperse, zipWith4)

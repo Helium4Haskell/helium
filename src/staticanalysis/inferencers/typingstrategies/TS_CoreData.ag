@@ -1,3 +1,6 @@
+DERIVING Core_TypingStrategy Core_TypeRule : Show, Read
+DERIVING Core_Judgement Core_UserStatement : Read
+
 DATA Core_TypingStrategy 
    | Siblings
          functions  : {[String]}
@@ -18,7 +21,7 @@ DATA Core_Judgement
         
 TYPE Core_UserStatements = [Core_UserStatement]
 
-DATA Core_UserStatement 
+DATA Core_UserStatement
    | Constraint
         leftType    : Tp
         rightType   : Tp

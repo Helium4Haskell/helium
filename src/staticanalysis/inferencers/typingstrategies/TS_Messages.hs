@@ -3,7 +3,8 @@ module TS_Messages where
 import Messages
 import TypeErrors
 import HeliumConstraintInfo
-import Types
+import HeliumMessages () -- instance Show MessageLines
+import Top.Types
 import Utils (commaList)
 import UHA_Syntax
 
@@ -55,8 +56,8 @@ showTS_Error tsError = case tsError of
       " can only be inserted at one place"
       
    (TypeErrorTS rule typeError) ->
-      "Type error in type strategy rule "++show rule++" while inferring the type of the conclusion:\n" -- ++
-       --  show (getMessage typeError)
+      "Type error in type strategy rule "++show rule++" while inferring the type of the conclusion:\n" ++
+         show (getMessage typeError)
 
    (Soundness rule inferred strategy) ->
       unlines [ "The type rule for " ++ show rule ++ " is not correct"

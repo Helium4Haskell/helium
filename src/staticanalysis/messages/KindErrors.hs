@@ -1,10 +1,9 @@
 module KindErrors where
 
-import Types
+import Top.Types
 import UHA_Syntax (Range, Type)
 import PPrint (Doc)
 import Messages
-import ConstraintInfo (ConstraintInfo)
 import List (union)
 import qualified UHA_Pretty as PP
 import qualified PPrint
@@ -24,8 +23,6 @@ kindApplication range uhaType1 uhaType2 (kind1, kind2) =
 
 instance Show KindError where 
    show kindError = "<kindError>"
-
-instance ConstraintInfo KindError
 
 instance HasMessage KindError where
 

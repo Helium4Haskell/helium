@@ -12,7 +12,7 @@ module Messages where
 import UHA_Syntax
 import UHA_Utils
 import UHA_Range
-import Types 
+import Top.Types 
 import OneLiner
 import Similarity (similar)
 import Utils      (internalError)

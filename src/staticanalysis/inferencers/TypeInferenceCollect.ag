@@ -218,8 +218,8 @@ lookupChunkNumber i fm =
    let err = error ("could not find beta in lookupChunkNumber [i="++show i++"] [fm="++show (fmToList fm)++"]")
    in lookupWithDefaultFM fm err i
 
-dependencyBinds :: ChunkNumberMap -> TypeConstraints a -> [(Int, TypeConstraint a)]
+dependencyBinds :: ChunkNumberMap -> TypeConstraints HeliumConstraintInfo -> [(Int, TypeConstraint HeliumConstraintInfo)]
 dependencyBinds fm cs = 
    let err = error "could not find variable of a constraint"
-   in [ (lookupChunkNumber i fm, c) | c <- cs, let i = maybe err id (variableInConstraint c)]   
+   in [ (lookupChunkNumber i fm, c) | c <- cs, let i = maybe err id (spreadFunction c)]   
 } 

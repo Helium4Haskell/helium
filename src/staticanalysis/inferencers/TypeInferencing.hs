@@ -3,33 +3,37 @@ module TypeInferencing where
 
 
 -- types
-import Types
+import Top.Types
 import TypeConversion
 
 -- constraints and constraint trees
-import TypeConstraints
 import LiftedConstraints
-import TreeWalk
-import Tree
+import Top.ComposedSolvers.TreeWalk
+import Top.ComposedSolvers.Tree
 
 -- error messages and warnings
 import Messages
 import TypeErrors
 import Warnings
-import ConstraintInfo
-import TypeGraphConstraintInfo
 import HeliumConstraintInfo
 import DoublyLinkedTree
 import UHA_Source
 
 -- constraint solvers
-import SolveTypeGraph            (solveTypeGraph)
-import SolveGreedy               (solveGreedy)
-import SolveSimple               (solveSimple)
-import SolveCombination          (solveCombination)
-import SolveChunks               (solveChunkConstraints)
-import TypeConstraintSemantics
-import TypeGraphInstance
+import Top.Constraints.Constraints
+import Top.Solvers.SimpleSolver (solveSimple)
+import Top.Solvers.GreedySolver (solveGreedy)
+import Top.TypeGraph.TypeGraphSolver (solveTypeGraph)
+import Top.Solvers.SolveConstraints
+import Top.ComposedSolvers.CombinationSolver (solveCombination)
+import Top.ComposedSolvers.ChunkySolver
+import Top.States.TIState
+import Top.TypeGraph.DefaultHeuristics
+import Top.TypeGraph.TypeGraphMonad (setHeuristics)
+import RepairHeuristics
+import TieBreakerHeuristics
+import OnlyResultHeuristics
+import Top.TypeGraph.Heuristics (HComponent(..), Heuristic(..) )
 
 -- UHA syntax
 import UHA_Syntax
@@ -40,7 +44,7 @@ import UHA_Utils                 (showNameAsOperator, intUnaryMinusName, NameWit
 import Utils                     (internalError)
 import DerivingShow              (typeOfShowFunction, nameOfShowFunction) 
 import TopSort                   (topSort)
-import ImportEnvironment
+import ImportEnvironment  hiding (setTypeSynonyms)
 import DictionaryEnvironment
 import Args
 
@@ -68,10 +72,6 @@ combine = plusFM_C (++)
 
 single :: Name -> Tp -> Assumptions
 single n t = unitFM n [(n,t)]
-
-getMonos :: TypeConstraints info -> Monos
-getMonos cs = let tps = map TVar (mapMaybe variableInConstraint cs)
-              in unitFM (nameFromString "_") (tupleType tps) -- not so nice
 
 type BindingGroups = [BindingGroup]
 type BindingGroup  = (PatternAssumptions,Assumptions,ConstraintSets)
@@ -156,9 +156,31 @@ findMono :: Name -> InheritedBDG -> Monos
 findMono n = let p = elem n . fst
              in fst . snd . head . filter p                  
 
+getMonos :: TypeConstraints info -> FiniteMap Name Tp
+getMonos tcs = listToFM [ (nameFromString "_", TVar i) | tc <- tcs, i <- ftv tc ]
+
 findCurrentChunk :: Name -> InheritedBDG -> Int
 findCurrentChunk n = let p = elem n . fst
                      in snd . snd . head . filter p  
+
+heliumTypeGraphHeuristics :: [[(String, TpScheme)]] -> [Heuristic HeliumConstraintInfo]
+heliumTypeGraphHeuristics siblings = 
+   [ highParticipation 1.00
+   , applicationResult
+   , negationResult
+   , Heuristic (Voting 
+        [ siblingFunctions siblings
+        , similarLiterals
+        , similarNegation
+        , applicationEdge
+        , tupleEdge
+        , fbHasTooManyArguments
+        , variableFunction                                                    
+        ])
+   , trustFactorOfConstraint
+   , isTopDownEdge
+   , positionInList
+   ]
          
 getRequiredDictionaries :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
 getRequiredDictionaries synonyms useType defType = 
@@ -227,10 +249,10 @@ lookupChunkNumber i fm =
    let err = error ("could not find beta in lookupChunkNumber [i="++show i++"] [fm="++show (fmToList fm)++"]")
    in lookupWithDefaultFM fm err i
 
-dependencyBinds :: ChunkNumberMap -> TypeConstraints a -> [(Int, TypeConstraint a)]
+dependencyBinds :: ChunkNumberMap -> TypeConstraints HeliumConstraintInfo -> [(Int, TypeConstraint HeliumConstraintInfo)]
 dependencyBinds fm cs = 
    let err = error "could not find variable of a constraint"
-   in [ (lookupChunkNumber i fm, c) | c <- cs, let i = maybe err id (variableInConstraint c)]   
+   in [ (lookupChunkNumber i fm, c) | c <- cs, let i = maybe err id (spreadFunction c)]   
 
 childConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
 childConstraint childNr theLocation infoTree theProperties tppair =
@@ -302,6 +324,14 @@ nameToSelfExpr name = UHA_Expr (Expression_Variable (getNameRange name) name)
 
 nameToSelfPat :: Name -> UHA_Source
 nameToSelfPat name = UHA_Pat (Pattern_Variable (getNameRange name) name)
+
+literalType :: Literal -> String
+literalType x = 
+   case x of   
+      Literal_Int    _ _ -> "Int"
+      Literal_Char   _ _ -> "Char"
+      Literal_String _ _ -> "String"
+      Literal_Float  _ _ -> "Float"
 
 globalInfoError :: a
 globalInfoError = internalError "GlobalInfo.ag" "n/a" "global info not available"
@@ -791,10 +821,10 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
                                 (_righthandsideOpredicates)
                                 (_righthandsideOsubstitution)
                                 (_righthandsideOuniqueChunk))
+            ((_csetBinds@_,_lhsOassumptions@_)) =
+                (_patternIenvironment .===. _righthandsideIassumptions) _cinfoBind
             (_conLeft@_) =
                 [ (_patternIbeta .==. _lhsIbetaLeft) _cinfoLeft ]
-            ((_csetBinds@_,_assumptions'@_)) =
-                (_patternIenvironment .===. _righthandsideIassumptions) _cinfoBind
             (_constraints@_) =
                 _csetBinds .>>.
                 Node [ _conLeft  .<. _patternIconstraints
@@ -802,8 +832,6 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
                      ]
             (_righthandsideOmonos@_) =
                 _patternIenvironment `plusFM` getMonos _csetBinds `plusFM` _lhsImonos
-            (_lhsOassumptions@_) =
-                _assumptions'
             (_cinfoLeft@_) =
                 resultConstraint "case pattern" _patternIinfoTree
                    []
@@ -1381,16 +1409,14 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                                (_declarationsOsubstitution)
                                (_declarationsOtypeSignatures)
                                (_declarationsOuniqueChunk))
-            (_constraints@_) =
-                Chunk _lhsIcurrentChunk _cset [] (dependencyBinds _lhsIchunkNumberMap _csetBinds) emptyTree
-            ((_csetBinds@_,_aset'@_)) =
-                (typeEnvironment _lhsIimportEnvironment .:::. _aset) _cinfo
             ((_aset@_,_cset@_,_inheritedBDG@_,_chunkNr@_)) =
                 performBindingGroup _lhsIcurrentChunk _declarationsIuniqueChunk _lhsIchunkNumberMap _lhsImonos _declarationsItypeSignatures Nothing _declarationsIbindingGroups
+            (_constraints@_) =
+                Chunk _lhsIcurrentChunk _cset [] (dependencyBinds _lhsIchunkNumberMap _csetBinds) emptyTree
+            ((_csetBinds@_,_lhsOassumptions@_)) =
+                (typeEnvironment _lhsIimportEnvironment .:::. _aset) _cinfo
             (_declarationsObindingGroups@_) =
                 []
-            (_lhsOassumptions@_) =
-                _aset'
             (_lhsOtoplevelTypes@_) =
                 let (environment, _, _) = concatBindingGroups _declarationsIbindingGroups
                     monos' = ftv (_lhsIsubstitution |-> eltsFM _lhsImonos)
@@ -1412,7 +1438,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                 _chunkNr
             (_cinfo@_) =
                 \name -> variableConstraint "variable" (nameToSelfExpr name)
-                   [ FolkloreConstraint, HasTrustFactor 10.0, IsImported ]
+                   [ FolkloreConstraint, HasTrustFactor 10.0, IsImported name ]
             (_declInfo@_) =
                 LocalInfo { self = UHA_Decls _declarationsIself
                           , assignedType = Nothing
@@ -3762,7 +3788,7 @@ sem_Expression_Constructor (range_) (name_) =
                 _lhsIbetaUnique + 1
             (_cinfo@_) =
                 resultConstraint "constructor" _parentTree
-                   [ FolkloreConstraint, HasTrustFactor 10.0, IsImported ]
+                   [ FolkloreConstraint, HasTrustFactor 10.0, IsImported _nameIself ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta
@@ -5035,10 +5061,10 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
                              (_expressionOtryPatterns)
                              (_expressionOuniqueChunk)
                              (_expressionOuniqueSecondRound))
+            ((_csetBinds@_,_lhsOassumptions@_)) =
+                (_patternsIenvironment .===. _expressionIassumptions) _cinfoBind
             (_newcon@_) =
                 [ (foldr (.->.) _expressionIbeta _patternsIbetas .==. _beta) _cinfoType ]
-            ((_csetBinds@_,_assumptions'@_)) =
-                (_patternsIenvironment .===. _expressionIassumptions) _cinfoBind
             (_beta@_) =
                 TVar _lhsIbetaUnique
             (_constraints@_) =
@@ -5050,8 +5076,6 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
                 _patternsIenvironment `plusFM` getMonos _csetBinds `plusFM` _lhsImonos
             (_patternsObetaUnique@_) =
                 _lhsIbetaUnique + 1
-            (_lhsOassumptions@_) =
-                _assumptions'
             (_cinfoBind@_) =
                 \name -> variableConstraint "variable" (nameToSelfExpr name)
                    [FolkloreConstraint]
@@ -5241,7 +5265,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                              (_expressionOtryPatterns)
                              (_expressionOuniqueChunk)
                              (_expressionOuniqueSecondRound))
-            ((_aset@_,_cset@_,_inheritedBDG@_,_chunkNr@_)) =
+            ((_lhsOassumptions@_,_cset@_,_inheritedBDG@_,_chunkNr@_)) =
                 performBindingGroup _lhsIcurrentChunk _expressionIuniqueChunk _lhsIchunkNumberMap _lhsImonos _declarationsItypeSignatures _mybdggroup _declarationsIbindingGroups
             (_mybdggroup@_) =
                 Just (_expressionIassumptions, [_expressionIconstraints])
@@ -5253,8 +5277,6 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                 []
             (_declarationsObetaUnique@_) =
                 _lhsIbetaUnique + 1
-            (_lhsOassumptions@_) =
-                _aset
             (_localTypes@_) =
                 getInferredTypes _lhsImonos _lhsIsubstitution _lhsIpredicates _declarationsIbindingGroups
             (_inferredTypes@_) =
@@ -5605,7 +5627,7 @@ sem_Expression_Literal (range_) (literal_) =
                 _lhsIbetaUnique + 1
             (_cinfo@_) =
                 resultConstraint "literal" _parentTree
-                   [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral _literalIself ]
+                   [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral (literalType _literalIself) ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta
@@ -6380,7 +6402,7 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
             ((_assumptions@_,_constraints@_,_beta@_)) =
                 internalError "PartialSyntax.ag" "n/a" "Expression.RecordConstruction"
             (_matches@_) =
-                undefined
+                internalError "TS_PatternMatching.ag" "n/a" "RecordConstruction is not supported"
             (_lhsOunboundNames@_) =
                 _recordExpressionBindingsIunboundNames
             (_self@_) =
@@ -7521,10 +7543,10 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
                                 (_righthandsideOpredicates)
                                 (_righthandsideOsubstitution)
                                 (_righthandsideOuniqueChunk))
+            ((_csetBinds@_,_lhsOassumptions@_)) =
+                (_lefthandsideIenvironment .===. _righthandsideIassumptions) _cinfoBind
             (_conLeft@_) =
                 zipWith3 (\t1 t2 nr -> (t1 .==. t2) (_cinfoLeft nr)) _lefthandsideIbetas _lhsIbetasLeft [0..]
-            ((_csetBinds@_,_assumptions'@_)) =
-                (_lefthandsideIenvironment .===. _righthandsideIassumptions) _cinfoBind
             (_constraints@_) =
                 _csetBinds .>>.
                 Node [ _conLeft  .<. _lefthandsideIconstraints
@@ -7532,8 +7554,6 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
                      ]
             (_righthandsideOmonos@_) =
                 _lefthandsideIenvironment `plusFM` getMonos _csetBinds `plusFM` _lhsImonos
-            (_lhsOassumptions@_) =
-                _assumptions'
             (_cinfoLeft@_) =
                 \num  ->
                 orphanConstraint num "pattern of function binding" _parentTree
@@ -9030,16 +9050,12 @@ sem_MaybeDeclarations_Just (declarations_) =
                                (_declarationsOsubstitution)
                                (_declarationsOtypeSignatures)
                                (_declarationsOuniqueChunk))
+            ((_lhsOassumptions@_,_lhsOconstraints@_,_inheritedBDG@_,_chunkNr@_)) =
+                performBindingGroup _lhsIcurrentChunk _declarationsIuniqueChunk _lhsIchunkNumberMap _lhsImonos _declarationsItypeSignatures _mybdggroup _declarationsIbindingGroups
             (_mybdggroup@_) =
                 Just (_lhsIassumptions, [_lhsIconstraints])
-            ((_aset@_,_cset@_,_inheritedBDG@_,_chunkNr@_)) =
-                performBindingGroup _lhsIcurrentChunk _declarationsIuniqueChunk _lhsIchunkNumberMap _lhsImonos _declarationsItypeSignatures _mybdggroup _declarationsIbindingGroups
             (_declarationsObindingGroups@_) =
                 []
-            (_lhsOconstraints@_) =
-                _cset
-            (_lhsOassumptions@_) =
-                _aset
             (_localTypes@_) =
                 getInferredTypes _lhsImonos _lhsIsubstitution _lhsIpredicates _declarationsIbindingGroups
             (_lhsOcollectWarnings@_) =
@@ -9600,17 +9616,23 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             (_lhsOwarnings@_) =
                 _warnings     ++ _bodyIpatternMatchWarnings
             (_bodyObetaUnique@_) =
-                0
+                maximum ((-1) : _monomorphics) + 1
+            (_monomorphics@_) =
+                ftv (  (eltsFM $ valueConstructors _lhsIimportEnvironment)
+                    ++ (eltsFM $ typeEnvironment   _lhsIimportEnvironment)
+                    )
+            (_monos@_) =
+                listToFM [ (nameFromString "_import", TVar i) | i <- _monomorphics ]
             (_initialScope@_) =
                 keysFM (typeEnvironment _lhsIimportEnvironment)
+            (_debugIO@_) =
+                putStrLn _debugString
             (_warnings@_) =
                 _bodyIcollectWarnings
             (_typeErrors@_) =
                 if null _checkedSolveErrors then _bodyIcollectErrors else _checkedSolveErrors
             (_checkedSolveErrors@_) =
                 catMaybes (map (checkTypeError _orderedTypeSynonyms . (_substitution |->) . makeTypeError) _solveErrors)
-            (_monos@_) =
-                emptyFM
             (_siblings@_) =
                 let f s = [ (s, ts) | ts <- findTpScheme (nameFromString s) ]
                     findTpScheme n = catMaybes
@@ -9618,18 +9640,18 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                                         , lookupFM (typeEnvironment   _lhsIimportEnvironment) n
                                         ]
                 in map (concatMap f) (getSiblings _lhsIimportEnvironment)
-            ((_betaUniqueAtTheEnd@_,_substitution@_,_predicates@_,_solveErrors@_,_debugIO@_)) =
-                _selectedSolver _bodyIbetaUnique _constraints
+            ((SolveResult (_betaUniqueAtTheEnd@_)(_substitution@_)(_predicates@_)(_solveErrors@_)(_debugString@_))) =
+                _selectedSolver _orderedTypeSynonyms _bodyIbetaUnique _constraints
             (_orderedTypeSynonyms@_) =
                 getOrderedTypeSynonyms _lhsIimportEnvironment
             (_constraints@_) =
                 _flattening _bodyIconstraints
             (_flattening@_) =
-                zipWith setPosition [0..] . flattenTree _selectedTreeWalk . phaseTree . _spreadingOrNot
+                flattenTree _selectedTreeWalk . phaseTree . _spreadingOrNot
             (_spreadingOrNot@_) =
                 if NoSpreading `elem` _lhsIoptions
                   then id
-                  else spreadTree variableInConstraint
+                  else spreadTree spreadFunction
             (_selectedTreeWalk@_) =
                 let select
                        | TreeWalkTopDown             `elem` _lhsIoptions = topDownTreeWalk
@@ -9643,16 +9665,16 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                        | otherwise                       = id
                 in reverseOrNot select
             (_selectedSolver@_) =
-                let select
-                       | SolverSimple      `elem` _lhsIoptions = solveSimple      _orderedTypeSynonyms
-                       | SolverGreedy      `elem` _lhsIoptions = solveGreedy      _orderedTypeSynonyms
-                       | SolverCombination `elem` _lhsIoptions = solveCombination (_orderedTypeSynonyms, _siblings)
-                       | SolverTypeGraph   `elem` _lhsIoptions = solveTypeGraph   (_orderedTypeSynonyms, _siblings)
-                       | SolverChunks      `elem` _lhsIoptions = \unique _ ->
-                                        let options = (_flattening, _orderedTypeSynonyms, _siblings)
-                                            chunkConstraints = chunkTree dependencyTypeConstraint _bodyIconstraints
-                                        in solveChunkConstraints options unique chunkConstraints
-                       | otherwise = solveCombination (_orderedTypeSynonyms, _siblings)
+                let hs = heliumTypeGraphHeuristics _siblings
+                    select
+                       | SolverSimple      `elem` _lhsIoptions = solveSimple
+                       | SolverGreedy      `elem` _lhsIoptions = solveGreedy
+                       | SolverTypeGraph   `elem` _lhsIoptions = solveTypeGraph hs
+                       | SolverCombination `elem` _lhsIoptions = solveCombination hs
+                       | otherwise = \synonyms unique _ ->
+                                        let chunkConstraints :: ChunkConstraints (TypeConstraint HeliumConstraintInfo)
+                                            chunkConstraints = chunkTree dependencyTypeConstraint . phaseTree . spreadTree spreadFunction $ _bodyIconstraints
+                                        in solveChunkConstraints hs (flattenTree _selectedTreeWalk) synonyms unique chunkConstraints
                 in select
             (_bodyOdictionaryEnvironment@_) =
                 emptyDictionaryEnvironment
@@ -10233,7 +10255,7 @@ sem_Pattern_Literal (range_) (literal_) =
                 _lhsIbetaUnique + 1
             (_cinfo@_) =
                 resultConstraint "literal pattern" _parentTree
-                   [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral _literalIself ]
+                   [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral (literalType _literalIself) ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Pat _self
                           , assignedType = Just _beta
@@ -11298,16 +11320,12 @@ sem_Qualifier_Let (range_) (declarations_) =
                                (_declarationsOsubstitution)
                                (_declarationsOtypeSignatures)
                                (_declarationsOuniqueChunk))
+            ((_lhsOassumptions@_,_lhsOconstraints@_,_inheritedBDG@_,_chunkNr@_)) =
+                performBindingGroup _lhsIcurrentChunk _declarationsIuniqueChunk _lhsIchunkNumberMap _lhsImonos _declarationsItypeSignatures _mybdggroup _declarationsIbindingGroups
             (_mybdggroup@_) =
                 Just (_lhsIassumptions, [_lhsIconstraints])
-            ((_aset@_,_locConstraints@_,_inheritedBDG@_,_chunkNr@_)) =
-                performBindingGroup _lhsIcurrentChunk _declarationsIuniqueChunk _lhsIchunkNumberMap _lhsImonos _declarationsItypeSignatures _mybdggroup _declarationsIbindingGroups
             (_declarationsObindingGroups@_) =
                 []
-            (_lhsOconstraints@_) =
-                _locConstraints
-            (_lhsOassumptions@_) =
-                _aset
             (_localTypes@_) =
                 getInferredTypes _lhsImonos _lhsIsubstitution _lhsIpredicates _declarationsIbindingGroups
             (_inferredTypes@_) =
@@ -11805,7 +11823,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
             ((_monos@_,_constructorenv@_,_betaUnique@_,_miscerrors@_,_warnings@_,_kindErrors@_,_valueConstructors@_,_allValueConstructors@_,_typeConstructors@_,_allTypeConstructors@_,_importEnvironment@_)) =
                 internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
             ((_allPatterns@_,_tryPatterns@_,_matchIO@_,_uniqueSecondRound@_)) =
-                undefined
+                internalError "TS_PatternMatching.ag" "n/a" "RecordExpressionBinding is not supported"
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -12929,10 +12947,10 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
                              (_expressionOtryPatterns)
                              (_expressionOuniqueChunk)
                              (_expressionOuniqueSecondRound))
-            (_newcon@_) =
-                [ (_expressionIbeta .==. ioType _patternIbeta) _cinfoResult ]
             ((_csetBinds@_,_assumptions'@_)) =
                 (_patternIenvironment .===. _lhsIassumptions) _cinfoBind
+            (_newcon@_) =
+                [ (_expressionIbeta .==. ioType _patternIbeta) _cinfoResult ]
             (_locConstraints@_) =
                 _newcon .>. _csetBinds .>>.
                    Node [ _patternIconstraints
@@ -13113,16 +13131,12 @@ sem_Statement_Let (range_) (declarations_) =
                                (_declarationsOsubstitution)
                                (_declarationsOtypeSignatures)
                                (_declarationsOuniqueChunk))
+            ((_lhsOassumptions@_,_lhsOconstraints@_,_inheritedBDG@_,_chunkNr@_)) =
+                performBindingGroup _lhsIcurrentChunk _declarationsIuniqueChunk _lhsIchunkNumberMap _lhsImonos _declarationsItypeSignatures _mybdggroup _declarationsIbindingGroups
             (_mybdggroup@_) =
                 Just (_lhsIassumptions, [_lhsIconstraints])
-            ((_aset@_,_locConstraints@_,_inheritedBDG@_,_chunkNr@_)) =
-                performBindingGroup _lhsIcurrentChunk _declarationsIuniqueChunk _lhsIchunkNumberMap _lhsImonos _declarationsItypeSignatures _mybdggroup _declarationsIbindingGroups
             (_declarationsObindingGroups@_) =
                 []
-            (_lhsOconstraints@_) =
-                _locConstraints
-            (_lhsOassumptions@_) =
-                _aset
             (_lhsOgeneratorBeta@_) =
                 Nothing
             (_localTypes@_) =

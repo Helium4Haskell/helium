@@ -19,20 +19,20 @@ INCLUDE "../../syntax/UHA_Syntax.ag"
 -- Imports
 
 imports {
-import Types
+import Top.Types
+import Top.Solvers.GreedySolver
+import Top.Solvers.SolveConstraints
+import Top.States.TIState
+import LiftedConstraints
 import UHA_Syntax
 import Args
 import Data.FiniteMap
-import TypeConstraints
 import LiftedConstraints
 import Utils (internalError)
 import UHA_Utils (nameFromString) -- instance Ord Name
 import UHA_Range (noRange)
 import TopSort (topSort)
-import SolveGreedy (solveGreedy)
-import KindConstraintSemantics
-import ConstraintInfo
-import ImportEnvironment
+import ImportEnvironment hiding (setTypeSynonyms)
 import KindErrors
 import Char (isLower)
 }
@@ -42,11 +42,13 @@ import Char (isLower)
 
 SEM Module
   | Module   lhs  . kindErrors      = @substitution |-> @kindErrors
+                  . debugIO         = putStrLn @debugString
              body . kappaUnique     = 0
-             loc  . (kappaUniqueAtTheEnd, substitution, _, kindErrors, debugIO) = 
+             loc  . (SolveResult kappaUniqueAtTheEnd substitution _ kindErrors debugString) = 
                        solveGreedy noOrderedTypeSynonyms @body.kappaUnique @body.constraints
                   . kindEnvironment = let f _ kind = generalize [] [] (defaultToStar $ @substitution |-> kind)
                                       in mapFM f @body.environment                     
+                                        
 
 ATTR Body [ importEnvironment:ImportEnvironment | | constraints:KindConstraints environment:PatternAssumptions ]
 
@@ -248,4 +250,7 @@ getTypeVariables = filter p . keysFM
 unexpected :: String -> KindError
 unexpected msg = 
    internalError "KindInferencing.ag" "unexpected" ("unexpected kind error: "++msg)
+
+instance SetReduction KindError 
+instance OriginalTypeScheme KindError
 }

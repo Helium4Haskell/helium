@@ -7,7 +7,7 @@
 module TypeErrors where
 
 import Messages
-import Types
+import Top.Types
 import List       (union, intersperse, partition)
 import OneLiner   (OneLineTree(..) )
 import UHA_Syntax (Range, Name)

@@ -16,7 +16,7 @@ import Messages
 import List        (intersperse, sort, partition, isSuffixOf, isPrefixOf)
 import Maybe       (fromJust)
 import Utils       (commaList, internalError, minInt, maxInt)
-import Types
+import Top.Types
 
 -------------------------------------------------------------
 -- (Static) Errors

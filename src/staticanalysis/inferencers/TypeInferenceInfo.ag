@@ -13,7 +13,7 @@
 
 SEM Body | Body loc . cinfo = 
   \name -> variableConstraint "variable" (nameToSelfExpr name) 
-     [ FolkloreConstraint, HasTrustFactor 10.0, IsImported ]
+     [ FolkloreConstraint, HasTrustFactor 10.0, IsImported name ]
 
 ---------------------------------------------------------------------------------------
 -- Constraint Information : Declaration
@@ -52,12 +52,12 @@ SEM RightHandSide | Expression loc . cinfo =
 -- Expression.Literal
 SEM Expression | Literal loc . cinfo =
   resultConstraint "literal" @parentTree
-     [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral @literal.self ]
+     [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral (literalType @literal.self) ]
 
 -- Expression.Constructor
 SEM Expression | Constructor loc . cinfo =
   resultConstraint "constructor" @parentTree       
-     [ FolkloreConstraint, HasTrustFactor 10.0, IsImported ]
+     [ FolkloreConstraint, HasTrustFactor 10.0, IsImported @name.self ]
 
 -- Expression.NormalApplication
 SEM Expression | NormalApplication loc . cinfo =
@@ -205,7 +205,7 @@ SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
 -- Pattern.Literal
 SEM Pattern | Literal loc . cinfo =
   resultConstraint "literal pattern" @parentTree
-     [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral @literal.self ]        
+     [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral (literalType @literal.self) ]        
 
 -- Pattern.Constructor
 SEM Pattern | Constructor loc . cinfoConstructor =
@@ -377,4 +377,12 @@ nameToSelfExpr name = UHA_Expr (Expression_Variable (getNameRange name) name)
 
 nameToSelfPat :: Name -> UHA_Source
 nameToSelfPat name = UHA_Pat (Pattern_Variable (getNameRange name) name)
+
+literalType :: Literal -> String
+literalType x = 
+   case x of   
+      Literal_Int    _ _ -> "Int"
+      Literal_Char   _ _ -> "Char"
+      Literal_String _ _ -> "String"
+      Literal_Float  _ _ -> "Float"
 }   

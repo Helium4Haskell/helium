@@ -42,33 +42,37 @@ SEM Module | Module lhs . warnings = @loc.warnings ++ @body.patternMatchWarnings
 imports {
 
 -- types
-import Types
+import Top.Types
 import TypeConversion
 
 -- constraints and constraint trees
-import TypeConstraints
 import LiftedConstraints
-import TreeWalk
-import Tree
+import Top.ComposedSolvers.TreeWalk
+import Top.ComposedSolvers.Tree
 
 -- error messages and warnings
 import Messages
 import TypeErrors
 import Warnings
-import ConstraintInfo
-import TypeGraphConstraintInfo
 import HeliumConstraintInfo
 import DoublyLinkedTree
 import UHA_Source
 
 -- constraint solvers
-import SolveTypeGraph            (solveTypeGraph)
-import SolveGreedy               (solveGreedy)
-import SolveSimple               (solveSimple)
-import SolveCombination          (solveCombination)
-import SolveChunks               (solveChunkConstraints)
-import TypeConstraintSemantics
-import TypeGraphInstance
+import Top.Constraints.Constraints
+import Top.Solvers.SimpleSolver (solveSimple)
+import Top.Solvers.GreedySolver (solveGreedy)
+import Top.TypeGraph.TypeGraphSolver (solveTypeGraph)
+import Top.Solvers.SolveConstraints
+import Top.ComposedSolvers.CombinationSolver (solveCombination)
+import Top.ComposedSolvers.ChunkySolver
+import Top.States.TIState
+import Top.TypeGraph.DefaultHeuristics
+import Top.TypeGraph.TypeGraphMonad (setHeuristics)
+import RepairHeuristics
+import TieBreakerHeuristics
+import OnlyResultHeuristics
+import Top.TypeGraph.Heuristics (HComponent(..), Heuristic(..) )
 
 -- UHA syntax
 import UHA_Syntax
@@ -79,7 +83,7 @@ import UHA_Utils                 (showNameAsOperator, intUnaryMinusName, NameWit
 import Utils                     (internalError)
 import DerivingShow              (typeOfShowFunction, nameOfShowFunction) 
 import TopSort                   (topSort)
-import ImportEnvironment
+import ImportEnvironment  hiding (setTypeSynonyms)
 import DictionaryEnvironment
 import Args
 

@@ -374,5 +374,9 @@ generalMatch exprVarMatcher converter metaVariableInfo unique matcher tryPats al
 }
 
 -- prevent ag-warnings
-SEM RecordExpressionBinding | RecordExpressionBinding   loc . (allPatterns,tryPatterns,matchIO,uniqueSecondRound) = undefined
-SEM Expression | RecordConstruction loc . matches = undefined
+SEM RecordExpressionBinding 
+  | RecordExpressionBinding   
+       loc . (allPatterns,tryPatterns,matchIO,uniqueSecondRound) = internalError "TS_PatternMatching.ag" "n/a" "RecordExpressionBinding is not supported"
+SEM Expression 
+  | RecordConstruction 
+       loc . matches = internalError "TS_PatternMatching.ag" "n/a" "RecordConstruction is not supported"

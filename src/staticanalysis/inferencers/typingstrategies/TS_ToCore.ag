@@ -8,21 +8,23 @@ INCLUDE "TS_Collect.ag"
 INCLUDE "../../../syntax/UHA_Syntax.ag"
 
 imports {
+
 import TS_Syntax
 import TS_CoreSyntax
 import Messages
-import Types
+import Top.Types
 import HeliumConstraintInfo
-import TypeGraphConstraintInfo
 import UHA_Range (noRange)
 import UHA_Utils (getNameName)
+import qualified UHA_OneLine 
+import UHA_Source
 import TypeConversion
 import Utils (internalError)
 import List
-import TypeConstraints
 import TypeErrors
 import OneLiner
 import TS_Attributes
+import LiftedConstraints
 }
 
 SEM TypingStrategy [ | | core : Core_TypingStrategy ]
@@ -38,7 +40,7 @@ SEM TypeRule [ | | core : Core_TypeRule ]
 
 SEM Judgement [ | | core : Core_Judgement ]
   | Judgement
-       lhs . core = undefined -- Judgement (showOneLine 10000 @expression.oneLineTree) (makeTpFromType @lhs.nameMap @type.self)   
+       lhs . core = Judgement (showOneLine 10000 $ fst $ UHA_OneLine.sem_Expression @expression.self) (makeTpFromType @lhs.nameMap @type.self)   
 
 SEM SimpleJudgements [ | | core : Core_Judgements ]
   | Cons  lhs . core = @hd.core : @tl.core

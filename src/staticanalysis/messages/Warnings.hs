@@ -12,7 +12,7 @@ module Warnings where
 import UHA_Range    (getNameRange, showRange, sortRanges)
 import UHA_Syntax
 import UHA_Utils
-import Types
+import Top.Types
 import Messages
 import Utils        (internalError)
 import qualified UHA_Pretty as PP (sem_Pattern, sem_LeftHandSide, sem_Expression)

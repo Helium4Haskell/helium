@@ -6,7 +6,7 @@ import Args
 import UHA_Syntax
 import UHA_Utils
 import UHA_Range
-import Types
+import Top.Types
 import StaticErrors
 import Warnings
 import Messages

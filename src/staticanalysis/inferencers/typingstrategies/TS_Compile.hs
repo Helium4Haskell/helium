@@ -12,13 +12,12 @@ import HeliumMessages (sortAndShowMessages)
 import Monad          (unless, when)
 import qualified Args (Option(..))
 import ParseMessage
-
 import CoreUtils
 import Core
 
 readTypingStrategiesFromFile :: [Args.Option] -> String -> ImportEnvironment -> 
     IO (Core_TypingStrategies, [CoreDecl])
-readTypingStrategiesFromFile options filename importEnvironment = 
+readTypingStrategiesFromFile options filename importEnvironment =
 
    doesFileExist filename >>= 
    

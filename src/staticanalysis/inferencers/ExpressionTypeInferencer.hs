@@ -3,7 +3,7 @@ module ExpressionTypeInferencer (expressionTypeInferencer) where
 import TypeInferencing (sem_Module)
 import ImportEnvironment
 import TypeErrors
-import Types
+import Top.Types
 import Data.FiniteMap
 import UHA_Utils (nameFromString)
 import UHA_Range (noRange)
