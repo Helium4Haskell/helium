@@ -1,0 +1,7 @@
+Compiling typeerrors/Strategies/Soundness.hs
+The type rule for "x +++ y" is not correct
+  the type according to the type rule is
+    (Bool, Bool, Int)
+  whereas the standard type rules infer the type
+    (Int, Int, Int)
+

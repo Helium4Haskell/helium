@@ -1,0 +1,11 @@
+Compiling typeerrors/Strategies/TypeError.hs
+Type error in type strategy rule "x +++ True" while inferring the type of the conclusion:
+[Type error in infix application
+, expression       : x +++ True
+ operator         : +++
+   type           : Int -> Int -> Int
+ right operand    : True
+   type           : Bool
+   does not match : Int 
+,
+]

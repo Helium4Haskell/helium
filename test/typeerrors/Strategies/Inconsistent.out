@@ -1,0 +1,2 @@
+Compiling typeerrors/Strategies/Inconsistent.hs
+Error in type strategy rule "x +++ y": the given constraint set was inconsistent while solving the constraint Bool == Int

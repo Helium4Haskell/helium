@@ -3,4 +3,4 @@
   ---------------------
      x +++ y :: Int;;
      
-Bool == Int : "linkerkant moet een Int zijn, sukkel!";
+Bool == Int : "linkerkant moet een Int zijn";

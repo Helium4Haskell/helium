@@ -1,0 +1,2 @@
+Compiling typeerrors/Strategies/Duplicated2.hs
+Duplicated meta-variable "x" in conclusion of type strategy rule "x +++ x"

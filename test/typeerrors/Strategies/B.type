@@ -3,4 +3,4 @@
   ---------------------
      x +++ y :: Int;;
      
-a == Int : "linkerkant moet een Int zijn, sukkel!";
+a == Int : "linkerkant moet een Int zijn";
