@@ -10,12 +10,11 @@ module PhaseLexer(phaseLexer) where
 
 import CompileUtils
 import LexerToken(Token)
-import Lexer(lexer)
+import Lexer
 import LayoutRule(layout)
-import LexerMessage(LexerWarning)
 
 phaseLexer :: String -> [String] -> String -> [Option] -> 
-                IO ([LexerWarning], [Token])
+                IO ([LexerWarning], [LexerWarning], [Token])
 phaseLexer fullName doneModules contents options = do
     enterNewPhase "Lexing" options
 
@@ -26,7 +25,8 @@ phaseLexer fullName doneModules contents options = do
             showErrorsAndExit [lexError] 1 options
         Right (tokens, lexerWarnings) -> do
             let tokensWithLayout = layout tokens
+                (lexerBeforeWarnings, lexerAfterWarnings) = splitWarnings lexerWarnings
             when (DumpTokens `elem` options) $ do
                 putStrLn (show tokensWithLayout)
-            return (lexerWarnings, layout tokens)
+            return (lexerBeforeWarnings, lexerAfterWarnings, layout tokens)
 

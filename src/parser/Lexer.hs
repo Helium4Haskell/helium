@@ -10,7 +10,7 @@ module Lexer
     ( lexer, strategiesLexer
     , Token, Lexeme(..)
     , lexemeLength
-    , LexerWarning(..), LexerError(..)
+    , module LexerMessage
     ) where
 
 import LexerMonad

@@ -12,11 +12,13 @@ module LexerMessage
     , LexerWarning(..)
     , LexerWarningInfo(..)
     , keepOneTabWarning
+    , splitWarnings
     ) where
 
 import Text.ParserCombinators.Parsec.Pos
 import UHA_Syntax(Range(..), Position(..))
 import Messages
+import Data.List (partition)
 
 instance HasMessage LexerError where
     getRanges (LexerError _ (StillOpenAtEOF brackets)) =
@@ -155,7 +157,15 @@ showLexerWarningInfo info =
             [ "Syntax colouring usually can not handle names containing --" 
             , "If you wanted to start a comment, write spaces around --"
             ]
-            
+
+-- warnings shown before and after parsing.
+splitWarnings :: [LexerWarning] -> ([LexerWarning], [LexerWarning])
+splitWarnings = partition p
+  where
+    p (LexerWarning _ (LooksLikeFloatNoFraction _)) = False
+    p (LexerWarning _ (LooksLikeFloatNoDigits   _)) = False
+    p _                                             = True
+      
 keepOneTabWarning :: [LexerWarning] -> [LexerWarning]
 keepOneTabWarning = keepOneTab True
   where
