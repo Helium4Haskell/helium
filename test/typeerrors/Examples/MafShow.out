@@ -1,0 +1,7 @@
+Compiling typeerrors/Examples/MafShow.hs
+(4,8): Warning: Definition "i" is not used
+(4,8): Warning: Missing type signature: i :: Show a => a -> String
+  Hint: Because i has an overloaded type, computations may be repeated. Insert
+        the missing type signature if this is indeed your intention.
+Compilation successful with 2 warnings
+No 'main' function defined in this module

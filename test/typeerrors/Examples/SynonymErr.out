@@ -1,0 +1,7 @@
+Compiling typeerrors/Examples/SynonymErr.hs
+(6,1): Type signature is too general
+ function         : g
+   declared type  : P Int -> a 
+   inferred type  : P Int -> ()
+
+Compilation failed with 1 error
