@@ -137,7 +137,7 @@ SEM Expression | InfixApplication loc . cinfoComplete =
 
 SEM Expression | InfixApplication loc . cinfoEmpty =
   \tppair ->
-  CInfo { info       = (NTExpression,AltInfixApplication,"")
+  CInfo { info       = (NTExpression,AltInfixApplication,"empty")
         , location   = "infix application"
         , errorrange = @range.self
         , sources    = [ SD_Expr @oneLineTree ]
@@ -147,8 +147,26 @@ SEM Expression | InfixApplication loc . cinfoEmpty =
                        , Size @size ]  
         }
 
-SEM Expression | InfixApplication loc . (cinfoLeftSection,cinfoRightSection) = internalError "TypeInferenceInfo.ag" "n/a" "todo: type error message for sections"
+SEM Expression | InfixApplication loc . cinfoLeftSection = 
+  \tppair ->
+  CInfo { info       = (NTExpression,AltInfixApplication,"left")
+        , location   = "left section"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size ]  
+        }
 
+SEM Expression | InfixApplication loc . cinfoRightSection = 
+  \tppair ->
+  CInfo { info       = (NTExpression,AltInfixApplication,"right")
+        , location   = "right section"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size ]  
+        }
+        
 SEM Expression | Do loc . cinfo =
   \tppair ->
   CInfo { info       = (NTExpression,AltDo,"")
@@ -383,13 +401,14 @@ SEM Expression | InfixApplication loc . cinfoOperator =
         , errorrange = @range.self
         , sources    = [ SD_Expr @oneLineTree, SD_Term (@operator.oneLineTree)]
         , typepair   = tppair
-        , properties = (if @leftExpression.section || @rightExpression.section then [HighlyTrusted] else []) 
-                       ++
-                       [ ApplicationEdge True
+        , properties = (if @leftExpression.section || @rightExpression.section 
+                          then [ HighlyTrusted ] 
+                          else [ ApplicationEdge True
                                          [ (convertMaybeOneLineTree @leftExpression.oneLineTree ,@leftExpression.beta )
                                          , (convertMaybeOneLineTree @rightExpression.oneLineTree,@rightExpression.beta)
-                                         ] 
-                       , Size @size ]    
+                                         ] ]) 
+                       ++
+                       [ Size @size ]
         }
 
 ---------------------------------------------------------------------------------------

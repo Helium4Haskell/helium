@@ -149,6 +149,8 @@ compile fullName options doneModules =
             -- add the top-level types (including the inferred types)
             finalEnvironment = addToTypeEnvironment toplevelTypes completeEnvironment
 
+        when (DumpTypeDebug `elem` options) debugTypes
+
         unless (null typeErrors) $
            do 
               putStr . unlines . ("":) . sortAndShow . take maximumNumberOfTypeErrors . reverse $ typeErrors

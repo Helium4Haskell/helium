@@ -1343,10 +1343,10 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
             (_operator_beta .==. _leftExpression_beta .->. _rightExpression_beta .->. _betaResOp) _cinfoOperator
         (_conTotal) =
             case (_leftExpression_section,_rightExpression_section) of
-                   (False,False) -> [ _conOperator , (_betaResOp     .==. _beta)                        _cinfoComplete     ]
-                   (True ,True ) -> [                (_operator_beta .==. _beta)                        _cinfoEmpty        ]
-                   (False,True ) -> [ _conOperator , (_rightExpression_beta .->. _betaResOp .==. _beta) _cinfoRightSection ]
-                   (True ,False) -> [ _conOperator , (_leftExpression_beta  .->. _betaResOp .==. _beta) _cinfoLeftSection  ]
+                   (False,False) -> [ _conOperator, (_betaResOp     .==. _beta)                        _cinfoComplete     ]
+                   (True ,True ) -> [               (_operator_beta .==. _beta)                        _cinfoEmpty        ]
+                   (False,True ) -> [ _conOperator, (_rightExpression_beta .->. _betaResOp .==. _beta) _cinfoRightSection ]
+                   (True ,False) -> [ _conOperator, (_leftExpression_beta  .->. _betaResOp .==. _beta) _cinfoLeftSection  ]
         (_cinfoComplete) =
             \tppair ->
             CInfo { info       = (NTExpression,AltInfixApplication,"")
@@ -1360,7 +1360,7 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
                   }
         (_cinfoEmpty) =
             \tppair ->
-            CInfo { info       = (NTExpression,AltInfixApplication,"")
+            CInfo { info       = (NTExpression,AltInfixApplication,"empty")
                   , location   = "infix application"
                   , errorrange = _range_self
                   , sources    = [ SD_Expr _oneLineTree ]
@@ -1369,8 +1369,24 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
                                  , HighlyTrusted
                                  , Size _size ]
                   }
-        ((_cinfoLeftSection,_cinfoRightSection)) =
-            internalError "TypeInferenceInfo.ag" "n/a" "todo: type error message for sections"
+        (_cinfoLeftSection) =
+            \tppair ->
+            CInfo { info       = (NTExpression,AltInfixApplication,"left")
+                  , location   = "left section"
+                  , errorrange = _range_self
+                  , sources    = [ SD_Expr _oneLineTree ]
+                  , typepair   = tppair
+                  , properties = [ Size _size ]
+                  }
+        (_cinfoRightSection) =
+            \tppair ->
+            CInfo { info       = (NTExpression,AltInfixApplication,"right")
+                  , location   = "right section"
+                  , errorrange = _range_self
+                  , sources    = [ SD_Expr _oneLineTree ]
+                  , typepair   = tppair
+                  , properties = [ Size _size ]
+                  }
         (_cinfoOperator) =
             \tppair ->
             CInfo { info       = (NTExpression,AltInfixApplication,"operator")
@@ -1378,13 +1394,14 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
                   , errorrange = _range_self
                   , sources    = [ SD_Expr _oneLineTree, SD_Term (_operator_oneLineTree)]
                   , typepair   = tppair
-                  , properties = (if _leftExpression_section || _rightExpression_section then [HighlyTrusted] else [])
-                                 ++
-                                 [ ApplicationEdge True
+                  , properties = (if _leftExpression_section || _rightExpression_section
+                                    then [ HighlyTrusted ]
+                                    else [ ApplicationEdge True
                                                    [ (convertMaybeOneLineTree _leftExpression_oneLineTree ,_leftExpression_beta )
                                                    , (convertMaybeOneLineTree _rightExpression_oneLineTree,_rightExpression_beta)
-                                                   ]
-                                 , Size _size ]
+                                                   ] ])
+                                 ++
+                                 [ Size _size ]
                   }
         (_size) =
             1 + _leftExpression_size + _rightExpression_size

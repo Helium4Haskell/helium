@@ -269,10 +269,10 @@ SEM Expression
                      . betaResOp   = TVar (@lhs.betaUnique + 1)
                      . conOperator = (@operator.beta .==. @leftExpression.beta .->. @rightExpression.beta .->. @betaResOp) @cinfoOperator
                      . conTotal    = case (@leftExpression.section,@rightExpression.section) of
-                                            (False,False) -> [ @conOperator , (@betaResOp     .==. @beta)                        @cinfoComplete     ]
-                                            (True ,True ) -> [                (@operator.beta .==. @beta)                        @cinfoEmpty        ]
-                                            (False,True ) -> [ @conOperator , (@rightExpression.beta .->. @betaResOp .==. @beta) @cinfoRightSection ]
-                                            (True ,False) -> [ @conOperator , (@leftExpression.beta  .->. @betaResOp .==. @beta) @cinfoLeftSection  ]
+                                            (False,False) -> [ @conOperator, (@betaResOp     .==. @beta)                        @cinfoComplete     ]
+                                            (True ,True ) -> [               (@operator.beta .==. @beta)                        @cinfoEmpty        ]
+                                            (False,True ) -> [ @conOperator, (@rightExpression.beta .->. @betaResOp .==. @beta) @cinfoRightSection ]
+                                            (True ,False) -> [ @conOperator, (@leftExpression.beta  .->. @betaResOp .==. @beta) @cinfoLeftSection  ]
 
   | If
       lhs             . assumptions = @guardExpression.assumptions `combine` @thenExpression.assumptions `combine` @elseExpression.assumptions
