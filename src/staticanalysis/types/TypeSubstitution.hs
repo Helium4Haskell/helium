@@ -120,6 +120,26 @@ instance Substitution BinTreeSubst where
    dom            = internalError "SATypes.hs" "BinTreeSubst" "dom: substitution is static" 
    cod            = internalError "SATypes.hs" "BinTreeSubst" "cod: substitution is static" 
 
+------------------------------------------------
+-- Fix point Substitution
+
+newtype FixpointSubstitution = FixpointSubstitution (FiniteMap Int Tp)
+
+instance Substitution FixpointSubstitution where
+   lookupInt i original@(FixpointSubstitution fm) = 
+      case lookupFM fm i of
+         Just tp | tp == TVar i -> TVar i
+                 | otherwise    -> original |-> tp
+         Nothing                -> TVar i
+   removeDom   is (FixpointSubstitution fm) = FixpointSubstitution (delListFromFM fm is)
+   restrictDom is (FixpointSubstitution fm) = let js = keysFM fm \\ is
+                                              in FixpointSubstitution (delListFromFM fm js)
+   dom (FixpointSubstitution fm) = keysFM fm
+   cod (FixpointSubstitution fm) = eltsFM fm
+   
+instance Show FixpointSubstitution where
+   show (FixpointSubstitution fm) = "Fixpoint FiniteMap Substitution: " ++ show (fmToList fm)
+   
 ----------------------------------------------------------------------
 -- A wrapper for substitutions
 

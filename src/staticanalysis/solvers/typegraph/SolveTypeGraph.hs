@@ -24,6 +24,7 @@ import SolveState
 import List
 import Utils (internalError)
 import Data.FiniteMap
+import Maybe
  
 type TypeGraph info   = Fix info () (STMonad (TG info))
 data TG info state = 
@@ -38,7 +39,7 @@ solveTypeGraph :: ( IsTypeGraph (TypeGraph info) info
                   , SolvableConstraint constraint (TypeGraph info)
                   , Show constraint
                   ) => (OrderedTypeSynonyms, [[(String, TpScheme)]]) -> Int -> [constraint]  
-                    -> (Int, WrappedSubstitution, Predicates, [info], IO ())
+                    -> (Int, FixpointSubstitution, Predicates, [info], IO ())
 solveTypeGraph (synonyms, siblings) unique constraints = 
    evalTypeGraph $
    do setTypeSynonyms synonyms
@@ -51,8 +52,9 @@ solveTypeGraph (synonyms, siblings) unique constraints =
       debug       <- getDebug
       return (uniqueAtEnd, subst, predicates, errors, putStrLn debug)
 
-buildSubstitutionTypeGraph :: IsTypeGraph (TypeGraph info) info => TypeGraph info WrappedSubstitution 
+buildSubstitutionTypeGraph :: IsTypeGraph (TypeGraph info) info => TypeGraph info FixpointSubstitution 
 buildSubstitutionTypeGraph = 
+{-
    do newUnique <- getUnique
       bintreesubst <- rec (0, newUnique - 1)
       return (wrapSubstitution bintreesubst)
@@ -66,15 +68,14 @@ buildSubstitutionTypeGraph =
                        right <- rec (split+1,b)
                        return (BinTreeSubstSplit split left right)    
       | otherwise = do return BinTreeSubstEmpty
-
+-}
 -- alternative 
-{-
+
    do is  <- liftUse 
                 (\groups -> do fm  <- readSTRef (finiteMapRef groups)
                                return (keysFM fm))
-      tps <- mapM findSubstForVar is  
-      return (wrapSubstitution $ listToFM $ zip is tps) 
-      -}
+      tps <- mapM findSubstForVar is
+      return (FixpointSubstitution $ listToFM $ zip is tps)
      
 -----------------------------------------------------------------------------------
 

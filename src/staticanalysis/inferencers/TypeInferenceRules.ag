@@ -17,30 +17,52 @@ ATTR Body Statement Qualifier Statements Qualifiers Expression RightHandSide May
 
 SEM Module
 
-  | Module
-      loc  . (flattening, useTypeGraph) = if AlgorithmW `elem` @lhs.options
-                                            then (flattenW, False)
-                                            else if AlgorithmM `elem` @lhs.options
-                                                   then (flattenM,False)
-                                                   else (flattenW,True ) -- default algorithm W + TypeGraphs
-      body . betaUnique  = maximum (0 : @monomorphics) + 1
-      loc  . debugIO     = do putStrLn "--- Debug Info ---"
-                              putStrLn $ unlines $ map show @constraints
-                              putStrLn $ "type variables in constraint set: "++show @body.betaUnique
-                              putStrLn $ "type variables used while solving: "++show @betaUniqueAtTheEnd
-                              putStrLn $ "constraints in set: "++show (length @constraints)
-                              @solveDebug
-                                
-      loc  . constraints = zipWith setPosition [0..] (flattenTree (snd @flattening) (phaseTree (spreadTree variableInConstraint @body.constraints)))
+  | Module  
+      loc  -- choose your algorithm to solve the type constraints                                                   
+           -- the default solver is SolverTypeGraph
+           . selectedSolver =                 
+                let select
+                       | SolverChunks      `elem` @lhs.options = \unique _ ->  
+                                                                    let options = (@flattening, @orderedTypeSynonyms, @siblings)
+                                                                        chunkConstraints = chunkTree dependencyTypeConstraint @body.constraints
+                                                                    in solveChunkConstraints options unique chunkConstraints
+                       | SolverSimple      `elem` @lhs.options = solveSimple      @orderedTypeSynonyms
+                       | SolverGreedy      `elem` @lhs.options = solveGreedy      @orderedTypeSynonyms
+                       | SolverCombination `elem` @lhs.options = solveCombination (@orderedTypeSynonyms, @siblings)                                    
+                       | otherwise                             = solveTypeGraph   (@orderedTypeSynonyms, @siblings)                          
+                in select
+
+           -- choose your treewalk to flatten the constraint tree
+           -- the default treewalk is TreeWalkInorderTopLastPost (similar to 'W')
+           . selectedTreeWalk = 
+                let select
+                       | TreeWalkTopDown             `elem` @lhs.options = topDownTreeWalk
+                       | TreeWalkBottomUp            `elem` @lhs.options = bottomUpTreeWalk
+                       | TreeWalkInorderTopFirstPre  `elem` @lhs.options = inorderTopFirstPreTreeWalk
+                       | TreeWalkInorderTopLastPre   `elem` @lhs.options = inorderTopLastPreTreeWalk
+                       | TreeWalkInorderTopFirstPost `elem` @lhs.options = inorderTopFirstPostTreeWalk
+                       | otherwise                                       = inorderTopLastPostTreeWalk   
+                    reverseOrNot
+                       | RightToLeft `elem` @lhs.options = reverseTreeWalk
+                       | otherwise                       = id
+                in reverseOrNot select
+
+           -- spread type constraints or not (i.e., map some type constraints to a 
+           -- corresponding node in the constraint tree)
+           -- spreading is enabled by default 
+           . spreadingOrNot = 
+                if NoSpreading `elem` @lhs.options 
+                  then id
+                  else spreadTree variableInConstraint
+
+           . flattening = flattenTree @selectedTreeWalk . phaseTree . @spreadingOrNot
+           
+                            
+           . constraints = zipWith setPosition [0..] (@flattening @body.constraints)
            . orderedTypeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment
            
-           . (betaUniqueAtTheEnd,substitution,predicates,solveErrors,solveDebug) 
-                  = -- choose your algorithm to solve the type constraints
-                    (if @useTypeGraph 
-                       then solveTypeGraph (@orderedTypeSynonyms , @siblings)
-                       else solveGreedy @orderedTypeSynonyms) 
-                       @body.betaUnique                        
-                       @constraints
+           . (betaUniqueAtTheEnd, substitution, predicates, solveErrors, debugIO) 
+                  = @selectedSolver @body.betaUnique @constraints
            
            . siblings = let f s = [ (s, ts) | ts <- findTpScheme (nameFromString s) ]
                             findTpScheme n = catMaybes 
@@ -67,6 +89,9 @@ SEM Module
                                    then [makeNotGeneralEnoughTypeError range tree s1 s2]
                                    else []                                                                  
                        in concatMap f @body.typeAnnotations
+
+SEM Module
+  | Module body . betaUnique  = maximum (0 : @monomorphics) + 1 
                                  
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Body
@@ -77,26 +102,23 @@ ATTR Body
     | betaUnique            : Int
     | assumptions           : Assumptions
       constraints           : ConstraintSet
-      namesWithoutTypeDef   : {[(Name,Tp)]}
     ]
 
 SEM Body
   | Body
-      lhs          . constraints         = Node [ @csetBinds .<<. @cset ]
+      lhs          . constraints         = Chunk @lhs.currentChunk @cset [] (dependencyBinds @lhs.chunkNumberMap @csetBinds) emptyTree
                    . assumptions         = @aset'
-                   . namesWithoutTypeDef = [ (n,tp) | (n,_,tp,_) <- @notypedefs ]
       declarations . bindingGroups       = []
                    
-      loc . (aset,cset,monoTable) = 
-               performBindingGroup [] @declarations.typeSignatures @declarations.bindingGroups
-               
+      loc . (aset,cset,inheritedBDG,chunkNr) = 
+               performBindingGroup @lhs.currentChunk @declarations.uniqueChunk @lhs.chunkNumberMap [] @declarations.typeSignatures Nothing @declarations.bindingGroups  
           . (csetBinds,aset') = (typeEnvironment @lhs.importEnvironment .:::. @aset) @cinfo
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Declaration, Declarations, MaybeDeclarations
 
 ATTR Declaration Declarations MaybeDeclarations [ monos:Tps | betaUnique:Int | ]
-ATTR Declaration Declarations                   [ monoTable:MonoTable | bindingGroups:BindingGroups | ]
+ATTR Declaration Declarations                   [ inheritedBDG:InheritedBDG | bindingGroups:BindingGroups | ]
 ATTR                          MaybeDeclarations [ | assumptions:Assumptions constraints:ConstraintSet | ]
 
 SEM Declaration
@@ -104,7 +126,8 @@ SEM Declaration
   | FunctionBindings
       lhs      . bindingGroups = @mybdggrp : @lhs.bindingGroups
       bindings . betaUnique    = @lhs.betaUnique + 2 + @bindings.numberOfPatterns
-               . monos         = findMono @bindings.name @lhs.monoTable ++ @lhs.monos
+               . monos         = findMono @bindings.name @lhs.inheritedBDG ++ @lhs.monos
+               . currentChunk  = findCurrentChunk @bindings.name @lhs.inheritedBDG
       loc      . beta          = TVar @lhs.betaUnique
                . betaRight     = TVar (@lhs.betaUnique + 1)
                . betasLeft     = take @bindings.numberOfPatterns (map TVar [@lhs.betaUnique + 2..])
@@ -120,7 +143,8 @@ SEM Declaration
 
   | PatternBinding
       lhs           . bindingGroups = @mybdggrp : @lhs.bindingGroups
-      righthandside . monos         = findMono (head (keysFM @pattern.environment)) @lhs.monoTable ++ @lhs.monos
+      righthandside . monos         = findMono (head (keysFM @pattern.environment)) @lhs.inheritedBDG ++ @lhs.monos
+                    . currentChunk  = findCurrentChunk (head (keysFM @pattern.environment)) @lhs.inheritedBDG      
       loc           . newcon        = [ (@righthandside.beta .==. @pattern.beta) @cinfo ]
                     . mybdggrp      = ( @pattern.environment
                                       , @righthandside.assumptions
@@ -137,10 +161,10 @@ SEM MaybeDeclarations
                    . constraints    = @cset
       declarations . bindingGroups  = []
                    
-      loc          . (aset,cset,monoTable) = 
-                        performBindingGroup @lhs.monos @declarations.typeSignatures (@mybdggroup : @declarations.bindingGroups)
+      loc          . (aset,cset,inheritedBDG,chunkNr) = 
+                        performBindingGroup @lhs.currentChunk @declarations.uniqueChunk @lhs.chunkNumberMap @lhs.monos @declarations.typeSignatures @mybdggroup @declarations.bindingGroups
                                                 
-                   . mybdggroup     = (emptyFM,@lhs.assumptions,[@lhs.constraints])
+                   . mybdggroup     = Just (@lhs.assumptions, [@lhs.constraints])
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : FunctionBinding, FunctionBindings
@@ -324,10 +348,10 @@ SEM Expression
                    . bindingGroups  = []
       loc          . constraints    = [ (@expression.beta .==. @beta) @cinfoType ] .>. @cset                   
                    . beta           = TVar @lhs.betaUnique
-                   . mybdggroup     = (noAssumptions,@expression.assumptions,[@expression.constraints])
+                   . mybdggroup     = Just (@expression.assumptions, [@expression.constraints])
                    
-                   . (aset,cset,monoTable) = 
-                        performBindingGroup @lhs.monos @declarations.typeSignatures (@mybdggroup : @declarations.bindingGroups)
+                   . (aset,cset,inheritedBDG,chunkNr) = 
+                        performBindingGroup @lhs.currentChunk @expression.uniqueChunk @lhs.chunkNumberMap @lhs.monos @declarations.typeSignatures @mybdggroup @declarations.bindingGroups
 
   | Do
       lhs        . constraints   = Node [ @newcon .<. @statements.constraints ]
@@ -629,10 +653,10 @@ SEM Statement
                    . constraints    = @cset    
       declarations . bindingGroups  = []
       
-      loc          . (aset,cset,monoTable) = 
-                        performBindingGroup @lhs.monos @declarations.typeSignatures (@mybdggroup : @declarations.bindingGroups)
+      loc          . (aset,cset,inheritedBDG,chunkNr) = 
+                        performBindingGroup @lhs.currentChunk @declarations.uniqueChunk @lhs.chunkNumberMap @lhs.monos @declarations.typeSignatures @mybdggroup @declarations.bindingGroups
                         
-                   . mybdggroup     = (noAssumptions ,@lhs.assumptions,[@lhs.constraints])
+                   . mybdggroup     = Just (@lhs.assumptions, [@lhs.constraints])
 
   | Generator
       lhs . generatorBeta = Nothing
@@ -669,10 +693,10 @@ SEM Qualifier
                        . constraints    = @cset
           declarations . bindingGroups  = []
           
-          loc          . (aset,cset,monoTable) = 
-                            performBindingGroup @lhs.monos @declarations.typeSignatures (@mybdggroup : @declarations.bindingGroups)
+          loc          . (aset,cset,inheritedBDG,chunkNr) = 
+                            performBindingGroup @lhs.currentChunk @declarations.uniqueChunk @lhs.chunkNumberMap @lhs.monos @declarations.typeSignatures @mybdggroup @declarations.bindingGroups
                             
-                       . mybdggroup     = (noAssumptions,@lhs.assumptions,[@lhs.constraints])
+                       . mybdggroup     = Just (@lhs.assumptions, [@lhs.constraints])
 
   | Generator
       lhs . assumptions = @assumptions' `combine` @expression.assumptions
@@ -772,7 +796,7 @@ getMonos = map TVar . mapMaybe variableInConstraint
 
 type BindingGroups = [BindingGroup]
 type BindingGroup  = (PatternAssumptions,Assumptions,ConstraintSets)
-type MonoTable     = [(Names,Tps)]
+type InheritedBDG  = [(Names,(Tps, Int))]
 
 emptyBindingGroup :: BindingGroup
 emptyBindingGroup = (noAssumptions, noAssumptions, [])
@@ -797,11 +821,13 @@ findTypeAnnotations toplevel monos typeSignatures bdgs =
                            ]
    in (typeAnnotations,noTypeDefs)
                     
-performBindingGroup :: Tps -> FiniteMap Name TpScheme -> BindingGroups -> (Assumptions,ConstraintSet,MonoTable)
-performBindingGroup monos typeSignatures = variableDependencies . bindingGroupAnalysis
+performBindingGroup :: Int -> Int -> ChunkNumberMap -> Tps -> FiniteMap Name TpScheme -> Maybe (Assumptions, ConstraintSets) -> BindingGroups -> (Assumptions,ConstraintSet,InheritedBDG,Int)
+performBindingGroup currentChunk uniqueChunk chunkNumberMap monos typeSignatures context groups = 
+   variableDependencies 
 
-   where
+   where   
         bindingGroupAnalysis :: BindingGroups -> BindingGroups
+
         bindingGroupAnalysis cs
                         = let explicits = keysFM typeSignatures
                               indexMap = concat (zipWith f cs [0..])
@@ -811,34 +837,75 @@ performBindingGroup monos typeSignatures = variableDependencies . bindingGroupAn
                               list = topSort (length cs-1) edges
                           in map (concatBindingGroups . map (cs !!)) list
 
-        variableDependencies :: BindingGroups -> (Assumptions,ConstraintSet,MonoTable)
-        variableDependencies = foldr op (noAssumptions,emptyTree,[]) where
-            op (e,a,c) (aset,cset,mt) =
-               let (cset1,e'   ) = (typeSignatures !:::! e) cinfoBindingGroupExplicitTypedBinding
-                   (cset5,aset') = (.<==.) monos e' aset    cinfoBindingGroupImplicit
-                   (cset2,a'   ) = (typeSignatures .:::. a) cinfoBindingGroupExplicit
-                   (cset3,a''  ) = (e' .===. a')            cinfoSameBindingGroup
-               in ( a'' `combine` aset'
-                  , cset2 .>>. cset3 .>>. cset5 .>>. 
-                      (StrictOrder (cset1 .<<. Node (reverse c)) cset)
-                  , (keysFM e,eltsFM e'):mt
+        chunkedBindingGroups  :: [(Int, BindingGroup)]
+        chunkedBindingGroups = zip [uniqueChunk..] (bindingGroupAnalysis groups) ++ 
+                               case context of 
+                                  Nothing     -> []
+                                  Just (a, c) -> [(currentChunk, (emptyFM, a, c))]
+        
+        monomorphicNames :: [Name]
+        monomorphicNames = 
+           let initial = let f (e, a, _) = if any (`elem` ftv monos) (ftv $ map snd $ concat $ eltsFM a)
+                                             then keysFM e
+                                             else []
+                         in concatMap f groups
+               expand [] _       = []
+               expand (n:ns) gps = let (xs, ys)  = partition p gps
+                                       p (_,a,_) = n `elem` keysFM a
+                                       f (e,_,_) = keysFM e
+                                   in n : expand (concatMap f xs ++ ns) ys
+           in expand initial groups
+                          
+        variableDependencies :: (Assumptions,ConstraintSet,InheritedBDG,Int)
+        variableDependencies = 
+           let (aset, cset, mt) = foldr op initial chunkedBindingGroups
+           in (aset, cset, mt, uniqueChunk + length groups)
+
+          where        
+            initial = (noAssumptions, emptyTree, [])
+          
+            op (cnr,(e,a,c)) (aset,cset,mt) =
+               let (cset1,e'   )  = (typeSignatures !:::! e) cinfoBindingGroupExplicitTypedBinding                   
+                   (cset2,a'   )  = (typeSignatures .:::. a) cinfoBindingGroupExplicit
+                   (cset3,a''  )  = (e' .===. a')            cinfoSameBindingGroup
+                   (cset4,aset')  = (.<==.) monos e' aset    cinfoBindingGroupImplicit
+                   
+                   monomorphic    = any (`elem` monomorphicNames) (keysFM e) || cnr == currentChunk
+
+                   constraintTree 
+                    | monomorphic = StrictOrder 
+                                       ( (cset1 ++ cset2 ++ cset3) .>>. Node (reverse c) )
+                                       ( cset4 .>>. cset )
+                    | otherwise   = Chunk cnr
+                                          (cset3 .>>. Node (reverse c))
+                                          (dependencyBinds chunkNumberMap cset4)
+                                          ([(cnr, c) | c <- cset1] ++ dependencyBinds chunkNumberMap cset2)
+                                          cset
+               in  
+                  ( a'' `combine` aset'
+                  , constraintTree
+                  , (keysFM e,(eltsFM e', if monomorphic then currentChunk else cnr)) : mt                   
                   )
 
-findMono :: Name -> MonoTable -> Tps
+findMono :: Name -> InheritedBDG -> Tps
 findMono n = let p = elem n . fst
-             in snd . head . filter p
+             in fst . snd . head . filter p
+
+findCurrentChunk :: Name -> InheritedBDG -> Int
+findCurrentChunk n = let p = elem n . fst
+                     in snd . snd . head . filter p                    
 }
 
 SEM Body
   | Body   loc . (anns,notypedefs) = findTypeAnnotations True [] @declarations.typeSignatures @declarations.bindingGroups
 SEM MaybeDeclarations
-  | Just   loc . (anns,notypedefs) = findTypeAnnotations False @lhs.monos @declarations.typeSignatures (@mybdggroup : @declarations.bindingGroups)
+  | Just   loc . (anns,notypedefs) = findTypeAnnotations False @lhs.monos @declarations.typeSignatures @declarations.bindingGroups
 SEM Expression                    
-  | Let    loc . (anns,notypedefs) = findTypeAnnotations False @lhs.monos @declarations.typeSignatures (@mybdggroup : @declarations.bindingGroups)
+  | Let    loc . (anns,notypedefs) = findTypeAnnotations False @lhs.monos @declarations.typeSignatures @declarations.bindingGroups
 SEM Statement                    
-  | Let    loc . (anns,notypedefs) = findTypeAnnotations False @lhs.monos @declarations.typeSignatures (@mybdggroup : @declarations.bindingGroups)
+  | Let    loc . (anns,notypedefs) = findTypeAnnotations False @lhs.monos @declarations.typeSignatures @declarations.bindingGroups
 SEM Qualifier                    
-  | Let    loc . (anns,notypedefs) = findTypeAnnotations False @lhs.monos @declarations.typeSignatures (@mybdggroup : @declarations.bindingGroups)                 
+  | Let    loc . (anns,notypedefs) = findTypeAnnotations False @lhs.monos @declarations.typeSignatures @declarations.bindingGroups               
 
 -------------------------------------------
 -- Collecting NoTypeDefs
@@ -936,8 +1003,7 @@ SEM Expression
                                        in case mName of 
                                              [name] | any (equalNames name) @lhs.overloads
                                                -> let qtype = getQualifiedType (generalize [] @lhs.predicates (@lhs.substitution |-> @beta))
-                                                  in {- error (show (map NameWithRange @lhs.namesInScope)) -} 
-                                                    addToFM @lhs.overloadedVars (NameWithRange @name.self) (NameWithRange name, qtype) 
+                                                  in addToFM @lhs.overloadedVars (NameWithRange @name.self) (NameWithRange name, qtype) 
                                              _ -> @lhs.overloadedVars
                                              
   | Negate     lhs . overloadedVars = case filter ((== "negate") . show) (keysFM $ typeEnvironment @lhs.importEnvironment) of
@@ -952,7 +1018,7 @@ SEM Module
 type LocalTypes          = FiniteMap NameWithRange TpScheme
 type OverloadedVariables = FiniteMap NameWithRange (NameWithRange, QType)
 
-convertTop :: Tps -> WrappedSubstitution -> Predicates -> BindingGroups -> TypeEnvironment
+convertTop :: Substitution substitution => Tps -> substitution -> Predicates -> BindingGroups -> TypeEnvironment
 convertTop monos substitution predicates groups = 
    let (environment, _, _) = concatBindingGroups groups
        monos' = ftv (substitution |-> monos)      
@@ -961,7 +1027,7 @@ convertTop monos substitution predicates groups =
       , let  tp' = substitution |-> tp
       ]
 
-makeInferredTypeEnvironment :: Tps -> WrappedSubstitution -> Predicates -> BindingGroups -> LocalTypes
+makeInferredTypeEnvironment :: Substitution substitution => Tps -> substitution -> Predicates -> BindingGroups -> LocalTypes
 makeInferredTypeEnvironment monos substitution predicates groups = 
    let (environment, _, _) = concatBindingGroups groups
        monos' = ftv (substitution |-> monos)      
@@ -971,8 +1037,55 @@ makeInferredTypeEnvironment monos substitution predicates groups =
                ]
             
 equalNames :: Name -> Name -> Bool
-equalNames n1 n2 = n1 == n2 && (getNameRange n1) `cmp` (getNameRange n2)            
-   where cmp (Range_Range p1 p2) (Range_Range p3 p4) = p1 `cmp'` p3 && p2 `cmp'` p4
-         cmp' Position_Unknown Position_Unknown = True
-         cmp' p1 p2 = p1 == p2
+equalNames n1 n2 = NameWithRange n1 == NameWithRange n2
 }
+
+--------------------------------
+-- Chunks
+
+ATTR MaybeExpression Expression Expressions
+     RightHandSide RecordExpressionBinding GuardedExpression GuardedExpressions
+     FunctionBinding FunctionBindings Alternative Alternatives Declaration Declarations
+     RecordExpressionBindings Body 
+     MaybeDeclarations Statement Statements Qualifier Qualifiers 
+     [ currentChunk        : Int  
+       chunkNumberMap      : ChunkNumberMap
+     | uniqueChunk         : Int  
+       collectChunkNumbers : ChunkNumberMap
+     |
+     ]         
+
+SEM Module
+  | Module   body . collectChunkNumbers = emptyFM 
+                  . chunkNumberMap      = @body.collectChunkNumbers 
+                  
+SEM Expression 
+  | Variable   lhs . collectChunkNumbers = addToFM @lhs.collectChunkNumbers @lhs.betaUnique @lhs.currentChunk
+     
+{
+type ChunkNumberMap = FiniteMap Int Int
+
+lookupChunkNumber :: Int -> ChunkNumberMap -> Int
+lookupChunkNumber i fm = 
+   let err = error ("could not find beta in lookupChunkNumber [i="++show i++"] [fm="++show (fmToList fm)++"]")
+   in lookupWithDefaultFM fm err i
+
+dependencyBinds :: ChunkNumberMap -> TypeConstraints a -> [(Int, TypeConstraint a)]
+dependencyBinds fm cs = 
+   let err = error "could not find variable of a constraint"
+   in [ (lookupChunkNumber i fm, c) | c <- cs, let i = maybe err id (variableInConstraint c)]
+}     
+SEM Module 
+  | Module  body . currentChunk = 0
+                 . uniqueChunk  = 1
+          
+SEM Body
+  | Body   lhs . uniqueChunk = @chunkNr                                         
+SEM MaybeDeclarations
+  | Just   lhs . uniqueChunk = @chunkNr  
+SEM Expression 
+  | Let    lhs . uniqueChunk = @chunkNr  
+SEM Statement  
+  | Let    lhs . uniqueChunk = @chunkNr  
+SEM Qualifier
+  | Let    lhs . uniqueChunk = @chunkNr

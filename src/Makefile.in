@@ -84,6 +84,9 @@ STATICANALYSIS = \
 	staticanalysis/solvers/IsSolver.hs \
 	staticanalysis/solvers/ConstraintInfo.hs \
 	staticanalysis/solvers/SolveGreedy.hs \
+	staticanalysis/solvers/SolveSimple.hs \
+	staticanalysis/solvers/SolveCombination.hs \
+	staticanalysis/solvers/SolveChunks.hs \
 	staticanalysis/solvers/SolveState.hs \
 	staticanalysis/solvers/typegraph/TypeGraphConstraintInfo.hs \
 	staticanalysis/solvers/typegraph/SolveTypeGraph.hs \

@@ -2,7 +2,6 @@ module ExpressionTypeInferencer (expressionTypeInferencer) where
 
 import TypeInferencing (sem_Module)
 import ImportEnvironment
-import Tree (flattenW)
 import TypeErrors
 import Types
 import Data.FiniteMap

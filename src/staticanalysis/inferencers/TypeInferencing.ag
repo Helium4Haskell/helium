@@ -50,9 +50,14 @@ import Messages
 import TypeErrors
 import Warnings
 -- solvers
-import SolveTypeGraph
+import SolveTypeGraph   (solveTypeGraph)
+import SolveGreedy      (solveGreedy)
+import SolveSimple      (solveSimple)
+import SolveCombination (solveCombination)
+import SolveChunks      (solveChunkConstraints)
+--
 import TypeGraphInstance
-import SolveGreedy           
+         
 import ConstraintInfo
 import TypeGraphConstraintInfo
 import HeliumConstraintInfo

@@ -1,11 +1,9 @@
 module PhaseTypeInferencer (phaseTypeInferencer) where
 
 import CompileUtils
-import Tree(flattenM, flattenW)
 import Warnings(Warning)
 import qualified TypeInferencing(sem_Module)
-
-import Types -- temporary
+import Types
 import Data.FiniteMap
 import UHA_Utils
 import UHA_Syntax
@@ -18,10 +16,19 @@ phaseTypeInferencer ::
 phaseTypeInferencer fullName module_ doneModules localEnv completeEnv options = do
     enterNewPhase "Type inferencing" options
 
-    let (debugIO, localTypes, overloadedVars, _, toplevelTypes, typeErrors, warnings) =
+    -- 'W' and 'M' are predefined type inference algorithms
+    let newOptions = (if AlgorithmW `elem` options
+                        then filter (/= NoSpreading) . ([TreeWalkInorderTopLastPost, SolverGreedy]++) 
+                        else id)
+                   . (if AlgorithmM `elem` options
+                        then filter (/= NoSpreading) . ([TreeWalkInorderTopFirstPre, SolverGreedy]++)  
+                        else id)
+                   $ options
+    
+        (debugIO, localTypes, overloadedVars, _, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_
                 completeEnv
-                options        
+                newOptions        
         
         -- add the top-level types (including the inferred types)
         finalEnv = addToTypeEnvironment toplevelTypes completeEnv

@@ -46,3 +46,13 @@ variableInConstraint constraint =
       ExplicitInstance _ (TVar i) _   -> Just i 
       ImplicitInstance _ (TVar i) _ _ -> Just i 
       _                               -> Nothing                   
+
+dependencyTypeConstraint :: Substitution substitution => TypeConstraint a -> substitution -> Predicates -> TypeConstraint a
+dependencyTypeConstraint constraint sub preds = 
+   case constraint of
+      ImplicitInstance info t1 ms t2 
+         -> let ms' = sub |-> ms
+                t2' = sub |-> t2
+                ts  = generalize (ftv ms') preds t2'
+            in (t1 .::. ts) info
+      _  -> constraint

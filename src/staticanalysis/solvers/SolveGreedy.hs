@@ -24,16 +24,16 @@ import Data.FiniteMap
 import Maybe
 import List
 
-type Greedy info = Fix info FixpointFMSubstitution Maybe
+type Greedy info = Fix info FixpointSubstitution Maybe
      
 evalGreedy :: Greedy info result -> result
-evalGreedy x = fst . fromJust . runFix x . extend $ (F emptyFM)
+evalGreedy x = fst . fromJust . runFix x . extend $ (FixpointSubstitution emptyFM)
 
 solveGreedy :: ( ConstraintInfo info
                , SolvableConstraint constraint (Greedy info)
                , Show constraint
                ) => OrderedTypeSynonyms -> Int -> [constraint]  
-                 -> (Int, WrappedSubstitution, Predicates, [info], IO ())
+                 -> (Int, FixpointSubstitution, Predicates, [info], IO ())
 solveGreedy synonyms unique constraints = 
    evalGreedy $
    do setTypeSynonyms synonyms
@@ -57,7 +57,8 @@ instance ConstraintInfo info => IsSolver (Greedy info) info where
         
            Right (used,sub) -> 
              let utp = equalUnderTypeSynonyms synonyms (sub |-> t1') (sub |-> t2') 
-                 f (F fm) = F (addListToFM fm [ (i, lookupInt i sub) | i <- dom sub ])                          
+                 f (FixpointSubstitution fm) 
+                          = FixpointSubstitution (addListToFM fm [ (i, lookupInt i sub) | i <- dom sub ])                          
                  g        = writeExpandedType synonyms t2 utp 
                           . writeExpandedType synonyms t1 utp 
                  h        = if used then g . f else f
@@ -67,37 +68,17 @@ instance ConstraintInfo info => IsSolver (Greedy info) info where
      do s <- get
         let sub = getWith id s
         return (lookupInt i sub)
-
-------------------------------------------------
--- Array Substitution
-
-newtype FixpointFMSubstitution = F (FiniteMap Int Tp)
-
-instance Substitution FixpointFMSubstitution where
-   lookupInt i original@(F fm) = 
-      case lookupFM fm i of
-         Just tp | tp == TVar i -> TVar i
-                 | otherwise    -> original |-> tp
-         Nothing                -> TVar i
-   removeDom   is (F fm) = F (delListFromFM fm is)
-   restrictDom is (F fm) = let js = keysFM fm \\ is
-                           in F (delListFromFM fm js)
-   dom (F fm) = keysFM fm
-   cod (F fm) = eltsFM fm
-   
-instance Show FixpointFMSubstitution where
-   show (F fm) = "Fixpoint FiniteMap Substitution: " ++ show (fmToList fm)
-   
+           
 -- The key idea is as follows:
 -- try to minimize the number of expansions by type synonyms.
 -- If a type is expanded, then this should be recorded in the substitution. 
 -- Invariant of this function should be that "atp" (the first type) can be
 -- made equal to "utp" (the second type) with a number of type synonym expansions             
-writeExpandedType :: OrderedTypeSynonyms -> Tp -> Tp -> FixpointFMSubstitution ->  FixpointFMSubstitution
+writeExpandedType :: OrderedTypeSynonyms -> Tp -> Tp -> FixpointSubstitution ->  FixpointSubstitution
 writeExpandedType synonyms = writeTypeType where
 
-   writeTypeType :: Tp -> Tp -> FixpointFMSubstitution -> FixpointFMSubstitution
-   writeTypeType atp utp original@(F fm) = 
+   writeTypeType :: Tp -> Tp -> FixpointSubstitution -> FixpointSubstitution
+   writeTypeType atp utp original@(FixpointSubstitution fm) = 
       case (leftSpine atp,leftSpine utp) of        
          ((TVar i,[]),_)                    -> writeIntType i utp original
          ((TCon s,as),(TCon t,bs)) | s == t -> foldr (uncurry writeTypeType) original (zip as bs)                   
@@ -107,29 +88,28 @@ writeExpandedType synonyms = writeTypeType where
                Nothing   -> internalError "SolveGreedy.hs" "writeTypeType" "inconsistent types(1)"      
          _               -> internalError "SolveGreedy.hs" "writeTypeType" "inconsistent types(2)"   
       
-   writeIntType :: Int -> Tp -> FixpointFMSubstitution -> FixpointFMSubstitution     
-   writeIntType i utp original@(F fm) = 
+   writeIntType :: Int -> Tp -> FixpointSubstitution -> FixpointSubstitution     
+   writeIntType i utp original@(FixpointSubstitution fm) = 
       case lookupFM fm i of 
          
          Nothing  -> 
             case utp of
                TVar j | i == j -> original
-               otherwise       -> F (addToFM fm i utp)
+               otherwise       -> FixpointSubstitution (addToFM fm i utp)
                
          Just atp ->
             case (leftSpine atp,leftSpine utp) of
                ((TVar j,[]),_) -> writeIntType j utp original
                ((TCon s,as),(TCon t,bs)) | s == t -> foldr (uncurry writeTypeType) original (zip as bs)
                ((TCon s,as),_) -> case expandTypeConstructorOneStep (snd synonyms) atp of
-                                     Just atp' -> writeIntType i utp (F (addToFM fm i atp'))
+                                     Just atp' -> writeIntType i utp (FixpointSubstitution (addToFM fm i atp'))
                                      Nothing   -> internalError "SolveGreedy.hs" "writeIntType" "inconsistent types(1)"
                _               -> internalError "SolveGreedy.hs" "writeIntType" "inconsistent types(2)"      
 
 
-buildSubstitutionGreedy :: ConstraintInfo info => Greedy info WrappedSubstitution
+buildSubstitutionGreedy :: ConstraintInfo info => Greedy info FixpointSubstitution
 buildSubstitutionGreedy = do s <- get                       
-                             let sub = getWith id s
-                             return (wrapSubstitution sub)
+                             return (getWith id s)
                              
 {-
 lookupAndFix :: Int -> FixpointFMSubstitution -> (Tp, FixpointFMSubstitution)

@@ -3,6 +3,7 @@ module Tree where
 import Data.FiniteMap
 import qualified Set
 import TreeWalk 
+import Types
 import List (partition)
 
 type Trees a = [Tree a]
@@ -12,7 +13,8 @@ data Tree  a = Node (Trees a)
              | Spread Direction [a] (Tree a)
              | Receive Int
              | Phase Int [a]         
-             | Chunk Int (Tree a) [(Int, a)] [(Int,a)] (Tree a)
+             | Chunk Int (Tree a) [(Int, a)] [(Int, a)] (Tree a)
+   deriving Show             
                                                                     
 emptyTree ::                     Tree a
 unitTree  :: a ->                Tree a 
@@ -21,32 +23,23 @@ binTree   :: Tree a -> Tree a -> Tree a
 
 emptyTree   = Node [] 
 unitTree c  = listTree [c]
-listTree cs = AddList Down cs emptyTree
+listTree cs = cs .>. emptyTree
 binTree a b = Node [a, b]
 
 infixr 8 .>. , .>>. , .<. , .<<.
 
-(.>.), (.<.) :: [a] -> Tree a -> Tree a
-(.>.)  = AddList Down
-(.<.)  = AddList Up
+(.>.), (.>>.), (.<.), (.<<.) :: [a] -> Tree a -> Tree a
+((.>.), (.>>.), (.<.), (.<<.)) = 
+   let -- prevents adding an empty list
+       f constructor direction as tree
+          | null as   = tree 
+          | otherwise = constructor direction as tree
+   in (f AddList Down, f Spread Down, f AddList Up, f Spread Up)
 
-(.>>.), (.<<.) :: [a] -> Tree a -> Tree a
-(.>>.) = Spread Down
-(.<<.) = Spread Up
 
 ------------------------------------------------------------------------
 
-type Flattening = ( Bool      -- spreading yes or no 
-                  , TreeWalk  -- treewalk
-                  )
-
-flattenW, flattenM, flattenBU, flattenRev :: Flattening
-flattenW   = (True, inorderTopLastPostTreeWalk)
-flattenM   = (True, inorderTopFirstPreTreeWalk)
-flattenBU  = (False, bottomUpTreeWalk)
-flattenRev = (True, reverseTreeWalk inorderTopLastPostTreeWalk)
-                  
-data Direction   = Up | Down deriving Eq
+data Direction   = Up | Down deriving (Eq, Show)
 type Spreaded a  = FiniteMap Int [a]
 type Phased a    = FiniteMap Int (List a)
 
@@ -68,8 +61,7 @@ flattenTree (TreeWalk treewalk) tree =
               in (treewalk down tuples, id)
            
            Chunk cnr left as bs right -> 
-              let (.>.) = AddList Down
-              in rec down (map snd as .>. (StrictOrder (map snd bs .>. left) right))
+              rec down (StrictOrder (map snd bs .>>. left) (map snd as .>>. right))
                  
            AddList Up as tree ->
               let (result, up) = rec down tree
@@ -107,11 +99,11 @@ spreadTree spreadFunction = fst . rec emptyFM
           Node trees -> 
              let (trees', sets) = unzip (map (rec fm) trees)
              in (Node trees', Set.unions sets)
-             
+          
+          -- also spread the constraints that are stored as
+          -- a dependency in this chunk.
           Chunk cnr left as bs right -> 
-             let (left' , set1) = rec fm left
-                 (right', set2) = rec fm right
-             in (Chunk cnr left' as bs right', Set.union set1 set2)
+             rec fm (StrictOrder (map snd bs .>>. left) (map snd as .>>. right))
           
           AddList direction as tree -> 
              let (tree', set) = rec fm tree
@@ -174,10 +166,12 @@ phaseTree = strictRec
        in foldr1 StrictOrder (eltsFM (addToFM_C binTree (mapFM f phases) 5 tree'))
         
           
-chunkTree :: Tree a -> ([(Int, Tree a)], [(Int, Int, [a])])
-chunkTree tree = 
+chunkTree :: Substitution substitution => 
+             (a -> substitution -> Predicates -> a) -> Tree a -> 
+             ([(Int, Tree a)], [(Int, Int, substitution -> Predicates -> a)])
+chunkTree afun tree = 
    let (ts, chunks, deps) = rec tree 
-   in (((-1), ts) : chunks, deps) 
+   in ( ((-1), ts) : chunks, deps)
   
   where   
    rec tree =
@@ -189,9 +183,10 @@ chunkTree tree =
              
         Chunk cnr left as bs right -> 
            let (ts1, chunks1, ds1) = rec left
-               (ts2, chunks2, ds2) = rec (map snd bs .>. right)
-               (.>.)              = AddList Down
-           in (ts2, (cnr, ts1) : chunks1 ++ chunks2, [ (cnr, i, [a]) | (i,a) <- as ] ++ ds1 ++ ds2)
+               (ts2, chunks2, ds2) = rec right
+               dependencies        = [ ((-1), i, afun x) | (i,x) <- bs ] ++
+                                     [ (cnr , i, afun x) | (i,x) <- as ]                                     
+           in (ts2, chunks1 ++ [(cnr, ts1)] ++ chunks2, dependencies ++ ds1 ++ ds2)
   
         AddList direction as tree ->
            let (ts, chunks, ds) = rec tree
@@ -207,11 +202,3 @@ chunkTree tree =
            in (Spread direction as ts, chunks, ds)
 
         _ -> (tree, [], [])
-        {-
-chunkAndFlattenTree :: Flattening -> Tree a -> ([(Int, [a])], [(Int, Int, [a])])
-chunkAndFlattenTree flattening tree =        
-   let (chunks, dependencies) = chunkTree tree
-   in ( [ (i, list) | (i, tree) <- chunks, let list = flatten flattening tree, not (null list) ]
-      , filter (\(_, _, list) -> not (null list)) dependencies
-      )
--}

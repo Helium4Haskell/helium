@@ -8,7 +8,7 @@ topDownTreeWalk = TreeWalk (\top cs -> top . children (unzip cs))
 
 bottomUpTreeWalk :: TreeWalk
 bottomUpTreeWalk = TreeWalk (\top cs -> children (unzip cs) . top)
-   where children (gs,fs) = concatList gs . concatList fs
+   where children (fs,gs) = concatList fs . concatList gs
 
 inorderTopFirstPreTreeWalk :: TreeWalk
 inorderTopFirstPreTreeWalk = TreeWalk (\top cs -> top . children cs)

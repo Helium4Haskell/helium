@@ -20,7 +20,7 @@ ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alterna
      GuardedExpression GuardedExpressions
      RecordExpressionBinding RecordExpressionBindings
      RecordPatternBinding RecordPatternBindings
-     [ substitution : WrappedSubstitution | patternMatchWarnings : {[Warning]} | ]
+     [ substitution : FixpointSubstitution | patternMatchWarnings : {[Warning]} | ]
 
 SEM Module
   | Module    body . patternMatchWarnings = []

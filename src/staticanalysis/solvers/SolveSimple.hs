@@ -1,4 +1,4 @@
-module SolveSimple where -- (Simple, evalSimple, solveSimple) where
+module SolveSimple (Simple, evalSimple, solveSimple) where
 
 import FixpointSolveState
 import Types
@@ -11,10 +11,24 @@ import ConstraintInfo
 type Simple info = Fix info FiniteMapSubstitution {- hack -} Maybe
 
 evalSimple :: Simple info result -> result
-evalSimple x = fst . fromJust . runFix x . extend $ emptySubst
-   
---solveSimple :: ConstraintInfo info => () -> Constraints (Simple info) -> Simple info result -> result
---solveSimple = solveConstraints evalSimple
+evalSimple x = fst . fromJust . runFix x . extend $ emptySubst  
+ 
+solveSimple :: ( ConstraintInfo info
+               , SolvableConstraint constraint (Simple info)
+               , Show constraint
+               ) => OrderedTypeSynonyms -> Int -> [constraint]  
+                 -> (Int, FixpointSubstitution, Predicates, [info], IO ())
+solveSimple synonyms unique constraints = 
+   evalSimple $
+   do setTypeSynonyms synonyms
+      solveConstraints unique (liftConstraints constraints)
+      uniqueAtEnd <- getUnique
+      errors      <- getErrors
+      s           <- get      
+      predicates  <- getReducedPredicates
+      debug       <- getDebug
+      let subst = FixpointSubstitution (getWith id s)
+      return (uniqueAtEnd, subst, predicates, errors, putStrLn debug)
  
 instance Show FiniteMapSubstitution where
    show _ = "<FiniteMapSubstitution>"
