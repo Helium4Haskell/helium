@@ -1,10 +1,13 @@
+-- The parser from the NoFib benchmark suite
+-- TODO: getContents implementeren en gebruiken ipv readFile "big_big_test.hs"
+-- TODO: internal error fixen
 
 -- ==========================================================--
 -- === Raw lexical analysis (tokenisation) of source      ===--
 -- ===                                           Lexer.hs ===--
 -- ==========================================================--
 
-module Main where
+module Parser where
 import Char -- 1.3
 ----------------------------------------------------------
 -- Lexemes                                              --
