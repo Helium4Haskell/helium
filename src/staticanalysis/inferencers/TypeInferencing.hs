@@ -132,19 +132,23 @@ findMono n = let p = elem n . fst
 type LocalTypes          = FiniteMap NameWithRange TpScheme
 type OverloadedVariables = FiniteMap NameWithRange (NameWithRange, QType)
 
-convertTop :: WrappedSubstitution -> Predicates -> [(Name,Tps,Tp,Bool)] -> TypeEnvironment
-convertTop sub predicates = listToFM . map f 
-   where f (name,monos,tp,_) = 
-            let monos' = ftv (sub |-> monos)
-                tp'    = sub |-> tp 
-            in (name, generalize monos' predicates tp')
- 
-convertLocal :: WrappedSubstitution -> Predicates -> [(Name,Tps,Tp,Bool)] -> LocalTypes
-convertLocal sub predicates = listToFM . map f 
-   where f (name,monos,tp,_) = 
-            let monos' = ftv (sub |-> monos)
-                tp'    = sub |-> tp 
-            in (NameWithRange name, generalize monos' predicates tp')
+convertTop :: Tps -> WrappedSubstitution -> Predicates -> BindingGroups -> TypeEnvironment
+convertTop monos substitution predicates groups = 
+   let (environment, _, _) = concatBindingGroups groups
+       monos' = ftv (substitution |-> monos)      
+   in listToFM [ (name, generalize monos' predicates tp')
+      | (name, tp) <- fmToList environment 
+      , let  tp' = substitution |-> tp
+      ]
+
+makeInferredTypeEnvironment :: Tps -> WrappedSubstitution -> Predicates -> BindingGroups -> LocalTypes
+makeInferredTypeEnvironment monos substitution predicates groups = 
+   let (environment, _, _) = concatBindingGroups groups
+       monos' = ftv (substitution |-> monos)      
+   in listToFM [ (NameWithRange name, generalize monos' predicates tp')
+               | (name, tp) <- fmToList environment 
+               , let  tp' = substitution |-> tp
+               ]
             
 equalNames :: Name -> Name -> Bool
 equalNames n1 n2 = n1 == n2 && (getNameRange n1) `cmp` (getNameRange n2)            
@@ -904,7 +908,7 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_allPatterns) 
          ,_declarations_overloadedVars
          ,_declarations_patternMatchWarnings
          ,_self
-         ,convertTop _lhs_substitution _lhs_predicates _notypedefs `plusFM` _declarations_typeSignatures
+         ,convertTop _lhs_monos _lhs_substitution _lhs_predicates _declarations_bindingGroups
          ,_anns ++ _declarations_typeAnnotations
          ,_declarations_unboundNames
          )
@@ -2246,8 +2250,7 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_allPatterns) (_l
          ,_expression_betaUnique
          ,_notypedefs ++ _declarations_collectednotypedef
          ,_constraints
-         ,convertLocal _lhs_substitution _lhs_predicates _notypedefs
-          `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM  _declarations_typeSignatures
+         ,makeInferredTypeEnvironment _lhs_monos _lhs_substitution _lhs_predicates _declarations_bindingGroups
           `plusFM` _declarations_localTypes
          ,_expression_matchIO
          ,matchOnlyVariable _localInfo _lhs_tryPatterns
@@ -3420,8 +3423,7 @@ sem_MaybeDeclarations_Just (_declarations) (_lhs_allPatterns) (_lhs_assumptions)
          ,_declarations_betaUnique
          ,_notypedefs ++ _declarations_collectednotypedef
          ,_cset
-         ,convertLocal _lhs_substitution _lhs_predicates _notypedefs
-          `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM _declarations_typeSignatures
+         ,makeInferredTypeEnvironment _lhs_monos _lhs_substitution _lhs_predicates _declarations_bindingGroups
           `plusFM` _declarations_localTypes
          ,_declarations_matchIO
          ,_namesInScope
@@ -4500,8 +4502,7 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_allPatterns) (_lhs_assumptions)
          ,_declarations_betaUnique
          ,_notypedefs ++ _declarations_collectednotypedef
          ,_cset
-         ,convertLocal _lhs_substitution _lhs_predicates _notypedefs
-          `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM  _declarations_typeSignatures
+         ,makeInferredTypeEnvironment _lhs_monos _lhs_substitution _lhs_predicates _declarations_bindingGroups
           `plusFM` _declarations_localTypes
          ,_declarations_matchIO
          ,_lhs_monos
@@ -5011,8 +5012,7 @@ sem_Statement_Let (_range) (_declarations) (_lhs_allPatterns) (_lhs_assumptions)
          ,_notypedefs ++ _declarations_collectednotypedef
          ,_cset
          ,Nothing
-         ,convertLocal _lhs_substitution _lhs_predicates _notypedefs
-          `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM  _declarations_typeSignatures
+         ,makeInferredTypeEnvironment _lhs_monos _lhs_substitution _lhs_predicates _declarations_bindingGroups
           `plusFM` _declarations_localTypes
          ,_declarations_matchIO
          ,_lhs_monos

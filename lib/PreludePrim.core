@@ -31,6 +31,10 @@ module PreludePrim
     
     -- misc
     , error, catch
+    
+    , dictEqInt, ''dictEq[]'', dictEqChar, dictEqFloat
+    , dictNumInt, dictNumFloat
+    , dictOrdInt, dictOrdFloat
     ) where
 
 import HeliumLang
@@ -197,7 +201,10 @@ show dShow =
         
 {- Num -}
 
+dictNumInt :: "DictNumInt"
 dictNumInt   = (@0, 7) dictEqInt   dictShowInt   (+#) (*#) (-#) negInt   id
+
+dictNumFloat :: "DictNumFloat"
 dictNumFloat = (@0, 7) dictEqFloat dictShowFloat (+.) (*.) (-.) negFloat intToFloat {- fromInt -}
 
 id x = x
@@ -239,10 +246,19 @@ fromInt dNum =
 
 {- Eq -}
 
+dictEqInt :: "DictEqInt"
 dictEqInt    = (@0, 2) (==#) (/=#)
+
+dictEqFloat :: "DictEqFloat"
 dictEqFloat  = (@0, 2) (==.) (/=.)
+
+dictEqBool :: "DictEqBool"
 dictEqBool   = (@0, 2) eqBool (\x y -> not (eqBool x y))
-''dictEq[]'' = (@0, 2) eqList (\dict xs ys -> not (eqList dict xs ys))
+
+''dictEq[]'' :: "DictEqList"
+''dictEq[]'' dict = (@0, 2) (eqList dict) (\xs ys -> not (eqList dict xs ys))
+
+dictEqChar :: "DictEqChar"
 dictEqChar   = dictEqInt
 
 (==) :: "Eq a => a -> a -> Bool"
@@ -276,13 +292,16 @@ eqList dictEqElem xs ys =
 not :: Bool -> Bool
 not x = case x of True -> False
                   False -> True
-    
-
-        
+            
 {- Ord -}
 
+dictOrdInt :: "DictOrdInt"
 dictOrdInt   = (@0, 5) dictEqInt   (<#) (<=#) (>=#) (>#) 
+
+
+dictOrdFloat :: "DictOrdFloat"
 dictOrdFloat = (@0, 5) dictEqFloat (<.) (<=.) (>=.) (>.) 
+
 dictOrdChar  = dictOrdInt
 
 getEqFromOrd dOrd = 
@@ -321,8 +340,3 @@ primAppend xs ys =
     {   '':[]'' -> ys
     ;   (:) z zs -> (:) z (primAppend zs ys)
     }
-
-extern primIntToFloat "float_of_int" :: "FI"
-
-intToFloat :: Int -> Float
-intToFloat x = let! x = x in primIntToFloat x
