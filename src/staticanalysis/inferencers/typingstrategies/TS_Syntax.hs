@@ -13,9 +13,11 @@ data TypeRule = TypeRule_TypeRule (SimpleJudgements) (Judgement)
 -- TypingStrategies --------------------------------------------
 type TypingStrategies = [(TypingStrategy)]
 -- TypingStrategy ----------------------------------------------
-data TypingStrategy = TypingStrategy_TypingStrategy (String) (TypeRule) (UserConstraints)
--- UserConstraint ----------------------------------------------
-data UserConstraint = UserConstraint_UserConstraint (Type) (Type) (String)
--- UserConstraints ---------------------------------------------
-type UserConstraints = [(UserConstraint)]
+data TypingStrategy = TypingStrategy_TypingStrategy (String) (TypeRule) (UserStatements)
+-- UserStatement -----------------------------------------------
+data UserStatement = UserStatement_Constraint (Type) (Type) (String)
+                   | UserStatement_MetaVariableConstraints (Name)
+                   | UserStatement_Phase (Int)
+-- UserStatements ----------------------------------------------
+type UserStatements = [(UserStatement)]
 

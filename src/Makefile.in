@@ -75,6 +75,10 @@ STATICANALYSIS = \
 	staticanalysis/constraints/Strategy.hs \
 	staticanalysis/messages/HeliumConstraintInfo.hs \
 	staticanalysis/messages/Messages.hs \
+	staticanalysis/messages/HeliumMessages.hs \
+	staticanalysis/messages/StaticErrors.hs \
+	staticanalysis/messages/TypeErrors.hs \
+	staticanalysis/messages/Warnings.hs \
 	staticanalysis/solvers/SolverOptions.hs \
 	staticanalysis/solvers/ConstraintInfo.hs \
 	staticanalysis/solvers/SolveConstraints.hs \

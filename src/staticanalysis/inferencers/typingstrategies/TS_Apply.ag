@@ -13,7 +13,7 @@ import Types
 import List
 import TypeConversion
 import UHA_Utils (noRange)
-import Messages (Hint(..) )
+import Utils (internalError)
 import OneLiner
 }
 
@@ -34,14 +34,10 @@ ATTR TypingStrategy [ localInfo         : {(ConstraintSet, MetaVariableInfo)}
             
 SEM TypingStrategy 
   | TypingStrategy     
-       lhs . constraintSet = ctNode ( ctPhased 2 (reverse @constraints.userConstraints)
-                                    : ctPhased 1 (reverse @typeruleConstraints)
-                                    : @metaVariableConstraints
-                                    )
+       lhs . constraintSet = ctNode (reverse @statements.collectConstraints)
            . unique        = length @uniqueTypevariables + @lhs.unique
            . debugIO       = putStrLn ("applying typing strategy " ++ @name)
-       loc . metaVariableConstraints = [ cs | (s,(cs,_)) <- @lhs.metaVariableTable, s /= "?toplevel?" ]  
-           . nameMap = zip @uniqueTypevariables (map TVar [@lhs.unique..])
+       loc . nameMap = zip @uniqueTypevariables (map TVar [@lhs.unique..])
 
 -- Construct type constraints from the typing rule
 
@@ -60,6 +56,41 @@ SEM TypingStrategy
                            , typepair   = tppair
                            , properties = [ HighlyTrusted ] 
                            }
-            
+
+-- build the constraint tree
+
+ATTR UserStatements UserStatement [ metavarConstraints : {[(String,ConstraintTree HeliumConstraintInfo)]}
+                                  | collectConstraints : {ConstraintTrees HeliumConstraintInfo} 
+                                    currrentPhase      : {Maybe Int} 
+                                  | 
+                                  ]
+
+SEM TypingStrategy 
+  | TypingStrategy
+       statements    . collectConstraints = ctSingle (reverse @typeruleConstraints) : 
+                                            reverse [ cs 
+                                                    | (s,(cs,_)) <- @lhs.metaVariableTable
+                                                    , s /= "?toplevel?" 
+                                                    , s `elem` @constraintsNotExplicit
+                                                    ] 
+                     . currrentPhase      = Nothing
+                     . metavarConstraints = [ (s,cs) 
+                                            | (s,(cs,_)) <- @lhs.metaVariableTable
+                                            ]
+
+SEM UserStatement
+  | Constraint
+       lhs . collectConstraints = case @lhs.currrentPhase of
+                                     Just phase -> ctPhased phase [ @newConstraint ] : @lhs.collectConstraints
+                                     Nothing    -> ctSingle       [ @newConstraint ] : @lhs.collectConstraints
+       
+  | MetaVariableConstraints        
+       lhs . collectConstraints = case lookup (show @name) @lhs.metavarConstraints of
+                                      Just tree -> tree : @lhs.collectConstraints
+                                      Nothing   -> internalError "TS_Apply.ag" "n/a" "unknown constraint set"
+                                      
+  | Phase 
+       lhs . currrentPhase = Just @phase
+                  
 -- prevent AG-Warnings
 SEM TypingStrategies | Cons  loc . (unique,metaVariableTable,localInfo) = undefined

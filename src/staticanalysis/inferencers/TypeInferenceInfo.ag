@@ -16,7 +16,7 @@ SEM Body | Body loc . cinfo =
   CInfo { info       = (NTBody,AltBody,show var)
         , location   = "variable"
         , errorrange = getNameRange var
-        , sources    = [ SD_Expr (Text (show var)) ]
+        , sources    = [ sourceExpression (Text (show var)) ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
@@ -45,7 +45,7 @@ SEM Declaration | PatternBinding loc . cinfo =
   CInfo { info       = (NTDeclaration,AltPatternBinding,"")
         , location   = "right hand side"
         , errorrange = getRHSRange @righthandside.self
-        , sources    = [ SD_Expr (@righthandside.oneLineTree "") ]
+        , sources    = [ sourceExpression (@righthandside.oneLineTree "") ]
         , typepair   = tppair
         , properties = [ Size @size ]    
         }        
@@ -61,10 +61,9 @@ SEM FunctionBinding | FunctionBinding loc . cinfoRight =
   CInfo { info       = (NTFunctionBinding,AltFunctionBinding,"right")
         , location   = "right hand side"
         , errorrange = @range.self
-        , sources    = [ SD_Term (@righthandside.oneLineTree "") ]
+        , sources    = [ sourceTerm (@righthandside.oneLineTree "") ]
         , typepair   = tppair
-        , properties = [ UnifierTypeVariable (tpToInt @lhs.betaRight)
-                       , Size @size ]
+        , properties = [ Size @size ]
         }
 
 SEM FunctionBinding | FunctionBinding loc . cinfoLeft =
@@ -72,10 +71,9 @@ SEM FunctionBinding | FunctionBinding loc . cinfoLeft =
   CInfo { info       = (NTFunctionBinding,AltFunctionBinding,"left "++show num)
         , location   = "pattern of function binding"
         , errorrange = @range.self
-        , sources    = [ SD_Pat txt ]
+        , sources    = [ sourcePattern txt ]
         , typepair   = tppair
-        , properties = [ UnifierTypeVariable (tpToInt (snd tppair))
-                       , Size @size ] 
+        , properties = [ Size @size ] 
         }
         
 ---------------------------------------------------------------------------------------
@@ -89,7 +87,7 @@ SEM Expression | Constructor loc . cinfo =
   CInfo { info       = (NTExpression,AltConstructor,"")
         , location   = "constructor"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @name.oneLineTree ]
+        , sources    = [ sourceExpression @name.oneLineTree ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
@@ -102,7 +100,7 @@ SEM Expression | Literal loc . cinfo =
   CInfo { info       = (NTExpression,AltLiteral,"")
         , location   = "literal"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
@@ -116,7 +114,7 @@ SEM Expression | Let loc . cinfoType =
   CInfo { info       = (NTExpression,AltLet,"")
         , location   = "let expression (INTERNAL ERROR)"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term @expression.oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , SuperHighlyTrusted 
@@ -140,7 +138,7 @@ SEM Expression | InfixApplication loc . cinfoEmpty =
   CInfo { info       = (NTExpression,AltInfixApplication,"empty")
         , location   = "infix application"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , HighlyTrusted 
@@ -152,7 +150,7 @@ SEM Expression | InfixApplication loc . cinfoLeftSection =
   CInfo { info       = (NTExpression,AltInfixApplication,"left")
         , location   = "left section"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size ]  
         }
@@ -162,7 +160,7 @@ SEM Expression | InfixApplication loc . cinfoRightSection =
   CInfo { info       = (NTExpression,AltInfixApplication,"right")
         , location   = "right section"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size ]  
         }
@@ -172,7 +170,7 @@ SEM Expression | Do loc . cinfo =
   CInfo { info       = (NTExpression,AltDo,"")
         , location   = "do-expression (INTERNAL ERROR)"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree  ]
+        , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , SuperHighlyTrusted 
@@ -184,7 +182,7 @@ SEM Expression | If loc . cinfoGuard =
   CInfo { info       = (NTExpression,AltIf,"guard")
         , location   = "conditional"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term @guardExpression.oneLineTree  ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @guardExpression.oneLineTree  ]
         , typepair   = tppair
         , properties = [ Size @size ]    
         }
@@ -194,7 +192,7 @@ SEM Expression | Enum loc . cinfoFrom =
   CInfo { info       = (NTExpression,AltEnum,"from")
         , location   = "enumeration"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term @from.oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @from.oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size]    
         }
@@ -204,7 +202,7 @@ SEM Expression | Enum loc . cinfoThen =
   CInfo { info       = (NTExpression,AltEnum,"then")
         , location   = "enumeration"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term (convertMaybeOneLineTree @then.oneLineTree) ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm (convertMaybeOneLineTree @then.oneLineTree) ]
         , typepair   = tppair
         , properties = [ Size @size]    
         }
@@ -214,7 +212,7 @@ SEM Expression | Enum loc . cinfoTo =
   CInfo { info       = (NTExpression,AltEnum,"to")
         , location   = "enumeration"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term (convertMaybeOneLineTree @to.oneLineTree) ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm (convertMaybeOneLineTree @to.oneLineTree) ]
         , typepair   = tppair
         , properties = [ Size @size ]    
         }
@@ -224,7 +222,7 @@ SEM Expression | Typed loc . cinfoExpr =
   CInfo { info       = (NTExpression,AltTyped,"expression")
         , location   = "type annotation"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term @expression.oneLineTree  ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree  ]
         , typepair   = tppair
         , properties = [ Size @size ]    
         }
@@ -234,7 +232,7 @@ SEM Expression | List loc . cinfoResult =
   CInfo { info       = (NTExpression,AltList,"result")
         , location   = "list"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree  ]
+        , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
         , properties = [ Size @size 
                        , FolkloreConstraint ]   
@@ -245,7 +243,7 @@ SEM Expression | Tuple loc . cinfo =
   CInfo { info       = (NTExpression,AltTuple,"")
         , location   = "tuple"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree  ]
+        , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
         , properties = [ Size @size 
                        , FolkloreConstraint
@@ -257,7 +255,7 @@ SEM Expression | Comprehension loc . cinfo =
   CInfo { info       = (NTExpression,AltComprehension,"")
         , location   = "list comprehension"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree  ]
+        , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint 
                        , Size @size ]    
@@ -268,7 +266,7 @@ SEM Expression | Enum loc . cinfoResult =
   CInfo { info       = (NTExpression,AltEnum,"result")
         , location   = "enumeration"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree  ]
+        , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , Size @size ]    
@@ -279,7 +277,7 @@ SEM Expression | Negate loc . cinfoResult =
   CInfo { info       = (NTExpression,AltNegate,"result")
         , location   = "negation"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree  ]
+        , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint 
                        , Size @size
@@ -291,7 +289,7 @@ SEM Expression | Negate loc . cinfoExpr =
   CInfo { info       = (NTExpression,AltNegate,"expression")
         , location   = "negation"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term @expression.oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size
                        , Negation (tpToInt @beta) ]    
@@ -302,7 +300,7 @@ SEM Expression | NegateFloat loc . cinfoResult =
   CInfo { info       = (NTExpression,AltNegateFloat,"result")
         , location   = "negation"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree  ]
+        , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint 
                        , Size @size 
@@ -314,7 +312,7 @@ SEM Expression | NegateFloat loc . cinfoExpr =
   CInfo { info       = (NTExpression,AltNegateFloat,"expression")
         , location   = "negation"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term @expression.oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size 
                        , Negation (tpToInt @beta) ]    
@@ -325,7 +323,7 @@ SEM Expression | Lambda loc . cinfoType =
   CInfo { info       = (NTExpression,AltLambda,"type")
         , location   = "lambda abstraction"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree  ]
+        , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint 
                        , Size @size ]    
@@ -336,10 +334,9 @@ SEM Expression | Typed loc . cinfoResult =
   CInfo { info       = (NTExpression,AltTyped,"result")
         , location   = "type annotation"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree  ]
+        , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
-        , properties = [ FolkloreConstraint 
-                       , Size @size ]    
+        , properties = [ Size @size, FolkloreConstraint ]     {- ??? -}
         }
 
 SEM Expression | NormalApplication loc . cinfo =
@@ -347,7 +344,7 @@ SEM Expression | NormalApplication loc . cinfo =
   CInfo { info       = (NTExpression,AltNormalApplication,"")
         , location   = "application"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term @function.oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @function.oneLineTree ]
         , typepair   = tppair
         , properties = [ ApplicationEdge False (zip @arguments.oneLineTree @arguments.betas)  
                        , Size @size ]  
@@ -358,7 +355,7 @@ SEM Expression | If loc . cinfoThen =
   CInfo { info       = (NTExpression,AltIf,"then")
         , location   = "then branch of conditional"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term @thenExpression.oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @thenExpression.oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size ]    
         }
@@ -368,7 +365,7 @@ SEM Expression | If loc . cinfoElse =
   CInfo { info       = (NTExpression,AltIf,"else")
         , location   = "else branch of conditional"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term @elseExpression.oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @elseExpression.oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size ]   
         }
@@ -378,7 +375,7 @@ SEM Expression | Case loc . cinfo =
   CInfo { info       = (NTExpression,AltCase,"")
         , location   = "scrutinee of case expression"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term @expression.oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size ]    
         }
@@ -388,10 +385,9 @@ SEM Expression | List loc . cinfoElem =
   CInfo { info       = (NTExpression,AltList,"element") 
         , location   = "element of list"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term elemtext ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm elemtext ]
         , typepair   = tppair
-        , properties = [ UnifierTypeVariable (tpToInt @beta') 
-                       , Size @size ]
+        , properties = [ Size @size ]
         }
 
 SEM Expression | InfixApplication loc . cinfoOperator =
@@ -399,7 +395,7 @@ SEM Expression | InfixApplication loc . cinfoOperator =
   CInfo { info       = (NTExpression,AltInfixApplication,"operator")
         , location   = "infix application"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term (@operator.oneLineTree)]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm (@operator.oneLineTree)]
         , typepair   = tppair
         , properties = (if @leftExpression.section || @rightExpression.section 
                           then [ HighlyTrusted ] 
@@ -419,7 +415,7 @@ SEM GuardedExpression | GuardedExpression loc . cinfoGuard =
   CInfo { info       = (NTGuardedExpression,AltGuardedExpression,"guard")
         , location   = "guard"
         , errorrange = getExprRange @guard.self
-        , sources    = [ SD_Expr @guard.oneLineTree ]
+        , sources    = [ sourceExpression @guard.oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size ]    
         }
@@ -429,10 +425,9 @@ SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
   CInfo { info       = (NTGuardedExpression,AltGuardedExpression,"expression")
         , location   = "guarded expression"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @expression.oneLineTree ]
+        , sources    = [ sourceExpression @expression.oneLineTree ]
         , typepair   = tppair
-        , properties = [ UnifierTypeVariable (tpToInt @lhs.rightBeta)
-                       , Size @size ]   
+        , properties = [ Size @size ]   
         }
 
 ---------------------------------------------------------------------------------------
@@ -443,7 +438,7 @@ SEM Pattern | Constructor loc . cinfoConstructor =
   CInfo { info       = (NTPattern,AltConstructor,"") 
         , location   = "pattern constructor"
         , errorrange = getNameRange @name.self
-        , sources    = [ SD_Pat @oneLineTree ]
+        , sources    = [ sourcePattern @oneLineTree ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint,HighlyTrusted 
                         {- ,ApplicationEdge False (zip @patterns.oneLineTree @patterns.betas) -} 
@@ -455,7 +450,7 @@ SEM Pattern | InfixConstructor loc . cinfoConstructor =
   CInfo { info       = (NTPattern,AltInfixConstructor,"")
         , location   = "pattern constructor"
         , errorrange = getNameRange @constructorOperator.self
-        , sources    = [ SD_Pat @constructorOperator.oneLineTree ]
+        , sources    = [ sourcePattern @constructorOperator.oneLineTree ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
@@ -467,7 +462,7 @@ SEM Pattern | Literal loc . cinfo =
   CInfo { info       = (NTPattern,AltLiteral,"")
         , location   = "literal pattern"
         , errorrange = @range.self
-        , sources    = [ SD_Pat @oneLineTree ]
+        , sources    = [ sourcePattern @oneLineTree ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
@@ -480,7 +475,7 @@ SEM Pattern | List loc . cinfoResult =
   CInfo { info       = (NTPattern,AltList,"result")
         , location   = "pattern list"
         , errorrange = @range.self
-        , sources    = [ SD_Pat @oneLineTree  ]
+        , sources    = [ sourcePattern @oneLineTree  ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint 
                        , Size @patterns.size ]   
@@ -491,7 +486,7 @@ SEM Pattern | Tuple loc . cinfo =
   CInfo { info       = (NTPattern,AltTuple,"result")
         , location   = "pattern tuple"
         , errorrange = @range.self
-        , sources    = [ SD_Pat @oneLineTree  ]
+        , sources    = [ sourcePattern @oneLineTree  ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , IsTupleEdge
@@ -503,7 +498,7 @@ SEM Pattern | Negate loc . cinfoResult =
   CInfo { info       = (NTPattern,AltNegate,"result")
         , location   = "pattern negation"
         , errorrange = @range.self
-        , sources    = [ SD_Pat @oneLineTree  ]
+        , sources    = [ sourcePattern @oneLineTree  ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , Size @size
@@ -515,7 +510,7 @@ SEM Pattern | Negate loc . cinfoPat =
    CInfo { info       = (NTPattern,AltNegate,"pattern")
         , location   = "pattern negation "
         , errorrange = @range.self
-        , sources    = [ SD_Pat @oneLineTree, SD_Term @literal.oneLineTree ]
+        , sources    = [ sourcePattern @oneLineTree, sourceTerm @literal.oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size 
                        , Negation (tpToInt @beta) ]    
@@ -526,7 +521,7 @@ SEM Pattern | NegateFloat loc . cinfoResult =
   CInfo { info       = (NTPattern,AltNegateFloat,"result")
         , location   = "pattern negation"
         , errorrange = @range.self
-        , sources    = [ SD_Pat @oneLineTree  ]
+        , sources    = [ sourcePattern @oneLineTree  ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , Size @size 
@@ -538,7 +533,7 @@ SEM Pattern | NegateFloat loc . cinfoPat =
    CInfo { info       = (NTPattern,AltNegateFloat,"pattern")
         , location   = "pattern negation "
         , errorrange = @range.self
-        , sources    = [ SD_Pat @oneLineTree, SD_Term @literal.oneLineTree ]
+        , sources    = [ sourcePattern @oneLineTree, sourceTerm @literal.oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size 
                        , Negation (tpToInt @beta) ]    
@@ -552,8 +547,8 @@ SEM Pattern | Constructor loc . cinfoApply =
                          else "pattern application"
         , errorrange = @range.self
         , sources    = if @patterns.numberOfPatterns == 0 
-                         then [ SD_Pat @oneLineTree                            ]
-                         else [ SD_Pat @oneLineTree, SD_Term @name.oneLineTree ]
+                         then [ sourcePattern @oneLineTree                            ]
+                         else [ sourcePattern @oneLineTree, sourceTerm @name.oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size ]    
         }
@@ -563,10 +558,9 @@ SEM Pattern | List loc . cinfoElem =
   CInfo { info       = (NTPattern,AltList,"element")
         , location   = "element of pattern list"
         , errorrange = @range.self
-        , sources    = [ SD_Pat @oneLineTree, SD_Term elemtext ]
+        , sources    = [ sourcePattern @oneLineTree, sourceTerm elemtext ]
         , typepair   = tppair
-        , properties = [ UnifierTypeVariable (tpToInt @beta')
-                       , Size @patterns.size
+        , properties = [ Size @patterns.size
                        ]
         }               
 
@@ -575,7 +569,7 @@ SEM Pattern |  As loc . cinfo =
   CInfo { info       = (NTPattern,AltAs,"")
         , location   = "as pattern"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term (Text (show @name.self)) ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm (Text (show @name.self)) ]
         , typepair   = tppair
         , properties = [ Size @size ] 
         }
@@ -585,7 +579,7 @@ SEM Pattern | InfixConstructor loc . cinfoApply =
   CInfo { info       = (NTPattern,AltInfixConstructor,"apply")
         , location   = "infix pattern application"
         , errorrange = @range.self
-        , sources    = [ SD_Pat @oneLineTree, SD_Term (Text (show @constructorOperator.self))]
+        , sources    = [ sourcePattern @oneLineTree, sourceTerm (Text (show @constructorOperator.self))]
         , typepair   = tppair
         , properties = [ Size @size ]   
                           {- ApplicationEdge True
@@ -605,10 +599,9 @@ SEM Alternative | Alternative loc . cinfoLeft =
   CInfo { info       = (NTAlternative,AltAlternative,"left")
         , location   = "case pattern"
         , errorrange = @range.self
-        , sources    = [ SD_Pat @pattern.oneLineTree ]
+        , sources    = [ sourcePattern @pattern.oneLineTree ]
         , typepair   = tppair
-        , properties = [ UnifierTypeVariable (tpToInt @lhs.betaLeft)
-                       , Size @size ]    
+        , properties = [ Size @size ]    
         }
 
 SEM Alternative | Alternative loc . cinfoRight =
@@ -616,10 +609,9 @@ SEM Alternative | Alternative loc . cinfoRight =
   CInfo { info       = (NTAlternative,AltAlternative,"right")
         , location   = "right-hand side of case alternative"
         , errorrange = @range.self
-        , sources    = [ SD_Expr (@righthandside.oneLineTree "") ]
+        , sources    = [ sourceExpression (@righthandside.oneLineTree "") ]
         , typepair   = tppair
-        , properties = [ UnifierTypeVariable (tpToInt @lhs.betaRight) 
-                       , Size @size ]  
+        , properties = [ Size @size ]  
         }
 
 ---------------------------------------------------------------------------------------
@@ -630,7 +622,7 @@ SEM Statement | Expression loc . cinfo =
   CInfo { info       = (NTStatement,AltExpression,"") 
         , location   = "generator"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @expression.size ] 
         }
@@ -640,7 +632,7 @@ SEM Statement | Generator loc . cinfoResult =
   CInfo { info       = (NTStatement,AltGenerator,"result")
         , location   = "generator"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term @expression.oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size ]    
         }
@@ -656,7 +648,7 @@ SEM Qualifier | Guard loc . cinfo =
   CInfo { info       = (NTQualifier,AltGuard,"")
         , location   = "boolean qualifier"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree  ]
+        , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
         , properties = [ Size @guard.size ]  
         }
@@ -666,7 +658,7 @@ SEM Qualifier | Generator loc . cinfoResult =
   CInfo { info       = (NTQualifier,AltGenerator,"result")
         , location   = "generator"
         , errorrange = @range.self
-        , sources    = [ SD_Expr @oneLineTree, SD_Term @expression.oneLineTree ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
         , typepair   = tppair
         , properties = [ Size @size ]    
         }
@@ -684,11 +676,11 @@ cinfoBindingGroupExplicitTypedBinding =
   CInfo { info       = (NTBindingGroup,AltBindingGroup,"explicit typed binding, "++show name)
         , location   = "explicitly typed binding"
         , errorrange = getNameRange name
-        , sources    = [ SD_Term (Text (show name))]
+        , sources    = [ sourceTerm (Text (show name))]
         , typepair   = tppair
-        , properties = [ {- FolkloreConstraint
-                       , -} HighlyTrusted
-                       , ExplicitTypedBinding
+        , properties = [ {- FolkloreConstraint -}
+                         ExplicitTypedBinding
+                       , HighlyTrusted
                        , Size 1 ]  
         }
 
@@ -697,10 +689,9 @@ variableBindingCInfo (infoNT,infoAlt) var tppair =
   CInfo { info       = (infoNT,infoAlt,show var) 
         , location   = "variable"
         , errorrange = getNameRange var
-        , sources    = [ SD_Expr (Text (show var)) ]
+        , sources    = [ sourceExpression (Text (show var)) ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
-                       , UnifierTypeVariable (tpToInt (fst tppair))
                        , Size 1 ]  
         }
         
@@ -713,7 +704,7 @@ cinfoBindingGroupImplicit =
   CInfo { info       = (NTBindingGroup,AltBindingGroup,"implicit, "++show var)
         , location   = "variable"
         , errorrange = getNameRange var
-        , sources    = [ SD_Expr (Text (show var)) ]
+        , sources    = [ sourceExpression (Text (show var)) ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
@@ -726,10 +717,9 @@ cinfoBindingGroupExplicit =
   CInfo { info       = (NTBindingGroup,AltBindingGroup,"explicit, "++show var)
         , location   = "variable"
         , errorrange = getNameRange var
-        , sources    = [ SD_Expr (Text (show var)) ]
+        , sources    = [ sourceExpression (Text (show var)) ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
-                       , UnifierTypeVariable (tpToInt (fst tppair))
                        , Size 1 ]  
         }
 }
@@ -757,4 +747,9 @@ tpToInt :: Tp -> Int
 tpToInt tp = case ftv tp of 
                [i] -> i
                _   -> (-1)
+               
+sourceTerm, sourceExpression, sourcePattern :: Tree -> (String, Tree)
+sourceTerm       = (,) "Term" 
+sourceExpression = (,) "Expression"
+sourcePattern    = (,) "Pattern"
 }

@@ -17,6 +17,7 @@ import TypeGraphConstraintInfo
 import SolveConstraints
 import SolveState
 import Messages
+import TypeErrors
 import Types
 import List
 import ConstraintInfo
@@ -25,8 +26,9 @@ import Utils                ( internalError )
 import SimilarFunctionTable ( similarFunctionTable )
 import UHA_Utils            ( nameFromString )
 import UHA_Syntax           ( Literal(..), Range(..), Position(..) )
-import Monad                ( unless, when )
+import Monad                ( unless, when, filterM )
 import Int                  ( fromInt )
+import Maybe                ( catMaybes )
 
 heuristics_MAX        =   120 :: Int
 upperbound_GOODPATHS  =    50 :: Int
@@ -154,7 +156,7 @@ heuristicsConstantClash is =
           standard                  = (info,[edge])
           (typeError,edgesToRemove) = case hresult of 
              ConcreteHeuristic _ as _ -> let op action (te,es) = case action of 
-                                                                    SetHint h -> (setNewHint h te,es)
+                                                                    SetHint h      -> (setNewHint h te,es)
                                                                     SetTypeError t -> (setNewTypeError t te,es)
                                                                     RemoveEdge e   -> (te,e:es)
                                          in foldr op standard as
@@ -166,9 +168,15 @@ data HeuristicResult = ConcreteHeuristic Int [HeuristicAction] String
                      | ModifierHeuristic Float String
                      | NotApplicableHeuristic
 
-data HeuristicAction = SetHint      Hint
+data HeuristicAction = SetHint      TypeErrorInfo
                      | SetTypeError TypeError
                      | RemoveEdge   EdgeID
+
+fixHint :: String -> TypeErrorInfo
+fixHint = TypeErrorHint "Probable fix". MessageString
+
+becauseHint :: String -> TypeErrorInfo
+becauseHint = TypeErrorHint "Because" . MessageString
 
 instance Show HeuristicResult where
    show (ConcreteHeuristic i h s) = "trust="++show i++"   ("++s++")"
@@ -206,7 +214,7 @@ edgeheuristics = [ orderOfUnification
                  , similarNegation
                  , tupleEdge
                  , similarFunctions                 
-                 , applicationEdge       
+                 , applicationEdge
                  ] 
 
 orderOfUnification :: TypeGraphConstraintInfo info => EdgeHeuristic info
@@ -271,7 +279,7 @@ similarFunctions edge@(EdgeID v1 v2) info =
                             
                             case mtp of 
                                Nothing -> return NotApplicableHeuristic
-                               Just tp -> case [ ConcreteHeuristic 10 [SetHint (Fix ("use "++s++" instead"))] (show string++" is similar to "++show s)
+                               Just tp -> case [ ConcreteHeuristic 10 [SetHint (fixHint ("use "++s++" instead"))] (show string++" is similar to "++show s)
                                                | (s,Just scheme) <- tryFunctions                                                   
                                                , unifiable synonyms tp (unsafeInstantiate scheme) 
                                                ] of
@@ -295,19 +303,19 @@ similarLiterals edge@(EdgeID v1 v2) info =
                case (literal,mtp) of 
 
                   (Literal_Int    _ s,Just (TCon "Float"))  
-                       -> let hint = SetHint (Fix "use a float literal instead")
+                       -> let hint = SetHint (fixHint "use a float literal instead")
                           in return $ ConcreteHeuristic 5 [hint] "int literal should be a float"
 
                   (Literal_Float  _ s,Just (TCon "Int"  ))  
-                       -> let hint = SetHint (Fix "use an int literal instead")
+                       -> let hint = SetHint (fixHint "use an int literal instead")
                           in return $ ConcreteHeuristic 5 [hint] "float literal should be an int"
 
                   (Literal_Char   _ s,Just (TApp (TCon "[]") (TCon "Char"))) 
-                       -> let hint = SetHint (Fix "use a string literal instead")
+                       -> let hint = SetHint (fixHint "use a string literal instead")
                           in return $ ConcreteHeuristic 5 [hint] "char literal should be a string"
 
                   (Literal_String _ s,Just (TCon "Char"))   
-                       -> let hint = SetHint (Fix "use a char literal instead")
+                       -> let hint = SetHint (fixHint "use a char literal instead")
                           in return $ ConcreteHeuristic 5 [hint] "string literal should be a char"
 
                   _ -> return NotApplicableHeuristic
@@ -340,9 +348,9 @@ similarNegation edge@(EdgeID v1 v2) info =
                      case (mt1,mt2) of
                      
                           (Just t1,Just t2) 
-                             | intNegation && not floatNegation -> let hint = SetHint (Fix "use int negation (-) instead")
+                             | intNegation && not floatNegation -> let hint = SetHint (fixHint "use int negation (-) instead")
                                                                    in return $ ConcreteHeuristic 6 [RemoveEdge edge',hint] "int negation should be used"       
-                             | floatNegation && not intNegation -> let hint = SetHint (Fix "use float negation (-.) instead")
+                             | floatNegation && not intNegation -> let hint = SetHint (fixHint "use float negation (-.) instead")
                                                                    in return $ ConcreteHeuristic 6 [RemoveEdge edge',hint] "float negation should be used"     
                              | otherwise                        -> return $ NotApplicableHeuristic
                                where intNegation   = unifiable synonyms t1 intType   && unifiable synonyms t2 intType
@@ -380,11 +388,11 @@ applicationEdge edge@(EdgeID v1 v2) info =
                   in case compare (length ftps) (length etps) of 
  
                         LT | null ftps && not isBinary -> -- the expression to which arguments are given does not have a function type                            
-                                let hint = SetHint (Because "it is not a function")
+                                let hint = SetHint (becauseHint "it is not a function")
                                 in return (ConcreteHeuristic 6 [hint] "no function")
  
                            | length ftps < 2 && isBinary -> --function used as infix that expects < 2 arguments
-                                let hint = SetHint (Because "it is not a binary function")
+                                let hint = SetHint (becauseHint "it is not a binary function")
                                 in return (ConcreteHeuristic 6 [hint] "no binary function")
   
                         EQ | not onlyArgumentsMatch -> -- test if there is one argument in particular that is incorrect                          
@@ -399,15 +407,15 @@ applicationEdge edge@(EdgeID v1 v2) info =
                                  ]) of 
                             
                              ([p],_) 
-                                 | p==[1,0] && isBinary -> let hint = SetHint (Fix "swap the two arguments")
+                                 | p==[1,0] && isBinary -> let hint = SetHint (fixHint "swap the two arguments")
                                                            in return (ConcreteHeuristic 3 [hint] "swap the two arguments")
-                                 | otherwise            -> let hint = SetHint (Fix "re-order arguments")
+                                 | otherwise            -> let hint = SetHint (fixHint "re-order arguments")
                                                            in return (ConcreteHeuristic 1 [hint] ("application: permute with "++show p))
                          
                              (_,[i]) | i < length tuplesForArguments
                                   -> do expfulltp <- applySubst t1                                   
                                         let (oneLiner,tp) = tuplesForArguments !! i
-                                            typeError     = makeTypeErrorForTerm oneLiner (tp,expargtp) info -- (setFolkloreConstraint info)
+                                            typeError     = makeTypeErrorForTerm oneLiner (tp,expargtp) info
                                             expargtp      = fst (functionSpine expfulltp) !! i
                                         return (ConcreteHeuristic 3 [SetTypeError typeError] ("incorrect argument of application="++show i))
                              _   -> return NotApplicableHeuristic
@@ -416,19 +424,19 @@ applicationEdge edge@(EdgeID v1 v2) info =
                            case ( [ is | (is,zl) <- take heuristics_MAX (zipWithHoles ftps etps), predicate zl ] , ordering ) of 
                        
                              ([is],LT) | not isBinary && maximum is < length tuplesForArguments
-                                -> let hint = SetHint (Fix ("remove "++prettyAndList (map (ordinal . (+1)) is)++" argument"))
+                                -> let hint = SetHint (fixHint ("remove "++prettyAndList (map (ordinal . (+1)) is)++" argument"))
                                    in return (ConcreteHeuristic 4 [hint] ("too many arguments are given: "++show is))
  
                              (_:_ ,LT) 
-                                -> let hint = SetHint (Because "too many arguments are given")
+                                -> let hint = SetHint (becauseHint "too many arguments are given")
                                    in return (ConcreteHeuristic 2 [hint] "too many arguments are given")
  
                              ([is],GT) | not isBinary
-                                -> let hint = SetHint (Fix ("insert a "++prettyAndList (map (ordinal . (+1)) is)++" argument"))
+                                -> let hint = SetHint (fixHint ("insert a "++prettyAndList (map (ordinal . (+1)) is)++" argument"))
                                    in return (ConcreteHeuristic 4 [hint] ("not enough arguments are given"++show is)) 
  
                              (_:_ ,GT)
-                                -> let hint = SetHint (Because "not enough arguments are given")
+                                -> let hint = SetHint (becauseHint "not enough arguments are given")
                                    in return (ConcreteHeuristic 2 [hint] "not enough arguments are given")
  
                              _         -> return NotApplicableHeuristic
@@ -456,7 +464,7 @@ tupleEdge edge@(EdgeID v1 v2) info
                           , unifiable synonyms (tupleType tupleTps) (tupleType (permute p expectedTps))
                           ] of
                        p:_  ->  -- a permutation possible!
-                               let hint = SetHint (Fix "re-order elements of tuple")
+                               let hint = SetHint (fixHint "re-order elements of tuple")
                                in return (ConcreteHeuristic 4 [hint] ("tuple: permute with "++show p)) 
                        _    -> return NotApplicableHeuristic                       
             
@@ -465,11 +473,11 @@ tupleEdge edge@(EdgeID v1 v2) info
                                , uncurry (unifiable synonyms) . applyBoth tupleType . unzip $ zl
                                ] of
                        [is] -> case compare of
-                                 LT -> let hint = SetHint (Fix ("insert a "++prettyAndList (map (ordinal . (+1)) is)++" element to the tuple"))
+                                 LT -> let hint = SetHint (fixHint ("insert a "++prettyAndList (map (ordinal . (+1)) is)++" element to the tuple"))
                                        in return (ConcreteHeuristic 4 [hint] ("tuple:insert "++show is)) 
-                                 GT -> let hint = SetHint (Fix ("remove "++prettyAndList (map (ordinal . (+1)) is)++" element of tuple"))
+                                 GT -> let hint = SetHint (fixHint ("remove "++prettyAndList (map (ordinal . (+1)) is)++" element of tuple"))
                                        in return (ConcreteHeuristic 4 [hint] ("tuple:remove "++show is))
-                       _    -> let hint = SetHint (Because ("a "++show (length tupleTps)++"-tuple does not match a "++show (length expectedTps)++"-tuple"))
+                       _    -> let hint = SetHint (becauseHint ("a "++show (length tupleTps)++"-tuple does not match a "++show (length expectedTps)++"-tuple"))
                                in return (ConcreteHeuristic 2 [hint] "different sizes of tuple")
           _ -> return NotApplicableHeuristic
 
@@ -494,7 +502,7 @@ fbHasTooManyArguments edge info
                                                 prettyPat i = if i == 1 then "1 pattern" else show i++" patterns"
                                                 prettyArg 0 = "does not allow patterns"
                                                 prettyArg n = "allows at most "++show n
-                                                hint = SetHint (Because msg)
+                                                hint = SetHint (becauseHint msg)
                                             in return (ConcreteHeuristic 8 [hint] "function binding has too many arguments")
             _                            -> return NotApplicableHeuristic
 
@@ -635,3 +643,31 @@ permute is as = map (as !!) is
 combinations :: [a] -> [(a,a)]
 combinations []     = []
 combinations (a:as) = zip (repeat a) as ++ combinations as
+
+-----------------------------------------------------------
+
+type EdgesFilter cinfo = [(EdgeID, cinfo)] -> SolveState EquivalenceGroups cinfo [(EdgeID, cinfo)]
+type EdgeFilter  cinfo = EdgeID -> cinfo   -> SolveState EquivalenceGroups cinfo Bool
+
+-- Note: Do not filter away all edges
+applyEdgesFilter :: EdgesFilter cinfo -> [(EdgeID, cinfo)] -> SolveState EquivalenceGroups cinfo [(EdgeID, cinfo)]
+applyEdgesFilter edgesFilter edges = 
+   do result <- edgesFilter edges
+      return (if null result then edges else result)
+   
+-- Note: Do not filter away all edges      
+applyEdgeFilter :: EdgeFilter cinfo -> [(EdgeID, cinfo)] -> SolveState EquivalenceGroups cinfo [(EdgeID, cinfo)]
+applyEdgeFilter edgeFilter edges = 
+   do result <- filterM (uncurry edgeFilter) edges
+      return (if null result then edges else result)
+
+maximalEdgeFilter :: Ord result => (cinfo -> SolveState EquivalenceGroups cinfo result) -> EdgesFilter cinfo
+maximalEdgeFilter function edges = 
+   do tupledList <- let f tuple@(_, cinfo) = do result <- function cinfo
+                                                return (result, tuple)
+                    in mapM f edges
+      let maximumResult = maximum (map fst tupledList)
+      return (map snd (filter ((maximumResult ==) . fst) tupledList))
+      
+constraintPhaseFilter :: TypeGraphConstraintInfo cinfo => EdgesFilter cinfo
+constraintPhaseFilter = maximalEdgeFilter (return . maybe 0 id . getConstraintPhaseNumber)

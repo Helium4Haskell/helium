@@ -41,6 +41,8 @@ import ConstraintTree
 import Strategy
 -- messages
 import Messages
+import TypeErrors
+import Warnings
 -- solvers
 import SolveConstraints 
 import SolveEquivalenceGroups  ( solveEquivalenceGroups )

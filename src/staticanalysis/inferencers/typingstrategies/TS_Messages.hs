@@ -1,8 +1,10 @@
 module TS_Messages where
 
 import Messages
+import TypeErrors
 import HeliumConstraintInfo
 import Types
+import Utils (commaList)
 import UHA_Syntax
 
 type TS_Errors = [TS_Error]
@@ -10,38 +12,67 @@ data TS_Error
       = InconsistentConstraint String {- rule name -} HeliumConstraintInfo
       | UndefinedTS String {- rule name -} Name {- variable/constructor -} Entity
       | UnusedMetaVariable String {- rule name -} String {- metavariable -}
+      | DuplicatedMetaVariablesPremise String {- rule name -} String {- metavariable -}
+      | DuplicatedMetaVariablesConclusion String {- rule name -} String {- metavariable -}      
+      | DuplicatedMetaVariableConstraints String {- rule name -} String {- metavariable -}     
       | TypeErrorTS String TypeError      
       | Soundness String {- rule name -} TpScheme {- inferredTpScheme -} TpScheme {- constraintsTpScheme -}
              
 type TS_Warnings = [TS_Warning]
 data TS_Warning
+      = MetaVariableConstraintsNotExplicit String {- rule name -} [String] {- metavariable -}
 
-instance IsMessage TS_Error where
+instance HasMessage TS_Error where
+   getMessage  = (:[]) . MessageOneLiner . MessageString . showTS_Error
    getRanges _ = []
-   
-   display (InconsistentConstraint rule hci) =
+      
+instance HasMessage TS_Warning where
+   getMessage  = (:[]) . MessageOneLiner . MessageString . showTS_Warning
+   getRanges _ = []
+
+showTS_Error :: TS_Error -> String
+showTS_Error tsError = case tsError of
+   (InconsistentConstraint rule hci) ->
       let (t1,t2) = typepair hci
       in "Error in type strategy rule "++show rule++": "++
          "the given constraint set was inconsistent while solving the constraint "++
          show t1++" == "++show t2
 
-   display (UndefinedTS rule name entity) =
+   (UndefinedTS rule name entity) ->
       "Undefined "++show entity++" "++show name++" in type strategy rule "++show rule
 
-   display (UnusedMetaVariable rule metavariable) =
+   (UnusedMetaVariable rule metavariable) ->
       "Unused meta-variable "++show metavariable++" in type strategy rule "++show rule
 
-   display (TypeErrorTS rule typeError) =
-      "Type error in type strategy rule "++show rule++" while inferring the type of the conclusion:\n" ++
-      display typeError
+   (DuplicatedMetaVariablesPremise rule metavariable) ->
+      "Duplicated meta-variable "++show metavariable++" in premise of type strategy rule "++show rule   
 
-   display (Soundness rule inferred strategy) =
+   (DuplicatedMetaVariablesConclusion rule metavariable) ->
+      "Duplicated meta-variable "++show metavariable++" in conclusion of type strategy rule "++show rule   
+
+   (DuplicatedMetaVariableConstraints rule metavariable) ->
+      "The constraints for meta-variable "++show metavariable++" of type strategy rule "++show rule++
+      " can only be inserted at one place"
+      
+   (TypeErrorTS rule typeError) ->
+      "Type error in type strategy rule "++show rule++" while inferring the type of the conclusion:\n" -- ++
+       --  show (getMessage typeError)
+
+   (Soundness rule inferred strategy) ->
       "The Strategy rule "++show rule++" is not sound:\n" ++
       "*** strategy rule   : "++show strategy++"\n" ++
       "*** type inferencer : "++show inferred++"\n"
       
-   display _   = "<TS_Error>"
+   _   -> "<TS_Error>"
    
-instance IsMessage TS_Warning where
-   getRanges _ = []
-   display _   = "<TS_Warning>"
+showTS_Warning :: TS_Warning -> String
+showTS_Warning tsWarning = case tsWarning of
+
+   (MetaVariableConstraintsNotExplicit rule metavariables) ->
+      "The constraint set"++(if length metavariables > 1 then "s" else "")
+      ++ " for the meta variable"++(if length metavariables > 1 then "s " else " ")
+      ++ commaList metavariables      
+      ++ " in the type strategy rule "++show rule
+      ++" are not inserted explicitly. By default, they are inserted in the beginning."   
+
+   _   -> "<TS_Warning>"   

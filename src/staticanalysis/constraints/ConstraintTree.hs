@@ -18,6 +18,7 @@ import Strategy
 import Constraints
 import Types
 import Utils            (fst3, snd3, thd3, internalError)
+import ConstraintInfo
 import FiniteMap
 
 type MappedConstraints  cinfo = FiniteMap Int (Constraint cinfo)
@@ -74,9 +75,10 @@ ctMapped upward constraints tree strategy albinds addDown
 
    | otherwise     = tree strategy albinds ((constraints++) . addDown)
 
-ctPhased :: Int -> Constraints cinfo -> ConstraintTree cinfo
+ctPhased :: ConstraintInfo cinfo => Int -> Constraints cinfo -> ConstraintTree cinfo
 ctPhased phase constraints strategy allbinds addDown = 
-   (id, addDown, unitFM phase (constraints++) )
+   let phasedConstraints = map (applyToConstraintInfo (setConstraintPhaseNumber phase)) constraints
+   in (id, addDown, unitFM phase (phasedConstraints++) )
 
 ctVariable :: Int -> ConstraintTree cinfo
 ctVariable int strategy albinds addDown = 
@@ -113,14 +115,12 @@ ctSingle cs = ctNode [cs .<. ctEmpty]
    | otherwise       = (constraints .<<. tree) strategy albinds addDown
 
 toMappedConstraints :: Constraints info -> MappedConstraints info
-toMappedConstraints = listToFM . map f 
+toMappedConstraints = listToFM . concatMap f 
    where f constraint = case constraint of
-                           Equiv _ _ (TVar i)          -> (i,constraint)
-                           ExplInstance _ (TVar i) _   -> (i,constraint)
-                           ImplInstance _ (TVar i) _ _ -> (i,constraint)
-                           _                           -> internalError "ConstraintTree.hs"
-                                                                        "toMappedConstraints"
-                                                                        "invalid constraint"
+                           Equiv _ _ (TVar i)          -> [(i,constraint)]
+                           ExplInstance _ (TVar i) _   -> [(i,constraint)]
+                           ImplInstance _ (TVar i) _ _ -> [(i,constraint)]
+                           _                           -> []
 
 inStrictOrder :: TreeWalk ->                          -- treewalk
                  ( ListCont (Constraint cinfo)        -- the flattened tree

@@ -58,13 +58,16 @@ solveOne constraint =
          newVariables [unique..unique'-1]
          solveOne (Equiv info' tp its)
 
-   ImplInstance info t1 m t2 -> do 
+   ImplInstance info t1 m t2 -> 
       do makeConsistent
          t2' <- applySubst t2
          m'  <- mapM applySubst m
          let scheme = generalize (ftv m') t2'
          solveOne (ExplInstance info t1 scheme)
-
+         
+   MakeConsistent -> 
+      do makeConsistent 
+   
 applySubst :: ConstraintSolver solver info => Tp -> SolveState solver info Tp
 applySubst (TVar i)     = findSubstForVar i
 applySubst tp@(TCon _)  = return tp
@@ -89,12 +92,13 @@ runSolver buildSubstitution unique options constraints =
                  u  <- getUnique
                  s  <- buildSubstitution 
                  e  <- getTypeErrors
-                 e' <- mapM substitute e
+                 -- e' <- mapM substitute e
                  d  <- getDebug                  
-                 return (u,s,e',d)                                
+                 return (u,s,e,d)                                
             )           
-
+{-
     where substitute :: (ConstraintSolver solver info,Substitutable info) => info -> SolveState solver info info
           substitute scheme = do let vs = ftv scheme
                                  ts <- mapM findSubstForVar vs
                                  return $ listToSubstitution (zip vs ts) |-> scheme
+-}

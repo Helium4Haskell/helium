@@ -12,7 +12,10 @@ module ConstraintInfo where
 import Types
 import Utils
 
-class Substitutable constraintinfo => ConstraintInfo constraintinfo where
+class ConstraintInfo constraintinfo where
    
-   setOriginalTypeScheme :: TpScheme         -> constraintinfo -> constraintinfo   
-   setOriginalTypeScheme _ = id    -- default definition (do nothing)
+   setOriginalTypeScheme    :: TpScheme -> constraintinfo -> constraintinfo  
+   setConstraintPhaseNumber :: Int      -> constraintinfo -> constraintinfo   
+    
+   setOriginalTypeScheme    _ = id    -- default definition (do nothing)
+   setConstraintPhaseNumber _ = id    -- default definition (do nothing) 

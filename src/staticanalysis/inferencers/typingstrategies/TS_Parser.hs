@@ -4,20 +4,12 @@ import UHA_Syntax
 import TS_Syntax
 import Parsec
 import ParseCommon
-import HaskellLexer hiding (conid,varid)
+import HaskellLexer hiding (conid, varid)
 import ParseType
 import ParseDeclExp
-import IOExts
 import OperatorTable
+import Char
 import qualified ResolveOperators
-
-unsafeParseTypingStrategies :: TypingStrategies
-unsafeParseTypingStrategies =
-   unsafePerformIO $
-   do input <- readFile "special.ti"
-      case parseTypingStrategies [ (s,(9,AssocNone)) | s <- ["<*>","<|>","<$>"] ] "special.ti" input of
-         Left parseError -> error (show parseError)
-         Right ts        -> return ts
 
 parseTypingStrategies :: OperatorTable -> String -> String -> Either ParseError TypingStrategies
 parseTypingStrategies operatorTable filename input = 
@@ -56,11 +48,22 @@ parseTypingStrategies operatorTable filename input =
          uhaType <- type_
          return (SimpleJudgement_SimpleJudgement name uhaType)      
 
-   parseConstraint :: HParser UserConstraint
+   parseConstraint :: HParser UserStatement
    parseConstraint = 
-      do leftType  <- type_
+      do -- enter a new phase
+         reserved "phase"
+         phase <- natural
+         return (UserStatement_Phase (fromInteger phase))
+      <|>
+      do -- constraint set of meta-variable
+         reserved "constraints"         
+         name <- varid
+         return (UserStatement_MetaVariableConstraints name)
+      <|>
+      do -- user-constraint
+         leftType  <- type_
          reservedOp "=="
          rightType <- type_
          reservedOp ":"
          message   <- stringLiteral
-         return (UserConstraint_UserConstraint leftType rightType message)
+         return (UserStatement_Constraint leftType rightType message)

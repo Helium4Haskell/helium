@@ -23,6 +23,7 @@ import TypeConversion
 import List
 import UHA_Utils (noRange, nameFromString)
 import Messages
+import TypeErrors
 import TS_Messages
 import ImportEnvironment
 import SolveGreedy
@@ -48,11 +49,23 @@ SEM TypingStrategy
                             [ UnusedMetaVariable @name s 
                             | s <- @allMetaVariables
                             , s `notElem` (map (show . fst) @typerule.conclusionAllVariables)
+                            ] ++
+                            [ DuplicatedMetaVariablesPremise @name x  
+                            | x:_ <- findDuplicates @allMetaVariables
+                            ] ++
+                            [ DuplicatedMetaVariablesConclusion @name x  
+                            | let strings = map (show . fst) @typerule.conclusionAllVariables
+                            , x:_ <- findDuplicates (filter (`elem` @allMetaVariables) strings)
+                            ] ++
+                            [ DuplicatedMetaVariableConstraints @name (show x) 
+                            | x:_ <- findDuplicates @statements.metaVariableConstraintNames
                             ]
-           . warnings     = []
+           . warnings     = case @constraintsNotExplicit of 
+                              [] -> []
+                              xs -> [ MetaVariableConstraintsNotExplicit @name xs ] 
 
            -- Solve the constraint set.           
-           . (_, substitution, solveErrors, _) = solveGreedy (length @uniqueTypevariables) [] (reverse @constraints.userConstraints)
+           . (_, substitution, solveErrors, _) = solveGreedy (length @uniqueTypevariables) [] (reverse @statements.userConstraints)
                                    
            . soundnessErrors = 
                 if not (null @staticErrors)
@@ -86,6 +99,11 @@ SEM Expression
 ATTR TypeRule  [ | | conclusionAllVariables : {[(Name,Entity)]} ]
 SEM TypeRule | TypeRule lhs . conclusionAllVariables = @conclusion.allVariables
 
+SEM TypingStrategy 
+  | TypingStrategy  
+       loc . allImportedVariables = keysFM (typeEnvironment   @lhs.importEnvironment) ++
+                                    keysFM (valueConstructors @lhs.importEnvironment)
+
 --
 
 ATTR TypeRule  [ | | conclusionExpression:Expression ]
@@ -94,11 +112,12 @@ ATTR Judgement [ | | theExpression:Expression ]
 SEM TypeRule  | TypeRule   lhs . conclusionExpression = @conclusion.theExpression           
 SEM Judgement | Judgement  lhs . theExpression = @expression.self
 
-SEM TypingStrategy 
-  | TypingStrategy  
-       loc . allMetaVariables     = map fst @typerule.simpleJudgements 
-           . allImportedVariables = keysFM (typeEnvironment   @lhs.importEnvironment) ++
-                                    keysFM (valueConstructors @lhs.importEnvironment)
-
 -- prevent AG-warnings
 SEM TypingStrategies | Cons  loc . importEnvironment = undefined
+
+{
+findDuplicates :: Ord a => [a] -> [[a]]
+findDuplicates = filter (not . isSingleton) . group . sort
+   where isSingleton [_] = True
+         isSingleton _   = False
+}

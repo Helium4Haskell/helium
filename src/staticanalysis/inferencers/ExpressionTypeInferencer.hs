@@ -3,7 +3,7 @@ module ExpressionTypeInferencer (expressionTypeInferencer) where
 import TypeInferencing (sem_Module)
 import ImportEnvironment
 import Strategy (algW)
-import Messages
+import TypeErrors
 import Types
 import FiniteMap
 import UHA_Utils (noRange, nameFromString)

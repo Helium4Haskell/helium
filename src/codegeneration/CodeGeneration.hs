@@ -51,13 +51,13 @@ interpreterMain = "interpreter_main"
 -- The interpreter_main has te be wrapped inside unsafePerformIO etcetera, too
 -- We can't just call it main because we'll get import clashes.  Sigh!
 
-insertedMain :: ImportEnvironment -> CoreDecl
-insertedMain importEnv =
+insertedMain :: TypeEnvironment -> CoreDecl
+insertedMain toplevelTypes =
     let maybeWrapMainAndType = 
-            case lookupFM typeEnv (Name_Identifier noRange [] "main")  of
+            case lookupFM toplevelTypes (Name_Identifier noRange [] "main")  of
                 Just t -> Just ("main", t)
                 Nothing ->
-                    case lookupFM typeEnv (Name_Identifier noRange [] interpreterMain) of
+                    case lookupFM toplevelTypes (Name_Identifier noRange [] interpreterMain) of
                         Just t -> Just (interpreterMain, t)
                         Nothing -> Nothing
     in
@@ -78,8 +78,7 @@ insertedMain importEnv =
                     where                        
                         tp = unsafeInstantiate tpScheme
     where
-        unsafePIO = var "primUnsafePerformIO"
-        typeEnv = typeEnvironment importEnv        
+        unsafePIO = var "primUnsafePerformIO"    
                 
 
 nameFromId :: Id -> Name
@@ -1847,6 +1846,7 @@ sem_MaybeNames_Nothing  =
 -- semantic domain
 type T_Module = (ImportEnvironment) ->
                 ( [Core.CoreDecl] ) ->
+                (TypeEnvironment) ->
                 (( Core.CoreModule ))
 -- cata
 sem_Module :: (Module) ->
@@ -1858,7 +1858,7 @@ sem_Module_Module :: (T_Range) ->
                      (T_MaybeExports) ->
                      (T_Body) ->
                      (T_Module)
-sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnv) (_lhs_indirectionDecls) =
+sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnv) (_lhs_indirectionDecls) (_lhs_toplevelTypes) =
     let (_self) =
             Module_Module _range_self _name_self _exports_self _body_self
         (_module_) =
@@ -1885,7 +1885,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnv) (_lhs_ind
         ( _body_decls,_body_self) =
             (_body (_lhs_importEnv))
     in  (_module_ { Module.moduleDecls =
-              insertedMain _lhs_importEnv : Module.moduleDecls _module_ }
+              insertedMain _lhs_toplevelTypes : Module.moduleDecls _module_ }
         )
 -- Name --------------------------------------------------------
 -- semantic domain

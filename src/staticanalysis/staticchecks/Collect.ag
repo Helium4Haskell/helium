@@ -77,7 +77,7 @@ ATTR Body Declarations Declaration [ | operatorFixities : {[(Name,(Int,Assoc))]}
 SEM Module | Module   body . operatorFixities = [] 
 
 SEM Declaration
-  | Fixity   lhs . operatorFixities = [ (name,(0,AssocNone)) | name <- @operators.self ] ++ @lhs.operatorFixities
+  | Fixity   lhs . operatorFixities = [ (name,(9,AssocNone)) | name <- @operators.self ] ++ @lhs.operatorFixities
 
 -------------------------------------------
 -- 5) Distributing Value Constructors

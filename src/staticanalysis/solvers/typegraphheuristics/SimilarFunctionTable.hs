@@ -52,4 +52,6 @@ similarFunctionTable =
      , "showUnit", "showTuple2", "showTuple3", "showTuple4", "showTuple5"
      , "showTuple6", "showTuple7", "showTuple8", "showTuple9", "showTuple10"
      ]
+     -- Java string concat
+   , [ "+", "++" ]
    ]

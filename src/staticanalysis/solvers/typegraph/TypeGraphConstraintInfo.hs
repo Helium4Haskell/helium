@@ -13,8 +13,8 @@ import UHA_Syntax
 import Types
 import ConstraintInfo
 import OneLiner
+import TypeErrors
 import Messages
-
 
 type InfoSource = (InfoNT,InfoAlt,String) 
            
@@ -40,7 +40,9 @@ class (Show constraintinfo,ConstraintInfo constraintinfo) =>
    getInfoSource           :: constraintinfo -> InfoSource
    getPosition             :: constraintinfo -> Maybe Int
    getTrustFactor          :: constraintinfo -> Maybe Int 
+   getConstraintPhaseNumber :: constraintinfo -> Maybe Int 
    isFolkloreConstraint    :: constraintinfo -> Bool
+   isExplicitTypedBinding  :: constraintinfo -> Bool
    isTupleEdge             :: constraintinfo -> Bool
    maybeApplicationEdge    :: constraintinfo -> Maybe (Bool,[(Tree,Tp)])
    maybeImportedFunction   :: constraintinfo -> Maybe Name
@@ -48,17 +50,22 @@ class (Show constraintinfo,ConstraintInfo constraintinfo) =>
    maybeLiteral            :: constraintinfo -> Maybe Literal
    maybeNegation           :: constraintinfo -> Maybe Int
    getSize                 :: constraintinfo -> Maybe Int
-   isExplicitTypedBinding  :: constraintinfo -> Bool
    isNegationResult        :: constraintinfo -> Bool
    maybeFunctionBinding    :: constraintinfo -> Maybe Int   
    maybeOriginalTypeScheme :: constraintinfo -> Maybe (Bool,TpScheme)
    setFolkloreConstraint   :: constraintinfo -> constraintinfo 
    setNewTypeError         :: TypeError -> constraintinfo -> constraintinfo
-   setNewHint              :: Hint -> constraintinfo -> constraintinfo
+   setNewHint              :: TypeErrorInfo -> constraintinfo -> constraintinfo
    makeTypeError           :: constraintinfo -> TypeError
   
+-- not a nice solution!  
 makeTypeErrorForTerm :: TypeGraphConstraintInfo constraintinfo => Tree -> (Tp,Tp) -> constraintinfo -> TypeError
-makeTypeErrorForTerm oneLiner (t1,t2) cinfo = 
-   let newsources = concatMap (\sd -> case sd of SD_Term _ -> [] ; _ -> [sd]) oldsources ++ [SD_Term oneLiner]
-       TypeError fc lc ra oldsources oldpair h = makeTypeError cinfo
-   in TypeError fc lc ra newsources (Nothing,t1,t2) h  
+makeTypeErrorForTerm termOneLiner (t1, t2) cinfo = 
+   case makeTypeError cinfo of
+   
+      TypeError range oneliner (UnificationErrorTable sources _ _) infos -> 
+         let newSources = filter onlyExpression sources ++ [("Term", termOneLiner)]
+             onlyExpression = ("Expression"==) . fst
+         in TypeError range oneliner (UnificationErrorTable newSources (Left t1) (Left t2)) infos 
+         
+      typeError -> typeError

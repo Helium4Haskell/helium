@@ -1,7 +1,7 @@
 module Compile where
 
 import Args(Option(..))
-import Messages(sortAndShow,Error,TypeError,Warning)
+import HeliumMessages(sortAndShowMessages)
 import ImportEnvironment
 import CoreToImportEnv(getImportEnvironment)
 import Strategy(algM, algW)
@@ -34,7 +34,7 @@ import CoreRemoveDead( coreRemoveDead ) -- remove dead (import) declarations
 -- Logger
 import Logger
 import Utils(refToCurrentFileName, refToCurrentImported)
-import Messages(errorsLogCode)
+import StaticErrors(errorsLogCode)
 
 -- Utilities
 import Utils(splitFilePath)
@@ -121,7 +121,7 @@ compile fullName options doneModules =
                     
         unless (null errors) $           
            do
-              putStr . unlines . sortAndShow $ errors
+              putStr . sortAndShowMessages $ errors
               unless (NoLogging `elem` options) $ logger ("S"++errorsLogCode errors) Nothing
               let number = length errors
               when (Interpreter `notElem` options) $ 
@@ -172,8 +172,8 @@ compile fullName options doneModules =
         when (DumpTypeDebug `elem` options) debugTypes
 
         unless (null typeErrors) $
-           do 
-              putStr . unlines . ("":) . sortAndShow . take maximumNumberOfTypeErrors . reverse $ typeErrors
+           do             
+              putStr . ("\n"++) . sortAndShowMessages . take maximumNumberOfTypeErrors . reverse $ typeErrors
               unless (NoLogging `elem` options) $ logger "T" (Just (doneModules,fullName))
               let number = length typeErrors
               when (number > maximumNumberOfTypeErrors) $ putStrLn "(...)\n" 
@@ -193,7 +193,7 @@ compile fullName options doneModules =
         let warnings = warnings1 ++ warnings2
             
         unless (NoWarnings `elem` options) $
-            putStr . unlines . sortAndShow $ warnings
+            putStr . sortAndShowMessages $ warnings
                            
         -- Phase 4: Desugaring
         enterNewPhase "Desugaring" options
@@ -202,6 +202,7 @@ compile fullName options doneModules =
                          CodeGeneration.sem_Module module_ 
                             finalEnvironment
                             indirectionDecls
+                            toplevelTypes
                              
             strippedCoreModule = coreRemoveDead coreModule
 

@@ -8,7 +8,7 @@ DATA TypingStrategy
    | TypingStrategy       
         name        : String
         typerule    : TypeRule
-        constraints : UserConstraints
+        statements  : UserStatements
         
 DATA TypeRule 
    | TypeRule 
@@ -27,10 +27,14 @@ DATA SimpleJudgement
         name        : Name
         type        : Type
         
-TYPE UserConstraints = [UserConstraint]
+TYPE UserStatements = [UserStatement]
 
-DATA UserConstraint 
-   | UserConstraint
+DATA UserStatement 
+   | Constraint
         leftType    : Type
         rightType   : Type
         message     : String
+   | MetaVariableConstraints        
+        name        : Name
+   | Phase 
+        phase       : Int

@@ -133,6 +133,10 @@ instance Substitutable a => Substitutable (Maybe a) where
    sub |-> ma = maybe Nothing (Just . (sub |->)) ma
    ftv     ma = maybe [] ftv ma
 
+instance (Substitutable a, Substitutable b) => Substitutable (Either a b) where
+   (|->) sub = either (Left . (sub |->)) (Right . (sub |->))
+   ftv       = either ftv ftv
+
 instance (Substitutable a, Substitutable b) => Substitutable (a,b) where
    sub |-> (a,b) = (sub |-> a, sub |-> b)
    ftv     (a,b) = ftv a `union` ftv b

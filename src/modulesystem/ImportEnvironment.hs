@@ -89,24 +89,22 @@ combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1) (ImportEnvi
       (vcs1 `plusFM` vcs2)
       (ot1 ++ ot2)
       
-{-
 instance Show ImportEnvironment where
-   show (ImportEnvironment tcs tss te vcs) = 
-      let tclist = let datas    = map f . filter p . toList $ tcs
+   show (ImportEnvironment tcs tss te vcs ot) = 
+      let tclist = let datas    = map f . filter p . fmToList $ tcs
                          where p = (`notElem` syns) . fst
                                f (n,i) = "   data "++show n++concatMap (\t -> " " ++ [t])  (take i ['a'..])
-                       syns = [ n | (n,i,f) <- tss ]
-                       synonyms = map (\(n,i,f) -> "   type "++show n++" "++pretty i f) tss
+                       syns = [ n | (n,(i,f)) <- fmToList tss ]
+                       synonyms = map (\(n,(i,f)) -> "   type "++show n++" "++pretty i f) (fmToList tss)
                          where pretty i f = let list = take i [ TCon [c] | c <- ['a'..]]
                                             in concatMap (\t -> show t ++ " ") list ++ "= " ++ show (f list)
                    in case datas ++ synonyms of 
                          [] -> []
-                         xs -> "Type Constructors:" : xs
-          vclist = case toList vcs of
+                         xs -> "Type constructors:" : xs
+          vclist = case fmToList vcs of
                       [] -> []
-                      xs -> "Constructors:" : map (\(n,ts) -> "   " ++ show n ++ " :: "++show ts) xs 
-          telist = case toList te of
+                      xs -> "Value constructors:" : map (\(n,ts) -> "   " ++ show n ++ " :: "++show ts) xs 
+          telist = case fmToList te of
                       [] -> []
-                      xs -> "Types:" : map (\(n,ts) -> "   " ++ show n ++ " :: "++show ts) xs 
+                      xs -> "Functions:" : map (\(n,ts) -> "   " ++ show n ++ " :: "++show ts) xs 
       in unlines (concat [tclist,vclist,telist])
-      -}

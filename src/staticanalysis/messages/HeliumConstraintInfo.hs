@@ -4,23 +4,26 @@ import ConstraintTree
 import UHA_Syntax
 import OneLiner
 import Types
+import TypeErrors
 import Messages
 import TypeGraphConstraintInfo
 import ConstraintInfo
 import Constraints
 import List
 
+{-
 instance Substitutable HeliumConstraintInfo where
    sub |-> cinfo = let f (WithTypeError te) = WithTypeError (sub |-> te)
                        f p = p
                    in cinfo {typepair = sub |-> typepair cinfo , properties = map f (properties cinfo)}
    ftv cinfo = ftv (typepair cinfo) `union` ftv [ te | WithTypeError te <- properties cinfo ]
+-}
 
 data HeliumConstraintInfo = 
    CInfo { info       :: InfoSource
          , location   :: String
          , errorrange :: Range
-         , sources    :: SourceDocs
+         , sources    :: [(String, Tree)]
          , typepair   :: (Tp,Tp)
          , properties :: Properties          
          }
@@ -28,9 +31,9 @@ data HeliumConstraintInfo =
 type Properties = [Property]
 data Property   = FolkloreConstraint
                 | PositionInTreeWalk Int
+                | ConstraintPhaseNumber Int
                 | HighlyTrusted
                 | SuperHighlyTrusted
-                | UnifierTypeVariable Int
                 | IsImported Name
                 | IsLiteral Literal
                 | ApplicationEdge Bool{-is binary-} [(Tree,Tp)]{-info about terms-}
@@ -42,11 +45,8 @@ data Property   = FolkloreConstraint
                 | Negation Int
                 | NegationResult
                 | WithTypeError TypeError    
-                | WithHint Hint            
-   
-instance Eq   Literal where _ == _ = True -- NEE!
-instance Show Literal where show _ = "<literal>"
-
+                | WithHint TypeErrorInfo
+  
 instance Show HeliumConstraintInfo where
    show = show . getInfoSource
 
@@ -55,24 +55,10 @@ type ConstraintSets = ConstraintTrees HeliumConstraintInfo
 
 instance ConstraintInfo HeliumConstraintInfo where                                  
                                    
-   setOriginalTypeScheme scheme         = addProperty (OriginalTypeScheme scheme)           
+   setOriginalTypeScheme scheme   = addProperty (OriginalTypeScheme scheme)           
+   setConstraintPhaseNumber phase = addProperty (ConstraintPhaseNumber phase)
     
 instance TypeGraphConstraintInfo HeliumConstraintInfo where
-
-
-   makeTypeError cinfo =
-    case [ te | WithTypeError te <- properties cinfo ] of
-      [ te ] -> setHint hint te
-      _      -> TypeError (isFolkloreConstraint cinfo) 
-                          (location cinfo) 
-                          (errorrange cinfo) 
-                          (sources cinfo) 
-                          (maybeOriginalTypeScheme cinfo,t1,t2)
-                          hint
-    where (t1,t2) = typepair cinfo 
-          hint = case [ h | WithHint h <- properties cinfo ] of 
-                    hint:_ -> hint
-                    _      -> NoHint
 
    getInfoSource = info
    setNewTypeError typeError = addProperty (WithTypeError typeError)
@@ -80,6 +66,9 @@ instance TypeGraphConstraintInfo HeliumConstraintInfo where
    getPosition cinfo = case [ i | PositionInTreeWalk i <- properties cinfo ] of 
                          [ i ] -> Just i
                          _     -> Nothing
+   getConstraintPhaseNumber cinfo = case [ i | ConstraintPhaseNumber i <- properties cinfo ] of
+                                       [i] -> Just i
+                                       _   -> Nothing
    getTrustFactor cinfo | isSuperHighlyTrusted          = Just 10000
                         | isHighlyTrusted               = Just 10
                         | nt `elem` [ NTPattern
@@ -121,7 +110,26 @@ instance TypeGraphConstraintInfo HeliumConstraintInfo where
              t:_ -> Just (b,t)
         where b = not (x1 == NTExpression && x2 == AltTyped && x3 == "expression")
               (x1,x2,x3) = getInfoSource cinfo  
-   setFolkloreConstraint = addProperty FolkloreConstraint             
+   setFolkloreConstraint = addProperty FolkloreConstraint
+   
+
+   makeTypeError cinfo = 
+    let oneliner = MessageString ("Type error in " ++ location cinfo)
+        reason   = if isFolkloreConstraint cinfo 
+                     then "Expected type" 
+                     else "Does not match"
+        (t1, t2) = typepair cinfo
+        (msgtp1, msgtp2) = case maybeOriginalTypeScheme cinfo of 
+           Nothing     -> (Left t1, Left t2)
+           Just (b,ts) 
+                | b    -> (Right ts, Left t2)
+                | True -> (Left t2, Right ts)   
+        table    = UnificationErrorTable (sources cinfo) msgtp1 msgtp2
+        info =  [ hint | WithHint hint <- properties cinfo ] 
+             ++ [ IsFolkloreTypeError | isFolkloreConstraint cinfo ] 
+    in case [t | WithTypeError t <- properties cinfo] of
+         typeError : _ -> typeError
+         _             -> TypeError (errorrange cinfo) oneliner table info   
    
 addProperty :: Property -> HeliumConstraintInfo -> HeliumConstraintInfo
 addProperty property info = let old = properties info
@@ -132,5 +140,6 @@ setPosition i c = case c of
                     Equiv        a t1    t2 -> Equiv (f a) t1 t2
                     ImplInstance a t1 ms t2 -> ImplInstance (f' a) t1 ms t2
                     ExplInstance a t1    t2 -> ExplInstance (f' a) t1 t2
+                    _                       -> c
    where f info = addProperty (PositionInTreeWalk i) info
          f' a = \(t1,t2) -> f (a (t1,t2))

@@ -10,6 +10,8 @@ ATTR Module
 imports {
 import UHA_Syntax
 import Types
+import StaticErrors
+import Warnings
 import Messages
 import UHA_Utils
 import TopSort

@@ -46,23 +46,22 @@ SEM Module
            . inferredgamma = map (\(name,tp) -> (name,generalize (ftv (@substitution |-> @monos)) (@substitution |-> tp))) @body.namesWithoutTypeDef
            . (typeErrors,filteredBool)    
                   = let notGeneralEnoughErrors = 
-                           let f ((m,t),s2,info) = let m' = @substitution |-> m
-                                                       t' = @substitution |-> t
-                                                       s1 = generalize (ftv m') t'
-                                                   in NotGeneralEnough s1 s2 info
-                                                   
-                               p (NotGeneralEnough s1 s2 info) = 
-                                     not (genericInstanceOf @orderedTypeSynonyms s2 s1) 
-                                  && unifiableTypeSchemes   @orderedTypeSynonyms s1 s2
-                                  
-                           in filter p (map f @body.typeAnnotations)
+                           let f ((m,t),s2,(tree,range)) = 
+                                  let m' = @substitution |-> m
+                                      t' = @substitution |-> t
+                                      s1 = generalize (ftv m') t'
+                                 in if not (genericInstanceOf @orderedTypeSynonyms s2 s1) &&  
+                                       unifiableTypeSchemes   @orderedTypeSynonyms s1 s2
+                                    then [makeNotGeneralEnoughTypeError range tree s1 s2]
+                                    else []                                                                  
+                           in concatMap f @body.typeAnnotations
                         
                         op typeError (list,bool) = -- extra check: are the reported types still not unifiable? 
                                                    case checkTypeError @orderedTypeSynonyms typeError of
                                                       Just t  -> (t:list,bool) 
                                                       Nothing -> (list,True)
                                                                               
-                    in foldr op (notGeneralEnoughErrors,False) (map makeTypeError @solveErrors)
+                    in foldr op (notGeneralEnoughErrors,False) (map ((@substitution |->) . makeTypeError) @solveErrors)
             
            . toplevelTypes = addListToFM @body.typeSignatures @inferredgamma
            
@@ -717,7 +716,7 @@ ATTR Declarations Expression MaybeDeclarations RightHandSide Statement Statement
      RecordExpressionBindings RecordExpressionBinding Qualifier Qualifiers MaybeExpression
      GuardedExpression FunctionBinding FunctionBindings GuardedExpressions
      Expressions Declaration Alternative Alternatives Body
-     [ | typeAnnotations:{[((Tps,Tp),TpScheme,(Tree,Range))]} | ]
+     [ | typeAnnotations : TypeAnnotations | ]
 
 SEM Module
   | Module   body . typeAnnotations = []

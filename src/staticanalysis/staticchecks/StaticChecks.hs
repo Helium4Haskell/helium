@@ -3,6 +3,8 @@ module StaticChecks where
 
 import UHA_Syntax
 import Types
+import StaticErrors
+import Warnings
 import Messages
 import UHA_Utils
 import TopSort
@@ -647,7 +649,7 @@ sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) (_lhs_allType
             (_priority )
         ( _operators_self) =
             (_operators )
-    in  (_lhs_collectTypeConstructors,_lhs_collectTypeSynonyms,_lhs_collectValueConstructors,[],_lhs_kindErrors,_lhs_miscerrors,[ (name,(0,AssocNone)) | name <- _operators_self ] ++ _lhs_operatorFixities,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,[],_lhs_warnings)
+    in  (_lhs_collectTypeConstructors,_lhs_collectTypeSynonyms,_lhs_collectValueConstructors,[],_lhs_kindErrors,_lhs_miscerrors,[ (name,(9,AssocNone)) | name <- _operators_self ] ++ _lhs_operatorFixities,Nothing,_self,_lhs_suspiciousFBs,_lhs_typeSignatures,[],_lhs_warnings)
 sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)

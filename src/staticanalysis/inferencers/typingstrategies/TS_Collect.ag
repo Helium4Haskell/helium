@@ -1,6 +1,6 @@
 -- Collect all type variables 
 
-ATTR UserConstraint UserConstraints TypeRule Judgement SimpleJudgement SimpleJudgements 
+ATTR UserStatement UserStatements TypeRule Judgement SimpleJudgement SimpleJudgements 
      Type Types [ | | typevariables USE { ++ } { [] } : Names ]
 
 SEM Type
@@ -8,21 +8,21 @@ SEM Type
 
 SEM TypingStrategy
   | TypingStrategy
-       loc . uniqueTypevariables = nub (@typerule.typevariables ++ @constraints.typevariables)
+       loc . uniqueTypevariables = nub (@typerule.typevariables ++ @statements.typevariables)
   
-ATTR UserConstraint UserConstraints TypeRule Judgement SimpleJudgement SimpleJudgements 
+ATTR UserStatement UserStatements TypeRule Judgement SimpleJudgement SimpleJudgements 
      [ nameMap : {[(Name,Tp)]} | | ]
      
 -- Construct type constraints from the constraint-set     
 
-ATTR UserConstraint UserConstraints [ | userConstraints : {Constraints HeliumConstraintInfo} | ]
+ATTR UserStatement UserStatements [ | userConstraints : {Constraints HeliumConstraintInfo} | ]
 
 SEM TypingStrategy 
   | TypingStrategy
-       constraints . userConstraints = []
+       statements . userConstraints = []
        
-SEM UserConstraint
-  | UserConstraint 
+SEM UserStatement
+  | Constraint 
        lhs . userConstraints = @newConstraint : @lhs.userConstraints
        loc . newConstraint   = (makeTpFromType @lhs.nameMap @leftType.self .==. makeTpFromType @lhs.nameMap @rightType.self) @cinfo
            . cinfo = \tppair ->
@@ -31,7 +31,7 @@ SEM UserConstraint
                            , errorrange = noRange
                            , sources    = [ ]
                            , typepair   = tppair
-                           , properties = [ WithHint (Because @message)] 
+                           , properties = [ ] -- WithHint (Because @message)] 
                            }
 
 -- Collect judgements in typerule
@@ -51,3 +51,20 @@ ATTR Judgement TypeRule [ | | conclusionType : Tp ]
 
 SEM Judgement
   | Judgement   lhs . conclusionType = makeTpFromType @lhs.nameMap @type.self
+
+-- Collecting MetaVariableConstraints
+
+ATTR UserStatements UserStatement [ | metaVariableConstraintNames : Names | ]
+
+SEM TypingStrategy
+  | TypingStrategy
+       statements . metaVariableConstraintNames = []
+       
+SEM UserStatement    
+  | MetaVariableConstraints
+       lhs . metaVariableConstraintNames = @name.self : @lhs.metaVariableConstraintNames
+       
+SEM TypingStrategy 
+  | TypingStrategy  
+       loc . allMetaVariables     = map fst @typerule.simpleJudgements 
+           . constraintsNotExplicit = filter (`notElem` (map show @statements.metaVariableConstraintNames)) @allMetaVariables       

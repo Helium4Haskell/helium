@@ -104,16 +104,18 @@ representativesOfAllParents i = useSolver (rec [i] []) where
                                     then rec is result groups
                                     else let ps = [ i | (_,(_,i):_) <- cliques eqc ]
                                          in rec (ps++is) (representative:result) groups    
--}
-                              
 -- Note that the domain of the substitution that is returned ONLY contains
 -- the type variables that are also present in the (initial) constraint set.
 -- This makes the final substitution smaller, and therefore more efficient.
+
+-}
+                              
 solveEquivalenceGroups :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => RunnableSolver info
 solveEquivalenceGroups unique = runSolver buildSubstitution unique where
 
    buildSubstitution :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => SolveState EquivalenceGroups info Subst 
-   buildSubstitution = do bintreesubst <- rec (0,unique-1)
+   buildSubstitution = do newUnique <- getUnique
+                          bintreesubst <- rec (0, newUnique - 1)
                           return (Right bintreesubst)
    
    rec (a,b) 

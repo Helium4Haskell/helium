@@ -10,6 +10,7 @@ import TypeConversion
 import List
 import UHA_Utils (noRange, nameFromString)
 import Messages
+import TypeErrors
 import TS_Messages
 import ImportEnvironment
 import SolveGreedy
@@ -25,6 +26,11 @@ analyseTypingStrategies list ie =
 
 analyseTypingStrategy :: TypingStrategy -> ImportEnvironment -> (TS_Errors, TS_Warnings)
 analyseTypingStrategy = sem_TypingStrategy
+
+findDuplicates :: Ord a => [a] -> [[a]]
+findDuplicates = filter (not . isSingleton) . group . sort
+   where isSingleton [_] = True
+         isSingleton _   = False
 -- Alternative -------------------------------------------------
 -- semantic domain
 type T_Alternative = ((Alternative))
@@ -2448,13 +2454,13 @@ type T_TypingStrategy = (ImportEnvironment) ->
 -- cata
 sem_TypingStrategy :: (TypingStrategy) ->
                       (T_TypingStrategy)
-sem_TypingStrategy ((TypingStrategy_TypingStrategy (_name) (_typerule) (_constraints))) =
-    (sem_TypingStrategy_TypingStrategy (_name) ((sem_TypeRule (_typerule))) ((sem_UserConstraints (_constraints))))
+sem_TypingStrategy ((TypingStrategy_TypingStrategy (_name) (_typerule) (_statements))) =
+    (sem_TypingStrategy_TypingStrategy (_name) ((sem_TypeRule (_typerule))) ((sem_UserStatements (_statements))))
 sem_TypingStrategy_TypingStrategy :: (String) ->
                                      (T_TypeRule) ->
-                                     (T_UserConstraints) ->
+                                     (T_UserStatements) ->
                                      (T_TypingStrategy)
-sem_TypingStrategy_TypingStrategy (_name) (_typerule) (_constraints) (_lhs_importEnvironment) =
+sem_TypingStrategy_TypingStrategy (_name) (_typerule) (_statements) (_lhs_importEnvironment) =
     let (_nameMap) =
             zip _uniqueTypevariables (map TVar [0..])
         (_errors) =
@@ -2468,11 +2474,23 @@ sem_TypingStrategy_TypingStrategy (_name) (_typerule) (_constraints) (_lhs_impor
             [ UnusedMetaVariable _name s
             | s <- _allMetaVariables
             , s `notElem` (map (show . fst) _typerule_conclusionAllVariables)
+            ] ++
+            [ DuplicatedMetaVariablesPremise _name x
+            | x:_ <- findDuplicates _allMetaVariables
+            ] ++
+            [ DuplicatedMetaVariablesConclusion _name x
+            | let strings = map (show . fst) _typerule_conclusionAllVariables
+            , x:_ <- findDuplicates (filter (`elem` _allMetaVariables) strings)
+            ] ++
+            [ DuplicatedMetaVariableConstraints _name (show x)
+            | x:_ <- findDuplicates _statements_metaVariableConstraintNames
             ]
         (_warnings) =
-            []
+            case _constraintsNotExplicit of
+              [] -> []
+              xs -> [ MetaVariableConstraintsNotExplicit _name xs ]
         ((_,_substitution,_solveErrors,_)) =
-            solveGreedy (length _uniqueTypevariables) [] (reverse _constraints_userConstraints)
+            solveGreedy (length _uniqueTypevariables) [] (reverse _statements_userConstraints)
         (_soundnessErrors) =
             if not (null _staticErrors)
               then []
@@ -2494,33 +2512,40 @@ sem_TypingStrategy_TypingStrategy (_name) (_typerule) (_constraints) (_lhs_impor
                                 genericInstanceOf synonyms constraintsTpScheme inferredTpScheme
                                   then []
                                   else [ Soundness _name inferredTpScheme constraintsTpScheme ]
-        (_allMetaVariables) =
-            map fst _typerule_simpleJudgements
         (_allImportedVariables) =
             keysFM (typeEnvironment   _lhs_importEnvironment) ++
             keysFM (valueConstructors _lhs_importEnvironment)
         (_uniqueTypevariables) =
-            nub (_typerule_typevariables ++ _constraints_typevariables)
+            nub (_typerule_typevariables ++ _statements_typevariables)
+        (_allMetaVariables) =
+            map fst _typerule_simpleJudgements
+        (_constraintsNotExplicit) =
+            filter (`notElem` (map show _statements_metaVariableConstraintNames)) _allMetaVariables
         ( _typerule_conclusionAllVariables,_typerule_conclusionExpression,_typerule_conclusionType,_typerule_simpleJudgements,_typerule_typevariables) =
             (_typerule (_nameMap) ([]))
-        ( _constraints_typevariables,_constraints_userConstraints) =
-            (_constraints (_nameMap) ([]))
+        ( _statements_metaVariableConstraintNames,_statements_typevariables,_statements_userConstraints) =
+            (_statements ([]) (_nameMap) ([]))
     in  (_errors,_warnings)
--- UserConstraint ----------------------------------------------
+-- UserStatement -----------------------------------------------
 -- semantic domain
-type T_UserConstraint = ([(Name,Tp)]) ->
-                        (Constraints HeliumConstraintInfo) ->
-                        ((Names),(Constraints HeliumConstraintInfo))
+type T_UserStatement = (Names) ->
+                       ([(Name,Tp)]) ->
+                       (Constraints HeliumConstraintInfo) ->
+                       ((Names),(Names),(Constraints HeliumConstraintInfo))
 -- cata
-sem_UserConstraint :: (UserConstraint) ->
-                      (T_UserConstraint)
-sem_UserConstraint ((UserConstraint_UserConstraint (_leftType) (_rightType) (_message))) =
-    (sem_UserConstraint_UserConstraint ((sem_Type (_leftType))) ((sem_Type (_rightType))) (_message))
-sem_UserConstraint_UserConstraint :: (T_Type) ->
-                                     (T_Type) ->
-                                     (String) ->
-                                     (T_UserConstraint)
-sem_UserConstraint_UserConstraint (_leftType) (_rightType) (_message) (_lhs_nameMap) (_lhs_userConstraints) =
+sem_UserStatement :: (UserStatement) ->
+                     (T_UserStatement)
+sem_UserStatement ((UserStatement_Constraint (_leftType) (_rightType) (_message))) =
+    (sem_UserStatement_Constraint ((sem_Type (_leftType))) ((sem_Type (_rightType))) (_message))
+sem_UserStatement ((UserStatement_MetaVariableConstraints (_name))) =
+    (sem_UserStatement_MetaVariableConstraints ((sem_Name (_name))))
+sem_UserStatement ((UserStatement_Phase (_phase))) =
+    (sem_UserStatement_Phase (_phase))
+sem_UserStatement_Constraint :: (T_Type) ->
+                                (T_Type) ->
+                                (String) ->
+                                (T_UserStatement)
+sem_UserStatement_Constraint (_leftType) (_rightType) (_message) (_lhs_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_userConstraints) =
     let (_newConstraint) =
             (makeTpFromType _lhs_nameMap _leftType_self .==. makeTpFromType _lhs_nameMap _rightType_self) _cinfo
         (_cinfo) =
@@ -2530,34 +2555,46 @@ sem_UserConstraint_UserConstraint (_leftType) (_rightType) (_message) (_lhs_name
                   , errorrange = noRange
                   , sources    = [ ]
                   , typepair   = tppair
-                  , properties = [ WithHint (Because _message)]
+                  , properties = [ ]
                   }
         ( _leftType_self,_leftType_typevariables) =
             (_leftType )
         ( _rightType_self,_rightType_typevariables) =
             (_rightType )
-    in  (_leftType_typevariables  ++  _rightType_typevariables,_newConstraint : _lhs_userConstraints)
--- UserConstraints ---------------------------------------------
--- semantic domain
-type T_UserConstraints = ([(Name,Tp)]) ->
-                         (Constraints HeliumConstraintInfo) ->
-                         ((Names),(Constraints HeliumConstraintInfo))
--- cata
-sem_UserConstraints :: (UserConstraints) ->
-                       (T_UserConstraints)
-sem_UserConstraints (list) =
-    (foldr (sem_UserConstraints_Cons) (sem_UserConstraints_Nil) ((map sem_UserConstraint list)))
-sem_UserConstraints_Cons :: (T_UserConstraint) ->
-                            (T_UserConstraints) ->
-                            (T_UserConstraints)
-sem_UserConstraints_Cons (_hd) (_tl) (_lhs_nameMap) (_lhs_userConstraints) =
-    let ( _hd_typevariables,_hd_userConstraints) =
-            (_hd (_lhs_nameMap) (_lhs_userConstraints))
-        ( _tl_typevariables,_tl_userConstraints) =
-            (_tl (_lhs_nameMap) (_hd_userConstraints))
-    in  (_hd_typevariables  ++  _tl_typevariables,_tl_userConstraints)
-sem_UserConstraints_Nil :: (T_UserConstraints)
-sem_UserConstraints_Nil (_lhs_nameMap) (_lhs_userConstraints) =
+    in  (_lhs_metaVariableConstraintNames,_leftType_typevariables  ++  _rightType_typevariables,_newConstraint : _lhs_userConstraints)
+sem_UserStatement_MetaVariableConstraints :: (T_Name) ->
+                                             (T_UserStatement)
+sem_UserStatement_MetaVariableConstraints (_name) (_lhs_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_userConstraints) =
+    let ( _name_self) =
+            (_name )
+    in  (_name_self : _lhs_metaVariableConstraintNames,[],_lhs_userConstraints)
+sem_UserStatement_Phase :: (Int) ->
+                           (T_UserStatement)
+sem_UserStatement_Phase (_phase) (_lhs_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_userConstraints) =
     let 
-    in  ([],_lhs_userConstraints)
+    in  (_lhs_metaVariableConstraintNames,[],_lhs_userConstraints)
+-- UserStatements ----------------------------------------------
+-- semantic domain
+type T_UserStatements = (Names) ->
+                        ([(Name,Tp)]) ->
+                        (Constraints HeliumConstraintInfo) ->
+                        ((Names),(Names),(Constraints HeliumConstraintInfo))
+-- cata
+sem_UserStatements :: (UserStatements) ->
+                      (T_UserStatements)
+sem_UserStatements (list) =
+    (foldr (sem_UserStatements_Cons) (sem_UserStatements_Nil) ((map sem_UserStatement list)))
+sem_UserStatements_Cons :: (T_UserStatement) ->
+                           (T_UserStatements) ->
+                           (T_UserStatements)
+sem_UserStatements_Cons (_hd) (_tl) (_lhs_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_userConstraints) =
+    let ( _hd_metaVariableConstraintNames,_hd_typevariables,_hd_userConstraints) =
+            (_hd (_lhs_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_userConstraints))
+        ( _tl_metaVariableConstraintNames,_tl_typevariables,_tl_userConstraints) =
+            (_tl (_hd_metaVariableConstraintNames) (_lhs_nameMap) (_hd_userConstraints))
+    in  (_tl_metaVariableConstraintNames,_hd_typevariables  ++  _tl_typevariables,_tl_userConstraints)
+sem_UserStatements_Nil :: (T_UserStatements)
+sem_UserStatements_Nil (_lhs_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_userConstraints) =
+    let 
+    in  (_lhs_metaVariableConstraintNames,[],_lhs_userConstraints)
 

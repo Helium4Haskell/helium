@@ -15,6 +15,8 @@ import ConstraintTree
 import Strategy
 -- messages
 import Messages
+import TypeErrors
+import Warnings
 -- solvers
 import SolveConstraints 
 import SolveEquivalenceGroups  ( solveEquivalenceGroups )
@@ -125,11 +127,11 @@ cinfoBindingGroupExplicitTypedBinding =
   CInfo { info       = (NTBindingGroup,AltBindingGroup,"explicit typed binding, "++show name)
         , location   = "explicitly typed binding"
         , errorrange = getNameRange name
-        , sources    = [ SD_Term (Text (show name))]
+        , sources    = [ sourceTerm (Text (show name))]
         , typepair   = tppair
-        , properties = [ {- FolkloreConstraint
-                       , -} HighlyTrusted
-                       , ExplicitTypedBinding
+        , properties = [ {- FolkloreConstraint -}
+                         ExplicitTypedBinding
+                       , HighlyTrusted
                        , Size 1 ]  
         }
 
@@ -138,10 +140,9 @@ variableBindingCInfo (infoNT,infoAlt) var tppair =
   CInfo { info       = (infoNT,infoAlt,show var) 
         , location   = "variable"
         , errorrange = getNameRange var
-        , sources    = [ SD_Expr (Text (show var)) ]
+        , sources    = [ sourceExpression (Text (show var)) ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
-                       , UnifierTypeVariable (tpToInt (fst tppair))
                        , Size 1 ]  
         }
         
@@ -154,7 +155,7 @@ cinfoBindingGroupImplicit =
   CInfo { info       = (NTBindingGroup,AltBindingGroup,"implicit, "++show var)
         , location   = "variable"
         , errorrange = getNameRange var
-        , sources    = [ SD_Expr (Text (show var)) ]
+        , sources    = [ sourceExpression (Text (show var)) ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
@@ -167,10 +168,9 @@ cinfoBindingGroupExplicit =
   CInfo { info       = (NTBindingGroup,AltBindingGroup,"explicit, "++show var)
         , location   = "variable"
         , errorrange = getNameRange var
-        , sources    = [ SD_Expr (Text (show var)) ]
+        , sources    = [ sourceExpression (Text (show var)) ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
-                       , UnifierTypeVariable (tpToInt (fst tppair))
                        , Size 1 ]  
         }
 
@@ -189,6 +189,11 @@ tpToInt :: Tp -> Int
 tpToInt tp = case ftv tp of 
                [i] -> i
                _   -> (-1)
+               
+sourceTerm, sourceExpression, sourcePattern :: Tree -> (String, Tree)
+sourceTerm       = (,) "Term" 
+sourceExpression = (,) "Expression"
+sourcePattern    = (,) "Pattern"
 
 
 encloseSep :: String -> String -> String -> [Tree] -> Tree
@@ -348,9 +353,9 @@ type T_Alternative = ([((Expression, [String]), TypingStrategy)]) ->
                      (ImportEnvironment) ->
                      (IO ()) ->
                      (Tps) ->
-                     ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                     (TypeAnnotations) ->
                      (Int) ->
-                     ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),(Tree),(Alternative),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                     ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),(Tree),(Alternative),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_Alternative :: (Alternative) ->
                    (T_Alternative)
@@ -376,20 +381,18 @@ sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_allPatter
             CInfo { info       = (NTAlternative,AltAlternative,"left")
                   , location   = "case pattern"
                   , errorrange = _range_self
-                  , sources    = [ SD_Pat _pattern_oneLineTree ]
+                  , sources    = [ sourcePattern _pattern_oneLineTree ]
                   , typepair   = tppair
-                  , properties = [ UnifierTypeVariable (tpToInt _lhs_betaLeft)
-                                 , Size _size ]
+                  , properties = [ Size _size ]
                   }
         (_cinfoRight) =
             \tppair ->
             CInfo { info       = (NTAlternative,AltAlternative,"right")
                   , location   = "right-hand side of case alternative"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr (_righthandside_oneLineTree "") ]
+                  , sources    = [ sourceExpression (_righthandside_oneLineTree "") ]
                   , typepair   = tppair
-                  , properties = [ UnifierTypeVariable (tpToInt _lhs_betaRight)
-                                 , Size _size ]
+                  , properties = [ Size _size ]
                   }
         (_size) =
             _pattern_size + _righthandside_size
@@ -439,9 +442,9 @@ type T_Alternatives = ([((Expression, [String]), TypingStrategy)]) ->
                       (ImportEnvironment) ->
                       (IO ()) ->
                       (Tps) ->
-                      ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                      (TypeAnnotations) ->
                       (Int) ->
-                      ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(IO ()),( [ Tree] ),(Alternatives),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                      ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(IO ()),( [ Tree] ),(Alternatives),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_Alternatives :: (Alternatives) ->
                     (T_Alternatives)
@@ -515,8 +518,8 @@ type T_Body = ([((Expression, [String]), TypingStrategy)]) ->
               (ImportEnvironment) ->
               (IO ()) ->
               (Tps) ->
-              ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
-              ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),([(Name,Tp)]),(Body),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(FiniteMap Name TpScheme))
+              (TypeAnnotations) ->
+              ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),([(Name,Tp)]),(Body),(Int),(TypeAnnotations),(FiniteMap Name TpScheme))
 -- cata
 sem_Body :: (Body) ->
             (T_Body)
@@ -538,7 +541,7 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_allPatterns) 
             CInfo { info       = (NTBody,AltBody,show var)
                   , location   = "variable"
                   , errorrange = getNameRange var
-                  , sources    = [ SD_Expr (Text (show var)) ]
+                  , sources    = [ sourceExpression (Text (show var)) ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , HighlyTrusted
@@ -693,10 +696,10 @@ type T_Declaration = ([((Expression, [String]), TypingStrategy)]) ->
                      (IO ()) ->
                      (MonoTable) ->
                      (Tps) ->
-                     ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                     (TypeAnnotations) ->
                      (FiniteMap Name TpScheme) ->
                      (Int) ->
-                     ((Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(IO ()),(Tree),(Declaration),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(FiniteMap Name TpScheme),(Int))
+                     ((Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(IO ()),(Tree),(Declaration),(Int),(TypeAnnotations),(FiniteMap Name TpScheme),(Int))
 -- cata
 sem_Declaration :: (Declaration) ->
                    (T_Declaration)
@@ -930,7 +933,7 @@ sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_allPat
             CInfo { info       = (NTDeclaration,AltPatternBinding,"")
                   , location   = "right hand side"
                   , errorrange = getRHSRange _righthandside_self
-                  , sources    = [ SD_Expr (_righthandside_oneLineTree "") ]
+                  , sources    = [ sourceExpression (_righthandside_oneLineTree "") ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -998,10 +1001,10 @@ type T_Declarations = ([((Expression, [String]), TypingStrategy)]) ->
                       (IO ()) ->
                       (MonoTable) ->
                       (Tps) ->
-                      ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                      (TypeAnnotations) ->
                       (FiniteMap Name TpScheme) ->
                       (Int) ->
-                      ((Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(IO ()),( [ Tree] ),(Declarations),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(FiniteMap Name TpScheme),(Int))
+                      ((Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(IO ()),( [ Tree] ),(Declarations),(Int),(TypeAnnotations),(FiniteMap Name TpScheme),(Int))
 -- cata
 sem_Declarations :: (Declarations) ->
                     (T_Declarations)
@@ -1117,9 +1120,9 @@ type T_Expression = ([((Expression, [String]), TypingStrategy)]) ->
                     (IO ()) ->
                     (Tps) ->
                     ([(Expression     , [String])]) ->
-                    ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                    (TypeAnnotations) ->
                     (Int) ->
-                    ((Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),(Tree),(Expression),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                    ((Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),(Tree),(Expression),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_Expression :: (Expression) ->
                   (T_Expression)
@@ -1183,7 +1186,7 @@ sem_Expression_Case (_range) (_expression) (_alternatives) (_lhs_allPatterns) (_
             CInfo { info       = (NTExpression,AltCase,"")
                   , location   = "scrutinee of case expression"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term _expression_oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -1223,7 +1226,7 @@ sem_Expression_Comprehension (_range) (_expression) (_qualifiers) (_lhs_allPatte
             CInfo { info       = (NTExpression,AltComprehension,"")
                   , location   = "list comprehension"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree  ]
+                  , sources    = [ sourceExpression _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , Size _size ]
@@ -1266,7 +1269,7 @@ sem_Expression_Constructor (_range) (_name) (_lhs_allPatterns) (_lhs_betaUnique)
             CInfo { info       = (NTExpression,AltConstructor,"")
                   , location   = "constructor"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _name_oneLineTree ]
+                  , sources    = [ sourceExpression _name_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , HighlyTrusted
@@ -1308,7 +1311,7 @@ sem_Expression_Do (_range) (_statements) (_lhs_allPatterns) (_lhs_betaUnique) (_
             CInfo { info       = (NTExpression,AltDo,"")
                   , location   = "do-expression (INTERNAL ERROR)"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree  ]
+                  , sources    = [ sourceExpression _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , SuperHighlyTrusted
@@ -1355,7 +1358,7 @@ sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_allPatterns) (_lhs_beta
             CInfo { info       = (NTExpression,AltEnum,"from")
                   , location   = "enumeration"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term _from_oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _from_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _size]
                   }
@@ -1364,7 +1367,7 @@ sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_allPatterns) (_lhs_beta
             CInfo { info       = (NTExpression,AltEnum,"then")
                   , location   = "enumeration"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term (convertMaybeOneLineTree _then_oneLineTree) ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm (convertMaybeOneLineTree _then_oneLineTree) ]
                   , typepair   = tppair
                   , properties = [ Size _size]
                   }
@@ -1373,7 +1376,7 @@ sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_allPatterns) (_lhs_beta
             CInfo { info       = (NTExpression,AltEnum,"to")
                   , location   = "enumeration"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term (convertMaybeOneLineTree _to_oneLineTree) ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm (convertMaybeOneLineTree _to_oneLineTree) ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -1382,7 +1385,7 @@ sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_allPatterns) (_lhs_beta
             CInfo { info       = (NTExpression,AltEnum,"result")
                   , location   = "enumeration"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree  ]
+                  , sources    = [ sourceExpression _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , Size _size ]
@@ -1445,7 +1448,7 @@ sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression
             CInfo { info       = (NTExpression,AltIf,"guard")
                   , location   = "conditional"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term _guardExpression_oneLineTree  ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _guardExpression_oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -1454,7 +1457,7 @@ sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression
             CInfo { info       = (NTExpression,AltIf,"then")
                   , location   = "then branch of conditional"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term _thenExpression_oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _thenExpression_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -1463,7 +1466,7 @@ sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression
             CInfo { info       = (NTExpression,AltIf,"else")
                   , location   = "else branch of conditional"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term _elseExpression_oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _elseExpression_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -1536,7 +1539,7 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
             CInfo { info       = (NTExpression,AltInfixApplication,"empty")
                   , location   = "infix application"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , HighlyTrusted
@@ -1547,7 +1550,7 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
             CInfo { info       = (NTExpression,AltInfixApplication,"left")
                   , location   = "left section"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -1556,7 +1559,7 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
             CInfo { info       = (NTExpression,AltInfixApplication,"right")
                   , location   = "right section"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -1565,7 +1568,7 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
             CInfo { info       = (NTExpression,AltInfixApplication,"operator")
                   , location   = "infix application"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term (_operator_oneLineTree)]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm (_operator_oneLineTree)]
                   , typepair   = tppair
                   , properties = (if _leftExpression_section || _rightExpression_section
                                     then [ HighlyTrusted ]
@@ -1632,7 +1635,7 @@ sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_allPatterns) (_lh
             CInfo { info       = (NTExpression,AltLambda,"type")
                   , location   = "lambda abstraction"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree  ]
+                  , sources    = [ sourceExpression _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , Size _size ]
@@ -1676,7 +1679,7 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_allPatterns) (_l
             CInfo { info       = (NTExpression,AltLet,"")
                   , location   = "let expression (INTERNAL ERROR)"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term _expression_oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , SuperHighlyTrusted
@@ -1724,7 +1727,7 @@ sem_Expression_List (_range) (_expressions) (_lhs_allPatterns) (_lhs_betaUnique)
             CInfo { info       = (NTExpression,AltList,"result")
                   , location   = "list"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree  ]
+                  , sources    = [ sourceExpression _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ Size _size
                                  , FolkloreConstraint ]
@@ -1734,10 +1737,9 @@ sem_Expression_List (_range) (_expressions) (_lhs_allPatterns) (_lhs_betaUnique)
             CInfo { info       = (NTExpression,AltList,"element")
                   , location   = "element of list"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term elemtext ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm elemtext ]
                   , typepair   = tppair
-                  , properties = [ UnifierTypeVariable (tpToInt _beta')
-                                 , Size _size ]
+                  , properties = [ Size _size ]
                   }
         (_size) =
             1 + _expressions_size
@@ -1770,7 +1772,7 @@ sem_Expression_Literal (_range) (_literal) (_lhs_allPatterns) (_lhs_betaUnique) 
             CInfo { info       = (NTExpression,AltLiteral,"")
                   , location   = "literal"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , HighlyTrusted
@@ -1812,7 +1814,7 @@ sem_Expression_Negate (_range) (_expression) (_lhs_allPatterns) (_lhs_betaUnique
             CInfo { info       = (NTExpression,AltNegate,"result")
                   , location   = "negation"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree  ]
+                  , sources    = [ sourceExpression _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , Size _size
@@ -1823,7 +1825,7 @@ sem_Expression_Negate (_range) (_expression) (_lhs_allPatterns) (_lhs_betaUnique
             CInfo { info       = (NTExpression,AltNegate,"expression")
                   , location   = "negation"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term _expression_oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _size
                                  , Negation (tpToInt _beta) ]
@@ -1863,7 +1865,7 @@ sem_Expression_NegateFloat (_range) (_expression) (_lhs_allPatterns) (_lhs_betaU
             CInfo { info       = (NTExpression,AltNegateFloat,"result")
                   , location   = "negation"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree  ]
+                  , sources    = [ sourceExpression _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , Size _size
@@ -1874,7 +1876,7 @@ sem_Expression_NegateFloat (_range) (_expression) (_lhs_allPatterns) (_lhs_betaU
             CInfo { info       = (NTExpression,AltNegateFloat,"expression")
                   , location   = "negation"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term _expression_oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _size
                                  , Negation (tpToInt _beta) ]
@@ -1916,7 +1918,7 @@ sem_Expression_NormalApplication (_range) (_function) (_arguments) (_lhs_allPatt
             CInfo { info       = (NTExpression,AltNormalApplication,"")
                   , location   = "application"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term _function_oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _function_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ ApplicationEdge False (zip _arguments_oneLineTree _arguments_betas)
                                  , Size _size ]
@@ -2009,7 +2011,7 @@ sem_Expression_Tuple (_range) (_expressions) (_lhs_allPatterns) (_lhs_betaUnique
             CInfo { info       = (NTExpression,AltTuple,"")
                   , location   = "tuple"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree  ]
+                  , sources    = [ sourceExpression _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ Size _size
                                  , FolkloreConstraint
@@ -2054,7 +2056,7 @@ sem_Expression_Typed (_range) (_expression) (_type) (_lhs_allPatterns) (_lhs_bet
             CInfo { info       = (NTExpression,AltTyped,"expression")
                   , location   = "type annotation"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term _expression_oneLineTree  ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -2063,10 +2065,9 @@ sem_Expression_Typed (_range) (_expression) (_type) (_lhs_allPatterns) (_lhs_bet
             CInfo { info       = (NTExpression,AltTyped,"result")
                   , location   = "type annotation"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree  ]
+                  , sources    = [ sourceExpression _oneLineTree  ]
                   , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , Size _size ]
+                  , properties = [ Size _size, FolkloreConstraint ]
                   }
         (_size) =
             1 + _expression_size
@@ -2122,9 +2123,9 @@ type T_Expressions = ([((Expression, [String]), TypingStrategy)]) ->
                      (IO ()) ->
                      (Tps) ->
                      ([(Expressions    , [String])]) ->
-                     ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                     (TypeAnnotations) ->
                      (Int) ->
-                     ((Assumptions),(Int),(Tps),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),( [ Tree] ),(Expressions),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                     ((Assumptions),(Int),(Tps),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),( [ Tree] ),(Expressions),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_Expressions :: (Expressions) ->
                    (T_Expressions)
@@ -2244,9 +2245,9 @@ type T_FunctionBinding = ([((Expression, [String]), TypingStrategy)]) ->
                          (ImportEnvironment) ->
                          (IO ()) ->
                          (Tps) ->
-                         ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                         (TypeAnnotations) ->
                          (Int) ->
-                         ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),(Name),(Int),(Tree),(FunctionBinding),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                         ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),(Name),(Int),(Tree),(FunctionBinding),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_FunctionBinding :: (FunctionBinding) ->
                        (T_FunctionBinding)
@@ -2270,20 +2271,18 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_
             CInfo { info       = (NTFunctionBinding,AltFunctionBinding,"right")
                   , location   = "right hand side"
                   , errorrange = _range_self
-                  , sources    = [ SD_Term (_righthandside_oneLineTree "") ]
+                  , sources    = [ sourceTerm (_righthandside_oneLineTree "") ]
                   , typepair   = tppair
-                  , properties = [ UnifierTypeVariable (tpToInt _lhs_betaRight)
-                                 , Size _size ]
+                  , properties = [ Size _size ]
                   }
         (_cinfoLeft) =
             \num txt tppair ->
             CInfo { info       = (NTFunctionBinding,AltFunctionBinding,"left "++show num)
                   , location   = "pattern of function binding"
                   , errorrange = _range_self
-                  , sources    = [ SD_Pat txt ]
+                  , sources    = [ sourcePattern txt ]
                   , typepair   = tppair
-                  , properties = [ UnifierTypeVariable (tpToInt (snd tppair))
-                                 , Size _size ]
+                  , properties = [ Size _size ]
                   }
         (_size) =
             _lefthandside_size + _righthandside_size
@@ -2323,9 +2322,9 @@ type T_FunctionBindings = ([((Expression, [String]), TypingStrategy)]) ->
                           (ImportEnvironment) ->
                           (IO ()) ->
                           (Tps) ->
-                          ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                          (TypeAnnotations) ->
                           (Int) ->
-                          ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(IO ()),(Name),(Int),( [ Tree] ),(FunctionBindings),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                          ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(IO ()),(Name),(Int),( [ Tree] ),(FunctionBindings),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_FunctionBindings :: (FunctionBindings) ->
                         (T_FunctionBindings)
@@ -2356,9 +2355,9 @@ type T_GuardedExpression = ([((Expression, [String]), TypingStrategy)]) ->
                            (IO ()) ->
                            (Tps) ->
                            (Tp) ->
-                           ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                           (TypeAnnotations) ->
                            (Int) ->
-                           ((Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),( String -> Tree ),(GuardedExpression),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                           ((Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),( String -> Tree ),(GuardedExpression),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_GuardedExpression :: (GuardedExpression) ->
                          (T_GuardedExpression)
@@ -2378,7 +2377,7 @@ sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_al
             CInfo { info       = (NTGuardedExpression,AltGuardedExpression,"guard")
                   , location   = "guard"
                   , errorrange = getExprRange _guard_self
-                  , sources    = [ SD_Expr _guard_oneLineTree ]
+                  , sources    = [ sourceExpression _guard_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -2387,10 +2386,9 @@ sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_al
             CInfo { info       = (NTGuardedExpression,AltGuardedExpression,"expression")
                   , location   = "guarded expression"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _expression_oneLineTree ]
+                  , sources    = [ sourceExpression _expression_oneLineTree ]
                   , typepair   = tppair
-                  , properties = [ UnifierTypeVariable (tpToInt _lhs_rightBeta)
-                                 , Size _size ]
+                  , properties = [ Size _size ]
                   }
         (_size) =
             _guard_size + _expression_size
@@ -2427,9 +2425,9 @@ type T_GuardedExpressions = ([((Expression, [String]), TypingStrategy)]) ->
                             (IO ()) ->
                             (Tps) ->
                             (Tp) ->
-                            ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                            (TypeAnnotations) ->
                             (Int) ->
-                            ((Assumptions),(Int),(Tps),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(IO ()),( [ String -> Tree ] ),(GuardedExpressions),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                            ((Assumptions),(Int),(Tps),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(IO ()),( [ String -> Tree ] ),(GuardedExpressions),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_GuardedExpressions :: (GuardedExpressions) ->
                           (T_GuardedExpressions)
@@ -2722,7 +2720,8 @@ sem_Literal_Char :: (T_Range) ->
                     (T_Literal)
 sem_Literal_Char (_range) (_value) =
     let (_oneLineTree) =
-            Text ("'" ++ _value ++ "'")
+            let f cs = if head cs == '\'' then '\\':cs else cs
+            in Text ("'" ++ ((f.init.tail.show) _value) ++ "'")
         (_self) =
             Literal_Char _range_self _value
         ( _range_self) =
@@ -2755,7 +2754,7 @@ sem_Literal_String :: (T_Range) ->
                       (T_Literal)
 sem_Literal_String (_range) (_value) =
     let (_oneLineTree) =
-            Text  ("\"" ++ _value ++ "\"")
+            Text  (show _value)
         (_self) =
             Literal_String _range_self _value
         ( _range_self) =
@@ -2771,9 +2770,9 @@ type T_MaybeDeclarations = ([((Expression, [String]), TypingStrategy)]) ->
                            (ImportEnvironment) ->
                            (IO ()) ->
                            (Tps) ->
-                           ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                           (TypeAnnotations) ->
                            (Int) ->
-                           ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),( Maybe [Tree] ),(MaybeDeclarations),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                           ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),( Maybe [Tree] ),(MaybeDeclarations),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_MaybeDeclarations :: (MaybeDeclarations) ->
                          (T_MaybeDeclarations)
@@ -2838,9 +2837,9 @@ type T_MaybeExpression = ([((Expression, [String]), TypingStrategy)]) ->
                          (IO ()) ->
                          (Tps) ->
                          ([(MaybeExpression, [String])]) ->
-                         ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                         (TypeAnnotations) ->
                          (Int) ->
-                         ((Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),( Maybe Tree ),(Bool),(MaybeExpression),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                         ((Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),( Maybe Tree ),(Bool),(MaybeExpression),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_MaybeExpression :: (MaybeExpression) ->
                        (T_MaybeExpression)
@@ -3010,19 +3009,20 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
             map (\(name,tp) -> (name,generalize (ftv (_substitution |-> _monos)) (_substitution |-> tp))) _body_namesWithoutTypeDef
         ((_typeErrors,_filteredBool)) =
             let notGeneralEnoughErrors =
-                   let f ((m,t),s2,info) = let m' = _substitution |-> m
-                                               t' = _substitution |-> t
-                                               s1 = generalize (ftv m') t'
-                                           in NotGeneralEnough s1 s2 info
-                       p (NotGeneralEnough s1 s2 info) =
-                             not (genericInstanceOf _orderedTypeSynonyms s2 s1)
-                          && unifiableTypeSchemes   _orderedTypeSynonyms s1 s2
-                   in filter p (map f _body_typeAnnotations)
+                   let f ((m,t),s2,(tree,range)) =
+                          let m' = _substitution |-> m
+                              t' = _substitution |-> t
+                              s1 = generalize (ftv m') t'
+                         in if not (genericInstanceOf _orderedTypeSynonyms s2 s1) &&
+                               unifiableTypeSchemes   _orderedTypeSynonyms s1 s2
+                            then [makeNotGeneralEnoughTypeError range tree s1 s2]
+                            else []
+                   in concatMap f _body_typeAnnotations
                 op typeError (list,bool) =
                                            case checkTypeError _orderedTypeSynonyms typeError of
                                               Just t  -> (t:list,bool)
                                               Nothing -> (list,True)
-            in foldr op (notGeneralEnoughErrors,False) (map makeTypeError _solveErrors)
+            in foldr op (notGeneralEnoughErrors,False) (map ((_substitution |->) . makeTypeError) _solveErrors)
         (_toplevelTypes) =
             addListToFM _body_typeSignatures _inferredgamma
         (_warnings) =
@@ -3172,7 +3172,7 @@ sem_Pattern_As (_range) (_name) (_pattern) (_lhs_betaUnique) (_lhs_importEnviron
             CInfo { info       = (NTPattern,AltAs,"")
                   , location   = "as pattern"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term (Text (show _name_self)) ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm (Text (show _name_self)) ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -3223,7 +3223,7 @@ sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_imp
             CInfo { info       = (NTPattern,AltConstructor,"")
                   , location   = "pattern constructor"
                   , errorrange = getNameRange _name_self
-                  , sources    = [ SD_Pat _oneLineTree ]
+                  , sources    = [ sourcePattern _oneLineTree ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint,HighlyTrusted
                                  , Size _size ]
@@ -3236,8 +3236,8 @@ sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_imp
                                    else "pattern application"
                   , errorrange = _range_self
                   , sources    = if _patterns_numberOfPatterns == 0
-                                   then [ SD_Pat _oneLineTree                            ]
-                                   else [ SD_Pat _oneLineTree, SD_Term _name_oneLineTree ]
+                                   then [ sourcePattern _oneLineTree                            ]
+                                   else [ sourcePattern _oneLineTree, sourceTerm _name_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -3301,7 +3301,7 @@ sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_ri
             CInfo { info       = (NTPattern,AltInfixConstructor,"")
                   , location   = "pattern constructor"
                   , errorrange = getNameRange _constructorOperator_self
-                  , sources    = [ SD_Pat _constructorOperator_oneLineTree ]
+                  , sources    = [ sourcePattern _constructorOperator_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , HighlyTrusted
@@ -3312,7 +3312,7 @@ sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_ri
             CInfo { info       = (NTPattern,AltInfixConstructor,"apply")
                   , location   = "infix pattern application"
                   , errorrange = _range_self
-                  , sources    = [ SD_Pat _oneLineTree, SD_Term (Text (show _constructorOperator_self))]
+                  , sources    = [ sourcePattern _oneLineTree, sourceTerm (Text (show _constructorOperator_self))]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -3378,7 +3378,7 @@ sem_Pattern_List (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment)
             CInfo { info       = (NTPattern,AltList,"result")
                   , location   = "pattern list"
                   , errorrange = _range_self
-                  , sources    = [ SD_Pat _oneLineTree  ]
+                  , sources    = [ sourcePattern _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , Size _patterns_size ]
@@ -3388,10 +3388,9 @@ sem_Pattern_List (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment)
             CInfo { info       = (NTPattern,AltList,"element")
                   , location   = "element of pattern list"
                   , errorrange = _range_self
-                  , sources    = [ SD_Pat _oneLineTree, SD_Term elemtext ]
+                  , sources    = [ sourcePattern _oneLineTree, sourceTerm elemtext ]
                   , typepair   = tppair
-                  , properties = [ UnifierTypeVariable (tpToInt _beta')
-                                 , Size _patterns_size
+                  , properties = [ Size _patterns_size
                                  ]
                   }
         (_oneLineTree) =
@@ -3422,7 +3421,7 @@ sem_Pattern_Literal (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironmen
             CInfo { info       = (NTPattern,AltLiteral,"")
                   , location   = "literal pattern"
                   , errorrange = _range_self
-                  , sources    = [ SD_Pat _oneLineTree ]
+                  , sources    = [ sourcePattern _oneLineTree ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , HighlyTrusted
@@ -3455,7 +3454,7 @@ sem_Pattern_Negate (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment
             CInfo { info       = (NTPattern,AltNegate,"result")
                   , location   = "pattern negation"
                   , errorrange = _range_self
-                  , sources    = [ SD_Pat _oneLineTree  ]
+                  , sources    = [ sourcePattern _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , Size _size
@@ -3466,7 +3465,7 @@ sem_Pattern_Negate (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment
              CInfo { info       = (NTPattern,AltNegate,"pattern")
                   , location   = "pattern negation "
                   , errorrange = _range_self
-                  , sources    = [ SD_Pat _oneLineTree, SD_Term _literal_oneLineTree ]
+                  , sources    = [ sourcePattern _oneLineTree, sourceTerm _literal_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _size
                                  , Negation (tpToInt _beta) ]
@@ -3497,7 +3496,7 @@ sem_Pattern_NegateFloat (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnviro
             CInfo { info       = (NTPattern,AltNegateFloat,"result")
                   , location   = "pattern negation"
                   , errorrange = _range_self
-                  , sources    = [ SD_Pat _oneLineTree  ]
+                  , sources    = [ sourcePattern _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , Size _size
@@ -3508,7 +3507,7 @@ sem_Pattern_NegateFloat (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnviro
              CInfo { info       = (NTPattern,AltNegateFloat,"pattern")
                   , location   = "pattern negation "
                   , errorrange = _range_self
-                  , sources    = [ SD_Pat _oneLineTree, SD_Term _literal_oneLineTree ]
+                  , sources    = [ sourcePattern _oneLineTree, sourceTerm _literal_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _size
                                  , Negation (tpToInt _beta) ]
@@ -3590,7 +3589,7 @@ sem_Pattern_Tuple (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment
             CInfo { info       = (NTPattern,AltTuple,"result")
                   , location   = "pattern tuple"
                   , errorrange = _range_self
-                  , sources    = [ SD_Pat _oneLineTree  ]
+                  , sources    = [ sourcePattern _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , IsTupleEdge
@@ -3695,9 +3694,9 @@ type T_Qualifier = ([((Expression, [String]), TypingStrategy)]) ->
                    (ImportEnvironment) ->
                    (IO ()) ->
                    (Tps) ->
-                   ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                   (TypeAnnotations) ->
                    (Int) ->
-                   ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),(Tps),(Tree),(Qualifier),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                   ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),(Tps),(Tree),(Qualifier),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_Qualifier :: (Qualifier) ->
                  (T_Qualifier)
@@ -3735,7 +3734,7 @@ sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_l
             CInfo { info       = (NTQualifier,AltGenerator,"result")
                   , location   = "generator"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term _expression_oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -3780,7 +3779,7 @@ sem_Qualifier_Guard (_range) (_guard) (_lhs_allPatterns) (_lhs_assumptions) (_lh
             CInfo { info       = (NTQualifier,AltGuard,"")
                   , location   = "boolean qualifier"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree  ]
+                  , sources    = [ sourceExpression _oneLineTree  ]
                   , typepair   = tppair
                   , properties = [ Size _guard_size ]
                   }
@@ -3837,9 +3836,9 @@ type T_Qualifiers = ([((Expression, [String]), TypingStrategy)]) ->
                     (ImportEnvironment) ->
                     (IO ()) ->
                     (Tps) ->
-                    ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                    (TypeAnnotations) ->
                     (Int) ->
-                    ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),(Tps),( [ Tree] ),(Qualifiers),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                    ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),(Tps),( [ Tree] ),(Qualifiers),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_Qualifiers :: (Qualifiers) ->
                   (T_Qualifiers)
@@ -3883,8 +3882,8 @@ sem_Range_Range (_start) (_stop) =
 -- RecordExpressionBinding -------------------------------------
 -- semantic domain
 type T_RecordExpressionBinding = ([(Name,Tps,Tp,Bool)]) ->
-                                 ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
-                                 (([(Name,Tps,Tp,Bool)]),(RecordExpressionBinding),([((Tps,Tp),TpScheme,(Tree,Range))]))
+                                 (TypeAnnotations) ->
+                                 (([(Name,Tps,Tp,Bool)]),(RecordExpressionBinding),(TypeAnnotations))
 -- cata
 sem_RecordExpressionBinding :: (RecordExpressionBinding) ->
                                (T_RecordExpressionBinding)
@@ -3911,8 +3910,8 @@ sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expressio
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
 type T_RecordExpressionBindings = ([(Name,Tps,Tp,Bool)]) ->
-                                  ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
-                                  (([(Name,Tps,Tp,Bool)]),(RecordExpressionBindings),([((Tps,Tp),TpScheme,(Tree,Range))]))
+                                  (TypeAnnotations) ->
+                                  (([(Name,Tps,Tp,Bool)]),(RecordExpressionBindings),(TypeAnnotations))
 -- cata
 sem_RecordExpressionBindings :: (RecordExpressionBindings) ->
                                 (T_RecordExpressionBindings)
@@ -3990,9 +3989,9 @@ type T_RightHandSide = ([((Expression, [String]), TypingStrategy)]) ->
                        (ImportEnvironment) ->
                        (IO ()) ->
                        (Tps) ->
-                       ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                       (TypeAnnotations) ->
                        (Int) ->
-                       ((Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),( String -> Tree ),(RightHandSide),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                       ((Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),( String -> Tree ),(RightHandSide),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_RightHandSide :: (RightHandSide) ->
                      (T_RightHandSide)
@@ -4116,9 +4115,9 @@ type T_Statement = ([((Expression, [String]), TypingStrategy)]) ->
                    (ImportEnvironment) ->
                    (IO ()) ->
                    (Tps) ->
-                   ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                   (TypeAnnotations) ->
                    (Int) ->
-                   ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Maybe Tp),(IO ()),(Tps),(Tree),(Statement),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                   ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Maybe Tp),(IO ()),(Tps),(Tree),(Statement),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_Statement :: (Statement) ->
                  (T_Statement)
@@ -4155,7 +4154,7 @@ sem_Statement_Expression (_range) (_expression) (_lhs_allPatterns) (_lhs_assumpt
             CInfo { info       = (NTStatement,AltExpression,"")
                   , location   = "generator"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _expression_size ]
                   }
@@ -4196,7 +4195,7 @@ sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_l
             CInfo { info       = (NTStatement,AltGenerator,"result")
                   , location   = "generator"
                   , errorrange = _range_self
-                  , sources    = [ SD_Expr _oneLineTree, SD_Term _expression_oneLineTree ]
+                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }
@@ -4263,9 +4262,9 @@ type T_Statements = ([((Expression, [String]), TypingStrategy)]) ->
                     (ImportEnvironment) ->
                     (IO ()) ->
                     (Tps) ->
-                    ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
+                    (TypeAnnotations) ->
                     (Int) ->
-                    ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Maybe Tp),(IO ()),( [ Tree] ),(Statements),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(Int))
+                    ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Maybe Tp),(IO ()),( [ Tree] ),(Statements),(Int),(TypeAnnotations),(Int))
 -- cata
 sem_Statements :: (Statements) ->
                   (T_Statements)
@@ -4481,49 +4480,64 @@ type T_TypingStrategy = ()
 -- cata
 sem_TypingStrategy :: (TypingStrategy) ->
                       (T_TypingStrategy)
-sem_TypingStrategy ((TypingStrategy_TypingStrategy (_name) (_typerule) (_constraints))) =
-    (sem_TypingStrategy_TypingStrategy (_name) ((sem_TypeRule (_typerule))) ((sem_UserConstraints (_constraints))))
+sem_TypingStrategy ((TypingStrategy_TypingStrategy (_name) (_typerule) (_statements))) =
+    (sem_TypingStrategy_TypingStrategy (_name) ((sem_TypeRule (_typerule))) ((sem_UserStatements (_statements))))
 sem_TypingStrategy_TypingStrategy :: (String) ->
                                      (T_TypeRule) ->
-                                     (T_UserConstraints) ->
+                                     (T_UserStatements) ->
                                      (T_TypingStrategy)
-sem_TypingStrategy_TypingStrategy (_name) (_typerule) (_constraints) =
+sem_TypingStrategy_TypingStrategy (_name) (_typerule) (_statements) =
     let 
     in  ()
--- UserConstraint ----------------------------------------------
+-- UserStatement -----------------------------------------------
 -- semantic domain
-type T_UserConstraint = ()
+type T_UserStatement = ()
 -- cata
-sem_UserConstraint :: (UserConstraint) ->
-                      (T_UserConstraint)
-sem_UserConstraint ((UserConstraint_UserConstraint (_leftType) (_rightType) (_message))) =
-    (sem_UserConstraint_UserConstraint ((sem_Type (_leftType))) ((sem_Type (_rightType))) (_message))
-sem_UserConstraint_UserConstraint :: (T_Type) ->
-                                     (T_Type) ->
-                                     (String) ->
-                                     (T_UserConstraint)
-sem_UserConstraint_UserConstraint (_leftType) (_rightType) (_message) =
+sem_UserStatement :: (UserStatement) ->
+                     (T_UserStatement)
+sem_UserStatement ((UserStatement_Constraint (_leftType) (_rightType) (_message))) =
+    (sem_UserStatement_Constraint ((sem_Type (_leftType))) ((sem_Type (_rightType))) (_message))
+sem_UserStatement ((UserStatement_MetaVariableConstraints (_name))) =
+    (sem_UserStatement_MetaVariableConstraints ((sem_Name (_name))))
+sem_UserStatement ((UserStatement_Phase (_phase))) =
+    (sem_UserStatement_Phase (_phase))
+sem_UserStatement_Constraint :: (T_Type) ->
+                                (T_Type) ->
+                                (String) ->
+                                (T_UserStatement)
+sem_UserStatement_Constraint (_leftType) (_rightType) (_message) =
     let ( _leftType_self) =
             (_leftType )
         ( _rightType_self) =
             (_rightType )
     in  ()
--- UserConstraints ---------------------------------------------
--- semantic domain
-type T_UserConstraints = ()
--- cata
-sem_UserConstraints :: (UserConstraints) ->
-                       (T_UserConstraints)
-sem_UserConstraints (list) =
-    (foldr (sem_UserConstraints_Cons) (sem_UserConstraints_Nil) ((map sem_UserConstraint list)))
-sem_UserConstraints_Cons :: (T_UserConstraint) ->
-                            (T_UserConstraints) ->
-                            (T_UserConstraints)
-sem_UserConstraints_Cons (_hd) (_tl) =
+sem_UserStatement_MetaVariableConstraints :: (T_Name) ->
+                                             (T_UserStatement)
+sem_UserStatement_MetaVariableConstraints (_name) =
+    let ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+            (_name )
+    in  ()
+sem_UserStatement_Phase :: (Int) ->
+                           (T_UserStatement)
+sem_UserStatement_Phase (_phase) =
     let 
     in  ()
-sem_UserConstraints_Nil :: (T_UserConstraints)
-sem_UserConstraints_Nil  =
+-- UserStatements ----------------------------------------------
+-- semantic domain
+type T_UserStatements = ()
+-- cata
+sem_UserStatements :: (UserStatements) ->
+                      (T_UserStatements)
+sem_UserStatements (list) =
+    (foldr (sem_UserStatements_Cons) (sem_UserStatements_Nil) ((map sem_UserStatement list)))
+sem_UserStatements_Cons :: (T_UserStatement) ->
+                           (T_UserStatements) ->
+                           (T_UserStatements)
+sem_UserStatements_Cons (_hd) (_tl) =
+    let 
+    in  ()
+sem_UserStatements_Nil :: (T_UserStatements)
+sem_UserStatements_Nil  =
     let 
     in  ()
 
