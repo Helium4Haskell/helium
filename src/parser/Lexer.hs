@@ -131,11 +131,11 @@ lexExponent :: String -> Lexer
 lexExponent prefix input = do
     startPos <- getPos
     let posAtExponent = addPos (length prefix) startPos
-        (exponent, rest) = span myIsDigit input
-    if null exponent then
+        (exponentDigits, rest) = span myIsDigit input
+    if null exponentDigits then
         lexerError MissingExponentDigits posAtExponent
      else do
-        let text = prefix ++ exponent
+        let text = prefix ++ exponentDigits
         returnToken (LexFloat text) (length text) mainLexer rest
 
 -----------------------------------------------------------
@@ -151,21 +151,24 @@ lexChar input = do
                 returnToken (LexChar ['\\',c]) 4 mainLexer cs
             else
                 lexerError IllegalEscapeInChar pos
-        '\'':'\'':cs ->
+        '\'':'\'':_ ->
             lexerError EmptyChar pos
         '\'':c:'\'':cs ->
             if ord c >= 32 && ord c <= 126 then 
                 returnToken (LexChar [c]) 3 mainLexer cs
             else
                 lexerError IllegalCharInChar pos
-        ('\'':c:cs) ->
+        ('\'':_:_) ->
             lexerError NonTerminatedChar pos
         ['\''] ->
             lexerError EOFInChar pos
+        _ -> internalError "Lexer" "lexChar" "unexpected characters"
 
 lexString :: Lexer
 lexString ('"':cs) = 
     lexStringChar "" cs
+lexString _ = 
+    internalError "Lexer" "lexString" "should start with \""
 
 lexStringChar :: String -> Lexer
 lexStringChar revSoFar input = do
@@ -182,7 +185,7 @@ lexStringChar revSoFar input = do
         '"':cs ->
             returnToken (LexString (reverse revSoFar)) 
                         (length revSoFar + 2) mainLexer cs
-        '\n':cs ->
+        '\n':_ ->
             lexerError NewLineInString startPos
         c:cs ->
             if ord c >= 32 && ord c <= 126 then
@@ -191,8 +194,8 @@ lexStringChar revSoFar input = do
                 lexerError IllegalCharInString curPos
                 
 nextCharSatisfy :: (Char -> Bool) -> String -> Bool
-nextCharSatisfy p [] = False
-nextCharSatisfy p (c:cs) = p c
+nextCharSatisfy _ []    = False
+nextCharSatisfy p (c:_) = p c
 
 returnToken :: Lexeme -> Int -> Lexer -> Lexer
 returnToken lexeme width continue input = do

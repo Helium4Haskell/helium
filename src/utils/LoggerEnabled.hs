@@ -14,16 +14,23 @@ import Version
 ---------------------------------------------------
 -- Global variables and settings
 
+loggerHOSTNAME :: String
 loggerHOSTNAME    = {- Bastiaan     -} -- "ikaria.cs.uu.nl" 
                     {- Jurriaan     -} -- "ranum.cs.uu.nl" 
                     {- StudentenNet -} "bellatrix.students.cs.uu.nl" 
+                    
+loggerPORTNUMBER, loggerDELAY, loggerTRIES :: Int
 loggerPORTNUMBER  = 5010
 loggerDELAY       = 10000    -- in micro-seconds
 loggerTRIES       = 2
+
+loggerSPLITSTRING, loggerNOPROGRAMS, loggerUSERNAME :: String
 loggerSPLITSTRING = "\n\NUL\n"
 loggerNOPROGRAMS  = "\n\SOH\n"
-loggerENABLED     = True
 loggerUSERNAME    = "USERNAME"
+
+loggerENABLED :: Bool
+loggerENABLED     = True
 
 debug :: String -> Bool -> IO ()
 debug s loggerDEBUGMODE = when loggerDEBUGMODE (putStrLn s)
@@ -35,7 +42,7 @@ logger :: String -> Maybe ([String],String) -> Bool -> IO ()
 logger logcode maybeSources loggerDEBUGMODE
     | not loggerENABLED || isInterpreterModule maybeSources = return ()
     | otherwise      = do
-        username <- (getEnv loggerUSERNAME) `catch` (\exception -> return "unknown")
+        username <- (getEnv loggerUSERNAME) `catch` (\_ -> return "unknown")
         sources  <- case maybeSources of 
             Nothing -> 
                 return (loggerNOPROGRAMS)
@@ -47,12 +54,11 @@ logger logcode maybeSources loggerDEBUGMODE
                                       ++ program                
                                       ++ loggerSPLITSTRING 
                                       )
-                   nrOfFiles = show (1 + length imports)
                in (do 
                     xs <- mapM f imports
                     x  <- f hsFile
                     return (concat (loggerSPLITSTRING:x:xs)) 
-                   ) `catch` (\exception -> return (loggerNOPROGRAMS) )
+                   ) `catch` (\_ -> return (loggerNOPROGRAMS) )
 
         sendLogString (username++":"++logcode++":"++version++sources) loggerDEBUGMODE
 
@@ -65,7 +71,7 @@ sendLogString message loggerDEBUGMODE = withSocketsDo (rec 0)
  
  where
     rec i = do --installHandler sigPIPE Ignore Nothing
-             handle <- connectTo loggerHOSTNAME (PortNumber loggerPORTNUMBER)
+             handle <- connectTo loggerHOSTNAME (PortNumber (fromIntegral loggerPORTNUMBER))
              hSetBuffering handle (BlockBuffering (Just 1024))
              sendToAndFlush handle message loggerDEBUGMODE
           `catch`       
@@ -85,12 +91,10 @@ fileNameWithoutPath filePath =
         (revFileName, _) = span (`notElem` slashes) (reverse filePath)
     in reverse revFileName
 
-{-
-sendToAndFlush :: Hostname      -- Hostname
-               -> PortID        -- Port Number
+sendToAndFlush :: Handle        -- Hostname
                -> String        -- Message to send
-               -> IO ()
--}               
+               -> Bool          -- Debug logger?
+               -> IO ()               
 sendToAndFlush handle msg loggerDEBUGMODE = do  
   hPutStr handle msg
   hPutStr handle loggerSPLITSTRING
@@ -109,7 +113,7 @@ sendToAndFlush handle msg loggerDEBUGMODE = do
         line <- hGetLine handle
         return line
       `catch`
-        \exception -> 
+        \_ -> 
           if i+1 >= loggerTRIES 
             then do
                    debug "Did not receive anything back" loggerDEBUGMODE

@@ -3,5 +3,5 @@ module TypeArityTycon where
 
 
 main :: A Int
-main = 0
+main = A
 data A = A

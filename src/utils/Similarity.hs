@@ -10,6 +10,7 @@
 module Similarity(similar) where
 
 import Char
+import Utils(internalError)
 
 {-
 Check whether identifiers look alike. Identifiers
@@ -57,5 +58,6 @@ oneDiff xs ys =
     length (filter (== True) (zipWith (==) xs ys)) == length xs - 1
 
 swap :: [a] -> [[a]]
-swap [x] = []
+swap [_] = []
 swap (x:y:xs) = (y:x:xs) : map (x:) (swap (y:xs))
+swap [] = internalError "Similarity" "swap" "empty string"

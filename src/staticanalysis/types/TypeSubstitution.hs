@@ -30,8 +30,8 @@ class Substitutable a where
    (|->) :: Substitution s => s -> a -> a    -- apply substitution
    ftv    :: a -> [Int]                      -- free type variables   
    
-   sub |-> a = a        -- default definition (do nothing)
-   ftv a     = []       -- default definition (do nothing)
+   _ |-> a   = a        -- default definition (do nothing)
+   ftv _     = []       -- default definition (do nothing)
 
 ----------------------------------------------------------------------
 -- Substitution instances 
@@ -69,13 +69,13 @@ listToSubstitution = listToFM
 
 instance Substitution (Array Int (Maybe Tp)) where
 
-   lookupInt   i  array = Just $ maybe (TVar i) (array |->) (array ! i)
-   removeDom   is array = array // zip is (repeat Nothing)
-   restrictDom is array = let is' = filter (`notElem` is) (dom array)
-                          in array // zip is' (repeat Nothing)
+   lookupInt   i  arr = Just $ maybe (TVar i) (arr |->) (arr ! i)
+   removeDom   is arr = arr // zip is (repeat Nothing)
+   restrictDom is arr = let is' = filter (`notElem` is) (dom arr)
+                          in arr // zip is' (repeat Nothing)
    
-   dom array = let p i = maybe False (const True) (array!i)
-               in filter p (indices array)
+   dom arr = let p i = maybe False (const True) (arr!i)
+               in filter p (indices arr)
    cod = let op mtp xs = maybe xs (:xs) mtp 
          in foldr op [] . elems
 
@@ -103,8 +103,8 @@ instance Substitution BinTreeSubst where
                                | otherwise -> lookupInt i r
                            BinTreeSubstNode tp     -> Just tp 
                            BinTreeSubstEmpty       -> Nothing
-   removeDom   is = internalError "SATypes.hs" "BinTreeSubst" "removeDom: substitution is static" 
-   restrictDom is = internalError "SATypes.hs" "BinTreeSubst" "restrictDom: substitution is static" 
+   removeDom   _ = internalError "SATypes.hs" "BinTreeSubst" "removeDom: substitution is static" 
+   restrictDom _ = internalError "SATypes.hs" "BinTreeSubst" "restrictDom: substitution is static" 
    dom            = internalError "SATypes.hs" "BinTreeSubst" "dom: substitution is static" 
    cod            = internalError "SATypes.hs" "BinTreeSubst" "cod: substitution is static" 
 
@@ -114,16 +114,16 @@ instance Substitution BinTreeSubst where
 instance Substitutable Tp where   
    sub |-> tp = case tp of 
                    TVar i     -> maybe tp id (lookupInt i sub)
-                   TCon s     -> tp
+                   TCon _     -> tp
                    TApp t1 t2 -> TApp (sub |-> t1) (sub |-> t2) 
    ftv tp = case tp of      
                TVar i     -> [i]
-               TCon s     -> []
+               TCon _     -> []
                TApp t1 t2 -> ftv t1 `union` ftv t2   
     
 instance Substitutable TpScheme where    
    sub |-> (Scheme monos nm tp) = Scheme monos nm (removeDom monos sub |-> tp)
-   ftv     (Scheme monos nm tp) = ftv tp \\ monos
+   ftv     (Scheme monos _  tp) = ftv tp \\ monos
 
 instance Substitutable a => Substitutable [a] where
    sub |-> as  = map (sub |->) as

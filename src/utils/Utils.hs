@@ -33,13 +33,25 @@ commaList (x:xs) = x ++ ", " ++ commaList xs
 -- Tuples
 -------------------------------------------------------
                 
+fst3 :: (a, b, c) -> a
 fst3 (a,_,_)   = a
+
+snd3 :: (a, b, c) -> b
 snd3 (_,a,_)   = a
+
+thd3 :: (a, b, c) -> c
 thd3 (_,_,a)   = a
 
+fst4 :: (a, b, c, d) -> a
 fst4 (a,_,_,_) = a
+
+snd4 :: (a, b, c, d) -> b
 snd4 (_,a,_,_) = a
+
+thd4 :: (a, b, c, d) -> c
 thd4 (_,_,a,_) = a
+
+fth4 :: (a, b, c, d) -> d
 fth4 (_,_,_,a) = a
 
 -------------------------------------------------------
@@ -100,7 +112,7 @@ internalError moduleName functionName message
             curImports  <- readIORef refToCurrentImported       
             logger "I" (Just (curImports,curFileName)) False {- no debugging, we can't get to the command-line option DebugLogger here -}
             `catch`
-               \exception -> return () )
+               \_ -> return () )
     
         return . error . unlines $
            [ ""

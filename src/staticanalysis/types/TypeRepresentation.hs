@@ -23,6 +23,7 @@ data Tp       = TVar Int
 ----------------------------------------------------------------------  
 -- common types
 
+intType, charType, floatType, boolType, stringType, voidType :: Tp
 intType    = TCon "Int"
 charType   = TCon "Char"
 floatType  = TCon "Float"

@@ -36,7 +36,7 @@ lay :: SourcePos -> [Context] -> [Token] -> [Token]
 -- If we're in a CtxBrace and we see a '}', we leave that context.
 -- If we see another token, we check to see if we need to add a
 -- new context.
-lay     prev 
+lay     _ 
         cc@(CtxBrace:cs) 
         input@(t@(pos, lexeme):ts)
     | lexeme == LexSpecial '}' =
@@ -57,7 +57,7 @@ lay     _
 -- to check whether a context has to be added.
 lay     prevPos 
         cc@(CtxLay ctxCol _:cs) 
-        input@(t@(pos, _):ts) 
+        input@(t@(pos, _):_) 
     | sourceLine pos > sourceLine prevPos = -- token on next line?
         if sourceColumn pos > ctxCol then -- indent more => nothing
             t : addContext pos cc input
@@ -76,13 +76,13 @@ lay _ [] input@(t@(pos, _):_) =
 addContext :: SourcePos -> [Context] -> [Token] -> [Token]
 
 -- If we see a '{' we add a CtxBrace context
-addContext prevPos cs (t@(pos, LexSpecial '{'):ts) = 
+addContext prevPos cs ((_, LexSpecial '{'):ts) = 
     lay prevPos (CtxBrace : cs) ts
 
 -- If we see a 'do', 'where', 'of' or 'let' we add a context
 -- and a '{' only if the next token is not a '{'
 addContext prevPos cs 
-        (t@(pos, LexKeyword keyword):t2@(pos2, lexeme2):ts) 
+        ((_, LexKeyword keyword):t2@(pos2, lexeme2):ts) 
     | keyword `elem` ["do", "where", "of","let"] =
         if lexeme2 == LexSpecial '{' then
             lay prevPos cs (t2:ts)

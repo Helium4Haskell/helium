@@ -104,10 +104,10 @@ modulesFromImportRange _ = Nothing
 -- End of misuse functions
 -----------------------------------------------------
 getRangeStart :: Range -> Position
-getRangeStart (Range_Range start end) = start
+getRangeStart (Range_Range start _) = start
 
 getRangeEnd :: Range -> Position
-getRangeEnd (Range_Range start end) = end
+getRangeEnd (Range_Range _ end) = end
 
 getStatementRange :: Statement -> Range
 getStatementRange s = 
@@ -116,7 +116,6 @@ getStatementRange s =
         Statement_Let r _ -> r
         Statement_Generator r _ _ -> r
         Statement_Empty r -> r
-        _ -> internalError "UHA_Utils" "getStatementRange" "unknown kind of statement"
         
 getPatRange :: Pattern -> Range
 getPatRange (Pattern_As r _ _) = r
@@ -154,6 +153,7 @@ getExprRange (Expression_RecordConstruction r _ _  ) = r
 getExprRange (Expression_RecordUpdate       r _ _  ) = r
 getExprRange (Expression_Enum               r _ _ _) = r
 getExprRange (Expression_Negate             r _    ) = r
+getExprRange (Expression_NegateFloat        r _    ) = r
 
 getRHSRange :: RightHandSide -> Range
 getRHSRange (RightHandSide_Expression r _ _) = r
@@ -181,8 +181,6 @@ showRange range@(Range_Range startPos endPos)
         moduleFromPosition endPos
     | otherwise =
         showPosition startPos
-showRange _ =
-    "<unknown range>"
 
 showPosition :: Position -> String
 showPosition (Position_Position _ line column) =
@@ -197,5 +195,7 @@ sortRanges ranges = let (xs,ys) = partition isImportRange ranges
 moduleFromPosition :: Position -> String
 moduleFromPosition pos =
     case pos of
-        Position_Position mod _ _ -> mod
-        _                         -> internalError "UHA_Range" "moduleFromPosition" "unknown position"
+        Position_Position moduleName _ _ -> 
+            moduleName
+        _ -> 
+            internalError "UHA_Range" "moduleFromPosition" "unknown position"

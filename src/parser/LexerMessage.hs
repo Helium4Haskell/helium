@@ -1,11 +1,17 @@
-module LexerMessage where
+module LexerMessage
+    ( LexerError(..)
+    , LexerErrorInfo(..)
+    , LexerWarning(..)
+    , LexerWarningInfo(..)
+    , keepOneTabWarning
+    ) where
 
 import ParsecPos
 import UHA_Syntax(Range(..), Position(..))
 import Messages
 
 instance HasMessage LexerError where
-    getRanges (LexerError pos (StillOpenAtEOF brackets)) =
+    getRanges (LexerError _ (StillOpenAtEOF brackets)) =
         reverse (map (sourcePosToRange . fst) brackets)
     getRanges (LexerError pos (UnexpectedClose _ pos2 _)) =
         map sourcePosToRange [pos, pos2]
@@ -16,6 +22,7 @@ instance HasMessage LexerError where
         in MessageOneLiner (MessageString line) :
             [ MessageHints "Hint" [ MessageString s | s <- rest ] ]
 
+sourcePosToRange :: SourcePos -> Range
 sourcePosToRange pos = 
     let name = sourceName pos; line = sourceLine pos; col = sourceColumn pos
         position = Position_Position name line col
@@ -47,6 +54,7 @@ data LexerErrorInfo
     | UnexpectedClose Char SourcePos Char
     | StillOpenAtEOF [(SourcePos, Char)]
 
+showLexerErrorInfo :: LexerErrorInfo -> [String]
 showLexerErrorInfo info =
     case info of
         UnterminatedComment -> ["Unterminated comment"]
@@ -67,7 +75,7 @@ showLexerErrorInfo info =
         IllegalCharInString -> ["Illegal character in string literal", correctStrings]
                 
         TooManyClose c -> ["Close bracket " ++ show c ++ " but no open bracket"]
-        UnexpectedClose c1 pos2 c2 -> 
+        UnexpectedClose c1 _ c2 -> 
             [ "Unexpected close bracket " ++ show c1
             , "Expecting a close bracket for " ++ show c2 
             ]
@@ -77,11 +85,10 @@ showLexerErrorInfo info =
             -- 'reverse' because positions will be sorted and brackets are
             -- reported in reversed order
 
+correctFloats, correctChars, correctStrings :: String
 correctFloats  = "Correct examples of Floats: 3.14 0.2 4e-13 5E+1 6.7e1"
 correctChars   = "Correct examples of Chars: 'a' '\\n' '&'"
 correctStrings = "Correct examples of Strings: \"Helium is cool\" \"abc\\ndef\" \"\""
-
-showPosAsTuple pos = show (sourceLine pos, sourceColumn pos)
 
 commasAnd :: [String] -> String
 commasAnd [] = []
@@ -104,6 +111,7 @@ data LexerWarningInfo
     | LooksLikeFloatNoFraction String
     | LooksLikeFloatNoDigits String
 
+showLexerWarningInfo :: LexerWarningInfo -> [String]
 showLexerWarningInfo info = 
     case info of
         TabCharacter -> 

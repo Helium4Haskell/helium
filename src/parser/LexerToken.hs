@@ -50,8 +50,6 @@ instance Show Lexeme where
                         
         LexEOF              -> "end of file"
         
-        _                   -> "unknown"
-
 lexemeLength :: Lexeme -> Int
 lexemeLength l = case l of
     LexChar            s     -> length s + 2 -- count the quotes, too

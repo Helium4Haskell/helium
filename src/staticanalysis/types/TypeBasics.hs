@@ -49,7 +49,7 @@ generalizeAll :: Tp -> TpScheme
 generalizeAll = generalize [] 
 
 instantiate :: Int -> TpScheme -> (Int,Tp)
-instantiate unique (Scheme as nameMap tp) = 
+instantiate unique (Scheme as _ tp) = 
    let sub = listToSubstitution (zip as (map TVar [unique..]))
    in (unique + length as,sub |-> tp)
    
@@ -63,7 +63,7 @@ unsafeInstantiate = snd . instantiate magicNumber
    where magicNumber = 123456789
 
 arityOfTpScheme :: TpScheme -> Int
-arityOfTpScheme (Scheme as nameMap tp) = arityOfTp tp
+arityOfTpScheme (Scheme _ _ tp) = arityOfTp tp
 
 arityOfTp :: Tp -> Int
 arityOfTp = length . fst . functionSpine
@@ -79,14 +79,14 @@ functionSpine = rec [] where
    rec tps tp                              = (reverse tps,tp)
    
 constantsInType :: Tp -> [String]
-constantsInType (TVar i)     = []
+constantsInType (TVar _)     = []
 constantsInType (TCon s)     = [s]
 constantsInType (TApp t1 t2) = constantsInType t1 `union` constantsInType t2
 
 priorityOfType :: Tp -> Int
 priorityOfType tp = case leftSpine tp of 
-       (TCon "->",[t1,t2]) -> 0
+       (TCon "->",[_,_]  ) -> 0
        (_        ,[]     ) -> 2
-       (TCon "[]",[t1]   ) -> 2
+       (TCon "[]",[_]    ) -> 2
        (TCon s   ,_      ) | isTupleConstructor s -> 2
        _                   -> 1

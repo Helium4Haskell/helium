@@ -39,11 +39,11 @@ nameFromString str@(first:_)
 nameFromString _ = internalError "UHA_Utils" "nameFromString" "empty string"
 
 isOperatorName :: Name -> Bool
-isOperatorName (Name_Operator   _ _ name) = True
+isOperatorName (Name_Operator _ _ _) = True
 isOperatorName _ = False
 
 isIdentifierName :: Name -> Bool
-isIdentifierName (Name_Identifier   _ _ name) = True
+isIdentifierName (Name_Identifier _ _ _) = True
 isIdentifierName _ = False
 
 showNameAsOperator :: Name -> String

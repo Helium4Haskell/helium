@@ -57,9 +57,9 @@ lexerError err pos =
     LM (\_ _ -> Left (LexerError pos err))
 
 lexerWarning :: LexerWarningInfo -> SourcePos -> LexerMonad ()
-lexerWarning warning pos = 
+lexerWarning warning warningPos = 
     LM (\pos brackets -> 
-        Right ((), [LexerWarning pos warning], pos, brackets))
+        Right ((), [LexerWarning warningPos warning], pos, brackets))
     
 addPos :: Int -> SourcePos -> SourcePos
 addPos i pos = incSourceColumn pos i

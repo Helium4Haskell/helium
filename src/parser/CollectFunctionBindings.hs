@@ -9,7 +9,7 @@ import Utils
 
 decls :: Declarations -> Declarations
 decls [] = []
-decls (d@(Declaration_FunctionBindings r [_]):ds) =
+decls (d@(Declaration_FunctionBindings _ [_]):ds) =
     let mn = nameOfDeclaration d
         (same, others) = span ((== mn) . nameOfDeclaration) (d:ds)
         fs = map functionBindingOfDeclaration same
@@ -38,9 +38,9 @@ nameOfDeclaration d =
         _ -> Nothing
 
 nameOfLeftHandSide :: LeftHandSide -> Name
-nameOfLeftHandSide l =
-    case l of
+nameOfLeftHandSide lhs =
+    case lhs of
         LeftHandSide_Function _ n _ -> n
         LeftHandSide_Infix _ _ n _ -> n
-        LeftHandSide_Parenthesized _ l _ -> nameOfLeftHandSide l
+        LeftHandSide_Parenthesized _ innerLhs _ -> nameOfLeftHandSide innerLhs
         

@@ -60,8 +60,8 @@ expandOneStepOrdered (ordering, synonyms) (t1,t2) =
    in case (f t1, f t2) of
          (Just i1, Just i2) | i1 < i2   -> Just (expand t1, t2)
                             | otherwise -> Just (t1, expand t2)
-         (Just i1, Nothing) -> Just (expand t1, t2)
-         (Nothing, Just i2) -> Just (t1, expand t2)
+         (Just _ , Nothing) -> Just (expand t1, t2)
+         (Nothing, Just _ ) -> Just (t1, expand t2)
          _                  -> Nothing
 
 -- determine an ordering of the type synonyms 
