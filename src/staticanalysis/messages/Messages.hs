@@ -102,7 +102,7 @@ showPositions :: [Range] -> String
 showPositions rs = showPositions' (sort rs)
 showPositions' :: [Range] -> String
 showPositions' (range:ranges) = showPosition range ++ concatMap ((", " ++) . showPosition) ranges
-showPositions' [] = "<unknown>"
+showPositions' [] = "<unknownNR>"
 
 -- !!!! In the special case that the range corresponds to the import range,
 -- the module name of the second position should be printed
@@ -112,8 +112,10 @@ showPosition range@(Range_Range _ (Position_Position modName _ _))
         modName
 showPosition (Range_Range (Position_Position _ l c) _) =
     "(" ++ show l ++ "," ++ show c ++ ")"
+showPosition (Range_Range Position_Unknown Position_Unknown) =
+    "<unknownSP1>"
 showPosition (Range_Range Position_Unknown _) =
-    "<unknown>"
+    "<unknownSP2>"
 showPosition _ =
     internalError "SAMessages" "showPosition" "unknown kind of position"
 
@@ -138,7 +140,7 @@ showFullRange (Range_Range p1 p2) = "<" ++ showFullPosition p1 ++ "," ++ showFul
 
 showFullPosition :: Position -> String
 showFullPosition (Position_Position m l c) = "<" ++ m ++ "," ++ show l ++ "," ++ show c ++ ">"
-showFullPosition (Position_Unknown) = "<unknown>"
+showFullPosition (Position_Unknown) = "<unknownFP>"
 
 prettyOrList :: [String] -> String
 prettyOrList []  = ""

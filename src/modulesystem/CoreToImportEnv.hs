@@ -3,7 +3,7 @@ module CoreToImportEnv(getImportEnvironment) where
 import UHA_Syntax(Name(..), Range(..), Position(..))
 import UHA_Utils
 import OperatorTable
-import ParseCommon(intUnaryMinusName, floatUnaryMinusName)
+import ParseLibrary(intUnaryMinusName, floatUnaryMinusName)
 import Types
 import Utils
 import Core

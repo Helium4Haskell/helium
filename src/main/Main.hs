@@ -65,7 +65,7 @@ make fullName searchPath chain options doneRef =
           Just isRecompiled -> return isRecompiled
           Nothing -> do
             imports <- parseOnlyImports fullName
-
+            
             -- If this module imports a module earlier in the chain, there is a cycle
             case circularityCheck imports chain of
                 Just cycle -> do

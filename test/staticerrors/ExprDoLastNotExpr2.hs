@@ -1,5 +1,5 @@
 module ExprDoLastNotExpr2 where
 
 
-
-main = do { let x = 0 }
+f = let y = 0 in 3 
+main = do let x = 0

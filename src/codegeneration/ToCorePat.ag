@@ -47,7 +47,10 @@ patternMatchFail nodeDescription range =
         `app_` packedString (nodeDescription ++ " ranging from " ++ showRange range)
 
 showRange :: Range -> String
-showRange (Range_Range (Position_Position mod line column) (Position_Position _ line' column')) = 
+showRange (Range_Range (Position_Position mod line column) 
+                       (Position_Position _ line' column')) = 
     show (line, column) ++ " to " ++ show (line', column') ++ " in module " ++ mod
-showRange _ = internalError "ToCorePat.ag" "showRange" "unknown position"
+showRange _ = "<<unknown position>>"
+-- internalError "ToCorePat.ag" "showRange" "unknown position"
+
 }

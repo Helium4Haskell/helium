@@ -1374,10 +1374,7 @@ sem_Literal_Char :: (T_Range) ->
                     (T_Literal)
 sem_Literal_Char (_range) (_value) =
     let (_text) =
-            let
-                        f cs = if head cs == '\'' then '\\':cs else cs
-                    in
-                        char '\'' <> ((text.f.init.tail.show) _value) <> char '\''
+            text ("'" ++ _value ++ "'")
         ( _range_text) =
             (_range )
     in  (_text)
@@ -1404,7 +1401,7 @@ sem_Literal_String :: (T_Range) ->
                       (T_Literal)
 sem_Literal_String (_range) (_value) =
     let (_text) =
-            text (show _value)
+            text ("\"" ++ _value ++ "\"")
         ( _range_text) =
             (_range )
     in  (_text)

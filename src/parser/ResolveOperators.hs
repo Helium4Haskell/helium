@@ -4,7 +4,7 @@ import UHA_Syntax
 import UHA_Utils
 import OperatorTable
 import Char
-import ParseCommon(intUnaryMinusName, floatUnaryMinusName)
+import ParseLibrary(intUnaryMinusName, floatUnaryMinusName)
 import Utils
 
 -- operatoren resolven

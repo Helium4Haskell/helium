@@ -498,14 +498,13 @@ SEM Literal                                      {- *** -}
     | Int               loc.oneLineTree = Text @value
     --  range                    : Range
     --  value                    : String
-    | Char              loc.oneLineTree = let f cs = if head cs == '\'' then '\\':cs else cs
-                                          in Text ("'" ++ ((f.init.tail.show) @value) ++ "'")
+    | Char              loc.oneLineTree = Text ("'" ++ @value ++ "'")
     --  range                    : Range
     --  value                    : String -- without the quotes
     | Float             loc.oneLineTree = Text @value
     --  range                    : Range
     --  value                    : String
-    | String            loc.oneLineTree = Text  (show @value)
+    | String            loc.oneLineTree = Text ("\"" ++ @value ++ "\"")
     --  range                    : Range
     --  value                    : String -- without the quotes
 

@@ -260,7 +260,7 @@ instance Show Range where
     show (Range_Range begin end) = "<" ++ show begin ++ "," ++ show end ++ ">"
 instance Show Position where
     show (Position_Position _ begin end) = "<" ++ show begin ++ "," ++ show end ++ ">"
-    show (Position_Unknown) = "<unknown>"
+    show (Position_Unknown) = "<unknownIS>"
 
 instance Eq Range where
     Range_Range start1 stop1 == Range_Range start2 stop2 =

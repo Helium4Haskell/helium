@@ -456,9 +456,8 @@ isSpace c =
         i == ord '\n' ||
         i == ord '\r' ||
         i == ord '\f' ||
-        i == ord '\v' ||
-        i == ord '\xa0'
-
+        i == ord '\v'
+        
 isUpper :: Char -> Bool
 isUpper c = ord c >= ord 'A' && ord c <= ord 'Z' 
 

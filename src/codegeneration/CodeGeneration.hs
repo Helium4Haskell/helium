@@ -136,9 +136,12 @@ patternMatchFail nodeDescription range =
         `app_` packedString (nodeDescription ++ " ranging from " ++ showRange range)
 
 showRange :: Range -> String
-showRange (Range_Range (Position_Position mod line column) (Position_Position _ line' column')) = 
+showRange (Range_Range (Position_Position mod line column) 
+                       (Position_Position _ line' column')) = 
     show (line, column) ++ " to " ++ show (line', column') ++ " in module " ++ mod
-showRange _ = internalError "ToCorePat.ag" "showRange" "unknown position"
+showRange _ = "<<unknown position>>"
+-- internalError "ToCorePat.ag" "showRange" "unknown position"
+
 -- Alternative -------------------------------------------------
 -- semantic domain
 type T_Alternative = (( Core.Expr -> Core.Expr ),(Alternative))
@@ -1650,7 +1653,10 @@ sem_Literal_Char (_range) (_value) =
             Literal_Char _range_self _value
         ( _range_self) =
             (_range )
-    in  (Core.Lit (Core.LitInt (ord (head _value))),_self)
+    in  (Core.Lit (Core.LitInt (ord
+             (read ("'" ++ _value ++ "'"))))
+        ,_self
+        )
 sem_Literal_Float :: (T_Range) ->
                      (String) ->
                      (T_Literal)
@@ -1677,7 +1683,10 @@ sem_Literal_String (_range) (_value) =
             Literal_String _range_self _value
         ( _range_self) =
             (_range )
-    in  (var "primPackedToString" `app_` packedString _value,_self)
+    in  (var "primPackedToString" `app_`
+             packedString (read ("\"" ++ _value ++ "\""))
+        ,_self
+        )
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
 type T_MaybeDeclarations = (( Core.Expr -> Core.Expr ),(MaybeDeclarations))

@@ -47,7 +47,6 @@ COMPILER
                 
 * generiek maken show voor tupels (Daan)
 * import SomeModule(SomeDataType(..)) is impossible in core
-* ParseCommon.literal: "Daan moet eigenlijk niet interpreteren" (by Arjan)
 * JCreator: Rijk-Jan
 * show implementeren met shows, ShowS; efficienter
 * HeliumCompatibility module voor Hugs/GHC
@@ -55,6 +54,7 @@ COMPILER
 
 ---- DONE ----================================================================================
 
+* ParseCommon.literal: "Daan moet eigenlijk niet interpreteren" (by Arjan)
 * bij chasing niet de hele module parsen
 * operator definitie in pp haakjes er omheen
 ! User manual helium A4

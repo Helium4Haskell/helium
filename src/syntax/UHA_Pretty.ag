@@ -674,16 +674,13 @@ SEM Literal                                      {- *** -}
     | Int                   loc.text = text @value              {- *** -}
     --  range                    : Range
     --  value                    : String
-    | Char                  loc.text =  let
-                                                    f cs = if head cs == '\'' then '\\':cs else cs
-                                                in
-                                                    char '\'' <> ((text.f.init.tail.show) @value) <> char '\''
+    | Char                  loc.text = text ("'" ++ @value ++ "'")
     --  range                    : Range
     --  value                    : String -- without the quotes
     | Float                 loc.text = text @value
     --  range                    : Range
     --  value                    : String
-    | String                loc.text = text (show @value) {- ??? -}
+    | String                loc.text = text ("\"" ++ @value ++ "\"")
     --  range                    : Range
     --  value                    : String -- without the quotes
 

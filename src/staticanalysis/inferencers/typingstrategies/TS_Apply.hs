@@ -16,8 +16,8 @@ import Messages
 import TypeErrors
 import ImportEnvironment
 import OperatorTable (OperatorTable)
-import ParseDeclExp (exp_)
-import HaskellLexer (runHParser)
+import Parser (exp_)
+import ParseLibrary (runHParser)
 import qualified ResolveOperators
 import TS_Attributes
 
@@ -39,7 +39,7 @@ matchInformation importEnvironment typingStrategy =
       
 expressionParser :: OperatorTable -> String -> Expression
 expressionParser operatorTable string = 
-   case runHParser exp_ "TS_Apply" string of
+   case runHParser exp_ "TS_Apply" string True {- wait for EOF -} False {- no layout rule -} of
       Left parseError  -> internalError "TS_Apply.ag" "n/a" ("unparsable expression: "++show parseError)
       Right expression -> ResolveOperators.expression operatorTable expression
 

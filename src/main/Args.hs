@@ -23,6 +23,7 @@ processArgs args =
             ,   Option "I" ["dump-all-information"] (NoArg DumpInformationForAllModules) "show information about all imported modules"
 
 #ifndef RELEASE
+            ,   Option "t" ["dump-tokens"] (NoArg DumpTokens) "dump tokens to screen"
             ,   Option "u" ["dump-uha"] (NoArg DumpUHA) "pretty print abstract syntax tree"
             ,   Option "c" ["dump-core"] (NoArg DumpCore) "pretty print Core program"
             ,   Option "C" ["save-core"] (NoArg DumpCoreToFile) "write Core program to file"
@@ -44,7 +45,8 @@ processArgs args =
             ]
 
 data Option
-    = DumpUHA --
+    = DumpTokens
+    | DumpUHA --
     | DumpCore --
     | DumpCoreToFile --
     | DumpInformationForThisModule

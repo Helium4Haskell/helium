@@ -278,7 +278,9 @@ SEM Literal [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  value                    : String
 
-    | Char                  lhs.core = Core.Lit (Core.LitInt (ord (head @value)))
+    | Char                  lhs.core = 
+            Core.Lit (Core.LitInt (ord 
+                (read ("'" ++ @value ++ "'"))))
     --  range                    : Range
     --  value                    : String -- without the quotes
 
@@ -286,7 +288,9 @@ SEM Literal [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  value                    : String
 
-    | String                lhs.core = var "primPackedToString" `app_` packedString @value
+    | String                lhs.core = 
+        var "primPackedToString" `app_` 
+            packedString (read ("\"" ++ @value ++ "\""))
     --  range                    : Range
     --  value                    : String -- without the quotes
 

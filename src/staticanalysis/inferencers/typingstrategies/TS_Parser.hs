@@ -2,18 +2,19 @@ module TS_Parser where
 
 import UHA_Syntax
 import TS_Syntax
-import Parsec
-import ParseCommon
-import HaskellLexer hiding (conid, varid)
-import ParseType
-import ParseDeclExp
-import OperatorTable
-import Char
-import qualified ResolveOperators
-
-import IOExts
 import TS_CoreSyntax
 import qualified TS_ToCore
+
+import IOExts
+import Char
+
+-- Parsing
+import qualified ResolveOperators
+import Parser
+import Parsec
+import ParseLibrary
+import OperatorTable
+
 {-
 --ultimate :: Core_TypingStrategy
 ultimate = let ts = head (map TS_ToCore.typingStrategyToCore tmp)
@@ -32,50 +33,50 @@ tmp = unsafePerformIO
 
 parseTypingStrategies :: OperatorTable -> String -> String -> Either ParseError TypingStrategies
 parseTypingStrategies operatorTable filename input = 
-   runHParser (many parseTypingStrategy) filename input 
+   runHParser (many parseTypingStrategy) filename input True {- wait for EOF -} False {- no layout rule -}
   
   where
 
    parseTypingStrategy :: HParser TypingStrategy
    parseTypingStrategy = 
-      do name        <- stringLiteral
+      do name        <- lexString
          typerule    <- parseTypeRule 
          constraints <- many parseConstraint
-         reservedOp ";"  
+         lexSEMI  
          return (TypingStrategy_TypingStrategy name typerule constraints)
 
    parseTypeRule :: HParser TypeRule
    parseTypeRule =         
       do judgements <- many1 parseJudgement
-         reservedOp ";" 
+         lexSEMI 
          let (premises, conclusion) = (init judgements, last judgements)
          return (TypeRule_TypeRule (map judgementToSimpleJudgement premises) conclusion)
 
    parseJudgement :: HParser Judgement
    parseJudgement =         
       do expression <- exp_ 
-         reservedOp ";"      
+         lexSEMI      
          let resolvedExpression = ResolveOperators.expression operatorTable expression
          return (expressionToJudgement resolvedExpression)     
 
    parseConstraint :: HParser UserStatement
    parseConstraint = 
       do -- enter a new phase
-         reserved "phase"
-         phase <- natural
+         lexPHASE
+         phase <- fmap read lexInt
          return (UserStatement_Phase (fromInteger phase))
       <|>
       do -- constraint set of meta-variable
-         reserved "constraints"         
+         lexCONSTRAINTS         
          name <- varid
          return (UserStatement_MetaVariableConstraints name)
       <|>
       do -- user-constraint
          leftType  <- type_
-         reservedOp "=="
+         lexASGASG
          rightType <- type_
-         reservedOp ":"
-         message   <- stringLiteral
+         lexCOL
+         message   <- lexString
          return (UserStatement_Constraint leftType rightType message)
 
 judgementToSimpleJudgement :: Judgement -> SimpleJudgement

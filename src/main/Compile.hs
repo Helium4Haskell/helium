@@ -17,6 +17,7 @@ import qualified CodeGeneration       (sem_Module)
 import Parser(parseModule)
 import ResolveOperators(resolveOperators, operatorsFromModule)
 import OperatorTable
+import Lexer
 
 -- UHA
 import UHA_Syntax
@@ -69,6 +70,10 @@ compile fullName options doneModules =
          
         -- Phase 1: Parsing
         enterNewPhase "Parsing" options
+
+        when (DumpTokens `elem` options) $ do
+            cont <- readFile fullName
+            putStrLn (show (layout (lexer (1,1) cont)))
         
         parseResult <- {-# SCC "parseModule" #-} 
                        parseModule fullName

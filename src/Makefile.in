@@ -60,9 +60,9 @@ AG_OPTS = -mscfr
 # Helium sources
 
 PARSER	= \
-	parser/CollectFunctionBindings.hs parser/HaskellLexer.hs parser/OperatorTable.hs parser/ParsecLayout.hs \
-	parser/ParseCommon.hs parser/ParseDeclExp.hs parser/ParseImportExport.hs parser/ParsePat.hs \
-	parser/Parser.hs parser/ParseType.hs parser/ResolveOperators.hs
+	parser/CollectFunctionBindings.hs parser/OperatorTable.hs \
+	parser/Parser.hs parser/ResolveOperators.hs parser/Lexer.hs \
+	parser/ParseLibrary.hs
 
 MODULESYSTEM = \
 	modulesystem/ImportEnvironment.hs \

@@ -4,4 +4,5 @@ main :: Int
 main = 0
 
 f :: [Int]
-f = id (case True of True -> [])
+f = id (case True of True -> []
+       )

@@ -1509,8 +1509,7 @@ sem_Literal_Char (_range) (_value) =
     let (_self) =
             Literal_Char _range_self _value
         (_oneLineTree) =
-            let f cs = if head cs == '\'' then '\\':cs else cs
-            in Text ("'" ++ ((f.init.tail.show) _value) ++ "'")
+            Text ("'" ++ _value ++ "'")
         ( _range_self) =
             (_range )
     in  (_oneLineTree,_self)
@@ -1543,7 +1542,7 @@ sem_Literal_String (_range) (_value) =
     let (_self) =
             Literal_String _range_self _value
         (_oneLineTree) =
-            Text  (show _value)
+            Text ("\"" ++ _value ++ "\"")
         ( _range_self) =
             (_range )
     in  (_oneLineTree,_self)
