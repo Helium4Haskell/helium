@@ -1330,13 +1330,13 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
         (_betaResOp) =
             TVar (_lhs_betaUnique + 1)
         (_conOperator) =
-            [ (_operator_beta .==. _leftExpression_beta .->. _rightExpression_beta .->. _betaResOp) _cinfoOperator ]
-        (_conResult) =
+            (_operator_beta .==. _leftExpression_beta .->. _rightExpression_beta .->. _betaResOp) _cinfoOperator
+        (_conTotal) =
             case (_leftExpression_section,_rightExpression_section) of
-                   (False,False) -> [ (_betaResOp     .==. _beta)                        _cinfoComplete     ]
-                   (True ,True ) -> [ (_operator_beta .==. _beta)                        _cinfoEmpty        ]
-                   (False,True ) -> [ (_rightExpression_beta .->. _betaResOp .==. _beta) _cinfoRightSection ]
-                   (True ,False) -> [ (_leftExpression_beta  .->. _betaResOp .==. _beta) _cinfoLeftSection  ]
+                   (False,False) -> [ _conOperator , (_betaResOp     .==. _beta)                        _cinfoComplete     ]
+                   (True ,True ) -> [                (_operator_beta .==. _beta)                        _cinfoEmpty        ]
+                   (False,True ) -> [ _conOperator , (_rightExpression_beta .->. _betaResOp .==. _beta) _cinfoRightSection ]
+                   (True ,False) -> [ _conOperator , (_leftExpression_beta  .->. _betaResOp .==. _beta) _cinfoLeftSection  ]
         (_cinfoComplete) =
             \tppair ->
             CInfo { info       = (NTExpression,AltInfixApplication,"")
@@ -1405,7 +1405,7 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
         ,_beta
         ,_rightExpression_betaUnique
         ,_rightExpression_collectednotypedef
-        ,_conResult .>. _conOperator .>.
+        ,_conTotal .>.
          ctNode [ _operator_constraints
                 , _leftExpression_constraints
                 , _rightExpression_constraints

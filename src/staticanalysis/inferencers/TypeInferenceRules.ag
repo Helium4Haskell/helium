@@ -260,7 +260,7 @@ SEM Expression
 
   | InfixApplication
       lhs            . assumptions = @leftExpression.assumptions `combine` @operator.assumptions `combine` @rightExpression.assumptions
-                     . constraints = @conResult .>. @conOperator .>.
+                     . constraints = @conTotal .>.
                                      ctNode [ @operator.constraints
                                             , @leftExpression.constraints
                                             , @rightExpression.constraints
@@ -268,12 +268,12 @@ SEM Expression
       leftExpression . betaUnique  = @lhs.betaUnique + 2
       loc            . beta        = TVar @lhs.betaUnique
                      . betaResOp   = TVar (@lhs.betaUnique + 1)
-                     . conOperator = [ (@operator.beta .==. @leftExpression.beta .->. @rightExpression.beta .->. @betaResOp) @cinfoOperator ]
-                     . conResult   = case (@leftExpression.section,@rightExpression.section) of
-                                            (False,False) -> [ (@betaResOp     .==. @beta)                        @cinfoComplete     ]
-                                            (True ,True ) -> [ (@operator.beta .==. @beta)                        @cinfoEmpty        ]
-                                            (False,True ) -> [ (@rightExpression.beta .->. @betaResOp .==. @beta) @cinfoRightSection ]
-                                            (True ,False) -> [ (@leftExpression.beta  .->. @betaResOp .==. @beta) @cinfoLeftSection  ]
+                     . conOperator = (@operator.beta .==. @leftExpression.beta .->. @rightExpression.beta .->. @betaResOp) @cinfoOperator
+                     . conTotal    = case (@leftExpression.section,@rightExpression.section) of
+                                            (False,False) -> [ @conOperator , (@betaResOp     .==. @beta)                        @cinfoComplete     ]
+                                            (True ,True ) -> [                (@operator.beta .==. @beta)                        @cinfoEmpty        ]
+                                            (False,True ) -> [ @conOperator , (@rightExpression.beta .->. @betaResOp .==. @beta) @cinfoRightSection ]
+                                            (True ,False) -> [ @conOperator , (@leftExpression.beta  .->. @betaResOp .==. @beta) @cinfoLeftSection  ]
 
   | If
       lhs             . assumptions = @guardExpression.assumptions `combine` @thenExpression.assumptions `combine` @elseExpression.assumptions
