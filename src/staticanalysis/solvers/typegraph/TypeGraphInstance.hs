@@ -4,14 +4,14 @@ import EquivalenceGroup
 import FixpointSolveState
 import IsTypeGraph
 import List
-import ST
+import Data.STRef
 import SolveState
 import SolveTypeGraph
 import TypeGraphConstraintInfo
 import TypeGraphHeuristics (heuristics)
 import Types
 import Utils (internalError)
-import FiniteMap
+import Data.FiniteMap
 
 instance TypeGraphConstraintInfo info => IsTypeGraph (TypeGraph info) info where
    initializeTypeGraph =

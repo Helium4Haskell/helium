@@ -25,7 +25,7 @@ module TypeSubstitution where
 import TypeBasics
 import Array
 import List                 ( (\\), union )
-import FiniteMap
+import Data.FiniteMap
 import Utils                ( internalError )
 
 ----------------------------------------------------------------------

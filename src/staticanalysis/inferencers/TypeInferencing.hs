@@ -39,7 +39,7 @@ import UHA_Range               ( noRange, getNameRange, getExprRange, getPatRang
 import UHA_Syntax
 import UHA_Utils               ( showNameAsOperator, intUnaryMinusName )
 import ImportEnvironment
-import FiniteMap
+import Data.FiniteMap
 
 import UHA_Utils
 

@@ -14,7 +14,7 @@ import TypeSubstitution
 import TypeBasics
 import TypeSynonyms
 import Utils               ( internalError )
-import FiniteMap
+import Data.FiniteMap
 
 ----------------------------------------------------------------------
 -- unification (and similar operations)

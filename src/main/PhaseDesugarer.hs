@@ -10,7 +10,7 @@ import ImportEnvironment(TypeEnvironment, ImportEnvironment)
 import qualified CodeGeneration(sem_Module)
 import Types
 import UHA_Utils
-import FiniteMap
+import Data.FiniteMap
 
 phaseDesugarer :: String -> Module -> [CoreDecl] -> 
                     ImportEnvironment -> FiniteMap NameWithRange TpScheme {- == LocalTypes -} -> 

@@ -15,7 +15,7 @@ import Utils ( internalError, fst3, minInt, maxInt )
 import TypeConversion
 import DerivingShow
 import LiftedConstraints
-import FiniteMap
+import Data.FiniteMap
 import ImportEnvironment
 import OperatorTable
 import Char ( isUpper )

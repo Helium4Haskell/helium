@@ -11,7 +11,7 @@ module LiftedConstraints where
 
 import TypeConstraints
 import Types
-import FiniteMap
+import Data.FiniteMap
 
 infix 3 .===. , .:::. , .<==. , !:::!
 

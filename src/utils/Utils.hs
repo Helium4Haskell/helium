@@ -6,7 +6,8 @@ Utils: Some Prelude-like functions
 
 module Utils where
 
-import IOExts
+import Data.IORef
+import GHC.IOBase (unsafePerformIO)
 import List (group, groupBy, sort, elemIndex)
 import Logger
 

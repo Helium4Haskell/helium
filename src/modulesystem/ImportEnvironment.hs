@@ -1,6 +1,6 @@
 module ImportEnvironment where
 
-import FiniteMap
+import Data.FiniteMap
 import UHA_Syntax  ( Names, Name )
 import UHA_Utils
 import Types

@@ -6,10 +6,10 @@ module BasicState
   , addError, getErrors, setErrors
   , addCheck, doChecks
   , liftFunction, extend, getWith
-  , module MonadState
+  , module Control.Monad.State
   ) where
 
-import MonadState
+import Control.Monad.State
 import Constraints
   
 ---------------------------------------------------------------------

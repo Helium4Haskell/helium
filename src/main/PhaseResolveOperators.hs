@@ -3,7 +3,7 @@ module PhaseResolveOperators(phaseResolveOperators) where
 import CompileUtils
 import ResolveOperators(resolveOperators, operatorsFromModule)
 import qualified PrettyPrinting(sem_Module)
-import FiniteMap
+import Data.FiniteMap
 
 phaseResolveOperators :: String -> [String] -> Module -> [ImportEnvironment] -> 
                             [Option] -> IO Module

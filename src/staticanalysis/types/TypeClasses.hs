@@ -11,7 +11,7 @@ import TypeSynonyms
 import List  ( nub, sort )
 import Maybe ( catMaybes )
 import Monad ( msum )
-import FiniteMap
+import Data.FiniteMap
 
 ----------------------------------------------------------------------  
 -- type classes

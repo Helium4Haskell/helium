@@ -6,7 +6,7 @@ import UHA_Utils
 import UHA_Range 
 import List (union)
 import ImportEnvironment
-import FiniteMap
+import Data.FiniteMap
 import TypeConversion
 import Char (ord)
 
@@ -29,8 +29,6 @@ import qualified Byte
 import qualified CoreParse
 
 import Byte(bytesFromString)
-
-import IOExts
 
 
 type CoreDecl = Core.Decl Core.Expr

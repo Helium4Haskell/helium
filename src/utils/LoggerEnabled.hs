@@ -1,7 +1,7 @@
 module Logger ( logger ) where
 
-import Socket   
-import Concurrent
+import Network
+import Control.Concurrent
 --import Posix
 import Monad
 import System

@@ -5,7 +5,7 @@ import ImportEnvironment
 import Tree (flattenW)
 import TypeErrors
 import Types
-import FiniteMap
+import Data.FiniteMap
 import UHA_Utils (nameFromString)
 import UHA_Range (noRange)
 import Utils (internalError)

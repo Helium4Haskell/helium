@@ -19,7 +19,6 @@ import Monad
 import ConstraintInfo
 import TypeGraphConstraintInfo
 import SolveConstraints
-import IOExts
 
 equivalenceGroupsToHTML_And_Stop :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => SolveState EquivalenceGroups info ()
 equivalenceGroupsToHTML_And_Stop = do equivalenceGroupsToHTML

@@ -20,7 +20,7 @@ import IsSolver
 import Utils (internalError)
 import FixpointSolveState
 import ConstraintInfo
-import FiniteMap
+import Data.FiniteMap
 import Maybe
 import List
 

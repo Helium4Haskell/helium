@@ -8,7 +8,7 @@ import OperatorTable
 import Char
 import Utils
 import Messages
-import FiniteMap
+import Data.FiniteMap
 
 
 data ResolveError = 

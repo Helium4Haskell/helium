@@ -1,7 +1,8 @@
 module FixpointSolveState where
 
-import ST 
-import MonadState
+import Data.STRef
+import Control.Monad.ST
+import Control.Monad.State
 import SolveState
 
 data Fix info extra monad result = Fix { unFix :: StateT (SolveState (Fix info extra monad) info extra) monad result }

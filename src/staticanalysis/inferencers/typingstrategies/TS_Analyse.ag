@@ -31,7 +31,7 @@ import Constraints
 import SolveGreedy
 import SolveState
 import ExpressionTypeInferencer (expressionTypeInferencer)
-import FiniteMap
+import Data.FiniteMap
 import Char (isAlphaNum)
 import Utils (internalError)
 import qualified PrettyPrinting as PP

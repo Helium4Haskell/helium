@@ -1,6 +1,6 @@
 module Tree where
 
-import FiniteMap
+import Data.FiniteMap
 import qualified Set
 import TreeWalk 
 import List (partition)

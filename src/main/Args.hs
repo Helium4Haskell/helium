@@ -7,7 +7,7 @@ module Args
 import System
 import Version
 import Utils
-import GetOpt
+import System.Console.GetOpt
 
 processArgs :: [String] -> IO ([Option], String)
 processArgs args =

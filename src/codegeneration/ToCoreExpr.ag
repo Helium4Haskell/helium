@@ -10,10 +10,6 @@ SEM MaybeExpression [ | | core : { Maybe Core.Expr } ]
 
 ATTR Expressions [ | | core USE { : } { [] } : { [Core.Expr] } ]
 
-imports{
-import IOExts
-}
-
 {
 getDictionaries :: OrderedTypeSynonyms -> Predicates -> Predicates -> [Core.Expr]
 getDictionaries synonyms ps = map (getDictionary synonyms ps)

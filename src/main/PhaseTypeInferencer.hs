@@ -6,7 +6,7 @@ import Warnings(Warning)
 import qualified TypeInferencing(sem_Module)
 
 import Types -- temporary
-import FiniteMap
+import Data.FiniteMap
 import UHA_Utils
 import UHA_Syntax
 

@@ -11,7 +11,7 @@ import PhaseDesugarer
 import PhaseCodeGenerator
 import CompileUtils
 import Utils
-import IOExts(writeIORef)
+import Data.IORef
 
 compile :: String -> [Option] -> [String] -> [String] -> IO ()
 compile fullName options lvmPath doneModules =

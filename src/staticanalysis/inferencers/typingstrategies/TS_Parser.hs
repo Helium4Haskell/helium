@@ -5,7 +5,7 @@ import TS_Syntax
 import TS_CoreSyntax
 import qualified TS_ToCore
 import List (intersperse)
-import IOExts
+import Data.IORef
 import Char
 import qualified PrettyPrinting as PP
 import qualified ResolveOperators

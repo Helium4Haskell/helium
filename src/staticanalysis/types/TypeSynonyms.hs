@@ -16,7 +16,7 @@
 module TypeSynonyms where
 
 import TypeBasics
-import FiniteMap
+import Data.FiniteMap
 import TopSort    (topSort)
 import Utils      (internalError)
 

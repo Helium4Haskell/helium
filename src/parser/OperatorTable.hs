@@ -6,7 +6,7 @@ module OperatorTable
 
 import UHA_Syntax
 import UHA_Utils
-import FiniteMap
+import Data.FiniteMap
 
 type OperatorTable = FiniteMap Name (Int, Assoc)
 

@@ -9,7 +9,7 @@ import System(exitWith, ExitCode(..), getArgs)
 import Maybe(fromJust, isNothing)
 import Standard(searchPathMaybe,getLvmPath, splitPath)
 import Directory(doesFileExist, getModificationTime)
-import IOExts(writeIORef, newIORef, readIORef, IORef)
+import Data.IORef
 import Args
 import Utils
 import TopSort

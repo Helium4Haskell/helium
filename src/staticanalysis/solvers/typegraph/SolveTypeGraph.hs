@@ -12,7 +12,8 @@
 
 module SolveTypeGraph where
 
-import ST
+import Control.Monad.ST
+import Data.STRef
 import EquivalenceGroup
 import Types
 import FixpointSolveState
@@ -22,7 +23,7 @@ import Constraints
 import SolveState
 import List
 import Utils (internalError)
-import FiniteMap
+import Data.FiniteMap
  
 type TypeGraph info   = Fix info () (STMonad (TG info))
 data TG info state = 

@@ -12,7 +12,7 @@ module EquivalenceGroup where
 import IsTypeGraph
 import List               ( partition, union, nub, sort )
 import Utils              ( internalError               )
-import IOExts             ( trace                       )
+import Debug.Trace
 
 debugMode = False -- enable/disable tracing
 
