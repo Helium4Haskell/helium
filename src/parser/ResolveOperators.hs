@@ -208,24 +208,44 @@ sem_Alternative_Alternative :: (T_Range) ->
                                (T_Pattern) ->
                                (T_RightHandSide) ->
                                (T_Alternative)
-sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Alternative_Alternative _range_self _pattern_self _righthandside_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_resolveErrors,_pattern_self) =
-            (_pattern (_lhs_opTable) (_lhs_resolveErrors))
-        ( _righthandside_resolveErrors,_righthandside_self) =
-            (_righthandside (_lhs_opTable) (_pattern_resolveErrors))
-    in  ( _righthandside_resolveErrors,_self)
+sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternIresolveErrors,_patternIself) =
+                (pattern_ (_patternOopTable) (_patternOresolveErrors))
+            ( _righthandsideIresolveErrors,_righthandsideIself) =
+                (righthandside_ (_righthandsideOopTable) (_righthandsideOresolveErrors))
+            (_self@_) =
+                Alternative_Alternative _rangeIself _patternIself _righthandsideIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _righthandsideIresolveErrors
+            (_patternOopTable@_) =
+                _lhsIopTable
+            (_patternOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_righthandsideOopTable@_) =
+                _lhsIopTable
+            (_righthandsideOresolveErrors@_) =
+                _patternIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Alternative_Empty :: (T_Range) ->
                          (T_Alternative)
-sem_Alternative_Empty (_range) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Alternative_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _lhs_resolveErrors,_self)
+sem_Alternative_Empty (range_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            (_self@_) =
+                Alternative_Empty _rangeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- Alternatives ------------------------------------------------
 -- semantic domain
 type T_Alternatives = (OperatorTable) ->
@@ -239,19 +259,39 @@ sem_Alternatives (list) =
 sem_Alternatives_Cons :: (T_Alternative) ->
                          (T_Alternatives) ->
                          (T_Alternatives)
-sem_Alternatives_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_resolveErrors,_hd_self) =
-            (_hd (_lhs_opTable) (_lhs_resolveErrors))
-        ( _tl_resolveErrors,_tl_self) =
-            (_tl (_lhs_opTable) (_hd_resolveErrors))
-    in  ( _tl_resolveErrors,_self)
+sem_Alternatives_Cons (hd_) (tl_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _hdIresolveErrors,_hdIself) =
+                (hd_ (_hdOopTable) (_hdOresolveErrors))
+            ( _tlIresolveErrors,_tlIself) =
+                (tl_ (_tlOopTable) (_tlOresolveErrors))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _tlIresolveErrors
+            (_hdOopTable@_) =
+                _lhsIopTable
+            (_hdOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_tlOopTable@_) =
+                _lhsIopTable
+            (_tlOresolveErrors@_) =
+                _hdIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Alternatives_Nil :: (T_Alternatives)
-sem_Alternatives_Nil (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            []
-    in  ( _lhs_resolveErrors,_self)
+sem_Alternatives_Nil  =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- AnnotatedType -----------------------------------------------
 -- semantic domain
 type T_AnnotatedType = ( (AnnotatedType))
@@ -264,14 +304,16 @@ sem_AnnotatedType_AnnotatedType :: (T_Range) ->
                                    (Bool) ->
                                    (T_Type) ->
                                    (T_AnnotatedType)
-sem_AnnotatedType_AnnotatedType (_range) (_strict) (_type) =
-    let (_self) =
-            AnnotatedType_AnnotatedType _range_self _strict _type_self
-        ( _range_self) =
-            (_range )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_AnnotatedType_AnnotatedType (range_) (strict_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            AnnotatedType_AnnotatedType _rangeIself strict_ _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- AnnotatedTypes ----------------------------------------------
 -- semantic domain
 type T_AnnotatedTypes = ( (AnnotatedTypes))
@@ -283,19 +325,23 @@ sem_AnnotatedTypes (list) =
 sem_AnnotatedTypes_Cons :: (T_AnnotatedType) ->
                            (T_AnnotatedTypes) ->
                            (T_AnnotatedTypes)
-sem_AnnotatedTypes_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_AnnotatedTypes_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_AnnotatedTypes_Nil :: (T_AnnotatedTypes)
 sem_AnnotatedTypes_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Body --------------------------------------------------------
 -- semantic domain
 type T_Body = (OperatorTable) ->
@@ -310,16 +356,26 @@ sem_Body_Body :: (T_Range) ->
                  (T_ImportDeclarations) ->
                  (T_Declarations) ->
                  (T_Body)
-sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Body_Body _range_self _importdeclarations_self _declarations_self
-        ( _range_self) =
-            (_range )
-        ( _importdeclarations_self) =
-            (_importdeclarations )
-        ( _declarations_resolveErrors,_declarations_self) =
-            (_declarations (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _declarations_resolveErrors,_self)
+sem_Body_Body (range_) (importdeclarations_) (declarations_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _importdeclarationsIself) =
+                (importdeclarations_ )
+            ( _declarationsIresolveErrors,_declarationsIself) =
+                (declarations_ (_declarationsOopTable) (_declarationsOresolveErrors))
+            (_self@_) =
+                Body_Body _rangeIself _importdeclarationsIself _declarationsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _declarationsIresolveErrors
+            (_declarationsOopTable@_) =
+                _lhsIopTable
+            (_declarationsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- Constructor -------------------------------------------------
 -- semantic domain
 type T_Constructor = ( (Constructor))
@@ -336,47 +392,53 @@ sem_Constructor_Constructor :: (T_Range) ->
                                (T_Name) ->
                                (T_AnnotatedTypes) ->
                                (T_Constructor)
-sem_Constructor_Constructor (_range) (_constructor) (_types) =
-    let (_self) =
-            Constructor_Constructor _range_self _constructor_self _types_self
-        ( _range_self) =
-            (_range )
-        ( _constructor_self) =
-            (_constructor )
-        ( _types_self) =
-            (_types )
-    in  ( _self)
+sem_Constructor_Constructor (range_) (constructor_) (types_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _constructorIself) =
+            (constructor_ )
+        ( _typesIself) =
+            (types_ )
+        (_self@_) =
+            Constructor_Constructor _rangeIself _constructorIself _typesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Constructor_Infix :: (T_Range) ->
                          (T_AnnotatedType) ->
                          (T_Name) ->
                          (T_AnnotatedType) ->
                          (T_Constructor)
-sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) =
-    let (_self) =
-            Constructor_Infix _range_self _leftType_self _constructorOperator_self _rightType_self
-        ( _range_self) =
-            (_range )
-        ( _leftType_self) =
-            (_leftType )
-        ( _constructorOperator_self) =
-            (_constructorOperator )
-        ( _rightType_self) =
-            (_rightType )
-    in  ( _self)
+sem_Constructor_Infix (range_) (leftType_) (constructorOperator_) (rightType_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _leftTypeIself) =
+            (leftType_ )
+        ( _constructorOperatorIself) =
+            (constructorOperator_ )
+        ( _rightTypeIself) =
+            (rightType_ )
+        (_self@_) =
+            Constructor_Infix _rangeIself _leftTypeIself _constructorOperatorIself _rightTypeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Constructor_Record :: (T_Range) ->
                           (T_Name) ->
                           (T_FieldDeclarations) ->
                           (T_Constructor)
-sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) =
-    let (_self) =
-            Constructor_Record _range_self _constructor_self _fieldDeclarations_self
-        ( _range_self) =
-            (_range )
-        ( _constructor_self) =
-            (_constructor )
-        ( _fieldDeclarations_self) =
-            (_fieldDeclarations )
-    in  ( _self)
+sem_Constructor_Record (range_) (constructor_) (fieldDeclarations_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _constructorIself) =
+            (constructor_ )
+        ( _fieldDeclarationsIself) =
+            (fieldDeclarations_ )
+        (_self@_) =
+            Constructor_Record _rangeIself _constructorIself _fieldDeclarationsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Constructors ------------------------------------------------
 -- semantic domain
 type T_Constructors = ( (Constructors))
@@ -388,19 +450,23 @@ sem_Constructors (list) =
 sem_Constructors_Cons :: (T_Constructor) ->
                          (T_Constructors) ->
                          (T_Constructors)
-sem_Constructors_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Constructors_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Constructors_Nil :: (T_Constructors)
 sem_Constructors_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ContextItem -------------------------------------------------
 -- semantic domain
 type T_ContextItem = ( (ContextItem))
@@ -413,16 +479,18 @@ sem_ContextItem_ContextItem :: (T_Range) ->
                                (T_Name) ->
                                (T_Types) ->
                                (T_ContextItem)
-sem_ContextItem_ContextItem (_range) (_name) (_types) =
-    let (_self) =
-            ContextItem_ContextItem _range_self _name_self _types_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _types_self) =
-            (_types )
-    in  ( _self)
+sem_ContextItem_ContextItem (range_) (name_) (types_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _typesIself) =
+            (types_ )
+        (_self@_) =
+            ContextItem_ContextItem _rangeIself _nameIself _typesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ContextItems ------------------------------------------------
 -- semantic domain
 type T_ContextItems = ( (ContextItems))
@@ -434,19 +502,23 @@ sem_ContextItems (list) =
 sem_ContextItems_Cons :: (T_ContextItem) ->
                          (T_ContextItems) ->
                          (T_ContextItems)
-sem_ContextItems_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_ContextItems_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_ContextItems_Nil :: (T_ContextItems)
 sem_ContextItems_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Declaration -------------------------------------------------
 -- semantic domain
 type T_Declaration = (OperatorTable) ->
@@ -482,167 +554,253 @@ sem_Declaration_Class :: (T_Range) ->
                          (T_SimpleType) ->
                          (T_MaybeDeclarations) ->
                          (T_Declaration)
-sem_Declaration_Class (_range) (_context) (_simpletype) (_where) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Declaration_Class _range_self _context_self _simpletype_self _where_self
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _simpletype_self) =
-            (_simpletype )
-        ( _where_resolveErrors,_where_self) =
-            (_where (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _where_resolveErrors,_self)
+sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _contextIself) =
+                (context_ )
+            ( _simpletypeIself) =
+                (simpletype_ )
+            ( _whereIresolveErrors,_whereIself) =
+                (where_ (_whereOopTable) (_whereOresolveErrors))
+            (_self@_) =
+                Declaration_Class _rangeIself _contextIself _simpletypeIself _whereIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _whereIresolveErrors
+            (_whereOopTable@_) =
+                _lhsIopTable
+            (_whereOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Declaration_Data :: (T_Range) ->
                         (T_ContextItems) ->
                         (T_SimpleType) ->
                         (T_Constructors) ->
                         (T_Names) ->
                         (T_Declaration)
-sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivings) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Declaration_Data _range_self _context_self _simpletype_self _constructors_self _derivings_self
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _simpletype_self) =
-            (_simpletype )
-        ( _constructors_self) =
-            (_constructors )
-        ( _derivings_self) =
-            (_derivings )
-    in  ( _lhs_resolveErrors,_self)
+sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (derivings_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _contextIself) =
+                (context_ )
+            ( _simpletypeIself) =
+                (simpletype_ )
+            ( _constructorsIself) =
+                (constructors_ )
+            ( _derivingsIself) =
+                (derivings_ )
+            (_self@_) =
+                Declaration_Data _rangeIself _contextIself _simpletypeIself _constructorsIself _derivingsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Declaration_Default :: (T_Range) ->
                            (T_Types) ->
                            (T_Declaration)
-sem_Declaration_Default (_range) (_types) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Declaration_Default _range_self _types_self
-        ( _range_self) =
-            (_range )
-        ( _types_self) =
-            (_types )
-    in  ( _lhs_resolveErrors,_self)
+sem_Declaration_Default (range_) (types_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _typesIself) =
+                (types_ )
+            (_self@_) =
+                Declaration_Default _rangeIself _typesIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
-sem_Declaration_Empty (_range) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Declaration_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _lhs_resolveErrors,_self)
+sem_Declaration_Empty (range_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            (_self@_) =
+                Declaration_Empty _rangeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Declaration_Fixity :: (T_Range) ->
                           (T_Fixity) ->
                           (T_MaybeInt) ->
                           (T_Names) ->
                           (T_Declaration)
-sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Declaration_Fixity _range_self _fixity_self _priority_self _operators_self
-        ( _range_self) =
-            (_range )
-        ( _fixity_self) =
-            (_fixity )
-        ( _priority_self) =
-            (_priority )
-        ( _operators_self) =
-            (_operators )
-    in  ( _lhs_resolveErrors,_self)
+sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _fixityIself) =
+                (fixity_ )
+            ( _priorityIself) =
+                (priority_ )
+            ( _operatorsIself) =
+                (operators_ )
+            (_self@_) =
+                Declaration_Fixity _rangeIself _fixityIself _priorityIself _operatorsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)
-sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Declaration_FunctionBindings _range_self _bindings_self
-        ( _range_self) =
-            (_range )
-        ( _bindings_resolveErrors,_bindings_self) =
-            (_bindings (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _bindings_resolveErrors,_self)
+sem_Declaration_FunctionBindings (range_) (bindings_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _bindingsIresolveErrors,_bindingsIself) =
+                (bindings_ (_bindingsOopTable) (_bindingsOresolveErrors))
+            (_self@_) =
+                Declaration_FunctionBindings _rangeIself _bindingsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _bindingsIresolveErrors
+            (_bindingsOopTable@_) =
+                _lhsIopTable
+            (_bindingsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Declaration_Instance :: (T_Range) ->
                             (T_ContextItems) ->
                             (T_Name) ->
                             (T_Types) ->
                             (T_MaybeDeclarations) ->
                             (T_Declaration)
-sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Declaration_Instance _range_self _context_self _name_self _types_self _where_self
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _name_self) =
-            (_name )
-        ( _types_self) =
-            (_types )
-        ( _where_resolveErrors,_where_self) =
-            (_where (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _where_resolveErrors,_self)
+sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _contextIself) =
+                (context_ )
+            ( _nameIself) =
+                (name_ )
+            ( _typesIself) =
+                (types_ )
+            ( _whereIresolveErrors,_whereIself) =
+                (where_ (_whereOopTable) (_whereOresolveErrors))
+            (_self@_) =
+                Declaration_Instance _rangeIself _contextIself _nameIself _typesIself _whereIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _whereIresolveErrors
+            (_whereOopTable@_) =
+                _lhsIopTable
+            (_whereOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Declaration_Newtype :: (T_Range) ->
                            (T_ContextItems) ->
                            (T_SimpleType) ->
                            (T_Constructor) ->
                            (T_Names) ->
                            (T_Declaration)
-sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_derivings) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Declaration_Newtype _range_self _context_self _simpletype_self _constructor_self _derivings_self
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _simpletype_self) =
-            (_simpletype )
-        ( _constructor_self) =
-            (_constructor )
-        ( _derivings_self) =
-            (_derivings )
-    in  ( _lhs_resolveErrors,_self)
+sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivings_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _contextIself) =
+                (context_ )
+            ( _simpletypeIself) =
+                (simpletype_ )
+            ( _constructorIself) =
+                (constructor_ )
+            ( _derivingsIself) =
+                (derivings_ )
+            (_self@_) =
+                Declaration_Newtype _rangeIself _contextIself _simpletypeIself _constructorIself _derivingsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Declaration_PatternBinding :: (T_Range) ->
                                   (T_Pattern) ->
                                   (T_RightHandSide) ->
                                   (T_Declaration)
-sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Declaration_PatternBinding _range_self _pattern_self _righthandside_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_resolveErrors,_pattern_self) =
-            (_pattern (_lhs_opTable) (_lhs_resolveErrors))
-        ( _righthandside_resolveErrors,_righthandside_self) =
-            (_righthandside (_lhs_opTable) (_pattern_resolveErrors))
-    in  ( _righthandside_resolveErrors,_self)
+sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternIresolveErrors,_patternIself) =
+                (pattern_ (_patternOopTable) (_patternOresolveErrors))
+            ( _righthandsideIresolveErrors,_righthandsideIself) =
+                (righthandside_ (_righthandsideOopTable) (_righthandsideOresolveErrors))
+            (_self@_) =
+                Declaration_PatternBinding _rangeIself _patternIself _righthandsideIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _righthandsideIresolveErrors
+            (_patternOopTable@_) =
+                _lhsIopTable
+            (_patternOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_righthandsideOopTable@_) =
+                _lhsIopTable
+            (_righthandsideOresolveErrors@_) =
+                _patternIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Declaration_Type :: (T_Range) ->
                         (T_SimpleType) ->
                         (T_Type) ->
                         (T_Declaration)
-sem_Declaration_Type (_range) (_simpletype) (_type) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Declaration_Type _range_self _simpletype_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _simpletype_self) =
-            (_simpletype )
-        ( _type_self) =
-            (_type )
-    in  ( _lhs_resolveErrors,_self)
+sem_Declaration_Type (range_) (simpletype_) (type_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _simpletypeIself) =
+                (simpletype_ )
+            ( _typeIself) =
+                (type_ )
+            (_self@_) =
+                Declaration_Type _rangeIself _simpletypeIself _typeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Declaration_TypeSignature :: (T_Range) ->
                                  (T_Names) ->
                                  (T_Type) ->
                                  (T_Declaration)
-sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Declaration_TypeSignature _range_self _names_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _names_self) =
-            (_names )
-        ( _type_self) =
-            (_type )
-    in  ( _lhs_resolveErrors,_self)
+sem_Declaration_TypeSignature (range_) (names_) (type_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _namesIself) =
+                (names_ )
+            ( _typeIself) =
+                (type_ )
+            (_self@_) =
+                Declaration_TypeSignature _rangeIself _namesIself _typeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- Declarations ------------------------------------------------
 -- semantic domain
 type T_Declarations = (OperatorTable) ->
@@ -656,19 +814,39 @@ sem_Declarations (list) =
 sem_Declarations_Cons :: (T_Declaration) ->
                          (T_Declarations) ->
                          (T_Declarations)
-sem_Declarations_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_resolveErrors,_hd_self) =
-            (_hd (_lhs_opTable) (_lhs_resolveErrors))
-        ( _tl_resolveErrors,_tl_self) =
-            (_tl (_lhs_opTable) (_hd_resolveErrors))
-    in  ( _tl_resolveErrors,_self)
+sem_Declarations_Cons (hd_) (tl_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _hdIresolveErrors,_hdIself) =
+                (hd_ (_hdOopTable) (_hdOresolveErrors))
+            ( _tlIresolveErrors,_tlIself) =
+                (tl_ (_tlOopTable) (_tlOresolveErrors))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _tlIresolveErrors
+            (_hdOopTable@_) =
+                _lhsIopTable
+            (_hdOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_tlOopTable@_) =
+                _lhsIopTable
+            (_tlOresolveErrors@_) =
+                _hdIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Declarations_Nil :: (T_Declarations)
-sem_Declarations_Nil (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            []
-    in  ( _lhs_resolveErrors,_self)
+sem_Declarations_Nil  =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- Export ------------------------------------------------------
 -- semantic domain
 type T_Export = ( (Export))
@@ -686,50 +864,58 @@ sem_Export ((Export_Variable (_range) (_name))) =
 sem_Export_Module :: (T_Range) ->
                      (T_Name) ->
                      (T_Export)
-sem_Export_Module (_range) (_name) =
-    let (_self) =
-            Export_Module _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Export_Module (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Export_Module _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Export_TypeOrClass :: (T_Range) ->
                           (T_Name) ->
                           (T_MaybeNames) ->
                           (T_Export)
-sem_Export_TypeOrClass (_range) (_name) (_names) =
-    let (_self) =
-            Export_TypeOrClass _range_self _name_self _names_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _names_self) =
-            (_names )
-    in  ( _self)
+sem_Export_TypeOrClass (range_) (name_) (names_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _namesIself) =
+            (names_ )
+        (_self@_) =
+            Export_TypeOrClass _rangeIself _nameIself _namesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Export_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Export)
-sem_Export_TypeOrClassComplete (_range) (_name) =
-    let (_self) =
-            Export_TypeOrClassComplete _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Export_TypeOrClassComplete (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Export_TypeOrClassComplete _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Export_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Export)
-sem_Export_Variable (_range) (_name) =
-    let (_self) =
-            Export_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Export_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Export_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Exports -----------------------------------------------------
 -- semantic domain
 type T_Exports = ( (Exports))
@@ -741,19 +927,23 @@ sem_Exports (list) =
 sem_Exports_Cons :: (T_Export) ->
                     (T_Exports) ->
                     (T_Exports)
-sem_Exports_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Exports_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Exports_Nil :: (T_Exports)
 sem_Exports_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Expression --------------------------------------------------
 -- semantic domain
 type T_Expression = (OperatorTable) ->
@@ -806,267 +996,503 @@ sem_Expression_Case :: (T_Range) ->
                        (T_Expression) ->
                        (T_Alternatives) ->
                        (T_Expression)
-sem_Expression_Case (_range) (_expression) (_alternatives) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_Case _range_self _expression_self _alternatives_self
-        ( _range_self) =
-            (_range )
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_lhs_resolveErrors))
-        ( _alternatives_resolveErrors,_alternatives_self) =
-            (_alternatives (_lhs_opTable) (_expression_resolveErrors))
-    in  ( _alternatives_resolveErrors,_self)
+sem_Expression_Case (range_) (expression_) (alternatives_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            ( _alternativesIresolveErrors,_alternativesIself) =
+                (alternatives_ (_alternativesOopTable) (_alternativesOresolveErrors))
+            (_self@_) =
+                Expression_Case _rangeIself _expressionIself _alternativesIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _alternativesIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_alternativesOopTable@_) =
+                _lhsIopTable
+            (_alternativesOresolveErrors@_) =
+                _expressionIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_Comprehension :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Qualifiers) ->
                                 (T_Expression)
-sem_Expression_Comprehension (_range) (_expression) (_qualifiers) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_Comprehension _range_self _expression_self _qualifiers_self
-        ( _range_self) =
-            (_range )
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_lhs_resolveErrors))
-        ( _qualifiers_resolveErrors,_qualifiers_self) =
-            (_qualifiers (_lhs_opTable) (_expression_resolveErrors))
-    in  ( _qualifiers_resolveErrors,_self)
+sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            ( _qualifiersIresolveErrors,_qualifiersIself) =
+                (qualifiers_ (_qualifiersOopTable) (_qualifiersOresolveErrors))
+            (_self@_) =
+                Expression_Comprehension _rangeIself _expressionIself _qualifiersIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _qualifiersIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_qualifiersOopTable@_) =
+                _lhsIopTable
+            (_qualifiersOresolveErrors@_) =
+                _expressionIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_Constructor :: (T_Range) ->
                               (T_Name) ->
                               (T_Expression)
-sem_Expression_Constructor (_range) (_name) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_Constructor _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _lhs_resolveErrors,_self)
+sem_Expression_Constructor (range_) (name_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            (_self@_) =
+                Expression_Constructor _rangeIself _nameIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_Do :: (T_Range) ->
                      (T_Statements) ->
                      (T_Expression)
-sem_Expression_Do (_range) (_statements) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_Do _range_self _statements_self
-        ( _range_self) =
-            (_range )
-        ( _statements_resolveErrors,_statements_self) =
-            (_statements (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _statements_resolveErrors,_self)
+sem_Expression_Do (range_) (statements_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _statementsIresolveErrors,_statementsIself) =
+                (statements_ (_statementsOopTable) (_statementsOresolveErrors))
+            (_self@_) =
+                Expression_Do _rangeIself _statementsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _statementsIresolveErrors
+            (_statementsOopTable@_) =
+                _lhsIopTable
+            (_statementsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_Enum :: (T_Range) ->
                        (T_Expression) ->
                        (T_MaybeExpression) ->
                        (T_MaybeExpression) ->
                        (T_Expression)
-sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_Enum _range_self _from_self _then_self _to_self
-        ( _range_self) =
-            (_range )
-        ( _from_resolveErrors,_from_self) =
-            (_from (_lhs_opTable) (_lhs_resolveErrors))
-        ( _then_resolveErrors,_then_self) =
-            (_then (_lhs_opTable) (_from_resolveErrors))
-        ( _to_resolveErrors,_to_self) =
-            (_to (_lhs_opTable) (_then_resolveErrors))
-    in  ( _to_resolveErrors,_self)
+sem_Expression_Enum (range_) (from_) (then_) (to_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _fromIresolveErrors,_fromIself) =
+                (from_ (_fromOopTable) (_fromOresolveErrors))
+            ( _thenIresolveErrors,_thenIself) =
+                (then_ (_thenOopTable) (_thenOresolveErrors))
+            ( _toIresolveErrors,_toIself) =
+                (to_ (_toOopTable) (_toOresolveErrors))
+            (_self@_) =
+                Expression_Enum _rangeIself _fromIself _thenIself _toIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _toIresolveErrors
+            (_fromOopTable@_) =
+                _lhsIopTable
+            (_fromOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_thenOopTable@_) =
+                _lhsIopTable
+            (_thenOresolveErrors@_) =
+                _fromIresolveErrors
+            (_toOopTable@_) =
+                _lhsIopTable
+            (_toOresolveErrors@_) =
+                _thenIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_If :: (T_Range) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression)
-sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_If _range_self _guardExpression_self _thenExpression_self _elseExpression_self
-        ( _range_self) =
-            (_range )
-        ( _guardExpression_resolveErrors,_guardExpression_self) =
-            (_guardExpression (_lhs_opTable) (_lhs_resolveErrors))
-        ( _thenExpression_resolveErrors,_thenExpression_self) =
-            (_thenExpression (_lhs_opTable) (_guardExpression_resolveErrors))
-        ( _elseExpression_resolveErrors,_elseExpression_self) =
-            (_elseExpression (_lhs_opTable) (_thenExpression_resolveErrors))
-    in  ( _elseExpression_resolveErrors,_self)
+sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _guardExpressionIresolveErrors,_guardExpressionIself) =
+                (guardExpression_ (_guardExpressionOopTable) (_guardExpressionOresolveErrors))
+            ( _thenExpressionIresolveErrors,_thenExpressionIself) =
+                (thenExpression_ (_thenExpressionOopTable) (_thenExpressionOresolveErrors))
+            ( _elseExpressionIresolveErrors,_elseExpressionIself) =
+                (elseExpression_ (_elseExpressionOopTable) (_elseExpressionOresolveErrors))
+            (_self@_) =
+                Expression_If _rangeIself _guardExpressionIself _thenExpressionIself _elseExpressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _elseExpressionIresolveErrors
+            (_guardExpressionOopTable@_) =
+                _lhsIopTable
+            (_guardExpressionOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_thenExpressionOopTable@_) =
+                _lhsIopTable
+            (_thenExpressionOresolveErrors@_) =
+                _guardExpressionIresolveErrors
+            (_elseExpressionOopTable@_) =
+                _lhsIopTable
+            (_elseExpressionOresolveErrors@_) =
+                _thenExpressionIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_InfixApplication :: (T_Range) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression)
-sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightExpression) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_InfixApplication _range_self _leftExpression_self _operator_self _rightExpression_self
-        ( _range_self) =
-            (_range )
-        ( _leftExpression_resolveErrors,_leftExpression_self) =
-            (_leftExpression (_lhs_opTable) (_lhs_resolveErrors))
-        ( _operator_resolveErrors,_operator_self) =
-            (_operator (_lhs_opTable) (_leftExpression_resolveErrors))
-        ( _rightExpression_resolveErrors,_rightExpression_self) =
-            (_rightExpression (_lhs_opTable) (_operator_resolveErrors))
-    in  ( _rightExpression_resolveErrors,_self)
+sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExpression_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _leftExpressionIresolveErrors,_leftExpressionIself) =
+                (leftExpression_ (_leftExpressionOopTable) (_leftExpressionOresolveErrors))
+            ( _operatorIresolveErrors,_operatorIself) =
+                (operator_ (_operatorOopTable) (_operatorOresolveErrors))
+            ( _rightExpressionIresolveErrors,_rightExpressionIself) =
+                (rightExpression_ (_rightExpressionOopTable) (_rightExpressionOresolveErrors))
+            (_self@_) =
+                Expression_InfixApplication _rangeIself _leftExpressionIself _operatorIself _rightExpressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _rightExpressionIresolveErrors
+            (_leftExpressionOopTable@_) =
+                _lhsIopTable
+            (_leftExpressionOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_operatorOopTable@_) =
+                _lhsIopTable
+            (_operatorOresolveErrors@_) =
+                _leftExpressionIresolveErrors
+            (_rightExpressionOopTable@_) =
+                _lhsIopTable
+            (_rightExpressionOresolveErrors@_) =
+                _operatorIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_Lambda :: (T_Range) ->
                          (T_Patterns) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_Lambda _range_self _patterns_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _patterns_resolveErrors,_patterns_self) =
-            (_patterns (_lhs_opTable) (_lhs_resolveErrors))
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_patterns_resolveErrors))
-    in  ( _expression_resolveErrors,_self)
+sem_Expression_Lambda (range_) (patterns_) (expression_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternsIresolveErrors,_patternsIself) =
+                (patterns_ (_patternsOopTable) (_patternsOresolveErrors))
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            (_self@_) =
+                Expression_Lambda _rangeIself _patternsIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _expressionIresolveErrors
+            (_patternsOopTable@_) =
+                _lhsIopTable
+            (_patternsOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _patternsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_Let :: (T_Range) ->
                       (T_Declarations) ->
                       (T_Expression) ->
                       (T_Expression)
-sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_Let _range_self _declarations_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _declarations_resolveErrors,_declarations_self) =
-            (_declarations (_lhs_opTable) (_lhs_resolveErrors))
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_declarations_resolveErrors))
-    in  ( _expression_resolveErrors,_self)
+sem_Expression_Let (range_) (declarations_) (expression_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _declarationsIresolveErrors,_declarationsIself) =
+                (declarations_ (_declarationsOopTable) (_declarationsOresolveErrors))
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            (_self@_) =
+                Expression_Let _rangeIself _declarationsIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _expressionIresolveErrors
+            (_declarationsOopTable@_) =
+                _lhsIopTable
+            (_declarationsOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _declarationsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_List :: (T_Range) ->
                        (T_Expressions) ->
                        (T_Expression)
-sem_Expression_List (_range) (_expressions) (_lhs_opTable) (_lhs_resolveErrors) =
-    let ((_self,_errs)) =
-            case _range of
-                Range_Range Position_Unknown Position_Unknown ->
-                    resolveExpression _lhs_opTable _expressions_self
-                _ -> (Expression_List _range_self _expressions_self, [])
-        ( _range_self) =
-            (_range )
-        ( _expressions_resolveErrors,_expressions_self) =
-            (_expressions (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _errs ++ _expressions_resolveErrors,_self)
+sem_Expression_List (range_) (expressions_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionsIresolveErrors,_expressionsIself) =
+                (expressions_ (_expressionsOopTable) (_expressionsOresolveErrors))
+            ((_self@_,_errs@_)) =
+                case range_ of
+                    Range_Range Position_Unknown Position_Unknown ->
+                        resolveExpression _lhsIopTable _expressionsIself
+                    _ -> (Expression_List _rangeIself _expressionsIself, [])
+            (_lhsOresolveErrors@_) =
+                _errs ++ _expressionsIresolveErrors
+            (_lhsOself@_) =
+                _self
+            (_expressionsOopTable@_) =
+                _lhsIopTable
+            (_expressionsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_Literal :: (T_Range) ->
                           (T_Literal) ->
                           (T_Expression)
-sem_Expression_Literal (_range) (_literal) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_Literal _range_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _literal_self) =
-            (_literal )
-    in  ( _lhs_resolveErrors,_self)
+sem_Expression_Literal (range_) (literal_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _literalIself) =
+                (literal_ )
+            (_self@_) =
+                Expression_Literal _rangeIself _literalIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_Negate :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Negate (_range) (_expression) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_Negate _range_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _expression_resolveErrors,_self)
+sem_Expression_Negate (range_) (expression_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            (_self@_) =
+                Expression_Negate _rangeIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _expressionIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
-sem_Expression_NegateFloat (_range) (_expression) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_NegateFloat _range_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _expression_resolveErrors,_self)
+sem_Expression_NegateFloat (range_) (expression_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            (_self@_) =
+                Expression_NegateFloat _rangeIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _expressionIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_NormalApplication :: (T_Range) ->
                                     (T_Expression) ->
                                     (T_Expressions) ->
                                     (T_Expression)
-sem_Expression_NormalApplication (_range) (_function) (_arguments) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_NormalApplication _range_self _function_self _arguments_self
-        ( _range_self) =
-            (_range )
-        ( _function_resolveErrors,_function_self) =
-            (_function (_lhs_opTable) (_lhs_resolveErrors))
-        ( _arguments_resolveErrors,_arguments_self) =
-            (_arguments (_lhs_opTable) (_function_resolveErrors))
-    in  ( _arguments_resolveErrors,_self)
+sem_Expression_NormalApplication (range_) (function_) (arguments_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _functionIresolveErrors,_functionIself) =
+                (function_ (_functionOopTable) (_functionOresolveErrors))
+            ( _argumentsIresolveErrors,_argumentsIself) =
+                (arguments_ (_argumentsOopTable) (_argumentsOresolveErrors))
+            (_self@_) =
+                Expression_NormalApplication _rangeIself _functionIself _argumentsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _argumentsIresolveErrors
+            (_functionOopTable@_) =
+                _lhsIopTable
+            (_functionOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_argumentsOopTable@_) =
+                _lhsIopTable
+            (_argumentsOresolveErrors@_) =
+                _functionIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_Parenthesized :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Expression)
-sem_Expression_Parenthesized (_range) (_expression) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_Parenthesized _range_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _expression_resolveErrors,_self)
+sem_Expression_Parenthesized (range_) (expression_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            (_self@_) =
+                Expression_Parenthesized _rangeIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _expressionIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_RecordConstruction :: (T_Range) ->
                                      (T_Name) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_Expression)
-sem_Expression_RecordConstruction (_range) (_name) (_recordExpressionBindings) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_RecordConstruction _range_self _name_self _recordExpressionBindings_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _recordExpressionBindings_resolveErrors,_recordExpressionBindings_self) =
-            (_recordExpressionBindings (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _recordExpressionBindings_resolveErrors,_self)
+sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _recordExpressionBindingsIresolveErrors,_recordExpressionBindingsIself) =
+                (recordExpressionBindings_ (_recordExpressionBindingsOopTable) (_recordExpressionBindingsOresolveErrors))
+            (_self@_) =
+                Expression_RecordConstruction _rangeIself _nameIself _recordExpressionBindingsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _recordExpressionBindingsIresolveErrors
+            (_recordExpressionBindingsOopTable@_) =
+                _lhsIopTable
+            (_recordExpressionBindingsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_RecordUpdate :: (T_Range) ->
                                (T_Expression) ->
                                (T_RecordExpressionBindings) ->
                                (T_Expression)
-sem_Expression_RecordUpdate (_range) (_expression) (_recordExpressionBindings) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_RecordUpdate _range_self _expression_self _recordExpressionBindings_self
-        ( _range_self) =
-            (_range )
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_lhs_resolveErrors))
-        ( _recordExpressionBindings_resolveErrors,_recordExpressionBindings_self) =
-            (_recordExpressionBindings (_lhs_opTable) (_expression_resolveErrors))
-    in  ( _recordExpressionBindings_resolveErrors,_self)
+sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            ( _recordExpressionBindingsIresolveErrors,_recordExpressionBindingsIself) =
+                (recordExpressionBindings_ (_recordExpressionBindingsOopTable) (_recordExpressionBindingsOresolveErrors))
+            (_self@_) =
+                Expression_RecordUpdate _rangeIself _expressionIself _recordExpressionBindingsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _recordExpressionBindingsIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_recordExpressionBindingsOopTable@_) =
+                _lhsIopTable
+            (_recordExpressionBindingsOresolveErrors@_) =
+                _expressionIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_Tuple :: (T_Range) ->
                         (T_Expressions) ->
                         (T_Expression)
-sem_Expression_Tuple (_range) (_expressions) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_Tuple _range_self _expressions_self
-        ( _range_self) =
-            (_range )
-        ( _expressions_resolveErrors,_expressions_self) =
-            (_expressions (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _expressions_resolveErrors,_self)
+sem_Expression_Tuple (range_) (expressions_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionsIresolveErrors,_expressionsIself) =
+                (expressions_ (_expressionsOopTable) (_expressionsOresolveErrors))
+            (_self@_) =
+                Expression_Tuple _rangeIself _expressionsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _expressionsIresolveErrors
+            (_expressionsOopTable@_) =
+                _lhsIopTable
+            (_expressionsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_Typed :: (T_Range) ->
                         (T_Expression) ->
                         (T_Type) ->
                         (T_Expression)
-sem_Expression_Typed (_range) (_expression) (_type) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_Typed _range_self _expression_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_lhs_resolveErrors))
-        ( _type_self) =
-            (_type )
-    in  ( _expression_resolveErrors,_self)
+sem_Expression_Typed (range_) (expression_) (type_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            ( _typeIself) =
+                (type_ )
+            (_self@_) =
+                Expression_Typed _rangeIself _expressionIself _typeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _expressionIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expression_Variable :: (T_Range) ->
                            (T_Name) ->
                            (T_Expression)
-sem_Expression_Variable (_range) (_name) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Expression_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _lhs_resolveErrors,_self)
+sem_Expression_Variable (range_) (name_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            (_self@_) =
+                Expression_Variable _rangeIself _nameIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- Expressions -------------------------------------------------
 -- semantic domain
 type T_Expressions = (OperatorTable) ->
@@ -1080,19 +1506,39 @@ sem_Expressions (list) =
 sem_Expressions_Cons :: (T_Expression) ->
                         (T_Expressions) ->
                         (T_Expressions)
-sem_Expressions_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_resolveErrors,_hd_self) =
-            (_hd (_lhs_opTable) (_lhs_resolveErrors))
-        ( _tl_resolveErrors,_tl_self) =
-            (_tl (_lhs_opTable) (_hd_resolveErrors))
-    in  ( _tl_resolveErrors,_self)
+sem_Expressions_Cons (hd_) (tl_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _hdIresolveErrors,_hdIself) =
+                (hd_ (_hdOopTable) (_hdOresolveErrors))
+            ( _tlIresolveErrors,_tlIself) =
+                (tl_ (_tlOopTable) (_tlOresolveErrors))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _tlIresolveErrors
+            (_hdOopTable@_) =
+                _lhsIopTable
+            (_hdOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_tlOopTable@_) =
+                _lhsIopTable
+            (_tlOresolveErrors@_) =
+                _hdIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Expressions_Nil :: (T_Expressions)
-sem_Expressions_Nil (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            []
-    in  ( _lhs_resolveErrors,_self)
+sem_Expressions_Nil  =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- FieldDeclaration --------------------------------------------
 -- semantic domain
 type T_FieldDeclaration = ( (FieldDeclaration))
@@ -1105,16 +1551,18 @@ sem_FieldDeclaration_FieldDeclaration :: (T_Range) ->
                                          (T_Names) ->
                                          (T_AnnotatedType) ->
                                          (T_FieldDeclaration)
-sem_FieldDeclaration_FieldDeclaration (_range) (_names) (_type) =
-    let (_self) =
-            FieldDeclaration_FieldDeclaration _range_self _names_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _names_self) =
-            (_names )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_FieldDeclaration_FieldDeclaration (range_) (names_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _namesIself) =
+            (names_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            FieldDeclaration_FieldDeclaration _rangeIself _namesIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- FieldDeclarations -------------------------------------------
 -- semantic domain
 type T_FieldDeclarations = ( (FieldDeclarations))
@@ -1126,19 +1574,23 @@ sem_FieldDeclarations (list) =
 sem_FieldDeclarations_Cons :: (T_FieldDeclaration) ->
                               (T_FieldDeclarations) ->
                               (T_FieldDeclarations)
-sem_FieldDeclarations_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_FieldDeclarations_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_FieldDeclarations_Nil :: (T_FieldDeclarations)
 sem_FieldDeclarations_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Fixity ------------------------------------------------------
 -- semantic domain
 type T_Fixity = ( (Fixity))
@@ -1153,28 +1605,34 @@ sem_Fixity ((Fixity_Infixr (_range))) =
     (sem_Fixity_Infixr ((sem_Range (_range))))
 sem_Fixity_Infix :: (T_Range) ->
                     (T_Fixity)
-sem_Fixity_Infix (_range) =
-    let (_self) =
-            Fixity_Infix _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Fixity_Infix (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Fixity_Infix _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Fixity_Infixl :: (T_Range) ->
                      (T_Fixity)
-sem_Fixity_Infixl (_range) =
-    let (_self) =
-            Fixity_Infixl _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Fixity_Infixl (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Fixity_Infixl _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Fixity_Infixr :: (T_Range) ->
                      (T_Fixity)
-sem_Fixity_Infixr (_range) =
-    let (_self) =
-            Fixity_Infixr _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Fixity_Infixr (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Fixity_Infixr _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- FunctionBinding ---------------------------------------------
 -- semantic domain
 type T_FunctionBinding = (OperatorTable) ->
@@ -1189,16 +1647,30 @@ sem_FunctionBinding_FunctionBinding :: (T_Range) ->
                                        (T_LeftHandSide) ->
                                        (T_RightHandSide) ->
                                        (T_FunctionBinding)
-sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            FunctionBinding_FunctionBinding _range_self _lefthandside_self _righthandside_self
-        ( _range_self) =
-            (_range )
-        ( _lefthandside_resolveErrors,_lefthandside_self) =
-            (_lefthandside (_lhs_opTable) (_lhs_resolveErrors))
-        ( _righthandside_resolveErrors,_righthandside_self) =
-            (_righthandside (_lhs_opTable) (_lefthandside_resolveErrors))
-    in  ( _righthandside_resolveErrors,_self)
+sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _lefthandsideIresolveErrors,_lefthandsideIself) =
+                (lefthandside_ (_lefthandsideOopTable) (_lefthandsideOresolveErrors))
+            ( _righthandsideIresolveErrors,_righthandsideIself) =
+                (righthandside_ (_righthandsideOopTable) (_righthandsideOresolveErrors))
+            (_self@_) =
+                FunctionBinding_FunctionBinding _rangeIself _lefthandsideIself _righthandsideIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _righthandsideIresolveErrors
+            (_lefthandsideOopTable@_) =
+                _lhsIopTable
+            (_lefthandsideOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_righthandsideOopTable@_) =
+                _lhsIopTable
+            (_righthandsideOresolveErrors@_) =
+                _lefthandsideIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- FunctionBindings --------------------------------------------
 -- semantic domain
 type T_FunctionBindings = (OperatorTable) ->
@@ -1212,19 +1684,39 @@ sem_FunctionBindings (list) =
 sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
                              (T_FunctionBindings) ->
                              (T_FunctionBindings)
-sem_FunctionBindings_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_resolveErrors,_hd_self) =
-            (_hd (_lhs_opTable) (_lhs_resolveErrors))
-        ( _tl_resolveErrors,_tl_self) =
-            (_tl (_lhs_opTable) (_hd_resolveErrors))
-    in  ( _tl_resolveErrors,_self)
+sem_FunctionBindings_Cons (hd_) (tl_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _hdIresolveErrors,_hdIself) =
+                (hd_ (_hdOopTable) (_hdOresolveErrors))
+            ( _tlIresolveErrors,_tlIself) =
+                (tl_ (_tlOopTable) (_tlOresolveErrors))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _tlIresolveErrors
+            (_hdOopTable@_) =
+                _lhsIopTable
+            (_hdOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_tlOopTable@_) =
+                _lhsIopTable
+            (_tlOresolveErrors@_) =
+                _hdIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_FunctionBindings_Nil :: (T_FunctionBindings)
-sem_FunctionBindings_Nil (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            []
-    in  ( _lhs_resolveErrors,_self)
+sem_FunctionBindings_Nil  =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
 type T_GuardedExpression = (OperatorTable) ->
@@ -1239,16 +1731,30 @@ sem_GuardedExpression_GuardedExpression :: (T_Range) ->
                                            (T_Expression) ->
                                            (T_Expression) ->
                                            (T_GuardedExpression)
-sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            GuardedExpression_GuardedExpression _range_self _guard_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _guard_resolveErrors,_guard_self) =
-            (_guard (_lhs_opTable) (_lhs_resolveErrors))
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_guard_resolveErrors))
-    in  ( _expression_resolveErrors,_self)
+sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _guardIresolveErrors,_guardIself) =
+                (guard_ (_guardOopTable) (_guardOresolveErrors))
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            (_self@_) =
+                GuardedExpression_GuardedExpression _rangeIself _guardIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _expressionIresolveErrors
+            (_guardOopTable@_) =
+                _lhsIopTable
+            (_guardOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _guardIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- GuardedExpressions ------------------------------------------
 -- semantic domain
 type T_GuardedExpressions = (OperatorTable) ->
@@ -1262,19 +1768,39 @@ sem_GuardedExpressions (list) =
 sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
                                (T_GuardedExpressions) ->
                                (T_GuardedExpressions)
-sem_GuardedExpressions_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_resolveErrors,_hd_self) =
-            (_hd (_lhs_opTable) (_lhs_resolveErrors))
-        ( _tl_resolveErrors,_tl_self) =
-            (_tl (_lhs_opTable) (_hd_resolveErrors))
-    in  ( _tl_resolveErrors,_self)
+sem_GuardedExpressions_Cons (hd_) (tl_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _hdIresolveErrors,_hdIself) =
+                (hd_ (_hdOopTable) (_hdOresolveErrors))
+            ( _tlIresolveErrors,_tlIself) =
+                (tl_ (_tlOopTable) (_tlOresolveErrors))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _tlIresolveErrors
+            (_hdOopTable@_) =
+                _lhsIopTable
+            (_hdOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_tlOopTable@_) =
+                _lhsIopTable
+            (_tlOresolveErrors@_) =
+                _hdIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_GuardedExpressions_Nil :: (T_GuardedExpressions)
-sem_GuardedExpressions_Nil (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            []
-    in  ( _lhs_resolveErrors,_self)
+sem_GuardedExpressions_Nil  =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- Import ------------------------------------------------------
 -- semantic domain
 type T_Import = ( (Import))
@@ -1291,38 +1817,44 @@ sem_Import_TypeOrClass :: (T_Range) ->
                           (T_Name) ->
                           (T_MaybeNames) ->
                           (T_Import)
-sem_Import_TypeOrClass (_range) (_name) (_names) =
-    let (_self) =
-            Import_TypeOrClass _range_self _name_self _names_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _names_self) =
-            (_names )
-    in  ( _self)
+sem_Import_TypeOrClass (range_) (name_) (names_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _namesIself) =
+            (names_ )
+        (_self@_) =
+            Import_TypeOrClass _rangeIself _nameIself _namesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Import_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Import)
-sem_Import_TypeOrClassComplete (_range) (_name) =
-    let (_self) =
-            Import_TypeOrClassComplete _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Import_TypeOrClassComplete (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Import_TypeOrClassComplete _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Import_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Import)
-sem_Import_Variable (_range) (_name) =
-    let (_self) =
-            Import_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Import_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Import_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ImportDeclaration -------------------------------------------
 -- semantic domain
 type T_ImportDeclaration = ( (ImportDeclaration))
@@ -1335,30 +1867,34 @@ sem_ImportDeclaration ((ImportDeclaration_Import (_range) (_qualified) (_name) (
     (sem_ImportDeclaration_Import ((sem_Range (_range))) (_qualified) ((sem_Name (_name))) ((sem_MaybeName (_asname))) ((sem_MaybeImportSpecification (_importspecification))))
 sem_ImportDeclaration_Empty :: (T_Range) ->
                                (T_ImportDeclaration)
-sem_ImportDeclaration_Empty (_range) =
-    let (_self) =
-            ImportDeclaration_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_ImportDeclaration_Empty (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            ImportDeclaration_Empty _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_ImportDeclaration_Import :: (T_Range) ->
                                 (Bool) ->
                                 (T_Name) ->
                                 (T_MaybeName) ->
                                 (T_MaybeImportSpecification) ->
                                 (T_ImportDeclaration)
-sem_ImportDeclaration_Import (_range) (_qualified) (_name) (_asname) (_importspecification) =
-    let (_self) =
-            ImportDeclaration_Import _range_self _qualified _name_self _asname_self _importspecification_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _asname_self) =
-            (_asname )
-        ( _importspecification_self) =
-            (_importspecification )
-    in  ( _self)
+sem_ImportDeclaration_Import (range_) (qualified_) (name_) (asname_) (importspecification_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _asnameIself) =
+            (asname_ )
+        ( _importspecificationIself) =
+            (importspecification_ )
+        (_self@_) =
+            ImportDeclaration_Import _rangeIself qualified_ _nameIself _asnameIself _importspecificationIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ImportDeclarations ------------------------------------------
 -- semantic domain
 type T_ImportDeclarations = ( (ImportDeclarations))
@@ -1370,19 +1906,23 @@ sem_ImportDeclarations (list) =
 sem_ImportDeclarations_Cons :: (T_ImportDeclaration) ->
                                (T_ImportDeclarations) ->
                                (T_ImportDeclarations)
-sem_ImportDeclarations_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_ImportDeclarations_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_ImportDeclarations_Nil :: (T_ImportDeclarations)
 sem_ImportDeclarations_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ImportSpecification -----------------------------------------
 -- semantic domain
 type T_ImportSpecification = ( (ImportSpecification))
@@ -1395,14 +1935,16 @@ sem_ImportSpecification_Import :: (T_Range) ->
                                   (Bool) ->
                                   (T_Imports) ->
                                   (T_ImportSpecification)
-sem_ImportSpecification_Import (_range) (_hiding) (_imports) =
-    let (_self) =
-            ImportSpecification_Import _range_self _hiding _imports_self
-        ( _range_self) =
-            (_range )
-        ( _imports_self) =
-            (_imports )
-    in  ( _self)
+sem_ImportSpecification_Import (range_) (hiding_) (imports_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _importsIself) =
+            (imports_ )
+        (_self@_) =
+            ImportSpecification_Import _rangeIself hiding_ _importsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Imports -----------------------------------------------------
 -- semantic domain
 type T_Imports = ( (Imports))
@@ -1414,19 +1956,23 @@ sem_Imports (list) =
 sem_Imports_Cons :: (T_Import) ->
                     (T_Imports) ->
                     (T_Imports)
-sem_Imports_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Imports_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Imports_Nil :: (T_Imports)
 sem_Imports_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- LeftHandSide ------------------------------------------------
 -- semantic domain
 type T_LeftHandSide = (OperatorTable) ->
@@ -1445,47 +1991,85 @@ sem_LeftHandSide_Function :: (T_Range) ->
                              (T_Name) ->
                              (T_Patterns) ->
                              (T_LeftHandSide)
-sem_LeftHandSide_Function (_range) (_name) (_patterns) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            LeftHandSide_Function _range_self _name_self _patterns_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _patterns_resolveErrors,_patterns_self) =
-            (_patterns (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _patterns_resolveErrors,_self)
+sem_LeftHandSide_Function (range_) (name_) (patterns_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _patternsIresolveErrors,_patternsIself) =
+                (patterns_ (_patternsOopTable) (_patternsOresolveErrors))
+            (_self@_) =
+                LeftHandSide_Function _rangeIself _nameIself _patternsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _patternsIresolveErrors
+            (_patternsOopTable@_) =
+                _lhsIopTable
+            (_patternsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_LeftHandSide_Infix :: (T_Range) ->
                           (T_Pattern) ->
                           (T_Name) ->
                           (T_Pattern) ->
                           (T_LeftHandSide)
-sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            LeftHandSide_Infix _range_self _leftPattern_self _operator_self _rightPattern_self
-        ( _range_self) =
-            (_range )
-        ( _leftPattern_resolveErrors,_leftPattern_self) =
-            (_leftPattern (_lhs_opTable) (_lhs_resolveErrors))
-        ( _operator_self) =
-            (_operator )
-        ( _rightPattern_resolveErrors,_rightPattern_self) =
-            (_rightPattern (_lhs_opTable) (_leftPattern_resolveErrors))
-    in  ( _rightPattern_resolveErrors,_self)
+sem_LeftHandSide_Infix (range_) (leftPattern_) (operator_) (rightPattern_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _leftPatternIresolveErrors,_leftPatternIself) =
+                (leftPattern_ (_leftPatternOopTable) (_leftPatternOresolveErrors))
+            ( _operatorIself) =
+                (operator_ )
+            ( _rightPatternIresolveErrors,_rightPatternIself) =
+                (rightPattern_ (_rightPatternOopTable) (_rightPatternOresolveErrors))
+            (_self@_) =
+                LeftHandSide_Infix _rangeIself _leftPatternIself _operatorIself _rightPatternIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _rightPatternIresolveErrors
+            (_leftPatternOopTable@_) =
+                _lhsIopTable
+            (_leftPatternOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_rightPatternOopTable@_) =
+                _lhsIopTable
+            (_rightPatternOresolveErrors@_) =
+                _leftPatternIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_LeftHandSide_Parenthesized :: (T_Range) ->
                                   (T_LeftHandSide) ->
                                   (T_Patterns) ->
                                   (T_LeftHandSide)
-sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            LeftHandSide_Parenthesized _range_self _lefthandside_self _patterns_self
-        ( _range_self) =
-            (_range )
-        ( _lefthandside_resolveErrors,_lefthandside_self) =
-            (_lefthandside (_lhs_opTable) (_lhs_resolveErrors))
-        ( _patterns_resolveErrors,_patterns_self) =
-            (_patterns (_lhs_opTable) (_lefthandside_resolveErrors))
-    in  ( _patterns_resolveErrors,_self)
+sem_LeftHandSide_Parenthesized (range_) (lefthandside_) (patterns_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _lefthandsideIresolveErrors,_lefthandsideIself) =
+                (lefthandside_ (_lefthandsideOopTable) (_lefthandsideOresolveErrors))
+            ( _patternsIresolveErrors,_patternsIself) =
+                (patterns_ (_patternsOopTable) (_patternsOresolveErrors))
+            (_self@_) =
+                LeftHandSide_Parenthesized _rangeIself _lefthandsideIself _patternsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _patternsIresolveErrors
+            (_lefthandsideOopTable@_) =
+                _lhsIopTable
+            (_lefthandsideOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_patternsOopTable@_) =
+                _lhsIopTable
+            (_patternsOresolveErrors@_) =
+                _lefthandsideIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- Literal -----------------------------------------------------
 -- semantic domain
 type T_Literal = ( (Literal))
@@ -1503,39 +2087,47 @@ sem_Literal ((Literal_String (_range) (_value))) =
 sem_Literal_Char :: (T_Range) ->
                     (String) ->
                     (T_Literal)
-sem_Literal_Char (_range) (_value) =
-    let (_self) =
-            Literal_Char _range_self _value
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Literal_Char (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Literal_Char _rangeIself value_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Literal_Float :: (T_Range) ->
                      (String) ->
                      (T_Literal)
-sem_Literal_Float (_range) (_value) =
-    let (_self) =
-            Literal_Float _range_self _value
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Literal_Float (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Literal_Float _rangeIself value_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Literal_Int :: (T_Range) ->
                    (String) ->
                    (T_Literal)
-sem_Literal_Int (_range) (_value) =
-    let (_self) =
-            Literal_Int _range_self _value
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Literal_Int (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Literal_Int _rangeIself value_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Literal_String :: (T_Range) ->
                       (String) ->
                       (T_Literal)
-sem_Literal_String (_range) (_value) =
-    let (_self) =
-            Literal_String _range_self _value
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Literal_String (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Literal_String _rangeIself value_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
 type T_MaybeDeclarations = (OperatorTable) ->
@@ -1550,17 +2142,33 @@ sem_MaybeDeclarations ((MaybeDeclarations_Nothing )) =
     (sem_MaybeDeclarations_Nothing )
 sem_MaybeDeclarations_Just :: (T_Declarations) ->
                               (T_MaybeDeclarations)
-sem_MaybeDeclarations_Just (_declarations) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            MaybeDeclarations_Just _declarations_self
-        ( _declarations_resolveErrors,_declarations_self) =
-            (_declarations (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _declarations_resolveErrors,_self)
+sem_MaybeDeclarations_Just (declarations_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _declarationsIresolveErrors,_declarationsIself) =
+                (declarations_ (_declarationsOopTable) (_declarationsOresolveErrors))
+            (_self@_) =
+                MaybeDeclarations_Just _declarationsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _declarationsIresolveErrors
+            (_declarationsOopTable@_) =
+                _lhsIopTable
+            (_declarationsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
-sem_MaybeDeclarations_Nothing (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            MaybeDeclarations_Nothing
-    in  ( _lhs_resolveErrors,_self)
+sem_MaybeDeclarations_Nothing  =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let (_self@_) =
+                MaybeDeclarations_Nothing
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- MaybeExports ------------------------------------------------
 -- semantic domain
 type T_MaybeExports = ( (MaybeExports))
@@ -1573,17 +2181,21 @@ sem_MaybeExports ((MaybeExports_Nothing )) =
     (sem_MaybeExports_Nothing )
 sem_MaybeExports_Just :: (T_Exports) ->
                          (T_MaybeExports)
-sem_MaybeExports_Just (_exports) =
-    let (_self) =
-            MaybeExports_Just _exports_self
-        ( _exports_self) =
-            (_exports )
-    in  ( _self)
+sem_MaybeExports_Just (exports_) =
+    let ( _exportsIself) =
+            (exports_ )
+        (_self@_) =
+            MaybeExports_Just _exportsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeExports_Nothing :: (T_MaybeExports)
 sem_MaybeExports_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeExports_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeExpression ---------------------------------------------
 -- semantic domain
 type T_MaybeExpression = (OperatorTable) ->
@@ -1598,17 +2210,33 @@ sem_MaybeExpression ((MaybeExpression_Nothing )) =
     (sem_MaybeExpression_Nothing )
 sem_MaybeExpression_Just :: (T_Expression) ->
                             (T_MaybeExpression)
-sem_MaybeExpression_Just (_expression) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            MaybeExpression_Just _expression_self
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _expression_resolveErrors,_self)
+sem_MaybeExpression_Just (expression_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            (_self@_) =
+                MaybeExpression_Just _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _expressionIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_MaybeExpression_Nothing :: (T_MaybeExpression)
-sem_MaybeExpression_Nothing (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            MaybeExpression_Nothing
-    in  ( _lhs_resolveErrors,_self)
+sem_MaybeExpression_Nothing  =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let (_self@_) =
+                MaybeExpression_Nothing
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- MaybeImportSpecification ------------------------------------
 -- semantic domain
 type T_MaybeImportSpecification = ( (MaybeImportSpecification))
@@ -1621,17 +2249,21 @@ sem_MaybeImportSpecification ((MaybeImportSpecification_Nothing )) =
     (sem_MaybeImportSpecification_Nothing )
 sem_MaybeImportSpecification_Just :: (T_ImportSpecification) ->
                                      (T_MaybeImportSpecification)
-sem_MaybeImportSpecification_Just (_importspecification) =
-    let (_self) =
-            MaybeImportSpecification_Just _importspecification_self
-        ( _importspecification_self) =
-            (_importspecification )
-    in  ( _self)
+sem_MaybeImportSpecification_Just (importspecification_) =
+    let ( _importspecificationIself) =
+            (importspecification_ )
+        (_self@_) =
+            MaybeImportSpecification_Just _importspecificationIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeImportSpecification_Nothing :: (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeImportSpecification_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeInt ----------------------------------------------------
 -- semantic domain
 type T_MaybeInt = ( (MaybeInt))
@@ -1644,15 +2276,19 @@ sem_MaybeInt ((MaybeInt_Nothing )) =
     (sem_MaybeInt_Nothing )
 sem_MaybeInt_Just :: (Int) ->
                      (T_MaybeInt)
-sem_MaybeInt_Just (_int) =
-    let (_self) =
-            MaybeInt_Just _int
-    in  ( _self)
+sem_MaybeInt_Just (int_) =
+    let (_self@_) =
+            MaybeInt_Just int_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeInt_Nothing :: (T_MaybeInt)
 sem_MaybeInt_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeInt_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeName ---------------------------------------------------
 -- semantic domain
 type T_MaybeName = ( (MaybeName))
@@ -1665,17 +2301,21 @@ sem_MaybeName ((MaybeName_Nothing )) =
     (sem_MaybeName_Nothing )
 sem_MaybeName_Just :: (T_Name) ->
                       (T_MaybeName)
-sem_MaybeName_Just (_name) =
-    let (_self) =
-            MaybeName_Just _name_self
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_MaybeName_Just (name_) =
+    let ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            MaybeName_Just _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeName_Nothing :: (T_MaybeName)
 sem_MaybeName_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeName_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeNames --------------------------------------------------
 -- semantic domain
 type T_MaybeNames = ( (MaybeNames))
@@ -1688,17 +2328,21 @@ sem_MaybeNames ((MaybeNames_Nothing )) =
     (sem_MaybeNames_Nothing )
 sem_MaybeNames_Just :: (T_Names) ->
                        (T_MaybeNames)
-sem_MaybeNames_Just (_names) =
-    let (_self) =
-            MaybeNames_Just _names_self
-        ( _names_self) =
-            (_names )
-    in  ( _self)
+sem_MaybeNames_Just (names_) =
+    let ( _namesIself) =
+            (names_ )
+        (_self@_) =
+            MaybeNames_Just _namesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeNames_Nothing :: (T_MaybeNames)
 sem_MaybeNames_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeNames_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Module ------------------------------------------------------
 -- semantic domain
 type T_Module = (OperatorTable) ->
@@ -1714,18 +2358,28 @@ sem_Module_Module :: (T_Range) ->
                      (T_MaybeExports) ->
                      (T_Body) ->
                      (T_Module)
-sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Module_Module _range_self _name_self _exports_self _body_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _exports_self) =
-            (_exports )
-        ( _body_resolveErrors,_body_self) =
-            (_body (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _body_resolveErrors,_self)
+sem_Module_Module (range_) (name_) (exports_) (body_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _exportsIself) =
+                (exports_ )
+            ( _bodyIresolveErrors,_bodyIself) =
+                (body_ (_bodyOopTable) (_bodyOresolveErrors))
+            (_self@_) =
+                Module_Module _rangeIself _nameIself _exportsIself _bodyIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _bodyIresolveErrors
+            (_bodyOopTable@_) =
+                _lhsIopTable
+            (_bodyOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- Name --------------------------------------------------------
 -- semantic domain
 type T_Name = ( (Name))
@@ -1742,38 +2396,44 @@ sem_Name_Identifier :: (T_Range) ->
                        (T_Strings) ->
                        (String) ->
                        (T_Name)
-sem_Name_Identifier (_range) (_module) (_name) =
-    let (_self) =
-            Name_Identifier _range_self _module_self _name
-        ( _range_self) =
-            (_range )
-        ( _module_self) =
-            (_module )
-    in  ( _self)
+sem_Name_Identifier (range_) (module_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _moduleIself) =
+            (module_ )
+        (_self@_) =
+            Name_Identifier _rangeIself _moduleIself name_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Name_Operator :: (T_Range) ->
                      (T_Strings) ->
                      (String) ->
                      (T_Name)
-sem_Name_Operator (_range) (_module) (_name) =
-    let (_self) =
-            Name_Operator _range_self _module_self _name
-        ( _range_self) =
-            (_range )
-        ( _module_self) =
-            (_module )
-    in  ( _self)
+sem_Name_Operator (range_) (module_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _moduleIself) =
+            (module_ )
+        (_self@_) =
+            Name_Operator _rangeIself _moduleIself name_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Name_Special :: (T_Range) ->
                     (T_Strings) ->
                     (String) ->
                     (T_Name)
-sem_Name_Special (_range) (_module) (_name) =
-    let (_self) =
-            Name_Special _range_self _module_self _name
-        ( _range_self) =
-            (_range )
-        ( _module_self) =
-            (_module )
-    in  ( _self)
+sem_Name_Special (range_) (module_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _moduleIself) =
+            (module_ )
+        (_self@_) =
+            Name_Special _rangeIself _moduleIself name_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Names -------------------------------------------------------
 -- semantic domain
 type T_Names = ( (Names))
@@ -1785,19 +2445,23 @@ sem_Names (list) =
 sem_Names_Cons :: (T_Name) ->
                   (T_Names) ->
                   (T_Names)
-sem_Names_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Names_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Names_Nil :: (T_Names)
 sem_Names_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Pattern -----------------------------------------------------
 -- semantic domain
 type T_Pattern = (OperatorTable) ->
@@ -1838,175 +2502,295 @@ sem_Pattern_As :: (T_Range) ->
                   (T_Name) ->
                   (T_Pattern) ->
                   (T_Pattern)
-sem_Pattern_As (_range) (_name) (_pattern) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Pattern_As _range_self _name_self _pattern_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _pattern_resolveErrors,_pattern_self) =
-            (_pattern (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _pattern_resolveErrors,_self)
+sem_Pattern_As (range_) (name_) (pattern_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _patternIresolveErrors,_patternIself) =
+                (pattern_ (_patternOopTable) (_patternOresolveErrors))
+            (_self@_) =
+                Pattern_As _rangeIself _nameIself _patternIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _patternIresolveErrors
+            (_patternOopTable@_) =
+                _lhsIopTable
+            (_patternOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Pattern_Constructor :: (T_Range) ->
                            (T_Name) ->
                            (T_Patterns) ->
                            (T_Pattern)
-sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Pattern_Constructor _range_self _name_self _patterns_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _patterns_resolveErrors,_patterns_self) =
-            (_patterns (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _patterns_resolveErrors,_self)
+sem_Pattern_Constructor (range_) (name_) (patterns_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _patternsIresolveErrors,_patternsIself) =
+                (patterns_ (_patternsOopTable) (_patternsOresolveErrors))
+            (_self@_) =
+                Pattern_Constructor _rangeIself _nameIself _patternsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _patternsIresolveErrors
+            (_patternsOopTable@_) =
+                _lhsIopTable
+            (_patternsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Pattern_InfixConstructor :: (T_Range) ->
                                 (T_Pattern) ->
                                 (T_Name) ->
                                 (T_Pattern) ->
                                 (T_Pattern)
-sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_rightPattern) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Pattern_InfixConstructor _range_self _leftPattern_self _constructorOperator_self _rightPattern_self
-        ( _range_self) =
-            (_range )
-        ( _leftPattern_resolveErrors,_leftPattern_self) =
-            (_leftPattern (_lhs_opTable) (_lhs_resolveErrors))
-        ( _constructorOperator_self) =
-            (_constructorOperator )
-        ( _rightPattern_resolveErrors,_rightPattern_self) =
-            (_rightPattern (_lhs_opTable) (_leftPattern_resolveErrors))
-    in  ( _rightPattern_resolveErrors,_self)
+sem_Pattern_InfixConstructor (range_) (leftPattern_) (constructorOperator_) (rightPattern_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _leftPatternIresolveErrors,_leftPatternIself) =
+                (leftPattern_ (_leftPatternOopTable) (_leftPatternOresolveErrors))
+            ( _constructorOperatorIself) =
+                (constructorOperator_ )
+            ( _rightPatternIresolveErrors,_rightPatternIself) =
+                (rightPattern_ (_rightPatternOopTable) (_rightPatternOresolveErrors))
+            (_self@_) =
+                Pattern_InfixConstructor _rangeIself _leftPatternIself _constructorOperatorIself _rightPatternIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _rightPatternIresolveErrors
+            (_leftPatternOopTable@_) =
+                _lhsIopTable
+            (_leftPatternOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_rightPatternOopTable@_) =
+                _lhsIopTable
+            (_rightPatternOresolveErrors@_) =
+                _leftPatternIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Pattern_Irrefutable :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Pattern)
-sem_Pattern_Irrefutable (_range) (_pattern) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Pattern_Irrefutable _range_self _pattern_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_resolveErrors,_pattern_self) =
-            (_pattern (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _pattern_resolveErrors,_self)
+sem_Pattern_Irrefutable (range_) (pattern_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternIresolveErrors,_patternIself) =
+                (pattern_ (_patternOopTable) (_patternOresolveErrors))
+            (_self@_) =
+                Pattern_Irrefutable _rangeIself _patternIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _patternIresolveErrors
+            (_patternOopTable@_) =
+                _lhsIopTable
+            (_patternOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Pattern_List :: (T_Range) ->
                     (T_Patterns) ->
                     (T_Pattern)
-sem_Pattern_List (_range) (_patterns) (_lhs_opTable) (_lhs_resolveErrors) =
-    let ((_self,_errs)) =
-            case _range of
-                Range_Range Position_Unknown Position_Unknown ->
-                    resolvePattern _lhs_opTable _patterns_self
-                _ ->
-                    (Pattern_List _range_self _patterns_self, [])
-        ( _range_self) =
-            (_range )
-        ( _patterns_resolveErrors,_patterns_self) =
-            (_patterns (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _errs ++ _patterns_resolveErrors,_self)
+sem_Pattern_List (range_) (patterns_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternsIresolveErrors,_patternsIself) =
+                (patterns_ (_patternsOopTable) (_patternsOresolveErrors))
+            ((_self@_,_errs@_)) =
+                case range_ of
+                    Range_Range Position_Unknown Position_Unknown ->
+                        resolvePattern _lhsIopTable _patternsIself
+                    _ ->
+                        (Pattern_List _rangeIself _patternsIself, [])
+            (_lhsOresolveErrors@_) =
+                _errs ++ _patternsIresolveErrors
+            (_lhsOself@_) =
+                _self
+            (_patternsOopTable@_) =
+                _lhsIopTable
+            (_patternsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Pattern_Literal :: (T_Range) ->
                        (T_Literal) ->
                        (T_Pattern)
-sem_Pattern_Literal (_range) (_literal) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Pattern_Literal _range_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _literal_self) =
-            (_literal )
-    in  ( _lhs_resolveErrors,_self)
+sem_Pattern_Literal (range_) (literal_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _literalIself) =
+                (literal_ )
+            (_self@_) =
+                Pattern_Literal _rangeIself _literalIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Pattern_Negate :: (T_Range) ->
                       (T_Literal) ->
                       (T_Pattern)
-sem_Pattern_Negate (_range) (_literal) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Pattern_Negate _range_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _literal_self) =
-            (_literal )
-    in  ( _lhs_resolveErrors,_self)
+sem_Pattern_Negate (range_) (literal_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _literalIself) =
+                (literal_ )
+            (_self@_) =
+                Pattern_Negate _rangeIself _literalIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Pattern_NegateFloat :: (T_Range) ->
                            (T_Literal) ->
                            (T_Pattern)
-sem_Pattern_NegateFloat (_range) (_literal) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Pattern_NegateFloat _range_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _literal_self) =
-            (_literal )
-    in  ( _lhs_resolveErrors,_self)
+sem_Pattern_NegateFloat (range_) (literal_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _literalIself) =
+                (literal_ )
+            (_self@_) =
+                Pattern_NegateFloat _rangeIself _literalIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Pattern_Parenthesized :: (T_Range) ->
                              (T_Pattern) ->
                              (T_Pattern)
-sem_Pattern_Parenthesized (_range) (_pattern) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Pattern_Parenthesized _range_self _pattern_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_resolveErrors,_pattern_self) =
-            (_pattern (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _pattern_resolveErrors,_self)
+sem_Pattern_Parenthesized (range_) (pattern_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternIresolveErrors,_patternIself) =
+                (pattern_ (_patternOopTable) (_patternOresolveErrors))
+            (_self@_) =
+                Pattern_Parenthesized _rangeIself _patternIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _patternIresolveErrors
+            (_patternOopTable@_) =
+                _lhsIopTable
+            (_patternOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Pattern_Record :: (T_Range) ->
                       (T_Name) ->
                       (T_RecordPatternBindings) ->
                       (T_Pattern)
-sem_Pattern_Record (_range) (_name) (_recordPatternBindings) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Pattern_Record _range_self _name_self _recordPatternBindings_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _recordPatternBindings_resolveErrors,_recordPatternBindings_self) =
-            (_recordPatternBindings (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _recordPatternBindings_resolveErrors,_self)
+sem_Pattern_Record (range_) (name_) (recordPatternBindings_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _recordPatternBindingsIresolveErrors,_recordPatternBindingsIself) =
+                (recordPatternBindings_ (_recordPatternBindingsOopTable) (_recordPatternBindingsOresolveErrors))
+            (_self@_) =
+                Pattern_Record _rangeIself _nameIself _recordPatternBindingsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _recordPatternBindingsIresolveErrors
+            (_recordPatternBindingsOopTable@_) =
+                _lhsIopTable
+            (_recordPatternBindingsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Pattern_Successor :: (T_Range) ->
                          (T_Name) ->
                          (T_Literal) ->
                          (T_Pattern)
-sem_Pattern_Successor (_range) (_name) (_literal) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Pattern_Successor _range_self _name_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _literal_self) =
-            (_literal )
-    in  ( _lhs_resolveErrors,_self)
+sem_Pattern_Successor (range_) (name_) (literal_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _literalIself) =
+                (literal_ )
+            (_self@_) =
+                Pattern_Successor _rangeIself _nameIself _literalIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Pattern_Tuple :: (T_Range) ->
                      (T_Patterns) ->
                      (T_Pattern)
-sem_Pattern_Tuple (_range) (_patterns) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Pattern_Tuple _range_self _patterns_self
-        ( _range_self) =
-            (_range )
-        ( _patterns_resolveErrors,_patterns_self) =
-            (_patterns (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _patterns_resolveErrors,_self)
+sem_Pattern_Tuple (range_) (patterns_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternsIresolveErrors,_patternsIself) =
+                (patterns_ (_patternsOopTable) (_patternsOresolveErrors))
+            (_self@_) =
+                Pattern_Tuple _rangeIself _patternsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _patternsIresolveErrors
+            (_patternsOopTable@_) =
+                _lhsIopTable
+            (_patternsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Pattern_Variable :: (T_Range) ->
                         (T_Name) ->
                         (T_Pattern)
-sem_Pattern_Variable (_range) (_name) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Pattern_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _lhs_resolveErrors,_self)
+sem_Pattern_Variable (range_) (name_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            (_self@_) =
+                Pattern_Variable _rangeIself _nameIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Pattern_Wildcard :: (T_Range) ->
                         (T_Pattern)
-sem_Pattern_Wildcard (_range) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Pattern_Wildcard _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _lhs_resolveErrors,_self)
+sem_Pattern_Wildcard (range_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            (_self@_) =
+                Pattern_Wildcard _rangeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- Patterns ----------------------------------------------------
 -- semantic domain
 type T_Patterns = (OperatorTable) ->
@@ -2020,19 +2804,39 @@ sem_Patterns (list) =
 sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns) ->
                      (T_Patterns)
-sem_Patterns_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_resolveErrors,_hd_self) =
-            (_hd (_lhs_opTable) (_lhs_resolveErrors))
-        ( _tl_resolveErrors,_tl_self) =
-            (_tl (_lhs_opTable) (_hd_resolveErrors))
-    in  ( _tl_resolveErrors,_self)
+sem_Patterns_Cons (hd_) (tl_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _hdIresolveErrors,_hdIself) =
+                (hd_ (_hdOopTable) (_hdOresolveErrors))
+            ( _tlIresolveErrors,_tlIself) =
+                (tl_ (_tlOopTable) (_tlOresolveErrors))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _tlIresolveErrors
+            (_hdOopTable@_) =
+                _lhsIopTable
+            (_hdOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_tlOopTable@_) =
+                _lhsIopTable
+            (_tlOresolveErrors@_) =
+                _hdIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Patterns_Nil :: (T_Patterns)
-sem_Patterns_Nil (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            []
-    in  ( _lhs_resolveErrors,_self)
+sem_Patterns_Nil  =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- Position ----------------------------------------------------
 -- semantic domain
 type T_Position = ( (Position))
@@ -2047,15 +2851,19 @@ sem_Position_Position :: (String) ->
                          (Int) ->
                          (Int) ->
                          (T_Position)
-sem_Position_Position (_filename) (_line) (_column) =
-    let (_self) =
-            Position_Position _filename _line _column
-    in  ( _self)
+sem_Position_Position (filename_) (line_) (column_) =
+    let (_self@_) =
+            Position_Position filename_ line_ column_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Position_Unknown :: (T_Position)
 sem_Position_Unknown  =
-    let (_self) =
+    let (_self@_) =
             Position_Unknown
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Qualifier ---------------------------------------------------
 -- semantic domain
 type T_Qualifier = (OperatorTable) ->
@@ -2074,48 +2882,88 @@ sem_Qualifier ((Qualifier_Let (_range) (_declarations))) =
     (sem_Qualifier_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Qualifier_Empty :: (T_Range) ->
                        (T_Qualifier)
-sem_Qualifier_Empty (_range) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Qualifier_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _lhs_resolveErrors,_self)
+sem_Qualifier_Empty (range_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            (_self@_) =
+                Qualifier_Empty _rangeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Qualifier_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Qualifier)
-sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Qualifier_Generator _range_self _pattern_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_resolveErrors,_pattern_self) =
-            (_pattern (_lhs_opTable) (_lhs_resolveErrors))
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_pattern_resolveErrors))
-    in  ( _expression_resolveErrors,_self)
+sem_Qualifier_Generator (range_) (pattern_) (expression_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternIresolveErrors,_patternIself) =
+                (pattern_ (_patternOopTable) (_patternOresolveErrors))
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            (_self@_) =
+                Qualifier_Generator _rangeIself _patternIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _expressionIresolveErrors
+            (_patternOopTable@_) =
+                _lhsIopTable
+            (_patternOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _patternIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Qualifier_Guard :: (T_Range) ->
                        (T_Expression) ->
                        (T_Qualifier)
-sem_Qualifier_Guard (_range) (_guard) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Qualifier_Guard _range_self _guard_self
-        ( _range_self) =
-            (_range )
-        ( _guard_resolveErrors,_guard_self) =
-            (_guard (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _guard_resolveErrors,_self)
+sem_Qualifier_Guard (range_) (guard_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _guardIresolveErrors,_guardIself) =
+                (guard_ (_guardOopTable) (_guardOresolveErrors))
+            (_self@_) =
+                Qualifier_Guard _rangeIself _guardIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _guardIresolveErrors
+            (_guardOopTable@_) =
+                _lhsIopTable
+            (_guardOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Qualifier_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Qualifier)
-sem_Qualifier_Let (_range) (_declarations) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Qualifier_Let _range_self _declarations_self
-        ( _range_self) =
-            (_range )
-        ( _declarations_resolveErrors,_declarations_self) =
-            (_declarations (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _declarations_resolveErrors,_self)
+sem_Qualifier_Let (range_) (declarations_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _declarationsIresolveErrors,_declarationsIself) =
+                (declarations_ (_declarationsOopTable) (_declarationsOresolveErrors))
+            (_self@_) =
+                Qualifier_Let _rangeIself _declarationsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _declarationsIresolveErrors
+            (_declarationsOopTable@_) =
+                _lhsIopTable
+            (_declarationsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
 type T_Qualifiers = (OperatorTable) ->
@@ -2129,19 +2977,39 @@ sem_Qualifiers (list) =
 sem_Qualifiers_Cons :: (T_Qualifier) ->
                        (T_Qualifiers) ->
                        (T_Qualifiers)
-sem_Qualifiers_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_resolveErrors,_hd_self) =
-            (_hd (_lhs_opTable) (_lhs_resolveErrors))
-        ( _tl_resolveErrors,_tl_self) =
-            (_tl (_lhs_opTable) (_hd_resolveErrors))
-    in  ( _tl_resolveErrors,_self)
+sem_Qualifiers_Cons (hd_) (tl_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _hdIresolveErrors,_hdIself) =
+                (hd_ (_hdOopTable) (_hdOresolveErrors))
+            ( _tlIresolveErrors,_tlIself) =
+                (tl_ (_tlOopTable) (_tlOresolveErrors))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _tlIresolveErrors
+            (_hdOopTable@_) =
+                _lhsIopTable
+            (_hdOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_tlOopTable@_) =
+                _lhsIopTable
+            (_tlOresolveErrors@_) =
+                _hdIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Qualifiers_Nil :: (T_Qualifiers)
-sem_Qualifiers_Nil (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            []
-    in  ( _lhs_resolveErrors,_self)
+sem_Qualifiers_Nil  =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- Range -------------------------------------------------------
 -- semantic domain
 type T_Range = ( (Range))
@@ -2153,14 +3021,16 @@ sem_Range ((Range_Range (_start) (_stop))) =
 sem_Range_Range :: (T_Position) ->
                    (T_Position) ->
                    (T_Range)
-sem_Range_Range (_start) (_stop) =
-    let (_self) =
-            Range_Range _start_self _stop_self
-        ( _start_self) =
-            (_start )
-        ( _stop_self) =
-            (_stop )
-    in  ( _self)
+sem_Range_Range (start_) (stop_) =
+    let ( _startIself) =
+            (start_ )
+        ( _stopIself) =
+            (stop_ )
+        (_self@_) =
+            Range_Range _startIself _stopIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- RecordExpressionBinding -------------------------------------
 -- semantic domain
 type T_RecordExpressionBinding = (OperatorTable) ->
@@ -2175,16 +3045,26 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
                                                        (T_Name) ->
                                                        (T_Expression) ->
                                                        (T_RecordExpressionBinding)
-sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expression) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            RecordExpressionBinding_RecordExpressionBinding _range_self _name_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _expression_resolveErrors,_self)
+sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            (_self@_) =
+                RecordExpressionBinding_RecordExpressionBinding _rangeIself _nameIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _expressionIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
 type T_RecordExpressionBindings = (OperatorTable) ->
@@ -2198,19 +3078,39 @@ sem_RecordExpressionBindings (list) =
 sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_RecordExpressionBindings)
-sem_RecordExpressionBindings_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_resolveErrors,_hd_self) =
-            (_hd (_lhs_opTable) (_lhs_resolveErrors))
-        ( _tl_resolveErrors,_tl_self) =
-            (_tl (_lhs_opTable) (_hd_resolveErrors))
-    in  ( _tl_resolveErrors,_self)
+sem_RecordExpressionBindings_Cons (hd_) (tl_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _hdIresolveErrors,_hdIself) =
+                (hd_ (_hdOopTable) (_hdOresolveErrors))
+            ( _tlIresolveErrors,_tlIself) =
+                (tl_ (_tlOopTable) (_tlOresolveErrors))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _tlIresolveErrors
+            (_hdOopTable@_) =
+                _lhsIopTable
+            (_hdOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_tlOopTable@_) =
+                _lhsIopTable
+            (_tlOresolveErrors@_) =
+                _hdIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_RecordExpressionBindings_Nil :: (T_RecordExpressionBindings)
-sem_RecordExpressionBindings_Nil (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            []
-    in  ( _lhs_resolveErrors,_self)
+sem_RecordExpressionBindings_Nil  =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- RecordPatternBinding ----------------------------------------
 -- semantic domain
 type T_RecordPatternBinding = (OperatorTable) ->
@@ -2225,16 +3125,26 @@ sem_RecordPatternBinding_RecordPatternBinding :: (T_Range) ->
                                                  (T_Name) ->
                                                  (T_Pattern) ->
                                                  (T_RecordPatternBinding)
-sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            RecordPatternBinding_RecordPatternBinding _range_self _name_self _pattern_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _pattern_resolveErrors,_pattern_self) =
-            (_pattern (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _pattern_resolveErrors,_self)
+sem_RecordPatternBinding_RecordPatternBinding (range_) (name_) (pattern_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _patternIresolveErrors,_patternIself) =
+                (pattern_ (_patternOopTable) (_patternOresolveErrors))
+            (_self@_) =
+                RecordPatternBinding_RecordPatternBinding _rangeIself _nameIself _patternIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _patternIresolveErrors
+            (_patternOopTable@_) =
+                _lhsIopTable
+            (_patternOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- RecordPatternBindings ---------------------------------------
 -- semantic domain
 type T_RecordPatternBindings = (OperatorTable) ->
@@ -2248,19 +3158,39 @@ sem_RecordPatternBindings (list) =
 sem_RecordPatternBindings_Cons :: (T_RecordPatternBinding) ->
                                   (T_RecordPatternBindings) ->
                                   (T_RecordPatternBindings)
-sem_RecordPatternBindings_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_resolveErrors,_hd_self) =
-            (_hd (_lhs_opTable) (_lhs_resolveErrors))
-        ( _tl_resolveErrors,_tl_self) =
-            (_tl (_lhs_opTable) (_hd_resolveErrors))
-    in  ( _tl_resolveErrors,_self)
+sem_RecordPatternBindings_Cons (hd_) (tl_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _hdIresolveErrors,_hdIself) =
+                (hd_ (_hdOopTable) (_hdOresolveErrors))
+            ( _tlIresolveErrors,_tlIself) =
+                (tl_ (_tlOopTable) (_tlOresolveErrors))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _tlIresolveErrors
+            (_hdOopTable@_) =
+                _lhsIopTable
+            (_hdOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_tlOopTable@_) =
+                _lhsIopTable
+            (_tlOresolveErrors@_) =
+                _hdIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_RecordPatternBindings_Nil :: (T_RecordPatternBindings)
-sem_RecordPatternBindings_Nil (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            []
-    in  ( _lhs_resolveErrors,_self)
+sem_RecordPatternBindings_Nil  =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- RightHandSide -----------------------------------------------
 -- semantic domain
 type T_RightHandSide = (OperatorTable) ->
@@ -2277,30 +3207,58 @@ sem_RightHandSide_Expression :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_MaybeDeclarations) ->
                                 (T_RightHandSide)
-sem_RightHandSide_Expression (_range) (_expression) (_where) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            RightHandSide_Expression _range_self _expression_self _where_self
-        ( _range_self) =
-            (_range )
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_lhs_resolveErrors))
-        ( _where_resolveErrors,_where_self) =
-            (_where (_lhs_opTable) (_expression_resolveErrors))
-    in  ( _where_resolveErrors,_self)
+sem_RightHandSide_Expression (range_) (expression_) (where_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            ( _whereIresolveErrors,_whereIself) =
+                (where_ (_whereOopTable) (_whereOresolveErrors))
+            (_self@_) =
+                RightHandSide_Expression _rangeIself _expressionIself _whereIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _whereIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_whereOopTable@_) =
+                _lhsIopTable
+            (_whereOresolveErrors@_) =
+                _expressionIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_RightHandSide_Guarded :: (T_Range) ->
                              (T_GuardedExpressions) ->
                              (T_MaybeDeclarations) ->
                              (T_RightHandSide)
-sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            RightHandSide_Guarded _range_self _guardedexpressions_self _where_self
-        ( _range_self) =
-            (_range )
-        ( _guardedexpressions_resolveErrors,_guardedexpressions_self) =
-            (_guardedexpressions (_lhs_opTable) (_lhs_resolveErrors))
-        ( _where_resolveErrors,_where_self) =
-            (_where (_lhs_opTable) (_guardedexpressions_resolveErrors))
-    in  ( _where_resolveErrors,_self)
+sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _guardedexpressionsIresolveErrors,_guardedexpressionsIself) =
+                (guardedexpressions_ (_guardedexpressionsOopTable) (_guardedexpressionsOresolveErrors))
+            ( _whereIresolveErrors,_whereIself) =
+                (where_ (_whereOopTable) (_whereOresolveErrors))
+            (_self@_) =
+                RightHandSide_Guarded _rangeIself _guardedexpressionsIself _whereIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _whereIresolveErrors
+            (_guardedexpressionsOopTable@_) =
+                _lhsIopTable
+            (_guardedexpressionsOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_whereOopTable@_) =
+                _lhsIopTable
+            (_whereOresolveErrors@_) =
+                _guardedexpressionsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- SimpleType --------------------------------------------------
 -- semantic domain
 type T_SimpleType = ( (SimpleType))
@@ -2313,16 +3271,18 @@ sem_SimpleType_SimpleType :: (T_Range) ->
                              (T_Name) ->
                              (T_Names) ->
                              (T_SimpleType)
-sem_SimpleType_SimpleType (_range) (_name) (_typevariables) =
-    let (_self) =
-            SimpleType_SimpleType _range_self _name_self _typevariables_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _typevariables_self) =
-            (_typevariables )
-    in  ( _self)
+sem_SimpleType_SimpleType (range_) (name_) (typevariables_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _typevariablesIself) =
+            (typevariables_ )
+        (_self@_) =
+            SimpleType_SimpleType _rangeIself _nameIself _typevariablesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Statement ---------------------------------------------------
 -- semantic domain
 type T_Statement = (OperatorTable) ->
@@ -2341,48 +3301,88 @@ sem_Statement ((Statement_Let (_range) (_declarations))) =
     (sem_Statement_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Statement_Empty :: (T_Range) ->
                        (T_Statement)
-sem_Statement_Empty (_range) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Statement_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _lhs_resolveErrors,_self)
+sem_Statement_Empty (range_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            (_self@_) =
+                Statement_Empty _rangeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Statement_Expression :: (T_Range) ->
                             (T_Expression) ->
                             (T_Statement)
-sem_Statement_Expression (_range) (_expression) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Statement_Expression _range_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _expression_resolveErrors,_self)
+sem_Statement_Expression (range_) (expression_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            (_self@_) =
+                Statement_Expression _rangeIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _expressionIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Statement_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Statement)
-sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Statement_Generator _range_self _pattern_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_resolveErrors,_pattern_self) =
-            (_pattern (_lhs_opTable) (_lhs_resolveErrors))
-        ( _expression_resolveErrors,_expression_self) =
-            (_expression (_lhs_opTable) (_pattern_resolveErrors))
-    in  ( _expression_resolveErrors,_self)
+sem_Statement_Generator (range_) (pattern_) (expression_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternIresolveErrors,_patternIself) =
+                (pattern_ (_patternOopTable) (_patternOresolveErrors))
+            ( _expressionIresolveErrors,_expressionIself) =
+                (expression_ (_expressionOopTable) (_expressionOresolveErrors))
+            (_self@_) =
+                Statement_Generator _rangeIself _patternIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _expressionIresolveErrors
+            (_patternOopTable@_) =
+                _lhsIopTable
+            (_patternOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_expressionOopTable@_) =
+                _lhsIopTable
+            (_expressionOresolveErrors@_) =
+                _patternIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Statement_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Statement)
-sem_Statement_Let (_range) (_declarations) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            Statement_Let _range_self _declarations_self
-        ( _range_self) =
-            (_range )
-        ( _declarations_resolveErrors,_declarations_self) =
-            (_declarations (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _declarations_resolveErrors,_self)
+sem_Statement_Let (range_) (declarations_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _declarationsIresolveErrors,_declarationsIself) =
+                (declarations_ (_declarationsOopTable) (_declarationsOresolveErrors))
+            (_self@_) =
+                Statement_Let _rangeIself _declarationsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _declarationsIresolveErrors
+            (_declarationsOopTable@_) =
+                _lhsIopTable
+            (_declarationsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- Statements --------------------------------------------------
 -- semantic domain
 type T_Statements = (OperatorTable) ->
@@ -2396,19 +3396,39 @@ sem_Statements (list) =
 sem_Statements_Cons :: (T_Statement) ->
                        (T_Statements) ->
                        (T_Statements)
-sem_Statements_Cons (_hd) (_tl) (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_resolveErrors,_hd_self) =
-            (_hd (_lhs_opTable) (_lhs_resolveErrors))
-        ( _tl_resolveErrors,_tl_self) =
-            (_tl (_lhs_opTable) (_hd_resolveErrors))
-    in  ( _tl_resolveErrors,_self)
+sem_Statements_Cons (hd_) (tl_) =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let ( _hdIresolveErrors,_hdIself) =
+                (hd_ (_hdOopTable) (_hdOresolveErrors))
+            ( _tlIresolveErrors,_tlIself) =
+                (tl_ (_tlOopTable) (_tlOresolveErrors))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _tlIresolveErrors
+            (_hdOopTable@_) =
+                _lhsIopTable
+            (_hdOresolveErrors@_) =
+                _lhsIresolveErrors
+            (_tlOopTable@_) =
+                _lhsIopTable
+            (_tlOresolveErrors@_) =
+                _hdIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 sem_Statements_Nil :: (T_Statements)
-sem_Statements_Nil (_lhs_opTable) (_lhs_resolveErrors) =
-    let (_self) =
-            []
-    in  ( _lhs_resolveErrors,_self)
+sem_Statements_Nil  =
+    \ _lhsIopTable
+      _lhsIresolveErrors ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOresolveErrors@_) =
+                _lhsIresolveErrors
+        in  ( _lhsOresolveErrors,_lhsOself)
 -- Strings -----------------------------------------------------
 -- semantic domain
 type T_Strings = ( (Strings))
@@ -2420,17 +3440,21 @@ sem_Strings (list) =
 sem_Strings_Cons :: (String) ->
                     (T_Strings) ->
                     (T_Strings)
-sem_Strings_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd _tl_self
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Strings_Cons (hd_) (tl_) =
+    let ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) hd_ _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Strings_Nil :: (T_Strings)
 sem_Strings_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Type --------------------------------------------------------
 -- semantic domain
 type T_Type = ( (Type))
@@ -2456,91 +3480,105 @@ sem_Type_Application :: (T_Range) ->
                         (T_Type) ->
                         (T_Types) ->
                         (T_Type)
-sem_Type_Application (_range) (_prefix) (_function) (_arguments) =
-    let (_self) =
-            Type_Application _range_self _prefix _function_self _arguments_self
-        ( _range_self) =
-            (_range )
-        ( _function_self) =
-            (_function )
-        ( _arguments_self) =
-            (_arguments )
-    in  ( _self)
+sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _functionIself) =
+            (function_ )
+        ( _argumentsIself) =
+            (arguments_ )
+        (_self@_) =
+            Type_Application _rangeIself prefix_ _functionIself _argumentsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Constructor :: (T_Range) ->
                         (T_Name) ->
                         (T_Type)
-sem_Type_Constructor (_range) (_name) =
-    let (_self) =
-            Type_Constructor _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Type_Constructor (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Type_Constructor _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Exists :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
-sem_Type_Exists (_range) (_typevariables) (_type) =
-    let (_self) =
-            Type_Exists _range_self _typevariables_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _typevariables_self) =
-            (_typevariables )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_Type_Exists (range_) (typevariables_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _typevariablesIself) =
+            (typevariables_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            Type_Exists _rangeIself _typevariablesIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Forall :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
-sem_Type_Forall (_range) (_typevariables) (_type) =
-    let (_self) =
-            Type_Forall _range_self _typevariables_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _typevariables_self) =
-            (_typevariables )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_Type_Forall (range_) (typevariables_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _typevariablesIself) =
+            (typevariables_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            Type_Forall _rangeIself _typevariablesIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Parenthesized :: (T_Range) ->
                           (T_Type) ->
                           (T_Type)
-sem_Type_Parenthesized (_range) (_type) =
-    let (_self) =
-            Type_Parenthesized _range_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_Type_Parenthesized (range_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            Type_Parenthesized _rangeIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Qualified :: (T_Range) ->
                       (T_ContextItems) ->
                       (T_Type) ->
                       (T_Type)
-sem_Type_Qualified (_range) (_context) (_type) =
-    let (_self) =
-            Type_Qualified _range_self _context_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_Type_Qualified (range_) (context_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _contextIself) =
+            (context_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            Type_Qualified _rangeIself _contextIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Variable :: (T_Range) ->
                      (T_Name) ->
                      (T_Type)
-sem_Type_Variable (_range) (_name) =
-    let (_self) =
-            Type_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Type_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Type_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Types -------------------------------------------------------
 -- semantic domain
 type T_Types = ( (Types))
@@ -2552,17 +3590,21 @@ sem_Types (list) =
 sem_Types_Cons :: (T_Type) ->
                   (T_Types) ->
                   (T_Types)
-sem_Types_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Types_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Types_Nil :: (T_Types)
 sem_Types_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 

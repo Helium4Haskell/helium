@@ -97,24 +97,44 @@ sem_Alternative_Alternative :: (T_Range) ->
                                (T_Pattern) ->
                                (T_RightHandSide) ->
                                (T_Alternative)
-sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Alternative_Alternative _range_self _pattern_self _righthandside_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_self) =
-            (_pattern )
-        ( _righthandside_bindingGroups,_righthandside_kappaUnique,_righthandside_self) =
-            (_righthandside (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _righthandside_bindingGroups,_righthandside_kappaUnique,_self)
+sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternIself) =
+                (pattern_ )
+            ( _righthandsideIbindingGroups,_righthandsideIkappaUnique,_righthandsideIself) =
+                (righthandside_ (_righthandsideObindingGroups) (_righthandsideOkappaUnique))
+            (_self@_) =
+                Alternative_Alternative _rangeIself _patternIself _righthandsideIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _righthandsideIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _righthandsideIkappaUnique
+            (_righthandsideObindingGroups@_) =
+                _lhsIbindingGroups
+            (_righthandsideOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Alternative_Empty :: (T_Range) ->
                          (T_Alternative)
-sem_Alternative_Empty (_range) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Alternative_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_Alternative_Empty (range_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            (_self@_) =
+                Alternative_Empty _rangeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- Alternatives ------------------------------------------------
 -- semantic domain
 type T_Alternatives = (BindingGroups) ->
@@ -128,19 +148,43 @@ sem_Alternatives (list) =
 sem_Alternatives_Cons :: (T_Alternative) ->
                          (T_Alternatives) ->
                          (T_Alternatives)
-sem_Alternatives_Cons (_hd) (_tl) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_bindingGroups,_hd_kappaUnique,_hd_self) =
-            (_hd (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _tl_bindingGroups,_tl_kappaUnique,_tl_self) =
-            (_tl (_hd_bindingGroups) (_hd_kappaUnique))
-    in  ( _tl_bindingGroups,_tl_kappaUnique,_self)
+sem_Alternatives_Cons (hd_) (tl_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+                (hd_ (_hdObindingGroups) (_hdOkappaUnique))
+            ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
+                (tl_ (_tlObindingGroups) (_tlOkappaUnique))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _tlIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _tlIkappaUnique
+            (_hdObindingGroups@_) =
+                _lhsIbindingGroups
+            (_hdOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_tlObindingGroups@_) =
+                _hdIbindingGroups
+            (_tlOkappaUnique@_) =
+                _hdIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Alternatives_Nil :: (T_Alternatives)
-sem_Alternatives_Nil (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            []
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_Alternatives_Nil  =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- AnnotatedType -----------------------------------------------
 -- semantic domain
 type T_AnnotatedType = (KindConstraints) ->
@@ -155,16 +199,32 @@ sem_AnnotatedType_AnnotatedType :: (T_Range) ->
                                    (Bool) ->
                                    (T_Type) ->
                                    (T_AnnotatedType)
-sem_AnnotatedType_AnnotatedType (_range) (_strict) (_type) (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            AnnotatedType_AnnotatedType _range_self _strict _type_self
-        (_newConstraint) =
-            (_type_kappa .==. star) (mustBeStar _range_self "data type declaration" _type_self)
-        ( _range_self) =
-            (_range )
-        ( _type_assumptions,_type_constraints,_type_kappa,_type_kappaUnique,_type_self) =
-            (_type (_lhs_constraints) (_lhs_kappaUnique))
-    in  ( _type_assumptions,_type_constraints ++ [_newConstraint],_type_kappa,_type_kappaUnique,_self)
+sem_AnnotatedType_AnnotatedType (range_) (strict_) (type_) =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _typeIassumptions,_typeIconstraints,_typeIkappa,_typeIkappaUnique,_typeIself) =
+                (type_ (_typeOconstraints) (_typeOkappaUnique))
+            (_newConstraint@_) =
+                (_typeIkappa .==. star) (mustBeStar _rangeIself "data type declaration" _typeIself)
+            (_lhsOconstraints@_) =
+                _typeIconstraints ++ [_newConstraint]
+            (_self@_) =
+                AnnotatedType_AnnotatedType _rangeIself strict_ _typeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOassumptions@_) =
+                _typeIassumptions
+            (_lhsOkappa@_) =
+                _typeIkappa
+            (_lhsOkappaUnique@_) =
+                _typeIkappaUnique
+            (_typeOconstraints@_) =
+                _lhsIconstraints
+            (_typeOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappa,_lhsOkappaUnique,_lhsOself)
 -- AnnotatedTypes ----------------------------------------------
 -- semantic domain
 type T_AnnotatedTypes = (KindConstraints) ->
@@ -178,19 +238,51 @@ sem_AnnotatedTypes (list) =
 sem_AnnotatedTypes_Cons :: (T_AnnotatedType) ->
                            (T_AnnotatedTypes) ->
                            (T_AnnotatedTypes)
-sem_AnnotatedTypes_Cons (_hd) (_tl) (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_assumptions,_hd_constraints,_hd_kappa,_hd_kappaUnique,_hd_self) =
-            (_hd (_lhs_constraints) (_lhs_kappaUnique))
-        ( _tl_assumptions,_tl_constraints,_tl_kappaUnique,_tl_kappas,_tl_self) =
-            (_tl (_hd_constraints) (_hd_kappaUnique))
-    in  ( _hd_assumptions `combine` _tl_assumptions,_tl_constraints,_tl_kappaUnique,_hd_kappa : _tl_kappas,_self)
+sem_AnnotatedTypes_Cons (hd_) (tl_) =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let ( _hdIassumptions,_hdIconstraints,_hdIkappa,_hdIkappaUnique,_hdIself) =
+                (hd_ (_hdOconstraints) (_hdOkappaUnique))
+            ( _tlIassumptions,_tlIconstraints,_tlIkappaUnique,_tlIkappas,_tlIself) =
+                (tl_ (_tlOconstraints) (_tlOkappaUnique))
+            (_lhsOkappas@_) =
+                _hdIkappa : _tlIkappas
+            (_lhsOassumptions@_) =
+                _hdIassumptions `combine` _tlIassumptions
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOconstraints@_) =
+                _tlIconstraints
+            (_lhsOkappaUnique@_) =
+                _tlIkappaUnique
+            (_hdOconstraints@_) =
+                _lhsIconstraints
+            (_hdOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_tlOconstraints@_) =
+                _hdIconstraints
+            (_tlOkappaUnique@_) =
+                _hdIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappaUnique,_lhsOkappas,_lhsOself)
 sem_AnnotatedTypes_Nil :: (T_AnnotatedTypes)
-sem_AnnotatedTypes_Nil (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            []
-    in  ( noAssumptions,_lhs_constraints,_lhs_kappaUnique,[],_self)
+sem_AnnotatedTypes_Nil  =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let (_lhsOkappas@_) =
+                []
+            (_lhsOassumptions@_) =
+                noAssumptions
+            (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOconstraints@_) =
+                _lhsIconstraints
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappaUnique,_lhsOkappas,_lhsOself)
 -- Body --------------------------------------------------------
 -- semantic domain
 type T_Body = (ImportEnvironment) ->
@@ -205,22 +297,36 @@ sem_Body_Body :: (T_Range) ->
                  (T_ImportDeclarations) ->
                  (T_Declarations) ->
                  (T_Body)
-sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_importEnvironment) (_lhs_kappaUnique) =
-    let (_self) =
-            Body_Body _range_self _importdeclarations_self _declarations_self
-        ((_environment,_aset,_cs)) =
-            performBindingGroup _declarations_bindingGroups
-        (_newConstraints) =
-            fst $ (_kindEnvironment .:::. _aset) (\n _ -> unexpected $ "Body.Body " ++ show n)
-        (_kindEnvironment) =
-            getKindsFromImportEnvironment _lhs_importEnvironment
-        ( _range_self) =
-            (_range )
-        ( _importdeclarations_self) =
-            (_importdeclarations )
-        ( _declarations_bindingGroups,_declarations_kappaUnique,_declarations_self) =
-            (_declarations ([]) (_lhs_kappaUnique))
-    in  ( _newConstraints ++ _cs,_environment,_declarations_kappaUnique,_self)
+sem_Body_Body (range_) (importdeclarations_) (declarations_) =
+    \ _lhsIimportEnvironment
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _importdeclarationsIself) =
+                (importdeclarations_ )
+            ( _declarationsIbindingGroups,_declarationsIkappaUnique,_declarationsIself) =
+                (declarations_ (_declarationsObindingGroups) (_declarationsOkappaUnique))
+            (_kindEnvironment@_) =
+                getKindsFromImportEnvironment _lhsIimportEnvironment
+            (_newConstraints@_) =
+                fst $ (_kindEnvironment .:::. _aset) (\n _ -> unexpected $ "Body.Body " ++ show n)
+            ((_environment@_,_aset@_,_cs@_)) =
+                performBindingGroup _declarationsIbindingGroups
+            (_lhsOconstraints@_) =
+                _newConstraints ++ _cs
+            (_declarationsObindingGroups@_) =
+                []
+            (_self@_) =
+                Body_Body _rangeIself _importdeclarationsIself _declarationsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOenvironment@_) =
+                _environment
+            (_lhsOkappaUnique@_) =
+                _declarationsIkappaUnique
+            (_declarationsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsOconstraints,_lhsOenvironment,_lhsOkappaUnique,_lhsOself)
 -- Constructor -------------------------------------------------
 -- semantic domain
 type T_Constructor = (KindConstraints) ->
@@ -239,47 +345,91 @@ sem_Constructor_Constructor :: (T_Range) ->
                                (T_Name) ->
                                (T_AnnotatedTypes) ->
                                (T_Constructor)
-sem_Constructor_Constructor (_range) (_constructor) (_types) (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            Constructor_Constructor _range_self _constructor_self _types_self
-        ( _range_self) =
-            (_range )
-        ( _constructor_self) =
-            (_constructor )
-        ( _types_assumptions,_types_constraints,_types_kappaUnique,_types_kappas,_types_self) =
-            (_types (_lhs_constraints) (_lhs_kappaUnique))
-    in  ( _types_assumptions,_types_constraints,_types_kappaUnique,_self)
+sem_Constructor_Constructor (range_) (constructor_) (types_) =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _constructorIself) =
+                (constructor_ )
+            ( _typesIassumptions,_typesIconstraints,_typesIkappaUnique,_typesIkappas,_typesIself) =
+                (types_ (_typesOconstraints) (_typesOkappaUnique))
+            (_self@_) =
+                Constructor_Constructor _rangeIself _constructorIself _typesIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOassumptions@_) =
+                _typesIassumptions
+            (_lhsOconstraints@_) =
+                _typesIconstraints
+            (_lhsOkappaUnique@_) =
+                _typesIkappaUnique
+            (_typesOconstraints@_) =
+                _lhsIconstraints
+            (_typesOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappaUnique,_lhsOself)
 sem_Constructor_Infix :: (T_Range) ->
                          (T_AnnotatedType) ->
                          (T_Name) ->
                          (T_AnnotatedType) ->
                          (T_Constructor)
-sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            Constructor_Infix _range_self _leftType_self _constructorOperator_self _rightType_self
-        ( _range_self) =
-            (_range )
-        ( _leftType_assumptions,_leftType_constraints,_leftType_kappa,_leftType_kappaUnique,_leftType_self) =
-            (_leftType (_lhs_constraints) (_lhs_kappaUnique))
-        ( _constructorOperator_self) =
-            (_constructorOperator )
-        ( _rightType_assumptions,_rightType_constraints,_rightType_kappa,_rightType_kappaUnique,_rightType_self) =
-            (_rightType (_leftType_constraints) (_leftType_kappaUnique))
-    in  ( _leftType_assumptions `combine` _rightType_assumptions,_rightType_constraints,_rightType_kappaUnique,_self)
+sem_Constructor_Infix (range_) (leftType_) (constructorOperator_) (rightType_) =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _leftTypeIassumptions,_leftTypeIconstraints,_leftTypeIkappa,_leftTypeIkappaUnique,_leftTypeIself) =
+                (leftType_ (_leftTypeOconstraints) (_leftTypeOkappaUnique))
+            ( _constructorOperatorIself) =
+                (constructorOperator_ )
+            ( _rightTypeIassumptions,_rightTypeIconstraints,_rightTypeIkappa,_rightTypeIkappaUnique,_rightTypeIself) =
+                (rightType_ (_rightTypeOconstraints) (_rightTypeOkappaUnique))
+            (_lhsOassumptions@_) =
+                _leftTypeIassumptions `combine` _rightTypeIassumptions
+            (_self@_) =
+                Constructor_Infix _rangeIself _leftTypeIself _constructorOperatorIself _rightTypeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOconstraints@_) =
+                _rightTypeIconstraints
+            (_lhsOkappaUnique@_) =
+                _rightTypeIkappaUnique
+            (_leftTypeOconstraints@_) =
+                _lhsIconstraints
+            (_leftTypeOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_rightTypeOconstraints@_) =
+                _leftTypeIconstraints
+            (_rightTypeOkappaUnique@_) =
+                _leftTypeIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappaUnique,_lhsOself)
 sem_Constructor_Record :: (T_Range) ->
                           (T_Name) ->
                           (T_FieldDeclarations) ->
                           (T_Constructor)
-sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            Constructor_Record _range_self _constructor_self _fieldDeclarations_self
-        ( _range_self) =
-            (_range )
-        ( _constructor_self) =
-            (_constructor )
-        ( _fieldDeclarations_kappaUnique,_fieldDeclarations_self) =
-            (_fieldDeclarations (_lhs_kappaUnique))
-    in  ( internalError "KindInferencing.ag" "n/a" "Record constructors are not supported",_lhs_constraints,_fieldDeclarations_kappaUnique,_self)
+sem_Constructor_Record (range_) (constructor_) (fieldDeclarations_) =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _constructorIself) =
+                (constructor_ )
+            ( _fieldDeclarationsIkappaUnique,_fieldDeclarationsIself) =
+                (fieldDeclarations_ (_fieldDeclarationsOkappaUnique))
+            (_lhsOassumptions@_) =
+                internalError "KindInferencing.ag" "n/a" "Record constructors are not supported"
+            (_self@_) =
+                Constructor_Record _rangeIself _constructorIself _fieldDeclarationsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOconstraints@_) =
+                _lhsIconstraints
+            (_lhsOkappaUnique@_) =
+                _fieldDeclarationsIkappaUnique
+            (_fieldDeclarationsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappaUnique,_lhsOself)
 -- Constructors ------------------------------------------------
 -- semantic domain
 type T_Constructors = (KindConstraints) ->
@@ -293,19 +443,47 @@ sem_Constructors (list) =
 sem_Constructors_Cons :: (T_Constructor) ->
                          (T_Constructors) ->
                          (T_Constructors)
-sem_Constructors_Cons (_hd) (_tl) (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_assumptions,_hd_constraints,_hd_kappaUnique,_hd_self) =
-            (_hd (_lhs_constraints) (_lhs_kappaUnique))
-        ( _tl_assumptions,_tl_constraints,_tl_kappaUnique,_tl_self) =
-            (_tl (_hd_constraints) (_hd_kappaUnique))
-    in  ( _hd_assumptions `combine` _tl_assumptions,_tl_constraints,_tl_kappaUnique,_self)
+sem_Constructors_Cons (hd_) (tl_) =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let ( _hdIassumptions,_hdIconstraints,_hdIkappaUnique,_hdIself) =
+                (hd_ (_hdOconstraints) (_hdOkappaUnique))
+            ( _tlIassumptions,_tlIconstraints,_tlIkappaUnique,_tlIself) =
+                (tl_ (_tlOconstraints) (_tlOkappaUnique))
+            (_lhsOassumptions@_) =
+                _hdIassumptions `combine` _tlIassumptions
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOconstraints@_) =
+                _tlIconstraints
+            (_lhsOkappaUnique@_) =
+                _tlIkappaUnique
+            (_hdOconstraints@_) =
+                _lhsIconstraints
+            (_hdOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_tlOconstraints@_) =
+                _hdIconstraints
+            (_tlOkappaUnique@_) =
+                _hdIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappaUnique,_lhsOself)
 sem_Constructors_Nil :: (T_Constructors)
-sem_Constructors_Nil (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            []
-    in  ( noAssumptions,_lhs_constraints,_lhs_kappaUnique,_self)
+sem_Constructors_Nil  =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let (_lhsOassumptions@_) =
+                noAssumptions
+            (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOconstraints@_) =
+                _lhsIconstraints
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappaUnique,_lhsOself)
 -- ContextItem -------------------------------------------------
 -- semantic domain
 type T_ContextItem = (Int) ->
@@ -319,18 +497,27 @@ sem_ContextItem_ContextItem :: (T_Range) ->
                                (T_Name) ->
                                (T_Types) ->
                                (T_ContextItem)
-sem_ContextItem_ContextItem (_range) (_name) (_types) (_lhs_kappaUnique) =
-    let (_self) =
-            ContextItem_ContextItem _range_self _name_self _types_self
-        (_constraints) =
-            internalError "KindInferencing.ag" "n/a" "ContextItems are not supported"
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _types_assumptions,_types_constraints,_types_kappaUnique,_types_kappas,_types_self) =
-            (_types (_constraints) (_lhs_kappaUnique))
-    in  ( _types_kappaUnique,_self)
+sem_ContextItem_ContextItem (range_) (name_) (types_) =
+    \ _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _typesIassumptions,_typesIconstraints,_typesIkappaUnique,_typesIkappas,_typesIself) =
+                (types_ (_typesOconstraints) (_typesOkappaUnique))
+            (_constraints@_) =
+                internalError "KindInferencing.ag" "n/a" "ContextItems are not supported"
+            (_self@_) =
+                ContextItem_ContextItem _rangeIself _nameIself _typesIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOkappaUnique@_) =
+                _typesIkappaUnique
+            (_typesOconstraints@_) =
+                _constraints
+            (_typesOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsOkappaUnique,_lhsOself)
 -- ContextItems ------------------------------------------------
 -- semantic domain
 type T_ContextItems = (Int) ->
@@ -343,19 +530,33 @@ sem_ContextItems (list) =
 sem_ContextItems_Cons :: (T_ContextItem) ->
                          (T_ContextItems) ->
                          (T_ContextItems)
-sem_ContextItems_Cons (_hd) (_tl) (_lhs_kappaUnique) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_kappaUnique,_hd_self) =
-            (_hd (_lhs_kappaUnique))
-        ( _tl_kappaUnique,_tl_self) =
-            (_tl (_hd_kappaUnique))
-    in  ( _tl_kappaUnique,_self)
+sem_ContextItems_Cons (hd_) (tl_) =
+    \ _lhsIkappaUnique ->
+        let ( _hdIkappaUnique,_hdIself) =
+                (hd_ (_hdOkappaUnique))
+            ( _tlIkappaUnique,_tlIself) =
+                (tl_ (_tlOkappaUnique))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOkappaUnique@_) =
+                _tlIkappaUnique
+            (_hdOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_tlOkappaUnique@_) =
+                _hdIkappaUnique
+        in  ( _lhsOkappaUnique,_lhsOself)
 sem_ContextItems_Nil :: (T_ContextItems)
-sem_ContextItems_Nil (_lhs_kappaUnique) =
-    let (_self) =
-            []
-    in  ( _lhs_kappaUnique,_self)
+sem_ContextItems_Nil  =
+    \ _lhsIkappaUnique ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsOkappaUnique,_lhsOself)
 -- Declaration -------------------------------------------------
 -- semantic domain
 type T_Declaration = (BindingGroups) ->
@@ -391,191 +592,351 @@ sem_Declaration_Class :: (T_Range) ->
                          (T_SimpleType) ->
                          (T_MaybeDeclarations) ->
                          (T_Declaration)
-sem_Declaration_Class (_range) (_context) (_simpletype) (_where) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Declaration_Class _range_self _context_self _simpletype_self _where_self
-        ((_constraints,_kappaOfRHS)) =
-            internalError "KindInferencing.ag" "n/a" "class decls are not supported"
-        ( _range_self) =
-            (_range )
-        ( _context_kappaUnique,_context_self) =
-            (_context (_lhs_kappaUnique))
-        ( _simpletype_constraints,_simpletype_declared,_simpletype_environment,_simpletype_kappaUnique,_simpletype_self) =
-            (_simpletype (_constraints) (_kappaOfRHS) (_context_kappaUnique))
-        ( _where_bindingGroups,_where_kappaUnique,_where_self) =
-            (_where (_lhs_bindingGroups) (_simpletype_kappaUnique))
-    in  ( _where_bindingGroups,_where_kappaUnique,_self)
+sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _contextIkappaUnique,_contextIself) =
+                (context_ (_contextOkappaUnique))
+            ( _simpletypeIconstraints,_simpletypeIdeclared,_simpletypeIenvironment,_simpletypeIkappaUnique,_simpletypeIself) =
+                (simpletype_ (_simpletypeOconstraints) (_simpletypeOkappaOfRHS) (_simpletypeOkappaUnique))
+            ( _whereIbindingGroups,_whereIkappaUnique,_whereIself) =
+                (where_ (_whereObindingGroups) (_whereOkappaUnique))
+            ((_constraints@_,_kappaOfRHS@_)) =
+                internalError "KindInferencing.ag" "n/a" "class decls are not supported"
+            (_self@_) =
+                Declaration_Class _rangeIself _contextIself _simpletypeIself _whereIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _whereIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _whereIkappaUnique
+            (_contextOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_simpletypeOconstraints@_) =
+                _constraints
+            (_simpletypeOkappaOfRHS@_) =
+                _kappaOfRHS
+            (_simpletypeOkappaUnique@_) =
+                _contextIkappaUnique
+            (_whereObindingGroups@_) =
+                _lhsIbindingGroups
+            (_whereOkappaUnique@_) =
+                _simpletypeIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Declaration_Data :: (T_Range) ->
                         (T_ContextItems) ->
                         (T_SimpleType) ->
                         (T_Constructors) ->
                         (T_Names) ->
                         (T_Declaration)
-sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivings) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Declaration_Data _range_self _context_self _simpletype_self _constructors_self _derivings_self
-        (_newConstraints) =
-            fst $ (_simpletype_environment .===. _constructors_assumptions) (\n _ -> unexpected $ "Declaration.Data " ++ show n)
-        (_newGroup) =
-            (_simpletype_declared, _constructors_assumptions, _newConstraints ++ _constructors_constraints)
-        ( _range_self) =
-            (_range )
-        ( _context_kappaUnique,_context_self) =
-            (_context (_lhs_kappaUnique))
-        ( _simpletype_constraints,_simpletype_declared,_simpletype_environment,_simpletype_kappaUnique,_simpletype_self) =
-            (_simpletype ([]) (star) (_context_kappaUnique))
-        ( _constructors_assumptions,_constructors_constraints,_constructors_kappaUnique,_constructors_self) =
-            (_constructors (_simpletype_constraints) (_simpletype_kappaUnique))
-        ( _derivings_self) =
-            (_derivings )
-    in  ( _newGroup : _lhs_bindingGroups,_constructors_kappaUnique,_self)
+sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (derivings_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _contextIkappaUnique,_contextIself) =
+                (context_ (_contextOkappaUnique))
+            ( _simpletypeIconstraints,_simpletypeIdeclared,_simpletypeIenvironment,_simpletypeIkappaUnique,_simpletypeIself) =
+                (simpletype_ (_simpletypeOconstraints) (_simpletypeOkappaOfRHS) (_simpletypeOkappaUnique))
+            ( _constructorsIassumptions,_constructorsIconstraints,_constructorsIkappaUnique,_constructorsIself) =
+                (constructors_ (_constructorsOconstraints) (_constructorsOkappaUnique))
+            ( _derivingsIself) =
+                (derivings_ )
+            (_newGroup@_) =
+                (_simpletypeIdeclared, _constructorsIassumptions, _newConstraints ++ _constructorsIconstraints)
+            (_newConstraints@_) =
+                fst $ (_simpletypeIenvironment .===. _constructorsIassumptions) (\n _ -> unexpected $ "Declaration.Data " ++ show n)
+            (_lhsObindingGroups@_) =
+                _newGroup : _lhsIbindingGroups
+            (_simpletypeOkappaOfRHS@_) =
+                star
+            (_simpletypeOconstraints@_) =
+                []
+            (_self@_) =
+                Declaration_Data _rangeIself _contextIself _simpletypeIself _constructorsIself _derivingsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOkappaUnique@_) =
+                _constructorsIkappaUnique
+            (_contextOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_simpletypeOkappaUnique@_) =
+                _contextIkappaUnique
+            (_constructorsOconstraints@_) =
+                _simpletypeIconstraints
+            (_constructorsOkappaUnique@_) =
+                _simpletypeIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Declaration_Default :: (T_Range) ->
                            (T_Types) ->
                            (T_Declaration)
-sem_Declaration_Default (_range) (_types) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Declaration_Default _range_self _types_self
-        (_constraints) =
-            internalError "KindInferencing.ag" "n/a" "default decls is not supported"
-        ( _range_self) =
-            (_range )
-        ( _types_assumptions,_types_constraints,_types_kappaUnique,_types_kappas,_types_self) =
-            (_types (_constraints) (_lhs_kappaUnique))
-    in  ( _lhs_bindingGroups,_types_kappaUnique,_self)
+sem_Declaration_Default (range_) (types_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _typesIassumptions,_typesIconstraints,_typesIkappaUnique,_typesIkappas,_typesIself) =
+                (types_ (_typesOconstraints) (_typesOkappaUnique))
+            (_constraints@_) =
+                internalError "KindInferencing.ag" "n/a" "default decls is not supported"
+            (_self@_) =
+                Declaration_Default _rangeIself _typesIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _typesIkappaUnique
+            (_typesOconstraints@_) =
+                _constraints
+            (_typesOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
-sem_Declaration_Empty (_range) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Declaration_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_Declaration_Empty (range_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            (_self@_) =
+                Declaration_Empty _rangeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Declaration_Fixity :: (T_Range) ->
                           (T_Fixity) ->
                           (T_MaybeInt) ->
                           (T_Names) ->
                           (T_Declaration)
-sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Declaration_Fixity _range_self _fixity_self _priority_self _operators_self
-        ( _range_self) =
-            (_range )
-        ( _fixity_self) =
-            (_fixity )
-        ( _priority_self) =
-            (_priority )
-        ( _operators_self) =
-            (_operators )
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _fixityIself) =
+                (fixity_ )
+            ( _priorityIself) =
+                (priority_ )
+            ( _operatorsIself) =
+                (operators_ )
+            (_self@_) =
+                Declaration_Fixity _rangeIself _fixityIself _priorityIself _operatorsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)
-sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Declaration_FunctionBindings _range_self _bindings_self
-        ( _range_self) =
-            (_range )
-        ( _bindings_bindingGroups,_bindings_kappaUnique,_bindings_self) =
-            (_bindings (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _bindings_bindingGroups,_bindings_kappaUnique,_self)
+sem_Declaration_FunctionBindings (range_) (bindings_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _bindingsIbindingGroups,_bindingsIkappaUnique,_bindingsIself) =
+                (bindings_ (_bindingsObindingGroups) (_bindingsOkappaUnique))
+            (_self@_) =
+                Declaration_FunctionBindings _rangeIself _bindingsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _bindingsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _bindingsIkappaUnique
+            (_bindingsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_bindingsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Declaration_Instance :: (T_Range) ->
                             (T_ContextItems) ->
                             (T_Name) ->
                             (T_Types) ->
                             (T_MaybeDeclarations) ->
                             (T_Declaration)
-sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Declaration_Instance _range_self _context_self _name_self _types_self _where_self
-        (_constraints) =
-            internalError "KindInferencing.ag" "n/a" "instance decls are not supported"
-        ( _range_self) =
-            (_range )
-        ( _context_kappaUnique,_context_self) =
-            (_context (_lhs_kappaUnique))
-        ( _name_self) =
-            (_name )
-        ( _types_assumptions,_types_constraints,_types_kappaUnique,_types_kappas,_types_self) =
-            (_types (_constraints) (_context_kappaUnique))
-        ( _where_bindingGroups,_where_kappaUnique,_where_self) =
-            (_where (_lhs_bindingGroups) (_types_kappaUnique))
-    in  ( _where_bindingGroups,_where_kappaUnique,_self)
+sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _contextIkappaUnique,_contextIself) =
+                (context_ (_contextOkappaUnique))
+            ( _nameIself) =
+                (name_ )
+            ( _typesIassumptions,_typesIconstraints,_typesIkappaUnique,_typesIkappas,_typesIself) =
+                (types_ (_typesOconstraints) (_typesOkappaUnique))
+            ( _whereIbindingGroups,_whereIkappaUnique,_whereIself) =
+                (where_ (_whereObindingGroups) (_whereOkappaUnique))
+            (_constraints@_) =
+                internalError "KindInferencing.ag" "n/a" "instance decls are not supported"
+            (_self@_) =
+                Declaration_Instance _rangeIself _contextIself _nameIself _typesIself _whereIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _whereIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _whereIkappaUnique
+            (_contextOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_typesOconstraints@_) =
+                _constraints
+            (_typesOkappaUnique@_) =
+                _contextIkappaUnique
+            (_whereObindingGroups@_) =
+                _lhsIbindingGroups
+            (_whereOkappaUnique@_) =
+                _typesIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Declaration_Newtype :: (T_Range) ->
                            (T_ContextItems) ->
                            (T_SimpleType) ->
                            (T_Constructor) ->
                            (T_Names) ->
                            (T_Declaration)
-sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_derivings) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Declaration_Newtype _range_self _context_self _simpletype_self _constructor_self _derivings_self
-        ((_constraints,_kappaOfRHS)) =
-            internalError "KindInferencing.ag" "n/a" "newtype decls are not supported"
-        ( _range_self) =
-            (_range )
-        ( _context_kappaUnique,_context_self) =
-            (_context (_lhs_kappaUnique))
-        ( _simpletype_constraints,_simpletype_declared,_simpletype_environment,_simpletype_kappaUnique,_simpletype_self) =
-            (_simpletype (_constraints) (_kappaOfRHS) (_context_kappaUnique))
-        ( _constructor_assumptions,_constructor_constraints,_constructor_kappaUnique,_constructor_self) =
-            (_constructor (_constraints) (_simpletype_kappaUnique))
-        ( _derivings_self) =
-            (_derivings )
-    in  ( _lhs_bindingGroups,_constructor_kappaUnique,_self)
+sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivings_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _contextIkappaUnique,_contextIself) =
+                (context_ (_contextOkappaUnique))
+            ( _simpletypeIconstraints,_simpletypeIdeclared,_simpletypeIenvironment,_simpletypeIkappaUnique,_simpletypeIself) =
+                (simpletype_ (_simpletypeOconstraints) (_simpletypeOkappaOfRHS) (_simpletypeOkappaUnique))
+            ( _constructorIassumptions,_constructorIconstraints,_constructorIkappaUnique,_constructorIself) =
+                (constructor_ (_constructorOconstraints) (_constructorOkappaUnique))
+            ( _derivingsIself) =
+                (derivings_ )
+            ((_constraints@_,_kappaOfRHS@_)) =
+                internalError "KindInferencing.ag" "n/a" "newtype decls are not supported"
+            (_self@_) =
+                Declaration_Newtype _rangeIself _contextIself _simpletypeIself _constructorIself _derivingsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _constructorIkappaUnique
+            (_contextOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_simpletypeOconstraints@_) =
+                _constraints
+            (_simpletypeOkappaOfRHS@_) =
+                _kappaOfRHS
+            (_simpletypeOkappaUnique@_) =
+                _contextIkappaUnique
+            (_constructorOconstraints@_) =
+                _constraints
+            (_constructorOkappaUnique@_) =
+                _simpletypeIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Declaration_PatternBinding :: (T_Range) ->
                                   (T_Pattern) ->
                                   (T_RightHandSide) ->
                                   (T_Declaration)
-sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Declaration_PatternBinding _range_self _pattern_self _righthandside_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_self) =
-            (_pattern )
-        ( _righthandside_bindingGroups,_righthandside_kappaUnique,_righthandside_self) =
-            (_righthandside (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _righthandside_bindingGroups,_righthandside_kappaUnique,_self)
+sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternIself) =
+                (pattern_ )
+            ( _righthandsideIbindingGroups,_righthandsideIkappaUnique,_righthandsideIself) =
+                (righthandside_ (_righthandsideObindingGroups) (_righthandsideOkappaUnique))
+            (_self@_) =
+                Declaration_PatternBinding _rangeIself _patternIself _righthandsideIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _righthandsideIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _righthandsideIkappaUnique
+            (_righthandsideObindingGroups@_) =
+                _lhsIbindingGroups
+            (_righthandsideOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Declaration_Type :: (T_Range) ->
                         (T_SimpleType) ->
                         (T_Type) ->
                         (T_Declaration)
-sem_Declaration_Type (_range) (_simpletype) (_type) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Declaration_Type _range_self _simpletype_self _type_self
-        (_newConstraints) =
-            fst $ (_simpletype_environment .===. _type_assumptions) (\n _ -> unexpected $ "Declaration.Type " ++ show n)
-        (_newGroup) =
-            (_simpletype_declared, _type_assumptions, _newConstraints ++ _type_constraints)
-        ( _range_self) =
-            (_range )
-        ( _simpletype_constraints,_simpletype_declared,_simpletype_environment,_simpletype_kappaUnique,_simpletype_self) =
-            (_simpletype ([]) (_type_kappa) (_lhs_kappaUnique))
-        ( _type_assumptions,_type_constraints,_type_kappa,_type_kappaUnique,_type_self) =
-            (_type (_simpletype_constraints) (_simpletype_kappaUnique))
-    in  ( _newGroup : _lhs_bindingGroups,_type_kappaUnique,_self)
+sem_Declaration_Type (range_) (simpletype_) (type_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _simpletypeIconstraints,_simpletypeIdeclared,_simpletypeIenvironment,_simpletypeIkappaUnique,_simpletypeIself) =
+                (simpletype_ (_simpletypeOconstraints) (_simpletypeOkappaOfRHS) (_simpletypeOkappaUnique))
+            ( _typeIassumptions,_typeIconstraints,_typeIkappa,_typeIkappaUnique,_typeIself) =
+                (type_ (_typeOconstraints) (_typeOkappaUnique))
+            (_newGroup@_) =
+                (_simpletypeIdeclared, _typeIassumptions, _newConstraints ++ _typeIconstraints)
+            (_newConstraints@_) =
+                fst $ (_simpletypeIenvironment .===. _typeIassumptions) (\n _ -> unexpected $ "Declaration.Type " ++ show n)
+            (_lhsObindingGroups@_) =
+                _newGroup : _lhsIbindingGroups
+            (_simpletypeOkappaOfRHS@_) =
+                _typeIkappa
+            (_simpletypeOconstraints@_) =
+                []
+            (_self@_) =
+                Declaration_Type _rangeIself _simpletypeIself _typeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOkappaUnique@_) =
+                _typeIkappaUnique
+            (_simpletypeOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_typeOconstraints@_) =
+                _simpletypeIconstraints
+            (_typeOkappaUnique@_) =
+                _simpletypeIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Declaration_TypeSignature :: (T_Range) ->
                                  (T_Names) ->
                                  (T_Type) ->
                                  (T_Declaration)
-sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Declaration_TypeSignature _range_self _names_self _type_self
-        (_newConstraint) =
-            (_type_kappa .==. star) (mustBeStar _range_self "type signature" _type_self)
-        (_tvEnv) =
-            zip (getTypeVariables _type_assumptions) (map TVar [_type_kappaUnique..])
-        ((_cset,_aset)) =
-            (listToFM _tvEnv .===. _type_assumptions) (\n _ -> unexpected $ "Declaration.TypeSignature " ++ show n)
-        (_newGroup) =
-            (emptyFM, _aset, _cset ++ _type_constraints ++ [_newConstraint])
-        ( _range_self) =
-            (_range )
-        ( _names_self) =
-            (_names )
-        ( _type_assumptions,_type_constraints,_type_kappa,_type_kappaUnique,_type_self) =
-            (_type ([]) (_lhs_kappaUnique))
-    in  ( _newGroup : _lhs_bindingGroups,_type_kappaUnique + length _tvEnv,_self)
+sem_Declaration_TypeSignature (range_) (names_) (type_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _namesIself) =
+                (names_ )
+            ( _typeIassumptions,_typeIconstraints,_typeIkappa,_typeIkappaUnique,_typeIself) =
+                (type_ (_typeOconstraints) (_typeOkappaUnique))
+            (_newGroup@_) =
+                (emptyFM, _aset, _cset ++ _typeIconstraints ++ [_newConstraint])
+            ((_cset@_,_aset@_)) =
+                (listToFM _tvEnv .===. _typeIassumptions) (\n _ -> unexpected $ "Declaration.TypeSignature " ++ show n)
+            (_tvEnv@_) =
+                zip (getTypeVariables _typeIassumptions) (map TVar [_typeIkappaUnique..])
+            (_newConstraint@_) =
+                (_typeIkappa .==. star) (mustBeStar _rangeIself "type signature" _typeIself)
+            (_lhsOkappaUnique@_) =
+                _typeIkappaUnique + length _tvEnv
+            (_lhsObindingGroups@_) =
+                _newGroup : _lhsIbindingGroups
+            (_typeOconstraints@_) =
+                []
+            (_self@_) =
+                Declaration_TypeSignature _rangeIself _namesIself _typeIself
+            (_lhsOself@_) =
+                _self
+            (_typeOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- Declarations ------------------------------------------------
 -- semantic domain
 type T_Declarations = (BindingGroups) ->
@@ -589,19 +950,43 @@ sem_Declarations (list) =
 sem_Declarations_Cons :: (T_Declaration) ->
                          (T_Declarations) ->
                          (T_Declarations)
-sem_Declarations_Cons (_hd) (_tl) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_bindingGroups,_hd_kappaUnique,_hd_self) =
-            (_hd (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _tl_bindingGroups,_tl_kappaUnique,_tl_self) =
-            (_tl (_hd_bindingGroups) (_hd_kappaUnique))
-    in  ( _tl_bindingGroups,_tl_kappaUnique,_self)
+sem_Declarations_Cons (hd_) (tl_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+                (hd_ (_hdObindingGroups) (_hdOkappaUnique))
+            ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
+                (tl_ (_tlObindingGroups) (_tlOkappaUnique))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _tlIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _tlIkappaUnique
+            (_hdObindingGroups@_) =
+                _lhsIbindingGroups
+            (_hdOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_tlObindingGroups@_) =
+                _hdIbindingGroups
+            (_tlOkappaUnique@_) =
+                _hdIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Declarations_Nil :: (T_Declarations)
-sem_Declarations_Nil (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            []
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_Declarations_Nil  =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- Export ------------------------------------------------------
 -- semantic domain
 type T_Export = ( (Export))
@@ -619,50 +1004,58 @@ sem_Export ((Export_Variable (_range) (_name))) =
 sem_Export_Module :: (T_Range) ->
                      (T_Name) ->
                      (T_Export)
-sem_Export_Module (_range) (_name) =
-    let (_self) =
-            Export_Module _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Export_Module (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Export_Module _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Export_TypeOrClass :: (T_Range) ->
                           (T_Name) ->
                           (T_MaybeNames) ->
                           (T_Export)
-sem_Export_TypeOrClass (_range) (_name) (_names) =
-    let (_self) =
-            Export_TypeOrClass _range_self _name_self _names_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _names_self) =
-            (_names )
-    in  ( _self)
+sem_Export_TypeOrClass (range_) (name_) (names_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _namesIself) =
+            (names_ )
+        (_self@_) =
+            Export_TypeOrClass _rangeIself _nameIself _namesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Export_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Export)
-sem_Export_TypeOrClassComplete (_range) (_name) =
-    let (_self) =
-            Export_TypeOrClassComplete _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Export_TypeOrClassComplete (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Export_TypeOrClassComplete _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Export_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Export)
-sem_Export_Variable (_range) (_name) =
-    let (_self) =
-            Export_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Export_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Export_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Exports -----------------------------------------------------
 -- semantic domain
 type T_Exports = ( (Exports))
@@ -674,19 +1067,23 @@ sem_Exports (list) =
 sem_Exports_Cons :: (T_Export) ->
                     (T_Exports) ->
                     (T_Exports)
-sem_Exports_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Exports_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Exports_Nil :: (T_Exports)
 sem_Exports_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Expression --------------------------------------------------
 -- semantic domain
 type T_Expression = (BindingGroups) ->
@@ -739,272 +1136,548 @@ sem_Expression_Case :: (T_Range) ->
                        (T_Expression) ->
                        (T_Alternatives) ->
                        (T_Expression)
-sem_Expression_Case (_range) (_expression) (_alternatives) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_Case _range_self _expression_self _alternatives_self
-        ( _range_self) =
-            (_range )
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _alternatives_bindingGroups,_alternatives_kappaUnique,_alternatives_self) =
-            (_alternatives (_expression_bindingGroups) (_expression_kappaUnique))
-    in  ( _alternatives_bindingGroups,_alternatives_kappaUnique,_self)
+sem_Expression_Case (range_) (expression_) (alternatives_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            ( _alternativesIbindingGroups,_alternativesIkappaUnique,_alternativesIself) =
+                (alternatives_ (_alternativesObindingGroups) (_alternativesOkappaUnique))
+            (_self@_) =
+                Expression_Case _rangeIself _expressionIself _alternativesIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _alternativesIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _alternativesIkappaUnique
+            (_expressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_alternativesObindingGroups@_) =
+                _expressionIbindingGroups
+            (_alternativesOkappaUnique@_) =
+                _expressionIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_Comprehension :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Qualifiers) ->
                                 (T_Expression)
-sem_Expression_Comprehension (_range) (_expression) (_qualifiers) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_Comprehension _range_self _expression_self _qualifiers_self
-        ( _range_self) =
-            (_range )
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _qualifiers_bindingGroups,_qualifiers_kappaUnique,_qualifiers_self) =
-            (_qualifiers (_expression_bindingGroups) (_expression_kappaUnique))
-    in  ( _qualifiers_bindingGroups,_qualifiers_kappaUnique,_self)
+sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            ( _qualifiersIbindingGroups,_qualifiersIkappaUnique,_qualifiersIself) =
+                (qualifiers_ (_qualifiersObindingGroups) (_qualifiersOkappaUnique))
+            (_self@_) =
+                Expression_Comprehension _rangeIself _expressionIself _qualifiersIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _qualifiersIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _qualifiersIkappaUnique
+            (_expressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_qualifiersObindingGroups@_) =
+                _expressionIbindingGroups
+            (_qualifiersOkappaUnique@_) =
+                _expressionIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_Constructor :: (T_Range) ->
                               (T_Name) ->
                               (T_Expression)
-sem_Expression_Constructor (_range) (_name) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_Constructor _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_Expression_Constructor (range_) (name_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            (_self@_) =
+                Expression_Constructor _rangeIself _nameIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_Do :: (T_Range) ->
                      (T_Statements) ->
                      (T_Expression)
-sem_Expression_Do (_range) (_statements) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_Do _range_self _statements_self
-        ( _range_self) =
-            (_range )
-        ( _statements_bindingGroups,_statements_kappaUnique,_statements_self) =
-            (_statements (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _statements_bindingGroups,_statements_kappaUnique,_self)
+sem_Expression_Do (range_) (statements_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _statementsIbindingGroups,_statementsIkappaUnique,_statementsIself) =
+                (statements_ (_statementsObindingGroups) (_statementsOkappaUnique))
+            (_self@_) =
+                Expression_Do _rangeIself _statementsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _statementsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _statementsIkappaUnique
+            (_statementsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_statementsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_Enum :: (T_Range) ->
                        (T_Expression) ->
                        (T_MaybeExpression) ->
                        (T_MaybeExpression) ->
                        (T_Expression)
-sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_Enum _range_self _from_self _then_self _to_self
-        ( _range_self) =
-            (_range )
-        ( _from_bindingGroups,_from_kappaUnique,_from_self) =
-            (_from (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _then_bindingGroups,_then_kappaUnique,_then_self) =
-            (_then (_from_bindingGroups) (_from_kappaUnique))
-        ( _to_bindingGroups,_to_kappaUnique,_to_self) =
-            (_to (_then_bindingGroups) (_then_kappaUnique))
-    in  ( _to_bindingGroups,_to_kappaUnique,_self)
+sem_Expression_Enum (range_) (from_) (then_) (to_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _fromIbindingGroups,_fromIkappaUnique,_fromIself) =
+                (from_ (_fromObindingGroups) (_fromOkappaUnique))
+            ( _thenIbindingGroups,_thenIkappaUnique,_thenIself) =
+                (then_ (_thenObindingGroups) (_thenOkappaUnique))
+            ( _toIbindingGroups,_toIkappaUnique,_toIself) =
+                (to_ (_toObindingGroups) (_toOkappaUnique))
+            (_self@_) =
+                Expression_Enum _rangeIself _fromIself _thenIself _toIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _toIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _toIkappaUnique
+            (_fromObindingGroups@_) =
+                _lhsIbindingGroups
+            (_fromOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_thenObindingGroups@_) =
+                _fromIbindingGroups
+            (_thenOkappaUnique@_) =
+                _fromIkappaUnique
+            (_toObindingGroups@_) =
+                _thenIbindingGroups
+            (_toOkappaUnique@_) =
+                _thenIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_If :: (T_Range) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression)
-sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_If _range_self _guardExpression_self _thenExpression_self _elseExpression_self
-        ( _range_self) =
-            (_range )
-        ( _guardExpression_bindingGroups,_guardExpression_kappaUnique,_guardExpression_self) =
-            (_guardExpression (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _thenExpression_bindingGroups,_thenExpression_kappaUnique,_thenExpression_self) =
-            (_thenExpression (_guardExpression_bindingGroups) (_guardExpression_kappaUnique))
-        ( _elseExpression_bindingGroups,_elseExpression_kappaUnique,_elseExpression_self) =
-            (_elseExpression (_thenExpression_bindingGroups) (_thenExpression_kappaUnique))
-    in  ( _elseExpression_bindingGroups,_elseExpression_kappaUnique,_self)
+sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _guardExpressionIbindingGroups,_guardExpressionIkappaUnique,_guardExpressionIself) =
+                (guardExpression_ (_guardExpressionObindingGroups) (_guardExpressionOkappaUnique))
+            ( _thenExpressionIbindingGroups,_thenExpressionIkappaUnique,_thenExpressionIself) =
+                (thenExpression_ (_thenExpressionObindingGroups) (_thenExpressionOkappaUnique))
+            ( _elseExpressionIbindingGroups,_elseExpressionIkappaUnique,_elseExpressionIself) =
+                (elseExpression_ (_elseExpressionObindingGroups) (_elseExpressionOkappaUnique))
+            (_self@_) =
+                Expression_If _rangeIself _guardExpressionIself _thenExpressionIself _elseExpressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _elseExpressionIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _elseExpressionIkappaUnique
+            (_guardExpressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_guardExpressionOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_thenExpressionObindingGroups@_) =
+                _guardExpressionIbindingGroups
+            (_thenExpressionOkappaUnique@_) =
+                _guardExpressionIkappaUnique
+            (_elseExpressionObindingGroups@_) =
+                _thenExpressionIbindingGroups
+            (_elseExpressionOkappaUnique@_) =
+                _thenExpressionIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_InfixApplication :: (T_Range) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression)
-sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightExpression) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_InfixApplication _range_self _leftExpression_self _operator_self _rightExpression_self
-        ( _range_self) =
-            (_range )
-        ( _leftExpression_bindingGroups,_leftExpression_kappaUnique,_leftExpression_self) =
-            (_leftExpression (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _operator_bindingGroups,_operator_kappaUnique,_operator_self) =
-            (_operator (_leftExpression_bindingGroups) (_leftExpression_kappaUnique))
-        ( _rightExpression_bindingGroups,_rightExpression_kappaUnique,_rightExpression_self) =
-            (_rightExpression (_operator_bindingGroups) (_operator_kappaUnique))
-    in  ( _rightExpression_bindingGroups,_rightExpression_kappaUnique,_self)
+sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExpression_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _leftExpressionIbindingGroups,_leftExpressionIkappaUnique,_leftExpressionIself) =
+                (leftExpression_ (_leftExpressionObindingGroups) (_leftExpressionOkappaUnique))
+            ( _operatorIbindingGroups,_operatorIkappaUnique,_operatorIself) =
+                (operator_ (_operatorObindingGroups) (_operatorOkappaUnique))
+            ( _rightExpressionIbindingGroups,_rightExpressionIkappaUnique,_rightExpressionIself) =
+                (rightExpression_ (_rightExpressionObindingGroups) (_rightExpressionOkappaUnique))
+            (_self@_) =
+                Expression_InfixApplication _rangeIself _leftExpressionIself _operatorIself _rightExpressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _rightExpressionIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _rightExpressionIkappaUnique
+            (_leftExpressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_leftExpressionOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_operatorObindingGroups@_) =
+                _leftExpressionIbindingGroups
+            (_operatorOkappaUnique@_) =
+                _leftExpressionIkappaUnique
+            (_rightExpressionObindingGroups@_) =
+                _operatorIbindingGroups
+            (_rightExpressionOkappaUnique@_) =
+                _operatorIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_Lambda :: (T_Range) ->
                          (T_Patterns) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_Lambda _range_self _patterns_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _patterns_self) =
-            (_patterns )
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _expression_bindingGroups,_expression_kappaUnique,_self)
+sem_Expression_Lambda (range_) (patterns_) (expression_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternsIself) =
+                (patterns_ )
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            (_self@_) =
+                Expression_Lambda _rangeIself _patternsIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _expressionIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _expressionIkappaUnique
+            (_expressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_Let :: (T_Range) ->
                       (T_Declarations) ->
                       (T_Expression) ->
                       (T_Expression)
-sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_Let _range_self _declarations_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _declarations_bindingGroups,_declarations_kappaUnique,_declarations_self) =
-            (_declarations (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_declarations_bindingGroups) (_declarations_kappaUnique))
-    in  ( _expression_bindingGroups,_expression_kappaUnique,_self)
+sem_Expression_Let (range_) (declarations_) (expression_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _declarationsIbindingGroups,_declarationsIkappaUnique,_declarationsIself) =
+                (declarations_ (_declarationsObindingGroups) (_declarationsOkappaUnique))
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            (_self@_) =
+                Expression_Let _rangeIself _declarationsIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _expressionIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _expressionIkappaUnique
+            (_declarationsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_declarationsOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_expressionObindingGroups@_) =
+                _declarationsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _declarationsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_List :: (T_Range) ->
                        (T_Expressions) ->
                        (T_Expression)
-sem_Expression_List (_range) (_expressions) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_List _range_self _expressions_self
-        ( _range_self) =
-            (_range )
-        ( _expressions_bindingGroups,_expressions_kappaUnique,_expressions_self) =
-            (_expressions (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _expressions_bindingGroups,_expressions_kappaUnique,_self)
+sem_Expression_List (range_) (expressions_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionsIbindingGroups,_expressionsIkappaUnique,_expressionsIself) =
+                (expressions_ (_expressionsObindingGroups) (_expressionsOkappaUnique))
+            (_self@_) =
+                Expression_List _rangeIself _expressionsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _expressionsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _expressionsIkappaUnique
+            (_expressionsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_Literal :: (T_Range) ->
                           (T_Literal) ->
                           (T_Expression)
-sem_Expression_Literal (_range) (_literal) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_Literal _range_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _literal_self) =
-            (_literal )
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_Expression_Literal (range_) (literal_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _literalIself) =
+                (literal_ )
+            (_self@_) =
+                Expression_Literal _rangeIself _literalIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_Negate :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Negate (_range) (_expression) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_Negate _range_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _expression_bindingGroups,_expression_kappaUnique,_self)
+sem_Expression_Negate (range_) (expression_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            (_self@_) =
+                Expression_Negate _rangeIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _expressionIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _expressionIkappaUnique
+            (_expressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
-sem_Expression_NegateFloat (_range) (_expression) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_NegateFloat _range_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _expression_bindingGroups,_expression_kappaUnique,_self)
+sem_Expression_NegateFloat (range_) (expression_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            (_self@_) =
+                Expression_NegateFloat _rangeIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _expressionIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _expressionIkappaUnique
+            (_expressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_NormalApplication :: (T_Range) ->
                                     (T_Expression) ->
                                     (T_Expressions) ->
                                     (T_Expression)
-sem_Expression_NormalApplication (_range) (_function) (_arguments) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_NormalApplication _range_self _function_self _arguments_self
-        ( _range_self) =
-            (_range )
-        ( _function_bindingGroups,_function_kappaUnique,_function_self) =
-            (_function (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _arguments_bindingGroups,_arguments_kappaUnique,_arguments_self) =
-            (_arguments (_function_bindingGroups) (_function_kappaUnique))
-    in  ( _arguments_bindingGroups,_arguments_kappaUnique,_self)
+sem_Expression_NormalApplication (range_) (function_) (arguments_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _functionIbindingGroups,_functionIkappaUnique,_functionIself) =
+                (function_ (_functionObindingGroups) (_functionOkappaUnique))
+            ( _argumentsIbindingGroups,_argumentsIkappaUnique,_argumentsIself) =
+                (arguments_ (_argumentsObindingGroups) (_argumentsOkappaUnique))
+            (_self@_) =
+                Expression_NormalApplication _rangeIself _functionIself _argumentsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _argumentsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _argumentsIkappaUnique
+            (_functionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_functionOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_argumentsObindingGroups@_) =
+                _functionIbindingGroups
+            (_argumentsOkappaUnique@_) =
+                _functionIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_Parenthesized :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Expression)
-sem_Expression_Parenthesized (_range) (_expression) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_Parenthesized _range_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _expression_bindingGroups,_expression_kappaUnique,_self)
+sem_Expression_Parenthesized (range_) (expression_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            (_self@_) =
+                Expression_Parenthesized _rangeIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _expressionIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _expressionIkappaUnique
+            (_expressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_RecordConstruction :: (T_Range) ->
                                      (T_Name) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_Expression)
-sem_Expression_RecordConstruction (_range) (_name) (_recordExpressionBindings) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_RecordConstruction _range_self _name_self _recordExpressionBindings_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _recordExpressionBindings_bindingGroups,_recordExpressionBindings_kappaUnique,_recordExpressionBindings_self) =
-            (_recordExpressionBindings (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _recordExpressionBindings_bindingGroups,_recordExpressionBindings_kappaUnique,_self)
+sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _recordExpressionBindingsIbindingGroups,_recordExpressionBindingsIkappaUnique,_recordExpressionBindingsIself) =
+                (recordExpressionBindings_ (_recordExpressionBindingsObindingGroups) (_recordExpressionBindingsOkappaUnique))
+            (_self@_) =
+                Expression_RecordConstruction _rangeIself _nameIself _recordExpressionBindingsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _recordExpressionBindingsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _recordExpressionBindingsIkappaUnique
+            (_recordExpressionBindingsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_recordExpressionBindingsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_RecordUpdate :: (T_Range) ->
                                (T_Expression) ->
                                (T_RecordExpressionBindings) ->
                                (T_Expression)
-sem_Expression_RecordUpdate (_range) (_expression) (_recordExpressionBindings) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_RecordUpdate _range_self _expression_self _recordExpressionBindings_self
-        ( _range_self) =
-            (_range )
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _recordExpressionBindings_bindingGroups,_recordExpressionBindings_kappaUnique,_recordExpressionBindings_self) =
-            (_recordExpressionBindings (_expression_bindingGroups) (_expression_kappaUnique))
-    in  ( _recordExpressionBindings_bindingGroups,_recordExpressionBindings_kappaUnique,_self)
+sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            ( _recordExpressionBindingsIbindingGroups,_recordExpressionBindingsIkappaUnique,_recordExpressionBindingsIself) =
+                (recordExpressionBindings_ (_recordExpressionBindingsObindingGroups) (_recordExpressionBindingsOkappaUnique))
+            (_self@_) =
+                Expression_RecordUpdate _rangeIself _expressionIself _recordExpressionBindingsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _recordExpressionBindingsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _recordExpressionBindingsIkappaUnique
+            (_expressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_recordExpressionBindingsObindingGroups@_) =
+                _expressionIbindingGroups
+            (_recordExpressionBindingsOkappaUnique@_) =
+                _expressionIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_Tuple :: (T_Range) ->
                         (T_Expressions) ->
                         (T_Expression)
-sem_Expression_Tuple (_range) (_expressions) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_Tuple _range_self _expressions_self
-        ( _range_self) =
-            (_range )
-        ( _expressions_bindingGroups,_expressions_kappaUnique,_expressions_self) =
-            (_expressions (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _expressions_bindingGroups,_expressions_kappaUnique,_self)
+sem_Expression_Tuple (range_) (expressions_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionsIbindingGroups,_expressionsIkappaUnique,_expressionsIself) =
+                (expressions_ (_expressionsObindingGroups) (_expressionsOkappaUnique))
+            (_self@_) =
+                Expression_Tuple _rangeIself _expressionsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _expressionsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _expressionsIkappaUnique
+            (_expressionsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_Typed :: (T_Range) ->
                         (T_Expression) ->
                         (T_Type) ->
                         (T_Expression)
-sem_Expression_Typed (_range) (_expression) (_type) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_Typed _range_self _expression_self _type_self
-        (_newConstraint) =
-            (_type_kappa .==. star) (mustBeStar _range_self "type annotation" _type_self)
-        (_tvEnv) =
-            zip (getTypeVariables _type_assumptions) (map TVar [_type_kappaUnique..])
-        ((_cset,_aset)) =
-            (listToFM _tvEnv .===. _type_assumptions) (\n _ -> unexpected $ "Expression.Typed " ++ show n)
-        (_newGroup) =
-            (emptyFM, _aset, _cset ++ _type_constraints ++ [_newConstraint])
-        ( _range_self) =
-            (_range )
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _type_assumptions,_type_constraints,_type_kappa,_type_kappaUnique,_type_self) =
-            (_type ([]) (_expression_kappaUnique))
-    in  ( _newGroup : _expression_bindingGroups,_type_kappaUnique + length _tvEnv,_self)
+sem_Expression_Typed (range_) (expression_) (type_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            ( _typeIassumptions,_typeIconstraints,_typeIkappa,_typeIkappaUnique,_typeIself) =
+                (type_ (_typeOconstraints) (_typeOkappaUnique))
+            (_newGroup@_) =
+                (emptyFM, _aset, _cset ++ _typeIconstraints ++ [_newConstraint])
+            ((_cset@_,_aset@_)) =
+                (listToFM _tvEnv .===. _typeIassumptions) (\n _ -> unexpected $ "Expression.Typed " ++ show n)
+            (_tvEnv@_) =
+                zip (getTypeVariables _typeIassumptions) (map TVar [_typeIkappaUnique..])
+            (_newConstraint@_) =
+                (_typeIkappa .==. star) (mustBeStar _rangeIself "type annotation" _typeIself)
+            (_lhsOkappaUnique@_) =
+                _typeIkappaUnique + length _tvEnv
+            (_lhsObindingGroups@_) =
+                _newGroup : _expressionIbindingGroups
+            (_typeOconstraints@_) =
+                []
+            (_self@_) =
+                Expression_Typed _rangeIself _expressionIself _typeIself
+            (_lhsOself@_) =
+                _self
+            (_expressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_typeOkappaUnique@_) =
+                _expressionIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expression_Variable :: (T_Range) ->
                            (T_Name) ->
                            (T_Expression)
-sem_Expression_Variable (_range) (_name) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Expression_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_Expression_Variable (range_) (name_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            (_self@_) =
+                Expression_Variable _rangeIself _nameIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- Expressions -------------------------------------------------
 -- semantic domain
 type T_Expressions = (BindingGroups) ->
@@ -1018,19 +1691,43 @@ sem_Expressions (list) =
 sem_Expressions_Cons :: (T_Expression) ->
                         (T_Expressions) ->
                         (T_Expressions)
-sem_Expressions_Cons (_hd) (_tl) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_bindingGroups,_hd_kappaUnique,_hd_self) =
-            (_hd (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _tl_bindingGroups,_tl_kappaUnique,_tl_self) =
-            (_tl (_hd_bindingGroups) (_hd_kappaUnique))
-    in  ( _tl_bindingGroups,_tl_kappaUnique,_self)
+sem_Expressions_Cons (hd_) (tl_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+                (hd_ (_hdObindingGroups) (_hdOkappaUnique))
+            ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
+                (tl_ (_tlObindingGroups) (_tlOkappaUnique))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _tlIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _tlIkappaUnique
+            (_hdObindingGroups@_) =
+                _lhsIbindingGroups
+            (_hdOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_tlObindingGroups@_) =
+                _hdIbindingGroups
+            (_tlOkappaUnique@_) =
+                _hdIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Expressions_Nil :: (T_Expressions)
-sem_Expressions_Nil (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            []
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_Expressions_Nil  =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- FieldDeclaration --------------------------------------------
 -- semantic domain
 type T_FieldDeclaration = (Int) ->
@@ -1044,18 +1741,27 @@ sem_FieldDeclaration_FieldDeclaration :: (T_Range) ->
                                          (T_Names) ->
                                          (T_AnnotatedType) ->
                                          (T_FieldDeclaration)
-sem_FieldDeclaration_FieldDeclaration (_range) (_names) (_type) (_lhs_kappaUnique) =
-    let (_self) =
-            FieldDeclaration_FieldDeclaration _range_self _names_self _type_self
-        (_constraints) =
-            internalError "KindInferencing.ag" "n/a" "Field decls are not supported"
-        ( _range_self) =
-            (_range )
-        ( _names_self) =
-            (_names )
-        ( _type_assumptions,_type_constraints,_type_kappa,_type_kappaUnique,_type_self) =
-            (_type (_constraints) (_lhs_kappaUnique))
-    in  ( _type_kappaUnique,_self)
+sem_FieldDeclaration_FieldDeclaration (range_) (names_) (type_) =
+    \ _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _namesIself) =
+                (names_ )
+            ( _typeIassumptions,_typeIconstraints,_typeIkappa,_typeIkappaUnique,_typeIself) =
+                (type_ (_typeOconstraints) (_typeOkappaUnique))
+            (_constraints@_) =
+                internalError "KindInferencing.ag" "n/a" "Field decls are not supported"
+            (_self@_) =
+                FieldDeclaration_FieldDeclaration _rangeIself _namesIself _typeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOkappaUnique@_) =
+                _typeIkappaUnique
+            (_typeOconstraints@_) =
+                _constraints
+            (_typeOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsOkappaUnique,_lhsOself)
 -- FieldDeclarations -------------------------------------------
 -- semantic domain
 type T_FieldDeclarations = (Int) ->
@@ -1068,19 +1774,33 @@ sem_FieldDeclarations (list) =
 sem_FieldDeclarations_Cons :: (T_FieldDeclaration) ->
                               (T_FieldDeclarations) ->
                               (T_FieldDeclarations)
-sem_FieldDeclarations_Cons (_hd) (_tl) (_lhs_kappaUnique) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_kappaUnique,_hd_self) =
-            (_hd (_lhs_kappaUnique))
-        ( _tl_kappaUnique,_tl_self) =
-            (_tl (_hd_kappaUnique))
-    in  ( _tl_kappaUnique,_self)
+sem_FieldDeclarations_Cons (hd_) (tl_) =
+    \ _lhsIkappaUnique ->
+        let ( _hdIkappaUnique,_hdIself) =
+                (hd_ (_hdOkappaUnique))
+            ( _tlIkappaUnique,_tlIself) =
+                (tl_ (_tlOkappaUnique))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOkappaUnique@_) =
+                _tlIkappaUnique
+            (_hdOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_tlOkappaUnique@_) =
+                _hdIkappaUnique
+        in  ( _lhsOkappaUnique,_lhsOself)
 sem_FieldDeclarations_Nil :: (T_FieldDeclarations)
-sem_FieldDeclarations_Nil (_lhs_kappaUnique) =
-    let (_self) =
-            []
-    in  ( _lhs_kappaUnique,_self)
+sem_FieldDeclarations_Nil  =
+    \ _lhsIkappaUnique ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsOkappaUnique,_lhsOself)
 -- Fixity ------------------------------------------------------
 -- semantic domain
 type T_Fixity = ( (Fixity))
@@ -1095,28 +1815,34 @@ sem_Fixity ((Fixity_Infixr (_range))) =
     (sem_Fixity_Infixr ((sem_Range (_range))))
 sem_Fixity_Infix :: (T_Range) ->
                     (T_Fixity)
-sem_Fixity_Infix (_range) =
-    let (_self) =
-            Fixity_Infix _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Fixity_Infix (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Fixity_Infix _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Fixity_Infixl :: (T_Range) ->
                      (T_Fixity)
-sem_Fixity_Infixl (_range) =
-    let (_self) =
-            Fixity_Infixl _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Fixity_Infixl (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Fixity_Infixl _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Fixity_Infixr :: (T_Range) ->
                      (T_Fixity)
-sem_Fixity_Infixr (_range) =
-    let (_self) =
-            Fixity_Infixr _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Fixity_Infixr (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Fixity_Infixr _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- FunctionBinding ---------------------------------------------
 -- semantic domain
 type T_FunctionBinding = (BindingGroups) ->
@@ -1131,16 +1857,28 @@ sem_FunctionBinding_FunctionBinding :: (T_Range) ->
                                        (T_LeftHandSide) ->
                                        (T_RightHandSide) ->
                                        (T_FunctionBinding)
-sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            FunctionBinding_FunctionBinding _range_self _lefthandside_self _righthandside_self
-        ( _range_self) =
-            (_range )
-        ( _lefthandside_self) =
-            (_lefthandside )
-        ( _righthandside_bindingGroups,_righthandside_kappaUnique,_righthandside_self) =
-            (_righthandside (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _righthandside_bindingGroups,_righthandside_kappaUnique,_self)
+sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _lefthandsideIself) =
+                (lefthandside_ )
+            ( _righthandsideIbindingGroups,_righthandsideIkappaUnique,_righthandsideIself) =
+                (righthandside_ (_righthandsideObindingGroups) (_righthandsideOkappaUnique))
+            (_self@_) =
+                FunctionBinding_FunctionBinding _rangeIself _lefthandsideIself _righthandsideIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _righthandsideIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _righthandsideIkappaUnique
+            (_righthandsideObindingGroups@_) =
+                _lhsIbindingGroups
+            (_righthandsideOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- FunctionBindings --------------------------------------------
 -- semantic domain
 type T_FunctionBindings = (BindingGroups) ->
@@ -1154,19 +1892,43 @@ sem_FunctionBindings (list) =
 sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
                              (T_FunctionBindings) ->
                              (T_FunctionBindings)
-sem_FunctionBindings_Cons (_hd) (_tl) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_bindingGroups,_hd_kappaUnique,_hd_self) =
-            (_hd (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _tl_bindingGroups,_tl_kappaUnique,_tl_self) =
-            (_tl (_hd_bindingGroups) (_hd_kappaUnique))
-    in  ( _tl_bindingGroups,_tl_kappaUnique,_self)
+sem_FunctionBindings_Cons (hd_) (tl_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+                (hd_ (_hdObindingGroups) (_hdOkappaUnique))
+            ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
+                (tl_ (_tlObindingGroups) (_tlOkappaUnique))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _tlIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _tlIkappaUnique
+            (_hdObindingGroups@_) =
+                _lhsIbindingGroups
+            (_hdOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_tlObindingGroups@_) =
+                _hdIbindingGroups
+            (_tlOkappaUnique@_) =
+                _hdIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_FunctionBindings_Nil :: (T_FunctionBindings)
-sem_FunctionBindings_Nil (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            []
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_FunctionBindings_Nil  =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
 type T_GuardedExpression = (BindingGroups) ->
@@ -1181,16 +1943,32 @@ sem_GuardedExpression_GuardedExpression :: (T_Range) ->
                                            (T_Expression) ->
                                            (T_Expression) ->
                                            (T_GuardedExpression)
-sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            GuardedExpression_GuardedExpression _range_self _guard_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _guard_bindingGroups,_guard_kappaUnique,_guard_self) =
-            (_guard (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_guard_bindingGroups) (_guard_kappaUnique))
-    in  ( _expression_bindingGroups,_expression_kappaUnique,_self)
+sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _guardIbindingGroups,_guardIkappaUnique,_guardIself) =
+                (guard_ (_guardObindingGroups) (_guardOkappaUnique))
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            (_self@_) =
+                GuardedExpression_GuardedExpression _rangeIself _guardIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _expressionIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _expressionIkappaUnique
+            (_guardObindingGroups@_) =
+                _lhsIbindingGroups
+            (_guardOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_expressionObindingGroups@_) =
+                _guardIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _guardIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- GuardedExpressions ------------------------------------------
 -- semantic domain
 type T_GuardedExpressions = (BindingGroups) ->
@@ -1204,19 +1982,43 @@ sem_GuardedExpressions (list) =
 sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
                                (T_GuardedExpressions) ->
                                (T_GuardedExpressions)
-sem_GuardedExpressions_Cons (_hd) (_tl) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_bindingGroups,_hd_kappaUnique,_hd_self) =
-            (_hd (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _tl_bindingGroups,_tl_kappaUnique,_tl_self) =
-            (_tl (_hd_bindingGroups) (_hd_kappaUnique))
-    in  ( _tl_bindingGroups,_tl_kappaUnique,_self)
+sem_GuardedExpressions_Cons (hd_) (tl_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+                (hd_ (_hdObindingGroups) (_hdOkappaUnique))
+            ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
+                (tl_ (_tlObindingGroups) (_tlOkappaUnique))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _tlIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _tlIkappaUnique
+            (_hdObindingGroups@_) =
+                _lhsIbindingGroups
+            (_hdOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_tlObindingGroups@_) =
+                _hdIbindingGroups
+            (_tlOkappaUnique@_) =
+                _hdIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_GuardedExpressions_Nil :: (T_GuardedExpressions)
-sem_GuardedExpressions_Nil (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            []
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_GuardedExpressions_Nil  =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- Import ------------------------------------------------------
 -- semantic domain
 type T_Import = ( (Import))
@@ -1233,38 +2035,44 @@ sem_Import_TypeOrClass :: (T_Range) ->
                           (T_Name) ->
                           (T_MaybeNames) ->
                           (T_Import)
-sem_Import_TypeOrClass (_range) (_name) (_names) =
-    let (_self) =
-            Import_TypeOrClass _range_self _name_self _names_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _names_self) =
-            (_names )
-    in  ( _self)
+sem_Import_TypeOrClass (range_) (name_) (names_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _namesIself) =
+            (names_ )
+        (_self@_) =
+            Import_TypeOrClass _rangeIself _nameIself _namesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Import_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Import)
-sem_Import_TypeOrClassComplete (_range) (_name) =
-    let (_self) =
-            Import_TypeOrClassComplete _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Import_TypeOrClassComplete (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Import_TypeOrClassComplete _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Import_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Import)
-sem_Import_Variable (_range) (_name) =
-    let (_self) =
-            Import_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Import_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Import_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ImportDeclaration -------------------------------------------
 -- semantic domain
 type T_ImportDeclaration = ( (ImportDeclaration))
@@ -1277,30 +2085,34 @@ sem_ImportDeclaration ((ImportDeclaration_Import (_range) (_qualified) (_name) (
     (sem_ImportDeclaration_Import ((sem_Range (_range))) (_qualified) ((sem_Name (_name))) ((sem_MaybeName (_asname))) ((sem_MaybeImportSpecification (_importspecification))))
 sem_ImportDeclaration_Empty :: (T_Range) ->
                                (T_ImportDeclaration)
-sem_ImportDeclaration_Empty (_range) =
-    let (_self) =
-            ImportDeclaration_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_ImportDeclaration_Empty (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            ImportDeclaration_Empty _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_ImportDeclaration_Import :: (T_Range) ->
                                 (Bool) ->
                                 (T_Name) ->
                                 (T_MaybeName) ->
                                 (T_MaybeImportSpecification) ->
                                 (T_ImportDeclaration)
-sem_ImportDeclaration_Import (_range) (_qualified) (_name) (_asname) (_importspecification) =
-    let (_self) =
-            ImportDeclaration_Import _range_self _qualified _name_self _asname_self _importspecification_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _asname_self) =
-            (_asname )
-        ( _importspecification_self) =
-            (_importspecification )
-    in  ( _self)
+sem_ImportDeclaration_Import (range_) (qualified_) (name_) (asname_) (importspecification_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _asnameIself) =
+            (asname_ )
+        ( _importspecificationIself) =
+            (importspecification_ )
+        (_self@_) =
+            ImportDeclaration_Import _rangeIself qualified_ _nameIself _asnameIself _importspecificationIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ImportDeclarations ------------------------------------------
 -- semantic domain
 type T_ImportDeclarations = ( (ImportDeclarations))
@@ -1312,19 +2124,23 @@ sem_ImportDeclarations (list) =
 sem_ImportDeclarations_Cons :: (T_ImportDeclaration) ->
                                (T_ImportDeclarations) ->
                                (T_ImportDeclarations)
-sem_ImportDeclarations_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_ImportDeclarations_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_ImportDeclarations_Nil :: (T_ImportDeclarations)
 sem_ImportDeclarations_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ImportSpecification -----------------------------------------
 -- semantic domain
 type T_ImportSpecification = ( (ImportSpecification))
@@ -1337,14 +2153,16 @@ sem_ImportSpecification_Import :: (T_Range) ->
                                   (Bool) ->
                                   (T_Imports) ->
                                   (T_ImportSpecification)
-sem_ImportSpecification_Import (_range) (_hiding) (_imports) =
-    let (_self) =
-            ImportSpecification_Import _range_self _hiding _imports_self
-        ( _range_self) =
-            (_range )
-        ( _imports_self) =
-            (_imports )
-    in  ( _self)
+sem_ImportSpecification_Import (range_) (hiding_) (imports_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _importsIself) =
+            (imports_ )
+        (_self@_) =
+            ImportSpecification_Import _rangeIself hiding_ _importsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Imports -----------------------------------------------------
 -- semantic domain
 type T_Imports = ( (Imports))
@@ -1356,19 +2174,23 @@ sem_Imports (list) =
 sem_Imports_Cons :: (T_Import) ->
                     (T_Imports) ->
                     (T_Imports)
-sem_Imports_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Imports_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Imports_Nil :: (T_Imports)
 sem_Imports_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- LeftHandSide ------------------------------------------------
 -- semantic domain
 type T_LeftHandSide = ( (LeftHandSide))
@@ -1385,47 +2207,53 @@ sem_LeftHandSide_Function :: (T_Range) ->
                              (T_Name) ->
                              (T_Patterns) ->
                              (T_LeftHandSide)
-sem_LeftHandSide_Function (_range) (_name) (_patterns) =
-    let (_self) =
-            LeftHandSide_Function _range_self _name_self _patterns_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _patterns_self) =
-            (_patterns )
-    in  ( _self)
+sem_LeftHandSide_Function (range_) (name_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _patternsIself) =
+            (patterns_ )
+        (_self@_) =
+            LeftHandSide_Function _rangeIself _nameIself _patternsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_LeftHandSide_Infix :: (T_Range) ->
                           (T_Pattern) ->
                           (T_Name) ->
                           (T_Pattern) ->
                           (T_LeftHandSide)
-sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) =
-    let (_self) =
-            LeftHandSide_Infix _range_self _leftPattern_self _operator_self _rightPattern_self
-        ( _range_self) =
-            (_range )
-        ( _leftPattern_self) =
-            (_leftPattern )
-        ( _operator_self) =
-            (_operator )
-        ( _rightPattern_self) =
-            (_rightPattern )
-    in  ( _self)
+sem_LeftHandSide_Infix (range_) (leftPattern_) (operator_) (rightPattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _leftPatternIself) =
+            (leftPattern_ )
+        ( _operatorIself) =
+            (operator_ )
+        ( _rightPatternIself) =
+            (rightPattern_ )
+        (_self@_) =
+            LeftHandSide_Infix _rangeIself _leftPatternIself _operatorIself _rightPatternIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_LeftHandSide_Parenthesized :: (T_Range) ->
                                   (T_LeftHandSide) ->
                                   (T_Patterns) ->
                                   (T_LeftHandSide)
-sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) =
-    let (_self) =
-            LeftHandSide_Parenthesized _range_self _lefthandside_self _patterns_self
-        ( _range_self) =
-            (_range )
-        ( _lefthandside_self) =
-            (_lefthandside )
-        ( _patterns_self) =
-            (_patterns )
-    in  ( _self)
+sem_LeftHandSide_Parenthesized (range_) (lefthandside_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _lefthandsideIself) =
+            (lefthandside_ )
+        ( _patternsIself) =
+            (patterns_ )
+        (_self@_) =
+            LeftHandSide_Parenthesized _rangeIself _lefthandsideIself _patternsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Literal -----------------------------------------------------
 -- semantic domain
 type T_Literal = ( (Literal))
@@ -1443,39 +2271,47 @@ sem_Literal ((Literal_String (_range) (_value))) =
 sem_Literal_Char :: (T_Range) ->
                     (String) ->
                     (T_Literal)
-sem_Literal_Char (_range) (_value) =
-    let (_self) =
-            Literal_Char _range_self _value
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Literal_Char (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Literal_Char _rangeIself value_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Literal_Float :: (T_Range) ->
                      (String) ->
                      (T_Literal)
-sem_Literal_Float (_range) (_value) =
-    let (_self) =
-            Literal_Float _range_self _value
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Literal_Float (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Literal_Float _rangeIself value_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Literal_Int :: (T_Range) ->
                    (String) ->
                    (T_Literal)
-sem_Literal_Int (_range) (_value) =
-    let (_self) =
-            Literal_Int _range_self _value
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Literal_Int (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Literal_Int _rangeIself value_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Literal_String :: (T_Range) ->
                       (String) ->
                       (T_Literal)
-sem_Literal_String (_range) (_value) =
-    let (_self) =
-            Literal_String _range_self _value
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Literal_String (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Literal_String _rangeIself value_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
 type T_MaybeDeclarations = (BindingGroups) ->
@@ -1490,17 +2326,37 @@ sem_MaybeDeclarations ((MaybeDeclarations_Nothing )) =
     (sem_MaybeDeclarations_Nothing )
 sem_MaybeDeclarations_Just :: (T_Declarations) ->
                               (T_MaybeDeclarations)
-sem_MaybeDeclarations_Just (_declarations) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            MaybeDeclarations_Just _declarations_self
-        ( _declarations_bindingGroups,_declarations_kappaUnique,_declarations_self) =
-            (_declarations (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _declarations_bindingGroups,_declarations_kappaUnique,_self)
+sem_MaybeDeclarations_Just (declarations_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _declarationsIbindingGroups,_declarationsIkappaUnique,_declarationsIself) =
+                (declarations_ (_declarationsObindingGroups) (_declarationsOkappaUnique))
+            (_self@_) =
+                MaybeDeclarations_Just _declarationsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _declarationsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _declarationsIkappaUnique
+            (_declarationsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_declarationsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
-sem_MaybeDeclarations_Nothing (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            MaybeDeclarations_Nothing
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_MaybeDeclarations_Nothing  =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let (_self@_) =
+                MaybeDeclarations_Nothing
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- MaybeExports ------------------------------------------------
 -- semantic domain
 type T_MaybeExports = ( (MaybeExports))
@@ -1513,17 +2369,21 @@ sem_MaybeExports ((MaybeExports_Nothing )) =
     (sem_MaybeExports_Nothing )
 sem_MaybeExports_Just :: (T_Exports) ->
                          (T_MaybeExports)
-sem_MaybeExports_Just (_exports) =
-    let (_self) =
-            MaybeExports_Just _exports_self
-        ( _exports_self) =
-            (_exports )
-    in  ( _self)
+sem_MaybeExports_Just (exports_) =
+    let ( _exportsIself) =
+            (exports_ )
+        (_self@_) =
+            MaybeExports_Just _exportsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeExports_Nothing :: (T_MaybeExports)
 sem_MaybeExports_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeExports_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeExpression ---------------------------------------------
 -- semantic domain
 type T_MaybeExpression = (BindingGroups) ->
@@ -1538,17 +2398,37 @@ sem_MaybeExpression ((MaybeExpression_Nothing )) =
     (sem_MaybeExpression_Nothing )
 sem_MaybeExpression_Just :: (T_Expression) ->
                             (T_MaybeExpression)
-sem_MaybeExpression_Just (_expression) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            MaybeExpression_Just _expression_self
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _expression_bindingGroups,_expression_kappaUnique,_self)
+sem_MaybeExpression_Just (expression_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            (_self@_) =
+                MaybeExpression_Just _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _expressionIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _expressionIkappaUnique
+            (_expressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_MaybeExpression_Nothing :: (T_MaybeExpression)
-sem_MaybeExpression_Nothing (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            MaybeExpression_Nothing
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_MaybeExpression_Nothing  =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let (_self@_) =
+                MaybeExpression_Nothing
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- MaybeImportSpecification ------------------------------------
 -- semantic domain
 type T_MaybeImportSpecification = ( (MaybeImportSpecification))
@@ -1561,17 +2441,21 @@ sem_MaybeImportSpecification ((MaybeImportSpecification_Nothing )) =
     (sem_MaybeImportSpecification_Nothing )
 sem_MaybeImportSpecification_Just :: (T_ImportSpecification) ->
                                      (T_MaybeImportSpecification)
-sem_MaybeImportSpecification_Just (_importspecification) =
-    let (_self) =
-            MaybeImportSpecification_Just _importspecification_self
-        ( _importspecification_self) =
-            (_importspecification )
-    in  ( _self)
+sem_MaybeImportSpecification_Just (importspecification_) =
+    let ( _importspecificationIself) =
+            (importspecification_ )
+        (_self@_) =
+            MaybeImportSpecification_Just _importspecificationIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeImportSpecification_Nothing :: (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeImportSpecification_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeInt ----------------------------------------------------
 -- semantic domain
 type T_MaybeInt = ( (MaybeInt))
@@ -1584,15 +2468,19 @@ sem_MaybeInt ((MaybeInt_Nothing )) =
     (sem_MaybeInt_Nothing )
 sem_MaybeInt_Just :: (Int) ->
                      (T_MaybeInt)
-sem_MaybeInt_Just (_int) =
-    let (_self) =
-            MaybeInt_Just _int
-    in  ( _self)
+sem_MaybeInt_Just (int_) =
+    let (_self@_) =
+            MaybeInt_Just int_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeInt_Nothing :: (T_MaybeInt)
 sem_MaybeInt_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeInt_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeName ---------------------------------------------------
 -- semantic domain
 type T_MaybeName = ( (MaybeName))
@@ -1605,17 +2493,21 @@ sem_MaybeName ((MaybeName_Nothing )) =
     (sem_MaybeName_Nothing )
 sem_MaybeName_Just :: (T_Name) ->
                       (T_MaybeName)
-sem_MaybeName_Just (_name) =
-    let (_self) =
-            MaybeName_Just _name_self
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_MaybeName_Just (name_) =
+    let ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            MaybeName_Just _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeName_Nothing :: (T_MaybeName)
 sem_MaybeName_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeName_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeNames --------------------------------------------------
 -- semantic domain
 type T_MaybeNames = ( (MaybeNames))
@@ -1628,17 +2520,21 @@ sem_MaybeNames ((MaybeNames_Nothing )) =
     (sem_MaybeNames_Nothing )
 sem_MaybeNames_Just :: (T_Names) ->
                        (T_MaybeNames)
-sem_MaybeNames_Just (_names) =
-    let (_self) =
-            MaybeNames_Just _names_self
-        ( _names_self) =
-            (_names )
-    in  ( _self)
+sem_MaybeNames_Just (names_) =
+    let ( _namesIself) =
+            (names_ )
+        (_self@_) =
+            MaybeNames_Just _namesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeNames_Nothing :: (T_MaybeNames)
 sem_MaybeNames_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeNames_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Module ------------------------------------------------------
 -- semantic domain
 type T_Module = (ImportEnvironment) ->
@@ -1654,23 +2550,37 @@ sem_Module_Module :: (T_Range) ->
                      (T_MaybeExports) ->
                      (T_Body) ->
                      (T_Module)
-sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (_lhs_options) =
-    let (_self) =
-            Module_Module _range_self _name_self _exports_self _body_self
-        ((_kappaUniqueAtTheEnd,_substitution,_,_kindErrors,_debugIO)) =
-            solveGreedy noOrderedTypeSynonyms _body_kappaUnique _body_constraints
-        (_kindEnvironment) =
-            let f _ kind = generalize [] [] (defaultToStar $ _substitution |-> kind)
-            in mapFM f _body_environment
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _exports_self) =
-            (_exports )
-        ( _body_constraints,_body_environment,_body_kappaUnique,_body_self) =
-            (_body (_lhs_importEnvironment) (0))
-    in  ( _debugIO,_kindEnvironment,_substitution |-> _kindErrors,_self)
+sem_Module_Module (range_) (name_) (exports_) (body_) =
+    \ _lhsIimportEnvironment
+      _lhsIoptions ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _exportsIself) =
+                (exports_ )
+            ( _bodyIconstraints,_bodyIenvironment,_bodyIkappaUnique,_bodyIself) =
+                (body_ (_bodyOimportEnvironment) (_bodyOkappaUnique))
+            (_kindEnvironment@_) =
+                let f _ kind = generalize [] [] (defaultToStar $ _substitution |-> kind)
+                in mapFM f _bodyIenvironment
+            ((_kappaUniqueAtTheEnd@_,_substitution@_,_,_kindErrors@_,_debugIO@_)) =
+                solveGreedy noOrderedTypeSynonyms _bodyIkappaUnique _bodyIconstraints
+            (_bodyOkappaUnique@_) =
+                0
+            (_lhsOkindErrors@_) =
+                _substitution |-> _kindErrors
+            (_self@_) =
+                Module_Module _rangeIself _nameIself _exportsIself _bodyIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOdebugIO@_) =
+                _debugIO
+            (_lhsOkindEnvironment@_) =
+                _kindEnvironment
+            (_bodyOimportEnvironment@_) =
+                _lhsIimportEnvironment
+        in  ( _lhsOdebugIO,_lhsOkindEnvironment,_lhsOkindErrors,_lhsOself)
 -- Name --------------------------------------------------------
 -- semantic domain
 type T_Name = ( (Name))
@@ -1687,38 +2597,44 @@ sem_Name_Identifier :: (T_Range) ->
                        (T_Strings) ->
                        (String) ->
                        (T_Name)
-sem_Name_Identifier (_range) (_module) (_name) =
-    let (_self) =
-            Name_Identifier _range_self _module_self _name
-        ( _range_self) =
-            (_range )
-        ( _module_self) =
-            (_module )
-    in  ( _self)
+sem_Name_Identifier (range_) (module_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _moduleIself) =
+            (module_ )
+        (_self@_) =
+            Name_Identifier _rangeIself _moduleIself name_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Name_Operator :: (T_Range) ->
                      (T_Strings) ->
                      (String) ->
                      (T_Name)
-sem_Name_Operator (_range) (_module) (_name) =
-    let (_self) =
-            Name_Operator _range_self _module_self _name
-        ( _range_self) =
-            (_range )
-        ( _module_self) =
-            (_module )
-    in  ( _self)
+sem_Name_Operator (range_) (module_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _moduleIself) =
+            (module_ )
+        (_self@_) =
+            Name_Operator _rangeIself _moduleIself name_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Name_Special :: (T_Range) ->
                     (T_Strings) ->
                     (String) ->
                     (T_Name)
-sem_Name_Special (_range) (_module) (_name) =
-    let (_self) =
-            Name_Special _range_self _module_self _name
-        ( _range_self) =
-            (_range )
-        ( _module_self) =
-            (_module )
-    in  ( _self)
+sem_Name_Special (range_) (module_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _moduleIself) =
+            (module_ )
+        (_self@_) =
+            Name_Special _rangeIself _moduleIself name_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Names -------------------------------------------------------
 -- semantic domain
 type T_Names = ( (Names))
@@ -1730,19 +2646,23 @@ sem_Names (list) =
 sem_Names_Cons :: (T_Name) ->
                   (T_Names) ->
                   (T_Names)
-sem_Names_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Names_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Names_Nil :: (T_Names)
 sem_Names_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Pattern -----------------------------------------------------
 -- semantic domain
 type T_Pattern = ( (Pattern))
@@ -1781,171 +2701,199 @@ sem_Pattern_As :: (T_Range) ->
                   (T_Name) ->
                   (T_Pattern) ->
                   (T_Pattern)
-sem_Pattern_As (_range) (_name) (_pattern) =
-    let (_self) =
-            Pattern_As _range_self _name_self _pattern_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _pattern_self) =
-            (_pattern )
-    in  ( _self)
+sem_Pattern_As (range_) (name_) (pattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _patternIself) =
+            (pattern_ )
+        (_self@_) =
+            Pattern_As _rangeIself _nameIself _patternIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Pattern_Constructor :: (T_Range) ->
                            (T_Name) ->
                            (T_Patterns) ->
                            (T_Pattern)
-sem_Pattern_Constructor (_range) (_name) (_patterns) =
-    let (_self) =
-            Pattern_Constructor _range_self _name_self _patterns_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _patterns_self) =
-            (_patterns )
-    in  ( _self)
+sem_Pattern_Constructor (range_) (name_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _patternsIself) =
+            (patterns_ )
+        (_self@_) =
+            Pattern_Constructor _rangeIself _nameIself _patternsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Pattern_InfixConstructor :: (T_Range) ->
                                 (T_Pattern) ->
                                 (T_Name) ->
                                 (T_Pattern) ->
                                 (T_Pattern)
-sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_rightPattern) =
-    let (_self) =
-            Pattern_InfixConstructor _range_self _leftPattern_self _constructorOperator_self _rightPattern_self
-        ( _range_self) =
-            (_range )
-        ( _leftPattern_self) =
-            (_leftPattern )
-        ( _constructorOperator_self) =
-            (_constructorOperator )
-        ( _rightPattern_self) =
-            (_rightPattern )
-    in  ( _self)
+sem_Pattern_InfixConstructor (range_) (leftPattern_) (constructorOperator_) (rightPattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _leftPatternIself) =
+            (leftPattern_ )
+        ( _constructorOperatorIself) =
+            (constructorOperator_ )
+        ( _rightPatternIself) =
+            (rightPattern_ )
+        (_self@_) =
+            Pattern_InfixConstructor _rangeIself _leftPatternIself _constructorOperatorIself _rightPatternIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Pattern_Irrefutable :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Pattern)
-sem_Pattern_Irrefutable (_range) (_pattern) =
-    let (_self) =
-            Pattern_Irrefutable _range_self _pattern_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_self) =
-            (_pattern )
-    in  ( _self)
+sem_Pattern_Irrefutable (range_) (pattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternIself) =
+            (pattern_ )
+        (_self@_) =
+            Pattern_Irrefutable _rangeIself _patternIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Pattern_List :: (T_Range) ->
                     (T_Patterns) ->
                     (T_Pattern)
-sem_Pattern_List (_range) (_patterns) =
-    let (_self) =
-            Pattern_List _range_self _patterns_self
-        ( _range_self) =
-            (_range )
-        ( _patterns_self) =
-            (_patterns )
-    in  ( _self)
+sem_Pattern_List (range_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternsIself) =
+            (patterns_ )
+        (_self@_) =
+            Pattern_List _rangeIself _patternsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Pattern_Literal :: (T_Range) ->
                        (T_Literal) ->
                        (T_Pattern)
-sem_Pattern_Literal (_range) (_literal) =
-    let (_self) =
-            Pattern_Literal _range_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _literal_self) =
-            (_literal )
-    in  ( _self)
+sem_Pattern_Literal (range_) (literal_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _literalIself) =
+            (literal_ )
+        (_self@_) =
+            Pattern_Literal _rangeIself _literalIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Pattern_Negate :: (T_Range) ->
                       (T_Literal) ->
                       (T_Pattern)
-sem_Pattern_Negate (_range) (_literal) =
-    let (_self) =
-            Pattern_Negate _range_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _literal_self) =
-            (_literal )
-    in  ( _self)
+sem_Pattern_Negate (range_) (literal_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _literalIself) =
+            (literal_ )
+        (_self@_) =
+            Pattern_Negate _rangeIself _literalIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Pattern_NegateFloat :: (T_Range) ->
                            (T_Literal) ->
                            (T_Pattern)
-sem_Pattern_NegateFloat (_range) (_literal) =
-    let (_self) =
-            Pattern_NegateFloat _range_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _literal_self) =
-            (_literal )
-    in  ( _self)
+sem_Pattern_NegateFloat (range_) (literal_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _literalIself) =
+            (literal_ )
+        (_self@_) =
+            Pattern_NegateFloat _rangeIself _literalIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Pattern_Parenthesized :: (T_Range) ->
                              (T_Pattern) ->
                              (T_Pattern)
-sem_Pattern_Parenthesized (_range) (_pattern) =
-    let (_self) =
-            Pattern_Parenthesized _range_self _pattern_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_self) =
-            (_pattern )
-    in  ( _self)
+sem_Pattern_Parenthesized (range_) (pattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternIself) =
+            (pattern_ )
+        (_self@_) =
+            Pattern_Parenthesized _rangeIself _patternIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Pattern_Record :: (T_Range) ->
                       (T_Name) ->
                       (T_RecordPatternBindings) ->
                       (T_Pattern)
-sem_Pattern_Record (_range) (_name) (_recordPatternBindings) =
-    let (_self) =
-            Pattern_Record _range_self _name_self _recordPatternBindings_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _recordPatternBindings_self) =
-            (_recordPatternBindings )
-    in  ( _self)
+sem_Pattern_Record (range_) (name_) (recordPatternBindings_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _recordPatternBindingsIself) =
+            (recordPatternBindings_ )
+        (_self@_) =
+            Pattern_Record _rangeIself _nameIself _recordPatternBindingsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Pattern_Successor :: (T_Range) ->
                          (T_Name) ->
                          (T_Literal) ->
                          (T_Pattern)
-sem_Pattern_Successor (_range) (_name) (_literal) =
-    let (_self) =
-            Pattern_Successor _range_self _name_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _literal_self) =
-            (_literal )
-    in  ( _self)
+sem_Pattern_Successor (range_) (name_) (literal_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _literalIself) =
+            (literal_ )
+        (_self@_) =
+            Pattern_Successor _rangeIself _nameIself _literalIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Pattern_Tuple :: (T_Range) ->
                      (T_Patterns) ->
                      (T_Pattern)
-sem_Pattern_Tuple (_range) (_patterns) =
-    let (_self) =
-            Pattern_Tuple _range_self _patterns_self
-        ( _range_self) =
-            (_range )
-        ( _patterns_self) =
-            (_patterns )
-    in  ( _self)
+sem_Pattern_Tuple (range_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternsIself) =
+            (patterns_ )
+        (_self@_) =
+            Pattern_Tuple _rangeIself _patternsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Pattern_Variable :: (T_Range) ->
                         (T_Name) ->
                         (T_Pattern)
-sem_Pattern_Variable (_range) (_name) =
-    let (_self) =
-            Pattern_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Pattern_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Pattern_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Pattern_Wildcard :: (T_Range) ->
                         (T_Pattern)
-sem_Pattern_Wildcard (_range) =
-    let (_self) =
-            Pattern_Wildcard _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Pattern_Wildcard (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Pattern_Wildcard _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Patterns ----------------------------------------------------
 -- semantic domain
 type T_Patterns = ( (Patterns))
@@ -1957,19 +2905,23 @@ sem_Patterns (list) =
 sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns) ->
                      (T_Patterns)
-sem_Patterns_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Patterns_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Patterns_Nil :: (T_Patterns)
 sem_Patterns_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Position ----------------------------------------------------
 -- semantic domain
 type T_Position = ( (Position))
@@ -1984,15 +2936,19 @@ sem_Position_Position :: (String) ->
                          (Int) ->
                          (Int) ->
                          (T_Position)
-sem_Position_Position (_filename) (_line) (_column) =
-    let (_self) =
-            Position_Position _filename _line _column
-    in  ( _self)
+sem_Position_Position (filename_) (line_) (column_) =
+    let (_self@_) =
+            Position_Position filename_ line_ column_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Position_Unknown :: (T_Position)
 sem_Position_Unknown  =
-    let (_self) =
+    let (_self@_) =
             Position_Unknown
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Qualifier ---------------------------------------------------
 -- semantic domain
 type T_Qualifier = (BindingGroups) ->
@@ -2011,48 +2967,92 @@ sem_Qualifier ((Qualifier_Let (_range) (_declarations))) =
     (sem_Qualifier_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Qualifier_Empty :: (T_Range) ->
                        (T_Qualifier)
-sem_Qualifier_Empty (_range) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Qualifier_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_Qualifier_Empty (range_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            (_self@_) =
+                Qualifier_Empty _rangeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Qualifier_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Qualifier)
-sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Qualifier_Generator _range_self _pattern_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_self) =
-            (_pattern )
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _expression_bindingGroups,_expression_kappaUnique,_self)
+sem_Qualifier_Generator (range_) (pattern_) (expression_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternIself) =
+                (pattern_ )
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            (_self@_) =
+                Qualifier_Generator _rangeIself _patternIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _expressionIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _expressionIkappaUnique
+            (_expressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Qualifier_Guard :: (T_Range) ->
                        (T_Expression) ->
                        (T_Qualifier)
-sem_Qualifier_Guard (_range) (_guard) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Qualifier_Guard _range_self _guard_self
-        ( _range_self) =
-            (_range )
-        ( _guard_bindingGroups,_guard_kappaUnique,_guard_self) =
-            (_guard (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _guard_bindingGroups,_guard_kappaUnique,_self)
+sem_Qualifier_Guard (range_) (guard_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _guardIbindingGroups,_guardIkappaUnique,_guardIself) =
+                (guard_ (_guardObindingGroups) (_guardOkappaUnique))
+            (_self@_) =
+                Qualifier_Guard _rangeIself _guardIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _guardIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _guardIkappaUnique
+            (_guardObindingGroups@_) =
+                _lhsIbindingGroups
+            (_guardOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Qualifier_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Qualifier)
-sem_Qualifier_Let (_range) (_declarations) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Qualifier_Let _range_self _declarations_self
-        ( _range_self) =
-            (_range )
-        ( _declarations_bindingGroups,_declarations_kappaUnique,_declarations_self) =
-            (_declarations (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _declarations_bindingGroups,_declarations_kappaUnique,_self)
+sem_Qualifier_Let (range_) (declarations_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _declarationsIbindingGroups,_declarationsIkappaUnique,_declarationsIself) =
+                (declarations_ (_declarationsObindingGroups) (_declarationsOkappaUnique))
+            (_self@_) =
+                Qualifier_Let _rangeIself _declarationsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _declarationsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _declarationsIkappaUnique
+            (_declarationsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_declarationsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
 type T_Qualifiers = (BindingGroups) ->
@@ -2066,19 +3066,43 @@ sem_Qualifiers (list) =
 sem_Qualifiers_Cons :: (T_Qualifier) ->
                        (T_Qualifiers) ->
                        (T_Qualifiers)
-sem_Qualifiers_Cons (_hd) (_tl) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_bindingGroups,_hd_kappaUnique,_hd_self) =
-            (_hd (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _tl_bindingGroups,_tl_kappaUnique,_tl_self) =
-            (_tl (_hd_bindingGroups) (_hd_kappaUnique))
-    in  ( _tl_bindingGroups,_tl_kappaUnique,_self)
+sem_Qualifiers_Cons (hd_) (tl_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+                (hd_ (_hdObindingGroups) (_hdOkappaUnique))
+            ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
+                (tl_ (_tlObindingGroups) (_tlOkappaUnique))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _tlIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _tlIkappaUnique
+            (_hdObindingGroups@_) =
+                _lhsIbindingGroups
+            (_hdOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_tlObindingGroups@_) =
+                _hdIbindingGroups
+            (_tlOkappaUnique@_) =
+                _hdIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Qualifiers_Nil :: (T_Qualifiers)
-sem_Qualifiers_Nil (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            []
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_Qualifiers_Nil  =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- Range -------------------------------------------------------
 -- semantic domain
 type T_Range = ( (Range))
@@ -2090,14 +3114,16 @@ sem_Range ((Range_Range (_start) (_stop))) =
 sem_Range_Range :: (T_Position) ->
                    (T_Position) ->
                    (T_Range)
-sem_Range_Range (_start) (_stop) =
-    let (_self) =
-            Range_Range _start_self _stop_self
-        ( _start_self) =
-            (_start )
-        ( _stop_self) =
-            (_stop )
-    in  ( _self)
+sem_Range_Range (start_) (stop_) =
+    let ( _startIself) =
+            (start_ )
+        ( _stopIself) =
+            (stop_ )
+        (_self@_) =
+            Range_Range _startIself _stopIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- RecordExpressionBinding -------------------------------------
 -- semantic domain
 type T_RecordExpressionBinding = (BindingGroups) ->
@@ -2112,16 +3138,28 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
                                                        (T_Name) ->
                                                        (T_Expression) ->
                                                        (T_RecordExpressionBinding)
-sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expression) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            RecordExpressionBinding_RecordExpressionBinding _range_self _name_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _expression_bindingGroups,_expression_kappaUnique,_self)
+sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            (_self@_) =
+                RecordExpressionBinding_RecordExpressionBinding _rangeIself _nameIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _expressionIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _expressionIkappaUnique
+            (_expressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
 type T_RecordExpressionBindings = (BindingGroups) ->
@@ -2135,19 +3173,43 @@ sem_RecordExpressionBindings (list) =
 sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_RecordExpressionBindings)
-sem_RecordExpressionBindings_Cons (_hd) (_tl) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_bindingGroups,_hd_kappaUnique,_hd_self) =
-            (_hd (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _tl_bindingGroups,_tl_kappaUnique,_tl_self) =
-            (_tl (_hd_bindingGroups) (_hd_kappaUnique))
-    in  ( _tl_bindingGroups,_tl_kappaUnique,_self)
+sem_RecordExpressionBindings_Cons (hd_) (tl_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+                (hd_ (_hdObindingGroups) (_hdOkappaUnique))
+            ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
+                (tl_ (_tlObindingGroups) (_tlOkappaUnique))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _tlIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _tlIkappaUnique
+            (_hdObindingGroups@_) =
+                _lhsIbindingGroups
+            (_hdOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_tlObindingGroups@_) =
+                _hdIbindingGroups
+            (_tlOkappaUnique@_) =
+                _hdIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_RecordExpressionBindings_Nil :: (T_RecordExpressionBindings)
-sem_RecordExpressionBindings_Nil (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            []
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_RecordExpressionBindings_Nil  =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- RecordPatternBinding ----------------------------------------
 -- semantic domain
 type T_RecordPatternBinding = ( (RecordPatternBinding))
@@ -2160,16 +3222,18 @@ sem_RecordPatternBinding_RecordPatternBinding :: (T_Range) ->
                                                  (T_Name) ->
                                                  (T_Pattern) ->
                                                  (T_RecordPatternBinding)
-sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) =
-    let (_self) =
-            RecordPatternBinding_RecordPatternBinding _range_self _name_self _pattern_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _pattern_self) =
-            (_pattern )
-    in  ( _self)
+sem_RecordPatternBinding_RecordPatternBinding (range_) (name_) (pattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _patternIself) =
+            (pattern_ )
+        (_self@_) =
+            RecordPatternBinding_RecordPatternBinding _rangeIself _nameIself _patternIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- RecordPatternBindings ---------------------------------------
 -- semantic domain
 type T_RecordPatternBindings = ( (RecordPatternBindings))
@@ -2181,19 +3245,23 @@ sem_RecordPatternBindings (list) =
 sem_RecordPatternBindings_Cons :: (T_RecordPatternBinding) ->
                                   (T_RecordPatternBindings) ->
                                   (T_RecordPatternBindings)
-sem_RecordPatternBindings_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_RecordPatternBindings_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_RecordPatternBindings_Nil :: (T_RecordPatternBindings)
 sem_RecordPatternBindings_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- RightHandSide -----------------------------------------------
 -- semantic domain
 type T_RightHandSide = (BindingGroups) ->
@@ -2210,30 +3278,62 @@ sem_RightHandSide_Expression :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_MaybeDeclarations) ->
                                 (T_RightHandSide)
-sem_RightHandSide_Expression (_range) (_expression) (_where) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            RightHandSide_Expression _range_self _expression_self _where_self
-        ( _range_self) =
-            (_range )
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _where_bindingGroups,_where_kappaUnique,_where_self) =
-            (_where (_expression_bindingGroups) (_expression_kappaUnique))
-    in  ( _where_bindingGroups,_where_kappaUnique,_self)
+sem_RightHandSide_Expression (range_) (expression_) (where_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            ( _whereIbindingGroups,_whereIkappaUnique,_whereIself) =
+                (where_ (_whereObindingGroups) (_whereOkappaUnique))
+            (_self@_) =
+                RightHandSide_Expression _rangeIself _expressionIself _whereIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _whereIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _whereIkappaUnique
+            (_expressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_whereObindingGroups@_) =
+                _expressionIbindingGroups
+            (_whereOkappaUnique@_) =
+                _expressionIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_RightHandSide_Guarded :: (T_Range) ->
                              (T_GuardedExpressions) ->
                              (T_MaybeDeclarations) ->
                              (T_RightHandSide)
-sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            RightHandSide_Guarded _range_self _guardedexpressions_self _where_self
-        ( _range_self) =
-            (_range )
-        ( _guardedexpressions_bindingGroups,_guardedexpressions_kappaUnique,_guardedexpressions_self) =
-            (_guardedexpressions (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _where_bindingGroups,_where_kappaUnique,_where_self) =
-            (_where (_guardedexpressions_bindingGroups) (_guardedexpressions_kappaUnique))
-    in  ( _where_bindingGroups,_where_kappaUnique,_self)
+sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _guardedexpressionsIbindingGroups,_guardedexpressionsIkappaUnique,_guardedexpressionsIself) =
+                (guardedexpressions_ (_guardedexpressionsObindingGroups) (_guardedexpressionsOkappaUnique))
+            ( _whereIbindingGroups,_whereIkappaUnique,_whereIself) =
+                (where_ (_whereObindingGroups) (_whereOkappaUnique))
+            (_self@_) =
+                RightHandSide_Guarded _rangeIself _guardedexpressionsIself _whereIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _whereIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _whereIkappaUnique
+            (_guardedexpressionsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_guardedexpressionsOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_whereObindingGroups@_) =
+                _guardedexpressionsIbindingGroups
+            (_whereOkappaUnique@_) =
+                _guardedexpressionsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- SimpleType --------------------------------------------------
 -- semantic domain
 type T_SimpleType = (KindConstraints) ->
@@ -2249,22 +3349,35 @@ sem_SimpleType_SimpleType :: (T_Range) ->
                              (T_Name) ->
                              (T_Names) ->
                              (T_SimpleType)
-sem_SimpleType_SimpleType (_range) (_name) (_typevariables) (_lhs_constraints) (_lhs_kappaOfRHS) (_lhs_kappaUnique) =
-    let (_self) =
-            SimpleType_SimpleType _range_self _name_self _typevariables_self
-        (_kappaCon) =
-            TVar _lhs_kappaUnique
-        (_kappasVars) =
-            take (length _typevariables_self) [ TVar i | i <- [ _lhs_kappaUnique+1 .. ]]
-        (_newConstraint) =
-            (_kappaCon .==. foldr (.->.) _lhs_kappaOfRHS _kappasVars) (const $ unexpected "SimpleType.SimpleType")
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _typevariables_self) =
-            (_typevariables )
-    in  ( _newConstraint : _lhs_constraints,unitFM _name_self _kappaCon,listToFM (zip _typevariables_self _kappasVars),1 + length _typevariables_self + _lhs_kappaUnique,_self)
+sem_SimpleType_SimpleType (range_) (name_) (typevariables_) =
+    \ _lhsIconstraints
+      _lhsIkappaOfRHS
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _typevariablesIself) =
+                (typevariables_ )
+            (_newConstraint@_) =
+                (_kappaCon .==. foldr (.->.) _lhsIkappaOfRHS _kappasVars) (const $ unexpected "SimpleType.SimpleType")
+            (_kappasVars@_) =
+                take (length _typevariablesIself) [ TVar i | i <- [ _lhsIkappaUnique+1 .. ]]
+            (_kappaCon@_) =
+                TVar _lhsIkappaUnique
+            (_lhsOkappaUnique@_) =
+                1 + length _typevariablesIself + _lhsIkappaUnique
+            (_lhsOconstraints@_) =
+                _newConstraint : _lhsIconstraints
+            (_lhsOdeclared@_) =
+                unitFM _nameIself _kappaCon
+            (_lhsOenvironment@_) =
+                listToFM (zip _typevariablesIself _kappasVars)
+            (_self@_) =
+                SimpleType_SimpleType _rangeIself _nameIself _typevariablesIself
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOconstraints,_lhsOdeclared,_lhsOenvironment,_lhsOkappaUnique,_lhsOself)
 -- Statement ---------------------------------------------------
 -- semantic domain
 type T_Statement = (BindingGroups) ->
@@ -2283,48 +3396,92 @@ sem_Statement ((Statement_Let (_range) (_declarations))) =
     (sem_Statement_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Statement_Empty :: (T_Range) ->
                        (T_Statement)
-sem_Statement_Empty (_range) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Statement_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_Statement_Empty (range_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            (_self@_) =
+                Statement_Empty _rangeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Statement_Expression :: (T_Range) ->
                             (T_Expression) ->
                             (T_Statement)
-sem_Statement_Expression (_range) (_expression) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Statement_Expression _range_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _expression_bindingGroups,_expression_kappaUnique,_self)
+sem_Statement_Expression (range_) (expression_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            (_self@_) =
+                Statement_Expression _rangeIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _expressionIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _expressionIkappaUnique
+            (_expressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Statement_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Statement)
-sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Statement_Generator _range_self _pattern_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_self) =
-            (_pattern )
-        ( _expression_bindingGroups,_expression_kappaUnique,_expression_self) =
-            (_expression (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _expression_bindingGroups,_expression_kappaUnique,_self)
+sem_Statement_Generator (range_) (pattern_) (expression_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternIself) =
+                (pattern_ )
+            ( _expressionIbindingGroups,_expressionIkappaUnique,_expressionIself) =
+                (expression_ (_expressionObindingGroups) (_expressionOkappaUnique))
+            (_self@_) =
+                Statement_Generator _rangeIself _patternIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _expressionIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _expressionIkappaUnique
+            (_expressionObindingGroups@_) =
+                _lhsIbindingGroups
+            (_expressionOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Statement_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Statement)
-sem_Statement_Let (_range) (_declarations) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            Statement_Let _range_self _declarations_self
-        ( _range_self) =
-            (_range )
-        ( _declarations_bindingGroups,_declarations_kappaUnique,_declarations_self) =
-            (_declarations (_lhs_bindingGroups) (_lhs_kappaUnique))
-    in  ( _declarations_bindingGroups,_declarations_kappaUnique,_self)
+sem_Statement_Let (range_) (declarations_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _declarationsIbindingGroups,_declarationsIkappaUnique,_declarationsIself) =
+                (declarations_ (_declarationsObindingGroups) (_declarationsOkappaUnique))
+            (_self@_) =
+                Statement_Let _rangeIself _declarationsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _declarationsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _declarationsIkappaUnique
+            (_declarationsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_declarationsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- Statements --------------------------------------------------
 -- semantic domain
 type T_Statements = (BindingGroups) ->
@@ -2338,19 +3495,43 @@ sem_Statements (list) =
 sem_Statements_Cons :: (T_Statement) ->
                        (T_Statements) ->
                        (T_Statements)
-sem_Statements_Cons (_hd) (_tl) (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_bindingGroups,_hd_kappaUnique,_hd_self) =
-            (_hd (_lhs_bindingGroups) (_lhs_kappaUnique))
-        ( _tl_bindingGroups,_tl_kappaUnique,_tl_self) =
-            (_tl (_hd_bindingGroups) (_hd_kappaUnique))
-    in  ( _tl_bindingGroups,_tl_kappaUnique,_self)
+sem_Statements_Cons (hd_) (tl_) =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let ( _hdIbindingGroups,_hdIkappaUnique,_hdIself) =
+                (hd_ (_hdObindingGroups) (_hdOkappaUnique))
+            ( _tlIbindingGroups,_tlIkappaUnique,_tlIself) =
+                (tl_ (_tlObindingGroups) (_tlOkappaUnique))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _tlIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _tlIkappaUnique
+            (_hdObindingGroups@_) =
+                _lhsIbindingGroups
+            (_hdOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_tlObindingGroups@_) =
+                _hdIbindingGroups
+            (_tlOkappaUnique@_) =
+                _hdIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 sem_Statements_Nil :: (T_Statements)
-sem_Statements_Nil (_lhs_bindingGroups) (_lhs_kappaUnique) =
-    let (_self) =
-            []
-    in  ( _lhs_bindingGroups,_lhs_kappaUnique,_self)
+sem_Statements_Nil  =
+    \ _lhsIbindingGroups
+      _lhsIkappaUnique ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsObindingGroups@_) =
+                _lhsIbindingGroups
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsObindingGroups,_lhsOkappaUnique,_lhsOself)
 -- Strings -----------------------------------------------------
 -- semantic domain
 type T_Strings = ( (Strings))
@@ -2362,17 +3543,21 @@ sem_Strings (list) =
 sem_Strings_Cons :: (String) ->
                     (T_Strings) ->
                     (T_Strings)
-sem_Strings_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd _tl_self
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Strings_Cons (hd_) (tl_) =
+    let ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) hd_ _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Strings_Nil :: (T_Strings)
 sem_Strings_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Type --------------------------------------------------------
 -- semantic domain
 type T_Type = (KindConstraints) ->
@@ -2400,105 +3585,215 @@ sem_Type_Application :: (T_Range) ->
                         (T_Type) ->
                         (T_Types) ->
                         (T_Type)
-sem_Type_Application (_range) (_prefix) (_function) (_arguments) (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            Type_Application _range_self _prefix _function_self _arguments_self
-        (_kappa) =
-            TVar _arguments_kappaUnique
-        (_newConstraint) =
-            (_function_kappa .==. foldr (.->.) _kappa _arguments_kappas) (kindApplication _range_self _self _function_self)
-        ( _range_self) =
-            (_range )
-        ( _function_assumptions,_function_constraints,_function_kappa,_function_kappaUnique,_function_self) =
-            (_function (_lhs_constraints) (_lhs_kappaUnique))
-        ( _arguments_assumptions,_arguments_constraints,_arguments_kappaUnique,_arguments_kappas,_arguments_self) =
-            (_arguments (_function_constraints) (_function_kappaUnique))
-    in  ( _function_assumptions `combine` _arguments_assumptions,_arguments_constraints ++ [_newConstraint],_kappa,_arguments_kappaUnique + 1,_self)
+sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _functionIassumptions,_functionIconstraints,_functionIkappa,_functionIkappaUnique,_functionIself) =
+                (function_ (_functionOconstraints) (_functionOkappaUnique))
+            ( _argumentsIassumptions,_argumentsIconstraints,_argumentsIkappaUnique,_argumentsIkappas,_argumentsIself) =
+                (arguments_ (_argumentsOconstraints) (_argumentsOkappaUnique))
+            (_newConstraint@_) =
+                (_functionIkappa .==. foldr (.->.) _kappa _argumentsIkappas) (kindApplication _rangeIself _self _functionIself)
+            (_kappa@_) =
+                TVar _argumentsIkappaUnique
+            (_lhsOkappaUnique@_) =
+                _argumentsIkappaUnique + 1
+            (_lhsOconstraints@_) =
+                _argumentsIconstraints ++ [_newConstraint]
+            (_lhsOassumptions@_) =
+                _functionIassumptions `combine` _argumentsIassumptions
+            (_self@_) =
+                Type_Application _rangeIself prefix_ _functionIself _argumentsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOkappa@_) =
+                _kappa
+            (_functionOconstraints@_) =
+                _lhsIconstraints
+            (_functionOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_argumentsOconstraints@_) =
+                _functionIconstraints
+            (_argumentsOkappaUnique@_) =
+                _functionIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappa,_lhsOkappaUnique,_lhsOself)
 sem_Type_Constructor :: (T_Range) ->
                         (T_Name) ->
                         (T_Type)
-sem_Type_Constructor (_range) (_name) (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            Type_Constructor _range_self _name_self
-        (_kappa) =
-            TVar _lhs_kappaUnique
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( single _name_self _kappa,_lhs_constraints,_kappa,_lhs_kappaUnique + 1,_self)
+sem_Type_Constructor (range_) (name_) =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            (_kappa@_) =
+                TVar _lhsIkappaUnique
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique + 1
+            (_lhsOassumptions@_) =
+                single _nameIself _kappa
+            (_self@_) =
+                Type_Constructor _rangeIself _nameIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOconstraints@_) =
+                _lhsIconstraints
+            (_lhsOkappa@_) =
+                _kappa
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappa,_lhsOkappaUnique,_lhsOself)
 sem_Type_Exists :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
-sem_Type_Exists (_range) (_typevariables) (_type) (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            Type_Exists _range_self _typevariables_self _type_self
-        ((_assumptions,_kappa)) =
-            internalError "KindInferencing.ag" "n/a" "Existential types are not supported"
-        ( _range_self) =
-            (_range )
-        ( _typevariables_self) =
-            (_typevariables )
-        ( _type_assumptions,_type_constraints,_type_kappa,_type_kappaUnique,_type_self) =
-            (_type (_lhs_constraints) (_lhs_kappaUnique))
-    in  ( _assumptions,_type_constraints,_kappa,_type_kappaUnique,_self)
+sem_Type_Exists (range_) (typevariables_) (type_) =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _typevariablesIself) =
+                (typevariables_ )
+            ( _typeIassumptions,_typeIconstraints,_typeIkappa,_typeIkappaUnique,_typeIself) =
+                (type_ (_typeOconstraints) (_typeOkappaUnique))
+            ((_assumptions@_,_kappa@_)) =
+                internalError "KindInferencing.ag" "n/a" "Existential types are not supported"
+            (_self@_) =
+                Type_Exists _rangeIself _typevariablesIself _typeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOassumptions@_) =
+                _assumptions
+            (_lhsOconstraints@_) =
+                _typeIconstraints
+            (_lhsOkappa@_) =
+                _kappa
+            (_lhsOkappaUnique@_) =
+                _typeIkappaUnique
+            (_typeOconstraints@_) =
+                _lhsIconstraints
+            (_typeOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappa,_lhsOkappaUnique,_lhsOself)
 sem_Type_Forall :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
-sem_Type_Forall (_range) (_typevariables) (_type) (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            Type_Forall _range_self _typevariables_self _type_self
-        ((_assumptions,_kappa)) =
-            internalError "KindInferencing.ag" "n/a" "Universal types are not supported"
-        ( _range_self) =
-            (_range )
-        ( _typevariables_self) =
-            (_typevariables )
-        ( _type_assumptions,_type_constraints,_type_kappa,_type_kappaUnique,_type_self) =
-            (_type (_lhs_constraints) (_lhs_kappaUnique))
-    in  ( _assumptions,_type_constraints,_kappa,_type_kappaUnique,_self)
+sem_Type_Forall (range_) (typevariables_) (type_) =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _typevariablesIself) =
+                (typevariables_ )
+            ( _typeIassumptions,_typeIconstraints,_typeIkappa,_typeIkappaUnique,_typeIself) =
+                (type_ (_typeOconstraints) (_typeOkappaUnique))
+            ((_assumptions@_,_kappa@_)) =
+                internalError "KindInferencing.ag" "n/a" "Universal types are not supported"
+            (_self@_) =
+                Type_Forall _rangeIself _typevariablesIself _typeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOassumptions@_) =
+                _assumptions
+            (_lhsOconstraints@_) =
+                _typeIconstraints
+            (_lhsOkappa@_) =
+                _kappa
+            (_lhsOkappaUnique@_) =
+                _typeIkappaUnique
+            (_typeOconstraints@_) =
+                _lhsIconstraints
+            (_typeOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappa,_lhsOkappaUnique,_lhsOself)
 sem_Type_Parenthesized :: (T_Range) ->
                           (T_Type) ->
                           (T_Type)
-sem_Type_Parenthesized (_range) (_type) (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            Type_Parenthesized _range_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _type_assumptions,_type_constraints,_type_kappa,_type_kappaUnique,_type_self) =
-            (_type (_lhs_constraints) (_lhs_kappaUnique))
-    in  ( _type_assumptions,_type_constraints,_type_kappa,_type_kappaUnique,_self)
+sem_Type_Parenthesized (range_) (type_) =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _typeIassumptions,_typeIconstraints,_typeIkappa,_typeIkappaUnique,_typeIself) =
+                (type_ (_typeOconstraints) (_typeOkappaUnique))
+            (_self@_) =
+                Type_Parenthesized _rangeIself _typeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOassumptions@_) =
+                _typeIassumptions
+            (_lhsOconstraints@_) =
+                _typeIconstraints
+            (_lhsOkappa@_) =
+                _typeIkappa
+            (_lhsOkappaUnique@_) =
+                _typeIkappaUnique
+            (_typeOconstraints@_) =
+                _lhsIconstraints
+            (_typeOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappa,_lhsOkappaUnique,_lhsOself)
 sem_Type_Qualified :: (T_Range) ->
                       (T_ContextItems) ->
                       (T_Type) ->
                       (T_Type)
-sem_Type_Qualified (_range) (_context) (_type) (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            Type_Qualified _range_self _context_self _type_self
-        ((_assumptions,_kappa)) =
-            internalError "KindInferencing.ag" "n/a" "Qualified types are not supported"
-        ( _range_self) =
-            (_range )
-        ( _context_kappaUnique,_context_self) =
-            (_context (_lhs_kappaUnique))
-        ( _type_assumptions,_type_constraints,_type_kappa,_type_kappaUnique,_type_self) =
-            (_type (_lhs_constraints) (_context_kappaUnique))
-    in  ( _assumptions,_type_constraints,_kappa,_type_kappaUnique,_self)
+sem_Type_Qualified (range_) (context_) (type_) =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _contextIkappaUnique,_contextIself) =
+                (context_ (_contextOkappaUnique))
+            ( _typeIassumptions,_typeIconstraints,_typeIkappa,_typeIkappaUnique,_typeIself) =
+                (type_ (_typeOconstraints) (_typeOkappaUnique))
+            ((_assumptions@_,_kappa@_)) =
+                internalError "KindInferencing.ag" "n/a" "Qualified types are not supported"
+            (_self@_) =
+                Type_Qualified _rangeIself _contextIself _typeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOassumptions@_) =
+                _assumptions
+            (_lhsOconstraints@_) =
+                _typeIconstraints
+            (_lhsOkappa@_) =
+                _kappa
+            (_lhsOkappaUnique@_) =
+                _typeIkappaUnique
+            (_contextOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_typeOconstraints@_) =
+                _lhsIconstraints
+            (_typeOkappaUnique@_) =
+                _contextIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappa,_lhsOkappaUnique,_lhsOself)
 sem_Type_Variable :: (T_Range) ->
                      (T_Name) ->
                      (T_Type)
-sem_Type_Variable (_range) (_name) (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            Type_Variable _range_self _name_self
-        (_kappa) =
-            TVar _lhs_kappaUnique
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( single _name_self _kappa,_lhs_constraints,_kappa,_lhs_kappaUnique + 1,_self)
+sem_Type_Variable (range_) (name_) =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            (_kappa@_) =
+                TVar _lhsIkappaUnique
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique + 1
+            (_lhsOassumptions@_) =
+                single _nameIself _kappa
+            (_self@_) =
+                Type_Variable _rangeIself _nameIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOconstraints@_) =
+                _lhsIconstraints
+            (_lhsOkappa@_) =
+                _kappa
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappa,_lhsOkappaUnique,_lhsOself)
 -- Types -------------------------------------------------------
 -- semantic domain
 type T_Types = (KindConstraints) ->
@@ -2512,17 +3807,49 @@ sem_Types (list) =
 sem_Types_Cons :: (T_Type) ->
                   (T_Types) ->
                   (T_Types)
-sem_Types_Cons (_hd) (_tl) (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_assumptions,_hd_constraints,_hd_kappa,_hd_kappaUnique,_hd_self) =
-            (_hd (_lhs_constraints) (_lhs_kappaUnique))
-        ( _tl_assumptions,_tl_constraints,_tl_kappaUnique,_tl_kappas,_tl_self) =
-            (_tl (_hd_constraints) (_hd_kappaUnique))
-    in  ( _hd_assumptions `combine` _tl_assumptions,_tl_constraints,_tl_kappaUnique,_hd_kappa : _tl_kappas,_self)
+sem_Types_Cons (hd_) (tl_) =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let ( _hdIassumptions,_hdIconstraints,_hdIkappa,_hdIkappaUnique,_hdIself) =
+                (hd_ (_hdOconstraints) (_hdOkappaUnique))
+            ( _tlIassumptions,_tlIconstraints,_tlIkappaUnique,_tlIkappas,_tlIself) =
+                (tl_ (_tlOconstraints) (_tlOkappaUnique))
+            (_lhsOkappas@_) =
+                _hdIkappa : _tlIkappas
+            (_lhsOassumptions@_) =
+                _hdIassumptions `combine` _tlIassumptions
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOconstraints@_) =
+                _tlIconstraints
+            (_lhsOkappaUnique@_) =
+                _tlIkappaUnique
+            (_hdOconstraints@_) =
+                _lhsIconstraints
+            (_hdOkappaUnique@_) =
+                _lhsIkappaUnique
+            (_tlOconstraints@_) =
+                _hdIconstraints
+            (_tlOkappaUnique@_) =
+                _hdIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappaUnique,_lhsOkappas,_lhsOself)
 sem_Types_Nil :: (T_Types)
-sem_Types_Nil (_lhs_constraints) (_lhs_kappaUnique) =
-    let (_self) =
-            []
-    in  ( noAssumptions,_lhs_constraints,_lhs_kappaUnique,[],_self)
+sem_Types_Nil  =
+    \ _lhsIconstraints
+      _lhsIkappaUnique ->
+        let (_lhsOkappas@_) =
+                []
+            (_lhsOassumptions@_) =
+                noAssumptions
+            (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOconstraints@_) =
+                _lhsIconstraints
+            (_lhsOkappaUnique@_) =
+                _lhsIkappaUnique
+        in  ( _lhsOassumptions,_lhsOconstraints,_lhsOkappaUnique,_lhsOkappas,_lhsOself)
 

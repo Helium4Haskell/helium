@@ -178,32 +178,42 @@ sem_Alternative_Alternative :: (T_Range) ->
                                (T_Pattern) ->
                                (T_RightHandSide) ->
                                (T_Alternative)
-sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Alternative_Alternative _range_self _pattern_self _righthandside_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_self,_pattern_vars) =
-            (_pattern )
-        ( _righthandside_core,_righthandside_isGuarded,_righthandside_self) =
-            (_righthandside (_lhs_dictionaryEnv))
-    in  ( \nextCase  ->
-             let thisCase =
-                     patternToCore
-                         (caseExprId, _pattern_self)
-                         _righthandside_core
-             in
-                 let_ nextClauseId nextCase thisCase
-         ,_self
-         )
+sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternIself,_patternIvars) =
+                (pattern_ )
+            ( _righthandsideIcore,_righthandsideIisGuarded,_righthandsideIself) =
+                (righthandside_ (_righthandsideOdictionaryEnv))
+            (_lhsOcore@_) =
+                \nextCase  ->
+                   let thisCase =
+                           patternToCore
+                               (caseExprId, _patternIself)
+                               _righthandsideIcore
+                   in
+                       let_ nextClauseId nextCase thisCase
+            (_self@_) =
+                Alternative_Alternative _rangeIself _patternIself _righthandsideIself
+            (_lhsOself@_) =
+                _self
+            (_righthandsideOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Alternative_Empty :: (T_Range) ->
                          (T_Alternative)
-sem_Alternative_Empty (_range) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Alternative_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( id,_self)
+sem_Alternative_Empty (range_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            (_lhsOcore@_) =
+                id
+            (_self@_) =
+                Alternative_Empty _rangeIself
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcore,_lhsOself)
 -- Alternatives ------------------------------------------------
 -- semantic domain
 type T_Alternatives = (Range) ->
@@ -217,19 +227,37 @@ sem_Alternatives (list) =
 sem_Alternatives_Cons :: (T_Alternative) ->
                          (T_Alternatives) ->
                          (T_Alternatives)
-sem_Alternatives_Cons (_hd) (_tl) (_lhs_caseRange) (_lhs_dictionaryEnv) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_core,_hd_self) =
-            (_hd (_lhs_dictionaryEnv))
-        ( _tl_core,_tl_self) =
-            (_tl (_lhs_caseRange) (_lhs_dictionaryEnv))
-    in  ( _hd_core _tl_core,_self)
+sem_Alternatives_Cons (hd_) (tl_) =
+    \ _lhsIcaseRange
+      _lhsIdictionaryEnv ->
+        let ( _hdIcore,_hdIself) =
+                (hd_ (_hdOdictionaryEnv))
+            ( _tlIcore,_tlIself) =
+                (tl_ (_tlOcaseRange) (_tlOdictionaryEnv))
+            (_lhsOcore@_) =
+                _hdIcore _tlIcore
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_hdOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_tlOcaseRange@_) =
+                _lhsIcaseRange
+            (_tlOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Alternatives_Nil :: (T_Alternatives)
-sem_Alternatives_Nil (_lhs_caseRange) (_lhs_dictionaryEnv) =
-    let (_self) =
-            []
-    in  ( patternMatchFail "case expression" _lhs_caseRange,_self)
+sem_Alternatives_Nil  =
+    \ _lhsIcaseRange
+      _lhsIdictionaryEnv ->
+        let (_lhsOcore@_) =
+                patternMatchFail "case expression" _lhsIcaseRange
+            (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcore,_lhsOself)
 -- AnnotatedType -----------------------------------------------
 -- semantic domain
 type T_AnnotatedType = ( (AnnotatedType))
@@ -242,14 +270,16 @@ sem_AnnotatedType_AnnotatedType :: (T_Range) ->
                                    (Bool) ->
                                    (T_Type) ->
                                    (T_AnnotatedType)
-sem_AnnotatedType_AnnotatedType (_range) (_strict) (_type) =
-    let (_self) =
-            AnnotatedType_AnnotatedType _range_self _strict _type_self
-        ( _range_self) =
-            (_range )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_AnnotatedType_AnnotatedType (range_) (strict_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            AnnotatedType_AnnotatedType _rangeIself strict_ _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- AnnotatedTypes ----------------------------------------------
 -- semantic domain
 type T_AnnotatedTypes = ( (Int),(AnnotatedTypes))
@@ -261,19 +291,27 @@ sem_AnnotatedTypes (list) =
 sem_AnnotatedTypes_Cons :: (T_AnnotatedType) ->
                            (T_AnnotatedTypes) ->
                            (T_AnnotatedTypes)
-sem_AnnotatedTypes_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_length,_tl_self) =
-            (_tl )
-    in  ( 1 + _tl_length,_self)
+sem_AnnotatedTypes_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIlength,_tlIself) =
+            (tl_ )
+        (_lhsOlength@_) =
+            1 + _tlIlength
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOlength,_lhsOself)
 sem_AnnotatedTypes_Nil :: (T_AnnotatedTypes)
 sem_AnnotatedTypes_Nil  =
-    let (_self) =
+    let (_lhsOlength@_) =
+            0
+        (_self@_) =
             []
-    in  ( 0,_self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOlength,_lhsOself)
 -- Body --------------------------------------------------------
 -- semantic domain
 type T_Body = (DictionaryEnvironment) ->
@@ -288,16 +326,30 @@ sem_Body_Body :: (T_Range) ->
                  (T_ImportDeclarations) ->
                  (T_Declarations) ->
                  (T_Body)
-sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_dictionaryEnv) (_lhs_importEnv) =
-    let (_self) =
-            Body_Body _range_self _importdeclarations_self _declarations_self
-        ( _range_self) =
-            (_range )
-        ( _importdeclarations_self) =
-            (_importdeclarations )
-        ( _declarations_decls,_declarations_patBindNr,_declarations_self) =
-            (_declarations (_lhs_dictionaryEnv) (_lhs_importEnv) (True) (0))
-    in  ( _declarations_decls,_self)
+sem_Body_Body (range_) (importdeclarations_) (declarations_) =
+    \ _lhsIdictionaryEnv
+      _lhsIimportEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _importdeclarationsIself) =
+                (importdeclarations_ )
+            ( _declarationsIdecls,_declarationsIpatBindNr,_declarationsIself) =
+                (declarations_ (_declarationsOdictionaryEnv) (_declarationsOimportEnv) (_declarationsOisTopLevel) (_declarationsOpatBindNr))
+            (_declarationsOisTopLevel@_) =
+                True
+            (_declarationsOpatBindNr@_) =
+                0
+            (_lhsOdecls@_) =
+                _declarationsIdecls
+            (_self@_) =
+                Body_Body _rangeIself _importdeclarationsIself _declarationsIself
+            (_lhsOself@_) =
+                _self
+            (_declarationsOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_declarationsOimportEnv@_) =
+                _lhsIimportEnv
+        in  ( _lhsOdecls,_lhsOself)
 -- Constructor -------------------------------------------------
 -- semantic domain
 type T_Constructor = (Name) ->
@@ -318,73 +370,93 @@ sem_Constructor_Constructor :: (T_Range) ->
                                (T_Name) ->
                                (T_AnnotatedTypes) ->
                                (T_Constructor)
-sem_Constructor_Constructor (_range) (_constructor) (_types) (_lhs_dataTypeName) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_tag) =
-    let (_self) =
-            Constructor_Constructor _range_self _constructor_self _types_self
-        ( _range_self) =
-            (_range )
-        ( _constructor_self) =
-            (_constructor )
-        ( _types_length,_types_self) =
-            (_types )
-    in  ( [ (idFromName _constructor_self, Core.DeclCon
-              { Core.declName    = idFromName _constructor_self
-              , Core.declAccess  = Core.private
-              , Core.declArity   = _types_length
-              , Core.conTag      = _lhs_tag
-              , Core.declCustoms = constructorCustoms
-                                      _lhs_dataTypeName
-                                      _constructor_self
-                                      (valueConstructors _lhs_importEnv)
-              }
-            )
-          ]
-         ,_self
-         )
+sem_Constructor_Constructor (range_) (constructor_) (types_) =
+    \ _lhsIdataTypeName
+      _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsItag ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _constructorIself) =
+                (constructor_ )
+            ( _typesIlength,_typesIself) =
+                (types_ )
+            (_lhsOcons@_) =
+                [ (idFromName _constructorIself, Core.DeclCon
+                    { Core.declName    = idFromName _constructorIself
+                    , Core.declAccess  = Core.private
+                    , Core.declArity   = _typesIlength
+                    , Core.conTag      = _lhsItag
+                    , Core.declCustoms = constructorCustoms
+                                            _lhsIdataTypeName
+                                            _constructorIself
+                                            (valueConstructors _lhsIimportEnv)
+                    }
+                  )
+                ]
+            (_self@_) =
+                Constructor_Constructor _rangeIself _constructorIself _typesIself
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcons,_lhsOself)
 sem_Constructor_Infix :: (T_Range) ->
                          (T_AnnotatedType) ->
                          (T_Name) ->
                          (T_AnnotatedType) ->
                          (T_Constructor)
-sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) (_lhs_dataTypeName) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_tag) =
-    let (_self) =
-            Constructor_Infix _range_self _leftType_self _constructorOperator_self _rightType_self
-        ( _range_self) =
-            (_range )
-        ( _leftType_self) =
-            (_leftType )
-        ( _constructorOperator_self) =
-            (_constructorOperator )
-        ( _rightType_self) =
-            (_rightType )
-    in  ( [ (idFromName _constructorOperator_self, Core.DeclCon
-              { Core.declName    = idFromName _constructorOperator_self
-              , Core.declAccess  = Core.private
-              , Core.declArity   = 2
-              , Core.conTag      = _lhs_tag
-              , Core.declCustoms = constructorCustoms
-                                      _lhs_dataTypeName
-                                      _constructorOperator_self
-                                      (valueConstructors _lhs_importEnv)
-              }
-            )
-          ]
-         ,_self
-         )
+sem_Constructor_Infix (range_) (leftType_) (constructorOperator_) (rightType_) =
+    \ _lhsIdataTypeName
+      _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsItag ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _leftTypeIself) =
+                (leftType_ )
+            ( _constructorOperatorIself) =
+                (constructorOperator_ )
+            ( _rightTypeIself) =
+                (rightType_ )
+            (_lhsOcons@_) =
+                [ (idFromName _constructorOperatorIself, Core.DeclCon
+                    { Core.declName    = idFromName _constructorOperatorIself
+                    , Core.declAccess  = Core.private
+                    , Core.declArity   = 2
+                    , Core.conTag      = _lhsItag
+                    , Core.declCustoms = constructorCustoms
+                                            _lhsIdataTypeName
+                                            _constructorOperatorIself
+                                            (valueConstructors _lhsIimportEnv)
+                    }
+                  )
+                ]
+            (_self@_) =
+                Constructor_Infix _rangeIself _leftTypeIself _constructorOperatorIself _rightTypeIself
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcons,_lhsOself)
 sem_Constructor_Record :: (T_Range) ->
                           (T_Name) ->
                           (T_FieldDeclarations) ->
                           (T_Constructor)
-sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) (_lhs_dataTypeName) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_tag) =
-    let (_self) =
-            Constructor_Record _range_self _constructor_self _fieldDeclarations_self
-        ( _range_self) =
-            (_range )
-        ( _constructor_self) =
-            (_constructor )
-        ( _fieldDeclarations_self) =
-            (_fieldDeclarations )
-    in  ( internalError "ToCoreDecl" "Constructor" "records not supported",_self)
+sem_Constructor_Record (range_) (constructor_) (fieldDeclarations_) =
+    \ _lhsIdataTypeName
+      _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsItag ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _constructorIself) =
+                (constructor_ )
+            ( _fieldDeclarationsIself) =
+                (fieldDeclarations_ )
+            (_lhsOcons@_) =
+                internalError "ToCoreDecl" "Constructor" "records not supported"
+            (_self@_) =
+                Constructor_Record _rangeIself _constructorIself _fieldDeclarationsIself
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcons,_lhsOself)
 -- Constructors ------------------------------------------------
 -- semantic domain
 type T_Constructors = (Name) ->
@@ -400,19 +472,51 @@ sem_Constructors (list) =
 sem_Constructors_Cons :: (T_Constructor) ->
                          (T_Constructors) ->
                          (T_Constructors)
-sem_Constructors_Cons (_hd) (_tl) (_lhs_dataTypeName) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_tag) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_cons,_hd_self) =
-            (_hd (_lhs_dataTypeName) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_tag))
-        ( _tl_cons,_tl_self) =
-            (_tl (_lhs_dataTypeName) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_tag + 1))
-    in  ( _hd_cons  ++  _tl_cons,_self)
+sem_Constructors_Cons (hd_) (tl_) =
+    \ _lhsIdataTypeName
+      _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsItag ->
+        let ( _hdIcons,_hdIself) =
+                (hd_ (_hdOdataTypeName) (_hdOdictionaryEnv) (_hdOimportEnv) (_hdOtag))
+            ( _tlIcons,_tlIself) =
+                (tl_ (_tlOdataTypeName) (_tlOdictionaryEnv) (_tlOimportEnv) (_tlOtag))
+            (_tlOtag@_) =
+                _lhsItag + 1
+            (_hdOtag@_) =
+                _lhsItag
+            (_lhsOcons@_) =
+                _hdIcons  ++  _tlIcons
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_hdOdataTypeName@_) =
+                _lhsIdataTypeName
+            (_hdOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_hdOimportEnv@_) =
+                _lhsIimportEnv
+            (_tlOdataTypeName@_) =
+                _lhsIdataTypeName
+            (_tlOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_tlOimportEnv@_) =
+                _lhsIimportEnv
+        in  ( _lhsOcons,_lhsOself)
 sem_Constructors_Nil :: (T_Constructors)
-sem_Constructors_Nil (_lhs_dataTypeName) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_tag) =
-    let (_self) =
-            []
-    in  ( [],_self)
+sem_Constructors_Nil  =
+    \ _lhsIdataTypeName
+      _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsItag ->
+        let (_lhsOcons@_) =
+                []
+            (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcons,_lhsOself)
 -- ContextItem -------------------------------------------------
 -- semantic domain
 type T_ContextItem = ( (ContextItem))
@@ -425,16 +529,18 @@ sem_ContextItem_ContextItem :: (T_Range) ->
                                (T_Name) ->
                                (T_Types) ->
                                (T_ContextItem)
-sem_ContextItem_ContextItem (_range) (_name) (_types) =
-    let (_self) =
-            ContextItem_ContextItem _range_self _name_self _types_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _types_self) =
-            (_types )
-    in  ( _self)
+sem_ContextItem_ContextItem (range_) (name_) (types_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _typesIself) =
+            (types_ )
+        (_self@_) =
+            ContextItem_ContextItem _rangeIself _nameIself _typesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ContextItems ------------------------------------------------
 -- semantic domain
 type T_ContextItems = ( (ContextItems))
@@ -446,19 +552,23 @@ sem_ContextItems (list) =
 sem_ContextItems_Cons :: (T_ContextItem) ->
                          (T_ContextItems) ->
                          (T_ContextItems)
-sem_ContextItems_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_ContextItems_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_ContextItems_Nil :: (T_ContextItems)
 sem_ContextItems_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Declaration -------------------------------------------------
 -- semantic domain
 type T_Declaration = (DictionaryEnvironment) ->
@@ -496,301 +606,424 @@ sem_Declaration_Class :: (T_Range) ->
                          (T_SimpleType) ->
                          (T_MaybeDeclarations) ->
                          (T_Declaration)
-sem_Declaration_Class (_range) (_context) (_simpletype) (_where) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
-    let (_self) =
-            Declaration_Class _range_self _context_self _simpletype_self _where_self
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _simpletype_name,_simpletype_self,_simpletype_typevariables) =
-            (_simpletype )
-        ( _where_core,_where_self) =
-            (_where (_lhs_dictionaryEnv))
-    in  ( internalError "ToCoreDecl" "Declaration" "'class' not supported",_lhs_patBindNr,_self)
+sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
+    \ _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsIisTopLevel
+      _lhsIpatBindNr ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _contextIself) =
+                (context_ )
+            ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
+                (simpletype_ )
+            ( _whereIcore,_whereIself) =
+                (where_ (_whereOdictionaryEnv))
+            (_lhsOdecls@_) =
+                internalError "ToCoreDecl" "Declaration" "'class' not supported"
+            (_self@_) =
+                Declaration_Class _rangeIself _contextIself _simpletypeIself _whereIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOpatBindNr@_) =
+                _lhsIpatBindNr
+            (_whereOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)
 sem_Declaration_Data :: (T_Range) ->
                         (T_ContextItems) ->
                         (T_SimpleType) ->
                         (T_Constructors) ->
                         (T_Names) ->
                         (T_Declaration)
-sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivings) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
-    let (_self) =
-            Declaration_Data _range_self _context_self _simpletype_self _constructors_self _derivings_self
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _simpletype_name,_simpletype_self,_simpletype_typevariables) =
-            (_simpletype )
-        ( _constructors_cons,_constructors_self) =
-            (_constructors (_simpletype_name) (_lhs_dictionaryEnv) (_lhs_importEnv) (0))
-        ( _derivings_names,_derivings_self) =
-            (_derivings )
-    in  ( map snd _constructors_cons
-          ++
-          [ Core.DeclCustom
-              { Core.declName    = idFromString (getNameName _simpletype_name)
-              , Core.declAccess  = Core.private
-              , Core.declKind    = Core.DeclKindCustom (idFromString "data")
-              , Core.declCustoms = [Core.CustomInt (length _simpletype_typevariables)]
-              }
-          ]
-          ++
-          [derivingShow _self]
-         ,_lhs_patBindNr
-         ,_self
-         )
+sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (derivings_) =
+    \ _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsIisTopLevel
+      _lhsIpatBindNr ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _contextIself) =
+                (context_ )
+            ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
+                (simpletype_ )
+            ( _constructorsIcons,_constructorsIself) =
+                (constructors_ (_constructorsOdataTypeName) (_constructorsOdictionaryEnv) (_constructorsOimportEnv) (_constructorsOtag))
+            ( _derivingsInames,_derivingsIself) =
+                (derivings_ )
+            (_lhsOdecls@_) =
+                map snd _constructorsIcons
+                ++
+                [ Core.DeclCustom
+                    { Core.declName    = idFromString (getNameName _simpletypeIname)
+                    , Core.declAccess  = Core.private
+                    , Core.declKind    = Core.DeclKindCustom (idFromString "data")
+                    , Core.declCustoms = [Core.CustomInt (length _simpletypeItypevariables)]
+                    }
+                ]
+                ++
+                [derivingShow _self]
+            (_constructorsOdataTypeName@_) =
+                _simpletypeIname
+            (_constructorsOtag@_) =
+                0
+            (_self@_) =
+                Declaration_Data _rangeIself _contextIself _simpletypeIself _constructorsIself _derivingsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOpatBindNr@_) =
+                _lhsIpatBindNr
+            (_constructorsOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_constructorsOimportEnv@_) =
+                _lhsIimportEnv
+        in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)
 sem_Declaration_Default :: (T_Range) ->
                            (T_Types) ->
                            (T_Declaration)
-sem_Declaration_Default (_range) (_types) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
-    let (_self) =
-            Declaration_Default _range_self _types_self
-        ( _range_self) =
-            (_range )
-        ( _types_self) =
-            (_types )
-    in  ( internalError "ToCoreDecl" "Declaration" "'default' not supported",_lhs_patBindNr,_self)
+sem_Declaration_Default (range_) (types_) =
+    \ _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsIisTopLevel
+      _lhsIpatBindNr ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _typesIself) =
+                (types_ )
+            (_lhsOdecls@_) =
+                internalError "ToCoreDecl" "Declaration" "'default' not supported"
+            (_self@_) =
+                Declaration_Default _rangeIself _typesIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOpatBindNr@_) =
+                _lhsIpatBindNr
+        in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)
 sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
-sem_Declaration_Empty (_range) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
-    let (_self) =
-            Declaration_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( internalError "ToCoreDecl" "Declaration" "empty declarations not supported",_lhs_patBindNr,_self)
+sem_Declaration_Empty (range_) =
+    \ _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsIisTopLevel
+      _lhsIpatBindNr ->
+        let ( _rangeIself) =
+                (range_ )
+            (_lhsOdecls@_) =
+                internalError "ToCoreDecl" "Declaration" "empty declarations not supported"
+            (_self@_) =
+                Declaration_Empty _rangeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOpatBindNr@_) =
+                _lhsIpatBindNr
+        in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)
 sem_Declaration_Fixity :: (T_Range) ->
                           (T_Fixity) ->
                           (T_MaybeInt) ->
                           (T_Names) ->
                           (T_Declaration)
-sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
-    let (_self) =
-            Declaration_Fixity _range_self _fixity_self _priority_self _operators_self
-        ( _range_self) =
-            (_range )
-        ( _fixity_self) =
-            (_fixity )
-        ( _priority_self) =
-            (_priority )
-        ( _operators_names,_operators_self) =
-            (_operators )
-    in  ( map
-              ( ( \n ->
-                  Core.DeclCustom
-                      { Core.declName    = idFromString n
-                      , Core.declAccess  = Core.private
-                      , Core.declKind    = (Core.DeclKindCustom . idFromString) "infix"
-                      , Core.declCustoms =
-                          [ Core.CustomInt
-                               ( case _priority_self of
-                                    MaybeInt_Just i  -> i
-                                    MaybeInt_Nothing -> 9 )
-                          , (Core.CustomBytes . bytesFromString)
-                                ( case _fixity_self of
-                                     Fixity_Infixr _ -> "right"
-                                     Fixity_Infixl _ -> "left"
-                                     Fixity_Infix  _ -> "none"
-                                     _               -> internalError
-                                                          "ToCoreDecl.ag"
-                                                          "SEM Declaration.Fixity"
-                                                          "unknown fixity"
-                                )
-                          ]
-                      }
-                )
-                .
-                getNameName
-              )
-              _operators_self
-         ,_lhs_patBindNr
-         ,_self
-         )
+sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
+    \ _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsIisTopLevel
+      _lhsIpatBindNr ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _fixityIself) =
+                (fixity_ )
+            ( _priorityIself) =
+                (priority_ )
+            ( _operatorsInames,_operatorsIself) =
+                (operators_ )
+            (_lhsOdecls@_) =
+                map
+                    ( ( \n ->
+                        Core.DeclCustom
+                            { Core.declName    = idFromString n
+                            , Core.declAccess  = Core.private
+                            , Core.declKind    = (Core.DeclKindCustom . idFromString) "infix"
+                            , Core.declCustoms =
+                                [ Core.CustomInt
+                                     ( case _priorityIself of
+                                          MaybeInt_Just i  -> i
+                                          MaybeInt_Nothing -> 9 )
+                                , (Core.CustomBytes . bytesFromString)
+                                      ( case _fixityIself of
+                                           Fixity_Infixr _ -> "right"
+                                           Fixity_Infixl _ -> "left"
+                                           Fixity_Infix  _ -> "none"
+                                           _               -> internalError
+                                                                "ToCoreDecl.ag"
+                                                                "SEM Declaration.Fixity"
+                                                                "unknown fixity"
+                                      )
+                                ]
+                            }
+                      )
+                      .
+                      getNameName
+                    )
+                    _operatorsIself
+            (_self@_) =
+                Declaration_Fixity _rangeIself _fixityIself _priorityIself _operatorsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOpatBindNr@_) =
+                _lhsIpatBindNr
+        in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)
 sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)
-sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
-    let (_self) =
-            Declaration_FunctionBindings _range_self _bindings_self
-        (_ids) =
-            freshIds "u$" _bindings_arity
-        (_dictionaries) =
-            map predicateToId
-               (getPredicateForDecl _bindings_name _lhs_dictionaryEnv)
-        ( _range_self) =
-            (_range )
-        ( _bindings_arity,_bindings_core,_bindings_name,_bindings_self) =
-            (_bindings (_lhs_dictionaryEnv) (_ids) (_range_self))
-    in  ( [ Core.DeclValue
-              { Core.declName    = idFromName _bindings_name
-              , Core.declAccess  = Core.private
-              , Core.valueEnc    = Nothing
-              , Core.valueValue  = foldr Core.Lam _bindings_core (_dictionaries ++ _ids)
-              , Core.declCustoms = toplevelType _bindings_name _lhs_importEnv _lhs_isTopLevel
-              }
-          ]
-         ,_lhs_patBindNr
-         ,_self
-         )
+sem_Declaration_FunctionBindings (range_) (bindings_) =
+    \ _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsIisTopLevel
+      _lhsIpatBindNr ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _bindingsIarity,_bindingsIcore,_bindingsIname,_bindingsIself) =
+                (bindings_ (_bindingsOdictionaryEnv) (_bindingsOids) (_bindingsOrange))
+            (_lhsOdecls@_) =
+                [ Core.DeclValue
+                    { Core.declName    = idFromName _bindingsIname
+                    , Core.declAccess  = Core.private
+                    , Core.valueEnc    = Nothing
+                    , Core.valueValue  = foldr Core.Lam _bindingsIcore (_dictionaries ++ _ids)
+                    , Core.declCustoms = toplevelType _bindingsIname _lhsIimportEnv _lhsIisTopLevel
+                    }
+                ]
+            (_dictionaries@_) =
+                map predicateToId
+                   (getPredicateForDecl _bindingsIname _lhsIdictionaryEnv)
+            (_bindingsOrange@_) =
+                _rangeIself
+            (_bindingsOids@_) =
+                _ids
+            (_ids@_) =
+                freshIds "u$" _bindingsIarity
+            (_self@_) =
+                Declaration_FunctionBindings _rangeIself _bindingsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOpatBindNr@_) =
+                _lhsIpatBindNr
+            (_bindingsOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)
 sem_Declaration_Instance :: (T_Range) ->
                             (T_ContextItems) ->
                             (T_Name) ->
                             (T_Types) ->
                             (T_MaybeDeclarations) ->
                             (T_Declaration)
-sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
-    let (_self) =
-            Declaration_Instance _range_self _context_self _name_self _types_self _where_self
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _name_self) =
-            (_name )
-        ( _types_self) =
-            (_types )
-        ( _where_core,_where_self) =
-            (_where (_lhs_dictionaryEnv))
-    in  ( internalError "ToCoreDecl" "Declaration" "'instance' not supported",_lhs_patBindNr,_self)
+sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
+    \ _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsIisTopLevel
+      _lhsIpatBindNr ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _contextIself) =
+                (context_ )
+            ( _nameIself) =
+                (name_ )
+            ( _typesIself) =
+                (types_ )
+            ( _whereIcore,_whereIself) =
+                (where_ (_whereOdictionaryEnv))
+            (_lhsOdecls@_) =
+                internalError "ToCoreDecl" "Declaration" "'instance' not supported"
+            (_self@_) =
+                Declaration_Instance _rangeIself _contextIself _nameIself _typesIself _whereIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOpatBindNr@_) =
+                _lhsIpatBindNr
+            (_whereOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)
 sem_Declaration_Newtype :: (T_Range) ->
                            (T_ContextItems) ->
                            (T_SimpleType) ->
                            (T_Constructor) ->
                            (T_Names) ->
                            (T_Declaration)
-sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_derivings) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
-    let (_self) =
-            Declaration_Newtype _range_self _context_self _simpletype_self _constructor_self _derivings_self
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _simpletype_name,_simpletype_self,_simpletype_typevariables) =
-            (_simpletype )
-        ( _constructor_cons,_constructor_self) =
-            (_constructor (_simpletype_name) (_lhs_dictionaryEnv) (_lhs_importEnv) (0))
-        ( _derivings_names,_derivings_self) =
-            (_derivings )
-    in  ( internalError "ToCoreDecl" "Declaration" "'newType' not supported",_lhs_patBindNr,_self)
+sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivings_) =
+    \ _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsIisTopLevel
+      _lhsIpatBindNr ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _contextIself) =
+                (context_ )
+            ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
+                (simpletype_ )
+            ( _constructorIcons,_constructorIself) =
+                (constructor_ (_constructorOdataTypeName) (_constructorOdictionaryEnv) (_constructorOimportEnv) (_constructorOtag))
+            ( _derivingsInames,_derivingsIself) =
+                (derivings_ )
+            (_constructorOdataTypeName@_) =
+                _simpletypeIname
+            (_constructorOtag@_) =
+                0
+            (_lhsOdecls@_) =
+                internalError "ToCoreDecl" "Declaration" "'newType' not supported"
+            (_self@_) =
+                Declaration_Newtype _rangeIself _contextIself _simpletypeIself _constructorIself _derivingsIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOpatBindNr@_) =
+                _lhsIpatBindNr
+            (_constructorOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_constructorOimportEnv@_) =
+                _lhsIimportEnv
+        in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)
 sem_Declaration_PatternBinding :: (T_Range) ->
                                   (T_Pattern) ->
                                   (T_RightHandSide) ->
                                   (T_Declaration)
-sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
-    let (_self) =
-            Declaration_PatternBinding _range_self _pattern_self _righthandside_self
-        (_dictionaries) =
-            case _pattern_self of
-                Pattern_Variable _ n ->
-                   map predicateToId
-                      (getPredicateForDecl n _lhs_dictionaryEnv)
-                _ -> []
-        ( _range_self) =
-            (_range )
-        ( _pattern_self,_pattern_vars) =
-            (_pattern )
-        ( _righthandside_core,_righthandside_isGuarded,_righthandside_self) =
-            (_righthandside (_lhs_dictionaryEnv))
-    in  ( case _pattern_self of
-              Pattern_Variable _ n ->
-                  [ Core.DeclValue
-                      { Core.declName    = idFromName n
-                      , Core.declAccess  = Core.private
-                      , Core.valueEnc    = Nothing
-                      , Core.valueValue  =
-                          foldr Core.Lam
-                              ( let_
-                                  nextClauseId (patternMatchFail "pattern binding" _range_self)
-                                  _righthandside_core
-                              )
-                              _dictionaries
-                      , Core.declCustoms = toplevelType n _lhs_importEnv _lhs_isTopLevel
-                      }
-                 ]
-              _ ->
-                  Core.DeclValue
-                      { Core.declName    = patBindId
-                      , Core.declAccess  = Core.private
-                      , Core.valueEnc    = Nothing
-                      , Core.valueValue  =
-                          let_
-                              nextClauseId (patternMatchFail "pattern binding" _range_self)
-                              _righthandside_core
-                      , Core.declCustoms = []
-                      }
-                  :
-                  [ Core.DeclValue
-                      { Core.declName    = idFromName v
-                      , Core.declAccess  = Core.private
-                      , Core.valueEnc    = Nothing
-                      , Core.valueValue  =
-                          (let_ nextClauseId (patternMatchFail "pattern binding" _range_self)
-                              (patternToCore (patBindId, _pattern_self) (Core.Var (idFromName v)))
-                          )
-                      , Core.declCustoms = toplevelType v _lhs_importEnv _lhs_isTopLevel
-                      }
-                  | v <- _pattern_vars
-                  ]
-                  where
-                      patBindId = idFromString ("patBind$" ++ show _lhs_patBindNr)
-         ,_lhs_patBindNr + 1
-         ,_self
-         )
+sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
+    \ _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsIisTopLevel
+      _lhsIpatBindNr ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternIself,_patternIvars) =
+                (pattern_ )
+            ( _righthandsideIcore,_righthandsideIisGuarded,_righthandsideIself) =
+                (righthandside_ (_righthandsideOdictionaryEnv))
+            (_lhsOdecls@_) =
+                case _patternIself of
+                    Pattern_Variable _ n ->
+                        [ Core.DeclValue
+                            { Core.declName    = idFromName n
+                            , Core.declAccess  = Core.private
+                            , Core.valueEnc    = Nothing
+                            , Core.valueValue  =
+                                foldr Core.Lam
+                                    ( let_
+                                        nextClauseId (patternMatchFail "pattern binding" _rangeIself)
+                                        _righthandsideIcore
+                                    )
+                                    _dictionaries
+                            , Core.declCustoms = toplevelType n _lhsIimportEnv _lhsIisTopLevel
+                            }
+                       ]
+                    _ ->
+                        Core.DeclValue
+                            { Core.declName    = patBindId
+                            , Core.declAccess  = Core.private
+                            , Core.valueEnc    = Nothing
+                            , Core.valueValue  =
+                                let_
+                                    nextClauseId (patternMatchFail "pattern binding" _rangeIself)
+                                    _righthandsideIcore
+                            , Core.declCustoms = []
+                            }
+                        :
+                        [ Core.DeclValue
+                            { Core.declName    = idFromName v
+                            , Core.declAccess  = Core.private
+                            , Core.valueEnc    = Nothing
+                            , Core.valueValue  =
+                                (let_ nextClauseId (patternMatchFail "pattern binding" _rangeIself)
+                                    (patternToCore (patBindId, _patternIself) (Core.Var (idFromName v)))
+                                )
+                            , Core.declCustoms = toplevelType v _lhsIimportEnv _lhsIisTopLevel
+                            }
+                        | v <- _patternIvars
+                        ]
+                        where
+                            patBindId = idFromString ("patBind$" ++ show _lhsIpatBindNr)
+            (_dictionaries@_) =
+                case _patternIself of
+                    Pattern_Variable _ n ->
+                       map predicateToId
+                          (getPredicateForDecl n _lhsIdictionaryEnv)
+                    _ -> []
+            (_lhsOpatBindNr@_) =
+                _lhsIpatBindNr + 1
+            (_self@_) =
+                Declaration_PatternBinding _rangeIself _patternIself _righthandsideIself
+            (_lhsOself@_) =
+                _self
+            (_righthandsideOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)
 sem_Declaration_Type :: (T_Range) ->
                         (T_SimpleType) ->
                         (T_Type) ->
                         (T_Declaration)
-sem_Declaration_Type (_range) (_simpletype) (_type) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
-    let (_self) =
-            Declaration_Type _range_self _simpletype_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _simpletype_name,_simpletype_self,_simpletype_typevariables) =
-            (_simpletype )
-        ( _type_self) =
-            (_type )
-    in  ( let
-              (t1,[t2])   = convertFromSimpleTypeAndTypes _simpletype_self [_type_self]
-              allTypeVars = ftv [t1,t2]
-              (ts1,ts2)   = (TpScheme allTypeVars [] ([] :=> t1),TpScheme allTypeVars [] ([] :=> t2))
-          in
-          [ Core.DeclCustom
-              { Core.declName    = idFromString (getNameName _simpletype_name)
-              , Core.declAccess  = Core.private
-              , Core.declKind    = Core.DeclKindCustom (idFromString "typedecl")
-              , Core.declCustoms =
-                  [ Core.CustomBytes
-                      (Byte.bytesFromString
-                          (  show ts1
-                          ++ " = "
-                          ++ show ts2
-                          )
-                      )
-                  , Core.CustomInt
-                      (length _simpletype_typevariables)
-                  ]
-              }
-          ]
-          ++
-          [derivingShow _self]
-         ,_lhs_patBindNr
-         ,_self
-         )
+sem_Declaration_Type (range_) (simpletype_) (type_) =
+    \ _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsIisTopLevel
+      _lhsIpatBindNr ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
+                (simpletype_ )
+            ( _typeIself) =
+                (type_ )
+            (_lhsOdecls@_) =
+                let
+                    (t1,[t2])   = convertFromSimpleTypeAndTypes _simpletypeIself [_typeIself]
+                    allTypeVars = ftv [t1,t2]
+                    (ts1,ts2)   = (TpScheme allTypeVars [] ([] :=> t1),TpScheme allTypeVars [] ([] :=> t2))
+                in
+                [ Core.DeclCustom
+                    { Core.declName    = idFromString (getNameName _simpletypeIname)
+                    , Core.declAccess  = Core.private
+                    , Core.declKind    = Core.DeclKindCustom (idFromString "typedecl")
+                    , Core.declCustoms =
+                        [ Core.CustomBytes
+                            (Byte.bytesFromString
+                                (  show ts1
+                                ++ " = "
+                                ++ show ts2
+                                )
+                            )
+                        , Core.CustomInt
+                            (length _simpletypeItypevariables)
+                        ]
+                    }
+                ]
+                ++
+                [derivingShow _self]
+            (_self@_) =
+                Declaration_Type _rangeIself _simpletypeIself _typeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOpatBindNr@_) =
+                _lhsIpatBindNr
+        in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)
 sem_Declaration_TypeSignature :: (T_Range) ->
                                  (T_Names) ->
                                  (T_Type) ->
                                  (T_Declaration)
-sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
-    let (_self) =
-            Declaration_TypeSignature _range_self _names_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _names_names,_names_self) =
-            (_names )
-        ( _type_self) =
-            (_type )
-    in  ( [],_lhs_patBindNr,_self)
+sem_Declaration_TypeSignature (range_) (names_) (type_) =
+    \ _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsIisTopLevel
+      _lhsIpatBindNr ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _namesInames,_namesIself) =
+                (names_ )
+            ( _typeIself) =
+                (type_ )
+            (_lhsOdecls@_) =
+                []
+            (_self@_) =
+                Declaration_TypeSignature _rangeIself _namesIself _typeIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOpatBindNr@_) =
+                _lhsIpatBindNr
+        in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)
 -- Declarations ------------------------------------------------
 -- semantic domain
 type T_Declarations = (DictionaryEnvironment) ->
@@ -806,19 +1039,55 @@ sem_Declarations (list) =
 sem_Declarations_Cons :: (T_Declaration) ->
                          (T_Declarations) ->
                          (T_Declarations)
-sem_Declarations_Cons (_hd) (_tl) (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_decls,_hd_patBindNr,_hd_self) =
-            (_hd (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr))
-        ( _tl_decls,_tl_patBindNr,_tl_self) =
-            (_tl (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_hd_patBindNr))
-    in  ( _hd_decls  ++  _tl_decls,_tl_patBindNr,_self)
+sem_Declarations_Cons (hd_) (tl_) =
+    \ _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsIisTopLevel
+      _lhsIpatBindNr ->
+        let ( _hdIdecls,_hdIpatBindNr,_hdIself) =
+                (hd_ (_hdOdictionaryEnv) (_hdOimportEnv) (_hdOisTopLevel) (_hdOpatBindNr))
+            ( _tlIdecls,_tlIpatBindNr,_tlIself) =
+                (tl_ (_tlOdictionaryEnv) (_tlOimportEnv) (_tlOisTopLevel) (_tlOpatBindNr))
+            (_lhsOdecls@_) =
+                _hdIdecls  ++  _tlIdecls
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOpatBindNr@_) =
+                _tlIpatBindNr
+            (_hdOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_hdOimportEnv@_) =
+                _lhsIimportEnv
+            (_hdOisTopLevel@_) =
+                _lhsIisTopLevel
+            (_hdOpatBindNr@_) =
+                _lhsIpatBindNr
+            (_tlOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_tlOimportEnv@_) =
+                _lhsIimportEnv
+            (_tlOisTopLevel@_) =
+                _lhsIisTopLevel
+            (_tlOpatBindNr@_) =
+                _hdIpatBindNr
+        in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)
 sem_Declarations_Nil :: (T_Declarations)
-sem_Declarations_Nil (_lhs_dictionaryEnv) (_lhs_importEnv) (_lhs_isTopLevel) (_lhs_patBindNr) =
-    let (_self) =
-            []
-    in  ( [],_lhs_patBindNr,_self)
+sem_Declarations_Nil  =
+    \ _lhsIdictionaryEnv
+      _lhsIimportEnv
+      _lhsIisTopLevel
+      _lhsIpatBindNr ->
+        let (_lhsOdecls@_) =
+                []
+            (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+            (_lhsOpatBindNr@_) =
+                _lhsIpatBindNr
+        in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)
 -- Export ------------------------------------------------------
 -- semantic domain
 type T_Export = ( (IdSet),(IdSet),(Export),(IdSet),(IdSet))
@@ -836,50 +1105,90 @@ sem_Export ((Export_Variable (_range) (_name))) =
 sem_Export_Module :: (T_Range) ->
                      (T_Name) ->
                      (T_Export)
-sem_Export_Module (_range) (_name) =
-    let (_self) =
-            Export_Module _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( emptySet,singleSet (idFromName _name_self),_self,emptySet,emptySet)
+sem_Export_Module (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_lhsOmods@_) =
+            singleSet (idFromName _nameIself)
+        (_lhsOcons@_) =
+            emptySet
+        (_lhsOtypes@_) =
+            emptySet
+        (_lhsOvalues@_) =
+            emptySet
+        (_self@_) =
+            Export_Module _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOcons,_lhsOmods,_lhsOself,_lhsOtypes,_lhsOvalues)
 sem_Export_TypeOrClass :: (T_Range) ->
                           (T_Name) ->
                           (T_MaybeNames) ->
                           (T_Export)
-sem_Export_TypeOrClass (_range) (_name) (_names) =
-    let (_self) =
-            Export_TypeOrClass _range_self _name_self _names_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _names_names,_names_self) =
-            (_names )
-    in  ( setFromList (maybe [] (map idFromName) _names_names),emptySet,_self,singleSet (idFromName _name_self),emptySet)
+sem_Export_TypeOrClass (range_) (name_) (names_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _namesInames,_namesIself) =
+            (names_ )
+        (_lhsOmods@_) =
+            emptySet
+        (_lhsOcons@_) =
+            setFromList (maybe [] (map idFromName) _namesInames)
+        (_lhsOtypes@_) =
+            singleSet (idFromName _nameIself)
+        (_lhsOvalues@_) =
+            emptySet
+        (_self@_) =
+            Export_TypeOrClass _rangeIself _nameIself _namesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOcons,_lhsOmods,_lhsOself,_lhsOtypes,_lhsOvalues)
 sem_Export_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Export)
-sem_Export_TypeOrClassComplete (_range) (_name) =
-    let (_self) =
-            Export_TypeOrClassComplete _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration",internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration",_self,internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration",internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration")
+sem_Export_TypeOrClassComplete (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_lhsOmods@_) =
+            internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
+        (_lhsOcons@_) =
+            internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
+        (_lhsOtypes@_) =
+            internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
+        (_lhsOvalues@_) =
+            internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
+        (_self@_) =
+            Export_TypeOrClassComplete _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOcons,_lhsOmods,_lhsOself,_lhsOtypes,_lhsOvalues)
 sem_Export_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Export)
-sem_Export_Variable (_range) (_name) =
-    let (_self) =
-            Export_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( emptySet,emptySet,_self,emptySet,singleSet (idFromName _name_self))
+sem_Export_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_lhsOmods@_) =
+            emptySet
+        (_lhsOcons@_) =
+            emptySet
+        (_lhsOtypes@_) =
+            emptySet
+        (_lhsOvalues@_) =
+            singleSet (idFromName _nameIself)
+        (_self@_) =
+            Export_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOcons,_lhsOmods,_lhsOself,_lhsOtypes,_lhsOvalues)
 -- Exports -----------------------------------------------------
 -- semantic domain
 type T_Exports = ( (IdSet),(IdSet),(Exports),(IdSet),(IdSet))
@@ -891,19 +1200,39 @@ sem_Exports (list) =
 sem_Exports_Cons :: (T_Export) ->
                     (T_Exports) ->
                     (T_Exports)
-sem_Exports_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_cons,_hd_mods,_hd_self,_hd_types,_hd_values) =
-            (_hd )
-        ( _tl_cons,_tl_mods,_tl_self,_tl_types,_tl_values) =
-            (_tl )
-    in  ( _hd_cons  `unionSet`  _tl_cons,_hd_mods  `unionSet`  _tl_mods,_self,_hd_types  `unionSet`  _tl_types,_hd_values  `unionSet`  _tl_values)
+sem_Exports_Cons (hd_) (tl_) =
+    let ( _hdIcons,_hdImods,_hdIself,_hdItypes,_hdIvalues) =
+            (hd_ )
+        ( _tlIcons,_tlImods,_tlIself,_tlItypes,_tlIvalues) =
+            (tl_ )
+        (_lhsOcons@_) =
+            _hdIcons  `unionSet`  _tlIcons
+        (_lhsOmods@_) =
+            _hdImods  `unionSet`  _tlImods
+        (_lhsOtypes@_) =
+            _hdItypes  `unionSet`  _tlItypes
+        (_lhsOvalues@_) =
+            _hdIvalues  `unionSet`  _tlIvalues
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOcons,_lhsOmods,_lhsOself,_lhsOtypes,_lhsOvalues)
 sem_Exports_Nil :: (T_Exports)
 sem_Exports_Nil  =
-    let (_self) =
+    let (_lhsOcons@_) =
+            emptySet
+        (_lhsOmods@_) =
+            emptySet
+        (_lhsOtypes@_) =
+            emptySet
+        (_lhsOvalues@_) =
+            emptySet
+        (_self@_) =
             []
-    in  ( emptySet,emptySet,_self,emptySet,emptySet)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOcons,_lhsOmods,_lhsOself,_lhsOtypes,_lhsOvalues)
 -- Expression --------------------------------------------------
 -- semantic domain
 type T_Expression = (DictionaryEnvironment) ->
@@ -955,310 +1284,462 @@ sem_Expression_Case :: (T_Range) ->
                        (T_Expression) ->
                        (T_Alternatives) ->
                        (T_Expression)
-sem_Expression_Case (_range) (_expression) (_alternatives) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_Case _range_self _expression_self _alternatives_self
-        ( _range_self) =
-            (_range )
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-        ( _alternatives_core,_alternatives_self) =
-            (_alternatives (_range_self) (_lhs_dictionaryEnv))
-    in  ( let_ caseExprId _expression_core _alternatives_core,_self)
+sem_Expression_Case (range_) (expression_) (alternatives_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            ( _alternativesIcore,_alternativesIself) =
+                (alternatives_ (_alternativesOcaseRange) (_alternativesOdictionaryEnv))
+            (_alternativesOcaseRange@_) =
+                _rangeIself
+            (_lhsOcore@_) =
+                let_ caseExprId _expressionIcore _alternativesIcore
+            (_self@_) =
+                Expression_Case _rangeIself _expressionIself _alternativesIself
+            (_lhsOself@_) =
+                _self
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_alternativesOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_Comprehension :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Qualifiers) ->
                                 (T_Expression)
-sem_Expression_Comprehension (_range) (_expression) (_qualifiers) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_Comprehension _range_self _expression_self _qualifiers_self
-        ( _range_self) =
-            (_range )
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-        ( _qualifiers_core,_qualifiers_self) =
-            (_qualifiers (_lhs_dictionaryEnv))
-    in  ( let singleton x = cons x nil
-          in foldr ($) (singleton _expression_core) _qualifiers_core
-         ,_self
-         )
+sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            ( _qualifiersIcore,_qualifiersIself) =
+                (qualifiers_ (_qualifiersOdictionaryEnv))
+            (_lhsOcore@_) =
+                let singleton x = cons x nil
+                in foldr ($) (singleton _expressionIcore) _qualifiersIcore
+            (_self@_) =
+                Expression_Comprehension _rangeIself _expressionIself _qualifiersIself
+            (_lhsOself@_) =
+                _self
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_qualifiersOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_Constructor :: (T_Range) ->
                               (T_Name) ->
                               (T_Expression)
-sem_Expression_Constructor (_range) (_name) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_Constructor _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( Core.Con (Core.ConId (idFromName _name_self)),_self)
+sem_Expression_Constructor (range_) (name_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            (_lhsOcore@_) =
+                Core.Con (Core.ConId (idFromName _nameIself))
+            (_self@_) =
+                Expression_Constructor _rangeIself _nameIself
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_Do :: (T_Range) ->
                      (T_Statements) ->
                      (T_Expression)
-sem_Expression_Do (_range) (_statements) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_Do _range_self _statements_self
-        ( _range_self) =
-            (_range )
-        ( _statements_core,_statements_self) =
-            (_statements (_lhs_dictionaryEnv))
-    in  ( chainCode _statements_core,_self)
+sem_Expression_Do (range_) (statements_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _statementsIcore,_statementsIself) =
+                (statements_ (_statementsOdictionaryEnv))
+            (_lhsOcore@_) =
+                chainCode _statementsIcore
+            (_self@_) =
+                Expression_Do _rangeIself _statementsIself
+            (_lhsOself@_) =
+                _self
+            (_statementsOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_Enum :: (T_Range) ->
                        (T_Expression) ->
                        (T_MaybeExpression) ->
                        (T_MaybeExpression) ->
                        (T_Expression)
-sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_Enum _range_self _from_self _then_self _to_self
-        ( _range_self) =
-            (_range )
-        ( _from_core,_from_self) =
-            (_from (_lhs_dictionaryEnv))
-        ( _then_core,_then_self) =
-            (_then (_lhs_dictionaryEnv))
-        ( _to_core,_to_self) =
-            (_to (_lhs_dictionaryEnv))
-    in  ( case (_then_core, _to_core) of
-              (Just then_, Just to) ->
-                  var "primEnumFromThenTo" `app_` _from_core `app_` then_ `app_` to
-              (Just then_, Nothing) ->
-                  var "primEnumFromThen" `app_` _from_core `app_` then_
-              (Nothing, Just to) ->
-                  var "primEnumFromTo" `app_` _from_core `app_` to
-              (Nothing, Nothing) ->
-                  var "primEnumFrom" `app_` _from_core
-         ,_self
-         )
+sem_Expression_Enum (range_) (from_) (then_) (to_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _fromIcore,_fromIself) =
+                (from_ (_fromOdictionaryEnv))
+            ( _thenIcore,_thenIself) =
+                (then_ (_thenOdictionaryEnv))
+            ( _toIcore,_toIself) =
+                (to_ (_toOdictionaryEnv))
+            (_lhsOcore@_) =
+                case (_thenIcore, _toIcore) of
+                    (Just then_, Just to) ->
+                        var "primEnumFromThenTo" `app_` _fromIcore `app_` then_ `app_` to
+                    (Just then_, Nothing) ->
+                        var "primEnumFromThen" `app_` _fromIcore `app_` then_
+                    (Nothing, Just to) ->
+                        var "primEnumFromTo" `app_` _fromIcore `app_` to
+                    (Nothing, Nothing) ->
+                        var "primEnumFrom" `app_` _fromIcore
+            (_self@_) =
+                Expression_Enum _rangeIself _fromIself _thenIself _toIself
+            (_lhsOself@_) =
+                _self
+            (_fromOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_thenOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_toOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_If :: (T_Range) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression)
-sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_If _range_self _guardExpression_self _thenExpression_self _elseExpression_self
-        ( _range_self) =
-            (_range )
-        ( _guardExpression_core,_guardExpression_self) =
-            (_guardExpression (_lhs_dictionaryEnv))
-        ( _thenExpression_core,_thenExpression_self) =
-            (_thenExpression (_lhs_dictionaryEnv))
-        ( _elseExpression_core,_elseExpression_self) =
-            (_elseExpression (_lhs_dictionaryEnv))
-    in  ( if_ _guardExpression_core _thenExpression_core _elseExpression_core,_self)
+sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _guardExpressionIcore,_guardExpressionIself) =
+                (guardExpression_ (_guardExpressionOdictionaryEnv))
+            ( _thenExpressionIcore,_thenExpressionIself) =
+                (thenExpression_ (_thenExpressionOdictionaryEnv))
+            ( _elseExpressionIcore,_elseExpressionIself) =
+                (elseExpression_ (_elseExpressionOdictionaryEnv))
+            (_lhsOcore@_) =
+                if_ _guardExpressionIcore _thenExpressionIcore _elseExpressionIcore
+            (_self@_) =
+                Expression_If _rangeIself _guardExpressionIself _thenExpressionIself _elseExpressionIself
+            (_lhsOself@_) =
+                _self
+            (_guardExpressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_thenExpressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_elseExpressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_InfixApplication :: (T_Range) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression)
-sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightExpression) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_InfixApplication _range_self _leftExpression_self _operator_self _rightExpression_self
-        ( _range_self) =
-            (_range )
-        ( _leftExpression_core,_leftExpression_self) =
-            (_leftExpression (_lhs_dictionaryEnv))
-        ( _operator_core,_operator_self) =
-            (_operator (_lhs_dictionaryEnv))
-        ( _rightExpression_core,_rightExpression_self) =
-            (_rightExpression (_lhs_dictionaryEnv))
-    in  ( case (_leftExpression_core, _rightExpression_core) of
-              (Nothing, Nothing) -> _operator_core
-              (Just l , Nothing) -> Core.Ap _operator_core l
-              (Nothing, Just r ) -> Core.Lam parameterId
-                                      (foldl Core.Ap _operator_core [Core.Var parameterId, r])
-              (Just l , Just r ) -> foldl Core.Ap _operator_core [l,r]
-         ,_self
-         )
+sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExpression_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _leftExpressionIcore,_leftExpressionIself) =
+                (leftExpression_ (_leftExpressionOdictionaryEnv))
+            ( _operatorIcore,_operatorIself) =
+                (operator_ (_operatorOdictionaryEnv))
+            ( _rightExpressionIcore,_rightExpressionIself) =
+                (rightExpression_ (_rightExpressionOdictionaryEnv))
+            (_lhsOcore@_) =
+                case (_leftExpressionIcore, _rightExpressionIcore) of
+                    (Nothing, Nothing) -> _operatorIcore
+                    (Just l , Nothing) -> Core.Ap _operatorIcore l
+                    (Nothing, Just r ) -> Core.Lam parameterId
+                                            (foldl Core.Ap _operatorIcore [Core.Var parameterId, r])
+                    (Just l , Just r ) -> foldl Core.Ap _operatorIcore [l,r]
+            (_self@_) =
+                Expression_InfixApplication _rangeIself _leftExpressionIself _operatorIself _rightExpressionIself
+            (_lhsOself@_) =
+                _self
+            (_leftExpressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_operatorOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_rightExpressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_Lambda :: (T_Range) ->
                          (T_Patterns) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_Lambda _range_self _patterns_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _patterns_length,_patterns_self,_patterns_vars) =
-            (_patterns )
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-    in  ( let ids = freshIds "u$" _patterns_length
-          in let_ nextClauseId (patternMatchFail "lambda expression" _range_self)
-              (foldr
-                  Core.Lam
-                  (patternsToCore
-                      (zip ids _patterns_self)
-                      _expression_core
-                  )
-                  ids
-              )
-         ,_self
-         )
+sem_Expression_Lambda (range_) (patterns_) (expression_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternsIlength,_patternsIself,_patternsIvars) =
+                (patterns_ )
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            (_lhsOcore@_) =
+                let ids = freshIds "u$" _patternsIlength
+                in let_ nextClauseId (patternMatchFail "lambda expression" _rangeIself)
+                    (foldr
+                        Core.Lam
+                        (patternsToCore
+                            (zip ids _patternsIself)
+                            _expressionIcore
+                        )
+                        ids
+                    )
+            (_self@_) =
+                Expression_Lambda _rangeIself _patternsIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_Let :: (T_Range) ->
                       (T_Declarations) ->
                       (T_Expression) ->
                       (T_Expression)
-sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_Let _range_self _declarations_self _expression_self
-        (_importEnv) =
-            internalError "CodeGeneration.ag" "Expression.Let" ""
-        ( _range_self) =
-            (_range )
-        ( _declarations_decls,_declarations_patBindNr,_declarations_self) =
-            (_declarations (_lhs_dictionaryEnv) (_importEnv) (False) (0))
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-    in  ( letrec_ _declarations_decls _expression_core,_self)
+sem_Expression_Let (range_) (declarations_) (expression_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _declarationsIdecls,_declarationsIpatBindNr,_declarationsIself) =
+                (declarations_ (_declarationsOdictionaryEnv) (_declarationsOimportEnv) (_declarationsOisTopLevel) (_declarationsOpatBindNr))
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            (_importEnv@_) =
+                internalError "CodeGeneration.ag" "Expression.Let" ""
+            (_lhsOcore@_) =
+                letrec_ _declarationsIdecls _expressionIcore
+            (_declarationsOisTopLevel@_) =
+                False
+            (_declarationsOpatBindNr@_) =
+                0
+            (_self@_) =
+                Expression_Let _rangeIself _declarationsIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_declarationsOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_declarationsOimportEnv@_) =
+                _importEnv
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_List :: (T_Range) ->
                        (T_Expressions) ->
                        (T_Expression)
-sem_Expression_List (_range) (_expressions) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_List _range_self _expressions_self
-        ( _range_self) =
-            (_range )
-        ( _expressions_core,_expressions_self) =
-            (_expressions (_lhs_dictionaryEnv))
-    in  ( coreList _expressions_core,_self)
+sem_Expression_List (range_) (expressions_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionsIcore,_expressionsIself) =
+                (expressions_ (_expressionsOdictionaryEnv))
+            (_lhsOcore@_) =
+                coreList _expressionsIcore
+            (_self@_) =
+                Expression_List _rangeIself _expressionsIself
+            (_lhsOself@_) =
+                _self
+            (_expressionsOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_Literal :: (T_Range) ->
                           (T_Literal) ->
                           (T_Expression)
-sem_Expression_Literal (_range) (_literal) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_Literal _range_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _literal_core,_literal_self) =
-            (_literal )
-    in  ( _literal_core,_self)
+sem_Expression_Literal (range_) (literal_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _literalIcore,_literalIself) =
+                (literal_ )
+            (_lhsOcore@_) =
+                _literalIcore
+            (_self@_) =
+                Expression_Literal _rangeIself _literalIself
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_Negate :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Negate (_range) (_expression) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_Negate _range_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-    in  ( insertDictionaries (setNameRange intUnaryMinusName _range_self) _lhs_dictionaryEnv
-          `app_` _expression_core
-         ,_self
-         )
+sem_Expression_Negate (range_) (expression_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            (_lhsOcore@_) =
+                insertDictionaries (setNameRange intUnaryMinusName _rangeIself) _lhsIdictionaryEnv
+                `app_` _expressionIcore
+            (_self@_) =
+                Expression_Negate _rangeIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
-sem_Expression_NegateFloat (_range) (_expression) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_NegateFloat _range_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-    in  ( var "primNegFloat" `app_` _expression_core,_self)
+sem_Expression_NegateFloat (range_) (expression_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            (_lhsOcore@_) =
+                var "primNegFloat" `app_` _expressionIcore
+            (_self@_) =
+                Expression_NegateFloat _rangeIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_NormalApplication :: (T_Range) ->
                                     (T_Expression) ->
                                     (T_Expressions) ->
                                     (T_Expression)
-sem_Expression_NormalApplication (_range) (_function) (_arguments) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_NormalApplication _range_self _function_self _arguments_self
-        ( _range_self) =
-            (_range )
-        ( _function_core,_function_self) =
-            (_function (_lhs_dictionaryEnv))
-        ( _arguments_core,_arguments_self) =
-            (_arguments (_lhs_dictionaryEnv))
-    in  ( foldl Core.Ap _function_core _arguments_core,_self)
+sem_Expression_NormalApplication (range_) (function_) (arguments_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _functionIcore,_functionIself) =
+                (function_ (_functionOdictionaryEnv))
+            ( _argumentsIcore,_argumentsIself) =
+                (arguments_ (_argumentsOdictionaryEnv))
+            (_lhsOcore@_) =
+                foldl Core.Ap _functionIcore _argumentsIcore
+            (_self@_) =
+                Expression_NormalApplication _rangeIself _functionIself _argumentsIself
+            (_lhsOself@_) =
+                _self
+            (_functionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_argumentsOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_Parenthesized :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Expression)
-sem_Expression_Parenthesized (_range) (_expression) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_Parenthesized _range_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-    in  ( _expression_core,_self)
+sem_Expression_Parenthesized (range_) (expression_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            (_lhsOcore@_) =
+                _expressionIcore
+            (_self@_) =
+                Expression_Parenthesized _rangeIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_RecordConstruction :: (T_Range) ->
                                      (T_Name) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_Expression)
-sem_Expression_RecordConstruction (_range) (_name) (_recordExpressionBindings) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_RecordConstruction _range_self _name_self _recordExpressionBindings_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _recordExpressionBindings_self) =
-            (_recordExpressionBindings (_lhs_dictionaryEnv))
-    in  ( internalError "ToCoreExpr" "Expression" "records not supported",_self)
+sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _recordExpressionBindingsIself) =
+                (recordExpressionBindings_ (_recordExpressionBindingsOdictionaryEnv))
+            (_lhsOcore@_) =
+                internalError "ToCoreExpr" "Expression" "records not supported"
+            (_self@_) =
+                Expression_RecordConstruction _rangeIself _nameIself _recordExpressionBindingsIself
+            (_lhsOself@_) =
+                _self
+            (_recordExpressionBindingsOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_RecordUpdate :: (T_Range) ->
                                (T_Expression) ->
                                (T_RecordExpressionBindings) ->
                                (T_Expression)
-sem_Expression_RecordUpdate (_range) (_expression) (_recordExpressionBindings) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_RecordUpdate _range_self _expression_self _recordExpressionBindings_self
-        ( _range_self) =
-            (_range )
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-        ( _recordExpressionBindings_self) =
-            (_recordExpressionBindings (_lhs_dictionaryEnv))
-    in  ( internalError "ToCoreExpr" "Expression" "records not supported",_self)
+sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            ( _recordExpressionBindingsIself) =
+                (recordExpressionBindings_ (_recordExpressionBindingsOdictionaryEnv))
+            (_lhsOcore@_) =
+                internalError "ToCoreExpr" "Expression" "records not supported"
+            (_self@_) =
+                Expression_RecordUpdate _rangeIself _expressionIself _recordExpressionBindingsIself
+            (_lhsOself@_) =
+                _self
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_recordExpressionBindingsOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_Tuple :: (T_Range) ->
                         (T_Expressions) ->
                         (T_Expression)
-sem_Expression_Tuple (_range) (_expressions) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_Tuple _range_self _expressions_self
-        ( _range_self) =
-            (_range )
-        ( _expressions_core,_expressions_self) =
-            (_expressions (_lhs_dictionaryEnv))
-    in  ( foldl
-              Core.Ap
-              (Core.Con
-                  (Core.ConTag
-                      (Core.Lit (Core.LitInt 0))
-                      (length _expressions_core)
-                  )
-              )
-              _expressions_core
-         ,_self
-         )
+sem_Expression_Tuple (range_) (expressions_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionsIcore,_expressionsIself) =
+                (expressions_ (_expressionsOdictionaryEnv))
+            (_lhsOcore@_) =
+                foldl
+                    Core.Ap
+                    (Core.Con
+                        (Core.ConTag
+                            (Core.Lit (Core.LitInt 0))
+                            (length _expressionsIcore)
+                        )
+                    )
+                    _expressionsIcore
+            (_self@_) =
+                Expression_Tuple _rangeIself _expressionsIself
+            (_lhsOself@_) =
+                _self
+            (_expressionsOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_Typed :: (T_Range) ->
                         (T_Expression) ->
                         (T_Type) ->
                         (T_Expression)
-sem_Expression_Typed (_range) (_expression) (_type) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_Typed _range_self _expression_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-        ( _type_self) =
-            (_type )
-    in  ( _expression_core,_self)
+sem_Expression_Typed (range_) (expression_) (type_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            ( _typeIself) =
+                (type_ )
+            (_lhsOcore@_) =
+                _expressionIcore
+            (_self@_) =
+                Expression_Typed _rangeIself _expressionIself _typeIself
+            (_lhsOself@_) =
+                _self
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expression_Variable :: (T_Range) ->
                            (T_Name) ->
                            (T_Expression)
-sem_Expression_Variable (_range) (_name) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Expression_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( insertDictionaries _name_self _lhs_dictionaryEnv,_self)
+sem_Expression_Variable (range_) (name_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            (_lhsOcore@_) =
+                insertDictionaries _nameIself _lhsIdictionaryEnv
+            (_self@_) =
+                Expression_Variable _rangeIself _nameIself
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcore,_lhsOself)
 -- Expressions -------------------------------------------------
 -- semantic domain
 type T_Expressions = (DictionaryEnvironment) ->
@@ -1271,19 +1752,33 @@ sem_Expressions (list) =
 sem_Expressions_Cons :: (T_Expression) ->
                         (T_Expressions) ->
                         (T_Expressions)
-sem_Expressions_Cons (_hd) (_tl) (_lhs_dictionaryEnv) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_core,_hd_self) =
-            (_hd (_lhs_dictionaryEnv))
-        ( _tl_core,_tl_self) =
-            (_tl (_lhs_dictionaryEnv))
-    in  ( _hd_core  :  _tl_core,_self)
+sem_Expressions_Cons (hd_) (tl_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _hdIcore,_hdIself) =
+                (hd_ (_hdOdictionaryEnv))
+            ( _tlIcore,_tlIself) =
+                (tl_ (_tlOdictionaryEnv))
+            (_lhsOcore@_) =
+                _hdIcore  :  _tlIcore
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_hdOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_tlOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Expressions_Nil :: (T_Expressions)
-sem_Expressions_Nil (_lhs_dictionaryEnv) =
-    let (_self) =
-            []
-    in  ( [],_self)
+sem_Expressions_Nil  =
+    \ _lhsIdictionaryEnv ->
+        let (_lhsOcore@_) =
+                []
+            (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcore,_lhsOself)
 -- FieldDeclaration --------------------------------------------
 -- semantic domain
 type T_FieldDeclaration = ( (FieldDeclaration))
@@ -1296,16 +1791,18 @@ sem_FieldDeclaration_FieldDeclaration :: (T_Range) ->
                                          (T_Names) ->
                                          (T_AnnotatedType) ->
                                          (T_FieldDeclaration)
-sem_FieldDeclaration_FieldDeclaration (_range) (_names) (_type) =
-    let (_self) =
-            FieldDeclaration_FieldDeclaration _range_self _names_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _names_names,_names_self) =
-            (_names )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_FieldDeclaration_FieldDeclaration (range_) (names_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _namesInames,_namesIself) =
+            (names_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            FieldDeclaration_FieldDeclaration _rangeIself _namesIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- FieldDeclarations -------------------------------------------
 -- semantic domain
 type T_FieldDeclarations = ( (FieldDeclarations))
@@ -1317,19 +1814,23 @@ sem_FieldDeclarations (list) =
 sem_FieldDeclarations_Cons :: (T_FieldDeclaration) ->
                               (T_FieldDeclarations) ->
                               (T_FieldDeclarations)
-sem_FieldDeclarations_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_FieldDeclarations_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_FieldDeclarations_Nil :: (T_FieldDeclarations)
 sem_FieldDeclarations_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Fixity ------------------------------------------------------
 -- semantic domain
 type T_Fixity = ( (Fixity))
@@ -1344,28 +1845,34 @@ sem_Fixity ((Fixity_Infixr (_range))) =
     (sem_Fixity_Infixr ((sem_Range (_range))))
 sem_Fixity_Infix :: (T_Range) ->
                     (T_Fixity)
-sem_Fixity_Infix (_range) =
-    let (_self) =
-            Fixity_Infix _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Fixity_Infix (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Fixity_Infix _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Fixity_Infixl :: (T_Range) ->
                      (T_Fixity)
-sem_Fixity_Infixl (_range) =
-    let (_self) =
-            Fixity_Infixl _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Fixity_Infixl (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Fixity_Infixl _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Fixity_Infixr :: (T_Range) ->
                      (T_Fixity)
-sem_Fixity_Infixr (_range) =
-    let (_self) =
-            Fixity_Infixr _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Fixity_Infixr (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Fixity_Infixr _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- FunctionBinding ---------------------------------------------
 -- semantic domain
 type T_FunctionBinding = (DictionaryEnvironment) ->
@@ -1380,31 +1887,39 @@ sem_FunctionBinding_FunctionBinding :: (T_Range) ->
                                        (T_LeftHandSide) ->
                                        (T_RightHandSide) ->
                                        (T_FunctionBinding)
-sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_lhs_dictionaryEnv) (_lhs_ids) =
-    let (_self) =
-            FunctionBinding_FunctionBinding _range_self _lefthandside_self _righthandside_self
-        ( _range_self) =
-            (_range )
-        ( _lefthandside_arity,_lefthandside_name,_lefthandside_patterns,_lefthandside_self) =
-            (_lefthandside )
-        ( _righthandside_core,_righthandside_isGuarded,_righthandside_self) =
-            (_righthandside (_lhs_dictionaryEnv))
-    in  ( _lefthandside_arity
-         ,\nextClause ->
-              let thisClause =
-                      patternsToCore
-                          (zip _lhs_ids _lefthandside_patterns)
-                          _righthandside_core in
-              if all patternAlwaysSucceeds _lefthandside_patterns
-                 &&
-                 not _righthandside_isGuarded
-              then
-                  thisClause
-              else
-                  let_ nextClauseId nextClause thisClause
-         ,_lefthandside_name
-         ,_self
-         )
+sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
+    \ _lhsIdictionaryEnv
+      _lhsIids ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _lefthandsideIarity,_lefthandsideIname,_lefthandsideIpatterns,_lefthandsideIself) =
+                (lefthandside_ )
+            ( _righthandsideIcore,_righthandsideIisGuarded,_righthandsideIself) =
+                (righthandside_ (_righthandsideOdictionaryEnv))
+            (_lhsOcore@_) =
+                \nextClause ->
+                    let thisClause =
+                            patternsToCore
+                                (zip _lhsIids _lefthandsideIpatterns)
+                                _righthandsideIcore in
+                    if all patternAlwaysSucceeds _lefthandsideIpatterns
+                       &&
+                       not _righthandsideIisGuarded
+                    then
+                        thisClause
+                    else
+                        let_ nextClauseId nextClause thisClause
+            (_lhsOarity@_) =
+                _lefthandsideIarity
+            (_self@_) =
+                FunctionBinding_FunctionBinding _rangeIself _lefthandsideIself _righthandsideIself
+            (_lhsOself@_) =
+                _self
+            (_lhsOname@_) =
+                _lefthandsideIname
+            (_righthandsideOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOarity,_lhsOcore,_lhsOname,_lhsOself)
 -- FunctionBindings --------------------------------------------
 -- semantic domain
 type T_FunctionBindings = (DictionaryEnvironment) ->
@@ -1419,19 +1934,51 @@ sem_FunctionBindings (list) =
 sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
                              (T_FunctionBindings) ->
                              (T_FunctionBindings)
-sem_FunctionBindings_Cons (_hd) (_tl) (_lhs_dictionaryEnv) (_lhs_ids) (_lhs_range) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_arity,_hd_core,_hd_name,_hd_self) =
-            (_hd (_lhs_dictionaryEnv) (_lhs_ids))
-        ( _tl_arity,_tl_core,_tl_name,_tl_self) =
-            (_tl (_lhs_dictionaryEnv) (_lhs_ids) (_lhs_range))
-    in  ( _hd_arity,_hd_core _tl_core,_hd_name,_self)
+sem_FunctionBindings_Cons (hd_) (tl_) =
+    \ _lhsIdictionaryEnv
+      _lhsIids
+      _lhsIrange ->
+        let ( _hdIarity,_hdIcore,_hdIname,_hdIself) =
+                (hd_ (_hdOdictionaryEnv) (_hdOids))
+            ( _tlIarity,_tlIcore,_tlIname,_tlIself) =
+                (tl_ (_tlOdictionaryEnv) (_tlOids) (_tlOrange))
+            (_lhsOarity@_) =
+                _hdIarity
+            (_lhsOcore@_) =
+                _hdIcore _tlIcore
+            (_lhsOname@_) =
+                _hdIname
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_hdOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_hdOids@_) =
+                _lhsIids
+            (_tlOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_tlOids@_) =
+                _lhsIids
+            (_tlOrange@_) =
+                _lhsIrange
+        in  ( _lhsOarity,_lhsOcore,_lhsOname,_lhsOself)
 sem_FunctionBindings_Nil :: (T_FunctionBindings)
-sem_FunctionBindings_Nil (_lhs_dictionaryEnv) (_lhs_ids) (_lhs_range) =
-    let (_self) =
-            []
-    in  ( internalError "ToCoreDecl" "FunctionBindings" "arity: empty list of function bindings",patternMatchFail "function bindings" _lhs_range,internalError "ToCoreName.ag" "n/a" "empty FunctionBindings",_self)
+sem_FunctionBindings_Nil  =
+    \ _lhsIdictionaryEnv
+      _lhsIids
+      _lhsIrange ->
+        let (_lhsOarity@_) =
+                internalError "ToCoreDecl" "FunctionBindings" "arity: empty list of function bindings"
+            (_lhsOcore@_) =
+                patternMatchFail "function bindings" _lhsIrange
+            (_lhsOname@_) =
+                internalError "ToCoreName.ag" "n/a" "empty FunctionBindings"
+            (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOarity,_lhsOcore,_lhsOname,_lhsOself)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
 type T_GuardedExpression = (DictionaryEnvironment) ->
@@ -1445,16 +1992,25 @@ sem_GuardedExpression_GuardedExpression :: (T_Range) ->
                                            (T_Expression) ->
                                            (T_Expression) ->
                                            (T_GuardedExpression)
-sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_dictionaryEnv) =
-    let (_self) =
-            GuardedExpression_GuardedExpression _range_self _guard_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _guard_core,_guard_self) =
-            (_guard (_lhs_dictionaryEnv))
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-    in  ( \fail -> if_ _guard_core _expression_core fail,_self)
+sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _guardIcore,_guardIself) =
+                (guard_ (_guardOdictionaryEnv))
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            (_lhsOcore@_) =
+                \fail -> if_ _guardIcore _expressionIcore fail
+            (_self@_) =
+                GuardedExpression_GuardedExpression _rangeIself _guardIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_guardOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 -- GuardedExpressions ------------------------------------------
 -- semantic domain
 type T_GuardedExpressions = (DictionaryEnvironment) ->
@@ -1467,19 +2023,33 @@ sem_GuardedExpressions (list) =
 sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
                                (T_GuardedExpressions) ->
                                (T_GuardedExpressions)
-sem_GuardedExpressions_Cons (_hd) (_tl) (_lhs_dictionaryEnv) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_core,_hd_self) =
-            (_hd (_lhs_dictionaryEnv))
-        ( _tl_core,_tl_self) =
-            (_tl (_lhs_dictionaryEnv))
-    in  ( _hd_core  :  _tl_core,_self)
+sem_GuardedExpressions_Cons (hd_) (tl_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _hdIcore,_hdIself) =
+                (hd_ (_hdOdictionaryEnv))
+            ( _tlIcore,_tlIself) =
+                (tl_ (_tlOdictionaryEnv))
+            (_lhsOcore@_) =
+                _hdIcore  :  _tlIcore
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_hdOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_tlOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_GuardedExpressions_Nil :: (T_GuardedExpressions)
-sem_GuardedExpressions_Nil (_lhs_dictionaryEnv) =
-    let (_self) =
-            []
-    in  ( [],_self)
+sem_GuardedExpressions_Nil  =
+    \ _lhsIdictionaryEnv ->
+        let (_lhsOcore@_) =
+                []
+            (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcore,_lhsOself)
 -- Import ------------------------------------------------------
 -- semantic domain
 type T_Import = ( (Import))
@@ -1496,38 +2066,44 @@ sem_Import_TypeOrClass :: (T_Range) ->
                           (T_Name) ->
                           (T_MaybeNames) ->
                           (T_Import)
-sem_Import_TypeOrClass (_range) (_name) (_names) =
-    let (_self) =
-            Import_TypeOrClass _range_self _name_self _names_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _names_names,_names_self) =
-            (_names )
-    in  ( _self)
+sem_Import_TypeOrClass (range_) (name_) (names_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _namesInames,_namesIself) =
+            (names_ )
+        (_self@_) =
+            Import_TypeOrClass _rangeIself _nameIself _namesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Import_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Import)
-sem_Import_TypeOrClassComplete (_range) (_name) =
-    let (_self) =
-            Import_TypeOrClassComplete _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Import_TypeOrClassComplete (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Import_TypeOrClassComplete _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Import_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Import)
-sem_Import_Variable (_range) (_name) =
-    let (_self) =
-            Import_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Import_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Import_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ImportDeclaration -------------------------------------------
 -- semantic domain
 type T_ImportDeclaration = ( (ImportDeclaration))
@@ -1540,30 +2116,34 @@ sem_ImportDeclaration ((ImportDeclaration_Import (_range) (_qualified) (_name) (
     (sem_ImportDeclaration_Import ((sem_Range (_range))) (_qualified) ((sem_Name (_name))) ((sem_MaybeName (_asname))) ((sem_MaybeImportSpecification (_importspecification))))
 sem_ImportDeclaration_Empty :: (T_Range) ->
                                (T_ImportDeclaration)
-sem_ImportDeclaration_Empty (_range) =
-    let (_self) =
-            ImportDeclaration_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_ImportDeclaration_Empty (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            ImportDeclaration_Empty _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_ImportDeclaration_Import :: (T_Range) ->
                                 (Bool) ->
                                 (T_Name) ->
                                 (T_MaybeName) ->
                                 (T_MaybeImportSpecification) ->
                                 (T_ImportDeclaration)
-sem_ImportDeclaration_Import (_range) (_qualified) (_name) (_asname) (_importspecification) =
-    let (_self) =
-            ImportDeclaration_Import _range_self _qualified _name_self _asname_self _importspecification_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _asname_isNothing,_asname_name,_asname_self) =
-            (_asname )
-        ( _importspecification_self) =
-            (_importspecification )
-    in  ( _self)
+sem_ImportDeclaration_Import (range_) (qualified_) (name_) (asname_) (importspecification_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _asnameIisNothing,_asnameIname,_asnameIself) =
+            (asname_ )
+        ( _importspecificationIself) =
+            (importspecification_ )
+        (_self@_) =
+            ImportDeclaration_Import _rangeIself qualified_ _nameIself _asnameIself _importspecificationIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ImportDeclarations ------------------------------------------
 -- semantic domain
 type T_ImportDeclarations = ( (ImportDeclarations))
@@ -1575,19 +2155,23 @@ sem_ImportDeclarations (list) =
 sem_ImportDeclarations_Cons :: (T_ImportDeclaration) ->
                                (T_ImportDeclarations) ->
                                (T_ImportDeclarations)
-sem_ImportDeclarations_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_ImportDeclarations_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_ImportDeclarations_Nil :: (T_ImportDeclarations)
 sem_ImportDeclarations_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ImportSpecification -----------------------------------------
 -- semantic domain
 type T_ImportSpecification = ( (ImportSpecification))
@@ -1600,14 +2184,16 @@ sem_ImportSpecification_Import :: (T_Range) ->
                                   (Bool) ->
                                   (T_Imports) ->
                                   (T_ImportSpecification)
-sem_ImportSpecification_Import (_range) (_hiding) (_imports) =
-    let (_self) =
-            ImportSpecification_Import _range_self _hiding _imports_self
-        ( _range_self) =
-            (_range )
-        ( _imports_self) =
-            (_imports )
-    in  ( _self)
+sem_ImportSpecification_Import (range_) (hiding_) (imports_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _importsIself) =
+            (imports_ )
+        (_self@_) =
+            ImportSpecification_Import _rangeIself hiding_ _importsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Imports -----------------------------------------------------
 -- semantic domain
 type T_Imports = ( (Imports))
@@ -1619,19 +2205,23 @@ sem_Imports (list) =
 sem_Imports_Cons :: (T_Import) ->
                     (T_Imports) ->
                     (T_Imports)
-sem_Imports_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Imports_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Imports_Nil :: (T_Imports)
 sem_Imports_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- LeftHandSide ------------------------------------------------
 -- semantic domain
 type T_LeftHandSide = ( (Int),(Name),(Patterns),(LeftHandSide))
@@ -1648,47 +2238,71 @@ sem_LeftHandSide_Function :: (T_Range) ->
                              (T_Name) ->
                              (T_Patterns) ->
                              (T_LeftHandSide)
-sem_LeftHandSide_Function (_range) (_name) (_patterns) =
-    let (_self) =
-            LeftHandSide_Function _range_self _name_self _patterns_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _patterns_length,_patterns_self,_patterns_vars) =
-            (_patterns )
-    in  ( _patterns_length,_name_self,_patterns_self,_self)
+sem_LeftHandSide_Function (range_) (name_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _patternsIlength,_patternsIself,_patternsIvars) =
+            (patterns_ )
+        (_lhsOpatterns@_) =
+            _patternsIself
+        (_lhsOarity@_) =
+            _patternsIlength
+        (_lhsOname@_) =
+            _nameIself
+        (_self@_) =
+            LeftHandSide_Function _rangeIself _nameIself _patternsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOarity,_lhsOname,_lhsOpatterns,_lhsOself)
 sem_LeftHandSide_Infix :: (T_Range) ->
                           (T_Pattern) ->
                           (T_Name) ->
                           (T_Pattern) ->
                           (T_LeftHandSide)
-sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) =
-    let (_self) =
-            LeftHandSide_Infix _range_self _leftPattern_self _operator_self _rightPattern_self
-        ( _range_self) =
-            (_range )
-        ( _leftPattern_self,_leftPattern_vars) =
-            (_leftPattern )
-        ( _operator_self) =
-            (_operator )
-        ( _rightPattern_self,_rightPattern_vars) =
-            (_rightPattern )
-    in  ( 2,_operator_self,[_leftPattern_self, _rightPattern_self ],_self)
+sem_LeftHandSide_Infix (range_) (leftPattern_) (operator_) (rightPattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _leftPatternIself,_leftPatternIvars) =
+            (leftPattern_ )
+        ( _operatorIself) =
+            (operator_ )
+        ( _rightPatternIself,_rightPatternIvars) =
+            (rightPattern_ )
+        (_lhsOpatterns@_) =
+            [_leftPatternIself, _rightPatternIself ]
+        (_lhsOarity@_) =
+            2
+        (_lhsOname@_) =
+            _operatorIself
+        (_self@_) =
+            LeftHandSide_Infix _rangeIself _leftPatternIself _operatorIself _rightPatternIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOarity,_lhsOname,_lhsOpatterns,_lhsOself)
 sem_LeftHandSide_Parenthesized :: (T_Range) ->
                                   (T_LeftHandSide) ->
                                   (T_Patterns) ->
                                   (T_LeftHandSide)
-sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) =
-    let (_self) =
-            LeftHandSide_Parenthesized _range_self _lefthandside_self _patterns_self
-        ( _range_self) =
-            (_range )
-        ( _lefthandside_arity,_lefthandside_name,_lefthandside_patterns,_lefthandside_self) =
-            (_lefthandside )
-        ( _patterns_length,_patterns_self,_patterns_vars) =
-            (_patterns )
-    in  ( _lefthandside_arity + _patterns_length,_lefthandside_name,_lefthandside_patterns ++ _patterns_self,_self)
+sem_LeftHandSide_Parenthesized (range_) (lefthandside_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _lefthandsideIarity,_lefthandsideIname,_lefthandsideIpatterns,_lefthandsideIself) =
+            (lefthandside_ )
+        ( _patternsIlength,_patternsIself,_patternsIvars) =
+            (patterns_ )
+        (_lhsOpatterns@_) =
+            _lefthandsideIpatterns ++ _patternsIself
+        (_lhsOarity@_) =
+            _lefthandsideIarity + _patternsIlength
+        (_self@_) =
+            LeftHandSide_Parenthesized _rangeIself _lefthandsideIself _patternsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOname@_) =
+            _lefthandsideIname
+    in  ( _lhsOarity,_lhsOname,_lhsOpatterns,_lhsOself)
 -- Literal -----------------------------------------------------
 -- semantic domain
 type T_Literal = ( ( Core.Expr ),(Literal))
@@ -1706,45 +2320,57 @@ sem_Literal ((Literal_String (_range) (_value))) =
 sem_Literal_Char :: (T_Range) ->
                     (String) ->
                     (T_Literal)
-sem_Literal_Char (_range) (_value) =
-    let (_self) =
-            Literal_Char _range_self _value
-        ( _range_self) =
-            (_range )
-    in  ( Core.Lit (Core.LitInt (ord
-              (read ("'" ++ _value ++ "'"))))
-         ,_self
-         )
+sem_Literal_Char (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_lhsOcore@_) =
+            Core.Lit (Core.LitInt (ord
+                (read ("'" ++ value_ ++ "'"))))
+        (_self@_) =
+            Literal_Char _rangeIself value_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOcore,_lhsOself)
 sem_Literal_Float :: (T_Range) ->
                      (String) ->
                      (T_Literal)
-sem_Literal_Float (_range) (_value) =
-    let (_self) =
-            Literal_Float _range_self _value
-        ( _range_self) =
-            (_range )
-    in  ( float _value,_self)
+sem_Literal_Float (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_lhsOcore@_) =
+            float value_
+        (_self@_) =
+            Literal_Float _rangeIself value_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOcore,_lhsOself)
 sem_Literal_Int :: (T_Range) ->
                    (String) ->
                    (T_Literal)
-sem_Literal_Int (_range) (_value) =
-    let (_self) =
-            Literal_Int _range_self _value
-        ( _range_self) =
-            (_range )
-    in  ( Core.Lit (Core.LitInt (read _value)),_self)
+sem_Literal_Int (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_lhsOcore@_) =
+            Core.Lit (Core.LitInt (read value_))
+        (_self@_) =
+            Literal_Int _rangeIself value_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOcore,_lhsOself)
 sem_Literal_String :: (T_Range) ->
                       (String) ->
                       (T_Literal)
-sem_Literal_String (_range) (_value) =
-    let (_self) =
-            Literal_String _range_self _value
-        ( _range_self) =
-            (_range )
-    in  ( var "primPackedToString" `app_`
-              packedString (read ("\"" ++ _value ++ "\""))
-         ,_self
-         )
+sem_Literal_String (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_lhsOcore@_) =
+            var "primPackedToString" `app_`
+                packedString (read ("\"" ++ value_ ++ "\""))
+        (_self@_) =
+            Literal_String _rangeIself value_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOcore,_lhsOself)
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
 type T_MaybeDeclarations = (DictionaryEnvironment) ->
@@ -1758,19 +2384,37 @@ sem_MaybeDeclarations ((MaybeDeclarations_Nothing )) =
     (sem_MaybeDeclarations_Nothing )
 sem_MaybeDeclarations_Just :: (T_Declarations) ->
                               (T_MaybeDeclarations)
-sem_MaybeDeclarations_Just (_declarations) (_lhs_dictionaryEnv) =
-    let (_self) =
-            MaybeDeclarations_Just _declarations_self
-        (_importEnv) =
-            internalError "CodeGeneration.ag" "MaybeDeclarations.Just" ""
-        ( _declarations_decls,_declarations_patBindNr,_declarations_self) =
-            (_declarations (_lhs_dictionaryEnv) (_importEnv) (False) (0))
-    in  ( \continue -> letrec_ _declarations_decls continue,_self)
+sem_MaybeDeclarations_Just (declarations_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _declarationsIdecls,_declarationsIpatBindNr,_declarationsIself) =
+                (declarations_ (_declarationsOdictionaryEnv) (_declarationsOimportEnv) (_declarationsOisTopLevel) (_declarationsOpatBindNr))
+            (_importEnv@_) =
+                internalError "CodeGeneration.ag" "MaybeDeclarations.Just" ""
+            (_lhsOcore@_) =
+                \continue -> letrec_ _declarationsIdecls continue
+            (_declarationsOisTopLevel@_) =
+                False
+            (_declarationsOpatBindNr@_) =
+                0
+            (_self@_) =
+                MaybeDeclarations_Just _declarationsIself
+            (_lhsOself@_) =
+                _self
+            (_declarationsOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_declarationsOimportEnv@_) =
+                _importEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
-sem_MaybeDeclarations_Nothing (_lhs_dictionaryEnv) =
-    let (_self) =
-            MaybeDeclarations_Nothing
-    in  ( \continue -> continue,_self)
+sem_MaybeDeclarations_Nothing  =
+    \ _lhsIdictionaryEnv ->
+        let (_lhsOcore@_) =
+                \continue -> continue
+            (_self@_) =
+                MaybeDeclarations_Nothing
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcore,_lhsOself)
 -- MaybeExports ------------------------------------------------
 -- semantic domain
 type T_MaybeExports = ( (IdSet),(IdSet),(MaybeExports),(IdSet),(IdSet))
@@ -1783,17 +2427,37 @@ sem_MaybeExports ((MaybeExports_Nothing )) =
     (sem_MaybeExports_Nothing )
 sem_MaybeExports_Just :: (T_Exports) ->
                          (T_MaybeExports)
-sem_MaybeExports_Just (_exports) =
-    let (_self) =
-            MaybeExports_Just _exports_self
-        ( _exports_cons,_exports_mods,_exports_self,_exports_types,_exports_values) =
-            (_exports )
-    in  ( _exports_cons,_exports_mods,_self,_exports_types,_exports_values)
+sem_MaybeExports_Just (exports_) =
+    let ( _exportsIcons,_exportsImods,_exportsIself,_exportsItypes,_exportsIvalues) =
+            (exports_ )
+        (_lhsOcons@_) =
+            _exportsIcons
+        (_lhsOmods@_) =
+            _exportsImods
+        (_lhsOtypes@_) =
+            _exportsItypes
+        (_lhsOvalues@_) =
+            _exportsIvalues
+        (_self@_) =
+            MaybeExports_Just _exportsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOcons,_lhsOmods,_lhsOself,_lhsOtypes,_lhsOvalues)
 sem_MaybeExports_Nothing :: (T_MaybeExports)
 sem_MaybeExports_Nothing  =
-    let (_self) =
+    let (_lhsOcons@_) =
+            emptySet
+        (_lhsOmods@_) =
+            emptySet
+        (_lhsOtypes@_) =
+            emptySet
+        (_lhsOvalues@_) =
+            emptySet
+        (_self@_) =
             MaybeExports_Nothing
-    in  ( emptySet,emptySet,_self,emptySet,emptySet)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOcons,_lhsOmods,_lhsOself,_lhsOtypes,_lhsOvalues)
 -- MaybeExpression ---------------------------------------------
 -- semantic domain
 type T_MaybeExpression = (DictionaryEnvironment) ->
@@ -1807,17 +2471,29 @@ sem_MaybeExpression ((MaybeExpression_Nothing )) =
     (sem_MaybeExpression_Nothing )
 sem_MaybeExpression_Just :: (T_Expression) ->
                             (T_MaybeExpression)
-sem_MaybeExpression_Just (_expression) (_lhs_dictionaryEnv) =
-    let (_self) =
-            MaybeExpression_Just _expression_self
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-    in  ( Just _expression_core,_self)
+sem_MaybeExpression_Just (expression_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            (_lhsOcore@_) =
+                Just _expressionIcore
+            (_self@_) =
+                MaybeExpression_Just _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_MaybeExpression_Nothing :: (T_MaybeExpression)
-sem_MaybeExpression_Nothing (_lhs_dictionaryEnv) =
-    let (_self) =
-            MaybeExpression_Nothing
-    in  ( Nothing,_self)
+sem_MaybeExpression_Nothing  =
+    \ _lhsIdictionaryEnv ->
+        let (_lhsOcore@_) =
+                Nothing
+            (_self@_) =
+                MaybeExpression_Nothing
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcore,_lhsOself)
 -- MaybeImportSpecification ------------------------------------
 -- semantic domain
 type T_MaybeImportSpecification = ( (MaybeImportSpecification))
@@ -1830,17 +2506,21 @@ sem_MaybeImportSpecification ((MaybeImportSpecification_Nothing )) =
     (sem_MaybeImportSpecification_Nothing )
 sem_MaybeImportSpecification_Just :: (T_ImportSpecification) ->
                                      (T_MaybeImportSpecification)
-sem_MaybeImportSpecification_Just (_importspecification) =
-    let (_self) =
-            MaybeImportSpecification_Just _importspecification_self
-        ( _importspecification_self) =
-            (_importspecification )
-    in  ( _self)
+sem_MaybeImportSpecification_Just (importspecification_) =
+    let ( _importspecificationIself) =
+            (importspecification_ )
+        (_self@_) =
+            MaybeImportSpecification_Just _importspecificationIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeImportSpecification_Nothing :: (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeImportSpecification_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeInt ----------------------------------------------------
 -- semantic domain
 type T_MaybeInt = ( (MaybeInt))
@@ -1853,15 +2533,19 @@ sem_MaybeInt ((MaybeInt_Nothing )) =
     (sem_MaybeInt_Nothing )
 sem_MaybeInt_Just :: (Int) ->
                      (T_MaybeInt)
-sem_MaybeInt_Just (_int) =
-    let (_self) =
-            MaybeInt_Just _int
-    in  ( _self)
+sem_MaybeInt_Just (int_) =
+    let (_self@_) =
+            MaybeInt_Just int_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeInt_Nothing :: (T_MaybeInt)
 sem_MaybeInt_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeInt_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeName ---------------------------------------------------
 -- semantic domain
 type T_MaybeName = ( (Bool),( Maybe Name ),(MaybeName))
@@ -1874,17 +2558,29 @@ sem_MaybeName ((MaybeName_Nothing )) =
     (sem_MaybeName_Nothing )
 sem_MaybeName_Just :: (T_Name) ->
                       (T_MaybeName)
-sem_MaybeName_Just (_name) =
-    let (_self) =
-            MaybeName_Just _name_self
-        ( _name_self) =
-            (_name )
-    in  ( False,Just _name_self,_self)
+sem_MaybeName_Just (name_) =
+    let ( _nameIself) =
+            (name_ )
+        (_lhsOname@_) =
+            Just _nameIself
+        (_lhsOisNothing@_) =
+            False
+        (_self@_) =
+            MaybeName_Just _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOisNothing,_lhsOname,_lhsOself)
 sem_MaybeName_Nothing :: (T_MaybeName)
 sem_MaybeName_Nothing  =
-    let (_self) =
+    let (_lhsOname@_) =
+            Nothing
+        (_lhsOisNothing@_) =
+            True
+        (_self@_) =
             MaybeName_Nothing
-    in  ( True,Nothing,_self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOisNothing,_lhsOname,_lhsOself)
 -- MaybeNames --------------------------------------------------
 -- semantic domain
 type T_MaybeNames = ( ( Maybe [Name] ),(MaybeNames))
@@ -1897,17 +2593,25 @@ sem_MaybeNames ((MaybeNames_Nothing )) =
     (sem_MaybeNames_Nothing )
 sem_MaybeNames_Just :: (T_Names) ->
                        (T_MaybeNames)
-sem_MaybeNames_Just (_names) =
-    let (_self) =
-            MaybeNames_Just _names_self
-        ( _names_names,_names_self) =
-            (_names )
-    in  ( Just _names_names,_self)
+sem_MaybeNames_Just (names_) =
+    let ( _namesInames,_namesIself) =
+            (names_ )
+        (_lhsOnames@_) =
+            Just _namesInames
+        (_self@_) =
+            MaybeNames_Just _namesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOnames,_lhsOself)
 sem_MaybeNames_Nothing :: (T_MaybeNames)
 sem_MaybeNames_Nothing  =
-    let (_self) =
+    let (_lhsOnames@_) =
+            Nothing
+        (_self@_) =
             MaybeNames_Nothing
-    in  ( Nothing,_self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOnames,_lhsOself)
 -- Module ------------------------------------------------------
 -- semantic domain
 type T_Module = (DictionaryEnvironment) ->
@@ -1925,36 +2629,46 @@ sem_Module_Module :: (T_Range) ->
                      (T_MaybeExports) ->
                      (T_Body) ->
                      (T_Module)
-sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_dictionaryEnv) (_lhs_extraDecls) (_lhs_importEnv) (_lhs_toplevelTypes) =
-    let (_self) =
-            Module_Module _range_self _name_self _exports_self _body_self
-        (_module_) =
-            CoreParse.modulePublic
-                ( case _exports_self of
-                    MaybeExports_Nothing -> True
-                    _                    -> False
-                )
-                ( _exports_values
-                , _exports_cons
-                , _exports_types
-                , emptySet
-                , _exports_mods
-                )
-                (makeCoreModule (fmap idFromName _name_name)
-                    ( _body_decls ++ _lhs_extraDecls
-                    ))
-        ( _range_self) =
-            (_range )
-        ( _name_isNothing,_name_name,_name_self) =
-            (_name )
-        ( _exports_cons,_exports_mods,_exports_self,_exports_types,_exports_values) =
-            (_exports )
-        ( _body_decls,_body_self) =
-            (_body (_lhs_dictionaryEnv) (_lhs_importEnv))
-    in  ( _module_ { Module.moduleDecls =
-               insertedMain _lhs_toplevelTypes : Module.moduleDecls _module_ }
-         ,_self
-         )
+sem_Module_Module (range_) (name_) (exports_) (body_) =
+    \ _lhsIdictionaryEnv
+      _lhsIextraDecls
+      _lhsIimportEnv
+      _lhsItoplevelTypes ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIisNothing,_nameIname,_nameIself) =
+                (name_ )
+            ( _exportsIcons,_exportsImods,_exportsIself,_exportsItypes,_exportsIvalues) =
+                (exports_ )
+            ( _bodyIdecls,_bodyIself) =
+                (body_ (_bodyOdictionaryEnv) (_bodyOimportEnv))
+            (_module_@_) =
+                CoreParse.modulePublic
+                    ( case _exportsIself of
+                        MaybeExports_Nothing -> True
+                        _                    -> False
+                    )
+                    ( _exportsIvalues
+                    , _exportsIcons
+                    , _exportsItypes
+                    , emptySet
+                    , _exportsImods
+                    )
+                    (makeCoreModule (fmap idFromName _nameIname)
+                        ( _bodyIdecls ++ _lhsIextraDecls
+                        ))
+            (_lhsOcore@_) =
+                _module_ { Module.moduleDecls =
+                     insertedMain _lhsItoplevelTypes : Module.moduleDecls _module_ }
+            (_self@_) =
+                Module_Module _rangeIself _nameIself _exportsIself _bodyIself
+            (_lhsOself@_) =
+                _self
+            (_bodyOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_bodyOimportEnv@_) =
+                _lhsIimportEnv
+        in  ( _lhsOcore,_lhsOself)
 -- Name --------------------------------------------------------
 -- semantic domain
 type T_Name = ( (Name))
@@ -1971,38 +2685,44 @@ sem_Name_Identifier :: (T_Range) ->
                        (T_Strings) ->
                        (String) ->
                        (T_Name)
-sem_Name_Identifier (_range) (_module) (_name) =
-    let (_self) =
-            Name_Identifier _range_self _module_self _name
-        ( _range_self) =
-            (_range )
-        ( _module_self) =
-            (_module )
-    in  ( _self)
+sem_Name_Identifier (range_) (module_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _moduleIself) =
+            (module_ )
+        (_self@_) =
+            Name_Identifier _rangeIself _moduleIself name_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Name_Operator :: (T_Range) ->
                      (T_Strings) ->
                      (String) ->
                      (T_Name)
-sem_Name_Operator (_range) (_module) (_name) =
-    let (_self) =
-            Name_Operator _range_self _module_self _name
-        ( _range_self) =
-            (_range )
-        ( _module_self) =
-            (_module )
-    in  ( _self)
+sem_Name_Operator (range_) (module_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _moduleIself) =
+            (module_ )
+        (_self@_) =
+            Name_Operator _rangeIself _moduleIself name_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Name_Special :: (T_Range) ->
                     (T_Strings) ->
                     (String) ->
                     (T_Name)
-sem_Name_Special (_range) (_module) (_name) =
-    let (_self) =
-            Name_Special _range_self _module_self _name
-        ( _range_self) =
-            (_range )
-        ( _module_self) =
-            (_module )
-    in  ( _self)
+sem_Name_Special (range_) (module_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _moduleIself) =
+            (module_ )
+        (_self@_) =
+            Name_Special _rangeIself _moduleIself name_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Names -------------------------------------------------------
 -- semantic domain
 type T_Names = ( ([Name]),(Names))
@@ -2014,19 +2734,27 @@ sem_Names (list) =
 sem_Names_Cons :: (T_Name) ->
                   (T_Names) ->
                   (T_Names)
-sem_Names_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_names,_tl_self) =
-            (_tl )
-    in  ( _hd_self : _tl_names,_self)
+sem_Names_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlInames,_tlIself) =
+            (tl_ )
+        (_lhsOnames@_) =
+            _hdIself : _tlInames
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOnames,_lhsOself)
 sem_Names_Nil :: (T_Names)
 sem_Names_Nil  =
-    let (_self) =
+    let (_lhsOnames@_) =
             []
-    in  ( [],_self)
+        (_self@_) =
+            []
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOnames,_lhsOself)
 -- Pattern -----------------------------------------------------
 -- semantic domain
 type T_Pattern = ( (Pattern),( [Name] ))
@@ -2065,171 +2793,227 @@ sem_Pattern_As :: (T_Range) ->
                   (T_Name) ->
                   (T_Pattern) ->
                   (T_Pattern)
-sem_Pattern_As (_range) (_name) (_pattern) =
-    let (_self) =
-            Pattern_As _range_self _name_self _pattern_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _pattern_self,_pattern_vars) =
-            (_pattern )
-    in  ( _self,_name_self : _pattern_vars)
+sem_Pattern_As (range_) (name_) (pattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _patternIself,_patternIvars) =
+            (pattern_ )
+        (_lhsOvars@_) =
+            _nameIself : _patternIvars
+        (_self@_) =
+            Pattern_As _rangeIself _nameIself _patternIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself,_lhsOvars)
 sem_Pattern_Constructor :: (T_Range) ->
                            (T_Name) ->
                            (T_Patterns) ->
                            (T_Pattern)
-sem_Pattern_Constructor (_range) (_name) (_patterns) =
-    let (_self) =
-            Pattern_Constructor _range_self _name_self _patterns_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _patterns_length,_patterns_self,_patterns_vars) =
-            (_patterns )
-    in  ( _self,_patterns_vars)
+sem_Pattern_Constructor (range_) (name_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _patternsIlength,_patternsIself,_patternsIvars) =
+            (patterns_ )
+        (_lhsOvars@_) =
+            _patternsIvars
+        (_self@_) =
+            Pattern_Constructor _rangeIself _nameIself _patternsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself,_lhsOvars)
 sem_Pattern_InfixConstructor :: (T_Range) ->
                                 (T_Pattern) ->
                                 (T_Name) ->
                                 (T_Pattern) ->
                                 (T_Pattern)
-sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_rightPattern) =
-    let (_self) =
-            Pattern_InfixConstructor _range_self _leftPattern_self _constructorOperator_self _rightPattern_self
-        ( _range_self) =
-            (_range )
-        ( _leftPattern_self,_leftPattern_vars) =
-            (_leftPattern )
-        ( _constructorOperator_self) =
-            (_constructorOperator )
-        ( _rightPattern_self,_rightPattern_vars) =
-            (_rightPattern )
-    in  ( _self,_leftPattern_vars  ++  _rightPattern_vars)
+sem_Pattern_InfixConstructor (range_) (leftPattern_) (constructorOperator_) (rightPattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _leftPatternIself,_leftPatternIvars) =
+            (leftPattern_ )
+        ( _constructorOperatorIself) =
+            (constructorOperator_ )
+        ( _rightPatternIself,_rightPatternIvars) =
+            (rightPattern_ )
+        (_lhsOvars@_) =
+            _leftPatternIvars  ++  _rightPatternIvars
+        (_self@_) =
+            Pattern_InfixConstructor _rangeIself _leftPatternIself _constructorOperatorIself _rightPatternIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself,_lhsOvars)
 sem_Pattern_Irrefutable :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Pattern)
-sem_Pattern_Irrefutable (_range) (_pattern) =
-    let (_self) =
-            Pattern_Irrefutable _range_self _pattern_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_self,_pattern_vars) =
-            (_pattern )
-    in  ( _self,_pattern_vars)
+sem_Pattern_Irrefutable (range_) (pattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternIself,_patternIvars) =
+            (pattern_ )
+        (_lhsOvars@_) =
+            _patternIvars
+        (_self@_) =
+            Pattern_Irrefutable _rangeIself _patternIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself,_lhsOvars)
 sem_Pattern_List :: (T_Range) ->
                     (T_Patterns) ->
                     (T_Pattern)
-sem_Pattern_List (_range) (_patterns) =
-    let (_self) =
-            Pattern_List _range_self _patterns_self
-        ( _range_self) =
-            (_range )
-        ( _patterns_length,_patterns_self,_patterns_vars) =
-            (_patterns )
-    in  ( _self,_patterns_vars)
+sem_Pattern_List (range_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternsIlength,_patternsIself,_patternsIvars) =
+            (patterns_ )
+        (_lhsOvars@_) =
+            _patternsIvars
+        (_self@_) =
+            Pattern_List _rangeIself _patternsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself,_lhsOvars)
 sem_Pattern_Literal :: (T_Range) ->
                        (T_Literal) ->
                        (T_Pattern)
-sem_Pattern_Literal (_range) (_literal) =
-    let (_self) =
-            Pattern_Literal _range_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _literal_core,_literal_self) =
-            (_literal )
-    in  ( _self,[])
+sem_Pattern_Literal (range_) (literal_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _literalIcore,_literalIself) =
+            (literal_ )
+        (_lhsOvars@_) =
+            []
+        (_self@_) =
+            Pattern_Literal _rangeIself _literalIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself,_lhsOvars)
 sem_Pattern_Negate :: (T_Range) ->
                       (T_Literal) ->
                       (T_Pattern)
-sem_Pattern_Negate (_range) (_literal) =
-    let (_self) =
-            Pattern_Negate _range_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _literal_core,_literal_self) =
-            (_literal )
-    in  ( _self,[])
+sem_Pattern_Negate (range_) (literal_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _literalIcore,_literalIself) =
+            (literal_ )
+        (_lhsOvars@_) =
+            []
+        (_self@_) =
+            Pattern_Negate _rangeIself _literalIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself,_lhsOvars)
 sem_Pattern_NegateFloat :: (T_Range) ->
                            (T_Literal) ->
                            (T_Pattern)
-sem_Pattern_NegateFloat (_range) (_literal) =
-    let (_self) =
-            Pattern_NegateFloat _range_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _literal_core,_literal_self) =
-            (_literal )
-    in  ( _self,[])
+sem_Pattern_NegateFloat (range_) (literal_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _literalIcore,_literalIself) =
+            (literal_ )
+        (_lhsOvars@_) =
+            []
+        (_self@_) =
+            Pattern_NegateFloat _rangeIself _literalIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself,_lhsOvars)
 sem_Pattern_Parenthesized :: (T_Range) ->
                              (T_Pattern) ->
                              (T_Pattern)
-sem_Pattern_Parenthesized (_range) (_pattern) =
-    let (_self) =
-            Pattern_Parenthesized _range_self _pattern_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_self,_pattern_vars) =
-            (_pattern )
-    in  ( _self,_pattern_vars)
+sem_Pattern_Parenthesized (range_) (pattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternIself,_patternIvars) =
+            (pattern_ )
+        (_lhsOvars@_) =
+            _patternIvars
+        (_self@_) =
+            Pattern_Parenthesized _rangeIself _patternIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself,_lhsOvars)
 sem_Pattern_Record :: (T_Range) ->
                       (T_Name) ->
                       (T_RecordPatternBindings) ->
                       (T_Pattern)
-sem_Pattern_Record (_range) (_name) (_recordPatternBindings) =
-    let (_self) =
-            Pattern_Record _range_self _name_self _recordPatternBindings_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _recordPatternBindings_self) =
-            (_recordPatternBindings )
-    in  ( _self,[])
+sem_Pattern_Record (range_) (name_) (recordPatternBindings_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _recordPatternBindingsIself) =
+            (recordPatternBindings_ )
+        (_lhsOvars@_) =
+            []
+        (_self@_) =
+            Pattern_Record _rangeIself _nameIself _recordPatternBindingsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself,_lhsOvars)
 sem_Pattern_Successor :: (T_Range) ->
                          (T_Name) ->
                          (T_Literal) ->
                          (T_Pattern)
-sem_Pattern_Successor (_range) (_name) (_literal) =
-    let (_self) =
-            Pattern_Successor _range_self _name_self _literal_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _literal_core,_literal_self) =
-            (_literal )
-    in  ( _self,[])
+sem_Pattern_Successor (range_) (name_) (literal_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _literalIcore,_literalIself) =
+            (literal_ )
+        (_lhsOvars@_) =
+            []
+        (_self@_) =
+            Pattern_Successor _rangeIself _nameIself _literalIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself,_lhsOvars)
 sem_Pattern_Tuple :: (T_Range) ->
                      (T_Patterns) ->
                      (T_Pattern)
-sem_Pattern_Tuple (_range) (_patterns) =
-    let (_self) =
-            Pattern_Tuple _range_self _patterns_self
-        ( _range_self) =
-            (_range )
-        ( _patterns_length,_patterns_self,_patterns_vars) =
-            (_patterns )
-    in  ( _self,_patterns_vars)
+sem_Pattern_Tuple (range_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternsIlength,_patternsIself,_patternsIvars) =
+            (patterns_ )
+        (_lhsOvars@_) =
+            _patternsIvars
+        (_self@_) =
+            Pattern_Tuple _rangeIself _patternsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself,_lhsOvars)
 sem_Pattern_Variable :: (T_Range) ->
                         (T_Name) ->
                         (T_Pattern)
-sem_Pattern_Variable (_range) (_name) =
-    let (_self) =
-            Pattern_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self,[ _name_self ])
+sem_Pattern_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_lhsOvars@_) =
+            [ _nameIself ]
+        (_self@_) =
+            Pattern_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself,_lhsOvars)
 sem_Pattern_Wildcard :: (T_Range) ->
                         (T_Pattern)
-sem_Pattern_Wildcard (_range) =
-    let (_self) =
-            Pattern_Wildcard _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self,[])
+sem_Pattern_Wildcard (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_lhsOvars@_) =
+            []
+        (_self@_) =
+            Pattern_Wildcard _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself,_lhsOvars)
 -- Patterns ----------------------------------------------------
 -- semantic domain
 type T_Patterns = ( (Int),(Patterns),( [Name] ))
@@ -2241,19 +3025,31 @@ sem_Patterns (list) =
 sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns) ->
                      (T_Patterns)
-sem_Patterns_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self,_hd_vars) =
-            (_hd )
-        ( _tl_length,_tl_self,_tl_vars) =
-            (_tl )
-    in  ( 1 + _tl_length,_self,_hd_vars  ++  _tl_vars)
+sem_Patterns_Cons (hd_) (tl_) =
+    let ( _hdIself,_hdIvars) =
+            (hd_ )
+        ( _tlIlength,_tlIself,_tlIvars) =
+            (tl_ )
+        (_lhsOlength@_) =
+            1 + _tlIlength
+        (_lhsOvars@_) =
+            _hdIvars  ++  _tlIvars
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOlength,_lhsOself,_lhsOvars)
 sem_Patterns_Nil :: (T_Patterns)
 sem_Patterns_Nil  =
-    let (_self) =
+    let (_lhsOlength@_) =
+            0
+        (_lhsOvars@_) =
             []
-    in  ( 0,_self,[])
+        (_self@_) =
+            []
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOlength,_lhsOself,_lhsOvars)
 -- Position ----------------------------------------------------
 -- semantic domain
 type T_Position = ( (Position))
@@ -2268,15 +3064,19 @@ sem_Position_Position :: (String) ->
                          (Int) ->
                          (Int) ->
                          (T_Position)
-sem_Position_Position (_filename) (_line) (_column) =
-    let (_self) =
-            Position_Position _filename _line _column
-    in  ( _self)
+sem_Position_Position (filename_) (line_) (column_) =
+    let (_self@_) =
+            Position_Position filename_ line_ column_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Position_Unknown :: (T_Position)
 sem_Position_Unknown  =
-    let (_self) =
+    let (_self@_) =
             Position_Unknown
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Qualifier ---------------------------------------------------
 -- semantic domain
 type T_Qualifier = (DictionaryEnvironment) ->
@@ -2294,63 +3094,93 @@ sem_Qualifier ((Qualifier_Let (_range) (_declarations))) =
     (sem_Qualifier_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Qualifier_Empty :: (T_Range) ->
                        (T_Qualifier)
-sem_Qualifier_Empty (_range) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Qualifier_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( internalError "ToCoreExpr" "Qualifier" "empty qualifiers not supported",_self)
+sem_Qualifier_Empty (range_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            (_lhsOcore@_) =
+                internalError "ToCoreExpr" "Qualifier" "empty qualifiers not supported"
+            (_self@_) =
+                Qualifier_Empty _rangeIself
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcore,_lhsOself)
 sem_Qualifier_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Qualifier)
-sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Qualifier_Generator _range_self _pattern_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_self,_pattern_vars) =
-            (_pattern )
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-    in  ( \continue ->
-              let_ nextClauseId nil
-                  (let_
-                      okId
-                      (Core.Lam parameterId
-                          (patternToCore (parameterId, _pattern_self) continue)
-                      )
-                      (var "primConcatMap"
-                          `app_` Core.Var okId
-                          `app_` _expression_core
-                      )
-                  )
-         ,_self
-         )
+sem_Qualifier_Generator (range_) (pattern_) (expression_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternIself,_patternIvars) =
+                (pattern_ )
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            (_lhsOcore@_) =
+                \continue ->
+                    let_ nextClauseId nil
+                        (let_
+                            okId
+                            (Core.Lam parameterId
+                                (patternToCore (parameterId, _patternIself) continue)
+                            )
+                            (var "primConcatMap"
+                                `app_` Core.Var okId
+                                `app_` _expressionIcore
+                            )
+                        )
+            (_self@_) =
+                Qualifier_Generator _rangeIself _patternIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Qualifier_Guard :: (T_Range) ->
                        (T_Expression) ->
                        (T_Qualifier)
-sem_Qualifier_Guard (_range) (_guard) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Qualifier_Guard _range_self _guard_self
-        ( _range_self) =
-            (_range )
-        ( _guard_core,_guard_self) =
-            (_guard (_lhs_dictionaryEnv))
-    in  ( \continue -> if_ _guard_core continue nil,_self)
+sem_Qualifier_Guard (range_) (guard_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _guardIcore,_guardIself) =
+                (guard_ (_guardOdictionaryEnv))
+            (_lhsOcore@_) =
+                \continue -> if_ _guardIcore continue nil
+            (_self@_) =
+                Qualifier_Guard _rangeIself _guardIself
+            (_lhsOself@_) =
+                _self
+            (_guardOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Qualifier_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Qualifier)
-sem_Qualifier_Let (_range) (_declarations) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Qualifier_Let _range_self _declarations_self
-        (_importEnv) =
-            internalError "CodeGeneration.ag" "Qualifier.Let" ""
-        ( _range_self) =
-            (_range )
-        ( _declarations_decls,_declarations_patBindNr,_declarations_self) =
-            (_declarations (_lhs_dictionaryEnv) (_importEnv) (False) (0))
-    in  ( \continue -> letrec_ _declarations_decls continue,_self)
+sem_Qualifier_Let (range_) (declarations_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _declarationsIdecls,_declarationsIpatBindNr,_declarationsIself) =
+                (declarations_ (_declarationsOdictionaryEnv) (_declarationsOimportEnv) (_declarationsOisTopLevel) (_declarationsOpatBindNr))
+            (_importEnv@_) =
+                internalError "CodeGeneration.ag" "Qualifier.Let" ""
+            (_lhsOcore@_) =
+                \continue -> letrec_ _declarationsIdecls continue
+            (_declarationsOisTopLevel@_) =
+                False
+            (_declarationsOpatBindNr@_) =
+                0
+            (_self@_) =
+                Qualifier_Let _rangeIself _declarationsIself
+            (_lhsOself@_) =
+                _self
+            (_declarationsOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_declarationsOimportEnv@_) =
+                _importEnv
+        in  ( _lhsOcore,_lhsOself)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
 type T_Qualifiers = (DictionaryEnvironment) ->
@@ -2363,19 +3193,33 @@ sem_Qualifiers (list) =
 sem_Qualifiers_Cons :: (T_Qualifier) ->
                        (T_Qualifiers) ->
                        (T_Qualifiers)
-sem_Qualifiers_Cons (_hd) (_tl) (_lhs_dictionaryEnv) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_core,_hd_self) =
-            (_hd (_lhs_dictionaryEnv))
-        ( _tl_core,_tl_self) =
-            (_tl (_lhs_dictionaryEnv))
-    in  ( _hd_core  :  _tl_core,_self)
+sem_Qualifiers_Cons (hd_) (tl_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _hdIcore,_hdIself) =
+                (hd_ (_hdOdictionaryEnv))
+            ( _tlIcore,_tlIself) =
+                (tl_ (_tlOdictionaryEnv))
+            (_lhsOcore@_) =
+                _hdIcore  :  _tlIcore
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_hdOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_tlOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Qualifiers_Nil :: (T_Qualifiers)
-sem_Qualifiers_Nil (_lhs_dictionaryEnv) =
-    let (_self) =
-            []
-    in  ( [],_self)
+sem_Qualifiers_Nil  =
+    \ _lhsIdictionaryEnv ->
+        let (_lhsOcore@_) =
+                []
+            (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcore,_lhsOself)
 -- Range -------------------------------------------------------
 -- semantic domain
 type T_Range = ( (Range))
@@ -2387,14 +3231,16 @@ sem_Range ((Range_Range (_start) (_stop))) =
 sem_Range_Range :: (T_Position) ->
                    (T_Position) ->
                    (T_Range)
-sem_Range_Range (_start) (_stop) =
-    let (_self) =
-            Range_Range _start_self _stop_self
-        ( _start_self) =
-            (_start )
-        ( _stop_self) =
-            (_stop )
-    in  ( _self)
+sem_Range_Range (start_) (stop_) =
+    let ( _startIself) =
+            (start_ )
+        ( _stopIself) =
+            (stop_ )
+        (_self@_) =
+            Range_Range _startIself _stopIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- RecordExpressionBinding -------------------------------------
 -- semantic domain
 type T_RecordExpressionBinding = (DictionaryEnvironment) ->
@@ -2408,16 +3254,21 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
                                                        (T_Name) ->
                                                        (T_Expression) ->
                                                        (T_RecordExpressionBinding)
-sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expression) (_lhs_dictionaryEnv) =
-    let (_self) =
-            RecordExpressionBinding_RecordExpressionBinding _range_self _name_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-    in  ( _self)
+sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _nameIself) =
+                (name_ )
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            (_self@_) =
+                RecordExpressionBinding_RecordExpressionBinding _rangeIself _nameIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOself)
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
 type T_RecordExpressionBindings = (DictionaryEnvironment) ->
@@ -2430,19 +3281,29 @@ sem_RecordExpressionBindings (list) =
 sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_RecordExpressionBindings)
-sem_RecordExpressionBindings_Cons (_hd) (_tl) (_lhs_dictionaryEnv) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd (_lhs_dictionaryEnv))
-        ( _tl_self) =
-            (_tl (_lhs_dictionaryEnv))
-    in  ( _self)
+sem_RecordExpressionBindings_Cons (hd_) (tl_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _hdIself) =
+                (hd_ (_hdOdictionaryEnv))
+            ( _tlIself) =
+                (tl_ (_tlOdictionaryEnv))
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_hdOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_tlOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOself)
 sem_RecordExpressionBindings_Nil :: (T_RecordExpressionBindings)
-sem_RecordExpressionBindings_Nil (_lhs_dictionaryEnv) =
-    let (_self) =
-            []
-    in  ( _self)
+sem_RecordExpressionBindings_Nil  =
+    \ _lhsIdictionaryEnv ->
+        let (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOself)
 -- RecordPatternBinding ----------------------------------------
 -- semantic domain
 type T_RecordPatternBinding = ( (RecordPatternBinding))
@@ -2455,16 +3316,18 @@ sem_RecordPatternBinding_RecordPatternBinding :: (T_Range) ->
                                                  (T_Name) ->
                                                  (T_Pattern) ->
                                                  (T_RecordPatternBinding)
-sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) =
-    let (_self) =
-            RecordPatternBinding_RecordPatternBinding _range_self _name_self _pattern_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _pattern_self,_pattern_vars) =
-            (_pattern )
-    in  ( _self)
+sem_RecordPatternBinding_RecordPatternBinding (range_) (name_) (pattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _patternIself,_patternIvars) =
+            (pattern_ )
+        (_self@_) =
+            RecordPatternBinding_RecordPatternBinding _rangeIself _nameIself _patternIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- RecordPatternBindings ---------------------------------------
 -- semantic domain
 type T_RecordPatternBindings = ( (RecordPatternBindings))
@@ -2476,19 +3339,23 @@ sem_RecordPatternBindings (list) =
 sem_RecordPatternBindings_Cons :: (T_RecordPatternBinding) ->
                                   (T_RecordPatternBindings) ->
                                   (T_RecordPatternBindings)
-sem_RecordPatternBindings_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_RecordPatternBindings_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_RecordPatternBindings_Nil :: (T_RecordPatternBindings)
 sem_RecordPatternBindings_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- RightHandSide -----------------------------------------------
 -- semantic domain
 type T_RightHandSide = (DictionaryEnvironment) ->
@@ -2504,30 +3371,52 @@ sem_RightHandSide_Expression :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_MaybeDeclarations) ->
                                 (T_RightHandSide)
-sem_RightHandSide_Expression (_range) (_expression) (_where) (_lhs_dictionaryEnv) =
-    let (_self) =
-            RightHandSide_Expression _range_self _expression_self _where_self
-        ( _range_self) =
-            (_range )
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-        ( _where_core,_where_self) =
-            (_where (_lhs_dictionaryEnv))
-    in  ( _where_core _expression_core,False,_self)
+sem_RightHandSide_Expression (range_) (expression_) (where_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            ( _whereIcore,_whereIself) =
+                (where_ (_whereOdictionaryEnv))
+            (_lhsOisGuarded@_) =
+                False
+            (_lhsOcore@_) =
+                _whereIcore _expressionIcore
+            (_self@_) =
+                RightHandSide_Expression _rangeIself _expressionIself _whereIself
+            (_lhsOself@_) =
+                _self
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_whereOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOisGuarded,_lhsOself)
 sem_RightHandSide_Guarded :: (T_Range) ->
                              (T_GuardedExpressions) ->
                              (T_MaybeDeclarations) ->
                              (T_RightHandSide)
-sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) (_lhs_dictionaryEnv) =
-    let (_self) =
-            RightHandSide_Guarded _range_self _guardedexpressions_self _where_self
-        ( _range_self) =
-            (_range )
-        ( _guardedexpressions_core,_guardedexpressions_self) =
-            (_guardedexpressions (_lhs_dictionaryEnv))
-        ( _where_core,_where_self) =
-            (_where (_lhs_dictionaryEnv))
-    in  ( _where_core (foldr ($) (Core.Var nextClauseId) _guardedexpressions_core),True,_self)
+sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _guardedexpressionsIcore,_guardedexpressionsIself) =
+                (guardedexpressions_ (_guardedexpressionsOdictionaryEnv))
+            ( _whereIcore,_whereIself) =
+                (where_ (_whereOdictionaryEnv))
+            (_lhsOcore@_) =
+                _whereIcore (foldr ($) (Core.Var nextClauseId) _guardedexpressionsIcore)
+            (_lhsOisGuarded@_) =
+                True
+            (_self@_) =
+                RightHandSide_Guarded _rangeIself _guardedexpressionsIself _whereIself
+            (_lhsOself@_) =
+                _self
+            (_guardedexpressionsOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_whereOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOisGuarded,_lhsOself)
 -- SimpleType --------------------------------------------------
 -- semantic domain
 type T_SimpleType = ( (Name),(SimpleType),(Names))
@@ -2540,16 +3429,22 @@ sem_SimpleType_SimpleType :: (T_Range) ->
                              (T_Name) ->
                              (T_Names) ->
                              (T_SimpleType)
-sem_SimpleType_SimpleType (_range) (_name) (_typevariables) =
-    let (_self) =
-            SimpleType_SimpleType _range_self _name_self _typevariables_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _typevariables_names,_typevariables_self) =
-            (_typevariables )
-    in  ( _name_self,_self,_typevariables_self)
+sem_SimpleType_SimpleType (range_) (name_) (typevariables_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _typevariablesInames,_typevariablesIself) =
+            (typevariables_ )
+        (_lhsOtypevariables@_) =
+            _typevariablesIself
+        (_lhsOname@_) =
+            _nameIself
+        (_self@_) =
+            SimpleType_SimpleType _rangeIself _nameIself _typevariablesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOname,_lhsOself,_lhsOtypevariables)
 -- Statement ---------------------------------------------------
 -- semantic domain
 type T_Statement = (DictionaryEnvironment) ->
@@ -2567,77 +3462,101 @@ sem_Statement ((Statement_Let (_range) (_declarations))) =
     (sem_Statement_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Statement_Empty :: (T_Range) ->
                        (T_Statement)
-sem_Statement_Empty (_range) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Statement_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( \rest ->
-              case rest of
-                  Nothing   -> internalError "ToCoreExpr" "Statement" "empty statements not supported"
-                  Just rest -> rest
-         ,_self
-         )
+sem_Statement_Empty (range_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            (_lhsOcore@_) =
+                \rest ->
+                    case rest of
+                        Nothing   -> internalError "ToCoreExpr" "Statement" "empty statements not supported"
+                        Just rest -> rest
+            (_self@_) =
+                Statement_Empty _rangeIself
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcore,_lhsOself)
 sem_Statement_Expression :: (T_Range) ->
                             (T_Expression) ->
                             (T_Statement)
-sem_Statement_Expression (_range) (_expression) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Statement_Expression _range_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-    in  ( \rest ->
-              case rest of
-                  Nothing   -> _expression_core
-                  Just rest -> bind _expression_core (Core.Lam dummyId rest)
-         ,_self
-         )
+sem_Statement_Expression (range_) (expression_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            (_lhsOcore@_) =
+                \rest ->
+                    case rest of
+                        Nothing   -> _expressionIcore
+                        Just rest -> bind _expressionIcore (Core.Lam dummyId rest)
+            (_self@_) =
+                Statement_Expression _rangeIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Statement_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Statement)
-sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Statement_Generator _range_self _pattern_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _pattern_self,_pattern_vars) =
-            (_pattern )
-        ( _expression_core,_expression_self) =
-            (_expression (_lhs_dictionaryEnv))
-    in  ( \rest -> case rest of
-              Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
-              Just rest ->
-                  let_ nextClauseId (patternMatchFail "generator" _range_self)
-                      (let_
-                          okId
-                          (Core.Lam parameterId
-                              (patternToCore (parameterId, _pattern_self) rest)
-                          )
-                          (_expression_core `bind` Core.Var okId)
-                      )
-         ,_self
-         )
+sem_Statement_Generator (range_) (pattern_) (expression_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _patternIself,_patternIvars) =
+                (pattern_ )
+            ( _expressionIcore,_expressionIself) =
+                (expression_ (_expressionOdictionaryEnv))
+            (_lhsOcore@_) =
+                \rest -> case rest of
+                    Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
+                    Just rest ->
+                        let_ nextClauseId (patternMatchFail "generator" _rangeIself)
+                            (let_
+                                okId
+                                (Core.Lam parameterId
+                                    (patternToCore (parameterId, _patternIself) rest)
+                                )
+                                (_expressionIcore `bind` Core.Var okId)
+                            )
+            (_self@_) =
+                Statement_Generator _rangeIself _patternIself _expressionIself
+            (_lhsOself@_) =
+                _self
+            (_expressionOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Statement_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Statement)
-sem_Statement_Let (_range) (_declarations) (_lhs_dictionaryEnv) =
-    let (_self) =
-            Statement_Let _range_self _declarations_self
-        (_importEnv) =
-            internalError "CodeGeneration.ag" "Statement.Let" ""
-        ( _range_self) =
-            (_range )
-        ( _declarations_decls,_declarations_patBindNr,_declarations_self) =
-            (_declarations (_lhs_dictionaryEnv) (_importEnv) (False) (0))
-    in  ( \rest ->
-              case rest of
-                  Nothing   -> internalError "ToCoreExpr" "Statement" "'let' can't be last in 'do'"
-                  Just rest -> letrec_ _declarations_decls rest
-         ,_self
-         )
+sem_Statement_Let (range_) (declarations_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _rangeIself) =
+                (range_ )
+            ( _declarationsIdecls,_declarationsIpatBindNr,_declarationsIself) =
+                (declarations_ (_declarationsOdictionaryEnv) (_declarationsOimportEnv) (_declarationsOisTopLevel) (_declarationsOpatBindNr))
+            (_importEnv@_) =
+                internalError "CodeGeneration.ag" "Statement.Let" ""
+            (_lhsOcore@_) =
+                \rest ->
+                    case rest of
+                        Nothing   -> internalError "ToCoreExpr" "Statement" "'let' can't be last in 'do'"
+                        Just rest -> letrec_ _declarationsIdecls rest
+            (_declarationsOisTopLevel@_) =
+                False
+            (_declarationsOpatBindNr@_) =
+                0
+            (_self@_) =
+                Statement_Let _rangeIself _declarationsIself
+            (_lhsOself@_) =
+                _self
+            (_declarationsOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_declarationsOimportEnv@_) =
+                _importEnv
+        in  ( _lhsOcore,_lhsOself)
 -- Statements --------------------------------------------------
 -- semantic domain
 type T_Statements = (DictionaryEnvironment) ->
@@ -2650,19 +3569,33 @@ sem_Statements (list) =
 sem_Statements_Cons :: (T_Statement) ->
                        (T_Statements) ->
                        (T_Statements)
-sem_Statements_Cons (_hd) (_tl) (_lhs_dictionaryEnv) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_core,_hd_self) =
-            (_hd (_lhs_dictionaryEnv))
-        ( _tl_core,_tl_self) =
-            (_tl (_lhs_dictionaryEnv))
-    in  ( _hd_core  :  _tl_core,_self)
+sem_Statements_Cons (hd_) (tl_) =
+    \ _lhsIdictionaryEnv ->
+        let ( _hdIcore,_hdIself) =
+                (hd_ (_hdOdictionaryEnv))
+            ( _tlIcore,_tlIself) =
+                (tl_ (_tlOdictionaryEnv))
+            (_lhsOcore@_) =
+                _hdIcore  :  _tlIcore
+            (_self@_) =
+                (:) _hdIself _tlIself
+            (_lhsOself@_) =
+                _self
+            (_hdOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+            (_tlOdictionaryEnv@_) =
+                _lhsIdictionaryEnv
+        in  ( _lhsOcore,_lhsOself)
 sem_Statements_Nil :: (T_Statements)
-sem_Statements_Nil (_lhs_dictionaryEnv) =
-    let (_self) =
-            []
-    in  ( [],_self)
+sem_Statements_Nil  =
+    \ _lhsIdictionaryEnv ->
+        let (_lhsOcore@_) =
+                []
+            (_self@_) =
+                []
+            (_lhsOself@_) =
+                _self
+        in  ( _lhsOcore,_lhsOself)
 -- Strings -----------------------------------------------------
 -- semantic domain
 type T_Strings = ( (Strings))
@@ -2674,17 +3607,21 @@ sem_Strings (list) =
 sem_Strings_Cons :: (String) ->
                     (T_Strings) ->
                     (T_Strings)
-sem_Strings_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd _tl_self
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Strings_Cons (hd_) (tl_) =
+    let ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) hd_ _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Strings_Nil :: (T_Strings)
 sem_Strings_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Type --------------------------------------------------------
 -- semantic domain
 type T_Type = ( (Type))
@@ -2710,91 +3647,105 @@ sem_Type_Application :: (T_Range) ->
                         (T_Type) ->
                         (T_Types) ->
                         (T_Type)
-sem_Type_Application (_range) (_prefix) (_function) (_arguments) =
-    let (_self) =
-            Type_Application _range_self _prefix _function_self _arguments_self
-        ( _range_self) =
-            (_range )
-        ( _function_self) =
-            (_function )
-        ( _arguments_self) =
-            (_arguments )
-    in  ( _self)
+sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _functionIself) =
+            (function_ )
+        ( _argumentsIself) =
+            (arguments_ )
+        (_self@_) =
+            Type_Application _rangeIself prefix_ _functionIself _argumentsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Constructor :: (T_Range) ->
                         (T_Name) ->
                         (T_Type)
-sem_Type_Constructor (_range) (_name) =
-    let (_self) =
-            Type_Constructor _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Type_Constructor (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Type_Constructor _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Exists :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
-sem_Type_Exists (_range) (_typevariables) (_type) =
-    let (_self) =
-            Type_Exists _range_self _typevariables_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _typevariables_names,_typevariables_self) =
-            (_typevariables )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_Type_Exists (range_) (typevariables_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _typevariablesInames,_typevariablesIself) =
+            (typevariables_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            Type_Exists _rangeIself _typevariablesIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Forall :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
-sem_Type_Forall (_range) (_typevariables) (_type) =
-    let (_self) =
-            Type_Forall _range_self _typevariables_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _typevariables_names,_typevariables_self) =
-            (_typevariables )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_Type_Forall (range_) (typevariables_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _typevariablesInames,_typevariablesIself) =
+            (typevariables_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            Type_Forall _rangeIself _typevariablesIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Parenthesized :: (T_Range) ->
                           (T_Type) ->
                           (T_Type)
-sem_Type_Parenthesized (_range) (_type) =
-    let (_self) =
-            Type_Parenthesized _range_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_Type_Parenthesized (range_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            Type_Parenthesized _rangeIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Qualified :: (T_Range) ->
                       (T_ContextItems) ->
                       (T_Type) ->
                       (T_Type)
-sem_Type_Qualified (_range) (_context) (_type) =
-    let (_self) =
-            Type_Qualified _range_self _context_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_Type_Qualified (range_) (context_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _contextIself) =
+            (context_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            Type_Qualified _rangeIself _contextIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Variable :: (T_Range) ->
                      (T_Name) ->
                      (T_Type)
-sem_Type_Variable (_range) (_name) =
-    let (_self) =
-            Type_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-    in  ( _self)
+sem_Type_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        (_self@_) =
+            Type_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Types -------------------------------------------------------
 -- semantic domain
 type T_Types = ( (Types))
@@ -2806,17 +3757,21 @@ sem_Types (list) =
 sem_Types_Cons :: (T_Type) ->
                   (T_Types) ->
                   (T_Types)
-sem_Types_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Types_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Types_Nil :: (T_Types)
 sem_Types_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 

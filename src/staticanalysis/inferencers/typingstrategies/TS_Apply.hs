@@ -128,9 +128,15 @@ sem_Core_Judgement ((Judgement (_expression) (_type))) =
 sem_Core_Judgement_Judgement :: (String) ->
                                 (Tp) ->
                                 (T_Core_Judgement)
-sem_Core_Judgement_Judgement (_expression) (_type) (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_substitution) =
-    let 
-    in  ( ftv _type,[(_expression, _type)])
+sem_Core_Judgement_Judgement (expression_) (type_) =
+    \ _lhsIinfoTuple
+      _lhsImetaVariableTable
+      _lhsIsubstitution ->
+        let (_lhsOftv@_) =
+                ftv type_
+            (_lhsOjudgements@_) =
+                [(expression_, type_)]
+        in  ( _lhsOftv,_lhsOjudgements)
 -- Core_Judgements ---------------------------------------------
 -- semantic domain
 type T_Core_Judgements = ((ConstraintSet, MetaVariableInfo)) ->
@@ -145,16 +151,41 @@ sem_Core_Judgements (list) =
 sem_Core_Judgements_Cons :: (T_Core_Judgement) ->
                             (T_Core_Judgements) ->
                             (T_Core_Judgements)
-sem_Core_Judgements_Cons (_hd) (_tl) (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_substitution) =
-    let ( _hd_ftv,_hd_judgements) =
-            (_hd (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_substitution))
-        ( _tl_ftv,_tl_judgements) =
-            (_tl (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_substitution))
-    in  ( _hd_ftv ++ _tl_ftv,_hd_judgements ++ _tl_judgements)
+sem_Core_Judgements_Cons (hd_) (tl_) =
+    \ _lhsIinfoTuple
+      _lhsImetaVariableTable
+      _lhsIsubstitution ->
+        let ( _hdIftv,_hdIjudgements) =
+                (hd_ (_hdOinfoTuple) (_hdOmetaVariableTable) (_hdOsubstitution))
+            ( _tlIftv,_tlIjudgements) =
+                (tl_ (_tlOinfoTuple) (_tlOmetaVariableTable) (_tlOsubstitution))
+            (_lhsOftv@_) =
+                _hdIftv ++ _tlIftv
+            (_lhsOjudgements@_) =
+                _hdIjudgements ++ _tlIjudgements
+            (_hdOinfoTuple@_) =
+                _lhsIinfoTuple
+            (_hdOmetaVariableTable@_) =
+                _lhsImetaVariableTable
+            (_hdOsubstitution@_) =
+                _lhsIsubstitution
+            (_tlOinfoTuple@_) =
+                _lhsIinfoTuple
+            (_tlOmetaVariableTable@_) =
+                _lhsImetaVariableTable
+            (_tlOsubstitution@_) =
+                _lhsIsubstitution
+        in  ( _lhsOftv,_lhsOjudgements)
 sem_Core_Judgements_Nil :: (T_Core_Judgements)
-sem_Core_Judgements_Nil (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_substitution) =
-    let 
-    in  ( [],[])
+sem_Core_Judgements_Nil  =
+    \ _lhsIinfoTuple
+      _lhsImetaVariableTable
+      _lhsIsubstitution ->
+        let (_lhsOftv@_) =
+                []
+            (_lhsOjudgements@_) =
+                []
+        in  ( _lhsOftv,_lhsOjudgements)
 -- Core_TypeRule -----------------------------------------------
 -- semantic domain
 type T_Core_TypeRule = ((ConstraintSet, MetaVariableInfo)) ->
@@ -169,27 +200,45 @@ sem_Core_TypeRule ((TypeRule (_premises) (_conclusion))) =
 sem_Core_TypeRule_TypeRule :: (T_Core_Judgements) ->
                               (T_Core_Judgement) ->
                               (T_Core_TypeRule)
-sem_Core_TypeRule_TypeRule (_premises) (_conclusion) (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_substitution) =
-    let ( _premises_ftv,_premises_judgements) =
-            (_premises (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_substitution))
-        ( _conclusion_ftv,_conclusion_judgements) =
-            (_conclusion (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_substitution))
-    in  ( let infoTuple@(localType, localTree, _) = snd _lhs_infoTuple
-              localLocation = "expression"
-          in [ (_lhs_substitution |-> tp1 .==. localType)
-                  (typeRuleCInfo localLocation Nothing infoTuple)
-             | (s1, tp1) <- _conclusion_judgements
-             ]
-             ++
-             [ (tp2 .==. _lhs_substitution |-> tp1)
-                  (typeRuleCInfo localLocation (Just (s1, localTree)) mvinfo)
-             | (s1, tp1)                   <- _premises_judgements
-             , (s2, (_, mvinfo@(tp2,_,_))) <- _lhs_metaVariableTable
-             , s1 == s2
-             ]
-         ,_premises_ftv ++ _conclusion_ftv
-         ,_premises_judgements ++ _conclusion_judgements
-         )
+sem_Core_TypeRule_TypeRule (premises_) (conclusion_) =
+    \ _lhsIinfoTuple
+      _lhsImetaVariableTable
+      _lhsIsubstitution ->
+        let ( _premisesIftv,_premisesIjudgements) =
+                (premises_ (_premisesOinfoTuple) (_premisesOmetaVariableTable) (_premisesOsubstitution))
+            ( _conclusionIftv,_conclusionIjudgements) =
+                (conclusion_ (_conclusionOinfoTuple) (_conclusionOmetaVariableTable) (_conclusionOsubstitution))
+            (_lhsOconstraints@_) =
+                let infoTuple@(localType, localTree, _) = snd _lhsIinfoTuple
+                    localLocation = "expression"
+                in [ (_lhsIsubstitution |-> tp1 .==. localType)
+                        (typeRuleCInfo localLocation Nothing infoTuple)
+                   | (s1, tp1) <- _conclusionIjudgements
+                   ]
+                   ++
+                   [ (tp2 .==. _lhsIsubstitution |-> tp1)
+                        (typeRuleCInfo localLocation (Just (s1, localTree)) mvinfo)
+                   | (s1, tp1)                   <- _premisesIjudgements
+                   , (s2, (_, mvinfo@(tp2,_,_))) <- _lhsImetaVariableTable
+                   , s1 == s2
+                   ]
+            (_lhsOftv@_) =
+                _premisesIftv ++ _conclusionIftv
+            (_lhsOjudgements@_) =
+                _premisesIjudgements ++ _conclusionIjudgements
+            (_premisesOinfoTuple@_) =
+                _lhsIinfoTuple
+            (_premisesOmetaVariableTable@_) =
+                _lhsImetaVariableTable
+            (_premisesOsubstitution@_) =
+                _lhsIsubstitution
+            (_conclusionOinfoTuple@_) =
+                _lhsIinfoTuple
+            (_conclusionOmetaVariableTable@_) =
+                _lhsImetaVariableTable
+            (_conclusionOsubstitution@_) =
+                _lhsIsubstitution
+        in  ( _lhsOconstraints,_lhsOftv,_lhsOjudgements)
 -- Core_TypingStrategy -----------------------------------------
 -- semantic domain
 type T_Core_TypingStrategy = ((ConstraintSet, MetaVariableInfo)) ->
@@ -205,44 +254,83 @@ sem_Core_TypingStrategy ((TypingStrategy (_typerule) (_statements))) =
     (sem_Core_TypingStrategy_TypingStrategy ((sem_Core_TypeRule (_typerule))) ((sem_Core_UserStatements (_statements))))
 sem_Core_TypingStrategy_Siblings :: ([String]) ->
                                     (T_Core_TypingStrategy)
-sem_Core_TypingStrategy_Siblings (_functions) (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_unique) =
-    let 
-    in  ( emptyTree,return (),_lhs_unique)
+sem_Core_TypingStrategy_Siblings (functions_) =
+    \ _lhsIinfoTuple
+      _lhsImetaVariableTable
+      _lhsIunique ->
+        let (_lhsOdebugIO@_) =
+                return ()
+            (_lhsOconstraintSet@_) =
+                emptyTree
+            (_lhsOunique@_) =
+                _lhsIunique
+        in  ( _lhsOconstraintSet,_lhsOdebugIO,_lhsOunique)
 sem_Core_TypingStrategy_TypingStrategy :: (T_Core_TypeRule) ->
                                           (T_Core_UserStatements) ->
                                           (T_Core_TypingStrategy)
-sem_Core_TypingStrategy_TypingStrategy (_typerule) (_statements) (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_unique) =
-    let (_substitution) =
-            listToSubstitution (_standardSubst ++ _specialSubst)
-        (_allTV) =
-            _typerule_ftv `union` _statements_ftv
-        (_specialTV) =
-            concat . exactlyOnce . map ftv . filter isTVar . map snd $ _typerule_judgements
-        (_normalTV) =
-            _allTV \\ _specialTV
-        (_standardSubst) =
-            zip _normalTV (map TVar [_lhs_unique..])
-        (_specialSubst) =
-            let conclusionVar = case snd (last _typerule_judgements) of
-                                   TVar i -> Just i
-                                   _      -> Nothing
-                find i | Just i == conclusionVar = [(i, fst3 (snd _lhs_infoTuple))]
-                       | otherwise               = [ (i,tp)
-                                                   | (s1, TVar j)       <- _typerule_judgements
-                                                   , i == j
-                                                   , (s2, (_,(tp,_,_))) <- _lhs_metaVariableTable
-                                                   , s1 == s2
-                                                   ]
-            in concatMap find _specialTV
-        (_allConstraintTrees) =
-            listTree (reverse _typerule_constraints) :
-            (map snd _statements_metavarConstraints) ++
-            (reverse _statements_collectConstraints)
-        ( _typerule_constraints,_typerule_ftv,_typerule_judgements) =
-            (_typerule (_lhs_infoTuple) (_lhs_metaVariableTable) (_substitution))
-        ( _statements_collectConstraints,_statements_currentPhase,_statements_currentPosition,_statements_ftv,_statements_metavarConstraints) =
-            (_statements (makeAttributeTable (snd _lhs_infoTuple) _lhs_metaVariableTable _substitution) ([]) (Nothing) ((_lhs_unique, 0)) (_lhs_infoTuple) (_lhs_metaVariableTable) ([ (s,cs) | (s,(cs,_)) <- _lhs_metaVariableTable ]) (_substitution))
-    in  ( Node _allConstraintTrees,putStrLn "applying typing strategy",length _normalTV + _lhs_unique)
+sem_Core_TypingStrategy_TypingStrategy (typerule_) (statements_) =
+    \ _lhsIinfoTuple
+      _lhsImetaVariableTable
+      _lhsIunique ->
+        let ( _typeruleIconstraints,_typeruleIftv,_typeruleIjudgements) =
+                (typerule_ (_typeruleOinfoTuple) (_typeruleOmetaVariableTable) (_typeruleOsubstitution))
+            ( _statementsIcollectConstraints,_statementsIcurrentPhase,_statementsIcurrentPosition,_statementsIftv,_statementsImetavarConstraints) =
+                (statements_ (_statementsOattributeTable) (_statementsOcollectConstraints) (_statementsOcurrentPhase) (_statementsOcurrentPosition) (_statementsOinfoTuple) (_statementsOmetaVariableTable) (_statementsOmetavarConstraints) (_statementsOsubstitution))
+            (_specialSubst@_) =
+                let conclusionVar = case snd (last _typeruleIjudgements) of
+                                       TVar i -> Just i
+                                       _      -> Nothing
+                    find i | Just i == conclusionVar = [(i, fst3 (snd _lhsIinfoTuple))]
+                           | otherwise               = [ (i,tp)
+                                                       | (s1, TVar j)       <- _typeruleIjudgements
+                                                       , i == j
+                                                       , (s2, (_,(tp,_,_))) <- _lhsImetaVariableTable
+                                                       , s1 == s2
+                                                       ]
+                in concatMap find _specialTV
+            (_standardSubst@_) =
+                zip _normalTV (map TVar [_lhsIunique..])
+            (_normalTV@_) =
+                _allTV \\ _specialTV
+            (_specialTV@_) =
+                concat . exactlyOnce . map ftv . filter isTVar . map snd $ _typeruleIjudgements
+            (_allTV@_) =
+                _typeruleIftv `union` _statementsIftv
+            (_substitution@_) =
+                listToSubstitution (_standardSubst ++ _specialSubst)
+            (_lhsOdebugIO@_) =
+                putStrLn "applying typing strategy"
+            (_lhsOunique@_) =
+                length _normalTV + _lhsIunique
+            (_lhsOconstraintSet@_) =
+                Node _allConstraintTrees
+            (_statementsOattributeTable@_) =
+                makeAttributeTable (snd _lhsIinfoTuple) _lhsImetaVariableTable _substitution
+            (_statementsOmetavarConstraints@_) =
+                [ (s,cs) | (s,(cs,_)) <- _lhsImetaVariableTable ]
+            (_statementsOcurrentPosition@_) =
+                (_lhsIunique, 0)
+            (_statementsOcurrentPhase@_) =
+                Nothing
+            (_statementsOcollectConstraints@_) =
+                []
+            (_allConstraintTrees@_) =
+                listTree (reverse _typeruleIconstraints) :
+                (map snd _statementsImetavarConstraints) ++
+                (reverse _statementsIcollectConstraints)
+            (_typeruleOinfoTuple@_) =
+                _lhsIinfoTuple
+            (_typeruleOmetaVariableTable@_) =
+                _lhsImetaVariableTable
+            (_typeruleOsubstitution@_) =
+                _substitution
+            (_statementsOinfoTuple@_) =
+                _lhsIinfoTuple
+            (_statementsOmetaVariableTable@_) =
+                _lhsImetaVariableTable
+            (_statementsOsubstitution@_) =
+                _substitution
+        in  ( _lhsOconstraintSet,_lhsOdebugIO,_lhsOunique)
 -- Core_UserStatement ------------------------------------------
 -- semantic domain
 type T_Core_UserStatement = ([((String, Maybe String), MessageBlock)]) ->
@@ -267,39 +355,81 @@ sem_Core_UserStatement_Constraint :: (Tp) ->
                                      (Tp) ->
                                      (String) ->
                                      (T_Core_UserStatement)
-sem_Core_UserStatement_Constraint (_leftType) (_rightType) (_message) (_lhs_attributeTable) (_lhs_collectConstraints) (_lhs_currentPhase) (_lhs_currentPosition) (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_metavarConstraints) (_lhs_substitution) =
-    let (_newConstraint) =
-            let cinfo   = addProperty (WithTypeError (CustomTypeError [] message)) .
-                          addProperty (uncurry IsUserConstraint _lhs_currentPosition) .
-                          standardConstraintInfo _lhs_currentPosition
-                message = [MessageOneLiner (MessageCompose (substituteAttributes (makeMessageAlgebra _lhs_attributeTable) _message))]
-            in (_lhs_substitution |-> _leftType .==. _lhs_substitution |-> _rightType) cinfo
-    in  ( case _lhs_currentPhase of
-             Just phase | phase /= 5
-                        -> Phase phase [ _newConstraint ] : _lhs_collectConstraints
-             _          -> unitTree _newConstraint : _lhs_collectConstraints
-         ,_lhs_currentPhase
-         ,(\(x, y) -> (x, y+1)) _lhs_currentPosition
-         ,ftv [_leftType, _rightType]
-         ,_lhs_metavarConstraints
-         )
+sem_Core_UserStatement_Constraint (leftType_) (rightType_) (message_) =
+    \ _lhsIattributeTable
+      _lhsIcollectConstraints
+      _lhsIcurrentPhase
+      _lhsIcurrentPosition
+      _lhsIinfoTuple
+      _lhsImetaVariableTable
+      _lhsImetavarConstraints
+      _lhsIsubstitution ->
+        let (_lhsOftv@_) =
+                ftv [leftType_, rightType_]
+            (_lhsOcollectConstraints@_) =
+                case _lhsIcurrentPhase of
+                   Just phase | phase /= 5
+                              -> Phase phase [ _newConstraint ] : _lhsIcollectConstraints
+                   _          -> unitTree _newConstraint : _lhsIcollectConstraints
+            (_lhsOcurrentPosition@_) =
+                (\(x, y) -> (x, y+1)) _lhsIcurrentPosition
+            (_newConstraint@_) =
+                let cinfo   = addProperty (WithTypeError (CustomTypeError [] message)) .
+                              addProperty (uncurry IsUserConstraint _lhsIcurrentPosition) .
+                              standardConstraintInfo _lhsIcurrentPosition
+                    message = [MessageOneLiner (MessageCompose (substituteAttributes (makeMessageAlgebra _lhsIattributeTable) message_))]
+                in (_lhsIsubstitution |-> leftType_ .==. _lhsIsubstitution |-> rightType_) cinfo
+            (_lhsOcurrentPhase@_) =
+                _lhsIcurrentPhase
+            (_lhsOmetavarConstraints@_) =
+                _lhsImetavarConstraints
+        in  ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints)
 sem_Core_UserStatement_CorePhase :: (Int) ->
                                     (T_Core_UserStatement)
-sem_Core_UserStatement_CorePhase (_phase) (_lhs_attributeTable) (_lhs_collectConstraints) (_lhs_currentPhase) (_lhs_currentPosition) (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_metavarConstraints) (_lhs_substitution) =
-    let 
-    in  ( _lhs_collectConstraints,Just _phase,_lhs_currentPosition,[],_lhs_metavarConstraints)
+sem_Core_UserStatement_CorePhase (phase_) =
+    \ _lhsIattributeTable
+      _lhsIcollectConstraints
+      _lhsIcurrentPhase
+      _lhsIcurrentPosition
+      _lhsIinfoTuple
+      _lhsImetaVariableTable
+      _lhsImetavarConstraints
+      _lhsIsubstitution ->
+        let (_lhsOcurrentPhase@_) =
+                Just phase_
+            (_lhsOftv@_) =
+                []
+            (_lhsOcollectConstraints@_) =
+                _lhsIcollectConstraints
+            (_lhsOcurrentPosition@_) =
+                _lhsIcurrentPosition
+            (_lhsOmetavarConstraints@_) =
+                _lhsImetavarConstraints
+        in  ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints)
 sem_Core_UserStatement_MetaVariableConstraints :: (String) ->
                                                   (T_Core_UserStatement)
-sem_Core_UserStatement_MetaVariableConstraints (_name) (_lhs_attributeTable) (_lhs_collectConstraints) (_lhs_currentPhase) (_lhs_currentPosition) (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_metavarConstraints) (_lhs_substitution) =
-    let 
-    in  ( case lookup _name _lhs_metavarConstraints of
-              Just tree -> tree : _lhs_collectConstraints
-              Nothing   -> internalError "TS_Apply.ag" "n/a" "unknown constraint set"
-         ,_lhs_currentPhase
-         ,_lhs_currentPosition
-         ,[]
-         ,filter ((_name /=) . fst) _lhs_metavarConstraints
-         )
+sem_Core_UserStatement_MetaVariableConstraints (name_) =
+    \ _lhsIattributeTable
+      _lhsIcollectConstraints
+      _lhsIcurrentPhase
+      _lhsIcurrentPosition
+      _lhsIinfoTuple
+      _lhsImetaVariableTable
+      _lhsImetavarConstraints
+      _lhsIsubstitution ->
+        let (_lhsOcollectConstraints@_) =
+                case lookup name_ _lhsImetavarConstraints of
+                    Just tree -> tree : _lhsIcollectConstraints
+                    Nothing   -> internalError "TS_Apply.ag" "n/a" "unknown constraint set"
+            (_lhsOmetavarConstraints@_) =
+                filter ((name_ /=) . fst) _lhsImetavarConstraints
+            (_lhsOftv@_) =
+                []
+            (_lhsOcurrentPhase@_) =
+                _lhsIcurrentPhase
+            (_lhsOcurrentPosition@_) =
+                _lhsIcurrentPosition
+        in  ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints)
 -- Core_UserStatements -----------------------------------------
 -- semantic domain
 type T_Core_UserStatements = ([((String, Maybe String), MessageBlock)]) ->
@@ -319,14 +449,81 @@ sem_Core_UserStatements (list) =
 sem_Core_UserStatements_Cons :: (T_Core_UserStatement) ->
                                 (T_Core_UserStatements) ->
                                 (T_Core_UserStatements)
-sem_Core_UserStatements_Cons (_hd) (_tl) (_lhs_attributeTable) (_lhs_collectConstraints) (_lhs_currentPhase) (_lhs_currentPosition) (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_metavarConstraints) (_lhs_substitution) =
-    let ( _hd_collectConstraints,_hd_currentPhase,_hd_currentPosition,_hd_ftv,_hd_metavarConstraints) =
-            (_hd (_lhs_attributeTable) (_lhs_collectConstraints) (_lhs_currentPhase) (_lhs_currentPosition) (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_metavarConstraints) (_lhs_substitution))
-        ( _tl_collectConstraints,_tl_currentPhase,_tl_currentPosition,_tl_ftv,_tl_metavarConstraints) =
-            (_tl (_lhs_attributeTable) (_hd_collectConstraints) (_hd_currentPhase) (_hd_currentPosition) (_lhs_infoTuple) (_lhs_metaVariableTable) (_hd_metavarConstraints) (_lhs_substitution))
-    in  ( _tl_collectConstraints,_tl_currentPhase,_tl_currentPosition,_hd_ftv ++ _tl_ftv,_tl_metavarConstraints)
+sem_Core_UserStatements_Cons (hd_) (tl_) =
+    \ _lhsIattributeTable
+      _lhsIcollectConstraints
+      _lhsIcurrentPhase
+      _lhsIcurrentPosition
+      _lhsIinfoTuple
+      _lhsImetaVariableTable
+      _lhsImetavarConstraints
+      _lhsIsubstitution ->
+        let ( _hdIcollectConstraints,_hdIcurrentPhase,_hdIcurrentPosition,_hdIftv,_hdImetavarConstraints) =
+                (hd_ (_hdOattributeTable) (_hdOcollectConstraints) (_hdOcurrentPhase) (_hdOcurrentPosition) (_hdOinfoTuple) (_hdOmetaVariableTable) (_hdOmetavarConstraints) (_hdOsubstitution))
+            ( _tlIcollectConstraints,_tlIcurrentPhase,_tlIcurrentPosition,_tlIftv,_tlImetavarConstraints) =
+                (tl_ (_tlOattributeTable) (_tlOcollectConstraints) (_tlOcurrentPhase) (_tlOcurrentPosition) (_tlOinfoTuple) (_tlOmetaVariableTable) (_tlOmetavarConstraints) (_tlOsubstitution))
+            (_lhsOftv@_) =
+                _hdIftv ++ _tlIftv
+            (_lhsOcollectConstraints@_) =
+                _tlIcollectConstraints
+            (_lhsOcurrentPhase@_) =
+                _tlIcurrentPhase
+            (_lhsOcurrentPosition@_) =
+                _tlIcurrentPosition
+            (_lhsOmetavarConstraints@_) =
+                _tlImetavarConstraints
+            (_hdOattributeTable@_) =
+                _lhsIattributeTable
+            (_hdOcollectConstraints@_) =
+                _lhsIcollectConstraints
+            (_hdOcurrentPhase@_) =
+                _lhsIcurrentPhase
+            (_hdOcurrentPosition@_) =
+                _lhsIcurrentPosition
+            (_hdOinfoTuple@_) =
+                _lhsIinfoTuple
+            (_hdOmetaVariableTable@_) =
+                _lhsImetaVariableTable
+            (_hdOmetavarConstraints@_) =
+                _lhsImetavarConstraints
+            (_hdOsubstitution@_) =
+                _lhsIsubstitution
+            (_tlOattributeTable@_) =
+                _lhsIattributeTable
+            (_tlOcollectConstraints@_) =
+                _hdIcollectConstraints
+            (_tlOcurrentPhase@_) =
+                _hdIcurrentPhase
+            (_tlOcurrentPosition@_) =
+                _hdIcurrentPosition
+            (_tlOinfoTuple@_) =
+                _lhsIinfoTuple
+            (_tlOmetaVariableTable@_) =
+                _lhsImetaVariableTable
+            (_tlOmetavarConstraints@_) =
+                _hdImetavarConstraints
+            (_tlOsubstitution@_) =
+                _lhsIsubstitution
+        in  ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints)
 sem_Core_UserStatements_Nil :: (T_Core_UserStatements)
-sem_Core_UserStatements_Nil (_lhs_attributeTable) (_lhs_collectConstraints) (_lhs_currentPhase) (_lhs_currentPosition) (_lhs_infoTuple) (_lhs_metaVariableTable) (_lhs_metavarConstraints) (_lhs_substitution) =
-    let 
-    in  ( _lhs_collectConstraints,_lhs_currentPhase,_lhs_currentPosition,[],_lhs_metavarConstraints)
+sem_Core_UserStatements_Nil  =
+    \ _lhsIattributeTable
+      _lhsIcollectConstraints
+      _lhsIcurrentPhase
+      _lhsIcurrentPosition
+      _lhsIinfoTuple
+      _lhsImetaVariableTable
+      _lhsImetavarConstraints
+      _lhsIsubstitution ->
+        let (_lhsOftv@_) =
+                []
+            (_lhsOcollectConstraints@_) =
+                _lhsIcollectConstraints
+            (_lhsOcurrentPhase@_) =
+                _lhsIcurrentPhase
+            (_lhsOcurrentPosition@_) =
+                _lhsIcurrentPosition
+            (_lhsOmetavarConstraints@_) =
+                _lhsImetavarConstraints
+        in  ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints)
 

@@ -183,6 +183,15 @@ CORE	= $(LVMLIBDIR)/core/Core.hs $(LVMLIBDIR)/core/CorePretty.hs $(LVMLIBDIR)/co
 
 IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:$(PARSECDIR):./parser:./staticanalysis:./staticanalysis/solvers:./staticanalysis/inferencers:./staticanalysis/inferencers/typingstrategies:./staticanalysis/staticchecks:./staticanalysis/solvers/typegraph:./staticanalysis/solvers/typegraphheuristics:./staticanalysis/constraints:./staticanalysis/types:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem
 
+# AG sources
+AGSOURCES = \
+     syntax/UHA_Pretty.hs syntax/UHA_OneLine.hs \
+     staticanalysis/staticchecks/StaticChecks.hs staticanalysis/inferencers/TypeInferencing.hs \
+     staticanalysis/inferencers/KindInferencing.hs \
+     codegeneration/CodeGeneration.hs \
+     syntax/UHA_Syntax.hs modulesystem/ExtractImportDecls.hs staticanalysis/inferencers/typingstrategies/TS_Syntax.hs \
+     staticanalysis/inferencers/typingstrategies/TS_Apply.hs staticanalysis/inferencers/typingstrategies/TS_Analyse.hs \
+     staticanalysis/inferencers/typingstrategies/TS_ToCore.hs parser/ResolveOperators.hs
 
 #Sources and object files
 SRCS = $(PARSER) $(STATICANALYSIS) $(UHA) $(CODEGENERATION) $(UTILS) $(LVMCOMMON) \
@@ -224,13 +233,10 @@ texthint: texthint/Main.hs utils/OSSpecific.hs
 
 # AG sources
 
-ag : syntax/UHA_Pretty.hs syntax/UHA_OneLine.hs \
-     staticanalysis/staticchecks/StaticChecks.hs staticanalysis/inferencers/TypeInferencing.hs \
-     staticanalysis/inferencers/KindInferencing.hs \
-     codegeneration/CodeGeneration.hs \
-     syntax/UHA_Syntax.hs modulesystem/ExtractImportDecls.hs staticanalysis/inferencers/typingstrategies/TS_Syntax.hs \
-     staticanalysis/inferencers/typingstrategies/TS_Apply.hs staticanalysis/inferencers/typingstrategies/TS_Analyse.hs \
-     staticanalysis/inferencers/typingstrategies/TS_ToCore.hs parser/ResolveOperators.hs
+ag : $(AGSOURCES)
+
+cleanag : 
+	$(RM) $(AGSOURCES)
 
 ifdef AG
 parser/ResolveOperators.hs : \

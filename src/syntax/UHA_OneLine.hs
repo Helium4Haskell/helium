@@ -52,28 +52,36 @@ sem_Alternative_Alternative :: (T_Range) ->
                                (T_Pattern) ->
                                (T_RightHandSide) ->
                                (T_Alternative)
-sem_Alternative_Alternative (_range) (_pattern) (_righthandside) =
-    let (_self) =
-            Alternative_Alternative _range_self _pattern_self _righthandside_self
-        (_oneLineTree) =
-            OneLineNode [ _pattern_oneLineTree, _righthandside_oneLineTree " -> " ]
-        ( _range_self) =
-            (_range )
-        ( _pattern_oneLineTree,_pattern_self) =
-            (_pattern )
-        ( _righthandside_oneLineTree,_righthandside_self) =
-            (_righthandside )
-    in  ( _oneLineTree,_self)
+sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternIoneLineTree,_patternIself) =
+            (pattern_ )
+        ( _righthandsideIoneLineTree,_righthandsideIself) =
+            (righthandside_ )
+        (_oneLineTree@_) =
+            OneLineNode [ _patternIoneLineTree, _righthandsideIoneLineTree " -> " ]
+        (_self@_) =
+            Alternative_Alternative _rangeIself _patternIself _righthandsideIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Alternative_Empty :: (T_Range) ->
                          (T_Alternative)
-sem_Alternative_Empty (_range) =
-    let (_self) =
-            Alternative_Empty _range_self
-        (_oneLineTree) =
+sem_Alternative_Empty (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_oneLineTree@_) =
             OneLineText ""
-        ( _range_self) =
-            (_range )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Alternative_Empty _rangeIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- Alternatives ------------------------------------------------
 -- semantic domain
 type T_Alternatives = ( ( [ OneLineTree] ),(Alternatives))
@@ -85,19 +93,27 @@ sem_Alternatives (list) =
 sem_Alternatives_Cons :: (T_Alternative) ->
                          (T_Alternatives) ->
                          (T_Alternatives)
-sem_Alternatives_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_oneLineTree,_hd_self) =
-            (_hd )
-        ( _tl_oneLineTree,_tl_self) =
-            (_tl )
-    in  ( _hd_oneLineTree  :  _tl_oneLineTree,_self)
+sem_Alternatives_Cons (hd_) (tl_) =
+    let ( _hdIoneLineTree,_hdIself) =
+            (hd_ )
+        ( _tlIoneLineTree,_tlIself) =
+            (tl_ )
+        (_lhsOoneLineTree@_) =
+            _hdIoneLineTree  :  _tlIoneLineTree
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Alternatives_Nil :: (T_Alternatives)
 sem_Alternatives_Nil  =
-    let (_self) =
+    let (_lhsOoneLineTree@_) =
             []
-    in  ( [],_self)
+        (_self@_) =
+            []
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- AnnotatedType -----------------------------------------------
 -- semantic domain
 type T_AnnotatedType = ( (AnnotatedType))
@@ -110,14 +126,16 @@ sem_AnnotatedType_AnnotatedType :: (T_Range) ->
                                    (Bool) ->
                                    (T_Type) ->
                                    (T_AnnotatedType)
-sem_AnnotatedType_AnnotatedType (_range) (_strict) (_type) =
-    let (_self) =
-            AnnotatedType_AnnotatedType _range_self _strict _type_self
-        ( _range_self) =
-            (_range )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_AnnotatedType_AnnotatedType (range_) (strict_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            AnnotatedType_AnnotatedType _rangeIself strict_ _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- AnnotatedTypes ----------------------------------------------
 -- semantic domain
 type T_AnnotatedTypes = ( (AnnotatedTypes))
@@ -129,19 +147,23 @@ sem_AnnotatedTypes (list) =
 sem_AnnotatedTypes_Cons :: (T_AnnotatedType) ->
                            (T_AnnotatedTypes) ->
                            (T_AnnotatedTypes)
-sem_AnnotatedTypes_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_AnnotatedTypes_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_AnnotatedTypes_Nil :: (T_AnnotatedTypes)
 sem_AnnotatedTypes_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Body --------------------------------------------------------
 -- semantic domain
 type T_Body = ( (Body))
@@ -154,16 +176,18 @@ sem_Body_Body :: (T_Range) ->
                  (T_ImportDeclarations) ->
                  (T_Declarations) ->
                  (T_Body)
-sem_Body_Body (_range) (_importdeclarations) (_declarations) =
-    let (_self) =
-            Body_Body _range_self _importdeclarations_self _declarations_self
-        ( _range_self) =
-            (_range )
-        ( _importdeclarations_self) =
-            (_importdeclarations )
-        ( _declarations_oneLineTree,_declarations_self) =
-            (_declarations )
-    in  ( _self)
+sem_Body_Body (range_) (importdeclarations_) (declarations_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _importdeclarationsIself) =
+            (importdeclarations_ )
+        ( _declarationsIoneLineTree,_declarationsIself) =
+            (declarations_ )
+        (_self@_) =
+            Body_Body _rangeIself _importdeclarationsIself _declarationsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Constructor -------------------------------------------------
 -- semantic domain
 type T_Constructor = ( (Constructor))
@@ -180,47 +204,53 @@ sem_Constructor_Constructor :: (T_Range) ->
                                (T_Name) ->
                                (T_AnnotatedTypes) ->
                                (T_Constructor)
-sem_Constructor_Constructor (_range) (_constructor) (_types) =
-    let (_self) =
-            Constructor_Constructor _range_self _constructor_self _types_self
-        ( _range_self) =
-            (_range )
-        ( _constructor_isIdentifier,_constructor_isOperator,_constructor_isSpecial,_constructor_oneLineTree,_constructor_self) =
-            (_constructor )
-        ( _types_self) =
-            (_types )
-    in  ( _self)
+sem_Constructor_Constructor (range_) (constructor_) (types_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _constructorIisIdentifier,_constructorIisOperator,_constructorIisSpecial,_constructorIoneLineTree,_constructorIself) =
+            (constructor_ )
+        ( _typesIself) =
+            (types_ )
+        (_self@_) =
+            Constructor_Constructor _rangeIself _constructorIself _typesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Constructor_Infix :: (T_Range) ->
                          (T_AnnotatedType) ->
                          (T_Name) ->
                          (T_AnnotatedType) ->
                          (T_Constructor)
-sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) =
-    let (_self) =
-            Constructor_Infix _range_self _leftType_self _constructorOperator_self _rightType_self
-        ( _range_self) =
-            (_range )
-        ( _leftType_self) =
-            (_leftType )
-        ( _constructorOperator_isIdentifier,_constructorOperator_isOperator,_constructorOperator_isSpecial,_constructorOperator_oneLineTree,_constructorOperator_self) =
-            (_constructorOperator )
-        ( _rightType_self) =
-            (_rightType )
-    in  ( _self)
+sem_Constructor_Infix (range_) (leftType_) (constructorOperator_) (rightType_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _leftTypeIself) =
+            (leftType_ )
+        ( _constructorOperatorIisIdentifier,_constructorOperatorIisOperator,_constructorOperatorIisSpecial,_constructorOperatorIoneLineTree,_constructorOperatorIself) =
+            (constructorOperator_ )
+        ( _rightTypeIself) =
+            (rightType_ )
+        (_self@_) =
+            Constructor_Infix _rangeIself _leftTypeIself _constructorOperatorIself _rightTypeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Constructor_Record :: (T_Range) ->
                           (T_Name) ->
                           (T_FieldDeclarations) ->
                           (T_Constructor)
-sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) =
-    let (_self) =
-            Constructor_Record _range_self _constructor_self _fieldDeclarations_self
-        ( _range_self) =
-            (_range )
-        ( _constructor_isIdentifier,_constructor_isOperator,_constructor_isSpecial,_constructor_oneLineTree,_constructor_self) =
-            (_constructor )
-        ( _fieldDeclarations_self) =
-            (_fieldDeclarations )
-    in  ( _self)
+sem_Constructor_Record (range_) (constructor_) (fieldDeclarations_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _constructorIisIdentifier,_constructorIisOperator,_constructorIisSpecial,_constructorIoneLineTree,_constructorIself) =
+            (constructor_ )
+        ( _fieldDeclarationsIself) =
+            (fieldDeclarations_ )
+        (_self@_) =
+            Constructor_Record _rangeIself _constructorIself _fieldDeclarationsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Constructors ------------------------------------------------
 -- semantic domain
 type T_Constructors = ( (Constructors))
@@ -232,19 +262,23 @@ sem_Constructors (list) =
 sem_Constructors_Cons :: (T_Constructor) ->
                          (T_Constructors) ->
                          (T_Constructors)
-sem_Constructors_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Constructors_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Constructors_Nil :: (T_Constructors)
 sem_Constructors_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ContextItem -------------------------------------------------
 -- semantic domain
 type T_ContextItem = ( (ContextItem))
@@ -257,16 +291,18 @@ sem_ContextItem_ContextItem :: (T_Range) ->
                                (T_Name) ->
                                (T_Types) ->
                                (T_ContextItem)
-sem_ContextItem_ContextItem (_range) (_name) (_types) =
-    let (_self) =
-            ContextItem_ContextItem _range_self _name_self _types_self
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _types_self) =
-            (_types )
-    in  ( _self)
+sem_ContextItem_ContextItem (range_) (name_) (types_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        ( _typesIself) =
+            (types_ )
+        (_self@_) =
+            ContextItem_ContextItem _rangeIself _nameIself _typesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ContextItems ------------------------------------------------
 -- semantic domain
 type T_ContextItems = ( (ContextItems))
@@ -278,19 +314,23 @@ sem_ContextItems (list) =
 sem_ContextItems_Cons :: (T_ContextItem) ->
                          (T_ContextItems) ->
                          (T_ContextItems)
-sem_ContextItems_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_ContextItems_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_ContextItems_Nil :: (T_ContextItems)
 sem_ContextItems_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Declaration -------------------------------------------------
 -- semantic domain
 type T_Declaration = ( (OneLineTree),(Declaration))
@@ -324,196 +364,240 @@ sem_Declaration_Class :: (T_Range) ->
                          (T_SimpleType) ->
                          (T_MaybeDeclarations) ->
                          (T_Declaration)
-sem_Declaration_Class (_range) (_context) (_simpletype) (_where) =
-    let (_self) =
-            Declaration_Class _range_self _context_self _simpletype_self _where_self
-        (_oneLineTree) =
+sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _contextIself) =
+            (context_ )
+        ( _simpletypeIself) =
+            (simpletype_ )
+        ( _whereIoneLineTree,_whereIself) =
+            (where_ )
+        (_oneLineTree@_) =
             intErr "Declaration" "class"
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _simpletype_self) =
-            (_simpletype )
-        ( _where_oneLineTree,_where_self) =
-            (_where )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Declaration_Class _rangeIself _contextIself _simpletypeIself _whereIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Declaration_Data :: (T_Range) ->
                         (T_ContextItems) ->
                         (T_SimpleType) ->
                         (T_Constructors) ->
                         (T_Names) ->
                         (T_Declaration)
-sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivings) =
-    let (_self) =
-            Declaration_Data _range_self _context_self _simpletype_self _constructors_self _derivings_self
-        (_oneLineTree) =
+sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (derivings_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _contextIself) =
+            (context_ )
+        ( _simpletypeIself) =
+            (simpletype_ )
+        ( _constructorsIself) =
+            (constructors_ )
+        ( _derivingsIisIdentifier,_derivingsIisOperator,_derivingsIisSpecial,_derivingsIoneLineTree,_derivingsIself) =
+            (derivings_ )
+        (_oneLineTree@_) =
             intErr "Declaration" "data"
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _simpletype_self) =
-            (_simpletype )
-        ( _constructors_self) =
-            (_constructors )
-        ( _derivings_isIdentifier,_derivings_isOperator,_derivings_isSpecial,_derivings_oneLineTree,_derivings_self) =
-            (_derivings )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Declaration_Data _rangeIself _contextIself _simpletypeIself _constructorsIself _derivingsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Declaration_Default :: (T_Range) ->
                            (T_Types) ->
                            (T_Declaration)
-sem_Declaration_Default (_range) (_types) =
-    let (_self) =
-            Declaration_Default _range_self _types_self
-        (_oneLineTree) =
+sem_Declaration_Default (range_) (types_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _typesIself) =
+            (types_ )
+        (_oneLineTree@_) =
             intErr "Declaration" "default"
-        ( _range_self) =
-            (_range )
-        ( _types_self) =
-            (_types )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Declaration_Default _rangeIself _typesIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
-sem_Declaration_Empty (_range) =
-    let (_self) =
-            Declaration_Empty _range_self
-        (_oneLineTree) =
+sem_Declaration_Empty (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_oneLineTree@_) =
             OneLineText ""
-        ( _range_self) =
-            (_range )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Declaration_Empty _rangeIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Declaration_Fixity :: (T_Range) ->
                           (T_Fixity) ->
                           (T_MaybeInt) ->
                           (T_Names) ->
                           (T_Declaration)
-sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) =
-    let (_self) =
-            Declaration_Fixity _range_self _fixity_self _priority_self _operators_self
-        (_oneLineTree) =
+sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _fixityIself) =
+            (fixity_ )
+        ( _priorityIself) =
+            (priority_ )
+        ( _operatorsIisIdentifier,_operatorsIisOperator,_operatorsIisSpecial,_operatorsIoneLineTree,_operatorsIself) =
+            (operators_ )
+        (_oneLineTree@_) =
             intErr "Declaration" "fixity"
-        ( _range_self) =
-            (_range )
-        ( _fixity_self) =
-            (_fixity )
-        ( _priority_self) =
-            (_priority )
-        ( _operators_isIdentifier,_operators_isOperator,_operators_isSpecial,_operators_oneLineTree,_operators_self) =
-            (_operators )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Declaration_Fixity _rangeIself _fixityIself _priorityIself _operatorsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)
-sem_Declaration_FunctionBindings (_range) (_bindings) =
-    let (_self) =
-            Declaration_FunctionBindings _range_self _bindings_self
-        (_oneLineTree) =
-            punctuate ";" _bindings_oneLineTree
-        ( _range_self) =
-            (_range )
-        ( _bindings_oneLineTree,_bindings_self) =
-            (_bindings )
-    in  ( _oneLineTree,_self)
+sem_Declaration_FunctionBindings (range_) (bindings_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _bindingsIoneLineTree,_bindingsIself) =
+            (bindings_ )
+        (_oneLineTree@_) =
+            punctuate ";" _bindingsIoneLineTree
+        (_self@_) =
+            Declaration_FunctionBindings _rangeIself _bindingsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Declaration_Instance :: (T_Range) ->
                             (T_ContextItems) ->
                             (T_Name) ->
                             (T_Types) ->
                             (T_MaybeDeclarations) ->
                             (T_Declaration)
-sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) =
-    let (_self) =
-            Declaration_Instance _range_self _context_self _name_self _types_self _where_self
-        (_oneLineTree) =
+sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _contextIself) =
+            (context_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        ( _typesIself) =
+            (types_ )
+        ( _whereIoneLineTree,_whereIself) =
+            (where_ )
+        (_oneLineTree@_) =
             intErr "Declaration" "instance"
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _types_self) =
-            (_types )
-        ( _where_oneLineTree,_where_self) =
-            (_where )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Declaration_Instance _rangeIself _contextIself _nameIself _typesIself _whereIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Declaration_Newtype :: (T_Range) ->
                            (T_ContextItems) ->
                            (T_SimpleType) ->
                            (T_Constructor) ->
                            (T_Names) ->
                            (T_Declaration)
-sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_derivings) =
-    let (_self) =
-            Declaration_Newtype _range_self _context_self _simpletype_self _constructor_self _derivings_self
-        (_oneLineTree) =
+sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivings_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _contextIself) =
+            (context_ )
+        ( _simpletypeIself) =
+            (simpletype_ )
+        ( _constructorIself) =
+            (constructor_ )
+        ( _derivingsIisIdentifier,_derivingsIisOperator,_derivingsIisSpecial,_derivingsIoneLineTree,_derivingsIself) =
+            (derivings_ )
+        (_oneLineTree@_) =
             intErr "Declaration" "newtype"
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _simpletype_self) =
-            (_simpletype )
-        ( _constructor_self) =
-            (_constructor )
-        ( _derivings_isIdentifier,_derivings_isOperator,_derivings_isSpecial,_derivings_oneLineTree,_derivings_self) =
-            (_derivings )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Declaration_Newtype _rangeIself _contextIself _simpletypeIself _constructorIself _derivingsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Declaration_PatternBinding :: (T_Range) ->
                                   (T_Pattern) ->
                                   (T_RightHandSide) ->
                                   (T_Declaration)
-sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) =
-    let (_self) =
-            Declaration_PatternBinding _range_self _pattern_self _righthandside_self
-        (_oneLineTree) =
+sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternIoneLineTree,_patternIself) =
+            (pattern_ )
+        ( _righthandsideIoneLineTree,_righthandsideIself) =
+            (righthandside_ )
+        (_oneLineTree@_) =
             OneLineNode
-                [ OneLineNode [_pattern_oneLineTree]
-                , OneLineNode [_righthandside_oneLineTree " = "]
+                [ OneLineNode [_patternIoneLineTree]
+                , OneLineNode [_righthandsideIoneLineTree " = "]
                 ]
-        ( _range_self) =
-            (_range )
-        ( _pattern_oneLineTree,_pattern_self) =
-            (_pattern )
-        ( _righthandside_oneLineTree,_righthandside_self) =
-            (_righthandside )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Declaration_PatternBinding _rangeIself _patternIself _righthandsideIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Declaration_Type :: (T_Range) ->
                         (T_SimpleType) ->
                         (T_Type) ->
                         (T_Declaration)
-sem_Declaration_Type (_range) (_simpletype) (_type) =
-    let (_self) =
-            Declaration_Type _range_self _simpletype_self _type_self
-        (_oneLineTree) =
+sem_Declaration_Type (range_) (simpletype_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _simpletypeIself) =
+            (simpletype_ )
+        ( _typeIself) =
+            (type_ )
+        (_oneLineTree@_) =
             intErr "Declaration" "type"
-        ( _range_self) =
-            (_range )
-        ( _simpletype_self) =
-            (_simpletype )
-        ( _type_self) =
-            (_type )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Declaration_Type _rangeIself _simpletypeIself _typeIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Declaration_TypeSignature :: (T_Range) ->
                                  (T_Names) ->
                                  (T_Type) ->
                                  (T_Declaration)
-sem_Declaration_TypeSignature (_range) (_names) (_type) =
-    let (_self) =
-            Declaration_TypeSignature _range_self _names_self _type_self
-        (_oneLineTree) =
+sem_Declaration_TypeSignature (range_) (names_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _namesIisIdentifier,_namesIisOperator,_namesIisSpecial,_namesIoneLineTree,_namesIself) =
+            (names_ )
+        ( _typeIself) =
+            (type_ )
+        (_oneLineTree@_) =
             OneLineNode
-                 [ OneLineText (concat . intersperse "," . map show $ _names_self)
+                 [ OneLineText (concat . intersperse "," . map show $ _namesIself)
                  , OneLineText " :: "
-                 , OneLineText (show (makeTpSchemeFromType _type_self))
+                 , OneLineText (show (makeTpSchemeFromType _typeIself))
                  ]
-        ( _range_self) =
-            (_range )
-        ( _names_isIdentifier,_names_isOperator,_names_isSpecial,_names_oneLineTree,_names_self) =
-            (_names )
-        ( _type_self) =
-            (_type )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Declaration_TypeSignature _rangeIself _namesIself _typeIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- Declarations ------------------------------------------------
 -- semantic domain
 type T_Declarations = ( ( [ OneLineTree] ),(Declarations))
@@ -525,19 +609,27 @@ sem_Declarations (list) =
 sem_Declarations_Cons :: (T_Declaration) ->
                          (T_Declarations) ->
                          (T_Declarations)
-sem_Declarations_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_oneLineTree,_hd_self) =
-            (_hd )
-        ( _tl_oneLineTree,_tl_self) =
-            (_tl )
-    in  ( _hd_oneLineTree  :  _tl_oneLineTree,_self)
+sem_Declarations_Cons (hd_) (tl_) =
+    let ( _hdIoneLineTree,_hdIself) =
+            (hd_ )
+        ( _tlIoneLineTree,_tlIself) =
+            (tl_ )
+        (_lhsOoneLineTree@_) =
+            _hdIoneLineTree  :  _tlIoneLineTree
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Declarations_Nil :: (T_Declarations)
 sem_Declarations_Nil  =
-    let (_self) =
+    let (_lhsOoneLineTree@_) =
             []
-    in  ( [],_self)
+        (_self@_) =
+            []
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- Export ------------------------------------------------------
 -- semantic domain
 type T_Export = ( (Export))
@@ -555,50 +647,58 @@ sem_Export ((Export_Variable (_range) (_name))) =
 sem_Export_Module :: (T_Range) ->
                      (T_Name) ->
                      (T_Export)
-sem_Export_Module (_range) (_name) =
-    let (_self) =
-            Export_Module _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-    in  ( _self)
+sem_Export_Module (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        (_self@_) =
+            Export_Module _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Export_TypeOrClass :: (T_Range) ->
                           (T_Name) ->
                           (T_MaybeNames) ->
                           (T_Export)
-sem_Export_TypeOrClass (_range) (_name) (_names) =
-    let (_self) =
-            Export_TypeOrClass _range_self _name_self _names_self
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _names_self) =
-            (_names )
-    in  ( _self)
+sem_Export_TypeOrClass (range_) (name_) (names_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        ( _namesIself) =
+            (names_ )
+        (_self@_) =
+            Export_TypeOrClass _rangeIself _nameIself _namesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Export_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Export)
-sem_Export_TypeOrClassComplete (_range) (_name) =
-    let (_self) =
-            Export_TypeOrClassComplete _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-    in  ( _self)
+sem_Export_TypeOrClassComplete (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        (_self@_) =
+            Export_TypeOrClassComplete _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Export_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Export)
-sem_Export_Variable (_range) (_name) =
-    let (_self) =
-            Export_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-    in  ( _self)
+sem_Export_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        (_self@_) =
+            Export_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Exports -----------------------------------------------------
 -- semantic domain
 type T_Exports = ( (Exports))
@@ -610,19 +710,23 @@ sem_Exports (list) =
 sem_Exports_Cons :: (T_Export) ->
                     (T_Exports) ->
                     (T_Exports)
-sem_Exports_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Exports_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Exports_Nil :: (T_Exports)
 sem_Exports_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Expression --------------------------------------------------
 -- semantic domain
 type T_Expression = ( (OneLineTree),(Expression))
@@ -673,356 +777,436 @@ sem_Expression_Case :: (T_Range) ->
                        (T_Expression) ->
                        (T_Alternatives) ->
                        (T_Expression)
-sem_Expression_Case (_range) (_expression) (_alternatives) =
-    let (_self) =
-            Expression_Case _range_self _expression_self _alternatives_self
-        (_oneLineTree) =
+sem_Expression_Case (range_) (expression_) (alternatives_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        ( _alternativesIoneLineTree,_alternativesIself) =
+            (alternatives_ )
+        (_oneLineTree@_) =
             OneLineNode
                 [ OneLineText "case "
-                , OneLineNode [_expression_oneLineTree]
+                , OneLineNode [_expressionIoneLineTree]
                 , OneLineText " of "
-                , encloseSep "{" "; " "}" _alternatives_oneLineTree
+                , encloseSep "{" "; " "}" _alternativesIoneLineTree
                 ]
-        ( _range_self) =
-            (_range )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-        ( _alternatives_oneLineTree,_alternatives_self) =
-            (_alternatives )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Expression_Case _rangeIself _expressionIself _alternativesIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_Comprehension :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Qualifiers) ->
                                 (T_Expression)
-sem_Expression_Comprehension (_range) (_expression) (_qualifiers) =
-    let (_self) =
-            Expression_Comprehension _range_self _expression_self _qualifiers_self
-        (_oneLineTree) =
+sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        ( _qualifiersIoneLineTree,_qualifiersIself) =
+            (qualifiers_ )
+        (_oneLineTree@_) =
             OneLineNode
                 [ OneLineText "[ "
-                , OneLineNode [_expression_oneLineTree]
+                , OneLineNode [_expressionIoneLineTree]
                 , OneLineText " | "
-                , OneLineNode [ punctuate ", " _qualifiers_oneLineTree ]
+                , OneLineNode [ punctuate ", " _qualifiersIoneLineTree ]
                 , OneLineText " ]"
                 ]
-        ( _range_self) =
-            (_range )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-        ( _qualifiers_oneLineTree,_qualifiers_self) =
-            (_qualifiers )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Expression_Comprehension _rangeIself _expressionIself _qualifiersIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_Constructor :: (T_Range) ->
                               (T_Name) ->
                               (T_Expression)
-sem_Expression_Constructor (_range) (_name) =
-    let (_self) =
-            Expression_Constructor _range_self _name_self
-        (_oneLineTree) =
-            OneLineNode [_name_oneLineTree]
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-    in  ( _oneLineTree,_self)
+sem_Expression_Constructor (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        (_oneLineTree@_) =
+            OneLineNode [_nameIoneLineTree]
+        (_self@_) =
+            Expression_Constructor _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_Do :: (T_Range) ->
                      (T_Statements) ->
                      (T_Expression)
-sem_Expression_Do (_range) (_statements) =
-    let (_self) =
-            Expression_Do _range_self _statements_self
-        (_oneLineTree) =
+sem_Expression_Do (range_) (statements_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _statementsIoneLineTree,_statementsIself) =
+            (statements_ )
+        (_oneLineTree@_) =
             OneLineNode
                 [ OneLineText "do "
-                , OneLineNode (sepBy (OneLineText "; ") _statements_oneLineTree)
+                , OneLineNode (sepBy (OneLineText "; ") _statementsIoneLineTree)
                 ]
-        ( _range_self) =
-            (_range )
-        ( _statements_oneLineTree,_statements_self) =
-            (_statements )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Expression_Do _rangeIself _statementsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_Enum :: (T_Range) ->
                        (T_Expression) ->
                        (T_MaybeExpression) ->
                        (T_MaybeExpression) ->
                        (T_Expression)
-sem_Expression_Enum (_range) (_from) (_then) (_to) =
-    let (_self) =
-            Expression_Enum _range_self _from_self _then_self _to_self
-        (_oneLineTree) =
+sem_Expression_Enum (range_) (from_) (then_) (to_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _fromIoneLineTree,_fromIself) =
+            (from_ )
+        ( _thenIoneLineTree,_thenIself) =
+            (then_ )
+        ( _toIoneLineTree,_toIself) =
+            (to_ )
+        (_oneLineTree@_) =
             OneLineNode (
                 [ OneLineText "["
-                , OneLineNode [_from_oneLineTree]
+                , OneLineNode [_fromIoneLineTree]
                 ]
                 ++
-                maybe [] (\x -> [OneLineText ", ", x]) _then_oneLineTree
+                maybe [] (\x -> [OneLineText ", ", x]) _thenIoneLineTree
                 ++
                 [ OneLineText " .. " ]
                 ++
-                maybe [] (\x -> [OneLineNode [x]]) _to_oneLineTree
+                maybe [] (\x -> [OneLineNode [x]]) _toIoneLineTree
                 ++
                 [ OneLineText "]" ]
             )
-        ( _range_self) =
-            (_range )
-        ( _from_oneLineTree,_from_self) =
-            (_from )
-        ( _then_oneLineTree,_then_self) =
-            (_then )
-        ( _to_oneLineTree,_to_self) =
-            (_to )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Expression_Enum _rangeIself _fromIself _thenIself _toIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_If :: (T_Range) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression)
-sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression) =
-    let (_self) =
-            Expression_If _range_self _guardExpression_self _thenExpression_self _elseExpression_self
-        (_oneLineTree) =
+sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _guardExpressionIoneLineTree,_guardExpressionIself) =
+            (guardExpression_ )
+        ( _thenExpressionIoneLineTree,_thenExpressionIself) =
+            (thenExpression_ )
+        ( _elseExpressionIoneLineTree,_elseExpressionIself) =
+            (elseExpression_ )
+        (_oneLineTree@_) =
             OneLineNode
                 [ OneLineText "if "
-                , OneLineNode [_guardExpression_oneLineTree]
+                , OneLineNode [_guardExpressionIoneLineTree]
                 , OneLineText " then "
-                , OneLineNode [_thenExpression_oneLineTree]
+                , OneLineNode [_thenExpressionIoneLineTree]
                 , OneLineText " else "
-                , OneLineNode [_elseExpression_oneLineTree]
+                , OneLineNode [_elseExpressionIoneLineTree]
                 ]
-        ( _range_self) =
-            (_range )
-        ( _guardExpression_oneLineTree,_guardExpression_self) =
-            (_guardExpression )
-        ( _thenExpression_oneLineTree,_thenExpression_self) =
-            (_thenExpression )
-        ( _elseExpression_oneLineTree,_elseExpression_self) =
-            (_elseExpression )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Expression_If _rangeIself _guardExpressionIself _thenExpressionIself _elseExpressionIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_InfixApplication :: (T_Range) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression)
-sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightExpression) =
-    let (_self) =
-            Expression_InfixApplication _range_self _leftExpression_self _operator_self _rightExpression_self
-        (_operatorName) =
-            oneLineTreeAsOperator _operator_oneLineTree
-        (_oneLineTree) =
-            case (_leftExpression_oneLineTree, _rightExpression_oneLineTree) of
+sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExpression_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _leftExpressionIoneLineTree,_leftExpressionIself) =
+            (leftExpression_ )
+        ( _operatorIoneLineTree,_operatorIself) =
+            (operator_ )
+        ( _rightExpressionIoneLineTree,_rightExpressionIself) =
+            (rightExpression_ )
+        (_oneLineTree@_) =
+            case (_leftExpressionIoneLineTree, _rightExpressionIoneLineTree) of
                 (Nothing, Nothing) -> parens _operatorName
                 (Just l , Nothing) -> encloseSep "(" " " ")" [l, _operatorName]
                 (Nothing, Just r ) -> encloseSep "(" " " ")" [_operatorName, r]
                 (Just l , Just r ) -> OneLineNode [ l, OneLineText " ", _operatorName, OneLineText " ", r ]
-        ( _range_self) =
-            (_range )
-        ( _leftExpression_oneLineTree,_leftExpression_self) =
-            (_leftExpression )
-        ( _operator_oneLineTree,_operator_self) =
-            (_operator )
-        ( _rightExpression_oneLineTree,_rightExpression_self) =
-            (_rightExpression )
-    in  ( _oneLineTree,_self)
+        (_operatorName@_) =
+            oneLineTreeAsOperator _operatorIoneLineTree
+        (_self@_) =
+            Expression_InfixApplication _rangeIself _leftExpressionIself _operatorIself _rightExpressionIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_Lambda :: (T_Range) ->
                          (T_Patterns) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Lambda (_range) (_patterns) (_expression) =
-    let (_self) =
-            Expression_Lambda _range_self _patterns_self _expression_self
-        (_oneLineTree) =
+sem_Expression_Lambda (range_) (patterns_) (expression_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternsIoneLineTree,_patternsIself) =
+            (patterns_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        (_oneLineTree@_) =
             OneLineNode
-                (  [ OneLineText "\\", punctuate " " _patterns_oneLineTree, OneLineText " -> "
-                   , OneLineNode [_expression_oneLineTree]
+                (  [ OneLineText "\\", punctuate " " _patternsIoneLineTree, OneLineText " -> "
+                   , OneLineNode [_expressionIoneLineTree]
                    ]
                 )
-        ( _range_self) =
-            (_range )
-        ( _patterns_oneLineTree,_patterns_self) =
-            (_patterns )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Expression_Lambda _rangeIself _patternsIself _expressionIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_Let :: (T_Range) ->
                       (T_Declarations) ->
                       (T_Expression) ->
                       (T_Expression)
-sem_Expression_Let (_range) (_declarations) (_expression) =
-    let (_self) =
-            Expression_Let _range_self _declarations_self _expression_self
-        (_oneLineTree) =
+sem_Expression_Let (range_) (declarations_) (expression_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _declarationsIoneLineTree,_declarationsIself) =
+            (declarations_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        (_oneLineTree@_) =
             OneLineNode
                 [ OneLineText "let "
-                , encloseSep "{" "; " "}" _declarations_oneLineTree
+                , encloseSep "{" "; " "}" _declarationsIoneLineTree
                 , OneLineText " in "
-                , OneLineNode [_expression_oneLineTree]
+                , OneLineNode [_expressionIoneLineTree]
                 ]
-        ( _range_self) =
-            (_range )
-        ( _declarations_oneLineTree,_declarations_self) =
-            (_declarations )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Expression_Let _rangeIself _declarationsIself _expressionIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_List :: (T_Range) ->
                        (T_Expressions) ->
                        (T_Expression)
-sem_Expression_List (_range) (_expressions) =
-    let (_self) =
-            Expression_List _range_self _expressions_self
-        (_oneLineTree) =
-            encloseSep "[" ", " "]" _expressions_oneLineTree
-        ( _range_self) =
-            (_range )
-        ( _expressions_oneLineTree,_expressions_self) =
-            (_expressions )
-    in  ( _oneLineTree,_self)
+sem_Expression_List (range_) (expressions_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _expressionsIoneLineTree,_expressionsIself) =
+            (expressions_ )
+        (_oneLineTree@_) =
+            encloseSep "[" ", " "]" _expressionsIoneLineTree
+        (_self@_) =
+            Expression_List _rangeIself _expressionsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_Literal :: (T_Range) ->
                           (T_Literal) ->
                           (T_Expression)
-sem_Expression_Literal (_range) (_literal) =
-    let (_self) =
-            Expression_Literal _range_self _literal_self
-        (_oneLineTree) =
-            OneLineNode [_literal_oneLineTree]
-        ( _range_self) =
-            (_range )
-        ( _literal_oneLineTree,_literal_self) =
-            (_literal )
-    in  ( _oneLineTree,_self)
+sem_Expression_Literal (range_) (literal_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _literalIoneLineTree,_literalIself) =
+            (literal_ )
+        (_oneLineTree@_) =
+            OneLineNode [_literalIoneLineTree]
+        (_self@_) =
+            Expression_Literal _rangeIself _literalIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_Negate :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Negate (_range) (_expression) =
-    let (_self) =
-            Expression_Negate _range_self _expression_self
-        (_oneLineTree) =
-            OneLineNode [ OneLineText "-", OneLineNode [_expression_oneLineTree] ]
-        ( _range_self) =
-            (_range )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-    in  ( _oneLineTree,_self)
+sem_Expression_Negate (range_) (expression_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        (_oneLineTree@_) =
+            OneLineNode [ OneLineText "-", OneLineNode [_expressionIoneLineTree] ]
+        (_self@_) =
+            Expression_Negate _rangeIself _expressionIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
-sem_Expression_NegateFloat (_range) (_expression) =
-    let (_self) =
-            Expression_NegateFloat _range_self _expression_self
-        (_oneLineTree) =
-            OneLineNode [ OneLineText "-.", OneLineNode [_expression_oneLineTree] ]
-        ( _range_self) =
-            (_range )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-    in  ( _oneLineTree,_self)
+sem_Expression_NegateFloat (range_) (expression_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        (_oneLineTree@_) =
+            OneLineNode [ OneLineText "-.", OneLineNode [_expressionIoneLineTree] ]
+        (_self@_) =
+            Expression_NegateFloat _rangeIself _expressionIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_NormalApplication :: (T_Range) ->
                                     (T_Expression) ->
                                     (T_Expressions) ->
                                     (T_Expression)
-sem_Expression_NormalApplication (_range) (_function) (_arguments) =
-    let (_self) =
-            Expression_NormalApplication _range_self _function_self _arguments_self
-        (_oneLineTree) =
-            punctuate " " (_function_oneLineTree : _arguments_oneLineTree)
-        ( _range_self) =
-            (_range )
-        ( _function_oneLineTree,_function_self) =
-            (_function )
-        ( _arguments_oneLineTree,_arguments_self) =
-            (_arguments )
-    in  ( _oneLineTree,_self)
+sem_Expression_NormalApplication (range_) (function_) (arguments_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _functionIoneLineTree,_functionIself) =
+            (function_ )
+        ( _argumentsIoneLineTree,_argumentsIself) =
+            (arguments_ )
+        (_oneLineTree@_) =
+            punctuate " " (_functionIoneLineTree : _argumentsIoneLineTree)
+        (_self@_) =
+            Expression_NormalApplication _rangeIself _functionIself _argumentsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_Parenthesized :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Expression)
-sem_Expression_Parenthesized (_range) (_expression) =
-    let (_self) =
-            Expression_Parenthesized _range_self _expression_self
-        (_oneLineTree) =
-            parens _expression_oneLineTree
-        ( _range_self) =
-            (_range )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-    in  ( _oneLineTree,_self)
+sem_Expression_Parenthesized (range_) (expression_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        (_oneLineTree@_) =
+            parens _expressionIoneLineTree
+        (_self@_) =
+            Expression_Parenthesized _rangeIself _expressionIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_RecordConstruction :: (T_Range) ->
                                      (T_Name) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_Expression)
-sem_Expression_RecordConstruction (_range) (_name) (_recordExpressionBindings) =
-    let (_self) =
-            Expression_RecordConstruction _range_self _name_self _recordExpressionBindings_self
-        (_oneLineTree) =
+sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        ( _recordExpressionBindingsIself) =
+            (recordExpressionBindings_ )
+        (_oneLineTree@_) =
             intErr "Expression" "record construction"
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _recordExpressionBindings_self) =
-            (_recordExpressionBindings )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Expression_RecordConstruction _rangeIself _nameIself _recordExpressionBindingsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_RecordUpdate :: (T_Range) ->
                                (T_Expression) ->
                                (T_RecordExpressionBindings) ->
                                (T_Expression)
-sem_Expression_RecordUpdate (_range) (_expression) (_recordExpressionBindings) =
-    let (_self) =
-            Expression_RecordUpdate _range_self _expression_self _recordExpressionBindings_self
-        (_oneLineTree) =
+sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        ( _recordExpressionBindingsIself) =
+            (recordExpressionBindings_ )
+        (_oneLineTree@_) =
             intErr "Expression" "record update"
-        ( _range_self) =
-            (_range )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-        ( _recordExpressionBindings_self) =
-            (_recordExpressionBindings )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Expression_RecordUpdate _rangeIself _expressionIself _recordExpressionBindingsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_Tuple :: (T_Range) ->
                         (T_Expressions) ->
                         (T_Expression)
-sem_Expression_Tuple (_range) (_expressions) =
-    let (_self) =
-            Expression_Tuple _range_self _expressions_self
-        (_oneLineTree) =
-            encloseSep "(" ", " ")" _expressions_oneLineTree
-        ( _range_self) =
-            (_range )
-        ( _expressions_oneLineTree,_expressions_self) =
-            (_expressions )
-    in  ( _oneLineTree,_self)
+sem_Expression_Tuple (range_) (expressions_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _expressionsIoneLineTree,_expressionsIself) =
+            (expressions_ )
+        (_oneLineTree@_) =
+            encloseSep "(" ", " ")" _expressionsIoneLineTree
+        (_self@_) =
+            Expression_Tuple _rangeIself _expressionsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_Typed :: (T_Range) ->
                         (T_Expression) ->
                         (T_Type) ->
                         (T_Expression)
-sem_Expression_Typed (_range) (_expression) (_type) =
-    let (_self) =
-            Expression_Typed _range_self _expression_self _type_self
-        (_oneLineTree) =
+sem_Expression_Typed (range_) (expression_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        ( _typeIself) =
+            (type_ )
+        (_oneLineTree@_) =
             OneLineNode
-                [ OneLineNode [_expression_oneLineTree]
+                [ OneLineNode [_expressionIoneLineTree]
                 , OneLineText " :: "
-                , OneLineNode [ OneLineText (show (makeTpSchemeFromType _type_self))]
+                , OneLineNode [ OneLineText (show (makeTpSchemeFromType _typeIself))]
                 ]
-        ( _range_self) =
-            (_range )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-        ( _type_self) =
-            (_type )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Expression_Typed _rangeIself _expressionIself _typeIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expression_Variable :: (T_Range) ->
                            (T_Name) ->
                            (T_Expression)
-sem_Expression_Variable (_range) (_name) =
-    let (_self) =
-            Expression_Variable _range_self _name_self
-        (_oneLineTree) =
-            OneLineNode [_name_oneLineTree]
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-    in  ( _oneLineTree,_self)
+sem_Expression_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        (_oneLineTree@_) =
+            OneLineNode [_nameIoneLineTree]
+        (_self@_) =
+            Expression_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- Expressions -------------------------------------------------
 -- semantic domain
 type T_Expressions = ( ( [ OneLineTree] ),(Expressions))
@@ -1034,19 +1218,27 @@ sem_Expressions (list) =
 sem_Expressions_Cons :: (T_Expression) ->
                         (T_Expressions) ->
                         (T_Expressions)
-sem_Expressions_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_oneLineTree,_hd_self) =
-            (_hd )
-        ( _tl_oneLineTree,_tl_self) =
-            (_tl )
-    in  ( _hd_oneLineTree  :  _tl_oneLineTree,_self)
+sem_Expressions_Cons (hd_) (tl_) =
+    let ( _hdIoneLineTree,_hdIself) =
+            (hd_ )
+        ( _tlIoneLineTree,_tlIself) =
+            (tl_ )
+        (_lhsOoneLineTree@_) =
+            _hdIoneLineTree  :  _tlIoneLineTree
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Expressions_Nil :: (T_Expressions)
 sem_Expressions_Nil  =
-    let (_self) =
+    let (_lhsOoneLineTree@_) =
             []
-    in  ( [],_self)
+        (_self@_) =
+            []
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- FieldDeclaration --------------------------------------------
 -- semantic domain
 type T_FieldDeclaration = ( (FieldDeclaration))
@@ -1059,16 +1251,18 @@ sem_FieldDeclaration_FieldDeclaration :: (T_Range) ->
                                          (T_Names) ->
                                          (T_AnnotatedType) ->
                                          (T_FieldDeclaration)
-sem_FieldDeclaration_FieldDeclaration (_range) (_names) (_type) =
-    let (_self) =
-            FieldDeclaration_FieldDeclaration _range_self _names_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _names_isIdentifier,_names_isOperator,_names_isSpecial,_names_oneLineTree,_names_self) =
-            (_names )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_FieldDeclaration_FieldDeclaration (range_) (names_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _namesIisIdentifier,_namesIisOperator,_namesIisSpecial,_namesIoneLineTree,_namesIself) =
+            (names_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            FieldDeclaration_FieldDeclaration _rangeIself _namesIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- FieldDeclarations -------------------------------------------
 -- semantic domain
 type T_FieldDeclarations = ( (FieldDeclarations))
@@ -1080,19 +1274,23 @@ sem_FieldDeclarations (list) =
 sem_FieldDeclarations_Cons :: (T_FieldDeclaration) ->
                               (T_FieldDeclarations) ->
                               (T_FieldDeclarations)
-sem_FieldDeclarations_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_FieldDeclarations_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_FieldDeclarations_Nil :: (T_FieldDeclarations)
 sem_FieldDeclarations_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Fixity ------------------------------------------------------
 -- semantic domain
 type T_Fixity = ( (Fixity))
@@ -1107,28 +1305,34 @@ sem_Fixity ((Fixity_Infixr (_range))) =
     (sem_Fixity_Infixr ((sem_Range (_range))))
 sem_Fixity_Infix :: (T_Range) ->
                     (T_Fixity)
-sem_Fixity_Infix (_range) =
-    let (_self) =
-            Fixity_Infix _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Fixity_Infix (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Fixity_Infix _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Fixity_Infixl :: (T_Range) ->
                      (T_Fixity)
-sem_Fixity_Infixl (_range) =
-    let (_self) =
-            Fixity_Infixl _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Fixity_Infixl (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Fixity_Infixl _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Fixity_Infixr :: (T_Range) ->
                      (T_Fixity)
-sem_Fixity_Infixr (_range) =
-    let (_self) =
-            Fixity_Infixr _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_Fixity_Infixr (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            Fixity_Infixr _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- FunctionBinding ---------------------------------------------
 -- semantic domain
 type T_FunctionBinding = ( (OneLineTree),(FunctionBinding))
@@ -1141,18 +1345,22 @@ sem_FunctionBinding_FunctionBinding :: (T_Range) ->
                                        (T_LeftHandSide) ->
                                        (T_RightHandSide) ->
                                        (T_FunctionBinding)
-sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) =
-    let (_self) =
-            FunctionBinding_FunctionBinding _range_self _lefthandside_self _righthandside_self
-        (_oneLineTree) =
-            OneLineNode [_lefthandside_oneLineTree, _righthandside_oneLineTree " = " ]
-        ( _range_self) =
-            (_range )
-        ( _lefthandside_oneLineTree,_lefthandside_self) =
-            (_lefthandside )
-        ( _righthandside_oneLineTree,_righthandside_self) =
-            (_righthandside )
-    in  ( _oneLineTree,_self)
+sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _lefthandsideIoneLineTree,_lefthandsideIself) =
+            (lefthandside_ )
+        ( _righthandsideIoneLineTree,_righthandsideIself) =
+            (righthandside_ )
+        (_oneLineTree@_) =
+            OneLineNode [_lefthandsideIoneLineTree, _righthandsideIoneLineTree " = " ]
+        (_self@_) =
+            FunctionBinding_FunctionBinding _rangeIself _lefthandsideIself _righthandsideIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- FunctionBindings --------------------------------------------
 -- semantic domain
 type T_FunctionBindings = ( ( [ OneLineTree] ),(FunctionBindings))
@@ -1164,19 +1372,27 @@ sem_FunctionBindings (list) =
 sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
                              (T_FunctionBindings) ->
                              (T_FunctionBindings)
-sem_FunctionBindings_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_oneLineTree,_hd_self) =
-            (_hd )
-        ( _tl_oneLineTree,_tl_self) =
-            (_tl )
-    in  ( _hd_oneLineTree  :  _tl_oneLineTree,_self)
+sem_FunctionBindings_Cons (hd_) (tl_) =
+    let ( _hdIoneLineTree,_hdIself) =
+            (hd_ )
+        ( _tlIoneLineTree,_tlIself) =
+            (tl_ )
+        (_lhsOoneLineTree@_) =
+            _hdIoneLineTree  :  _tlIoneLineTree
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_FunctionBindings_Nil :: (T_FunctionBindings)
 sem_FunctionBindings_Nil  =
-    let (_self) =
+    let (_lhsOoneLineTree@_) =
             []
-    in  ( [],_self)
+        (_self@_) =
+            []
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
 type T_GuardedExpression = ( ( String -> OneLineTree ),(GuardedExpression))
@@ -1189,18 +1405,22 @@ sem_GuardedExpression_GuardedExpression :: (T_Range) ->
                                            (T_Expression) ->
                                            (T_Expression) ->
                                            (T_GuardedExpression)
-sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) =
-    let (_self) =
-            GuardedExpression_GuardedExpression _range_self _guard_self _expression_self
-        (_oneLineTree) =
-            \assign -> OneLineNode [ OneLineText "|", _guard_oneLineTree, OneLineText assign, _expression_oneLineTree ]
-        ( _range_self) =
-            (_range )
-        ( _guard_oneLineTree,_guard_self) =
-            (_guard )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-    in  ( _oneLineTree,_self)
+sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _guardIoneLineTree,_guardIself) =
+            (guard_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        (_oneLineTree@_) =
+            \assign -> OneLineNode [ OneLineText "|", _guardIoneLineTree, OneLineText assign, _expressionIoneLineTree ]
+        (_self@_) =
+            GuardedExpression_GuardedExpression _rangeIself _guardIself _expressionIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- GuardedExpressions ------------------------------------------
 -- semantic domain
 type T_GuardedExpressions = ( ( [ String -> OneLineTree ] ),(GuardedExpressions))
@@ -1212,19 +1432,27 @@ sem_GuardedExpressions (list) =
 sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
                                (T_GuardedExpressions) ->
                                (T_GuardedExpressions)
-sem_GuardedExpressions_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_oneLineTree,_hd_self) =
-            (_hd )
-        ( _tl_oneLineTree,_tl_self) =
-            (_tl )
-    in  ( _hd_oneLineTree  :  _tl_oneLineTree,_self)
+sem_GuardedExpressions_Cons (hd_) (tl_) =
+    let ( _hdIoneLineTree,_hdIself) =
+            (hd_ )
+        ( _tlIoneLineTree,_tlIself) =
+            (tl_ )
+        (_lhsOoneLineTree@_) =
+            _hdIoneLineTree  :  _tlIoneLineTree
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_GuardedExpressions_Nil :: (T_GuardedExpressions)
 sem_GuardedExpressions_Nil  =
-    let (_self) =
+    let (_lhsOoneLineTree@_) =
             []
-    in  ( [],_self)
+        (_self@_) =
+            []
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- Import ------------------------------------------------------
 -- semantic domain
 type T_Import = ( (Import))
@@ -1241,38 +1469,44 @@ sem_Import_TypeOrClass :: (T_Range) ->
                           (T_Name) ->
                           (T_MaybeNames) ->
                           (T_Import)
-sem_Import_TypeOrClass (_range) (_name) (_names) =
-    let (_self) =
-            Import_TypeOrClass _range_self _name_self _names_self
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _names_self) =
-            (_names )
-    in  ( _self)
+sem_Import_TypeOrClass (range_) (name_) (names_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        ( _namesIself) =
+            (names_ )
+        (_self@_) =
+            Import_TypeOrClass _rangeIself _nameIself _namesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Import_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Import)
-sem_Import_TypeOrClassComplete (_range) (_name) =
-    let (_self) =
-            Import_TypeOrClassComplete _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-    in  ( _self)
+sem_Import_TypeOrClassComplete (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        (_self@_) =
+            Import_TypeOrClassComplete _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Import_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Import)
-sem_Import_Variable (_range) (_name) =
-    let (_self) =
-            Import_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-    in  ( _self)
+sem_Import_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        (_self@_) =
+            Import_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ImportDeclaration -------------------------------------------
 -- semantic domain
 type T_ImportDeclaration = ( (ImportDeclaration))
@@ -1285,30 +1519,34 @@ sem_ImportDeclaration ((ImportDeclaration_Import (_range) (_qualified) (_name) (
     (sem_ImportDeclaration_Import ((sem_Range (_range))) (_qualified) ((sem_Name (_name))) ((sem_MaybeName (_asname))) ((sem_MaybeImportSpecification (_importspecification))))
 sem_ImportDeclaration_Empty :: (T_Range) ->
                                (T_ImportDeclaration)
-sem_ImportDeclaration_Empty (_range) =
-    let (_self) =
-            ImportDeclaration_Empty _range_self
-        ( _range_self) =
-            (_range )
-    in  ( _self)
+sem_ImportDeclaration_Empty (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_self@_) =
+            ImportDeclaration_Empty _rangeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_ImportDeclaration_Import :: (T_Range) ->
                                 (Bool) ->
                                 (T_Name) ->
                                 (T_MaybeName) ->
                                 (T_MaybeImportSpecification) ->
                                 (T_ImportDeclaration)
-sem_ImportDeclaration_Import (_range) (_qualified) (_name) (_asname) (_importspecification) =
-    let (_self) =
-            ImportDeclaration_Import _range_self _qualified _name_self _asname_self _importspecification_self
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _asname_self) =
-            (_asname )
-        ( _importspecification_self) =
-            (_importspecification )
-    in  ( _self)
+sem_ImportDeclaration_Import (range_) (qualified_) (name_) (asname_) (importspecification_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        ( _asnameIself) =
+            (asname_ )
+        ( _importspecificationIself) =
+            (importspecification_ )
+        (_self@_) =
+            ImportDeclaration_Import _rangeIself qualified_ _nameIself _asnameIself _importspecificationIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ImportDeclarations ------------------------------------------
 -- semantic domain
 type T_ImportDeclarations = ( (ImportDeclarations))
@@ -1320,19 +1558,23 @@ sem_ImportDeclarations (list) =
 sem_ImportDeclarations_Cons :: (T_ImportDeclaration) ->
                                (T_ImportDeclarations) ->
                                (T_ImportDeclarations)
-sem_ImportDeclarations_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_ImportDeclarations_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_ImportDeclarations_Nil :: (T_ImportDeclarations)
 sem_ImportDeclarations_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- ImportSpecification -----------------------------------------
 -- semantic domain
 type T_ImportSpecification = ( (ImportSpecification))
@@ -1345,14 +1587,16 @@ sem_ImportSpecification_Import :: (T_Range) ->
                                   (Bool) ->
                                   (T_Imports) ->
                                   (T_ImportSpecification)
-sem_ImportSpecification_Import (_range) (_hiding) (_imports) =
-    let (_self) =
-            ImportSpecification_Import _range_self _hiding _imports_self
-        ( _range_self) =
-            (_range )
-        ( _imports_self) =
-            (_imports )
-    in  ( _self)
+sem_ImportSpecification_Import (range_) (hiding_) (imports_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _importsIself) =
+            (imports_ )
+        (_self@_) =
+            ImportSpecification_Import _rangeIself hiding_ _importsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Imports -----------------------------------------------------
 -- semantic domain
 type T_Imports = ( (Imports))
@@ -1364,19 +1608,23 @@ sem_Imports (list) =
 sem_Imports_Cons :: (T_Import) ->
                     (T_Imports) ->
                     (T_Imports)
-sem_Imports_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Imports_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Imports_Nil :: (T_Imports)
 sem_Imports_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- LeftHandSide ------------------------------------------------
 -- semantic domain
 type T_LeftHandSide = ( (OneLineTree),(LeftHandSide))
@@ -1393,55 +1641,67 @@ sem_LeftHandSide_Function :: (T_Range) ->
                              (T_Name) ->
                              (T_Patterns) ->
                              (T_LeftHandSide)
-sem_LeftHandSide_Function (_range) (_name) (_patterns) =
-    let (_self) =
-            LeftHandSide_Function _range_self _name_self _patterns_self
-        (_oneLineTree) =
-            punctuate " " (_name_oneLineTree : _patterns_oneLineTree)
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _patterns_oneLineTree,_patterns_self) =
-            (_patterns )
-    in  ( _oneLineTree,_self)
+sem_LeftHandSide_Function (range_) (name_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        ( _patternsIoneLineTree,_patternsIself) =
+            (patterns_ )
+        (_oneLineTree@_) =
+            punctuate " " (_nameIoneLineTree : _patternsIoneLineTree)
+        (_self@_) =
+            LeftHandSide_Function _rangeIself _nameIself _patternsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_LeftHandSide_Infix :: (T_Range) ->
                           (T_Pattern) ->
                           (T_Name) ->
                           (T_Pattern) ->
                           (T_LeftHandSide)
-sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) =
-    let (_self) =
-            LeftHandSide_Infix _range_self _leftPattern_self _operator_self _rightPattern_self
-        (_operatorName) =
-            oneLineTreeAsOperator _operator_oneLineTree
-        (_oneLineTree) =
-            punctuate " " [_leftPattern_oneLineTree, _operatorName, _rightPattern_oneLineTree]
-        ( _range_self) =
-            (_range )
-        ( _leftPattern_oneLineTree,_leftPattern_self) =
-            (_leftPattern )
-        ( _operator_isIdentifier,_operator_isOperator,_operator_isSpecial,_operator_oneLineTree,_operator_self) =
-            (_operator )
-        ( _rightPattern_oneLineTree,_rightPattern_self) =
-            (_rightPattern )
-    in  ( _oneLineTree,_self)
+sem_LeftHandSide_Infix (range_) (leftPattern_) (operator_) (rightPattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _leftPatternIoneLineTree,_leftPatternIself) =
+            (leftPattern_ )
+        ( _operatorIisIdentifier,_operatorIisOperator,_operatorIisSpecial,_operatorIoneLineTree,_operatorIself) =
+            (operator_ )
+        ( _rightPatternIoneLineTree,_rightPatternIself) =
+            (rightPattern_ )
+        (_oneLineTree@_) =
+            punctuate " " [_leftPatternIoneLineTree, _operatorName, _rightPatternIoneLineTree]
+        (_operatorName@_) =
+            oneLineTreeAsOperator _operatorIoneLineTree
+        (_self@_) =
+            LeftHandSide_Infix _rangeIself _leftPatternIself _operatorIself _rightPatternIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_LeftHandSide_Parenthesized :: (T_Range) ->
                                   (T_LeftHandSide) ->
                                   (T_Patterns) ->
                                   (T_LeftHandSide)
-sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) =
-    let (_self) =
-            LeftHandSide_Parenthesized _range_self _lefthandside_self _patterns_self
-        (_oneLineTree) =
-            punctuate " " ( parens _lefthandside_oneLineTree : _patterns_oneLineTree )
-        ( _range_self) =
-            (_range )
-        ( _lefthandside_oneLineTree,_lefthandside_self) =
-            (_lefthandside )
-        ( _patterns_oneLineTree,_patterns_self) =
-            (_patterns )
-    in  ( _oneLineTree,_self)
+sem_LeftHandSide_Parenthesized (range_) (lefthandside_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _lefthandsideIoneLineTree,_lefthandsideIself) =
+            (lefthandside_ )
+        ( _patternsIoneLineTree,_patternsIself) =
+            (patterns_ )
+        (_oneLineTree@_) =
+            punctuate " " ( parens _lefthandsideIoneLineTree : _patternsIoneLineTree )
+        (_self@_) =
+            LeftHandSide_Parenthesized _rangeIself _lefthandsideIself _patternsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- Literal -----------------------------------------------------
 -- semantic domain
 type T_Literal = ( (OneLineTree),(Literal))
@@ -1459,47 +1719,63 @@ sem_Literal ((Literal_String (_range) (_value))) =
 sem_Literal_Char :: (T_Range) ->
                     (String) ->
                     (T_Literal)
-sem_Literal_Char (_range) (_value) =
-    let (_self) =
-            Literal_Char _range_self _value
-        (_oneLineTree) =
-            OneLineText ("'" ++ _value ++ "'")
-        ( _range_self) =
-            (_range )
-    in  ( _oneLineTree,_self)
+sem_Literal_Char (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_oneLineTree@_) =
+            OneLineText ("'" ++ value_ ++ "'")
+        (_self@_) =
+            Literal_Char _rangeIself value_
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Literal_Float :: (T_Range) ->
                      (String) ->
                      (T_Literal)
-sem_Literal_Float (_range) (_value) =
-    let (_self) =
-            Literal_Float _range_self _value
-        (_oneLineTree) =
-            OneLineText _value
-        ( _range_self) =
-            (_range )
-    in  ( _oneLineTree,_self)
+sem_Literal_Float (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_oneLineTree@_) =
+            OneLineText value_
+        (_self@_) =
+            Literal_Float _rangeIself value_
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Literal_Int :: (T_Range) ->
                    (String) ->
                    (T_Literal)
-sem_Literal_Int (_range) (_value) =
-    let (_self) =
-            Literal_Int _range_self _value
-        (_oneLineTree) =
-            OneLineText _value
-        ( _range_self) =
-            (_range )
-    in  ( _oneLineTree,_self)
+sem_Literal_Int (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_oneLineTree@_) =
+            OneLineText value_
+        (_self@_) =
+            Literal_Int _rangeIself value_
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Literal_String :: (T_Range) ->
                       (String) ->
                       (T_Literal)
-sem_Literal_String (_range) (_value) =
-    let (_self) =
-            Literal_String _range_self _value
-        (_oneLineTree) =
-            OneLineText ("\"" ++ _value ++ "\"")
-        ( _range_self) =
-            (_range )
-    in  ( _oneLineTree,_self)
+sem_Literal_String (range_) (value_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_oneLineTree@_) =
+            OneLineText ("\"" ++ value_ ++ "\"")
+        (_self@_) =
+            Literal_String _rangeIself value_
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
 type T_MaybeDeclarations = ( ( Maybe [OneLineTree] ),(MaybeDeclarations))
@@ -1512,21 +1788,29 @@ sem_MaybeDeclarations ((MaybeDeclarations_Nothing )) =
     (sem_MaybeDeclarations_Nothing )
 sem_MaybeDeclarations_Just :: (T_Declarations) ->
                               (T_MaybeDeclarations)
-sem_MaybeDeclarations_Just (_declarations) =
-    let (_self) =
-            MaybeDeclarations_Just _declarations_self
-        (_oneLineTree) =
-            Just _declarations_oneLineTree
-        ( _declarations_oneLineTree,_declarations_self) =
-            (_declarations )
-    in  ( _oneLineTree,_self)
+sem_MaybeDeclarations_Just (declarations_) =
+    let ( _declarationsIoneLineTree,_declarationsIself) =
+            (declarations_ )
+        (_oneLineTree@_) =
+            Just _declarationsIoneLineTree
+        (_self@_) =
+            MaybeDeclarations_Just _declarationsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
 sem_MaybeDeclarations_Nothing  =
-    let (_self) =
-            MaybeDeclarations_Nothing
-        (_oneLineTree) =
+    let (_oneLineTree@_) =
             Nothing
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            MaybeDeclarations_Nothing
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- MaybeExports ------------------------------------------------
 -- semantic domain
 type T_MaybeExports = ( (MaybeExports))
@@ -1539,17 +1823,21 @@ sem_MaybeExports ((MaybeExports_Nothing )) =
     (sem_MaybeExports_Nothing )
 sem_MaybeExports_Just :: (T_Exports) ->
                          (T_MaybeExports)
-sem_MaybeExports_Just (_exports) =
-    let (_self) =
-            MaybeExports_Just _exports_self
-        ( _exports_self) =
-            (_exports )
-    in  ( _self)
+sem_MaybeExports_Just (exports_) =
+    let ( _exportsIself) =
+            (exports_ )
+        (_self@_) =
+            MaybeExports_Just _exportsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeExports_Nothing :: (T_MaybeExports)
 sem_MaybeExports_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeExports_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeExpression ---------------------------------------------
 -- semantic domain
 type T_MaybeExpression = ( ( Maybe OneLineTree ),(MaybeExpression))
@@ -1562,21 +1850,29 @@ sem_MaybeExpression ((MaybeExpression_Nothing )) =
     (sem_MaybeExpression_Nothing )
 sem_MaybeExpression_Just :: (T_Expression) ->
                             (T_MaybeExpression)
-sem_MaybeExpression_Just (_expression) =
-    let (_self) =
-            MaybeExpression_Just _expression_self
-        (_oneLineTree) =
-            Just _expression_oneLineTree
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-    in  ( _oneLineTree,_self)
+sem_MaybeExpression_Just (expression_) =
+    let ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        (_oneLineTree@_) =
+            Just _expressionIoneLineTree
+        (_self@_) =
+            MaybeExpression_Just _expressionIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_MaybeExpression_Nothing :: (T_MaybeExpression)
 sem_MaybeExpression_Nothing  =
-    let (_self) =
-            MaybeExpression_Nothing
-        (_oneLineTree) =
+    let (_oneLineTree@_) =
             Nothing
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            MaybeExpression_Nothing
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- MaybeImportSpecification ------------------------------------
 -- semantic domain
 type T_MaybeImportSpecification = ( (MaybeImportSpecification))
@@ -1589,17 +1885,21 @@ sem_MaybeImportSpecification ((MaybeImportSpecification_Nothing )) =
     (sem_MaybeImportSpecification_Nothing )
 sem_MaybeImportSpecification_Just :: (T_ImportSpecification) ->
                                      (T_MaybeImportSpecification)
-sem_MaybeImportSpecification_Just (_importspecification) =
-    let (_self) =
-            MaybeImportSpecification_Just _importspecification_self
-        ( _importspecification_self) =
-            (_importspecification )
-    in  ( _self)
+sem_MaybeImportSpecification_Just (importspecification_) =
+    let ( _importspecificationIself) =
+            (importspecification_ )
+        (_self@_) =
+            MaybeImportSpecification_Just _importspecificationIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeImportSpecification_Nothing :: (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeImportSpecification_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeInt ----------------------------------------------------
 -- semantic domain
 type T_MaybeInt = ( (MaybeInt))
@@ -1612,15 +1912,19 @@ sem_MaybeInt ((MaybeInt_Nothing )) =
     (sem_MaybeInt_Nothing )
 sem_MaybeInt_Just :: (Int) ->
                      (T_MaybeInt)
-sem_MaybeInt_Just (_int) =
-    let (_self) =
-            MaybeInt_Just _int
-    in  ( _self)
+sem_MaybeInt_Just (int_) =
+    let (_self@_) =
+            MaybeInt_Just int_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeInt_Nothing :: (T_MaybeInt)
 sem_MaybeInt_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeInt_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeName ---------------------------------------------------
 -- semantic domain
 type T_MaybeName = ( (MaybeName))
@@ -1633,17 +1937,21 @@ sem_MaybeName ((MaybeName_Nothing )) =
     (sem_MaybeName_Nothing )
 sem_MaybeName_Just :: (T_Name) ->
                       (T_MaybeName)
-sem_MaybeName_Just (_name) =
-    let (_self) =
-            MaybeName_Just _name_self
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-    in  ( _self)
+sem_MaybeName_Just (name_) =
+    let ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        (_self@_) =
+            MaybeName_Just _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeName_Nothing :: (T_MaybeName)
 sem_MaybeName_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeName_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- MaybeNames --------------------------------------------------
 -- semantic domain
 type T_MaybeNames = ( (MaybeNames))
@@ -1656,17 +1964,21 @@ sem_MaybeNames ((MaybeNames_Nothing )) =
     (sem_MaybeNames_Nothing )
 sem_MaybeNames_Just :: (T_Names) ->
                        (T_MaybeNames)
-sem_MaybeNames_Just (_names) =
-    let (_self) =
-            MaybeNames_Just _names_self
-        ( _names_isIdentifier,_names_isOperator,_names_isSpecial,_names_oneLineTree,_names_self) =
-            (_names )
-    in  ( _self)
+sem_MaybeNames_Just (names_) =
+    let ( _namesIisIdentifier,_namesIisOperator,_namesIisSpecial,_namesIoneLineTree,_namesIself) =
+            (names_ )
+        (_self@_) =
+            MaybeNames_Just _namesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_MaybeNames_Nothing :: (T_MaybeNames)
 sem_MaybeNames_Nothing  =
-    let (_self) =
+    let (_self@_) =
             MaybeNames_Nothing
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Module ------------------------------------------------------
 -- semantic domain
 type T_Module = ( (Module))
@@ -1680,18 +1992,20 @@ sem_Module_Module :: (T_Range) ->
                      (T_MaybeExports) ->
                      (T_Body) ->
                      (T_Module)
-sem_Module_Module (_range) (_name) (_exports) (_body) =
-    let (_self) =
-            Module_Module _range_self _name_self _exports_self _body_self
-        ( _range_self) =
-            (_range )
-        ( _name_self) =
-            (_name )
-        ( _exports_self) =
-            (_exports )
-        ( _body_self) =
-            (_body )
-    in  ( _self)
+sem_Module_Module (range_) (name_) (exports_) (body_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIself) =
+            (name_ )
+        ( _exportsIself) =
+            (exports_ )
+        ( _bodyIself) =
+            (body_ )
+        (_self@_) =
+            Module_Module _rangeIself _nameIself _exportsIself _bodyIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Name --------------------------------------------------------
 -- semantic domain
 type T_Name = ( (Bool),(Bool),(Bool),(OneLineTree),(Name))
@@ -1708,44 +2022,74 @@ sem_Name_Identifier :: (T_Range) ->
                        (T_Strings) ->
                        (String) ->
                        (T_Name)
-sem_Name_Identifier (_range) (_module) (_name) =
-    let (_self) =
-            Name_Identifier _range_self _module_self _name
-        (_oneLineTree) =
-            OneLineText _name
-        ( _range_self) =
-            (_range )
-        ( _module_oneLineTree,_module_self) =
-            (_module )
-    in  ( True,False,False,_oneLineTree,_self)
+sem_Name_Identifier (range_) (module_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _moduleIoneLineTree,_moduleIself) =
+            (module_ )
+        (_oneLineTree@_) =
+            OneLineText name_
+        (_lhsOisIdentifier@_) =
+            True
+        (_lhsOisOperator@_) =
+            False
+        (_lhsOisSpecial@_) =
+            False
+        (_self@_) =
+            Name_Identifier _rangeIself _moduleIself name_
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOisIdentifier,_lhsOisOperator,_lhsOisSpecial,_lhsOoneLineTree,_lhsOself)
 sem_Name_Operator :: (T_Range) ->
                      (T_Strings) ->
                      (String) ->
                      (T_Name)
-sem_Name_Operator (_range) (_module) (_name) =
-    let (_self) =
-            Name_Operator _range_self _module_self _name
-        (_oneLineTree) =
-            OneLineText _name
-        ( _range_self) =
-            (_range )
-        ( _module_oneLineTree,_module_self) =
-            (_module )
-    in  ( False,True,False,_oneLineTree,_self)
+sem_Name_Operator (range_) (module_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _moduleIoneLineTree,_moduleIself) =
+            (module_ )
+        (_oneLineTree@_) =
+            OneLineText name_
+        (_lhsOisOperator@_) =
+            True
+        (_lhsOisIdentifier@_) =
+            False
+        (_lhsOisSpecial@_) =
+            False
+        (_self@_) =
+            Name_Operator _rangeIself _moduleIself name_
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOisIdentifier,_lhsOisOperator,_lhsOisSpecial,_lhsOoneLineTree,_lhsOself)
 sem_Name_Special :: (T_Range) ->
                     (T_Strings) ->
                     (String) ->
                     (T_Name)
-sem_Name_Special (_range) (_module) (_name) =
-    let (_self) =
-            Name_Special _range_self _module_self _name
-        (_oneLineTree) =
-            OneLineText _name
-        ( _range_self) =
-            (_range )
-        ( _module_oneLineTree,_module_self) =
-            (_module )
-    in  ( False,False,True,_oneLineTree,_self)
+sem_Name_Special (range_) (module_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _moduleIoneLineTree,_moduleIself) =
+            (module_ )
+        (_oneLineTree@_) =
+            OneLineText name_
+        (_lhsOisSpecial@_) =
+            True
+        (_lhsOisIdentifier@_) =
+            False
+        (_lhsOisOperator@_) =
+            False
+        (_self@_) =
+            Name_Special _rangeIself _moduleIself name_
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOisIdentifier,_lhsOisOperator,_lhsOisSpecial,_lhsOoneLineTree,_lhsOself)
 -- Names -------------------------------------------------------
 -- semantic domain
 type T_Names = ( ( [Bool] ),( [Bool] ),( [Bool] ),( [ OneLineTree] ),(Names))
@@ -1757,19 +2101,39 @@ sem_Names (list) =
 sem_Names_Cons :: (T_Name) ->
                   (T_Names) ->
                   (T_Names)
-sem_Names_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_isIdentifier,_hd_isOperator,_hd_isSpecial,_hd_oneLineTree,_hd_self) =
-            (_hd )
-        ( _tl_isIdentifier,_tl_isOperator,_tl_isSpecial,_tl_oneLineTree,_tl_self) =
-            (_tl )
-    in  ( _hd_isIdentifier  :  _tl_isIdentifier,_hd_isOperator  :  _tl_isOperator,_hd_isSpecial  :  _tl_isSpecial,_hd_oneLineTree  :  _tl_oneLineTree,_self)
+sem_Names_Cons (hd_) (tl_) =
+    let ( _hdIisIdentifier,_hdIisOperator,_hdIisSpecial,_hdIoneLineTree,_hdIself) =
+            (hd_ )
+        ( _tlIisIdentifier,_tlIisOperator,_tlIisSpecial,_tlIoneLineTree,_tlIself) =
+            (tl_ )
+        (_lhsOisIdentifier@_) =
+            _hdIisIdentifier  :  _tlIisIdentifier
+        (_lhsOisOperator@_) =
+            _hdIisOperator  :  _tlIisOperator
+        (_lhsOisSpecial@_) =
+            _hdIisSpecial  :  _tlIisSpecial
+        (_lhsOoneLineTree@_) =
+            _hdIoneLineTree  :  _tlIoneLineTree
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOisIdentifier,_lhsOisOperator,_lhsOisSpecial,_lhsOoneLineTree,_lhsOself)
 sem_Names_Nil :: (T_Names)
 sem_Names_Nil  =
-    let (_self) =
+    let (_lhsOisIdentifier@_) =
             []
-    in  ( [],[],[],[],_self)
+        (_lhsOisOperator@_) =
+            []
+        (_lhsOisSpecial@_) =
+            []
+        (_lhsOoneLineTree@_) =
+            []
+        (_self@_) =
+            []
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOisIdentifier,_lhsOisOperator,_lhsOisSpecial,_lhsOoneLineTree,_lhsOself)
 -- Pattern -----------------------------------------------------
 -- semantic domain
 type T_Pattern = ( (OneLineTree),(Pattern))
@@ -1808,215 +2172,271 @@ sem_Pattern_As :: (T_Range) ->
                   (T_Name) ->
                   (T_Pattern) ->
                   (T_Pattern)
-sem_Pattern_As (_range) (_name) (_pattern) =
-    let (_self) =
-            Pattern_As _range_self _name_self _pattern_self
-        (_oneLineTree) =
+sem_Pattern_As (range_) (name_) (pattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        ( _patternIoneLineTree,_patternIself) =
+            (pattern_ )
+        (_oneLineTree@_) =
             OneLineNode
-                [ OneLineNode [_name_oneLineTree]
+                [ OneLineNode [_nameIoneLineTree]
                 , OneLineText "@"
-                , OneLineNode [_pattern_oneLineTree]
+                , OneLineNode [_patternIoneLineTree]
                 ]
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _pattern_oneLineTree,_pattern_self) =
-            (_pattern )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Pattern_As _rangeIself _nameIself _patternIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Pattern_Constructor :: (T_Range) ->
                            (T_Name) ->
                            (T_Patterns) ->
                            (T_Pattern)
-sem_Pattern_Constructor (_range) (_name) (_patterns) =
-    let (_self) =
-            Pattern_Constructor _range_self _name_self _patterns_self
-        (_operatorName) =
-            if _name_isOperator
-              then OneLineNode [OneLineText "(", _name_oneLineTree, OneLineText ")"]
-              else _name_oneLineTree
-        (_oneLineTree) =
-            OneLineNode (sepBy (OneLineText " ") (_operatorName : _patterns_oneLineTree))
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _patterns_oneLineTree,_patterns_self) =
-            (_patterns )
-    in  ( _oneLineTree,_self)
+sem_Pattern_Constructor (range_) (name_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        ( _patternsIoneLineTree,_patternsIself) =
+            (patterns_ )
+        (_oneLineTree@_) =
+            OneLineNode (sepBy (OneLineText " ") (_operatorName : _patternsIoneLineTree))
+        (_operatorName@_) =
+            if _nameIisOperator
+              then OneLineNode [OneLineText "(", _nameIoneLineTree, OneLineText ")"]
+              else _nameIoneLineTree
+        (_self@_) =
+            Pattern_Constructor _rangeIself _nameIself _patternsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Pattern_InfixConstructor :: (T_Range) ->
                                 (T_Pattern) ->
                                 (T_Name) ->
                                 (T_Pattern) ->
                                 (T_Pattern)
-sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_rightPattern) =
-    let (_self) =
-            Pattern_InfixConstructor _range_self _leftPattern_self _constructorOperator_self _rightPattern_self
-        (_operatorName) =
-            OneLineText (showNameAsOperator _constructorOperator_self)
-        (_oneLineTree) =
+sem_Pattern_InfixConstructor (range_) (leftPattern_) (constructorOperator_) (rightPattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _leftPatternIoneLineTree,_leftPatternIself) =
+            (leftPattern_ )
+        ( _constructorOperatorIisIdentifier,_constructorOperatorIisOperator,_constructorOperatorIisSpecial,_constructorOperatorIoneLineTree,_constructorOperatorIself) =
+            (constructorOperator_ )
+        ( _rightPatternIoneLineTree,_rightPatternIself) =
+            (rightPattern_ )
+        (_oneLineTree@_) =
             OneLineNode
-                [ OneLineNode [_leftPattern_oneLineTree]
+                [ OneLineNode [_leftPatternIoneLineTree]
                 , OneLineText " "
                 , OneLineNode [_operatorName]
                 , OneLineText " "
-                , OneLineNode [_rightPattern_oneLineTree]
+                , OneLineNode [_rightPatternIoneLineTree]
                 ]
-        ( _range_self) =
-            (_range )
-        ( _leftPattern_oneLineTree,_leftPattern_self) =
-            (_leftPattern )
-        ( _constructorOperator_isIdentifier,_constructorOperator_isOperator,_constructorOperator_isSpecial,_constructorOperator_oneLineTree,_constructorOperator_self) =
-            (_constructorOperator )
-        ( _rightPattern_oneLineTree,_rightPattern_self) =
-            (_rightPattern )
-    in  ( _oneLineTree,_self)
+        (_operatorName@_) =
+            OneLineText (showNameAsOperator _constructorOperatorIself)
+        (_self@_) =
+            Pattern_InfixConstructor _rangeIself _leftPatternIself _constructorOperatorIself _rightPatternIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Pattern_Irrefutable :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Pattern)
-sem_Pattern_Irrefutable (_range) (_pattern) =
-    let (_self) =
-            Pattern_Irrefutable _range_self _pattern_self
-        (_oneLineTree) =
+sem_Pattern_Irrefutable (range_) (pattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternIoneLineTree,_patternIself) =
+            (pattern_ )
+        (_oneLineTree@_) =
             intErr "pattern" "irrefutable"
-        ( _range_self) =
-            (_range )
-        ( _pattern_oneLineTree,_pattern_self) =
-            (_pattern )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Pattern_Irrefutable _rangeIself _patternIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Pattern_List :: (T_Range) ->
                     (T_Patterns) ->
                     (T_Pattern)
-sem_Pattern_List (_range) (_patterns) =
-    let (_self) =
-            Pattern_List _range_self _patterns_self
-        (_oneLineTree) =
-            encloseSep "[" ", " "]" _patterns_oneLineTree
-        ( _range_self) =
-            (_range )
-        ( _patterns_oneLineTree,_patterns_self) =
-            (_patterns )
-    in  ( _oneLineTree,_self)
+sem_Pattern_List (range_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternsIoneLineTree,_patternsIself) =
+            (patterns_ )
+        (_oneLineTree@_) =
+            encloseSep "[" ", " "]" _patternsIoneLineTree
+        (_self@_) =
+            Pattern_List _rangeIself _patternsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Pattern_Literal :: (T_Range) ->
                        (T_Literal) ->
                        (T_Pattern)
-sem_Pattern_Literal (_range) (_literal) =
-    let (_self) =
-            Pattern_Literal _range_self _literal_self
-        (_oneLineTree) =
-            _literal_oneLineTree
-        ( _range_self) =
-            (_range )
-        ( _literal_oneLineTree,_literal_self) =
-            (_literal )
-    in  ( _oneLineTree,_self)
+sem_Pattern_Literal (range_) (literal_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _literalIoneLineTree,_literalIself) =
+            (literal_ )
+        (_oneLineTree@_) =
+            _literalIoneLineTree
+        (_self@_) =
+            Pattern_Literal _rangeIself _literalIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Pattern_Negate :: (T_Range) ->
                       (T_Literal) ->
                       (T_Pattern)
-sem_Pattern_Negate (_range) (_literal) =
-    let (_self) =
-            Pattern_Negate _range_self _literal_self
-        (_oneLineTree) =
-            OneLineNode [ OneLineText "-", _literal_oneLineTree ]
-        ( _range_self) =
-            (_range )
-        ( _literal_oneLineTree,_literal_self) =
-            (_literal )
-    in  ( _oneLineTree,_self)
+sem_Pattern_Negate (range_) (literal_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _literalIoneLineTree,_literalIself) =
+            (literal_ )
+        (_oneLineTree@_) =
+            OneLineNode [ OneLineText "-", _literalIoneLineTree ]
+        (_self@_) =
+            Pattern_Negate _rangeIself _literalIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Pattern_NegateFloat :: (T_Range) ->
                            (T_Literal) ->
                            (T_Pattern)
-sem_Pattern_NegateFloat (_range) (_literal) =
-    let (_self) =
-            Pattern_NegateFloat _range_self _literal_self
-        (_oneLineTree) =
-            OneLineNode [ OneLineText "-." , _literal_oneLineTree ]
-        ( _range_self) =
-            (_range )
-        ( _literal_oneLineTree,_literal_self) =
-            (_literal )
-    in  ( _oneLineTree,_self)
+sem_Pattern_NegateFloat (range_) (literal_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _literalIoneLineTree,_literalIself) =
+            (literal_ )
+        (_oneLineTree@_) =
+            OneLineNode [ OneLineText "-." , _literalIoneLineTree ]
+        (_self@_) =
+            Pattern_NegateFloat _rangeIself _literalIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Pattern_Parenthesized :: (T_Range) ->
                              (T_Pattern) ->
                              (T_Pattern)
-sem_Pattern_Parenthesized (_range) (_pattern) =
-    let (_self) =
-            Pattern_Parenthesized _range_self _pattern_self
-        (_oneLineTree) =
-            parens _pattern_oneLineTree
-        ( _range_self) =
-            (_range )
-        ( _pattern_oneLineTree,_pattern_self) =
-            (_pattern )
-    in  ( _oneLineTree,_self)
+sem_Pattern_Parenthesized (range_) (pattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternIoneLineTree,_patternIself) =
+            (pattern_ )
+        (_oneLineTree@_) =
+            parens _patternIoneLineTree
+        (_self@_) =
+            Pattern_Parenthesized _rangeIself _patternIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Pattern_Record :: (T_Range) ->
                       (T_Name) ->
                       (T_RecordPatternBindings) ->
                       (T_Pattern)
-sem_Pattern_Record (_range) (_name) (_recordPatternBindings) =
-    let (_self) =
-            Pattern_Record _range_self _name_self _recordPatternBindings_self
-        (_oneLineTree) =
+sem_Pattern_Record (range_) (name_) (recordPatternBindings_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        ( _recordPatternBindingsIself) =
+            (recordPatternBindings_ )
+        (_oneLineTree@_) =
             intErr "pattern" "record"
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _recordPatternBindings_self) =
-            (_recordPatternBindings )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Pattern_Record _rangeIself _nameIself _recordPatternBindingsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Pattern_Successor :: (T_Range) ->
                          (T_Name) ->
                          (T_Literal) ->
                          (T_Pattern)
-sem_Pattern_Successor (_range) (_name) (_literal) =
-    let (_self) =
-            Pattern_Successor _range_self _name_self _literal_self
-        (_oneLineTree) =
+sem_Pattern_Successor (range_) (name_) (literal_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        ( _literalIoneLineTree,_literalIself) =
+            (literal_ )
+        (_oneLineTree@_) =
             intErr "pattern" "successor"
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _literal_oneLineTree,_literal_self) =
-            (_literal )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Pattern_Successor _rangeIself _nameIself _literalIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Pattern_Tuple :: (T_Range) ->
                      (T_Patterns) ->
                      (T_Pattern)
-sem_Pattern_Tuple (_range) (_patterns) =
-    let (_self) =
-            Pattern_Tuple _range_self _patterns_self
-        (_oneLineTree) =
-            encloseSep "(" ", " ")" _patterns_oneLineTree
-        ( _range_self) =
-            (_range )
-        ( _patterns_oneLineTree,_patterns_self) =
-            (_patterns )
-    in  ( _oneLineTree,_self)
+sem_Pattern_Tuple (range_) (patterns_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternsIoneLineTree,_patternsIself) =
+            (patterns_ )
+        (_oneLineTree@_) =
+            encloseSep "(" ", " ")" _patternsIoneLineTree
+        (_self@_) =
+            Pattern_Tuple _rangeIself _patternsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Pattern_Variable :: (T_Range) ->
                         (T_Name) ->
                         (T_Pattern)
-sem_Pattern_Variable (_range) (_name) =
-    let (_self) =
-            Pattern_Variable _range_self _name_self
-        (_oneLineTree) =
-            _name_oneLineTree
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-    in  ( _oneLineTree,_self)
+sem_Pattern_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        (_oneLineTree@_) =
+            _nameIoneLineTree
+        (_self@_) =
+            Pattern_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Pattern_Wildcard :: (T_Range) ->
                         (T_Pattern)
-sem_Pattern_Wildcard (_range) =
-    let (_self) =
-            Pattern_Wildcard _range_self
-        (_oneLineTree) =
+sem_Pattern_Wildcard (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_oneLineTree@_) =
             OneLineText "_"
-        ( _range_self) =
-            (_range )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Pattern_Wildcard _rangeIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- Patterns ----------------------------------------------------
 -- semantic domain
 type T_Patterns = ( ( [ OneLineTree] ),(Patterns))
@@ -2028,19 +2448,27 @@ sem_Patterns (list) =
 sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns) ->
                      (T_Patterns)
-sem_Patterns_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_oneLineTree,_hd_self) =
-            (_hd )
-        ( _tl_oneLineTree,_tl_self) =
-            (_tl )
-    in  ( _hd_oneLineTree  :  _tl_oneLineTree,_self)
+sem_Patterns_Cons (hd_) (tl_) =
+    let ( _hdIoneLineTree,_hdIself) =
+            (hd_ )
+        ( _tlIoneLineTree,_tlIself) =
+            (tl_ )
+        (_lhsOoneLineTree@_) =
+            _hdIoneLineTree  :  _tlIoneLineTree
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Patterns_Nil :: (T_Patterns)
 sem_Patterns_Nil  =
-    let (_self) =
+    let (_lhsOoneLineTree@_) =
             []
-    in  ( [],_self)
+        (_self@_) =
+            []
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- Position ----------------------------------------------------
 -- semantic domain
 type T_Position = ( (Position))
@@ -2055,15 +2483,19 @@ sem_Position_Position :: (String) ->
                          (Int) ->
                          (Int) ->
                          (T_Position)
-sem_Position_Position (_filename) (_line) (_column) =
-    let (_self) =
-            Position_Position _filename _line _column
-    in  ( _self)
+sem_Position_Position (filename_) (line_) (column_) =
+    let (_self@_) =
+            Position_Position filename_ line_ column_
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Position_Unknown :: (T_Position)
 sem_Position_Unknown  =
-    let (_self) =
+    let (_self@_) =
             Position_Unknown
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Qualifier ---------------------------------------------------
 -- semantic domain
 type T_Qualifier = ( (OneLineTree),(Qualifier))
@@ -2080,56 +2512,72 @@ sem_Qualifier ((Qualifier_Let (_range) (_declarations))) =
     (sem_Qualifier_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Qualifier_Empty :: (T_Range) ->
                        (T_Qualifier)
-sem_Qualifier_Empty (_range) =
-    let (_self) =
-            Qualifier_Empty _range_self
-        (_oneLineTree) =
+sem_Qualifier_Empty (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_oneLineTree@_) =
             OneLineText ""
-        ( _range_self) =
-            (_range )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Qualifier_Empty _rangeIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Qualifier_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Qualifier)
-sem_Qualifier_Generator (_range) (_pattern) (_expression) =
-    let (_self) =
-            Qualifier_Generator _range_self _pattern_self _expression_self
-        (_oneLineTree) =
-            OneLineNode [ _pattern_oneLineTree, OneLineText " <- ", _expression_oneLineTree ]
-        ( _range_self) =
-            (_range )
-        ( _pattern_oneLineTree,_pattern_self) =
-            (_pattern )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-    in  ( _oneLineTree,_self)
+sem_Qualifier_Generator (range_) (pattern_) (expression_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternIoneLineTree,_patternIself) =
+            (pattern_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        (_oneLineTree@_) =
+            OneLineNode [ _patternIoneLineTree, OneLineText " <- ", _expressionIoneLineTree ]
+        (_self@_) =
+            Qualifier_Generator _rangeIself _patternIself _expressionIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Qualifier_Guard :: (T_Range) ->
                        (T_Expression) ->
                        (T_Qualifier)
-sem_Qualifier_Guard (_range) (_guard) =
-    let (_self) =
-            Qualifier_Guard _range_self _guard_self
-        (_oneLineTree) =
-            _guard_oneLineTree
-        ( _range_self) =
-            (_range )
-        ( _guard_oneLineTree,_guard_self) =
-            (_guard )
-    in  ( _oneLineTree,_self)
+sem_Qualifier_Guard (range_) (guard_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _guardIoneLineTree,_guardIself) =
+            (guard_ )
+        (_oneLineTree@_) =
+            _guardIoneLineTree
+        (_self@_) =
+            Qualifier_Guard _rangeIself _guardIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Qualifier_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Qualifier)
-sem_Qualifier_Let (_range) (_declarations) =
-    let (_self) =
-            Qualifier_Let _range_self _declarations_self
-        (_oneLineTree) =
-            OneLineNode [ OneLineText "let ", encloseSep "{" "; " "}" _declarations_oneLineTree ]
-        ( _range_self) =
-            (_range )
-        ( _declarations_oneLineTree,_declarations_self) =
-            (_declarations )
-    in  ( _oneLineTree,_self)
+sem_Qualifier_Let (range_) (declarations_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _declarationsIoneLineTree,_declarationsIself) =
+            (declarations_ )
+        (_oneLineTree@_) =
+            OneLineNode [ OneLineText "let ", encloseSep "{" "; " "}" _declarationsIoneLineTree ]
+        (_self@_) =
+            Qualifier_Let _rangeIself _declarationsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
 type T_Qualifiers = ( ( [ OneLineTree] ),(Qualifiers))
@@ -2141,19 +2589,27 @@ sem_Qualifiers (list) =
 sem_Qualifiers_Cons :: (T_Qualifier) ->
                        (T_Qualifiers) ->
                        (T_Qualifiers)
-sem_Qualifiers_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_oneLineTree,_hd_self) =
-            (_hd )
-        ( _tl_oneLineTree,_tl_self) =
-            (_tl )
-    in  ( _hd_oneLineTree  :  _tl_oneLineTree,_self)
+sem_Qualifiers_Cons (hd_) (tl_) =
+    let ( _hdIoneLineTree,_hdIself) =
+            (hd_ )
+        ( _tlIoneLineTree,_tlIself) =
+            (tl_ )
+        (_lhsOoneLineTree@_) =
+            _hdIoneLineTree  :  _tlIoneLineTree
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Qualifiers_Nil :: (T_Qualifiers)
 sem_Qualifiers_Nil  =
-    let (_self) =
+    let (_lhsOoneLineTree@_) =
             []
-    in  ( [],_self)
+        (_self@_) =
+            []
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- Range -------------------------------------------------------
 -- semantic domain
 type T_Range = ( (Range))
@@ -2165,14 +2621,16 @@ sem_Range ((Range_Range (_start) (_stop))) =
 sem_Range_Range :: (T_Position) ->
                    (T_Position) ->
                    (T_Range)
-sem_Range_Range (_start) (_stop) =
-    let (_self) =
-            Range_Range _start_self _stop_self
-        ( _start_self) =
-            (_start )
-        ( _stop_self) =
-            (_stop )
-    in  ( _self)
+sem_Range_Range (start_) (stop_) =
+    let ( _startIself) =
+            (start_ )
+        ( _stopIself) =
+            (stop_ )
+        (_self@_) =
+            Range_Range _startIself _stopIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- RecordExpressionBinding -------------------------------------
 -- semantic domain
 type T_RecordExpressionBinding = ( (RecordExpressionBinding))
@@ -2185,16 +2643,18 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
                                                        (T_Name) ->
                                                        (T_Expression) ->
                                                        (T_RecordExpressionBinding)
-sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expression) =
-    let (_self) =
-            RecordExpressionBinding_RecordExpressionBinding _range_self _name_self _expression_self
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-    in  ( _self)
+sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        (_self@_) =
+            RecordExpressionBinding_RecordExpressionBinding _rangeIself _nameIself _expressionIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
 type T_RecordExpressionBindings = ( (RecordExpressionBindings))
@@ -2206,19 +2666,23 @@ sem_RecordExpressionBindings (list) =
 sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_RecordExpressionBindings)
-sem_RecordExpressionBindings_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_RecordExpressionBindings_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_RecordExpressionBindings_Nil :: (T_RecordExpressionBindings)
 sem_RecordExpressionBindings_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- RecordPatternBinding ----------------------------------------
 -- semantic domain
 type T_RecordPatternBinding = ( (RecordPatternBinding))
@@ -2231,16 +2695,18 @@ sem_RecordPatternBinding_RecordPatternBinding :: (T_Range) ->
                                                  (T_Name) ->
                                                  (T_Pattern) ->
                                                  (T_RecordPatternBinding)
-sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) =
-    let (_self) =
-            RecordPatternBinding_RecordPatternBinding _range_self _name_self _pattern_self
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _pattern_oneLineTree,_pattern_self) =
-            (_pattern )
-    in  ( _self)
+sem_RecordPatternBinding_RecordPatternBinding (range_) (name_) (pattern_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        ( _patternIoneLineTree,_patternIself) =
+            (pattern_ )
+        (_self@_) =
+            RecordPatternBinding_RecordPatternBinding _rangeIself _nameIself _patternIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- RecordPatternBindings ---------------------------------------
 -- semantic domain
 type T_RecordPatternBindings = ( (RecordPatternBindings))
@@ -2252,19 +2718,23 @@ sem_RecordPatternBindings (list) =
 sem_RecordPatternBindings_Cons :: (T_RecordPatternBinding) ->
                                   (T_RecordPatternBindings) ->
                                   (T_RecordPatternBindings)
-sem_RecordPatternBindings_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_RecordPatternBindings_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_RecordPatternBindings_Nil :: (T_RecordPatternBindings)
 sem_RecordPatternBindings_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- RightHandSide -----------------------------------------------
 -- semantic domain
 type T_RightHandSide = ( ( String -> OneLineTree ),(RightHandSide))
@@ -2279,44 +2749,52 @@ sem_RightHandSide_Expression :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_MaybeDeclarations) ->
                                 (T_RightHandSide)
-sem_RightHandSide_Expression (_range) (_expression) (_where) =
-    let (_self) =
-            RightHandSide_Expression _range_self _expression_self _where_self
-        (_oneLineTree) =
+sem_RightHandSide_Expression (range_) (expression_) (where_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        ( _whereIoneLineTree,_whereIself) =
+            (where_ )
+        (_oneLineTree@_) =
             \assign -> OneLineNode
-                (  [ OneLineText assign, _expression_oneLineTree ]
-                ++ case _where_oneLineTree of
+                (  [ OneLineText assign, _expressionIoneLineTree ]
+                ++ case _whereIoneLineTree of
                     Nothing -> []
                     Just ds -> [ OneLineText " where ", encloseSep "{" "; " "}" ds ]
                 )
-        ( _range_self) =
-            (_range )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-        ( _where_oneLineTree,_where_self) =
-            (_where )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            RightHandSide_Expression _rangeIself _expressionIself _whereIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_RightHandSide_Guarded :: (T_Range) ->
                              (T_GuardedExpressions) ->
                              (T_MaybeDeclarations) ->
                              (T_RightHandSide)
-sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) =
-    let (_self) =
-            RightHandSide_Guarded _range_self _guardedexpressions_self _where_self
-        (_oneLineTree) =
+sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _guardedexpressionsIoneLineTree,_guardedexpressionsIself) =
+            (guardedexpressions_ )
+        ( _whereIoneLineTree,_whereIself) =
+            (where_ )
+        (_oneLineTree@_) =
             \assign -> OneLineNode
-                (  [ ge assign | ge <- _guardedexpressions_oneLineTree ]
-                ++ case _where_oneLineTree of
+                (  [ ge assign | ge <- _guardedexpressionsIoneLineTree ]
+                ++ case _whereIoneLineTree of
                     Nothing -> []
                     Just ds -> [ OneLineText " where ", encloseSep "{" "; " "}" ds ]
                 )
-        ( _range_self) =
-            (_range )
-        ( _guardedexpressions_oneLineTree,_guardedexpressions_self) =
-            (_guardedexpressions )
-        ( _where_oneLineTree,_where_self) =
-            (_where )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            RightHandSide_Guarded _rangeIself _guardedexpressionsIself _whereIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- SimpleType --------------------------------------------------
 -- semantic domain
 type T_SimpleType = ( (SimpleType))
@@ -2329,16 +2807,18 @@ sem_SimpleType_SimpleType :: (T_Range) ->
                              (T_Name) ->
                              (T_Names) ->
                              (T_SimpleType)
-sem_SimpleType_SimpleType (_range) (_name) (_typevariables) =
-    let (_self) =
-            SimpleType_SimpleType _range_self _name_self _typevariables_self
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _typevariables_isIdentifier,_typevariables_isOperator,_typevariables_isSpecial,_typevariables_oneLineTree,_typevariables_self) =
-            (_typevariables )
-    in  ( _self)
+sem_SimpleType_SimpleType (range_) (name_) (typevariables_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        ( _typevariablesIisIdentifier,_typevariablesIisOperator,_typevariablesIisSpecial,_typevariablesIoneLineTree,_typevariablesIself) =
+            (typevariables_ )
+        (_self@_) =
+            SimpleType_SimpleType _rangeIself _nameIself _typevariablesIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Statement ---------------------------------------------------
 -- semantic domain
 type T_Statement = ( (OneLineTree),(Statement))
@@ -2355,56 +2835,72 @@ sem_Statement ((Statement_Let (_range) (_declarations))) =
     (sem_Statement_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Statement_Empty :: (T_Range) ->
                        (T_Statement)
-sem_Statement_Empty (_range) =
-    let (_self) =
-            Statement_Empty _range_self
-        (_oneLineTree) =
+sem_Statement_Empty (range_) =
+    let ( _rangeIself) =
+            (range_ )
+        (_oneLineTree@_) =
             OneLineText ""
-        ( _range_self) =
-            (_range )
-    in  ( _oneLineTree,_self)
+        (_self@_) =
+            Statement_Empty _rangeIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Statement_Expression :: (T_Range) ->
                             (T_Expression) ->
                             (T_Statement)
-sem_Statement_Expression (_range) (_expression) =
-    let (_self) =
-            Statement_Expression _range_self _expression_self
-        (_oneLineTree) =
-            _expression_oneLineTree
-        ( _range_self) =
-            (_range )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-    in  ( _oneLineTree,_self)
+sem_Statement_Expression (range_) (expression_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        (_oneLineTree@_) =
+            _expressionIoneLineTree
+        (_self@_) =
+            Statement_Expression _rangeIself _expressionIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Statement_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Statement)
-sem_Statement_Generator (_range) (_pattern) (_expression) =
-    let (_self) =
-            Statement_Generator _range_self _pattern_self _expression_self
-        (_oneLineTree) =
-            OneLineNode [ _pattern_oneLineTree, OneLineText " <- ", _expression_oneLineTree ]
-        ( _range_self) =
-            (_range )
-        ( _pattern_oneLineTree,_pattern_self) =
-            (_pattern )
-        ( _expression_oneLineTree,_expression_self) =
-            (_expression )
-    in  ( _oneLineTree,_self)
+sem_Statement_Generator (range_) (pattern_) (expression_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _patternIoneLineTree,_patternIself) =
+            (pattern_ )
+        ( _expressionIoneLineTree,_expressionIself) =
+            (expression_ )
+        (_oneLineTree@_) =
+            OneLineNode [ _patternIoneLineTree, OneLineText " <- ", _expressionIoneLineTree ]
+        (_self@_) =
+            Statement_Generator _rangeIself _patternIself _expressionIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Statement_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Statement)
-sem_Statement_Let (_range) (_declarations) =
-    let (_self) =
-            Statement_Let _range_self _declarations_self
-        (_oneLineTree) =
-            OneLineNode [ OneLineText "let ", encloseSep "{" "; " "}" _declarations_oneLineTree ]
-        ( _range_self) =
-            (_range )
-        ( _declarations_oneLineTree,_declarations_self) =
-            (_declarations )
-    in  ( _oneLineTree,_self)
+sem_Statement_Let (range_) (declarations_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _declarationsIoneLineTree,_declarationsIself) =
+            (declarations_ )
+        (_oneLineTree@_) =
+            OneLineNode [ OneLineText "let ", encloseSep "{" "; " "}" _declarationsIoneLineTree ]
+        (_self@_) =
+            Statement_Let _rangeIself _declarationsIself
+        (_lhsOself@_) =
+            _self
+        (_lhsOoneLineTree@_) =
+            _oneLineTree
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- Statements --------------------------------------------------
 -- semantic domain
 type T_Statements = ( ( [ OneLineTree] ),(Statements))
@@ -2416,19 +2912,27 @@ sem_Statements (list) =
 sem_Statements_Cons :: (T_Statement) ->
                        (T_Statements) ->
                        (T_Statements)
-sem_Statements_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_oneLineTree,_hd_self) =
-            (_hd )
-        ( _tl_oneLineTree,_tl_self) =
-            (_tl )
-    in  ( _hd_oneLineTree  :  _tl_oneLineTree,_self)
+sem_Statements_Cons (hd_) (tl_) =
+    let ( _hdIoneLineTree,_hdIself) =
+            (hd_ )
+        ( _tlIoneLineTree,_tlIself) =
+            (tl_ )
+        (_lhsOoneLineTree@_) =
+            _hdIoneLineTree  :  _tlIoneLineTree
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Statements_Nil :: (T_Statements)
 sem_Statements_Nil  =
-    let (_self) =
+    let (_lhsOoneLineTree@_) =
             []
-    in  ( [],_self)
+        (_self@_) =
+            []
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- Strings -----------------------------------------------------
 -- semantic domain
 type T_Strings = ( ( [ OneLineTree] ),(Strings))
@@ -2440,17 +2944,25 @@ sem_Strings (list) =
 sem_Strings_Cons :: (String) ->
                     (T_Strings) ->
                     (T_Strings)
-sem_Strings_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd _tl_self
-        ( _tl_oneLineTree,_tl_self) =
-            (_tl )
-    in  ( _tl_oneLineTree,_self)
+sem_Strings_Cons (hd_) (tl_) =
+    let ( _tlIoneLineTree,_tlIself) =
+            (tl_ )
+        (_lhsOoneLineTree@_) =
+            _tlIoneLineTree
+        (_self@_) =
+            (:) hd_ _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 sem_Strings_Nil :: (T_Strings)
 sem_Strings_Nil  =
-    let (_self) =
+    let (_lhsOoneLineTree@_) =
             []
-    in  ( [],_self)
+        (_self@_) =
+            []
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOoneLineTree,_lhsOself)
 -- Type --------------------------------------------------------
 -- semantic domain
 type T_Type = ( (Type))
@@ -2476,91 +2988,105 @@ sem_Type_Application :: (T_Range) ->
                         (T_Type) ->
                         (T_Types) ->
                         (T_Type)
-sem_Type_Application (_range) (_prefix) (_function) (_arguments) =
-    let (_self) =
-            Type_Application _range_self _prefix _function_self _arguments_self
-        ( _range_self) =
-            (_range )
-        ( _function_self) =
-            (_function )
-        ( _arguments_self) =
-            (_arguments )
-    in  ( _self)
+sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _functionIself) =
+            (function_ )
+        ( _argumentsIself) =
+            (arguments_ )
+        (_self@_) =
+            Type_Application _rangeIself prefix_ _functionIself _argumentsIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Constructor :: (T_Range) ->
                         (T_Name) ->
                         (T_Type)
-sem_Type_Constructor (_range) (_name) =
-    let (_self) =
-            Type_Constructor _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-    in  ( _self)
+sem_Type_Constructor (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        (_self@_) =
+            Type_Constructor _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Exists :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
-sem_Type_Exists (_range) (_typevariables) (_type) =
-    let (_self) =
-            Type_Exists _range_self _typevariables_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _typevariables_isIdentifier,_typevariables_isOperator,_typevariables_isSpecial,_typevariables_oneLineTree,_typevariables_self) =
-            (_typevariables )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_Type_Exists (range_) (typevariables_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _typevariablesIisIdentifier,_typevariablesIisOperator,_typevariablesIisSpecial,_typevariablesIoneLineTree,_typevariablesIself) =
+            (typevariables_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            Type_Exists _rangeIself _typevariablesIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Forall :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
-sem_Type_Forall (_range) (_typevariables) (_type) =
-    let (_self) =
-            Type_Forall _range_self _typevariables_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _typevariables_isIdentifier,_typevariables_isOperator,_typevariables_isSpecial,_typevariables_oneLineTree,_typevariables_self) =
-            (_typevariables )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_Type_Forall (range_) (typevariables_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _typevariablesIisIdentifier,_typevariablesIisOperator,_typevariablesIisSpecial,_typevariablesIoneLineTree,_typevariablesIself) =
+            (typevariables_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            Type_Forall _rangeIself _typevariablesIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Parenthesized :: (T_Range) ->
                           (T_Type) ->
                           (T_Type)
-sem_Type_Parenthesized (_range) (_type) =
-    let (_self) =
-            Type_Parenthesized _range_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_Type_Parenthesized (range_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            Type_Parenthesized _rangeIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Qualified :: (T_Range) ->
                       (T_ContextItems) ->
                       (T_Type) ->
                       (T_Type)
-sem_Type_Qualified (_range) (_context) (_type) =
-    let (_self) =
-            Type_Qualified _range_self _context_self _type_self
-        ( _range_self) =
-            (_range )
-        ( _context_self) =
-            (_context )
-        ( _type_self) =
-            (_type )
-    in  ( _self)
+sem_Type_Qualified (range_) (context_) (type_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _contextIself) =
+            (context_ )
+        ( _typeIself) =
+            (type_ )
+        (_self@_) =
+            Type_Qualified _rangeIself _contextIself _typeIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Type_Variable :: (T_Range) ->
                      (T_Name) ->
                      (T_Type)
-sem_Type_Variable (_range) (_name) =
-    let (_self) =
-            Type_Variable _range_self _name_self
-        ( _range_self) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-    in  ( _self)
+sem_Type_Variable (range_) (name_) =
+    let ( _rangeIself) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameIoneLineTree,_nameIself) =
+            (name_ )
+        (_self@_) =
+            Type_Variable _rangeIself _nameIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 -- Types -------------------------------------------------------
 -- semantic domain
 type T_Types = ( (Types))
@@ -2572,17 +3098,21 @@ sem_Types (list) =
 sem_Types_Cons :: (T_Type) ->
                   (T_Types) ->
                   (T_Types)
-sem_Types_Cons (_hd) (_tl) =
-    let (_self) =
-            (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+sem_Types_Cons (hd_) (tl_) =
+    let ( _hdIself) =
+            (hd_ )
+        ( _tlIself) =
+            (tl_ )
+        (_self@_) =
+            (:) _hdIself _tlIself
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 sem_Types_Nil :: (T_Types)
 sem_Types_Nil  =
-    let (_self) =
+    let (_self@_) =
             []
-    in  ( _self)
+        (_lhsOself@_) =
+            _self
+    in  ( _lhsOself)
 

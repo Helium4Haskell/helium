@@ -51,24 +51,28 @@ sem_Alternative_Alternative :: (T_Range) ->
                                (T_Pattern) ->
                                (T_RightHandSide) ->
                                (T_Alternative)
-sem_Alternative_Alternative (_range) (_pattern) (_righthandside) =
-    let (_text) =
-            _pattern_text <$> indent 2 (_righthandside_text (text "->"))
-        ( _range_text) =
-            (_range )
-        ( _pattern_text) =
-            (_pattern )
-        ( _righthandside_text) =
-            (_righthandside )
-    in  ( _text)
+sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _patternItext) =
+            (pattern_ )
+        ( _righthandsideItext) =
+            (righthandside_ )
+        (_text@_) =
+            _patternItext <$> indent 2 (_righthandsideItext (text "->"))
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Alternative_Empty :: (T_Range) ->
                          (T_Alternative)
-sem_Alternative_Empty (_range) =
-    let (_text) =
+sem_Alternative_Empty (range_) =
+    let ( _rangeItext) =
+            (range_ )
+        (_text@_) =
             empty
-        ( _range_text) =
-            (_range )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Alternatives ------------------------------------------------
 -- semantic domain
 type T_Alternatives = ( ( [       Doc ] ))
@@ -80,16 +84,19 @@ sem_Alternatives (list) =
 sem_Alternatives_Cons :: (T_Alternative) ->
                          (T_Alternatives) ->
                          (T_Alternatives)
-sem_Alternatives_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_Alternatives_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_Alternatives_Nil :: (T_Alternatives)
 sem_Alternatives_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- AnnotatedType -----------------------------------------------
 -- semantic domain
 type T_AnnotatedType = ( (Doc))
@@ -102,14 +109,16 @@ sem_AnnotatedType_AnnotatedType :: (T_Range) ->
                                    (Bool) ->
                                    (T_Type) ->
                                    (T_AnnotatedType)
-sem_AnnotatedType_AnnotatedType (_range) (_strict) (_type) =
-    let (_text) =
-            (if _strict then (text "!" <+>) else id) _type_text
-        ( _range_text) =
-            (_range )
-        ( _type_text) =
-            (_type )
-    in  ( _text)
+sem_AnnotatedType_AnnotatedType (range_) (strict_) (type_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _typeItext) =
+            (type_ )
+        (_text@_) =
+            (if strict_ then (text "!" <+>) else id) _typeItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- AnnotatedTypes ----------------------------------------------
 -- semantic domain
 type T_AnnotatedTypes = ( ( [       Doc ] ))
@@ -121,16 +130,19 @@ sem_AnnotatedTypes (list) =
 sem_AnnotatedTypes_Cons :: (T_AnnotatedType) ->
                            (T_AnnotatedTypes) ->
                            (T_AnnotatedTypes)
-sem_AnnotatedTypes_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_AnnotatedTypes_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_AnnotatedTypes_Nil :: (T_AnnotatedTypes)
 sem_AnnotatedTypes_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- Body --------------------------------------------------------
 -- semantic domain
 type T_Body = ( (Doc))
@@ -143,19 +155,21 @@ sem_Body_Body :: (T_Range) ->
                  (T_ImportDeclarations) ->
                  (T_Declarations) ->
                  (T_Body)
-sem_Body_Body (_range) (_importdeclarations) (_declarations) =
-    let (_text) =
+sem_Body_Body (range_) (importdeclarations_) (declarations_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _importdeclarationsItext) =
+            (importdeclarations_ )
+        ( _declarationsItext) =
+            (declarations_ )
+        (_text@_) =
             vcat
-                     (   _importdeclarations_text
-                     ++                        _declarations_text
+                     (   _importdeclarationsItext
+                     ++                        _declarationsItext
                      )
-        ( _range_text) =
-            (_range )
-        ( _importdeclarations_text) =
-            (_importdeclarations )
-        ( _declarations_text) =
-            (_declarations )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Constructor -------------------------------------------------
 -- semantic domain
 type T_Constructor = ( (Doc))
@@ -172,47 +186,53 @@ sem_Constructor_Constructor :: (T_Range) ->
                                (T_Name) ->
                                (T_AnnotatedTypes) ->
                                (T_Constructor)
-sem_Constructor_Constructor (_range) (_constructor) (_types) =
-    let (_text) =
-            foldl (<+>) (parensIf _constructor_isOperator _constructor_text) _types_text
-        ( _range_text) =
-            (_range )
-        ( _constructor_isIdentifier,_constructor_isOperator,_constructor_isSpecial,_constructor_text) =
-            (_constructor )
-        ( _types_text) =
-            (_types )
-    in  ( _text)
+sem_Constructor_Constructor (range_) (constructor_) (types_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _constructorIisIdentifier,_constructorIisOperator,_constructorIisSpecial,_constructorItext) =
+            (constructor_ )
+        ( _typesItext) =
+            (types_ )
+        (_text@_) =
+            foldl (<+>) (parensIf _constructorIisOperator _constructorItext) _typesItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Constructor_Infix :: (T_Range) ->
                          (T_AnnotatedType) ->
                          (T_Name) ->
                          (T_AnnotatedType) ->
                          (T_Constructor)
-sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) =
-    let (_text) =
-            _leftType_text <+> _constructorOperator_text <+> _rightType_text
-        ( _range_text) =
-            (_range )
-        ( _leftType_text) =
-            (_leftType )
-        ( _constructorOperator_isIdentifier,_constructorOperator_isOperator,_constructorOperator_isSpecial,_constructorOperator_text) =
-            (_constructorOperator )
-        ( _rightType_text) =
-            (_rightType )
-    in  ( _text)
+sem_Constructor_Infix (range_) (leftType_) (constructorOperator_) (rightType_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _leftTypeItext) =
+            (leftType_ )
+        ( _constructorOperatorIisIdentifier,_constructorOperatorIisOperator,_constructorOperatorIisSpecial,_constructorOperatorItext) =
+            (constructorOperator_ )
+        ( _rightTypeItext) =
+            (rightType_ )
+        (_text@_) =
+            _leftTypeItext <+> _constructorOperatorItext <+> _rightTypeItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Constructor_Record :: (T_Range) ->
                           (T_Name) ->
                           (T_FieldDeclarations) ->
                           (T_Constructor)
-sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) =
-    let (_text) =
+sem_Constructor_Record (range_) (constructor_) (fieldDeclarations_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _constructorIisIdentifier,_constructorIisOperator,_constructorIisSpecial,_constructorItext) =
+            (constructor_ )
+        ( _fieldDeclarationsItext) =
+            (fieldDeclarations_ )
+        (_text@_) =
             text "{- !!! record constructor -}"
-        ( _range_text) =
-            (_range )
-        ( _constructor_isIdentifier,_constructor_isOperator,_constructor_isSpecial,_constructor_text) =
-            (_constructor )
-        ( _fieldDeclarations_text) =
-            (_fieldDeclarations )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Constructors ------------------------------------------------
 -- semantic domain
 type T_Constructors = ( ( [       Doc ] ))
@@ -224,16 +244,19 @@ sem_Constructors (list) =
 sem_Constructors_Cons :: (T_Constructor) ->
                          (T_Constructors) ->
                          (T_Constructors)
-sem_Constructors_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_Constructors_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_Constructors_Nil :: (T_Constructors)
 sem_Constructors_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- ContextItem -------------------------------------------------
 -- semantic domain
 type T_ContextItem = ( (Doc))
@@ -246,16 +269,18 @@ sem_ContextItem_ContextItem :: (T_Range) ->
                                (T_Name) ->
                                (T_Types) ->
                                (T_ContextItem)
-sem_ContextItem_ContextItem (_range) (_name) (_types) =
-    let (_text) =
-            _name_text <+> head _types_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-        ( _types_text) =
-            (_types )
-    in  ( _text)
+sem_ContextItem_ContextItem (range_) (name_) (types_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        ( _typesItext) =
+            (types_ )
+        (_text@_) =
+            _nameItext <+> head _typesItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- ContextItems ------------------------------------------------
 -- semantic domain
 type T_ContextItems = ( ( [       Doc ] ))
@@ -267,16 +292,19 @@ sem_ContextItems (list) =
 sem_ContextItems_Cons :: (T_ContextItem) ->
                          (T_ContextItems) ->
                          (T_ContextItems)
-sem_ContextItems_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_ContextItems_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_ContextItems_Nil :: (T_ContextItems)
 sem_ContextItems_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- Declaration -------------------------------------------------
 -- semantic domain
 type T_Declaration = ( (Doc))
@@ -310,95 +338,109 @@ sem_Declaration_Class :: (T_Range) ->
                          (T_SimpleType) ->
                          (T_MaybeDeclarations) ->
                          (T_Declaration)
-sem_Declaration_Class (_range) (_context) (_simpletype) (_where) =
-    let (_text) =
+sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _contextItext) =
+            (context_ )
+        ( _simpletypeItext) =
+            (simpletype_ )
+        ( _whereItext) =
+            (where_ )
+        (_text@_) =
             text "{- !!! class decl -}"
-        ( _range_text) =
-            (_range )
-        ( _context_text) =
-            (_context )
-        ( _simpletype_text) =
-            (_simpletype )
-        ( _where_text) =
-            (_where )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Declaration_Data :: (T_Range) ->
                         (T_ContextItems) ->
                         (T_SimpleType) ->
                         (T_Constructors) ->
                         (T_Names) ->
                         (T_Declaration)
-sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivings) =
-    let (_text) =
+sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (derivings_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _contextItext) =
+            (context_ )
+        ( _simpletypeItext) =
+            (simpletype_ )
+        ( _constructorsItext) =
+            (constructors_ )
+        ( _derivingsIisIdentifier,_derivingsIisOperator,_derivingsIisSpecial,_derivingsItext) =
+            (derivings_ )
+        (_derivingDoc@_) =
+            if null _derivingsItext then
+                empty
+            else
+                (    empty
+                <+>  text "deriving"
+                <+>  tupledUnit _derivingsItext
+                )
+        (_contextDoc@_) =
+            case _contextItext of
+             []  -> empty
+             [x] -> x <+> text "=>" <+> empty
+             xs  -> tupled xs <+> text "=>" <+> empty
+        (_text@_) =
             text "data" <+>
             _contextDoc
             <>
-            _simpletype_text
+            _simpletypeItext
             <$>
             (indent 4 $
                 vcat
                     (   text "="
                         <+>
-                        head _constructors_text
+                        head _constructorsItext
                     :   map
                             (text "|" <+>)
-                            (tail _constructors_text)
+                            (tail _constructorsItext)
                     ++  [_derivingDoc]
                     )
             )
-        (_contextDoc) =
-            case _context_text of
-             []  -> empty
-             [x] -> x <+> text "=>" <+> empty
-             xs  -> tupled xs <+> text "=>" <+> empty
-        (_derivingDoc) =
-            if null _derivings_text then
-                empty
-            else
-                (    empty
-                <+>  text "deriving"
-                <+>  tupledUnit _derivings_text
-                )
-        ( _range_text) =
-            (_range )
-        ( _context_text) =
-            (_context )
-        ( _simpletype_text) =
-            (_simpletype )
-        ( _constructors_text) =
-            (_constructors )
-        ( _derivings_isIdentifier,_derivings_isOperator,_derivings_isSpecial,_derivings_text) =
-            (_derivings )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Declaration_Default :: (T_Range) ->
                            (T_Types) ->
                            (T_Declaration)
-sem_Declaration_Default (_range) (_types) =
-    let (_text) =
-            text "default" <+> tupled _types_text
-        ( _range_text) =
-            (_range )
-        ( _types_text) =
-            (_types )
-    in  ( _text)
+sem_Declaration_Default (range_) (types_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _typesItext) =
+            (types_ )
+        (_text@_) =
+            text "default" <+> tupled _typesItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
-sem_Declaration_Empty (_range) =
-    let (_text) =
+sem_Declaration_Empty (range_) =
+    let ( _rangeItext) =
+            (range_ )
+        (_text@_) =
             empty
-        ( _range_text) =
-            (_range )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Declaration_Fixity :: (T_Range) ->
                           (T_Fixity) ->
                           (T_MaybeInt) ->
                           (T_Names) ->
                           (T_Declaration)
-sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) =
-    let (_text) =
-            _fixity_text <+> _ops
-        (_ops) =
-            opt _priority_text <+>
+sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _fixityItext) =
+            (fixity_ )
+        ( _priorityItext) =
+            (priority_ )
+        ( _operatorsIisIdentifier,_operatorsIisOperator,_operatorsIisSpecial,_operatorsItext) =
+            (operators_ )
+        (_ops@_) =
+            opt _priorityItext <+>
                 commas
                     (map
                         (\(n, p) -> if p then
@@ -406,133 +448,141 @@ sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) =
                          else
                             n
                         )
-                        (zip _operators_text _operators_isIdentifier)
+                        (zip _operatorsItext _operatorsIisIdentifier)
                     )
-        ( _range_text) =
-            (_range )
-        ( _fixity_text) =
-            (_fixity )
-        ( _priority_text) =
-            (_priority )
-        ( _operators_isIdentifier,_operators_isOperator,_operators_isSpecial,_operators_text) =
-            (_operators )
-    in  ( _text)
+        (_text@_) =
+            _fixityItext <+> _ops
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)
-sem_Declaration_FunctionBindings (_range) (_bindings) =
-    let (_text) =
-            foldl1 (<$>) _bindings_text
-        ( _range_text) =
-            (_range )
-        ( _bindings_text) =
-            (_bindings )
-    in  ( _text)
+sem_Declaration_FunctionBindings (range_) (bindings_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _bindingsItext) =
+            (bindings_ )
+        (_text@_) =
+            foldl1 (<$>) _bindingsItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Declaration_Instance :: (T_Range) ->
                             (T_ContextItems) ->
                             (T_Name) ->
                             (T_Types) ->
                             (T_MaybeDeclarations) ->
                             (T_Declaration)
-sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) =
-    let (_text) =
+sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _contextItext) =
+            (context_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        ( _typesItext) =
+            (types_ )
+        ( _whereItext) =
+            (where_ )
+        (_text@_) =
             text "{- !!! instance decl -}"
-        ( _range_text) =
-            (_range )
-        ( _context_text) =
-            (_context )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-        ( _types_text) =
-            (_types )
-        ( _where_text) =
-            (_where )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Declaration_Newtype :: (T_Range) ->
                            (T_ContextItems) ->
                            (T_SimpleType) ->
                            (T_Constructor) ->
                            (T_Names) ->
                            (T_Declaration)
-sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_derivings) =
-    let (_text) =
-            text "newtype"
-            <+>
-            _contextDoc
-            <>
-            _simpletype_text
-            <+>
-            _constructor_text
-            <>
-            _derivingDoc
-        (_contextDoc) =
-            case _context_text of
-             []  -> empty
-             [x] -> x <+> text "=>" <+> empty
-             xs  -> tupled xs <+> text "=>" <+> empty
-        (_derivingDoc) =
-            if null _derivings_text then
+sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivings_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _contextItext) =
+            (context_ )
+        ( _simpletypeItext) =
+            (simpletype_ )
+        ( _constructorItext) =
+            (constructor_ )
+        ( _derivingsIisIdentifier,_derivingsIisOperator,_derivingsIisSpecial,_derivingsItext) =
+            (derivings_ )
+        (_derivingDoc@_) =
+            if null _derivingsItext then
                 empty
             else
                 (    empty
                 <+>  text "deriving"
-                <+>  tupledUnit _derivings_text
+                <+>  tupledUnit _derivingsItext
                 )
-        ( _range_text) =
-            (_range )
-        ( _context_text) =
-            (_context )
-        ( _simpletype_text) =
-            (_simpletype )
-        ( _constructor_text) =
-            (_constructor )
-        ( _derivings_isIdentifier,_derivings_isOperator,_derivings_isSpecial,_derivings_text) =
-            (_derivings )
-    in  ( _text)
+        (_contextDoc@_) =
+            case _contextItext of
+             []  -> empty
+             [x] -> x <+> text "=>" <+> empty
+             xs  -> tupled xs <+> text "=>" <+> empty
+        (_text@_) =
+            text "newtype"
+            <+>
+            _contextDoc
+            <>
+            _simpletypeItext
+            <+>
+            _constructorItext
+            <>
+            _derivingDoc
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Declaration_PatternBinding :: (T_Range) ->
                                   (T_Pattern) ->
                                   (T_RightHandSide) ->
                                   (T_Declaration)
-sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) =
-    let (_text) =
-            _pattern_text <+> _righthandside_text (text "=")
-        ( _range_text) =
-            (_range )
-        ( _pattern_text) =
-            (_pattern )
-        ( _righthandside_text) =
-            (_righthandside )
-    in  ( _text)
+sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _patternItext) =
+            (pattern_ )
+        ( _righthandsideItext) =
+            (righthandside_ )
+        (_text@_) =
+            _patternItext <+> _righthandsideItext (text "=")
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Declaration_Type :: (T_Range) ->
                         (T_SimpleType) ->
                         (T_Type) ->
                         (T_Declaration)
-sem_Declaration_Type (_range) (_simpletype) (_type) =
-    let (_text) =
-            text "type" <+> _simpletype_text <+> text "=" <+> _type_text
-        ( _range_text) =
-            (_range )
-        ( _simpletype_text) =
-            (_simpletype )
-        ( _type_text) =
-            (_type )
-    in  ( _text)
+sem_Declaration_Type (range_) (simpletype_) (type_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _simpletypeItext) =
+            (simpletype_ )
+        ( _typeItext) =
+            (type_ )
+        (_text@_) =
+            text "type" <+> _simpletypeItext <+> text "=" <+> _typeItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Declaration_TypeSignature :: (T_Range) ->
                                  (T_Names) ->
                                  (T_Type) ->
                                  (T_Declaration)
-sem_Declaration_TypeSignature (_range) (_names) (_type) =
-    let (_text) =
-            commas _namesDocs <+> text "::" <+> _type_text
-        (_namesDocs) =
-            parensIfList _names_isOperator _names_text
-        ( _range_text) =
-            (_range )
-        ( _names_isIdentifier,_names_isOperator,_names_isSpecial,_names_text) =
-            (_names )
-        ( _type_text) =
-            (_type )
-    in  ( _text)
+sem_Declaration_TypeSignature (range_) (names_) (type_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _namesIisIdentifier,_namesIisOperator,_namesIisSpecial,_namesItext) =
+            (names_ )
+        ( _typeItext) =
+            (type_ )
+        (_namesDocs@_) =
+            parensIfList _namesIisOperator _namesItext
+        (_text@_) =
+            commas _namesDocs <+> text "::" <+> _typeItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Declarations ------------------------------------------------
 -- semantic domain
 type T_Declarations = ( ( [       Doc ] ))
@@ -544,16 +594,19 @@ sem_Declarations (list) =
 sem_Declarations_Cons :: (T_Declaration) ->
                          (T_Declarations) ->
                          (T_Declarations)
-sem_Declarations_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_Declarations_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_Declarations_Nil :: (T_Declarations)
 sem_Declarations_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- Export ------------------------------------------------------
 -- semantic domain
 type T_Export = ( (Doc))
@@ -571,50 +624,58 @@ sem_Export ((Export_Variable (_range) (_name))) =
 sem_Export_Module :: (T_Range) ->
                      (T_Name) ->
                      (T_Export)
-sem_Export_Module (_range) (_name) =
-    let (_text) =
-            text "module" <+> _name_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-    in  ( _text)
+sem_Export_Module (range_) (name_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        (_text@_) =
+            text "module" <+> _nameItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Export_TypeOrClass :: (T_Range) ->
                           (T_Name) ->
                           (T_MaybeNames) ->
                           (T_Export)
-sem_Export_TypeOrClass (_range) (_name) (_names) =
-    let (_text) =
-            _name_text <> maybe empty tupled (_names_text)
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-        ( _names_text) =
-            (_names )
-    in  ( _text)
+sem_Export_TypeOrClass (range_) (name_) (names_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        ( _namesItext) =
+            (names_ )
+        (_text@_) =
+            _nameItext <> maybe empty tupled (_namesItext)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Export_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Export)
-sem_Export_TypeOrClassComplete (_range) (_name) =
-    let (_text) =
-            _name_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-    in  ( _text)
+sem_Export_TypeOrClassComplete (range_) (name_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        (_text@_) =
+            _nameItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Export_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Export)
-sem_Export_Variable (_range) (_name) =
-    let (_text) =
-            _name_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-    in  ( _text)
+sem_Export_Variable (range_) (name_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        (_text@_) =
+            _nameItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Exports -----------------------------------------------------
 -- semantic domain
 type T_Exports = ( ( [       Doc ] ))
@@ -626,16 +687,19 @@ sem_Exports (list) =
 sem_Exports_Cons :: (T_Export) ->
                     (T_Exports) ->
                     (T_Exports)
-sem_Exports_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_Exports_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_Exports_Nil :: (T_Exports)
 sem_Exports_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- Expression --------------------------------------------------
 -- semantic domain
 type T_Expression = ( (Doc))
@@ -686,293 +750,333 @@ sem_Expression_Case :: (T_Range) ->
                        (T_Expression) ->
                        (T_Alternatives) ->
                        (T_Expression)
-sem_Expression_Case (_range) (_expression) (_alternatives) =
-    let (_text) =
-            (text "case" <+> _expression_text <+> text "of" <$>
-                           (indent 4 $ vcat _alternatives_text) <$> empty
+sem_Expression_Case (range_) (expression_) (alternatives_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _expressionItext) =
+            (expression_ )
+        ( _alternativesItext) =
+            (alternatives_ )
+        (_text@_) =
+            (text "case" <+> _expressionItext <+> text "of" <$>
+                           (indent 4 $ vcat _alternativesItext) <$> empty
                        )
-        ( _range_text) =
-            (_range )
-        ( _expression_text) =
-            (_expression )
-        ( _alternatives_text) =
-            (_alternatives )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_Comprehension :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Qualifiers) ->
                                 (T_Expression)
-sem_Expression_Comprehension (_range) (_expression) (_qualifiers) =
-    let (_text) =
-            text "[" <+> _expression_text <+>
-            text "|" <+> commas _qualifiers_text <+> text "]"
-        ( _range_text) =
-            (_range )
-        ( _expression_text) =
-            (_expression )
-        ( _qualifiers_text) =
-            (_qualifiers )
-    in  ( _text)
+sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _expressionItext) =
+            (expression_ )
+        ( _qualifiersItext) =
+            (qualifiers_ )
+        (_text@_) =
+            text "[" <+> _expressionItext <+>
+            text "|" <+> commas _qualifiersItext <+> text "]"
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_Constructor :: (T_Range) ->
                               (T_Name) ->
                               (T_Expression)
-sem_Expression_Constructor (_range) (_name) =
-    let (_text) =
-            _name_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-    in  ( _text)
+sem_Expression_Constructor (range_) (name_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        (_text@_) =
+            _nameItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_Do :: (T_Range) ->
                      (T_Statements) ->
                      (T_Expression)
-sem_Expression_Do (_range) (_statements) =
-    let (_text) =
-            text "do" <$> (indent 4 $ vcat _statements_text) <$> empty
-        ( _range_text) =
-            (_range )
-        ( _statements_text) =
-            (_statements )
-    in  ( _text)
+sem_Expression_Do (range_) (statements_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _statementsItext) =
+            (statements_ )
+        (_text@_) =
+            text "do" <$> (indent 4 $ vcat _statementsItext) <$> empty
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_Enum :: (T_Range) ->
                        (T_Expression) ->
                        (T_MaybeExpression) ->
                        (T_MaybeExpression) ->
                        (T_Expression)
-sem_Expression_Enum (_range) (_from) (_then) (_to) =
-    let (_text) =
+sem_Expression_Enum (range_) (from_) (then_) (to_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _fromItext) =
+            (from_ )
+        ( _thenItext) =
+            (then_ )
+        ( _toItext) =
+            (to_ )
+        (_text@_) =
             text "[" <>
-            _from_text <>
-            maybe empty (text "," <+>)  _then_text <+>
+            _fromItext <>
+            maybe empty (text "," <+>)  _thenItext <+>
             text ".." <+>
-            opt _to_text <>
+            opt _toItext <>
             text "]"
-        ( _range_text) =
-            (_range )
-        ( _from_text) =
-            (_from )
-        ( _then_text) =
-            (_then )
-        ( _to_text) =
-            (_to )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_If :: (T_Range) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression)
-sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression) =
-    let (_text) =
-            text "if" <+> _guardExpression_text <$>
-               indent 4 (text "then" <+> _thenExpression_text <$>
-                         text "else" <+> _elseExpression_text)
-        ( _range_text) =
-            (_range )
-        ( _guardExpression_text) =
-            (_guardExpression )
-        ( _thenExpression_text) =
-            (_thenExpression )
-        ( _elseExpression_text) =
-            (_elseExpression )
-    in  ( _text)
+sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _guardExpressionItext) =
+            (guardExpression_ )
+        ( _thenExpressionItext) =
+            (thenExpression_ )
+        ( _elseExpressionItext) =
+            (elseExpression_ )
+        (_text@_) =
+            text "if" <+> _guardExpressionItext <$>
+               indent 4 (text "then" <+> _thenExpressionItext <$>
+                         text "else" <+> _elseExpressionItext)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_InfixApplication :: (T_Range) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression)
-sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightExpression) =
-    let (_text) =
+sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExpression_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _leftExpressionItext) =
+            (leftExpression_ )
+        ( _operatorItext) =
+            (operator_ )
+        ( _rightExpressionItext) =
+            (rightExpression_ )
+        (_text@_) =
             let f []       m = m
                 f n@(c:cs) m = if isAlpha c && all (\c -> c == '_' || c == '\'' || isAlphaNum c) cs then char '`' <> m <> char '`' else m
             in
-               case (_leftExpression_text, _rightExpression_text) of
+               case (_leftExpressionItext, _rightExpressionItext) of
                    (Nothing, Nothing) ->
-                       parens _operator_text
+                       parens _operatorItext
                    (Just l , Nothing) ->
-                       parens (l <+> _operator_text)
+                       parens (l <+> _operatorItext)
                    (Nothing, Just r ) ->
-                       parens (_operator_text <+> r)
+                       parens (_operatorItext <+> r)
                    (Just l , Just r ) ->
                        l
                        <+>
-                       f (show _operator_text) _operator_text
+                       f (show _operatorItext) _operatorItext
                        <+>
                        r
-        ( _range_text) =
-            (_range )
-        ( _leftExpression_text) =
-            (_leftExpression )
-        ( _operator_text) =
-            (_operator )
-        ( _rightExpression_text) =
-            (_rightExpression )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_Lambda :: (T_Range) ->
                          (T_Patterns) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Lambda (_range) (_patterns) (_expression) =
-    let (_text) =
-            text "\\" <+> foldl1 (<+>) _patterns_text <+> text "->" <+> _expression_text
-        ( _range_text) =
-            (_range )
-        ( _patterns_text) =
-            (_patterns )
-        ( _expression_text) =
-            (_expression )
-    in  ( _text)
+sem_Expression_Lambda (range_) (patterns_) (expression_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _patternsItext) =
+            (patterns_ )
+        ( _expressionItext) =
+            (expression_ )
+        (_text@_) =
+            text "\\" <+> foldl1 (<+>) _patternsItext <+> text "->" <+> _expressionItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_Let :: (T_Range) ->
                       (T_Declarations) ->
                       (T_Expression) ->
                       (T_Expression)
-sem_Expression_Let (_range) (_declarations) (_expression) =
-    let (_text) =
+sem_Expression_Let (range_) (declarations_) (expression_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _declarationsItext) =
+            (declarations_ )
+        ( _expressionItext) =
+            (expression_ )
+        (_text@_) =
             (text "let"<$>
-                           (indent 4 $ vcat _declarations_text) <+>
+                           (indent 4 $ vcat _declarationsItext) <+>
                         text "in" <$>
-                           (indent 4 $ _expression_text)
+                           (indent 4 $ _expressionItext)
                        ) <$> empty
-        ( _range_text) =
-            (_range )
-        ( _declarations_text) =
-            (_declarations )
-        ( _expression_text) =
-            (_expression )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_List :: (T_Range) ->
                        (T_Expressions) ->
                        (T_Expression)
-sem_Expression_List (_range) (_expressions) =
-    let (_text) =
-            list _expressions_text
-        ( _range_text) =
-            (_range )
-        ( _expressions_text) =
-            (_expressions )
-    in  ( _text)
+sem_Expression_List (range_) (expressions_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _expressionsItext) =
+            (expressions_ )
+        (_text@_) =
+            list _expressionsItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_Literal :: (T_Range) ->
                           (T_Literal) ->
                           (T_Expression)
-sem_Expression_Literal (_range) (_literal) =
-    let (_text) =
-            _literal_text
-        ( _range_text) =
-            (_range )
-        ( _literal_text) =
-            (_literal )
-    in  ( _text)
+sem_Expression_Literal (range_) (literal_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _literalItext) =
+            (literal_ )
+        (_text@_) =
+            _literalItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_Negate :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Negate (_range) (_expression) =
-    let (_text) =
-            text "-"  <> _expression_text
-        ( _range_text) =
-            (_range )
-        ( _expression_text) =
-            (_expression )
-    in  ( _text)
+sem_Expression_Negate (range_) (expression_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _expressionItext) =
+            (expression_ )
+        (_text@_) =
+            text "-"  <> _expressionItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
-sem_Expression_NegateFloat (_range) (_expression) =
-    let (_text) =
-            text "-." <> _expression_text
-        ( _range_text) =
-            (_range )
-        ( _expression_text) =
-            (_expression )
-    in  ( _text)
+sem_Expression_NegateFloat (range_) (expression_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _expressionItext) =
+            (expression_ )
+        (_text@_) =
+            text "-." <> _expressionItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_NormalApplication :: (T_Range) ->
                                     (T_Expression) ->
                                     (T_Expressions) ->
                                     (T_Expression)
-sem_Expression_NormalApplication (_range) (_function) (_arguments) =
-    let (_text) =
-            foldl (<+>) _function_text _arguments_text
-        ( _range_text) =
-            (_range )
-        ( _function_text) =
-            (_function )
-        ( _arguments_text) =
-            (_arguments )
-    in  ( _text)
+sem_Expression_NormalApplication (range_) (function_) (arguments_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _functionItext) =
+            (function_ )
+        ( _argumentsItext) =
+            (arguments_ )
+        (_text@_) =
+            foldl (<+>) _functionItext _argumentsItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_Parenthesized :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Expression)
-sem_Expression_Parenthesized (_range) (_expression) =
-    let (_text) =
-            parens _expression_text
-        ( _range_text) =
-            (_range )
-        ( _expression_text) =
-            (_expression )
-    in  ( _text)
+sem_Expression_Parenthesized (range_) (expression_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _expressionItext) =
+            (expression_ )
+        (_text@_) =
+            parens _expressionItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_RecordConstruction :: (T_Range) ->
                                      (T_Name) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_Expression)
-sem_Expression_RecordConstruction (_range) (_name) (_recordExpressionBindings) =
-    let (_text) =
+sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        ( _recordExpressionBindingsItext) =
+            (recordExpressionBindings_ )
+        (_text@_) =
             intErr "Expression" "record construction"
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-        ( _recordExpressionBindings_text) =
-            (_recordExpressionBindings )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_RecordUpdate :: (T_Range) ->
                                (T_Expression) ->
                                (T_RecordExpressionBindings) ->
                                (T_Expression)
-sem_Expression_RecordUpdate (_range) (_expression) (_recordExpressionBindings) =
-    let (_text) =
+sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _expressionItext) =
+            (expression_ )
+        ( _recordExpressionBindingsItext) =
+            (recordExpressionBindings_ )
+        (_text@_) =
             intErr "Expression" "record update"
-        ( _range_text) =
-            (_range )
-        ( _expression_text) =
-            (_expression )
-        ( _recordExpressionBindings_text) =
-            (_recordExpressionBindings )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_Tuple :: (T_Range) ->
                         (T_Expressions) ->
                         (T_Expression)
-sem_Expression_Tuple (_range) (_expressions) =
-    let (_text) =
-            tupled _expressions_text
-        ( _range_text) =
-            (_range )
-        ( _expressions_text) =
-            (_expressions )
-    in  ( _text)
+sem_Expression_Tuple (range_) (expressions_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _expressionsItext) =
+            (expressions_ )
+        (_text@_) =
+            tupled _expressionsItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_Typed :: (T_Range) ->
                         (T_Expression) ->
                         (T_Type) ->
                         (T_Expression)
-sem_Expression_Typed (_range) (_expression) (_type) =
-    let (_text) =
-            _expression_text <+> text "::" <+> _type_text
-        ( _range_text) =
-            (_range )
-        ( _expression_text) =
-            (_expression )
-        ( _type_text) =
-            (_type )
-    in  ( _text)
+sem_Expression_Typed (range_) (expression_) (type_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _expressionItext) =
+            (expression_ )
+        ( _typeItext) =
+            (type_ )
+        (_text@_) =
+            _expressionItext <+> text "::" <+> _typeItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Expression_Variable :: (T_Range) ->
                            (T_Name) ->
                            (T_Expression)
-sem_Expression_Variable (_range) (_name) =
-    let (_text) =
-            _name_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-    in  ( _text)
+sem_Expression_Variable (range_) (name_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        (_text@_) =
+            _nameItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Expressions -------------------------------------------------
 -- semantic domain
 type T_Expressions = ( ( [       Doc ] ))
@@ -984,16 +1088,19 @@ sem_Expressions (list) =
 sem_Expressions_Cons :: (T_Expression) ->
                         (T_Expressions) ->
                         (T_Expressions)
-sem_Expressions_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_Expressions_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_Expressions_Nil :: (T_Expressions)
 sem_Expressions_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- FieldDeclaration --------------------------------------------
 -- semantic domain
 type T_FieldDeclaration = ( (Doc))
@@ -1006,16 +1113,18 @@ sem_FieldDeclaration_FieldDeclaration :: (T_Range) ->
                                          (T_Names) ->
                                          (T_AnnotatedType) ->
                                          (T_FieldDeclaration)
-sem_FieldDeclaration_FieldDeclaration (_range) (_names) (_type) =
-    let (_text) =
+sem_FieldDeclaration_FieldDeclaration (range_) (names_) (type_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _namesIisIdentifier,_namesIisOperator,_namesIisSpecial,_namesItext) =
+            (names_ )
+        ( _typeItext) =
+            (type_ )
+        (_text@_) =
             text "{- !!! field declaration -}"
-        ( _range_text) =
-            (_range )
-        ( _names_isIdentifier,_names_isOperator,_names_isSpecial,_names_text) =
-            (_names )
-        ( _type_text) =
-            (_type )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- FieldDeclarations -------------------------------------------
 -- semantic domain
 type T_FieldDeclarations = ( ( [       Doc ] ))
@@ -1027,16 +1136,19 @@ sem_FieldDeclarations (list) =
 sem_FieldDeclarations_Cons :: (T_FieldDeclaration) ->
                               (T_FieldDeclarations) ->
                               (T_FieldDeclarations)
-sem_FieldDeclarations_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_FieldDeclarations_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_FieldDeclarations_Nil :: (T_FieldDeclarations)
 sem_FieldDeclarations_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- Fixity ------------------------------------------------------
 -- semantic domain
 type T_Fixity = ( (Doc))
@@ -1051,28 +1163,34 @@ sem_Fixity ((Fixity_Infixr (_range))) =
     (sem_Fixity_Infixr ((sem_Range (_range))))
 sem_Fixity_Infix :: (T_Range) ->
                     (T_Fixity)
-sem_Fixity_Infix (_range) =
-    let (_text) =
+sem_Fixity_Infix (range_) =
+    let ( _rangeItext) =
+            (range_ )
+        (_text@_) =
             text "infix "
-        ( _range_text) =
-            (_range )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Fixity_Infixl :: (T_Range) ->
                      (T_Fixity)
-sem_Fixity_Infixl (_range) =
-    let (_text) =
+sem_Fixity_Infixl (range_) =
+    let ( _rangeItext) =
+            (range_ )
+        (_text@_) =
             text "infixl"
-        ( _range_text) =
-            (_range )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Fixity_Infixr :: (T_Range) ->
                      (T_Fixity)
-sem_Fixity_Infixr (_range) =
-    let (_text) =
+sem_Fixity_Infixr (range_) =
+    let ( _rangeItext) =
+            (range_ )
+        (_text@_) =
             text "infixr"
-        ( _range_text) =
-            (_range )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- FunctionBinding ---------------------------------------------
 -- semantic domain
 type T_FunctionBinding = ( (Doc))
@@ -1085,16 +1203,18 @@ sem_FunctionBinding_FunctionBinding :: (T_Range) ->
                                        (T_LeftHandSide) ->
                                        (T_RightHandSide) ->
                                        (T_FunctionBinding)
-sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) =
-    let (_text) =
-            _lefthandside_text <+> _righthandside_text (text "=")
-        ( _range_text) =
-            (_range )
-        ( _lefthandside_text) =
-            (_lefthandside )
-        ( _righthandside_text) =
-            (_righthandside )
-    in  ( _text)
+sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _lefthandsideItext) =
+            (lefthandside_ )
+        ( _righthandsideItext) =
+            (righthandside_ )
+        (_text@_) =
+            _lefthandsideItext <+> _righthandsideItext (text "=")
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- FunctionBindings --------------------------------------------
 -- semantic domain
 type T_FunctionBindings = ( ( [       Doc ] ))
@@ -1106,16 +1226,19 @@ sem_FunctionBindings (list) =
 sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
                              (T_FunctionBindings) ->
                              (T_FunctionBindings)
-sem_FunctionBindings_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_FunctionBindings_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_FunctionBindings_Nil :: (T_FunctionBindings)
 sem_FunctionBindings_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
 type T_GuardedExpression = ( ( Doc        -> Doc  ))
@@ -1128,16 +1251,18 @@ sem_GuardedExpression_GuardedExpression :: (T_Range) ->
                                            (T_Expression) ->
                                            (T_Expression) ->
                                            (T_GuardedExpression)
-sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) =
-    let (_text) =
-            \assign -> text "|" <+> _guard_text <+> assign <+> _expression_text
-        ( _range_text) =
-            (_range )
-        ( _guard_text) =
-            (_guard )
-        ( _expression_text) =
-            (_expression )
-    in  ( _text)
+sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _guardItext) =
+            (guard_ )
+        ( _expressionItext) =
+            (expression_ )
+        (_text@_) =
+            \assign -> text "|" <+> _guardItext <+> assign <+> _expressionItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- GuardedExpressions ------------------------------------------
 -- semantic domain
 type T_GuardedExpressions = ( ( [        Doc -> Doc  ] ))
@@ -1149,16 +1274,19 @@ sem_GuardedExpressions (list) =
 sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
                                (T_GuardedExpressions) ->
                                (T_GuardedExpressions)
-sem_GuardedExpressions_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_GuardedExpressions_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_GuardedExpressions_Nil :: (T_GuardedExpressions)
 sem_GuardedExpressions_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- Import ------------------------------------------------------
 -- semantic domain
 type T_Import = ( (Doc))
@@ -1175,38 +1303,44 @@ sem_Import_TypeOrClass :: (T_Range) ->
                           (T_Name) ->
                           (T_MaybeNames) ->
                           (T_Import)
-sem_Import_TypeOrClass (_range) (_name) (_names) =
-    let (_text) =
-            _name_text <> maybe empty tupled1 _names_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-        ( _names_text) =
-            (_names )
-    in  ( _text)
+sem_Import_TypeOrClass (range_) (name_) (names_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        ( _namesItext) =
+            (names_ )
+        (_text@_) =
+            _nameItext <> maybe empty tupled1 _namesItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Import_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Import)
-sem_Import_TypeOrClassComplete (_range) (_name) =
-    let (_text) =
-            _name_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-    in  ( _text)
+sem_Import_TypeOrClassComplete (range_) (name_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        (_text@_) =
+            _nameItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Import_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Import)
-sem_Import_Variable (_range) (_name) =
-    let (_text) =
-            _name_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-    in  ( _text)
+sem_Import_Variable (range_) (name_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        (_text@_) =
+            _nameItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- ImportDeclaration -------------------------------------------
 -- semantic domain
 type T_ImportDeclaration = ( (Doc))
@@ -1219,30 +1353,34 @@ sem_ImportDeclaration ((ImportDeclaration_Import (_range) (_qualified) (_name) (
     (sem_ImportDeclaration_Import ((sem_Range (_range))) (_qualified) ((sem_Name (_name))) ((sem_MaybeName (_asname))) ((sem_MaybeImportSpecification (_importspecification))))
 sem_ImportDeclaration_Empty :: (T_Range) ->
                                (T_ImportDeclaration)
-sem_ImportDeclaration_Empty (_range) =
-    let (_text) =
+sem_ImportDeclaration_Empty (range_) =
+    let ( _rangeItext) =
+            (range_ )
+        (_text@_) =
             empty
-        ( _range_text) =
-            (_range )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_ImportDeclaration_Import :: (T_Range) ->
                                 (Bool) ->
                                 (T_Name) ->
                                 (T_MaybeName) ->
                                 (T_MaybeImportSpecification) ->
                                 (T_ImportDeclaration)
-sem_ImportDeclaration_Import (_range) (_qualified) (_name) (_asname) (_importspecification) =
-    let (_text) =
-            text "import" <+> (if _qualified then (text "qualified" <+>) else id) _name_text <+> maybe empty id _importspecification_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-        ( _asname_text) =
-            (_asname )
-        ( _importspecification_text) =
-            (_importspecification )
-    in  ( _text)
+sem_ImportDeclaration_Import (range_) (qualified_) (name_) (asname_) (importspecification_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        ( _asnameItext) =
+            (asname_ )
+        ( _importspecificationItext) =
+            (importspecification_ )
+        (_text@_) =
+            text "import" <+> (if qualified_ then (text "qualified" <+>) else id) _nameItext <+> maybe empty id _importspecificationItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- ImportDeclarations ------------------------------------------
 -- semantic domain
 type T_ImportDeclarations = ( ( [       Doc ] ))
@@ -1254,16 +1392,19 @@ sem_ImportDeclarations (list) =
 sem_ImportDeclarations_Cons :: (T_ImportDeclaration) ->
                                (T_ImportDeclarations) ->
                                (T_ImportDeclarations)
-sem_ImportDeclarations_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_ImportDeclarations_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_ImportDeclarations_Nil :: (T_ImportDeclarations)
 sem_ImportDeclarations_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- ImportSpecification -----------------------------------------
 -- semantic domain
 type T_ImportSpecification = ( (Doc))
@@ -1276,15 +1417,17 @@ sem_ImportSpecification_Import :: (T_Range) ->
                                   (Bool) ->
                                   (T_Imports) ->
                                   (T_ImportSpecification)
-sem_ImportSpecification_Import (_range) (_hiding) (_imports) =
-    let (_text) =
-            (if _hiding then (text "hiding" <+>) else id)
-                                     (tupled _imports_text)
-        ( _range_text) =
-            (_range )
-        ( _imports_text) =
-            (_imports )
-    in  ( _text)
+sem_ImportSpecification_Import (range_) (hiding_) (imports_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _importsItext) =
+            (imports_ )
+        (_text@_) =
+            (if hiding_ then (text "hiding" <+>) else id)
+                                     (tupled _importsItext)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Imports -----------------------------------------------------
 -- semantic domain
 type T_Imports = ( ( [       Doc ] ))
@@ -1296,16 +1439,19 @@ sem_Imports (list) =
 sem_Imports_Cons :: (T_Import) ->
                     (T_Imports) ->
                     (T_Imports)
-sem_Imports_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_Imports_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_Imports_Nil :: (T_Imports)
 sem_Imports_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- LeftHandSide ------------------------------------------------
 -- semantic domain
 type T_LeftHandSide = ( (Doc))
@@ -1322,47 +1468,53 @@ sem_LeftHandSide_Function :: (T_Range) ->
                              (T_Name) ->
                              (T_Patterns) ->
                              (T_LeftHandSide)
-sem_LeftHandSide_Function (_range) (_name) (_patterns) =
-    let (_text) =
-            foldl (<+>) (parensIf _name_isOperator _name_text) _patterns_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-        ( _patterns_text) =
-            (_patterns )
-    in  ( _text)
+sem_LeftHandSide_Function (range_) (name_) (patterns_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        ( _patternsItext) =
+            (patterns_ )
+        (_text@_) =
+            foldl (<+>) (parensIf _nameIisOperator _nameItext) _patternsItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_LeftHandSide_Infix :: (T_Range) ->
                           (T_Pattern) ->
                           (T_Name) ->
                           (T_Pattern) ->
                           (T_LeftHandSide)
-sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) =
-    let (_text) =
-            _leftPattern_text <+> backQuotesIf (not _operator_isOperator) _operator_text <+> _rightPattern_text
-        ( _range_text) =
-            (_range )
-        ( _leftPattern_text) =
-            (_leftPattern )
-        ( _operator_isIdentifier,_operator_isOperator,_operator_isSpecial,_operator_text) =
-            (_operator )
-        ( _rightPattern_text) =
-            (_rightPattern )
-    in  ( _text)
+sem_LeftHandSide_Infix (range_) (leftPattern_) (operator_) (rightPattern_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _leftPatternItext) =
+            (leftPattern_ )
+        ( _operatorIisIdentifier,_operatorIisOperator,_operatorIisSpecial,_operatorItext) =
+            (operator_ )
+        ( _rightPatternItext) =
+            (rightPattern_ )
+        (_text@_) =
+            _leftPatternItext <+> backQuotesIf (not _operatorIisOperator) _operatorItext <+> _rightPatternItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_LeftHandSide_Parenthesized :: (T_Range) ->
                                   (T_LeftHandSide) ->
                                   (T_Patterns) ->
                                   (T_LeftHandSide)
-sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) =
-    let (_text) =
-            foldl (<+>) (parens _lefthandside_text) _patterns_text
-        ( _range_text) =
-            (_range )
-        ( _lefthandside_text) =
-            (_lefthandside )
-        ( _patterns_text) =
-            (_patterns )
-    in  ( _text)
+sem_LeftHandSide_Parenthesized (range_) (lefthandside_) (patterns_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _lefthandsideItext) =
+            (lefthandside_ )
+        ( _patternsItext) =
+            (patterns_ )
+        (_text@_) =
+            foldl (<+>) (parens _lefthandsideItext) _patternsItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Literal -----------------------------------------------------
 -- semantic domain
 type T_Literal = ( (Doc))
@@ -1380,39 +1532,47 @@ sem_Literal ((Literal_String (_range) (_value))) =
 sem_Literal_Char :: (T_Range) ->
                     (String) ->
                     (T_Literal)
-sem_Literal_Char (_range) (_value) =
-    let (_text) =
-            text ("'" ++ _value ++ "'")
-        ( _range_text) =
-            (_range )
-    in  ( _text)
+sem_Literal_Char (range_) (value_) =
+    let ( _rangeItext) =
+            (range_ )
+        (_text@_) =
+            text ("'" ++ value_ ++ "'")
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Literal_Float :: (T_Range) ->
                      (String) ->
                      (T_Literal)
-sem_Literal_Float (_range) (_value) =
-    let (_text) =
-            text _value
-        ( _range_text) =
-            (_range )
-    in  ( _text)
+sem_Literal_Float (range_) (value_) =
+    let ( _rangeItext) =
+            (range_ )
+        (_text@_) =
+            text value_
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Literal_Int :: (T_Range) ->
                    (String) ->
                    (T_Literal)
-sem_Literal_Int (_range) (_value) =
-    let (_text) =
-            text _value
-        ( _range_text) =
-            (_range )
-    in  ( _text)
+sem_Literal_Int (range_) (value_) =
+    let ( _rangeItext) =
+            (range_ )
+        (_text@_) =
+            text value_
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Literal_String :: (T_Range) ->
                       (String) ->
                       (T_Literal)
-sem_Literal_String (_range) (_value) =
-    let (_text) =
-            text ("\"" ++ _value ++ "\"")
-        ( _range_text) =
-            (_range )
-    in  ( _text)
+sem_Literal_String (range_) (value_) =
+    let ( _rangeItext) =
+            (range_ )
+        (_text@_) =
+            text ("\"" ++ value_ ++ "\"")
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
 type T_MaybeDeclarations = ( ( Maybe [       Doc ] ))
@@ -1425,17 +1585,21 @@ sem_MaybeDeclarations ((MaybeDeclarations_Nothing )) =
     (sem_MaybeDeclarations_Nothing )
 sem_MaybeDeclarations_Just :: (T_Declarations) ->
                               (T_MaybeDeclarations)
-sem_MaybeDeclarations_Just (_declarations) =
-    let (_text) =
-            Just _declarations_text
-        ( _declarations_text) =
-            (_declarations )
-    in  ( _text)
+sem_MaybeDeclarations_Just (declarations_) =
+    let ( _declarationsItext) =
+            (declarations_ )
+        (_text@_) =
+            Just _declarationsItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
 sem_MaybeDeclarations_Nothing  =
-    let (_text) =
+    let (_text@_) =
             Nothing
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- MaybeExports ------------------------------------------------
 -- semantic domain
 type T_MaybeExports = ( ( Maybe [       Doc ] ))
@@ -1448,17 +1612,21 @@ sem_MaybeExports ((MaybeExports_Nothing )) =
     (sem_MaybeExports_Nothing )
 sem_MaybeExports_Just :: (T_Exports) ->
                          (T_MaybeExports)
-sem_MaybeExports_Just (_exports) =
-    let (_text) =
-            Just _exports_text
-        ( _exports_text) =
-            (_exports )
-    in  ( _text)
+sem_MaybeExports_Just (exports_) =
+    let ( _exportsItext) =
+            (exports_ )
+        (_text@_) =
+            Just _exportsItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_MaybeExports_Nothing :: (T_MaybeExports)
 sem_MaybeExports_Nothing  =
-    let (_text) =
+    let (_text@_) =
             Nothing
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- MaybeExpression ---------------------------------------------
 -- semantic domain
 type T_MaybeExpression = ( (        Maybe Doc  ))
@@ -1471,17 +1639,21 @@ sem_MaybeExpression ((MaybeExpression_Nothing )) =
     (sem_MaybeExpression_Nothing )
 sem_MaybeExpression_Just :: (T_Expression) ->
                             (T_MaybeExpression)
-sem_MaybeExpression_Just (_expression) =
-    let (_text) =
-            Just _expression_text
-        ( _expression_text) =
-            (_expression )
-    in  ( _text)
+sem_MaybeExpression_Just (expression_) =
+    let ( _expressionItext) =
+            (expression_ )
+        (_text@_) =
+            Just _expressionItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_MaybeExpression_Nothing :: (T_MaybeExpression)
 sem_MaybeExpression_Nothing  =
-    let (_text) =
+    let (_text@_) =
             Nothing
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- MaybeImportSpecification ------------------------------------
 -- semantic domain
 type T_MaybeImportSpecification = ( (        Maybe Doc  ))
@@ -1494,17 +1666,21 @@ sem_MaybeImportSpecification ((MaybeImportSpecification_Nothing )) =
     (sem_MaybeImportSpecification_Nothing )
 sem_MaybeImportSpecification_Just :: (T_ImportSpecification) ->
                                      (T_MaybeImportSpecification)
-sem_MaybeImportSpecification_Just (_importspecification) =
-    let (_text) =
-            Just _importspecification_text
-        ( _importspecification_text) =
-            (_importspecification )
-    in  ( _text)
+sem_MaybeImportSpecification_Just (importspecification_) =
+    let ( _importspecificationItext) =
+            (importspecification_ )
+        (_text@_) =
+            Just _importspecificationItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_MaybeImportSpecification_Nothing :: (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Nothing  =
-    let (_text) =
+    let (_text@_) =
             Nothing
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- MaybeInt ----------------------------------------------------
 -- semantic domain
 type T_MaybeInt = ( (        Maybe Doc  ))
@@ -1517,15 +1693,19 @@ sem_MaybeInt ((MaybeInt_Nothing )) =
     (sem_MaybeInt_Nothing )
 sem_MaybeInt_Just :: (Int) ->
                      (T_MaybeInt)
-sem_MaybeInt_Just (_int) =
-    let (_text) =
-            Just (int _int)
-    in  ( _text)
+sem_MaybeInt_Just (int_) =
+    let (_text@_) =
+            Just (int int_)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_MaybeInt_Nothing :: (T_MaybeInt)
 sem_MaybeInt_Nothing  =
-    let (_text) =
+    let (_text@_) =
             Nothing
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- MaybeName ---------------------------------------------------
 -- semantic domain
 type T_MaybeName = ( (        Maybe Doc  ))
@@ -1538,17 +1718,21 @@ sem_MaybeName ((MaybeName_Nothing )) =
     (sem_MaybeName_Nothing )
 sem_MaybeName_Just :: (T_Name) ->
                       (T_MaybeName)
-sem_MaybeName_Just (_name) =
-    let (_text) =
-            Just _name_text
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-    in  ( _text)
+sem_MaybeName_Just (name_) =
+    let ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        (_text@_) =
+            Just _nameItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_MaybeName_Nothing :: (T_MaybeName)
 sem_MaybeName_Nothing  =
-    let (_text) =
+    let (_text@_) =
             Nothing
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- MaybeNames --------------------------------------------------
 -- semantic domain
 type T_MaybeNames = ( ( Maybe [       Doc ] ))
@@ -1561,17 +1745,21 @@ sem_MaybeNames ((MaybeNames_Nothing )) =
     (sem_MaybeNames_Nothing )
 sem_MaybeNames_Just :: (T_Names) ->
                        (T_MaybeNames)
-sem_MaybeNames_Just (_names) =
-    let (_text) =
-            Just _names_text
-        ( _names_isIdentifier,_names_isOperator,_names_isSpecial,_names_text) =
-            (_names )
-    in  ( _text)
+sem_MaybeNames_Just (names_) =
+    let ( _namesIisIdentifier,_namesIisOperator,_namesIisSpecial,_namesItext) =
+            (names_ )
+        (_text@_) =
+            Just _namesItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_MaybeNames_Nothing :: (T_MaybeNames)
 sem_MaybeNames_Nothing  =
-    let (_text) =
+    let (_text@_) =
             Nothing
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Module ------------------------------------------------------
 -- semantic domain
 type T_Module = ( (Doc))
@@ -1585,8 +1773,16 @@ sem_Module_Module :: (T_Range) ->
                      (T_MaybeExports) ->
                      (T_Body) ->
                      (T_Module)
-sem_Module_Module (_range) (_name) (_exports) (_body) =
-    let (_text) =
+sem_Module_Module (range_) (name_) (exports_) (body_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameItext) =
+            (name_ )
+        ( _exportsItext) =
+            (exports_ )
+        ( _bodyItext) =
+            (body_ )
+        (_text@_) =
             maybe
                 id
                 ( \name body ->
@@ -1594,22 +1790,16 @@ sem_Module_Module (_range) (_name) (_exports) (_body) =
                         (maybe
                             (text "where")
                             (\x -> indent 4 (utrechtList (text "(") (text ")") x <+> text "where"))
-                            _exports_text
+                            _exportsItext
                         )
                     <$> empty <$>
                     body
                 )
-                _name_text
-                _body_text
-        ( _range_text) =
-            (_range )
-        ( _name_text) =
-            (_name )
-        ( _exports_text) =
-            (_exports )
-        ( _body_text) =
-            (_body )
-    in  ( _text)
+                _nameItext
+                _bodyItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Name --------------------------------------------------------
 -- semantic domain
 type T_Name = ( (Bool),(Bool),(Bool),(Doc))
@@ -1626,38 +1816,62 @@ sem_Name_Identifier :: (T_Range) ->
                        (T_Strings) ->
                        (String) ->
                        (T_Name)
-sem_Name_Identifier (_range) (_module) (_name) =
-    let (_text) =
-            text _name
-        ( _range_text) =
-            (_range )
-        ( _module_text) =
-            (_module )
-    in  ( True,False,False,_text)
+sem_Name_Identifier (range_) (module_) (name_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _moduleItext) =
+            (module_ )
+        (_lhsOisIdentifier@_) =
+            True
+        (_text@_) =
+            text name_
+        (_lhsOisOperator@_) =
+            False
+        (_lhsOisSpecial@_) =
+            False
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOisIdentifier,_lhsOisOperator,_lhsOisSpecial,_lhsOtext)
 sem_Name_Operator :: (T_Range) ->
                      (T_Strings) ->
                      (String) ->
                      (T_Name)
-sem_Name_Operator (_range) (_module) (_name) =
-    let (_text) =
-            text _name
-        ( _range_text) =
-            (_range )
-        ( _module_text) =
-            (_module )
-    in  ( False,True,False,_text)
+sem_Name_Operator (range_) (module_) (name_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _moduleItext) =
+            (module_ )
+        (_lhsOisOperator@_) =
+            True
+        (_text@_) =
+            text name_
+        (_lhsOisIdentifier@_) =
+            False
+        (_lhsOisSpecial@_) =
+            False
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOisIdentifier,_lhsOisOperator,_lhsOisSpecial,_lhsOtext)
 sem_Name_Special :: (T_Range) ->
                     (T_Strings) ->
                     (String) ->
                     (T_Name)
-sem_Name_Special (_range) (_module) (_name) =
-    let (_text) =
-            text _name
-        ( _range_text) =
-            (_range )
-        ( _module_text) =
-            (_module )
-    in  ( False,False,True,_text)
+sem_Name_Special (range_) (module_) (name_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _moduleItext) =
+            (module_ )
+        (_lhsOisSpecial@_) =
+            True
+        (_text@_) =
+            text name_
+        (_lhsOisIdentifier@_) =
+            False
+        (_lhsOisOperator@_) =
+            False
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOisIdentifier,_lhsOisOperator,_lhsOisSpecial,_lhsOtext)
 -- Names -------------------------------------------------------
 -- semantic domain
 type T_Names = ( ( [Bool] ),( [Bool] ),( [Bool] ),( [       Doc ] ))
@@ -1669,16 +1883,31 @@ sem_Names (list) =
 sem_Names_Cons :: (T_Name) ->
                   (T_Names) ->
                   (T_Names)
-sem_Names_Cons (_hd) (_tl) =
-    let ( _hd_isIdentifier,_hd_isOperator,_hd_isSpecial,_hd_text) =
-            (_hd )
-        ( _tl_isIdentifier,_tl_isOperator,_tl_isSpecial,_tl_text) =
-            (_tl )
-    in  ( _hd_isIdentifier  :  _tl_isIdentifier,_hd_isOperator  :  _tl_isOperator,_hd_isSpecial  :  _tl_isSpecial,_hd_text  :  _tl_text)
+sem_Names_Cons (hd_) (tl_) =
+    let ( _hdIisIdentifier,_hdIisOperator,_hdIisSpecial,_hdItext) =
+            (hd_ )
+        ( _tlIisIdentifier,_tlIisOperator,_tlIisSpecial,_tlItext) =
+            (tl_ )
+        (_lhsOisIdentifier@_) =
+            _hdIisIdentifier  :  _tlIisIdentifier
+        (_lhsOisOperator@_) =
+            _hdIisOperator  :  _tlIisOperator
+        (_lhsOisSpecial@_) =
+            _hdIisSpecial  :  _tlIisSpecial
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOisIdentifier,_lhsOisOperator,_lhsOisSpecial,_lhsOtext)
 sem_Names_Nil :: (T_Names)
 sem_Names_Nil  =
-    let 
-    in  ( [],[],[],[])
+    let (_lhsOisIdentifier@_) =
+            []
+        (_lhsOisOperator@_) =
+            []
+        (_lhsOisSpecial@_) =
+            []
+        (_lhsOtext@_) =
+            []
+    in  ( _lhsOisIdentifier,_lhsOisOperator,_lhsOisSpecial,_lhsOtext)
 -- Pattern -----------------------------------------------------
 -- semantic domain
 type T_Pattern = ( (Doc))
@@ -1717,171 +1946,199 @@ sem_Pattern_As :: (T_Range) ->
                   (T_Name) ->
                   (T_Pattern) ->
                   (T_Pattern)
-sem_Pattern_As (_range) (_name) (_pattern) =
-    let (_text) =
-            _name_text <> text "@" <> _pattern_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-        ( _pattern_text) =
-            (_pattern )
-    in  ( _text)
+sem_Pattern_As (range_) (name_) (pattern_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        ( _patternItext) =
+            (pattern_ )
+        (_text@_) =
+            _nameItext <> text "@" <> _patternItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Pattern_Constructor :: (T_Range) ->
                            (T_Name) ->
                            (T_Patterns) ->
                            (T_Pattern)
-sem_Pattern_Constructor (_range) (_name) (_patterns) =
-    let (_text) =
-            foldl (<+>) (parensIf _name_isOperator _name_text) _patterns_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-        ( _patterns_text) =
-            (_patterns )
-    in  ( _text)
+sem_Pattern_Constructor (range_) (name_) (patterns_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        ( _patternsItext) =
+            (patterns_ )
+        (_text@_) =
+            foldl (<+>) (parensIf _nameIisOperator _nameItext) _patternsItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Pattern_InfixConstructor :: (T_Range) ->
                                 (T_Pattern) ->
                                 (T_Name) ->
                                 (T_Pattern) ->
                                 (T_Pattern)
-sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_rightPattern) =
-    let (_text) =
-            _leftPattern_text <+> _constructorOperator_text <+> _rightPattern_text
-        ( _range_text) =
-            (_range )
-        ( _leftPattern_text) =
-            (_leftPattern )
-        ( _constructorOperator_isIdentifier,_constructorOperator_isOperator,_constructorOperator_isSpecial,_constructorOperator_text) =
-            (_constructorOperator )
-        ( _rightPattern_text) =
-            (_rightPattern )
-    in  ( _text)
+sem_Pattern_InfixConstructor (range_) (leftPattern_) (constructorOperator_) (rightPattern_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _leftPatternItext) =
+            (leftPattern_ )
+        ( _constructorOperatorIisIdentifier,_constructorOperatorIisOperator,_constructorOperatorIisSpecial,_constructorOperatorItext) =
+            (constructorOperator_ )
+        ( _rightPatternItext) =
+            (rightPattern_ )
+        (_text@_) =
+            _leftPatternItext <+> _constructorOperatorItext <+> _rightPatternItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Pattern_Irrefutable :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Pattern)
-sem_Pattern_Irrefutable (_range) (_pattern) =
-    let (_text) =
-            text "~" <> _pattern_text
-        ( _range_text) =
-            (_range )
-        ( _pattern_text) =
-            (_pattern )
-    in  ( _text)
+sem_Pattern_Irrefutable (range_) (pattern_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _patternItext) =
+            (pattern_ )
+        (_text@_) =
+            text "~" <> _patternItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Pattern_List :: (T_Range) ->
                     (T_Patterns) ->
                     (T_Pattern)
-sem_Pattern_List (_range) (_patterns) =
-    let (_text) =
-            list _patterns_text
-        ( _range_text) =
-            (_range )
-        ( _patterns_text) =
-            (_patterns )
-    in  ( _text)
+sem_Pattern_List (range_) (patterns_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _patternsItext) =
+            (patterns_ )
+        (_text@_) =
+            list _patternsItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Pattern_Literal :: (T_Range) ->
                        (T_Literal) ->
                        (T_Pattern)
-sem_Pattern_Literal (_range) (_literal) =
-    let (_text) =
-            _literal_text
-        ( _range_text) =
-            (_range )
-        ( _literal_text) =
-            (_literal )
-    in  ( _text)
+sem_Pattern_Literal (range_) (literal_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _literalItext) =
+            (literal_ )
+        (_text@_) =
+            _literalItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Pattern_Negate :: (T_Range) ->
                       (T_Literal) ->
                       (T_Pattern)
-sem_Pattern_Negate (_range) (_literal) =
-    let (_text) =
-            text "-" <> _literal_text
-        ( _range_text) =
-            (_range )
-        ( _literal_text) =
-            (_literal )
-    in  ( _text)
+sem_Pattern_Negate (range_) (literal_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _literalItext) =
+            (literal_ )
+        (_text@_) =
+            text "-" <> _literalItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Pattern_NegateFloat :: (T_Range) ->
                            (T_Literal) ->
                            (T_Pattern)
-sem_Pattern_NegateFloat (_range) (_literal) =
-    let (_text) =
-            text "-." <> _literal_text
-        ( _range_text) =
-            (_range )
-        ( _literal_text) =
-            (_literal )
-    in  ( _text)
+sem_Pattern_NegateFloat (range_) (literal_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _literalItext) =
+            (literal_ )
+        (_text@_) =
+            text "-." <> _literalItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Pattern_Parenthesized :: (T_Range) ->
                              (T_Pattern) ->
                              (T_Pattern)
-sem_Pattern_Parenthesized (_range) (_pattern) =
-    let (_text) =
-            parens _pattern_text
-        ( _range_text) =
-            (_range )
-        ( _pattern_text) =
-            (_pattern )
-    in  ( _text)
+sem_Pattern_Parenthesized (range_) (pattern_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _patternItext) =
+            (pattern_ )
+        (_text@_) =
+            parens _patternItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Pattern_Record :: (T_Range) ->
                       (T_Name) ->
                       (T_RecordPatternBindings) ->
                       (T_Pattern)
-sem_Pattern_Record (_range) (_name) (_recordPatternBindings) =
-    let (_text) =
+sem_Pattern_Record (range_) (name_) (recordPatternBindings_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        ( _recordPatternBindingsItext) =
+            (recordPatternBindings_ )
+        (_text@_) =
             text "{- !!! record pattern -}"
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-        ( _recordPatternBindings_text) =
-            (_recordPatternBindings )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Pattern_Successor :: (T_Range) ->
                          (T_Name) ->
                          (T_Literal) ->
                          (T_Pattern)
-sem_Pattern_Successor (_range) (_name) (_literal) =
-    let (_text) =
-            _name_text <+> text "+" <+> _literal_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-        ( _literal_text) =
-            (_literal )
-    in  ( _text)
+sem_Pattern_Successor (range_) (name_) (literal_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        ( _literalItext) =
+            (literal_ )
+        (_text@_) =
+            _nameItext <+> text "+" <+> _literalItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Pattern_Tuple :: (T_Range) ->
                      (T_Patterns) ->
                      (T_Pattern)
-sem_Pattern_Tuple (_range) (_patterns) =
-    let (_text) =
-            tupled _patterns_text
-        ( _range_text) =
-            (_range )
-        ( _patterns_text) =
-            (_patterns )
-    in  ( _text)
+sem_Pattern_Tuple (range_) (patterns_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _patternsItext) =
+            (patterns_ )
+        (_text@_) =
+            tupled _patternsItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Pattern_Variable :: (T_Range) ->
                         (T_Name) ->
                         (T_Pattern)
-sem_Pattern_Variable (_range) (_name) =
-    let (_text) =
-            parensIf _name_isOperator _name_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-    in  ( _text)
+sem_Pattern_Variable (range_) (name_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        (_text@_) =
+            parensIf _nameIisOperator _nameItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Pattern_Wildcard :: (T_Range) ->
                         (T_Pattern)
-sem_Pattern_Wildcard (_range) =
-    let (_text) =
+sem_Pattern_Wildcard (range_) =
+    let ( _rangeItext) =
+            (range_ )
+        (_text@_) =
             text "_"
-        ( _range_text) =
-            (_range )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Patterns ----------------------------------------------------
 -- semantic domain
 type T_Patterns = ( ( [       Doc ] ))
@@ -1893,16 +2150,19 @@ sem_Patterns (list) =
 sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns) ->
                      (T_Patterns)
-sem_Patterns_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_Patterns_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_Patterns_Nil :: (T_Patterns)
 sem_Patterns_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- Position ----------------------------------------------------
 -- semantic domain
 type T_Position = ( (Doc))
@@ -1917,15 +2177,19 @@ sem_Position_Position :: (String) ->
                          (Int) ->
                          (Int) ->
                          (T_Position)
-sem_Position_Position (_filename) (_line) (_column) =
-    let (_text) =
-            text _filename <> tupled [int _line, int _column]
-    in  ( _text)
+sem_Position_Position (filename_) (line_) (column_) =
+    let (_text@_) =
+            text filename_ <> tupled [int line_, int column_]
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Position_Unknown :: (T_Position)
 sem_Position_Unknown  =
-    let (_text) =
+    let (_text@_) =
             text "Unknown"
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Qualifier ---------------------------------------------------
 -- semantic domain
 type T_Qualifier = ( (Doc))
@@ -1942,48 +2206,56 @@ sem_Qualifier ((Qualifier_Let (_range) (_declarations))) =
     (sem_Qualifier_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Qualifier_Empty :: (T_Range) ->
                        (T_Qualifier)
-sem_Qualifier_Empty (_range) =
-    let (_text) =
+sem_Qualifier_Empty (range_) =
+    let ( _rangeItext) =
+            (range_ )
+        (_text@_) =
             empty
-        ( _range_text) =
-            (_range )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Qualifier_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Qualifier)
-sem_Qualifier_Generator (_range) (_pattern) (_expression) =
-    let (_text) =
-            _pattern_text <+> text "<-" <+> _expression_text
-        ( _range_text) =
-            (_range )
-        ( _pattern_text) =
-            (_pattern )
-        ( _expression_text) =
-            (_expression )
-    in  ( _text)
+sem_Qualifier_Generator (range_) (pattern_) (expression_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _patternItext) =
+            (pattern_ )
+        ( _expressionItext) =
+            (expression_ )
+        (_text@_) =
+            _patternItext <+> text "<-" <+> _expressionItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Qualifier_Guard :: (T_Range) ->
                        (T_Expression) ->
                        (T_Qualifier)
-sem_Qualifier_Guard (_range) (_guard) =
-    let (_text) =
-            _guard_text
-        ( _range_text) =
-            (_range )
-        ( _guard_text) =
-            (_guard )
-    in  ( _text)
+sem_Qualifier_Guard (range_) (guard_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _guardItext) =
+            (guard_ )
+        (_text@_) =
+            _guardItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Qualifier_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Qualifier)
-sem_Qualifier_Let (_range) (_declarations) =
-    let (_text) =
-            text "let" <$> (indent 4 $ vcat _declarations_text)
-        ( _range_text) =
-            (_range )
-        ( _declarations_text) =
-            (_declarations )
-    in  ( _text)
+sem_Qualifier_Let (range_) (declarations_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _declarationsItext) =
+            (declarations_ )
+        (_text@_) =
+            text "let" <$> (indent 4 $ vcat _declarationsItext)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
 type T_Qualifiers = ( ( [       Doc ] ))
@@ -1995,16 +2267,19 @@ sem_Qualifiers (list) =
 sem_Qualifiers_Cons :: (T_Qualifier) ->
                        (T_Qualifiers) ->
                        (T_Qualifiers)
-sem_Qualifiers_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_Qualifiers_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_Qualifiers_Nil :: (T_Qualifiers)
 sem_Qualifiers_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- Range -------------------------------------------------------
 -- semantic domain
 type T_Range = ( (Doc))
@@ -2016,14 +2291,16 @@ sem_Range ((Range_Range (_start) (_stop))) =
 sem_Range_Range :: (T_Position) ->
                    (T_Position) ->
                    (T_Range)
-sem_Range_Range (_start) (_stop) =
-    let (_text) =
-            text "{-" <+> _start_text <+> text ", " <+> _stop_text <+> text "-}"
-        ( _start_text) =
-            (_start )
-        ( _stop_text) =
-            (_stop )
-    in  ( _text)
+sem_Range_Range (start_) (stop_) =
+    let ( _startItext) =
+            (start_ )
+        ( _stopItext) =
+            (stop_ )
+        (_text@_) =
+            text "{-" <+> _startItext <+> text ", " <+> _stopItext <+> text "-}"
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- RecordExpressionBinding -------------------------------------
 -- semantic domain
 type T_RecordExpressionBinding = ( (Doc))
@@ -2036,16 +2313,18 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
                                                        (T_Name) ->
                                                        (T_Expression) ->
                                                        (T_RecordExpressionBinding)
-sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expression) =
-    let (_text) =
+sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        ( _expressionItext) =
+            (expression_ )
+        (_text@_) =
             text "{- !!! record expression binding -}"
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-        ( _expression_text) =
-            (_expression )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
 type T_RecordExpressionBindings = ( ( [       Doc ] ))
@@ -2057,16 +2336,19 @@ sem_RecordExpressionBindings (list) =
 sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_RecordExpressionBindings)
-sem_RecordExpressionBindings_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_RecordExpressionBindings_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_RecordExpressionBindings_Nil :: (T_RecordExpressionBindings)
 sem_RecordExpressionBindings_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- RecordPatternBinding ----------------------------------------
 -- semantic domain
 type T_RecordPatternBinding = ( (Doc))
@@ -2079,16 +2361,18 @@ sem_RecordPatternBinding_RecordPatternBinding :: (T_Range) ->
                                                  (T_Name) ->
                                                  (T_Pattern) ->
                                                  (T_RecordPatternBinding)
-sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) =
-    let (_text) =
+sem_RecordPatternBinding_RecordPatternBinding (range_) (name_) (pattern_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        ( _patternItext) =
+            (pattern_ )
+        (_text@_) =
             text "{- !!! record pattern binding -}"
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-        ( _pattern_text) =
-            (_pattern )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- RecordPatternBindings ---------------------------------------
 -- semantic domain
 type T_RecordPatternBindings = ( ( [       Doc ] ))
@@ -2100,16 +2384,19 @@ sem_RecordPatternBindings (list) =
 sem_RecordPatternBindings_Cons :: (T_RecordPatternBinding) ->
                                   (T_RecordPatternBindings) ->
                                   (T_RecordPatternBindings)
-sem_RecordPatternBindings_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_RecordPatternBindings_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_RecordPatternBindings_Nil :: (T_RecordPatternBindings)
 sem_RecordPatternBindings_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- RightHandSide -----------------------------------------------
 -- semantic domain
 type T_RightHandSide = ( ( Doc        -> Doc  ))
@@ -2124,46 +2411,50 @@ sem_RightHandSide_Expression :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_MaybeDeclarations) ->
                                 (T_RightHandSide)
-sem_RightHandSide_Expression (_range) (_expression) (_where) =
-    let (_text) =
-            \assign       -> assign <$> _justText
-        (_justText) =
+sem_RightHandSide_Expression (range_) (expression_) (where_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _expressionItext) =
+            (expression_ )
+        ( _whereItext) =
+            (where_ )
+        (_justText@_) =
             indent 4
-                (  _expression_text
+                (  _expressionItext
                 <> maybe
                        empty
                        (\ds -> PPrint.empty <$> text "where" <$> indent 4 (vcat ds))
-                       _where_text
+                       _whereItext
                 )
-        ( _range_text) =
-            (_range )
-        ( _expression_text) =
-            (_expression )
-        ( _where_text) =
-            (_where )
-    in  ( _text)
+        (_text@_) =
+            \assign       -> assign <$> _justText
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_RightHandSide_Guarded :: (T_Range) ->
                              (T_GuardedExpressions) ->
                              (T_MaybeDeclarations) ->
                              (T_RightHandSide)
-sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) =
-    let (_text) =
+sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _guardedexpressionsItext) =
+            (guardedexpressions_ )
+        ( _whereItext) =
+            (where_ )
+        (_text@_) =
             \assign ->
                 (   PPrint.empty
                 <$> vsep
-                       (zipWith (\f x -> indent 4 (f x)) _guardedexpressions_text (repeat assign))
+                       (zipWith (\f x -> indent 4 (f x)) _guardedexpressionsItext (repeat assign))
                 <>  maybe
                        empty
                        (\ds -> PPrint.empty <$> indent 4 (text "where" <$> indent 4 (vcat ds)))
-                       _where_text
+                       _whereItext
                 )
-        ( _range_text) =
-            (_range )
-        ( _guardedexpressions_text) =
-            (_guardedexpressions )
-        ( _where_text) =
-            (_where )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- SimpleType --------------------------------------------------
 -- semantic domain
 type T_SimpleType = ( (Doc))
@@ -2176,16 +2467,18 @@ sem_SimpleType_SimpleType :: (T_Range) ->
                              (T_Name) ->
                              (T_Names) ->
                              (T_SimpleType)
-sem_SimpleType_SimpleType (_range) (_name) (_typevariables) =
-    let (_text) =
-            foldl (<+>) _name_text _typevariables_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-        ( _typevariables_isIdentifier,_typevariables_isOperator,_typevariables_isSpecial,_typevariables_text) =
-            (_typevariables )
-    in  ( _text)
+sem_SimpleType_SimpleType (range_) (name_) (typevariables_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        ( _typevariablesIisIdentifier,_typevariablesIisOperator,_typevariablesIisSpecial,_typevariablesItext) =
+            (typevariables_ )
+        (_text@_) =
+            foldl (<+>) _nameItext _typevariablesItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Statement ---------------------------------------------------
 -- semantic domain
 type T_Statement = ( (Doc))
@@ -2202,48 +2495,56 @@ sem_Statement ((Statement_Let (_range) (_declarations))) =
     (sem_Statement_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Statement_Empty :: (T_Range) ->
                        (T_Statement)
-sem_Statement_Empty (_range) =
-    let (_text) =
+sem_Statement_Empty (range_) =
+    let ( _rangeItext) =
+            (range_ )
+        (_text@_) =
             empty
-        ( _range_text) =
-            (_range )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Statement_Expression :: (T_Range) ->
                             (T_Expression) ->
                             (T_Statement)
-sem_Statement_Expression (_range) (_expression) =
-    let (_text) =
-            _expression_text
-        ( _range_text) =
-            (_range )
-        ( _expression_text) =
-            (_expression )
-    in  ( _text)
+sem_Statement_Expression (range_) (expression_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _expressionItext) =
+            (expression_ )
+        (_text@_) =
+            _expressionItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Statement_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Statement)
-sem_Statement_Generator (_range) (_pattern) (_expression) =
-    let (_text) =
-            _pattern_text <+> text "<-" <+> _expression_text
-        ( _range_text) =
-            (_range )
-        ( _pattern_text) =
-            (_pattern )
-        ( _expression_text) =
-            (_expression )
-    in  ( _text)
+sem_Statement_Generator (range_) (pattern_) (expression_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _patternItext) =
+            (pattern_ )
+        ( _expressionItext) =
+            (expression_ )
+        (_text@_) =
+            _patternItext <+> text "<-" <+> _expressionItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Statement_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Statement)
-sem_Statement_Let (_range) (_declarations) =
-    let (_text) =
-            text "let" <$> (indent 4 $ vcat _declarations_text)
-        ( _range_text) =
-            (_range )
-        ( _declarations_text) =
-            (_declarations )
-    in  ( _text)
+sem_Statement_Let (range_) (declarations_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _declarationsItext) =
+            (declarations_ )
+        (_text@_) =
+            text "let" <$> (indent 4 $ vcat _declarationsItext)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Statements --------------------------------------------------
 -- semantic domain
 type T_Statements = ( ( [       Doc ] ))
@@ -2255,16 +2556,19 @@ sem_Statements (list) =
 sem_Statements_Cons :: (T_Statement) ->
                        (T_Statements) ->
                        (T_Statements)
-sem_Statements_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_Statements_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_Statements_Nil :: (T_Statements)
 sem_Statements_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- Strings -----------------------------------------------------
 -- semantic domain
 type T_Strings = ( ( [       Doc ] ))
@@ -2276,14 +2580,17 @@ sem_Strings (list) =
 sem_Strings_Cons :: (String) ->
                     (T_Strings) ->
                     (T_Strings)
-sem_Strings_Cons (_hd) (_tl) =
-    let ( _tl_text) =
-            (_tl )
-    in  ( _tl_text)
+sem_Strings_Cons (hd_) (tl_) =
+    let ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _tlItext
+    in  ( _lhsOtext)
 sem_Strings_Nil :: (T_Strings)
 sem_Strings_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 -- Type --------------------------------------------------------
 -- semantic domain
 type T_Type = ( (Doc))
@@ -2309,102 +2616,116 @@ sem_Type_Application :: (T_Range) ->
                         (T_Type) ->
                         (T_Types) ->
                         (T_Type)
-sem_Type_Application (_range) (_prefix) (_function) (_arguments) =
-    let (_text) =
-            if _prefix then
-                foldl (<+>) _function_text _arguments_text
-            else if show _function_text == "[]" then
-                list _arguments_text
-            else if isTupleConstructor (show _function_text) then
-                tupled _arguments_text
+sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _functionItext) =
+            (function_ )
+        ( _argumentsItext) =
+            (arguments_ )
+        (_text@_) =
+            if prefix_ then
+                foldl (<+>) _functionItext _argumentsItext
+            else if show _functionItext == "[]" then
+                list _argumentsItext
+            else if isTupleConstructor (show _functionItext) then
+                tupled _argumentsItext
             else
-                case _arguments_text of
-                    [a, b] -> a <+> _function_text <+> b
+                case _argumentsItext of
+                    [a, b] -> a <+> _functionItext <+> b
                     as     -> text "{- error: Unknown special application notation -}"
-        ( _range_text) =
-            (_range )
-        ( _function_text) =
-            (_function )
-        ( _arguments_text) =
-            (_arguments )
-    in  ( _text)
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Type_Constructor :: (T_Range) ->
                         (T_Name) ->
                         (T_Type)
-sem_Type_Constructor (_range) (_name) =
-    let (_text) =
-            _name_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-    in  ( _text)
+sem_Type_Constructor (range_) (name_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        (_text@_) =
+            _nameItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Type_Exists :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
-sem_Type_Exists (_range) (_typevariables) (_type) =
-    let (_text) =
-            foldl (<+>) (text "exists") _typevariables_text <> text "." <> _type_text
-        ( _range_text) =
-            (_range )
-        ( _typevariables_isIdentifier,_typevariables_isOperator,_typevariables_isSpecial,_typevariables_text) =
-            (_typevariables )
-        ( _type_text) =
-            (_type )
-    in  ( _text)
+sem_Type_Exists (range_) (typevariables_) (type_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _typevariablesIisIdentifier,_typevariablesIisOperator,_typevariablesIisSpecial,_typevariablesItext) =
+            (typevariables_ )
+        ( _typeItext) =
+            (type_ )
+        (_text@_) =
+            foldl (<+>) (text "exists") _typevariablesItext <> text "." <> _typeItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Type_Forall :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
-sem_Type_Forall (_range) (_typevariables) (_type) =
-    let (_text) =
-            foldl (<+>) (text "forall") _typevariables_text <> text "." <> _type_text
-        ( _range_text) =
-            (_range )
-        ( _typevariables_isIdentifier,_typevariables_isOperator,_typevariables_isSpecial,_typevariables_text) =
-            (_typevariables )
-        ( _type_text) =
-            (_type )
-    in  ( _text)
+sem_Type_Forall (range_) (typevariables_) (type_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _typevariablesIisIdentifier,_typevariablesIisOperator,_typevariablesIisSpecial,_typevariablesItext) =
+            (typevariables_ )
+        ( _typeItext) =
+            (type_ )
+        (_text@_) =
+            foldl (<+>) (text "forall") _typevariablesItext <> text "." <> _typeItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Type_Parenthesized :: (T_Range) ->
                           (T_Type) ->
                           (T_Type)
-sem_Type_Parenthesized (_range) (_type) =
-    let (_text) =
-            parens _type_text
-        ( _range_text) =
-            (_range )
-        ( _type_text) =
-            (_type )
-    in  ( _text)
+sem_Type_Parenthesized (range_) (type_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _typeItext) =
+            (type_ )
+        (_text@_) =
+            parens _typeItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Type_Qualified :: (T_Range) ->
                       (T_ContextItems) ->
                       (T_Type) ->
                       (T_Type)
-sem_Type_Qualified (_range) (_context) (_type) =
-    let (_text) =
-            case _context_text of
-              [ct] -> ct <+> text "=>" <+> _type_text
-              cts -> parens (commas cts) <+> text "=>" <+> _type_text
-        ( _range_text) =
-            (_range )
-        ( _context_text) =
-            (_context )
-        ( _type_text) =
-            (_type )
-    in  ( _text)
+sem_Type_Qualified (range_) (context_) (type_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _contextItext) =
+            (context_ )
+        ( _typeItext) =
+            (type_ )
+        (_text@_) =
+            case _contextItext of
+              [ct] -> ct <+> text "=>" <+> _typeItext
+              cts -> parens (commas cts) <+> text "=>" <+> _typeItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 sem_Type_Variable :: (T_Range) ->
                      (T_Name) ->
                      (T_Type)
-sem_Type_Variable (_range) (_name) =
-    let (_text) =
-            _name_text
-        ( _range_text) =
-            (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_text) =
-            (_name )
-    in  ( _text)
+sem_Type_Variable (range_) (name_) =
+    let ( _rangeItext) =
+            (range_ )
+        ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
+            (name_ )
+        (_text@_) =
+            _nameItext
+        (_lhsOtext@_) =
+            _text
+    in  ( _lhsOtext)
 -- Types -------------------------------------------------------
 -- semantic domain
 type T_Types = ( ( [       Doc ] ))
@@ -2416,14 +2737,17 @@ sem_Types (list) =
 sem_Types_Cons :: (T_Type) ->
                   (T_Types) ->
                   (T_Types)
-sem_Types_Cons (_hd) (_tl) =
-    let ( _hd_text) =
-            (_hd )
-        ( _tl_text) =
-            (_tl )
-    in  ( _hd_text  :  _tl_text)
+sem_Types_Cons (hd_) (tl_) =
+    let ( _hdItext) =
+            (hd_ )
+        ( _tlItext) =
+            (tl_ )
+        (_lhsOtext@_) =
+            _hdItext  :  _tlItext
+    in  ( _lhsOtext)
 sem_Types_Nil :: (T_Types)
 sem_Types_Nil  =
-    let 
-    in  ( [])
+    let (_lhsOtext@_) =
+            []
+    in  ( _lhsOtext)
 
