@@ -1,7 +1,7 @@
 Compiling typeerrors/Examples/ExprConstructor.hs
 
 (4,3): Type error in right hand side
-*** Expression     : :
+*** Expression     : (:)
 *** Type           : a -> [a] -> [a]
 *** Does not match : Int            
 
