@@ -1,5 +1,9 @@
 HELIUM
+- show van een String geeft lijst van characters
 - type Double = Float in Prelude??
+- import and export lists zijn niet moeilijk als het gaat om functienamen.
+     Types niet im/exporteren is wel een probleem vanwege dictionaries en show functies
+- show functies mag je niet verbergen (import hiding) maar dit levert nu geen foutmelding op
 - Hudak & Bird doorlopen
 - warning bij Let, Where (undefined constructor, hint: did you mean the keyword...?)
 - --version vlag (aanroepen bij start van Hint)
@@ -11,7 +15,6 @@ HELIUM
 	bijvoorbeeld showUnit of data Unit = ... proberen te definieren
 - :t in geval van typeringsfout
 - compilerondersteuning voor interpreter (expressie uitrekenen, type bepalen)
-- show functies mag je niet verbergen (import hiding) maar dit levert nu geen foutmelding op
 
 LIBRARIES
 - show implementeren met shows, ShowS; efficienter
@@ -32,7 +35,7 @@ LVM
 - IORef
 - 1 callback voor wx
 - WX integratie simpel: alleen soegraphics
-- let f x = f (x+1) in f 0 (*)
+- Garbage collector bug
 - Coreasm en module systeem
 
 DOCUMENTATIE

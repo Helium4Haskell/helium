@@ -27,7 +27,7 @@ Here is a list of differences between Helium (with overloading) and Haskell 98.
 <LI>Literate programming
 </UL>
 
-<H2>Supported but simplified</H2>
+<H2>Supported but restricted</H2>
 
 <UL>
 
@@ -40,12 +40,12 @@ Here is a list of differences between Helium (with overloading) and Haskell 98.
     <LI>Ord:  Bool, Char, Float, Int, [a] and tuples
     <LI>Show: Bool, Char, Either a b, Float, Int, Maybe a, Ordering, [a] and tuples
     <LI>Enum: Bool, Char, Float, Int and ()
-    </UL>    
+    </UL>
 
-<LI>Instances for </TT>Show</TT> and </TT>Eq</TT> (and not for other classes) 
-    can be derived for data types. These instances are needed to 
+<LI>Instances for </TT>Show</TT> and </TT>Eq</TT> (and not for other classes)
+    can be derived for data types. These instances are needed to
     use overloaded functions, such as <TT>show</TT> and <TT>(==)</TT>
-    
+
 <LI>If your <TT>main</TT> function is not of type IO, then the value is printed with the show functions. The show functions
     can print anything, e.g. functions are printed as <TT>&lt;&lt;function&gt;&gt;</TT>. Therefore, there is
     a difference between <TT>main = expression</TT> and <TT>main = show expression</TT>. In the
@@ -91,12 +91,17 @@ Here is a list of differences between Helium (with overloading) and Haskell 98.
 
 <LI>Fixity declarations are only allowed at top-level
 
+<LI><TT>Integer</TT> is simply a type synonym for <TT>Int</TT>. This makes programs with the explicit type
+    <TT>Integer</TT> compile but, of course, this does not make Integers arbitrary precision.
+
+<LI>Tuples with more than 10 elements are not supported.
+
 </UL>
 
 <H2>Not in Haskell 98</H2>
 
 <UL>
-<LI>A show function is generated for each data type and type synonym. For instance, the function <TT>showMaybe</TT> is 
+<LI>A show function is generated for each data type and type synonym. For instance, the function <TT>showMaybe</TT> is
 automatically created for the data type <TT>Maybe</TT>. If the data type has parameters, then the
 show function gets extra arguments, e.g. <TT>showMaybe showInt (Just 3)</TT>.
 </UL>

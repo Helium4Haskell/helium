@@ -439,7 +439,7 @@ depend :
 # UTRECHT ONLY
 
 newVersion: 
-	echo "module Version where version=\"1.5 (`date`)\"" >main/Version.hs
+	echo "module Version where version=\"1.5.1 (`date`)\"" >main/Version.hs
 
 smaller:
 	# *** UPX helium, texthint & lvmrun

@@ -276,11 +276,11 @@ leLex l n (c:cs)
 --
 leChunk :: Int -> (Char -> Bool) -> String -> (String, Int, String)
 
-leChunk n proper []	
+leChunk n proper [] 
   = ([], n, [])
 
 leChunk n proper (c:cs)
-  | proper c		
+  | proper c        
   = case leChunk (n+1) proper cs of
        (restId, col, restInput) -> (c:restId, col, restInput)
   | otherwise
@@ -1278,11 +1278,11 @@ hsDoExpr stack env toks =
               -> if assocS2 == InfixL && 
                     assocIn == InfixL 
                  then reduce
-	         else 
+             else 
                  if assocS2 == InfixR && 
                     assocIn == InfixR 
                  then shift
-	         else PFail (head toks) -- Because of ambiguousness 
+             else PFail (head toks) -- Because of ambiguousness 
            | not validIn && opS2
               -> reduce
              where
@@ -1316,18 +1316,18 @@ hsDoExpr stack env toks =
 
 hsPrecTable :: PEnv
 hsPrecTable = [
-  ("-",		(InfixL, 6)),
-  ("+",		(InfixL, 6)),
-  ("*",		(InfixL, 7)),
-  ("div",	(InfixN, 7)),
-  ("mod", 	(InfixN, 7)),
+  ("-",     (InfixL, 6)),
+  ("+",     (InfixL, 6)),
+  ("*",     (InfixL, 7)),
+  ("div",   (InfixN, 7)),
+  ("mod",   (InfixN, 7)),
 
-  ("<",		(InfixN, 4)),
-  ("<=",	(InfixN, 4)),
-  ("==",	(InfixN, 4)),
-  ("/=",	(InfixN, 4)),
-  (">=",	(InfixN, 4)),
-  (">",		(InfixN, 4)),
+  ("<",     (InfixN, 4)),
+  ("<=",    (InfixN, 4)),
+  ("==",    (InfixN, 4)),
+  ("/=",    (InfixN, 4)),
+  (">=",    (InfixN, 4)),
+  (">",     (InfixN, 4)),
 
   ("C:",        (InfixR, 5)),
   ("++",        (InfixR, 5)),
@@ -1338,12 +1338,12 @@ hsPrecTable = [
   ("elem",      (InfixN, 4)),
   ("notElem",   (InfixN, 4)),
 
-  ("||",	(InfixR, 2)),
-  ("&&",	(InfixR, 3))]
+  ("||",    (InfixR, 2)),
+  ("&&",    (InfixR, 3))]
 
 
 main = do
-    cs <- readFile "big_big_test.hs"
+    cs <- readFile "big_big_test.hs" -- TODO: cs <- getContents
     let tokens = laMain cs
     let parser_res = parser_test tokens
     putStr (showx parser_res)
