@@ -867,7 +867,7 @@ SEM Module
         let f (n,ms,t,isToplevel) = 
                            let ms'    = @substitution |-> ms
                                t'     = @substitution |-> t
-                               scheme = generalize (ftv ms') [] t'
+                               scheme = generalize (ftv ms') @predicates t'
                            in if null (ftv scheme) && isToplevel
                                 then [NoTypeDef n scheme isToplevel] 
                                 else []
@@ -880,24 +880,32 @@ SEM Module
 ATTR Body Declarations Declaration MaybeDeclarations MaybeExpression Expression Expressions 
      Statement Statements Qualifier Qualifiers RecordExpressionBindings GuardedExpression GuardedExpressions
      FunctionBinding FunctionBindings Alternative Alternatives RightHandSide RecordExpressionBinding
-     [ predicates:Predicates | localTypes : {[(Name, TpScheme)]} | ]
+     [ predicates:Predicates | localTypes : LocalTypes | ]
 
 SEM Module 
-  | Module     body . localTypes = []
+  | Module     body . localTypes = emptyFM
 
 ATTR Body [ | | toplevelTypes : TypeEnvironment ] 
   
 SEM Body
-  | Body   lhs . toplevelTypes = listToFM (convert @lhs.substitution @lhs.predicates @notypedefs) `plusFM` @declarations.typeSignatures
+  | Body   lhs . toplevelTypes = convertTop @lhs.substitution @lhs.predicates @notypedefs `plusFM` @declarations.typeSignatures
   
 SEM MaybeDeclarations
-  | Just   lhs . localTypes = convert @lhs.substitution @lhs.predicates @notypedefs ++ fmToList @declarations.typeSignatures ++ @declarations.localTypes 
+  | Just   lhs . localTypes = convertLocal @lhs.substitution @lhs.predicates @notypedefs
+                              `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM @declarations.typeSignatures
+                              `plusFM` @declarations.localTypes 
 SEM Expression                    
-  | Let    lhs . localTypes = convert @lhs.substitution @lhs.predicates @notypedefs ++ fmToList @declarations.typeSignatures ++ @declarations.localTypes 
+  | Let    lhs . localTypes = convertLocal @lhs.substitution @lhs.predicates @notypedefs
+                              `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM  @declarations.typeSignatures 
+                              `plusFM` @declarations.localTypes 
 SEM Statement                  
-  | Let    lhs . localTypes = convert @lhs.substitution @lhs.predicates @notypedefs ++ fmToList @declarations.typeSignatures ++ @declarations.localTypes 
+  | Let    lhs . localTypes = convertLocal @lhs.substitution @lhs.predicates @notypedefs
+                              `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM  @declarations.typeSignatures 
+                              `plusFM` @declarations.localTypes 
 SEM Qualifier                    
-  | Let    lhs . localTypes = convert @lhs.substitution @lhs.predicates @notypedefs ++ fmToList @declarations.typeSignatures ++ @declarations.localTypes 
+  | Let    lhs . localTypes = convertLocal @lhs.substitution @lhs.predicates @notypedefs 
+                              `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM  @declarations.typeSignatures 
+                              `plusFM` @declarations.localTypes 
  
 ----
 
@@ -908,12 +916,14 @@ ATTR Statement Statements Qualifier Qualifiers MaybeExpression Expression Expres
      [ overloads : Names | overloadedVars : OverloadedVariables | ]
 
 SEM Module 
-  | Module     body . overloadedVars = []
+  | Module     body . overloadedVars = emptyFM
                     . overloads      = [ n 
-                                       | (n, ts) <- @body.localTypes ++ 
-                                                    fmToList @body.toplevelTypes ++
-                                                    fmToList (typeEnvironment @lhs.importEnvironment)
+                                       | (n, ts) <- fmToList @body.toplevelTypes ++ fmToList (typeEnvironment @lhs.importEnvironment)
                                        ,  isOverloaded ts
+                                       ] ++
+                                       [ nameWithRangeToName n
+                                       | (n, ts) <- fmToList @body.localTypes  
+                                       , isOverloaded ts
                                        ]
                                        
   
@@ -921,20 +931,29 @@ SEM Expression
   | Variable   lhs  . overloadedVars = let mName = filter (@name.self==) @lhs.namesInScope
                                        in case mName of 
                                              [name] | any (equalNames name) @lhs.overloads
-                                               -> (@name.self, name, @lhs.substitution |-> @beta) : @lhs.overloadedVars
+                                               -> let qtype = getQualifiedType (generalize [] @lhs.predicates (@lhs.substitution |-> @beta))
+                                                  in addToFM @lhs.overloadedVars (NameWithRange @name.self) (NameWithRange name, qtype) 
                                              _ -> @lhs.overloadedVars
 
 SEM Module 
   | Module    loc . initialScope = keysFM (typeEnvironment @lhs.importEnvironment)
 {
-type OverloadedVariables = [(Name, Name, Tp)]
+type LocalTypes          = FiniteMap NameWithRange TpScheme
+type OverloadedVariables = FiniteMap NameWithRange (NameWithRange, QType)
 
-convert :: WrappedSubstitution -> Predicates -> [(Name,Tps,Tp,Bool)] -> [(Name, TpScheme)]
-convert sub predicates = map f 
+convertTop :: WrappedSubstitution -> Predicates -> [(Name,Tps,Tp,Bool)] -> TypeEnvironment
+convertTop sub predicates = listToFM . map f 
    where f (name,monos,tp,_) = 
             let monos' = ftv (sub |-> monos)
                 tp'    = sub |-> tp 
             in (name, generalize monos' predicates tp')
+ 
+convertLocal :: WrappedSubstitution -> Predicates -> [(Name,Tps,Tp,Bool)] -> LocalTypes
+convertLocal sub predicates = listToFM . map f 
+   where f (name,monos,tp,_) = 
+            let monos' = ftv (sub |-> monos)
+                tp'    = sub |-> tp 
+            in (NameWithRange name, generalize monos' predicates tp')
             
 equalNames :: Name -> Name -> Bool
 equalNames n1 n2 = n1 == n2 && (getNameRange n1) `cmp` (getNameRange n2)            

@@ -129,14 +129,22 @@ findMono :: Name -> MonoTable -> Tps
 findMono n = let p = elem n . fst
              in snd . head . filter p
 
-type OverloadedVariables = [(Name, Name, Tp)]
+type LocalTypes          = FiniteMap NameWithRange TpScheme
+type OverloadedVariables = FiniteMap NameWithRange (NameWithRange, QType)
 
-convert :: WrappedSubstitution -> Predicates -> [(Name,Tps,Tp,Bool)] -> [(Name, TpScheme)]
-convert sub predicates = map f 
+convertTop :: WrappedSubstitution -> Predicates -> [(Name,Tps,Tp,Bool)] -> TypeEnvironment
+convertTop sub predicates = listToFM . map f 
    where f (name,monos,tp,_) = 
             let monos' = ftv (sub |-> monos)
                 tp'    = sub |-> tp 
             in (name, generalize monos' predicates tp')
+ 
+convertLocal :: WrappedSubstitution -> Predicates -> [(Name,Tps,Tp,Bool)] -> LocalTypes
+convertLocal sub predicates = listToFM . map f 
+   where f (name,monos,tp,_) = 
+            let monos' = ftv (sub |-> monos)
+                tp'    = sub |-> tp 
+            in (NameWithRange name, generalize monos' predicates tp')
             
 equalNames :: Name -> Name -> Bool
 equalNames n1 n2 = n1 == n2 && (getNameRange n1) `cmp` (getNameRange n2)            
@@ -654,7 +662,7 @@ type T_Alternative = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (Int) ->
                      ([(Name,Tps,Tp,Bool)]) ->
                      (ImportEnvironment) ->
-                     ([(Name, TpScheme)]) ->
+                     (LocalTypes) ->
                      (IO ()) ->
                      (Tps) ->
                      (Names) ->
@@ -665,7 +673,7 @@ type T_Alternative = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (Predicates) ->
                      (WrappedSubstitution) ->
                      (TypeAnnotations) ->
-                     ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),( ([PatternElement], Bool) ),([(Name, TpScheme)]),(IO ()),(OneLineTree),(OverloadedVariables),([Warning]),(Alternative),(TypeAnnotations),(Names),(Warning))
+                     ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),( ([PatternElement], Bool) ),(LocalTypes),(IO ()),(OneLineTree),(OverloadedVariables),([Warning]),(Alternative),(TypeAnnotations),(Names),(Warning))
 -- cata
 sem_Alternative :: (Alternative) ->
                    (T_Alternative)
@@ -753,7 +761,7 @@ type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (Int) ->
                       ([(Name,Tps,Tp,Bool)]) ->
                       (ImportEnvironment) ->
-                      ([(Name, TpScheme)]) ->
+                      (LocalTypes) ->
                       (IO ()) ->
                       (Tps) ->
                       (Names) ->
@@ -764,7 +772,7 @@ type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (Predicates) ->
                       (WrappedSubstitution) ->
                       (TypeAnnotations) ->
-                      ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSets),([([PatternElement], Bool)]),([(Name, TpScheme)]),(IO ()),( [ OneLineTree] ),(OverloadedVariables),([Warning]),(Alternatives),(TypeAnnotations),(Names),([Warning]))
+                      ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSets),([([PatternElement], Bool)]),(LocalTypes),(IO ()),( [ OneLineTree] ),(OverloadedVariables),([Warning]),(Alternatives),(TypeAnnotations),(Names),([Warning]))
 -- cata
 sem_Alternatives :: (Alternatives) ->
                     (T_Alternatives)
@@ -838,7 +846,7 @@ type T_Body = ([((Expression, [String]), Core_TypingStrategy)]) ->
               (Int) ->
               ([(Name,Tps,Tp,Bool)]) ->
               (ImportEnvironment) ->
-              ([(Name, TpScheme)]) ->
+              (LocalTypes) ->
               (IO ()) ->
               (Tps) ->
               (Names) ->
@@ -848,7 +856,7 @@ type T_Body = ([((Expression, [String]), Core_TypingStrategy)]) ->
               (Predicates) ->
               (WrappedSubstitution) ->
               (TypeAnnotations) ->
-              ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Names),([(Name, TpScheme)]),(IO ()),([(Name,Tp)]),(OverloadedVariables),([Warning]),(Body),(TypeEnvironment),(TypeAnnotations),(Names))
+              ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Names),(LocalTypes),(IO ()),([(Name,Tp)]),(OverloadedVariables),([Warning]),(Body),(TypeEnvironment),(TypeAnnotations),(Names))
 -- cata
 sem_Body :: (Body) ->
             (T_Body)
@@ -896,7 +904,7 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_allPatterns) 
          ,_declarations_overloadedVars
          ,_declarations_patternMatchWarnings
          ,_self
-         ,listToFM (convert _lhs_substitution _lhs_predicates _notypedefs) `plusFM` _declarations_typeSignatures
+         ,convertTop _lhs_substitution _lhs_predicates _notypedefs `plusFM` _declarations_typeSignatures
          ,_anns ++ _declarations_typeAnnotations
          ,_declarations_unboundNames
          )
@@ -1038,7 +1046,7 @@ type T_Declaration = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (BindingGroups) ->
                      ([(Name,Tps,Tp,Bool)]) ->
                      (ImportEnvironment) ->
-                     ([(Name, TpScheme)]) ->
+                     (LocalTypes) ->
                      (IO ()) ->
                      (MonoTable) ->
                      (Tps) ->
@@ -1050,7 +1058,7 @@ type T_Declaration = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (WrappedSubstitution) ->
                      (TypeAnnotations) ->
                      (FiniteMap Name TpScheme) ->
-                     ( (Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(Names),([(Name, TpScheme)]),(IO ()),(OneLineTree),(OverloadedVariables),([Warning]),(Declaration),(TypeAnnotations),(FiniteMap Name TpScheme),(Names))
+                     ( (Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(Names),(LocalTypes),(IO ()),(OneLineTree),(OverloadedVariables),([Warning]),(Declaration),(TypeAnnotations),(FiniteMap Name TpScheme),(Names))
 -- cata
 sem_Declaration :: (Declaration) ->
                    (T_Declaration)
@@ -1381,7 +1389,7 @@ type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (BindingGroups) ->
                       ([(Name,Tps,Tp,Bool)]) ->
                       (ImportEnvironment) ->
-                      ([(Name, TpScheme)]) ->
+                      (LocalTypes) ->
                       (IO ()) ->
                       (MonoTable) ->
                       (Tps) ->
@@ -1393,7 +1401,7 @@ type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (WrappedSubstitution) ->
                       (TypeAnnotations) ->
                       (FiniteMap Name TpScheme) ->
-                      ( (Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(Names),([(Name, TpScheme)]),(IO ()),( [ OneLineTree] ),(OverloadedVariables),([Warning]),(Declarations),(TypeAnnotations),(FiniteMap Name TpScheme),(Names))
+                      ( (Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(Names),(LocalTypes),(IO ()),( [ OneLineTree] ),(OverloadedVariables),([Warning]),(Declarations),(TypeAnnotations),(FiniteMap Name TpScheme),(Names))
 -- cata
 sem_Declarations :: (Declarations) ->
                     (T_Declarations)
@@ -1506,7 +1514,7 @@ type T_Expression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (Int) ->
                     ([(Name,Tps,Tp,Bool)]) ->
                     (ImportEnvironment) ->
-                    ([(Name, TpScheme)]) ->
+                    (LocalTypes) ->
                     (IO ()) ->
                     (Tps) ->
                     (Names) ->
@@ -1518,7 +1526,7 @@ type T_Expression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     ([(Expression     , [String])]) ->
                     (TypeAnnotations) ->
                     (Int) ->
-                    ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),([(Name, TpScheme)]),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),(OneLineTree),(OverloadedVariables),([Warning]),(Expression),(TypeAnnotations),(Names),(Int))
+                    ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(LocalTypes),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),(OneLineTree),(OverloadedVariables),([Warning]),(Expression),(TypeAnnotations),(Names),(Int))
 -- cata
 sem_Expression :: (Expression) ->
                   (T_Expression)
@@ -2238,7 +2246,9 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_allPatterns) (_l
          ,_expression_betaUnique
          ,_notypedefs ++ _declarations_collectednotypedef
          ,_constraints
-         ,convert _lhs_substitution _lhs_predicates _notypedefs ++ fmToList _declarations_typeSignatures ++ _declarations_localTypes
+         ,convertLocal _lhs_substitution _lhs_predicates _notypedefs
+          `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM  _declarations_typeSignatures
+          `plusFM` _declarations_localTypes
          ,_expression_matchIO
          ,matchOnlyVariable _localInfo _lhs_tryPatterns
          ,_oneLineTree
@@ -2639,7 +2649,8 @@ sem_Expression_Variable (_range) (_name) (_lhs_allPatterns) (_lhs_betaUnique) (_
          ,let mName = filter (_name_self==) _lhs_namesInScope
           in case mName of
                 [name] | any (equalNames name) _lhs_overloads
-                  -> (_name_self, name, _lhs_substitution |-> _beta) : _lhs_overloadedVars
+                  -> let qtype = getQualifiedType (generalize [] _lhs_predicates (_lhs_substitution |-> _beta))
+                     in addToFM _lhs_overloadedVars (NameWithRange _name_self) (NameWithRange name, qtype)
                 _ -> _lhs_overloadedVars
          ,_lhs_patternMatchWarnings
          ,_self
@@ -2653,7 +2664,7 @@ type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (Int) ->
                      ([(Name,Tps,Tp,Bool)]) ->
                      (ImportEnvironment) ->
-                     ([(Name, TpScheme)]) ->
+                     (LocalTypes) ->
                      (IO ()) ->
                      (Tps) ->
                      (Names) ->
@@ -2665,7 +2676,7 @@ type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      ([(Expressions    , [String])]) ->
                      (TypeAnnotations) ->
                      (Int) ->
-                     ( (Assumptions),(Int),(Tps),([(Name,Tps,Tp,Bool)]),(ConstraintSets),([(Name, TpScheme)]),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),( [ OneLineTree] ),(OverloadedVariables),([Warning]),(Expressions),(TypeAnnotations),(Names),(Int))
+                     ( (Assumptions),(Int),(Tps),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(LocalTypes),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),( [ OneLineTree] ),(OverloadedVariables),([Warning]),(Expressions),(TypeAnnotations),(Names),(Int))
 -- cata
 sem_Expressions :: (Expressions) ->
                    (T_Expressions)
@@ -2785,7 +2796,7 @@ type T_FunctionBinding = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (Tps) ->
                          ([(Name,Tps,Tp,Bool)]) ->
                          (ImportEnvironment) ->
-                         ([(Name, TpScheme)]) ->
+                         (LocalTypes) ->
                          (IO ()) ->
                          (Tps) ->
                          (Names) ->
@@ -2795,7 +2806,7 @@ type T_FunctionBinding = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (Predicates) ->
                          (WrappedSubstitution) ->
                          (TypeAnnotations) ->
-                         ( (Int),(Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),( ([PatternElement], Bool) ),([(Name, TpScheme)]),(IO ()),(Name),(Int),(OneLineTree),(OverloadedVariables),([Warning]),(FunctionBinding),(TypeAnnotations),(Names),(Warning))
+                         ( (Int),(Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),( ([PatternElement], Bool) ),(LocalTypes),(IO ()),(Name),(Int),(OneLineTree),(OverloadedVariables),([Warning]),(FunctionBinding),(TypeAnnotations),(Names),(Warning))
 -- cata
 sem_FunctionBinding :: (FunctionBinding) ->
                        (T_FunctionBinding)
@@ -2873,7 +2884,7 @@ type T_FunctionBindings = ([((Expression, [String]), Core_TypingStrategy)]) ->
                           (Tps) ->
                           ([(Name,Tps,Tp,Bool)]) ->
                           (ImportEnvironment) ->
-                          ([(Name, TpScheme)]) ->
+                          (LocalTypes) ->
                           (IO ()) ->
                           (Tps) ->
                           (Names) ->
@@ -2883,7 +2894,7 @@ type T_FunctionBindings = ([((Expression, [String]), Core_TypingStrategy)]) ->
                           (Predicates) ->
                           (WrappedSubstitution) ->
                           (TypeAnnotations) ->
-                          ( (Int),(Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSets),([([PatternElement], Bool)]),([(Name, TpScheme)]),(IO ()),(Name),(Int),( [ OneLineTree] ),(OverloadedVariables),([Warning]),(FunctionBindings),(TypeAnnotations),(Names),([Warning]))
+                          ( (Int),(Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSets),([([PatternElement], Bool)]),(LocalTypes),(IO ()),(Name),(Int),( [ OneLineTree] ),(OverloadedVariables),([Warning]),(FunctionBindings),(TypeAnnotations),(Names),([Warning]))
 -- cata
 sem_FunctionBindings :: (FunctionBindings) ->
                         (T_FunctionBindings)
@@ -2911,7 +2922,7 @@ type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (Int) ->
                            ([(Name,Tps,Tp,Bool)]) ->
                            (ImportEnvironment) ->
-                           ([(Name, TpScheme)]) ->
+                           (LocalTypes) ->
                            (IO ()) ->
                            (Tps) ->
                            (Names) ->
@@ -2924,7 +2935,7 @@ type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (WrappedSubstitution) ->
                            (TypeAnnotations) ->
                            (Int) ->
-                           ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Bool),([(Name, TpScheme)]),(IO ()),( String -> OneLineTree ),(OverloadedVariables),([Warning]),(Range),(GuardedExpression),(TypeAnnotations),(Names),(Int),(Warning))
+                           ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Bool),(LocalTypes),(IO ()),( String -> OneLineTree ),(OverloadedVariables),([Warning]),(Range),(GuardedExpression),(TypeAnnotations),(Names),(Int),(Warning))
 -- cata
 sem_GuardedExpression :: (GuardedExpression) ->
                          (T_GuardedExpression)
@@ -2996,7 +3007,7 @@ type T_GuardedExpressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                             (Int) ->
                             ([(Name,Tps,Tp,Bool)]) ->
                             (ImportEnvironment) ->
-                            ([(Name, TpScheme)]) ->
+                            (LocalTypes) ->
                             (IO ()) ->
                             (Tps) ->
                             (Names) ->
@@ -3010,7 +3021,7 @@ type T_GuardedExpressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                             (WrappedSubstitution) ->
                             (TypeAnnotations) ->
                             (Int) ->
-                            ( (Assumptions),(Int),(Tps),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(Bool),([(Name, TpScheme)]),(IO ()),( [ String -> OneLineTree ] ),(OverloadedVariables),([Warning]),(GuardedExpressions),(TypeAnnotations),(Names),(Int))
+                            ( (Assumptions),(Int),(Tps),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(Bool),(LocalTypes),(IO ()),( [ String -> OneLineTree ] ),(OverloadedVariables),([Warning]),(GuardedExpressions),(TypeAnnotations),(Names),(Int))
 -- cata
 sem_GuardedExpressions :: (GuardedExpressions) ->
                           (T_GuardedExpressions)
@@ -3366,7 +3377,7 @@ type T_MaybeDeclarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            ([(Name,Tps,Tp,Bool)]) ->
                            (ConstraintSet) ->
                            (ImportEnvironment) ->
-                           ([(Name, TpScheme)]) ->
+                           (LocalTypes) ->
                            (IO ()) ->
                            (Tps) ->
                            (Names) ->
@@ -3377,7 +3388,7 @@ type T_MaybeDeclarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (WrappedSubstitution) ->
                            (TypeAnnotations) ->
                            (Names) ->
-                           ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),([(Name, TpScheme)]),(IO ()),(Names),( Maybe [OneLineTree] ),(OverloadedVariables),([Warning]),(MaybeDeclarations),(TypeAnnotations),(Names))
+                           ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(LocalTypes),(IO ()),(Names),( Maybe [OneLineTree] ),(OverloadedVariables),([Warning]),(MaybeDeclarations),(TypeAnnotations),(Names))
 -- cata
 sem_MaybeDeclarations :: (MaybeDeclarations) ->
                          (T_MaybeDeclarations)
@@ -3404,7 +3415,22 @@ sem_MaybeDeclarations_Just (_declarations) (_lhs_allPatterns) (_lhs_assumptions)
             changeOfScope _declarations_declVarNames (_declarations_unboundNames ++ _lhs_unboundNames) _lhs_namesInScope
         ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_declVarNames,_declarations_localTypes,_declarations_matchIO,_declarations_oneLineTree,_declarations_overloadedVars,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeAnnotations,_declarations_typeSignatures,_declarations_unboundNames) =
             (_declarations (_lhs_allPatterns) (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_localTypes) (_lhs_matchIO) (_monoTable) (_lhs_monos) (_namesInScope) (_lhs_overloadedVars) (_lhs_overloads) (_lhs_patternMatchWarnings) (_lhs_predicates) (_lhs_substitution) (_lhs_typeAnnotations) (emptyFM))
-    in  ( _aset,_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_cset,convert _lhs_substitution _lhs_predicates _notypedefs ++ fmToList _declarations_typeSignatures ++ _declarations_localTypes,_declarations_matchIO,_namesInScope,_oneLineTree,_declarations_overloadedVars,_declarations_patternMatchWarnings,_self,_anns ++ _declarations_typeAnnotations,_unboundNames)
+    in  ( _aset
+         ,_declarations_betaUnique
+         ,_notypedefs ++ _declarations_collectednotypedef
+         ,_cset
+         ,convertLocal _lhs_substitution _lhs_predicates _notypedefs
+          `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM _declarations_typeSignatures
+          `plusFM` _declarations_localTypes
+         ,_declarations_matchIO
+         ,_namesInScope
+         ,_oneLineTree
+         ,_declarations_overloadedVars
+         ,_declarations_patternMatchWarnings
+         ,_self
+         ,_anns ++ _declarations_typeAnnotations
+         ,_unboundNames
+         )
 sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
 sem_MaybeDeclarations_Nothing (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_localTypes) (_lhs_matchIO) (_lhs_monos) (_lhs_namesInScope) (_lhs_overloadedVars) (_lhs_overloads) (_lhs_patternMatchWarnings) (_lhs_predicates) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_unboundNames) =
     let (_self) =
@@ -3441,7 +3467,7 @@ type T_MaybeExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (Int) ->
                          ([(Name,Tps,Tp,Bool)]) ->
                          (ImportEnvironment) ->
-                         ([(Name, TpScheme)]) ->
+                         (LocalTypes) ->
                          (IO ()) ->
                          (Tps) ->
                          (Names) ->
@@ -3453,7 +3479,7 @@ type T_MaybeExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          ([(MaybeExpression, [String])]) ->
                          (TypeAnnotations) ->
                          (Int) ->
-                         ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),([(Name, TpScheme)]),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),( Maybe OneLineTree ),(OverloadedVariables),([Warning]),(Bool),(MaybeExpression),(TypeAnnotations),(Names),(Int))
+                         ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(LocalTypes),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),( Maybe OneLineTree ),(OverloadedVariables),([Warning]),(Bool),(MaybeExpression),(TypeAnnotations),(Names),(Int))
 -- cata
 sem_MaybeExpression :: (MaybeExpression) ->
                        (T_MaybeExpression)
@@ -3579,7 +3605,7 @@ sem_MaybeNames_Nothing  =
 type T_Module = (Flattening) ->
                 (ImportEnvironment) ->
                 (Bool) ->
-                ( (IO ()),([(Name,TpScheme)]),(OverloadedVariables),(Module),(TypeEnvironment),(TypeErrors),(Warnings))
+                ( (IO ()),(LocalTypes),(OverloadedVariables),(Module),(TypeEnvironment),(TypeErrors),(Warnings))
 -- cata
 sem_Module :: (Module) ->
               (T_Module)
@@ -3642,7 +3668,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_flattening) (_lhs_im
             let f (n,ms,t,isToplevel) =
                                let ms'    = _substitution |-> ms
                                    t'     = _substitution |-> t
-                                   scheme = generalize (ftv ms') [] t'
+                                   scheme = generalize (ftv ms') _predicates t'
                                in if null (ftv scheme) && isToplevel
                                     then [NoTypeDef n scheme isToplevel]
                                     else []
@@ -3667,16 +3693,18 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_flattening) (_lhs_im
                    (maximum (0 : _monomorphics) + 1)
                    ([])
                    (_lhs_importEnvironment)
-                   ([])
+                   (emptyFM)
                    (return ())
                    (_monos)
                    (_namesInScope)
-                   ([])
+                   (emptyFM)
                    ([ n
-                    | (n, ts) <- _body_localTypes ++
-                                 fmToList _body_toplevelTypes ++
-                                 fmToList (typeEnvironment _lhs_importEnvironment)
+                    | (n, ts) <- fmToList _body_toplevelTypes ++ fmToList (typeEnvironment _lhs_importEnvironment)
                     ,  isOverloaded ts
+                    ] ++
+                    [ nameWithRangeToName n
+                    | (n, ts) <- fmToList _body_localTypes
+                    , isOverloaded ts
                     ])
                    ([])
                    (_predicates)
@@ -4307,7 +4335,7 @@ type T_Qualifier = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    ([(Name,Tps,Tp,Bool)]) ->
                    (ConstraintSet) ->
                    (ImportEnvironment) ->
-                   ([(Name, TpScheme)]) ->
+                   (LocalTypes) ->
                    (IO ()) ->
                    (Tps) ->
                    (Names) ->
@@ -4319,7 +4347,7 @@ type T_Qualifier = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (TypeAnnotations) ->
                    (Names) ->
                    (Int) ->
-                   ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),([(Name, TpScheme)]),(IO ()),(Tps),(Names),(OneLineTree),(OverloadedVariables),([Warning]),(Qualifier),(TypeAnnotations),(Names),(Int))
+                   ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(LocalTypes),(IO ()),(Tps),(Names),(OneLineTree),(OverloadedVariables),([Warning]),(Qualifier),(TypeAnnotations),(Names),(Int))
 -- cata
 sem_Qualifier :: (Qualifier) ->
                  (T_Qualifier)
@@ -4467,7 +4495,24 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_allPatterns) (_lhs_assumptions)
             (_range )
         ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_declVarNames,_declarations_localTypes,_declarations_matchIO,_declarations_oneLineTree,_declarations_overloadedVars,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeAnnotations,_declarations_typeSignatures,_declarations_unboundNames) =
             (_declarations (_lhs_allPatterns) (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_localTypes) (_lhs_matchIO) (_monoTable) (_lhs_monos) (_namesInScope) (_lhs_overloadedVars) (_lhs_overloads) (_lhs_patternMatchWarnings) (_lhs_predicates) (_lhs_substitution) (_lhs_typeAnnotations) (emptyFM))
-    in  ( _aset,_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_cset,convert _lhs_substitution _lhs_predicates _notypedefs ++ fmToList _declarations_typeSignatures ++ _declarations_localTypes,_declarations_matchIO,_lhs_monos,_namesInScope,_oneLineTree,_declarations_overloadedVars,_declarations_patternMatchWarnings,_self,_anns ++ _declarations_typeAnnotations,_unboundNames,_lhs_uniqueSecondRound)
+    in  ( _aset
+         ,_declarations_betaUnique
+         ,_notypedefs ++ _declarations_collectednotypedef
+         ,_cset
+         ,convertLocal _lhs_substitution _lhs_predicates _notypedefs
+          `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM  _declarations_typeSignatures
+          `plusFM` _declarations_localTypes
+         ,_declarations_matchIO
+         ,_lhs_monos
+         ,_namesInScope
+         ,_oneLineTree
+         ,_declarations_overloadedVars
+         ,_declarations_patternMatchWarnings
+         ,_self
+         ,_anns ++ _declarations_typeAnnotations
+         ,_unboundNames
+         ,_lhs_uniqueSecondRound
+         )
 -- Qualifiers --------------------------------------------------
 -- semantic domain
 type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -4476,7 +4521,7 @@ type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     ([(Name,Tps,Tp,Bool)]) ->
                     (ConstraintSet) ->
                     (ImportEnvironment) ->
-                    ([(Name, TpScheme)]) ->
+                    (LocalTypes) ->
                     (IO ()) ->
                     (Tps) ->
                     (Names) ->
@@ -4488,7 +4533,7 @@ type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (TypeAnnotations) ->
                     (Names) ->
                     (Int) ->
-                    ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),([(Name, TpScheme)]),(IO ()),(Tps),(Names),( [ OneLineTree] ),(OverloadedVariables),([Warning]),(Qualifiers),(TypeAnnotations),(Names),(Int))
+                    ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(LocalTypes),(IO ()),(Tps),(Names),( [ OneLineTree] ),(OverloadedVariables),([Warning]),(Qualifiers),(TypeAnnotations),(Names),(Int))
 -- cata
 sem_Qualifiers :: (Qualifiers) ->
                   (T_Qualifiers)
@@ -4532,7 +4577,7 @@ sem_Range_Range (_start) (_stop) =
 -- RecordExpressionBinding -------------------------------------
 -- semantic domain
 type T_RecordExpressionBinding = ([(Name,Tps,Tp,Bool)]) ->
-                                 ([(Name, TpScheme)]) ->
+                                 (LocalTypes) ->
                                  (Names) ->
                                  (OverloadedVariables) ->
                                  (Names) ->
@@ -4540,7 +4585,7 @@ type T_RecordExpressionBinding = ([(Name,Tps,Tp,Bool)]) ->
                                  (Predicates) ->
                                  (WrappedSubstitution) ->
                                  (TypeAnnotations) ->
-                                 ( ([(Name,Tps,Tp,Bool)]),([(Name, TpScheme)]),(OverloadedVariables),([Warning]),(RecordExpressionBinding),(TypeAnnotations),(Names))
+                                 ( ([(Name,Tps,Tp,Bool)]),(LocalTypes),(OverloadedVariables),([Warning]),(RecordExpressionBinding),(TypeAnnotations),(Names))
 -- cata
 sem_RecordExpressionBinding :: (RecordExpressionBinding) ->
                                (T_RecordExpressionBinding)
@@ -4567,7 +4612,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expressio
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
 type T_RecordExpressionBindings = ([(Name,Tps,Tp,Bool)]) ->
-                                  ([(Name, TpScheme)]) ->
+                                  (LocalTypes) ->
                                   (Names) ->
                                   (OverloadedVariables) ->
                                   (Names) ->
@@ -4575,7 +4620,7 @@ type T_RecordExpressionBindings = ([(Name,Tps,Tp,Bool)]) ->
                                   (Predicates) ->
                                   (WrappedSubstitution) ->
                                   (TypeAnnotations) ->
-                                  ( ([(Name,Tps,Tp,Bool)]),([(Name, TpScheme)]),(OverloadedVariables),([Warning]),(RecordExpressionBindings),(TypeAnnotations),(Names))
+                                  ( ([(Name,Tps,Tp,Bool)]),(LocalTypes),(OverloadedVariables),([Warning]),(RecordExpressionBindings),(TypeAnnotations),(Names))
 -- cata
 sem_RecordExpressionBindings :: (RecordExpressionBindings) ->
                                 (T_RecordExpressionBindings)
@@ -4657,7 +4702,7 @@ type T_RightHandSide = ([((Expression, [String]), Core_TypingStrategy)]) ->
                        (Int) ->
                        ([(Name,Tps,Tp,Bool)]) ->
                        (ImportEnvironment) ->
-                       ([(Name, TpScheme)]) ->
+                       (LocalTypes) ->
                        (IO ()) ->
                        (Tps) ->
                        (Names) ->
@@ -4667,7 +4712,7 @@ type T_RightHandSide = ([((Expression, [String]), Core_TypingStrategy)]) ->
                        (Predicates) ->
                        (WrappedSubstitution) ->
                        (TypeAnnotations) ->
-                       ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Bool),([(Name, TpScheme)]),(IO ()),( String -> OneLineTree ),(OverloadedVariables),([Warning]),(RightHandSide),(TypeAnnotations),(Names))
+                       ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Bool),(LocalTypes),(IO ()),( String -> OneLineTree ),(OverloadedVariables),([Warning]),(RightHandSide),(TypeAnnotations),(Names))
 -- cata
 sem_RightHandSide :: (RightHandSide) ->
                      (T_RightHandSide)
@@ -4796,7 +4841,7 @@ type T_Statement = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (ConstraintSet) ->
                    (Maybe Tp) ->
                    (ImportEnvironment) ->
-                   ([(Name, TpScheme)]) ->
+                   (LocalTypes) ->
                    (IO ()) ->
                    (Tps) ->
                    (Names) ->
@@ -4808,7 +4853,7 @@ type T_Statement = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (TypeAnnotations) ->
                    (Names) ->
                    (Int) ->
-                   ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Maybe Tp),([(Name, TpScheme)]),(IO ()),(Tps),(Names),(OneLineTree),(OverloadedVariables),([Warning]),(Statement),(TypeAnnotations),(Names),(Int))
+                   ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Maybe Tp),(LocalTypes),(IO ()),(Tps),(Names),(OneLineTree),(OverloadedVariables),([Warning]),(Statement),(TypeAnnotations),(Names),(Int))
 -- cata
 sem_Statement :: (Statement) ->
                  (T_Statement)
@@ -4960,7 +5005,25 @@ sem_Statement_Let (_range) (_declarations) (_lhs_allPatterns) (_lhs_assumptions)
             (_range )
         ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_declVarNames,_declarations_localTypes,_declarations_matchIO,_declarations_oneLineTree,_declarations_overloadedVars,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeAnnotations,_declarations_typeSignatures,_declarations_unboundNames) =
             (_declarations (_lhs_allPatterns) (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_localTypes) (_lhs_matchIO) (_monoTable) (_lhs_monos) (_namesInScope) (_lhs_overloadedVars) (_lhs_overloads) (_lhs_patternMatchWarnings) (_lhs_predicates) (_lhs_substitution) (_lhs_typeAnnotations) (emptyFM))
-    in  ( _aset,_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_cset,Nothing,convert _lhs_substitution _lhs_predicates _notypedefs ++ fmToList _declarations_typeSignatures ++ _declarations_localTypes,_declarations_matchIO,_lhs_monos,_namesInScope,_oneLineTree,_declarations_overloadedVars,_declarations_patternMatchWarnings,_self,_anns ++ _declarations_typeAnnotations,_unboundNames,_lhs_uniqueSecondRound)
+    in  ( _aset
+         ,_declarations_betaUnique
+         ,_notypedefs ++ _declarations_collectednotypedef
+         ,_cset
+         ,Nothing
+         ,convertLocal _lhs_substitution _lhs_predicates _notypedefs
+          `plusFM` foldFM (\n ts fm -> addToFM fm (NameWithRange n) ts) emptyFM  _declarations_typeSignatures
+          `plusFM` _declarations_localTypes
+         ,_declarations_matchIO
+         ,_lhs_monos
+         ,_namesInScope
+         ,_oneLineTree
+         ,_declarations_overloadedVars
+         ,_declarations_patternMatchWarnings
+         ,_self
+         ,_anns ++ _declarations_typeAnnotations
+         ,_unboundNames
+         ,_lhs_uniqueSecondRound
+         )
 -- Statements --------------------------------------------------
 -- semantic domain
 type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -4970,7 +5033,7 @@ type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (ConstraintSet) ->
                     (Maybe Tp) ->
                     (ImportEnvironment) ->
-                    ([(Name, TpScheme)]) ->
+                    (LocalTypes) ->
                     (IO ()) ->
                     (Tps) ->
                     (Names) ->
@@ -4982,7 +5045,7 @@ type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (TypeAnnotations) ->
                     (Names) ->
                     (Int) ->
-                    ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Maybe Tp),([(Name, TpScheme)]),(IO ()),(Names),( [ OneLineTree] ),(OverloadedVariables),([Warning]),(Statements),(TypeAnnotations),(Names),(Int))
+                    ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Maybe Tp),(LocalTypes),(IO ()),(Names),( [ OneLineTree] ),(OverloadedVariables),([Warning]),(Statements),(TypeAnnotations),(Names),(Int))
 -- cata
 sem_Statements :: (Statements) ->
                   (T_Statements)

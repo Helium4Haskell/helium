@@ -1,7 +1,7 @@
 -- Utilities to extract data from the syntax tree
 module UHA_Utils where
 
-import UHA_Range(noRange)
+import UHA_Range(noRange, getNameRange)
 import UHA_Syntax(Name(..), ImportDeclaration(..))
 import Id(Id, idFromString, stringFromId)
 import Char
@@ -16,6 +16,25 @@ instance Ord Name where
 
 instance Show Name where 
     show = getNameName  
+
+--------------------------------------------------------------
+-- NameWithRange 
+
+newtype NameWithRange = NameWithRange { nameWithRangeToName :: Name }
+
+instance Show NameWithRange where
+   show (NameWithRange name) = 
+      show name ++ " at " ++ show (getNameRange name)
+   
+instance Eq  NameWithRange where
+   NameWithRange name1 == NameWithRange name2 = 
+      (name1, getNameRange name1) == (name2, getNameRange name2)
+      
+instance Ord NameWithRange where
+   NameWithRange name1 <= NameWithRange name2 = 
+      (name1, getNameRange name1) <= (name2, getNameRange name2)
+      
+--------------------------------------------------------------
 
 getNameName :: Name -> String
 getNameName (Name_Identifier _ _ name) = name

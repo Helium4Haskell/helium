@@ -30,8 +30,9 @@ phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv
         -- add the top-level types (including the inferred types)
         finalEnv = addToTypeEnvironment toplevelTypes completeEnv
     
---    putStrLn (unlines ("" : "localTypes:" : map show localTypes))
---    putStrLn (unlines ("" : "overloadedVars:"   : map (\(n,m,t) -> show n ++ "/" ++ show m ++" :: " ++ show t) overloadedVars))
+--    putStrLn (unlines ("" : "toplevelTypes: " : map (\(n,ts) -> show n ++ " :: "++show ts) (fmToList toplevelTypes)))
+--    putStrLn (unlines ("" : "localTypes:" : map show (fmToList localTypes)))
+--    putStrLn (unlines ("" : "overloadedVars:"   : map (\(n,(m,t)) -> show n ++ " in scope of " ++ show m ++" has type " ++ show t) (fmToList overloadedVars)))
     
     when (DumpTypeDebug `elem` options) debugTypes
     

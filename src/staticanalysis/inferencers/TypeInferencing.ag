@@ -13,7 +13,7 @@ ATTR Module
      useTypeGraph          : Bool
    |
    | debugIO               : {IO ()}
-     localTypes            : {[(Name,TpScheme)]}
+     localTypes            : LocalTypes
      overloadedVars        : OverloadedVariables
      toplevelTypes         : TypeEnvironment
      typeErrors            : TypeErrors

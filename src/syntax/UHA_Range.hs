@@ -6,6 +6,9 @@ import Utils(internalError)
 import Maybe(isJust)
 import List(sort, partition)
 
+--------------------------------------------------------------
+-- instances for Range and Position
+
 instance Show Range where
     show = showRange
     
@@ -22,7 +25,7 @@ instance Ord Range where
 instance Eq Position where
     Position_Position m1 l1 c1 == Position_Position m2 l2 c2 =
         m1 == m2 && l1 == l2 && c1 == c2
-    Position_Unknown           == Position_Unknown        = False
+    Position_Unknown           == Position_Unknown        = True
     Position_Unknown           == Position_Position _ _ _ = False
     Position_Position _ _ _    == Position_Unknown        = False
 
@@ -31,9 +34,11 @@ instance Ord Position where
         (l1 < l2)
         ||
         (l1 == l2 && c1 <= c2)
-    Position_Unknown        <= Position_Unknown        = False
+    Position_Unknown        <= Position_Unknown        = True
     Position_Unknown        <= Position_Position _ _ _ = True
     Position_Position _ _ _ <= Position_Unknown        = False   
+
+--------------------------------------------------------------
 
 getNameRange :: Name -> Range
 getNameRange (Name_Identifier r _ _) = r
