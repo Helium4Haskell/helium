@@ -378,20 +378,23 @@ movetohome: smaller
 	# *** Copy generated lvms and touch them
 	cp ../lib/*.lvm ../distribution/helium/lib
 	touch ../distribution/helium/lib/*.lvm # so that they are seen as up to date
+	# *** Copy Hint.jar
+	cp ../../hint/release/Hint.jar ../distribution/helium/bin
 
 movetobbl: smaller
 	# *** Copying library sources to projects directory
-	cp ../lib/Prelude.hs ../lib/List.hs ../lib/Maybe.hs //p/helium/lib
+	cp ../lib/Prelude.hs ../lib/List.hs ../lib/Maybe.hs //r/helium/lib
 	# *** Copying executables to projects directory
-	cp $(HELIUMBINDIR)/$(MAIN)$(EXE) //p/helium/bin
-	cp $(LVMRUNTIMEDIR)/lvmrun$(EXE) //p/helium/bin
-	cp $(HELIUMBINDIR)/texthint$(EXE) //p/helium/bin
+	cp $(HELIUMBINDIR)/$(MAIN)$(EXE) //r/helium/bin
+	cp $(LVMRUNTIMEDIR)/lvmrun$(EXE) //r/helium/bin
+	cp $(HELIUMBINDIR)/texthint$(EXE) //r/helium/bin
 	# *** Copying demos to projects directory
-	cp ../demo/Calendar.hs ../demo/ParserLibrary.hs ../demo/ParserDemo.hs ../demo/TicTacToe.hs //p/helium/demo
+	cp ../demo/Calendar.hs ../demo/ParserLibrary.hs ../demo/ParserDemo.hs ../demo/TicTacToe.hs //r/helium/demo
 	# *** Copy generated lvms and touch them
-	cp ../lib/*.lvm //p/helium/lib
-	touch //p/helium/lib/*.lvm # so that they are seen as up to date
+	cp ../lib/*.lvm //r/helium/lib
+	touch //r/helium/lib/*.lvm # so that they are seen as up to date
 	# DON'T FORGET TO CHECK PERMISSIONS
+	cp //c/docs/helium/hint/release/Hint.jar //r/helium/bin
 
 # DO NOT DELETE: Beginning of Haskell dependencies
 # DO NOT DELETE: End of Haskell dependencies
