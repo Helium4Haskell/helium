@@ -49,7 +49,7 @@ else
 PACKAGENET = 
 endif
 HC_OPTS = -static -cpp -fallow-overlapping-instances -fglasgow-exts \
-		-fallow-undecidable-instances $(PACKAGENET) -i$(IFACES) $(EXTRA_HC_OPTS)
+		-fallow-undecidable-instances $(PACKAGENET) -package lang -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
 AG_OPTS = -mscfr
@@ -365,8 +365,10 @@ clean:
 	$(RM) ../lib/*.lvm
 	$(RM) $(HELIUMBINDIR)/$(MAIN)$(EXE)
 	$(RM) $(HELIUMBINDIR)/texthint$(EXE)	
-	$(RM) $(PARSECDIR)/*.o
-	$(RM) $(PARSECDIR)/*.hi
+	$(RM) -r $(PARSECIMPDIR)/*.o
+	$(RM) -r $(PARSECIMPDIR)/*.hi
+	$(RM) -r $(PARSECIMPDIR)/Parsec/*.o
+	$(RM) -r $(PARSECIMPDIR)/Parsec/*.hi
 	cd $(LVMLIBDIR); $(MAKE) clean
 	cd $(LVMRUNTIMEDIR); $(MAKE) clean
 

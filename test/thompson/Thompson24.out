@@ -1,7 +1,7 @@
 Compiling thompson/Thompson24.hs
 (1,1): Declared type is too general
  expression       : compress
-   declared type  : [a  ] -> [a  ]
-   inferred type  : [Int] -> [Int]
+   declared type  :         [a] -> [a]
+   inferred type  : Eq b => [b] -> [b]
 
 Compilation failed with 1 error
