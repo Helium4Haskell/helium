@@ -81,7 +81,8 @@ nil = Con (ConId nilId)
 
 -- Function "stringToCore" converts a string to a Core expression
 stringToCore :: String -> Expr
-stringToCore xs = coreList (map (Lit . LitInt . ord) xs)
+stringToCore [x] = cons (Lit (LitInt (ord x))) nil
+stringToCore xs = var "primPackedToString" `app_` packedString xs
 
 var :: String -> Expr
 var x = Var (idFromString x)

@@ -1,19 +1,15 @@
-DOCUMENTATIE
-
-! commentaar over List en Maybe
-! tutorial
-
-INTERPRETER
-* functies definieren? 
-* autoload feature (zie e-mails van Stephen Milborrow)?
-
-DAAN
-! file IO exceptions; * EOF in getChar. How? catch werkt niet
-! strictheid van error
-! let f x = f (x+1) in f 0
-
-COMPILER
-* Hint bij "abs -42"
+* Doc: commentaar over List en Maybe
+* Doc: tutorial
+* Hint: functies definieren? 
+* Hint: autoload feature (zie e-mails van Stephen Milborrow)?
+* Hint: Er mogen niet twee punten in een filenaam zitten
+* Daan: file IO exceptions; * EOF in getChar. How? catch werkt niet
+* Daan: strictheid van error
+* Daan: let f x = f (x+1) in f 0
+* Compiler: hint bij "abs -42" (Bastiaan)
+* Compiler: Als duplicated en undefined met hint dan dubbelen in hint, maybe you meant +! or +!
+* Compiler: x = 1111111111111111111111   wordt geparst...
+* Compiler, TextHint, lvmrun, coreasm, Hint: paden via command-line
 
 ---- ONBELANGRIJK ----
                 
