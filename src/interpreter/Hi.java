@@ -195,7 +195,7 @@ class LogoCanvas extends Canvas
 		LogoCanvas()
 		{
 			setSize(150, 45);
-			logoImage = Toolkit.getDefaultToolkit().getImage("HeliumLogo.jpg");
+			logoImage = Toolkit.getDefaultToolkit().getImage("Logo.jpg");
 			MediaTracker tracker = new MediaTracker(this);
 			tracker.addImage(logoImage, 0);
 			try {
