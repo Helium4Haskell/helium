@@ -1,3 +1,15 @@
+-----------------------------------------------------------------------------
+-- The Helium Compiler : Static Analysis : a library for types
+-- |
+-- Maintainer  :  Bastiaan Heeren (bastiaan@cs.uu.nl)
+-- Stability   :  unknown
+-- Portability :  unknown
+--
+-- This module contains a data type to represent (plain) types, some basic 
+-- functionality for types, and an instance for Show.
+--
+-----------------------------------------------------------------------------
+
 -------------------------------------------------------------------------------
 --
 --   *** The Helium Compiler : Static Analysis ***
@@ -22,7 +34,7 @@ import Utils                ( internalError )
 infix 4 |->
 
 class Substitution s where
-   lookupInt   :: Int -> s -> Maybe Tp   -- lookup Int in substitution   
+   lookupInt   :: Int -> s -> Tp         -- lookup Int in substitution   
    removeDom   :: [Int] -> s -> s        -- remove from the domain of the substitution
    restrictDom :: [Int] -> s -> s        -- restrict the domain of the substitution
    dom         :: s -> [Int]             -- domain of substitution
@@ -42,7 +54,7 @@ type FiniteMapSubstitution = FiniteMap Int Tp
 
 instance Substitution FiniteMapSubstitution where
 
-   lookupInt      = flip lookupFM 
+   lookupInt i fm = lookupWithDefaultFM fm (TVar i) i
    removeDom      = flip delListFromFM
    restrictDom is = filterFM (\i _ -> i `elem` is)
    
@@ -71,7 +83,7 @@ listToSubstitution = listToFM
 
 instance Substitution (Array Int (Maybe Tp)) where
 
-   lookupInt   i  arr = Just $ maybe (TVar i) (arr |->) (arr ! i)
+   lookupInt   i  arr = maybe (TVar i) (arr |->) (arr ! i)
    removeDom   is arr = arr // zip is (repeat Nothing)
    restrictDom is arr = let is' = filter (`notElem` is) (dom arr)
                           in arr // zip is' (repeat Nothing)
@@ -101,9 +113,9 @@ instance Substitution BinTreeSubst where
                            BinTreeSubstSplit j l r 
                                | i <= j    -> lookupInt i l
                                | otherwise -> lookupInt i r
-                           BinTreeSubstNode tp     -> Just tp 
-                           BinTreeSubstEmpty       -> Nothing
-   removeDom   _ = internalError "SATypes.hs" "BinTreeSubst" "removeDom: substitution is static" 
+                           BinTreeSubstNode tp     -> tp 
+                           BinTreeSubstEmpty       -> TVar i
+   removeDom   _ = internalError "SATypes.hs" "BinTreeSubst" "removeDom: substitution is static"
    restrictDom _ = internalError "SATypes.hs" "BinTreeSubst" "restrictDom: substitution is static" 
    dom            = internalError "SATypes.hs" "BinTreeSubst" "dom: substitution is static" 
    cod            = internalError "SATypes.hs" "BinTreeSubst" "cod: substitution is static" 
@@ -124,7 +136,7 @@ wrapSubstitution substitution =
 data WrappedSubstitution = 
    forall a . Substitution a => 
       WrappedSubstitution a 
-         ( Int -> a -> Maybe Tp   
+         ( Int -> a -> Tp   
          , [Int] -> a -> a
          , [Int] -> a -> a
          , a -> [Int]
@@ -143,10 +155,10 @@ instance Substitution WrappedSubstitution where
    
 instance Substitutable Tp where   
    sub |-> tp = case tp of 
-                   TVar i     -> maybe tp id (lookupInt i sub)
+                   TVar i     -> lookupInt i sub
                    TCon _     -> tp
                    TApp t1 t2 -> TApp (sub |-> t1) (sub |-> t2) 
-   ftv tp = case tp of      
+   ftv tp = case tp of
                TVar i     -> [i]
                TCon _     -> []
                TApp t1 t2 -> ftv t1 `union` ftv t2   

@@ -7,7 +7,6 @@ Utils: Some Prelude-like functions
 module Utils where
 
 import IOExts
-import ST
 import List (group, groupBy, sort, elemIndex)
 import Logger
 
@@ -120,16 +119,7 @@ internalError moduleName functionName message
            , "** Module   : " ++ moduleName
            , "** Function : " ++ functionName
            ]
-
-doubleSizeOfSTArray :: a -> STArray state Int a -> ST state (STArray state Int a)
-doubleSizeOfSTArray unit starray = 
-   do let (lower,upper) = boundsSTArray starray
-      newarray <- newSTArray (lower,2 * upper - lower) unit
-      let f i = do value <- readSTArray starray i            
-                   writeSTArray newarray i value
-      mapM_ f [lower..upper]
-      return newarray
-
+           
 maxInt, minInt :: Integer
 maxInt = 1073741823
 minInt = -1073741823

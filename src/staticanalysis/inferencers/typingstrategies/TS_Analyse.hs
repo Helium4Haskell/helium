@@ -2533,12 +2533,10 @@ sem_TypingStrategy_TypingStrategy (_typerule) (_statements) (_lhs_importEnvironm
             ]
         (_warnings) =
             []
-        ((_substitution,_solveErrors)) =
-            solveGreedy (length _uniqueTypevariables, getOrderedTypeSynonyms _lhs_importEnvironment, [])
-                        (reverse (liftConstraints _statements_userConstraints)) $
-               do subst  <- buildSubstitutionGreedy
-                  errors <- getErrors
-                  return (subst, errors)
+        ((_,_substitution,_,_solveErrors,_)) =
+            solveGreedy (getOrderedTypeSynonyms _lhs_importEnvironment)
+                        (length _uniqueTypevariables)
+                        (reverse _statements_userConstraints)
         (_soundnessErrors) =
             if not (null _staticErrors)
               then []

@@ -16,23 +16,17 @@ class (ConstraintInfo info, Monad m) => IsSolver m info | m -> info where
    makeConsistent = return ()    -- default definition (do nothing)
    newVariables _ = return ()    -- default definition (do nothing)   
 
-type SolverOptions = (Int, OrderedTypeSynonyms, [[(String, TpScheme)]])
-
 solveConstraints :: ( IsSolver m info
                     , MonadState (SolveState m info ext) m
                     , Show ext
-                    ) => (m result -> result) -> SolverOptions -> Constraints m -> m result -> result
-solveConstraints evaluator (unique, synonyms, siblings) constraints monad = 
-   evaluator $
-   do setUnique unique    
-      setTypeSynonyms synonyms
-      addSiblings siblings
-      initialize
+                    ) => Int -> Constraints m -> m ()
+solveConstraints unique constraints = 
+   do setUnique unique      
       pushConstraints constraints
+      initialize      
       stateDebug
       startSolving
       makeConsistent
-      monad     
       
 applySubst :: IsSolver m info => Tp -> m Tp
 applySubst (TVar i)     = findSubstForVar i

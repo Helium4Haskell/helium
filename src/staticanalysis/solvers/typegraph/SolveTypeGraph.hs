@@ -21,25 +21,41 @@ import IsTypeGraph
 import Constraints
 import SolveState
 import List
-import Utils (internalError, doubleSizeOfSTArray)
-   
-type TypeGraph info = Fix info () (STMonad (TG info))
-
+import Utils (internalError)
+import FiniteMap
+ 
+type TypeGraph info   = Fix info () (STMonad (TG info))
 data TG info state = 
-        TG { indexSTArray   :: STArray state Int (STRef state (EquivalenceGroup info))
+        TG { finiteMapRef   :: STRef state (FiniteMap Int (STRef state (EquivalenceGroup info)))
            , signaledErrors :: STRef state [(UnificationError,Int)]
            }  
 
 evalTypeGraph :: TypeGraph info result -> result
 evalTypeGraph x = fst $ runSTMonad $ runFix x newState
 
-solveTypeGraph :: IsTypeGraph (TypeGraph info) info => SolverOptions -> Constraints (TypeGraph info) -> TypeGraph info result -> result
-solveTypeGraph = solveConstraints evalTypeGraph
+solveTypeGraph :: ( IsTypeGraph (TypeGraph info) info
+                  , SolvableConstraint constraint (TypeGraph info)
+                  , Show constraint
+                  ) => (OrderedTypeSynonyms, [[(String, TpScheme)]]) -> Int -> [constraint]  
+                    -> (Int, WrappedSubstitution, Predicates, [info], IO ())
+solveTypeGraph (synonyms, siblings) unique constraints = 
+   evalTypeGraph $
+   do setTypeSynonyms synonyms
+      addSiblings siblings
+      solveConstraints unique (liftConstraints constraints)
+      uniqueAtEnd <- getUnique
+      errors      <- getErrors
+      subst       <- buildSubstitutionTypeGraph
+      predicates  <- getReducedPredicates
+      debug       <- getDebug
+      return (uniqueAtEnd, subst, predicates, errors, putStrLn debug)
 
 buildSubstitutionTypeGraph :: IsTypeGraph (TypeGraph info) info => TypeGraph info WrappedSubstitution 
-buildSubstitutionTypeGraph = do newUnique <- getUnique
-                                bintreesubst <- rec (0, newUnique - 1)
-                                return (wrapSubstitution bintreesubst)
+buildSubstitutionTypeGraph = 
+   do newUnique <- getUnique
+      bintreesubst <- rec (0, newUnique - 1)
+      return (wrapSubstitution bintreesubst)
+      
   where
     rec (a,b) 
       | a == b    = do tp <- findSubstForVar a
@@ -49,6 +65,15 @@ buildSubstitutionTypeGraph = do newUnique <- getUnique
                        right <- rec (split+1,b)
                        return (BinTreeSubstSplit split left right)    
       | otherwise = do return BinTreeSubstEmpty
+
+-- alternative 
+{-
+   do is  <- liftUse 
+                (\groups -> do fm  <- readSTRef (finiteMapRef groups)
+                               return (keysFM fm))
+      tps <- mapM findSubstForVar is  
+      return (wrapSubstitution $ listToFM $ zip is tps) 
+      -}
      
 -----------------------------------------------------------------------------------
 
@@ -100,7 +125,11 @@ equivalenceGroupOf :: Int -> TG info state -> ST state (EquivalenceGroup info)
 equivalenceGroupOf i groups = equivalenceGroupRefOf i groups >>= readSTRef
      
 equivalenceGroupRefOf :: Int -> TG info state -> ST state (STRef state (EquivalenceGroup info))
-equivalenceGroupRefOf i groups = readSTArray (indexSTArray groups) i 
+equivalenceGroupRefOf i groups = 
+   do finiteMap <- readSTRef (finiteMapRef groups)
+      case lookupFM finiteMap i of
+         Just ref -> return ref
+         Nothing  -> error "see equivalenceGroupRefOf"
 
 updateEquivalenceGroupOf :: Int -> (EquivalenceGroup info -> EquivalenceGroup info) -> TG info state -> ST state ()
 updateEquivalenceGroupOf i f groups = do ref <- equivalenceGroupRefOf i groups
@@ -119,10 +148,11 @@ combineClasses v1 v2 =
         (\groups -> do ref1 <- equivalenceGroupRefOf v1 groups
                        ref2 <- equivalenceGroupRefOf v2 groups
                        unless (ref1 == ref2) $
-                         do eqc1 <- readSTRef ref1
+                         do fm   <- readSTRef (finiteMapRef groups)
+                            eqc1 <- readSTRef ref1
                             eqc2 <- readSTRef ref2
-                            let changeRef (i,_) = writeSTArray (indexSTArray groups) i ref1
-                            mapM_ changeRef (vertices eqc2) 
+                            let fm' = addListToFM fm [ (i,ref1) | (i,_) <- vertices eqc2 ]
+                            writeSTRef (finiteMapRef groups) fm'
                             writeSTRef ref1 (combineGroups eqc1 eqc2))
                             
       checkConsistencyForGroupOf v1
@@ -137,26 +167,13 @@ removeImpliedClique clique =
    do is <- liftUse
          (\groups -> do let vid = fst . head . head . snd $ clique
                         eqgroup <- equivalenceGroupOf vid groups
-                        let makeRef eqc = do ref <- newSTRef eqc
-                                             let changeRef (i,_) = writeSTArray (indexSTArray groups) i ref
-                                             mapM_ changeRef (vertices eqc)
+                        let makeRef eqc = do fm  <- readSTRef (finiteMapRef groups)   
+                                             ref <- newSTRef eqc
+                                             let fm' = addListToFM fm [ (i,ref) | (i,_) <- vertices eqc ]
+                                             writeSTRef (finiteMapRef groups) fm'
                                              return (representative eqc)
                                              
                         mapM makeRef . splitGroup . removeClique clique $ eqgroup)                     
       cliques <- lookForCliques is
       mapM_ removeImpliedClique cliques
       mapM_ checkConsistencyForGroupOf is
-  
-testArrayBounds :: Int -> TypeGraph info ()
-testArrayBounds i = 
-   do guard <- liftUse ( return . (i>) . snd . boundsSTArray . indexSTArray )
-      when guard $  
-
-         do addDebug "size of state array is doubled"
-            liftUpdate 
-               (\groups -> 
-                  do let err = internalError "SolveEquivalenceGroups.hs" 
-                                             "testArrayBounds" 
-                                             "resize starray is not initialized"
-                     newarray <- doubleSizeOfSTArray err (indexSTArray groups)
-                     return (groups { indexSTArray = newarray }))

@@ -10,7 +10,6 @@ data Tree  a = Node (Trees a)
              | Spread (a -> Maybe Int) Direction [a] (Tree a)
              | Receive Int
              | Phase Int [a]                      
-             | Maf [a] (Tree a)
                                                                     
 emptyTree ::        Tree a
 unitTree  :: a ->   Tree a 
@@ -87,12 +86,7 @@ flatten (spreading, TreeWalk treewalk) tree =
               in (result, id, emptyFM)
               
            Phase i as ->
-              (down, id, unitFM i (as++))
-           
-           Maf as tree -> 
-              let (result, up, phased) = rec down spreaded tree 
-              in ((as++) . result, up, phased)
-              
+              (down, id, unitFM i (as++))                        
 
      strictRec :: Spreaded a ->         -- the spreaded constraints
                   Tree a ->             -- the tree to flatten

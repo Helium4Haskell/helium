@@ -19,8 +19,4 @@ infixr 8 .>. , .>>. , .<. , .<<.
 
 (.>>.), (.<<.) :: TypeConstraints info -> ConstraintTree info -> ConstraintTree info
 (.>>.) = Spread variableInConstraint Down
-(.<<.) = Spread variableInConstraint Up  
-
-infixr 8 !<!
-(!<!) :: TypeConstraints a -> ConstraintTree a -> ConstraintTree a
-(!<!) = Maf
+(.<<.) = Spread variableInConstraint Up

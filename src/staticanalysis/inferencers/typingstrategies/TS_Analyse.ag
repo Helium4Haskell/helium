@@ -76,12 +76,10 @@ SEM TypingStrategy
                               xs -> [ MetaVariableConstraintsNotExplicit @name xs ]  -}
 
            -- Solve the constraint set.           
-           . (substitution, solveErrors) =    
-                solveGreedy (length @uniqueTypevariables, getOrderedTypeSynonyms @lhs.importEnvironment, [])
-                            (reverse (liftConstraints @statements.userConstraints)) $                
-                   do subst  <- buildSubstitutionGreedy
-                      errors <- getErrors
-                      return (subst, errors)
+           . (_, substitution, _, solveErrors, _) =    
+                solveGreedy (getOrderedTypeSynonyms @lhs.importEnvironment)
+                            (length @uniqueTypevariables) 
+                            (reverse @statements.userConstraints)        
                                    
            . soundnessErrors = 
                 if not (null @staticErrors)

@@ -11,20 +11,21 @@ import TypeGraphConstraintInfo
 import TypeGraphHeuristics (heuristics)
 import Types
 import Utils (internalError)
+import FiniteMap
 
 instance TypeGraphConstraintInfo info => IsTypeGraph (TypeGraph info) info where
    initializeTypeGraph =
       do unique <- getUnique
          liftSet
-           (do starray     <- newSTArray (0,4*unique) (internalError "EquivalenceGroupsImplementation.hs" "initializeTypeGraph" "not initialized")
+           (do starray     <- newSTRef emptyFM
                errorgroups <- newSTRef []
                return (TG starray errorgroups))
 
    addVertexWithChildren i info =
-      do testArrayBounds i
-         liftUse
-           (\groups -> do ref <- newSTRef (insertVertex i info emptyGroup)
-                          writeSTArray (indexSTArray groups) i ref)
+      liftUse
+        (\groups -> do fm  <- readSTRef (finiteMapRef groups)
+                       ref <- newSTRef (insertVertex i info emptyGroup)
+                       writeSTRef (finiteMapRef groups) (addToFM fm i ref))
      
    -- be carefull: the equality is not automatically propagated!
    addEdge (EdgeID v1 v2) edgeinfo =
@@ -115,9 +116,10 @@ instance TypeGraphConstraintInfo info => IsTypeGraph (TypeGraph info) info where
       do is <- liftUse
             (\groups -> do eqgroup <- equivalenceGroupOf v1 groups
                            
-                           let makeRef eqc = do ref <- newSTRef eqc
-                                                let changeRef (i,_) = writeSTArray (indexSTArray groups) i ref
-                                                mapM_ changeRef (vertices eqc)
+                           let makeRef eqc = do fm  <- readSTRef (finiteMapRef groups)   
+                                                ref <- newSTRef eqc
+                                                let fm' = addListToFM fm [ (i,ref) | (i,_) <- vertices eqc ]
+                                                writeSTRef (finiteMapRef groups) fm'
                                                 return (representative eqc)
                                                 
                            mapM makeRef . splitGroup . removeEdge (EdgeID v1 v2) $ eqgroup)

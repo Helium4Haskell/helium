@@ -31,11 +31,10 @@ SEM Module
            
            . (betaUniqueAtTheEnd,substitution,predicates,solveErrors,solveDebug) 
                   = -- choose your algorithm to solve the type constraints
-                    (if @lhs.useTypeGraph then solveTypeGraph' else solveGreedy') 
-                       ( @body.betaUnique 
-                       , @orderedTypeSynonyms 
-                       , @siblings
-                       ) 
+                    (if @lhs.useTypeGraph 
+                       then solveTypeGraph (@orderedTypeSynonyms , @siblings)
+                       else solveGreedy @orderedTypeSynonyms) 
+                       @body.betaUnique                        
                        @constraints
            
            . siblings = let f s = [ (s, ts) | ts <- findTpScheme (nameFromString s) ]
@@ -104,11 +103,11 @@ SEM Declaration
       loc      . beta          = TVar @lhs.betaUnique
                . betaRight     = TVar (@lhs.betaUnique + 1)
                . betasLeft     = take @bindings.numberOfPatterns (map TVar [@lhs.betaUnique + 2..])
-               . newcon        = [ (@beta .==. foldr (.->.) @betaRight @betasLeft) @cinfo ]
+               . newcon        = (@beta .==. foldr (.->.) @betaRight @betasLeft) @cinfo
                . mybdggrp      = ( unitFM @bindings.name @beta
                                  , @bindings.assumptions
-                                 , [ @newcon !<!
-                                     Node [ Receive @lhs.betaUnique
+                                 , [ Node [ Phase (-1) [@newcon] 
+                                          , Receive @lhs.betaUnique
                                           , Node @bindings.constraintslist
                                           ]
                                    ]
@@ -821,27 +820,6 @@ performBindingGroup monos typeSignatures = variableDependencies . bindingGroupAn
 findMono :: Name -> MonoTable -> Tps
 findMono n = let p = elem n . fst
              in snd . head . filter p
-
-solveGreedy' :: SolverOptions -> TypeConstraints HeliumConstraintInfo -> (Int, WrappedSubstitution ,Predicates, [HeliumConstraintInfo], IO ())
-solveGreedy' options constraints = 
-   solveGreedy options (liftConstraints constraints) $                
-      do uniqueAtEnd <- getUnique
-         errors      <- getErrors
-         subst       <- buildSubstitutionGreedy
-         predicates  <- getReducedPredicates
-         debug       <- getDebug
-         return (uniqueAtEnd, subst, predicates, errors, putStrLn debug)     
-
-solveTypeGraph' :: SolverOptions -> TypeConstraints HeliumConstraintInfo -> (Int, WrappedSubstitution ,Predicates, [HeliumConstraintInfo], IO ())
-solveTypeGraph' options constraints =
-   solveTypeGraph options (liftConstraints constraints) $
-      do uniqueAtEnd <- getUnique
-         errors      <- getErrors
-         subst       <- buildSubstitutionTypeGraph
-         predicates  <- getReducedPredicates
-         debug       <- getDebug
-         return (uniqueAtEnd, subst, predicates, errors, putStrLn debug)
-
 }
 
 SEM Body

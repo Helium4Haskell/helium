@@ -14,6 +14,7 @@ import TypeSubstitution
 import TypeBasics
 import TypeSynonyms
 import Utils               ( internalError )
+import FiniteMap
 
 ----------------------------------------------------------------------
 -- unification (and similar operations)
@@ -34,7 +35,7 @@ mgu t1 t2 = case mguWithTypeSynonyms noOrderedTypeSynonyms t1 t2 of
 --   should be:
 --      [ v11 := [Char] , v14 := Char ]
 --
--- Note: the boolean indicates whether exansions where performed       
+-- Note: the boolean indicates whether exansions were necessary       
 mguWithTypeSynonyms :: OrderedTypeSynonyms -> Tp -> Tp -> Either UnificationError (Bool,FiniteMapSubstitution)
 mguWithTypeSynonyms typesynonyms = rec emptySubst
 
@@ -57,11 +58,11 @@ mguWithTypeSynonyms typesynonyms = rec emptySubst
                _ -> internalError "SATypes.hs" "mguWithTypeSynonyms" "illegal type"            
 
         recVar :: FiniteMapSubstitution -> Int -> Tp -> Either UnificationError (Bool, FiniteMapSubstitution)
-        recVar sub i tp = case lookupInt i sub of
+        recVar sub i tp = case lookupFM sub i of
                              Just t2 -> case rec sub tp t2 of
-                                           Right (True,sub') -> let newTP = equalUnderTypeSynonyms typesynonyms (sub' |-> tp) (sub' |-> t2)
-                                                                in Right (True,singleSubstitution i newTP @@ removeDom [i] sub')
-                                           answer            -> answer
+                                      Right (True,sub') -> let newTP = equalUnderTypeSynonyms typesynonyms (sub' |-> tp) (sub' |-> t2)
+                                                           in Right (True,singleSubstitution i newTP @@ removeDom [i] sub')
+                                      answer            -> answer
                              Nothing -> case sub |-> tp of 
                                            TVar j | i == j           -> Right (False,sub)
                                            tp'    | i `elem` ftv tp' -> Left InfiniteType

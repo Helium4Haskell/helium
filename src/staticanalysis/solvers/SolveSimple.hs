@@ -24,7 +24,7 @@ instance ConstraintInfo info => IsSolver (Simple info) info where
    findSubstForVar i = 
       do s <- get
          let sub = getWith id s
-         return (sub |-> TVar i)
+         return (lookupInt i sub)
          
    unifyTerms info t1 t2 =
        do synonyms <- getTypeSynonyms 

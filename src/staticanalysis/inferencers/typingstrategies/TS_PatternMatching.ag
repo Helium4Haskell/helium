@@ -14,14 +14,21 @@ SEM Module | Module  body . matchIO = return ()
      
 ---------------------------------------------------------------------------------------------------------
 
-ATTR Declarations Declaration MaybeDeclarations RightHandSide FunctionBindings FunctionBinding
-     MaybeExpression Expressions Expression 
-     Alternatives Alternative Statements Statement Qualifier Qualifiers 
-     GuardedExpressions GuardedExpression [ | uniqueSecondRound : Int | ]
+ATTR Expressions Expression MaybeExpression 
+     GuardedExpression GuardedExpressions 
+     Qualifiers Qualifier 
+     Statements Statement
+     [ | uniqueSecondRound : Int | ]
 
-SEM Body 
-  | Body   lhs          . betaUnique        = @declarations.uniqueSecondRound
-           declarations . uniqueSecondRound = @declarations.betaUnique
+SEM RightHandSide
+  | Expression
+     expression         . uniqueSecondRound = @expression.betaUnique
+     where              . betaUnique        = @expression.uniqueSecondRound
+     
+  | Guarded
+     guardedexpressions . uniqueSecondRound = @guardedexpressions.betaUnique
+     where              . betaUnique        = @guardedexpressions.uniqueSecondRound
+
 
 ---------------------------------------------------------------------------------------------------------
 
