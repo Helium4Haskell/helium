@@ -17,6 +17,7 @@ PARSECDIR = ../../parsec
 PARSECIMPDIR = $(PARSECDIR)/Text/ParserCombinators
 LVMLIBDIR  = ../../lvm/src/lib
 LVMRUNTIMEDIR  = ../../lvm/src/runtime
+TOPDIR = ../../Top/src/Top
 
 #the main program you want to generate
 MAIN	= helium
@@ -70,10 +71,6 @@ MODULESYSTEM = \
 
 STATICANALYSIS = \
 	staticanalysis/constraints/LiftedConstraints.hs \
-	staticanalysis/constraints/Constraints.hs \
-	staticanalysis/constraints/Tree.hs \
-	staticanalysis/constraints/TreeWalk.hs \
-	staticanalysis/constraints/TypeConstraints.hs \
 	staticanalysis/messages/HeliumConstraintInfo.hs \
 	staticanalysis/messages/Messages.hs \
 	staticanalysis/messages/HeliumMessages.hs \
@@ -83,55 +80,63 @@ STATICANALYSIS = \
 	staticanalysis/messages/Warnings.hs \
 	staticanalysis/messages/UHA_Source.hs \
 	staticanalysis/messages/DoublyLinkedTree.hs \
-	staticanalysis/solvers/BasicState.hs \
-	staticanalysis/solvers/FixpointSolveState.hs \
-	staticanalysis/solvers/TypeConstraintSemantics.hs \
-	staticanalysis/solvers/KindConstraintSemantics.hs \
-	staticanalysis/solvers/IsSolver.hs \
-	staticanalysis/solvers/ConstraintInfo.hs \
-	staticanalysis/solvers/SolveGreedy.hs \
-	staticanalysis/solvers/SolveSimple.hs \
-	staticanalysis/solvers/SolveCombination.hs \
-	staticanalysis/solvers/SolveChunks.hs \
-	staticanalysis/solvers/SolveState.hs \
-	staticanalysis/solvers/typegraph/TypeGraphConstraintInfo.hs \
-	staticanalysis/solvers/typegraph/SolveTypeGraph.hs \
-	staticanalysis/solvers/typegraph/IsTypeGraph.hs \
-	staticanalysis/solvers/typegraph/EquivalenceGroup.hs \
-	staticanalysis/solvers/typegraph/TypeGraphInstance.hs \
-	staticanalysis/solvers/typegraphheuristics/TypeGraphHeuristics.hs \
-	staticanalysis/solvers/typegraphheuristics/RepairHeuristics.hs \
-	staticanalysis/solvers/typegraphheuristics/TieBreakerHeuristics.hs \
-	staticanalysis/solvers/typegraphheuristics/FilterHeuristics.hs \
-	staticanalysis/solvers/typegraphheuristics/Heuristics.hs \
-        staticanalysis/solvers/typegraphheuristics/InfiniteTypeHeuristic.hs \
-	staticanalysis/solvers/typegraphheuristics/SimilarFunctionTable.hs \
-	staticanalysis/types/TypeUnification.hs \
-	staticanalysis/types/Types.hs \
-	staticanalysis/types/TypeBasics.hs \
-	staticanalysis/types/TypeSynonyms.hs \
-	staticanalysis/types/TypeConversion.hs \
-	staticanalysis/types/TypeSubstitution.hs \
-	staticanalysis/types/TypeClasses.hs \
-	staticanalysis/types/TypeSchemes.hs \
-	staticanalysis/types/TypesToAlignedDocs.hs \
-	staticanalysis/types/QualifiedTypes.hs \
-	staticanalysis/types/Kinds.hs \
+	staticanalysis/heuristics/OnlyResultHeuristics.hs \
+	staticanalysis/heuristics/RepairHeuristics.hs \
+	staticanalysis/heuristics/TieBreakerHeuristics.hs \
 	staticanalysis/staticchecks/StaticChecks.hs \
 	staticanalysis/inferencers/TypeInferencing.hs \
 	staticanalysis/inferencers/KindInferencing.hs \
-        staticanalysis/inferencers/ExpressionTypeInferencer.hs \
-        staticanalysis/inferencers/typingstrategies/TS_Parser.hs \
-        staticanalysis/inferencers/typingstrategies/TS_Syntax.hs \
-        staticanalysis/inferencers/typingstrategies/Matchers.hs \
+	staticanalysis/inferencers/ExpressionTypeInferencer.hs \
+	staticanalysis/inferencers/typingstrategies/TS_Parser.hs \
+	staticanalysis/inferencers/typingstrategies/TS_Syntax.hs \
+	staticanalysis/inferencers/typingstrategies/Matchers.hs \
         staticanalysis/inferencers/typingstrategies/TS_Apply.hs \
         staticanalysis/inferencers/typingstrategies/TS_Messages.hs \
         staticanalysis/inferencers/typingstrategies/TS_Analyse.hs \
         staticanalysis/inferencers/typingstrategies/TS_CoreSyntax.hs \
         staticanalysis/inferencers/typingstrategies/TS_ToCore.hs \
         staticanalysis/inferencers/typingstrategies/TS_Compile.hs \
-        staticanalysis/inferencers/typingstrategies/TS_Attributes.hs        
-
+        staticanalysis/inferencers/typingstrategies/TS_Attributes.hs \
+        staticanalysis/types/TypesToAlignedDocs.hs \
+        staticanalysis/types/TypeConversion.hs \
+        $(TOPDIR)/Types/Basics.hs \
+        $(TOPDIR)/Types/Schemes.hs \
+        $(TOPDIR)/Types/Classes.hs \
+        $(TOPDIR)/Types/Substitution.hs \
+        $(TOPDIR)/Types/Kinds.hs \
+        $(TOPDIR)/Types/Synonyms.hs \
+        $(TOPDIR)/Types/Qualified.hs \
+        $(TOPDIR)/Types/Unification.hs \
+        $(TOPDIR)/Types.hs \
+        $(TOPDIR)/../Graph.hs \
+        $(TOPDIR)/Constraints/Constraints.hs \
+        $(TOPDIR)/Constraints/EqualityConstraint.hs \
+        $(TOPDIR)/Constraints/InstanceConstraint.hs \
+        $(TOPDIR)/Constraints/PredicateConstraint.hs \
+        $(TOPDIR)/States/BasicMonad.hs \
+        $(TOPDIR)/States/BasicState.hs \
+        $(TOPDIR)/States/SubstState.hs \
+        $(TOPDIR)/States/TIState.hs \
+        $(TOPDIR)/Solvers/GreedySolver.hs \
+        $(TOPDIR)/Solvers/GreedySubst.hs \
+        $(TOPDIR)/Solvers/SimpleSolver.hs \
+        $(TOPDIR)/Solvers/SimpleSubst.hs \
+        $(TOPDIR)/Solvers/SolveConstraints.hs \
+        $(TOPDIR)/ComposedSolvers/CombinationSolver.hs \
+        $(TOPDIR)/ComposedSolvers/ChunkySolver.hs \
+        $(TOPDIR)/ComposedSolvers/Tree.hs \
+        $(TOPDIR)/ComposedSolvers/TreeWalk.hs \
+        $(TOPDIR)/TypeGraph/ApplyHeuristics.hs \
+        $(TOPDIR)/TypeGraph/Basics.hs \
+        $(TOPDIR)/TypeGraph/DefaultHeuristics.hs \
+        $(TOPDIR)/TypeGraph/EquivalenceGroup.hs \
+        $(TOPDIR)/TypeGraph/Heuristics.hs \
+        $(TOPDIR)/TypeGraph/Paths.hs \
+        $(TOPDIR)/TypeGraph/TypeGraphMonad.hs \
+        $(TOPDIR)/TypeGraph/TypeGraphSolver.hs \
+        $(TOPDIR)/TypeGraph/TypeGraphState.hs \
+        $(TOPDIR)/TypeGraph/TypeGraphSubst.hs \
+        
 UHA = \
 	syntax/UHA_Syntax.hs syntax/UHA_Utils.hs syntax/UHA_Range.hs \
         syntax/UHA_Pretty.hs syntax/UHA_OneLine.hs
@@ -181,7 +186,7 @@ CORE	= $(LVMLIBDIR)/core/Core.hs $(LVMLIBDIR)/core/CorePretty.hs $(LVMLIBDIR)/co
 	  $(LVMLIBDIR)/core/CoreNoShadow.hs $(LVMLIBDIR)/core/CoreFreeVar.hs $(LVMLIBDIR)/core/CoreLetSort.hs \
 	  $(LVMLIBDIR)/core/CoreLift.hs $(LVMLIBDIR)/core/CoreSaturate.hs
 
-IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:$(PARSECDIR):./parser:./staticanalysis:./staticanalysis/solvers:./staticanalysis/inferencers:./staticanalysis/inferencers/typingstrategies:./staticanalysis/staticchecks:./staticanalysis/solvers/typegraph:./staticanalysis/solvers/typegraphheuristics:./staticanalysis/constraints:./staticanalysis/types:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem
+IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:$(PARSECDIR):./parser:./staticanalysis:./staticanalysis/inferencers:./staticanalysis/inferencers/typingstrategies:./staticanalysis/staticchecks:./staticanalysis/constraints:./staticanalysis/types:./staticanalysis/heuristics:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem:$(TOPDIR):../../Top/src
 
 # AG sources
 AGSOURCES = \
@@ -191,6 +196,7 @@ AGSOURCES = \
      codegeneration/CodeGeneration.hs \
      syntax/UHA_Syntax.hs modulesystem/ExtractImportDecls.hs staticanalysis/inferencers/typingstrategies/TS_Syntax.hs \
      staticanalysis/inferencers/typingstrategies/TS_Apply.hs staticanalysis/inferencers/typingstrategies/TS_Analyse.hs \
+     staticanalysis/inferencers/typingstrategies/TS_CoreSyntax.hs \
      staticanalysis/inferencers/typingstrategies/TS_ToCore.hs parser/ResolveOperators.hs
 
 #Sources and object files
@@ -327,10 +333,16 @@ staticanalysis/inferencers/typingstrategies/TS_Apply.hs : \
         staticanalysis/inferencers/typingstrategies/TS_Syntax.ag \
         staticanalysis/inferencers/typingstrategies/TS_Collect.ag \
         staticanalysis/inferencers/typingstrategies/TS_Apply.ag \
-        staticanalysis/inferencers/typingstrategies/TS_AG_CoreSyntax.ag \
+        staticanalysis/inferencers/typingstrategies/TS_CoreData.ag \
         syntax/UHA_Syntax.ag \
 	# AG TS_Syntax
 	cd staticanalysis/inferencers/typingstrategies;$(AG) -mscf TS_Apply.ag;cd ../../..
+
+staticanalysis/inferencers/typingstrategies/TS_CoreSyntax.hs : \
+	staticanalysis/inferencers/typingstrategies/TS_CoreSyntax.ag \
+        staticanalysis/inferencers/typingstrategies/TS_CoreData.ag
+	# AG TS_CoreSyntax
+	cd staticanalysis/inferencers/typingstrategies;$(AG) -md TS_CoreSyntax.ag;cd ../../..
 
 staticanalysis/inferencers/typingstrategies/TS_ToCore.hs : \
         staticanalysis/inferencers/typingstrategies/TS_Syntax.ag \

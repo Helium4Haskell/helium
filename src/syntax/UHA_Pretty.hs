@@ -4,7 +4,7 @@ module UHA_Pretty where
 import PPrint
 import Char
 import List (intersperse)
-import Types (isTupleConstructor)
+import Top.Types (isTupleConstructor)
 import UHA_Syntax
 import Utils (internalError)
 

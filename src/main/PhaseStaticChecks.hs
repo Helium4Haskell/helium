@@ -5,7 +5,7 @@ import Warnings(Warning)
 import StaticErrors(errorsLogCode)
 import qualified StaticChecks(sem_Module)
 import UHA_Syntax (Name)
-import Types (TpScheme)
+import Top.Types (TpScheme)
 
 phaseStaticChecks :: String -> [String] -> Module -> [ImportEnvironment] -> 
                         [Option] -> IO (ImportEnvironment, [(Name,TpScheme)], [Warning])

@@ -14,12 +14,6 @@ import CompileUtils
 import Utils
 import Data.IORef
 
---temp
-import KindInferencing as KI
-import UHA_Utils (nameFromString)
-import Data.FiniteMap
-import Types (showKindScheme)
-
 compile :: String -> [Option] -> [String] -> [String] -> IO ()
 compile fullName options lvmPath doneModules =
     do

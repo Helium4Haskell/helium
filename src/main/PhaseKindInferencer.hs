@@ -5,10 +5,10 @@ import CompileUtils
 import KindInferencing as KI
 import ImportEnvironment
 import Data.FiniteMap
-import Types
+import Top.Types
 
 phaseKindInferencer :: ImportEnvironment -> Module -> [Option] -> IO ()
-phaseKindInferencer importEnvironment module_ options = 
+phaseKindInferencer importEnvironment module_ options =
    do enterNewPhase "Kind inferencing" options
       let (debugIO, kindEnv, kindErrors, _) = KI.sem_Module module_ importEnvironment options 
       when (DumpTypeDebug `elem` options) $ 

@@ -15,7 +15,7 @@ import Id
 import IdSet 
 import Utils(internalError)
 
-import Types
+import Top.Types
 
 import PatternMatch
 import DerivingShow

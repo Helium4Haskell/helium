@@ -6,7 +6,7 @@ import CoreUtils
 import Core
 import Id
 import Utils
-import Types
+import Top.Types
 
 nameOfShowFunction :: UHA.Name -> UHA.Name
 nameOfShowFunction (UHA.Name_Identifier r m n) = UHA.Name_Identifier r m ("show" ++ n) -- !!!Name

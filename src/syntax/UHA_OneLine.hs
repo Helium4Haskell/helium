@@ -4,7 +4,7 @@ module UHA_OneLine where
 import OneLiner
 import Char
 import UHA_Utils (showNameAsOperator)
-import Types
+import Top.Types
 import TypeConversion
 import UHA_Syntax
 import List

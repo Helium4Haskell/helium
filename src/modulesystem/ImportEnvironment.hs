@@ -3,7 +3,7 @@ module ImportEnvironment where
 import Data.FiniteMap
 import UHA_Syntax  ( Names, Name )
 import UHA_Utils
-import Types
+import Top.Types
 import OperatorTable
 import Messages -- instance Show Name
 import TS_CoreSyntax

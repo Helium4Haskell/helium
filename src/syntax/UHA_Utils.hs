@@ -5,7 +5,7 @@ import UHA_Range(noRange, getNameRange)
 import UHA_Syntax(Name(..), ImportDeclaration(..))
 import Id(Id, idFromString, stringFromId)
 import Char
-import Types(isTupleConstructor)
+import Top.Types(isTupleConstructor)
 import Utils(internalError)
 
 instance Eq Name where

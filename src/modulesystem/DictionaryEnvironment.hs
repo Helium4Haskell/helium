@@ -9,7 +9,7 @@ import Data.FiniteMap
 import UHA_Syntax (Name)
 import UHA_Utils (NameWithRange(..) )
 import Utils (internalError)
-import Types
+import Top.Types
 
 data DictionaryEnvironment = 
      DEnv { declMap :: FiniteMap NameWithRange Predicates

@@ -4,7 +4,7 @@ import CompileUtils
 import Warnings(Warning)
 import qualified TypeInferencing(sem_Module)
 import DictionaryEnvironment (DictionaryEnvironment)
-import Types
+import Top.Types
 import Data.FiniteMap
 import UHA_Utils
 import UHA_Syntax

@@ -11,7 +11,7 @@ import UHA_Utils
 import Id
 import UHA_Syntax
 import OperatorTable
-import Types
+import Top.Types
 import Byte(stringFromBytes)
 import UHA_Range(makeImportRange, setNameRange)
 

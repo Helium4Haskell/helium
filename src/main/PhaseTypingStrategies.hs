@@ -5,7 +5,7 @@ import Core(CoreDecl)
 import TS_Compile (readTypingStrategiesFromFile)
 import Data.FiniteMap (listToFM)
 import UHA_Syntax (Name)
-import Types (TpScheme)
+import Top.Types (TpScheme)
 
 phaseTypingStrategies :: String -> ImportEnvironment -> [(Name, TpScheme)] -> [Option] ->
                             IO (ImportEnvironment, [CoreDecl])

@@ -9,7 +9,7 @@ import UHA_Range(noRange)
 import ImportEnvironment(TypeEnvironment, ImportEnvironment)
 import DictionaryEnvironment (DictionaryEnvironment)
 import qualified CodeGeneration(sem_Module)
-import Types
+import Top.Types
 import UHA_Utils
 
 phaseDesugarer :: DictionaryEnvironment -> 
