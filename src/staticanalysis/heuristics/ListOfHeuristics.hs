@@ -16,6 +16,7 @@ import HeuristicsInfo () -- instances
 import Top.Types
 import Top.TypeGraph.Heuristics
 import Top.TypeGraph.DefaultHeuristics
+import RepairSystem (repairSystem)
 import RepairHeuristics
 import UnifierHeuristics
 import OnlyResultHeuristics
@@ -36,6 +37,9 @@ listOfHeuristics options siblings path =
    , highParticipation 0.95 path
    , phaseFilter
    ] ++
+   -- Repair system is disabled
+   -- [ repairSystem | NoRepairHeuristics `notElem` options
+   -- ] ++
    [ Heuristic (Voting (
         [ siblingFunctions siblings
         , similarLiterals

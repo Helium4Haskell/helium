@@ -82,6 +82,7 @@ STATICANALYSIS = \
 	staticanalysis/heuristics/RepairHeuristics.hs \
 	staticanalysis/heuristics/TieBreakerHeuristics.hs \
 	staticanalysis/heuristics/UnifierHeuristics.hs \
+	staticanalysis/heuristics/RepairSystem.hs \
 	staticanalysis/staticchecks/StaticChecks.hs \
 	staticanalysis/inferencers/TypeInferencing.hs \
 	staticanalysis/inferencers/KindInferencing.hs \
