@@ -97,7 +97,9 @@ constructorCustoms dataTypeName name env =
         (internalError "UHA_ToCore" "Constructor" ("no type found for " ++ show name))
         (\tpScheme -> 
             [ custom "type" (show tpScheme)
-            , custom "data" (getNameName dataTypeName)
+            , Core.CustomLink 
+                    (idFromName dataTypeName) 
+                    (Core.DeclKindCustom (idFromString "data"))
             ]
         )
         (lookupFM env name)
