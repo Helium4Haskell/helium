@@ -601,6 +601,34 @@ getLine = do
         else do cs <- getLine
                 return (c:cs)
 
+writeFile :: String -> String -> IO ()
+writeFile fname s
+  = bracketIO (openFile fname WriteMode)
+              (hClose)
+              (\h -> hPutString h s)
+
+readFile :: String -> IO String
+readFile fname
+  = bracketIO (openFile fname ReadMode)
+              (hClose)
+              (\h -> readAll h [])
+  where
+    readAll h acc 
+      = do c  <- hGetChar h
+           readAll h (c:acc) 
+        `catchEof` (return (reverse acc))
+
+bracketIO :: IO a -> (a -> IO b) -> (a -> IO c) -> IO c
+bracketIO acquire release action
+  = do x <- acquire
+       finallyIO (action x) (release x)
+
+finallyIO :: IO a -> IO b -> IO a
+finallyIO io action
+  = do x <- io `catch` (\exn -> do{ action; raise exn })
+       action
+       return x
+
 {-----------------------------------------------
  -- HELIUM SPECIFIC
  -----------------------------------------------}

@@ -1,7 +1,7 @@
 Building Helium from scratch
 
 Needed: 
-- GHC-5.*: http://haskell.cs.yale.edu/ghc/
+- GHC version >= 5: http://haskell.cs.yale.edu/ghc/
 - If you want to develop: AG (attribute grammar system): http://www.cs.uu.nl/~arthurb/ag.html
 - On Windows systems Cygwin: http://www.cygwin.com/
 
@@ -12,6 +12,7 @@ In a shell window:
 2) 	cvs checkout helium
 	cvs checkout lvm
 	cvs checkout parsec
+	cvs checkout Top
 
 3)	cd lvm/src
 	./configure

@@ -1,10 +1,25 @@
+Versiebeheer
+
+Pas Version.hs aan
+make newVersion
+
 BBL versie
 
-Maak een nieuwe versie
-Staat de logger aan?
-Werkt hint en wordt er gelogd?
-Test all
+./configure --enable-logger
+cd src
+make
+cd ../test/simple
+./testAll
+make movetobbl
+controleer permissies
+loop naar BBL
+- werkt hint
+- wordt er gelogd?
 
-thuis versie
+Thuis versie
 
-Logger uit!
+./configure      (= LOGGER UIT!)
+cd src
+make
+make movetohome
+SetupToGo build

@@ -10,7 +10,7 @@ main = oneDir "."
 oneDir :: String -> IO (Int, Int)
 oneDir name = do
     files <- filesInDir "." 
-    let haskellFiles = filter (\name -> ".hs" `isSuffixOf` name || ".ag" `isSuffixOf` name) files
+    let haskellFiles = filter (\name -> ".hs" `isSuffixOf` name) files -- || ".ag" `isSuffixOf` name) files
     counts <- mapM wc haskellFiles
     dirs <- dirsInDir "."
     results <- mapM (\dir -> do
