@@ -388,17 +388,17 @@ SEM Expression
        expression . betaUnique  = @lhs.betaUnique + 1
        loc        . constraints = @newcon .>. Node [ @expression.constraints ]
                   . beta        = TVar @lhs.betaUnique
-                  . newcon      = [ (intType .->. intType .==. @expression.beta .->. @beta) @cinfo]
---                  . conResult   = [ (intType .==. @beta) @cinfoResult ]
---                  . conExpr     = [ (@expression.beta .==. intType) @cinfoExpr]
+                  . newcon      = -- search for the type of 'negate' in the import envionment: otherwise use the default type.
+                                  let standard = generalize [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
+                                      tpscheme = lookupWithDefaultFM (typeEnvironment @lhs.importEnvironment) standard (nameFromString "negate")
+                                  in [ (@expression.beta .->. @beta .::. tpscheme) @cinfo]
 
+{- only if type inferencing without overloading -}
   | NegateFloat
        expression . betaUnique  = @lhs.betaUnique + 1
        loc        . constraints = @newcon .>. Node [ @expression.constraints ]
                   . beta        = TVar @lhs.betaUnique
                   . newcon      = [ (floatType .->. floatType .==. @expression.beta .->. @beta) @cinfo]
---                  . conResult   = [ (floatType .==. @beta) @cinfoResult ]
---                  . conExpr     = [ (@expression.beta .==. floatType) @cinfoExpr]
 
 SEM Expressions
 
@@ -534,18 +534,20 @@ SEM Pattern
           . betaUnique  = @lhs.betaUnique + 1
           . environment = noAssumptions
       loc . beta        = TVar @lhs.betaUnique
-          . newcon      = [ (intType .==. @beta) @cinfo ]
-          -- The parser only accepts an int literal after '-' in a Pattern
-          -- . conPat      = [ (@literal.literalType .==. intType) @cinfoPat ]
-
+          . newcon      = -- The parser only accepts a literal after '-' in a Pattern
+                          -- search for the type of 'negate' in the import envionment: otherwise use the default type.
+                          let standard = generalize [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
+                              tpscheme = lookupWithDefaultFM (typeEnvironment @lhs.importEnvironment) standard (nameFromString "negate")
+                          in [ (@literal.literalType .->. @beta .::. tpscheme) @cinfo]
+          
+{- only if type inferencing without overloading -}
   | NegateFloat
       lhs . constraints = listTree @newcon
           . betaUnique  = @lhs.betaUnique + 1
           . environment = noAssumptions
       loc . beta        = TVar @lhs.betaUnique
-          . newcon      = [ (floatType .==. @beta) @cinfo ]
-          -- The parser only accepts a float literal after '-.' in a Pattern
-          -- . conPat      = [ (@literal.literalType .==. floatType) @cinfoPat ]
+          . newcon      = -- The parser only accepts a literal after '-.' in a Pattern
+                          [ (floatType .==. @beta) @cinfo ]
 
 SEM Patterns
 

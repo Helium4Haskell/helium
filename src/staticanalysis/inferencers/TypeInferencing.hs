@@ -2360,7 +2360,9 @@ sem_Expression_Negate (_range) (_expression) (_lhs_allPatterns) (_lhs_betaUnique
         (_beta) =
             TVar _lhs_betaUnique
         (_newcon) =
-            [ (intType .->. intType .==. _expression_beta .->. _beta) _cinfo]
+            let standard = generalize [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
+                tpscheme = lookupWithDefaultFM (typeEnvironment _lhs_importEnvironment) standard (nameFromString "negate")
+            in [ (_expression_beta .->. _beta .::. tpscheme) _cinfo]
         (_cinfo) =
             \tppair ->
             CInfo { info       = (NTExpression, AltNegate, 0, "")
@@ -4128,7 +4130,9 @@ sem_Pattern_Negate (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment
         (_beta) =
             TVar _lhs_betaUnique
         (_newcon) =
-            [ (intType .==. _beta) _cinfo ]
+            let standard = generalize [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
+                tpscheme = lookupWithDefaultFM (typeEnvironment _lhs_importEnvironment) standard (nameFromString "negate")
+            in [ (_literal_literalType .->. _beta .::. tpscheme) _cinfo]
         (_cinfo) =
             \tppair ->
             CInfo { info       = (NTPattern, AltNegate, 0, "")
