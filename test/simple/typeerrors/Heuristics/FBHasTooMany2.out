@@ -1,8 +1,8 @@
 Compiling typeerrors/Heuristics/FBHasTooMany2.hs
 (4,1): Type error in explicitly typed binding
- expression       : f
-   type           : Int              
-   does not match : Int -> Int -> Int
+ definition       : f
+   inferred type  : Int -> Int -> Int
+   declared type  : Int              
  because          : the function binding has 2 patterns, but its type signature
                     does not allow patterns
 

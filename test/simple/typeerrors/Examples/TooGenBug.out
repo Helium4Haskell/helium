@@ -1,5 +1,5 @@
 Compiling typeerrors/Examples/TooGenBug.hs
-(1,1): Declared type is too general
+(1,1): Type signature is too general
  function         : f
    declared type  : a   -> Int
    inferred type  : [b] -> Int

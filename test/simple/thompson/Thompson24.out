@@ -1,5 +1,5 @@
 Compiling thompson/Thompson24.hs
-(1,1): Declared type is too general
+(1,1): Type signature is too general
  function         : compress
    declared type  : [a  ] -> [a  ]
    inferred type  : [Int] -> [Int]

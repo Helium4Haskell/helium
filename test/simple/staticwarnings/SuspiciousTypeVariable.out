@@ -5,12 +5,12 @@ Compiling staticwarnings/SuspiciousTypeVariable.hs
   Hint: Did you mean the type constructor "Bool" ?
 (7,10): Warning: Suspicious type variable "tree"
   Hint: Did you mean the type constructor "Tree" ?
-(1,1): Declared type is too general
+(1,1): Type signature is too general
  function         : f
    declared type  : int -> bool
    inferred type  : Int -> Bool
 
-(7,1): Declared type is too general
+(7,1): Type signature is too general
  function         : depth
    declared type  : tree -> Int
    inferred type  : Tree -> Int
