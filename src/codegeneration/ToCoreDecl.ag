@@ -83,7 +83,7 @@ SEM Declaration
                     , Core.valueEnc    = Nothing
                     , Core.valueValue  = 
                         let_ 
-                            nextClauseId (patternMatchFail @range.self)
+                            nextClauseId (patternMatchFail "pattern binding" @range.self)
                             @righthandside.core
                     , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel
                     }
@@ -102,7 +102,7 @@ SEM Declaration
                     , Core.declAccess  = Core.private
                     , Core.valueEnc    = Nothing
                     , Core.valueValue  =
-                        (let_ nextClauseId (patternMatchFail @range.self)
+                        (let_ nextClauseId (patternMatchFail "pattern binding" @range.self)
                             (patternToCore (patBindId, @pattern.self) (Core.Var v))
                         )
                     , Core.declCustoms = toplevelType (nameFromId v) @lhs.importEnv @lhs.isTopLevel
@@ -197,7 +197,7 @@ SEM FunctionBindings [ range : Range | | core : {Core.Expr} ]
                           .core  = @hd.core @tl.core
                           .arity = @hd.arity
     | Nil              lhs.id    = intErr "FunctionBindings" "empty list of function bindings"
-                          .core  = patternMatchFail @lhs.range
+                          .core  = patternMatchFail "function bindings" @lhs.range
                           .arity = intErr "FunctionBindings" "empty list of function bindings"
 
 SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]

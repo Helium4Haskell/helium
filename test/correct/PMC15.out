@@ -1,6 +1,6 @@
 Compiling correct/PMC15.hs
 Compilation successful
-exception: pattern match failed at correct/PMC15.hs(7,1).
+exception: pattern match failed at function bindings ranging from (7,1) to (7,18) in module correct/PMC15.hs.
 
 trace:
   demanded from "HeliumLang.showBool"

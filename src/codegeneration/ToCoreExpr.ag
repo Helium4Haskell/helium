@@ -57,7 +57,7 @@ SEM Expression [ | | core : { Core.Expr } ]
 
     | Lambda             lhs.core = 
         let ids = freshIds "u$" @patterns.length
-        in let_ nextClauseId (patternMatchFail @range.self)
+        in let_ nextClauseId (patternMatchFail "lambda expression" @range.self)
             (foldr 
                 Core.Lam 
                 (patternsToCore 
@@ -182,7 +182,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
         \rest -> case rest of
             Nothing   -> intErr "Statement" "generator can't be last in 'do'"
             Just rest -> 
-                let_ nextClauseId (patternMatchFail @range.self)
+                let_ nextClauseId (patternMatchFail "generator" @range.self)
                     (let_ 
                         okId 
                         (Core.Lam parameterId
@@ -247,7 +247,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
                   
 SEM Alternatives [ caseRange : Range | | core : { Core.Expr } ]
     | Cons              lhs.core     = @hd.core @tl.core
-    | Nil               lhs.core     = patternMatchFail @lhs.caseRange
+    | Nil               lhs.core     = patternMatchFail "case expression" @lhs.caseRange
 
 SEM Alternative [ | | core : { Core.Expr -> Core.Expr } ]
     | Alternative       lhs.core   = \nextCase  ->

@@ -1,7 +1,7 @@
 Compiling correct/Lambda4.hs
 (4,15): Variable "xs" is not used
 Compilation successful with 1 warning
-exception: pattern match failed at correct/Lambda4.hs(4,9).
+exception: pattern match failed at lambda expression ranging from (4,9) to (4,23) in module correct/Lambda4.hs.
 
 trace:
   demanded from "LvmLang.<"

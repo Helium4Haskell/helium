@@ -1,6 +1,6 @@
 Compiling correct/ExprDoPat2.hs
 Compilation successful
-exception: pattern match failed at correct/ExprDoPat2.hs(6,9).
+exception: pattern match failed at generator ranging from (6,9) to (6,32) in module correct/ExprDoPat2.hs.
 
 trace:
   demanded from "LvmLang.unsafePerformIO"

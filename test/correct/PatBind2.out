@@ -1,6 +1,6 @@
 Compiling correct/PatBind2.hs
 Compilation successful
-exception: pattern match failed at correct/PatBind2.hs(7,1).
+exception: pattern match failed at pattern binding ranging from (7,1) to (7,19) in module correct/PatBind2.hs.
 
 trace:
   demanded from "LvmLang.<"

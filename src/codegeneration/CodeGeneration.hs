@@ -134,15 +134,14 @@ throwException message =
     var "primErrorPacked"
         `app_` packedString message
 
-patternMatchFail :: Range -> Core.Expr
-patternMatchFail range =
+patternMatchFail :: String -> Range -> Core.Expr
+patternMatchFail nodeDescription range =
     var "primPatternFailPacked"
-        `app_` packedString (showRange range)
+        `app_` packedString (nodeDescription ++ " ranging from " ++ showRange range)
 
 showRange :: Range -> String
 showRange (Range_Range (Position_Position mod line column) (Position_Position _ line' column')) = 
-    "function bindings ranging from " ++ show (line, column) ++ " to " ++ show (line', column') ++
-    " in module " ++ mod
+    show (line, column) ++ " to " ++ show (line', column') ++ " in module " ++ mod
 showRange _ = internalError "ToCorePat.ag" "showRange" "unknown position"
 -- Alternative -------------------------------------------------
 -- semantic domain
@@ -208,7 +207,7 @@ sem_Alternatives_Nil :: (T_Alternatives)
 sem_Alternatives_Nil (_lhs_caseRange) =
     let (_self) =
             []
-    in  (patternMatchFail _lhs_caseRange,_self)
+    in  (patternMatchFail "case expression" _lhs_caseRange,_self)
 -- AnnotatedType -----------------------------------------------
 -- semantic domain
 type T_AnnotatedType = ((AnnotatedType))
@@ -660,7 +659,7 @@ sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_import
                      , Core.valueEnc    = Nothing
                      , Core.valueValue  =
                          let_
-                             nextClauseId (patternMatchFail _range_self)
+                             nextClauseId (patternMatchFail "pattern binding" _range_self)
                              _righthandside_core
                      , Core.declCustoms = toplevelType n _lhs_importEnv _lhs_isTopLevel
                      }
@@ -679,7 +678,7 @@ sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_import
                      , Core.declAccess  = Core.private
                      , Core.valueEnc    = Nothing
                      , Core.valueValue  =
-                         (let_ nextClauseId (patternMatchFail _range_self)
+                         (let_ nextClauseId (patternMatchFail "pattern binding" _range_self)
                              (patternToCore (patBindId, _pattern_self) (Core.Var v))
                          )
                      , Core.declCustoms = toplevelType (nameFromId v) _lhs_importEnv _lhs_isTopLevel
@@ -1038,7 +1037,7 @@ sem_Expression_Lambda (_range) (_patterns) (_expression) =
         ( _expression_core,_expression_self) =
             (_expression )
     in  (let ids = freshIds "u$" _patterns_length
-         in let_ nextClauseId (patternMatchFail _range_self)
+         in let_ nextClauseId (patternMatchFail "lambda expression" _range_self)
              (foldr
                  Core.Lam
                  (patternsToCore
@@ -1377,7 +1376,7 @@ sem_FunctionBindings_Nil :: (T_FunctionBindings)
 sem_FunctionBindings_Nil (_lhs_ids) (_lhs_range) =
     let (_self) =
             []
-    in  (intErr "FunctionBindings" "empty list of function bindings",patternMatchFail _lhs_range,intErr "FunctionBindings" "empty list of function bindings",_self)
+    in  (intErr "FunctionBindings" "empty list of function bindings",patternMatchFail "function bindings" _lhs_range,intErr "FunctionBindings" "empty list of function bindings",_self)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
 type T_GuardedExpression = (( Core.Expr -> Core.Expr ),(GuardedExpression))
@@ -2537,7 +2536,7 @@ sem_Statement_Generator (_range) (_pattern) (_expression) =
     in  (\rest -> case rest of
              Nothing   -> intErr "Statement" "generator can't be last in 'do'"
              Just rest ->
-                 let_ nextClauseId (patternMatchFail _range_self)
+                 let_ nextClauseId (patternMatchFail "generator" _range_self)
                      (let_
                          okId
                          (Core.Lam parameterId

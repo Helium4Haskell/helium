@@ -41,14 +41,13 @@ throwException message =
     var "primErrorPacked"
         `app_` packedString message
 
-patternMatchFail :: Range -> Core.Expr
-patternMatchFail range =
+patternMatchFail :: String -> Range -> Core.Expr
+patternMatchFail nodeDescription range =
     var "primPatternFailPacked"
-        `app_` packedString (showRange range)
+        `app_` packedString (nodeDescription ++ " ranging from " ++ showRange range)
 
 showRange :: Range -> String
 showRange (Range_Range (Position_Position mod line column) (Position_Position _ line' column')) = 
-    "function bindings ranging from " ++ show (line, column) ++ " to " ++ show (line', column') ++
-    " in module " ++ mod
+    show (line, column) ++ " to " ++ show (line', column') ++ " in module " ++ mod
 showRange _ = internalError "ToCorePat.ag" "showRange" "unknown position"
 }
