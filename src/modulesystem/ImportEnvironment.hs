@@ -6,7 +6,7 @@ import UHA_Utils
 import Types
 import OperatorTable
 import Messages -- instance Show Name
-import TS_CoreSyntax (Core_TypingStrategies)
+import TS_CoreSyntax
 import List (sortBy, partition, groupBy)
 
 type TypeEnvironment             = FiniteMap Name TpScheme
@@ -90,6 +90,10 @@ addTypingStrategies new importenv = importenv {typingStrategies = new ++ typingS
 
 removeTypingStrategies :: ImportEnvironment -> ImportEnvironment  
 removeTypingStrategies importenv = importenv {typingStrategies = []}
+
+getSiblings :: ImportEnvironment -> [[String]]
+getSiblings importenv = 
+   [ xs | Siblings xs <- typingStrategies importenv ]
 
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
 combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 xs2) = 

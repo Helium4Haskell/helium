@@ -7,8 +7,9 @@ data TypeConstraint info
    = Equality         info Tp Tp                   
    | ExplicitInstance ((Tp,Tp) -> info) Tp TpScheme 
    | ImplicitInstance ((Tp,Tp) -> info) Tp Tps Tp   
-   | MakeConsistent -- :-(
    | PredicateConstraint Predicate
+   | MakeConsistent
+
 
 type TypeConstraints info = [TypeConstraint info]
 

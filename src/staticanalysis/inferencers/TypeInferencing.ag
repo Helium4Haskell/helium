@@ -1,85 +1,86 @@
 -------------------------------------------------------------------------------
---
---   *** The Helium Compiler : Static Analysis ***
---               ( Bastiaan Heeren )
---
--- TypeInferencing.ag : The type inferencer for Helium
---
--------------------------------------------------------------------------------
+-- Attributes for type inferencing
 
 ATTR Module
    [ importEnvironment     : ImportEnvironment
      options               : {[Option]}
    |
    | debugIO               : {IO ()}
-     localTypes            : LocalTypes
+     localTypes            : {FiniteMap NameWithRange TpScheme}
      overloadedVars        : OverloadedVariables
      toplevelTypes         : TypeEnvironment
      typeErrors            : TypeErrors
      warnings              : Warnings
    ]
 
+-------------------------------------------------------------------------------
+-- Includes
+
 INCLUDE "TypeInferenceRules.ag"
+INCLUDE "TypeInferenceOverloading.ag"
+INCLUDE "TypeInferenceCollect.ag"
 INCLUDE "TypeInferenceInfo.ag"
-INCLUDE "PatternMatchWarnings.ag"
 INCLUDE "../staticchecks/HeliumPartialSyntax.ag"
+INCLUDE "../staticchecks/Scope.ag"  
 INCLUDE "../../syntax/UHA_OneLine.ag"
 INCLUDE "../../syntax/UHA_Syntax.ag"
-INCLUDE "../staticchecks/Scope.ag" 
 
-SEM Module
-  | Module lhs . warnings = @loc.warnings ++ @body.patternMatchWarnings
+--- Type Inference Directives (may be turned off)
+INCLUDE "typingstrategies/TS_PatternMatching.ag"
+SEM Module | Module   lhs . debugIO = @debugIO >> putStrLn "Inference Strategies:" >> @body.matchIO
+
+-- Pattern Match Warnings (may be turned off)
+INCLUDE "PatternMatchWarnings.ag"
+SEM Module | Module lhs . warnings = @loc.warnings ++ @body.patternMatchWarnings
+  
+-------------------------------------------------------------------------------
+-- Imports
 
 imports {
 
--- standard
-import Monad                   ( when )
-import List                    ( intersperse, partition, nub, zipWith4, union )
-import Maybe (catMaybes, mapMaybe)
-import Args
 -- types
 import Types
 import TypeConversion
--- constraints
+
+-- constraints and constraint trees
 import TypeConstraints
 import LiftedConstraints
 import TreeWalk
 import Tree
--- messages
+
+-- error messages and warnings
 import Messages
 import TypeErrors
 import Warnings
--- solvers
-import SolveTypeGraph   (solveTypeGraph)
-import SolveGreedy      (solveGreedy)
-import SolveSimple      (solveSimple)
-import SolveCombination (solveCombination)
-import SolveChunks      (solveChunkConstraints)
---
-import TypeGraphInstance
-         
 import ConstraintInfo
 import TypeGraphConstraintInfo
 import HeliumConstraintInfo
-import Constraints
+
+-- constraint solvers
+import SolveTypeGraph            (solveTypeGraph)
+import SolveGreedy               (solveGreedy)
+import SolveSimple               (solveSimple)
+import SolveCombination          (solveCombination)
+import SolveChunks               (solveChunkConstraints)
 import TypeConstraintSemantics
-import SolveState
-import IsSolver
-import SimilarFunctionTable    ( similarFunctionTable )
--- other
-import TopSort                 ( topSort )
-import Utils                   ( internalError )
-import DerivingShow            ( typeOfShowFunction, nameOfShowFunction ) 
-import UHA_Range               ( noRange, getNameRange, getExprRange, getPatRange, getLitRange, setNameRange )
+import TypeGraphInstance
+
+-- UHA syntax
 import UHA_Syntax
-import UHA_Utils               ( showNameAsOperator, intUnaryMinusName )
+import UHA_Range                 (noRange, getNameRange, getExprRange, getPatRange, getLitRange, setNameRange)
+import UHA_Utils                 (showNameAsOperator, intUnaryMinusName, NameWithRange(..), nameFromString)
+         
+-- other
+import SimilarFunctionTable      (similarFunctionTable)
+import Utils                     (internalError)
+import DerivingShow              (typeOfShowFunction, nameOfShowFunction) 
+import TopSort                   (topSort)
 import ImportEnvironment
+import Args
+
+-- standard
 import Data.FiniteMap
+import Maybe 
+import List                   
+
 }
-
---- The following lines enable Type Strategies. 
-
-INCLUDE "typingstrategies/TS_PatternMatching.ag"
-
-SEM Module
-  | Module  lhs . debugIO = @debugIO >> putStrLn "Inference Strategies:" >> @body.matchIO

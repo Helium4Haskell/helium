@@ -1,0 +1,43 @@
+----------------------------------------------------------------------------------------
+-- extra information for overloading (for code generation)
+
+ATTR Statement Statements Qualifier Qualifiers MaybeExpression Expression Expressions
+     RightHandSide RecordExpressionBinding GuardedExpression GuardedExpressions
+     FunctionBinding FunctionBindings Alternative Alternatives Declaration Declarations
+     MaybeDeclarations Body RecordExpressionBindings
+        [ overloads : Names 
+        | overloadedVars : OverloadedVariables 
+        | 
+        ]
+
+{
+type OverloadedVariables = FiniteMap NameWithRange (NameWithRange, QType)
+}
+
+SEM Module 
+  | Module     body . overloadedVars = emptyFM
+                    . overloads      = [ n 
+                                       | (n, ts) <- fmToList @body.toplevelTypes ++ fmToList (typeEnvironment @lhs.importEnvironment)
+                                       ,  isOverloaded ts
+                                       ] ++
+                                       [ nameWithRangeToName n
+                                       | (n, ts) <- fmToList @body.localTypes  
+                                       , isOverloaded ts
+                                       ]
+                                       
+  
+SEM Expression 
+
+  | Variable   lhs  . overloadedVars = let mName = filter (@name.self==) @lhs.namesInScope
+                                       in case mName of 
+                                             [name] | any (\n -> NameWithRange n == NameWithRange name) @lhs.overloads
+                                               -> let qtype = getQualifiedType (generalize [] @lhs.predicates (@lhs.substitution |-> @beta))
+                                                  in addToFM @lhs.overloadedVars (NameWithRange @name.self) (NameWithRange name, qtype) 
+                                             _ -> @lhs.overloadedVars
+                                             
+  | Negate     lhs . overloadedVars = case filter ((== "negate") . show) (keysFM $ typeEnvironment @lhs.importEnvironment) of
+                                         [nameImport] -> let myName = NameWithRange (setNameRange intUnaryMinusName @range.self)
+                                                             qtype  = getQualifiedType (generalize [] @lhs.predicates subtp)
+                                                             subtp  = @lhs.substitution |->  @expression.beta .->. @beta
+                                                         in addToFM @expression.overloadedVars myName (NameWithRange nameImport, qtype)
+                                         _            -> @expression.overloadedVars

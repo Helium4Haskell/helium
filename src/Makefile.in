@@ -249,6 +249,8 @@ staticanalysis/staticchecks/StaticChecks.hs : \
 staticanalysis/inferencers/TypeInferencing.hs : \
 		staticanalysis/inferencers/TypeInferencing.ag \
                 staticanalysis/inferencers/TypeInferenceRules.ag \
+                staticanalysis/inferencers/TypeInferenceOverloading.ag \
+                staticanalysis/inferencers/TypeInferenceCollect.ag \
                 staticanalysis/inferencers/TypeInferenceInfo.ag \
                 staticanalysis/inferencers/PatternMatchWarnings.ag \
                 staticanalysis/staticchecks/HeliumPartialSyntax.ag \
