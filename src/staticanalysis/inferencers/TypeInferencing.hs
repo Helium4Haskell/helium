@@ -2650,7 +2650,8 @@ sem_Expression_Variable (_range) (_name) (_lhs_allPatterns) (_lhs_betaUnique) (_
           in case mName of
                 [name] | any (equalNames name) _lhs_overloads
                   -> let qtype = getQualifiedType (generalize [] _lhs_predicates (_lhs_substitution |-> _beta))
-                     in addToFM _lhs_overloadedVars (NameWithRange _name_self) (NameWithRange name, qtype)
+                     in
+                       addToFM _lhs_overloadedVars (NameWithRange _name_self) (NameWithRange name, qtype)
                 _ -> _lhs_overloadedVars
          ,_lhs_patternMatchWarnings
          ,_self

@@ -33,7 +33,9 @@ module PreludePrim
     , error, catch
     ) where
 
-import HeliumLang(showFloat, showInt)
+import HeliumLang
+    ( showFloat, showInt, showBool, showChar
+    )
 
 import LvmLang
     ( (+#) = (+), (*#) = (*), (-#) = (-), negInt
@@ -182,8 +184,11 @@ round x
 
 {- Show -}
 
-dictShowInt   = (@0, 1) showInt
-dictShowFloat = (@0, 1) showFloat
+dictShowInt    = (@0, 1) showInt
+dictShowFloat  = (@0, 1) showFloat
+dictShowBool   = (@0, 1) showBool
+dictShowChar   = (@0, 1) showChar
+''dictShow()'' = (@0, 1) showUnit
 
 show :: "Show a => a -> String"
 show dShow = 
@@ -230,10 +235,15 @@ fromInt dNum =
     case dNum of
             (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x7
 
+
+
 {- Eq -}
 
 dictEqInt    = (@0, 2) (==#) (/=#)
 dictEqFloat  = (@0, 2) (==.) (/=.)
+dictEqBool   = (@0, 2) eqBool (\x y -> not (eqBool x y))
+''dictEq[]'' = (@0, 2) eqList (\dict xs ys -> not (eqList dict xs ys))
+dictEqChar   = dictEqInt
 
 (==) :: "Eq a => a -> a -> Bool"
 (==) dEq =
@@ -245,10 +255,35 @@ dictEqFloat  = (@0, 2) (==.) (/=.)
     case dEq of
         (@0, 2) x1 x2 -> x2
 
+eqBool x y = 
+    case x of
+        True -> y
+        False -> not y
+
+eqList dictEqElem xs ys = 
+    case xs of 
+        (:) xh xt -> 
+            case ys of 
+                (:) yh yt ->
+                    case (==) dictEqElem xh yh of
+                        True -> eqList dictEqElem xt yt
+                        False -> False
+                _ -> False
+        _ -> case ys of
+                [] -> True
+                _  -> False
+                    
+not :: Bool -> Bool
+not x = case x of True -> False
+                  False -> True
+    
+
+        
 {- Ord -}
 
 dictOrdInt   = (@0, 5) dictEqInt   (<#) (<=#) (>=#) (>#) 
 dictOrdFloat = (@0, 5) dictEqFloat (<.) (<=.) (>=.) (>.) 
+dictOrdChar  = dictOrdInt
 
 getEqFromOrd dOrd = 
     case dOrd of

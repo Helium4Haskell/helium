@@ -517,7 +517,12 @@ sem_ContextItem_ContextItem (_range) (_name) (_types) (_lhs_miscerrors) =
             (_name )
         ( _types_miscerrors,_types_self,_types_typevariables) =
             (_types (_lhs_miscerrors))
-    in  ( _types_typevariables,_types_miscerrors,_self)
+    in  ( _types_typevariables
+         ,if elem (getNameName _name) (keysFM standardClasses)
+             then _types_miscerrors
+             else UnknownClass _name : _types_miscerrors
+         ,_self
+         )
 -- ContextItems ------------------------------------------------
 -- semantic domain
 type T_ContextItems = ([Error]) ->
@@ -1015,7 +1020,7 @@ sem_Export ((Export_Variable (_range) (_name))) =
 sem_Export_Module :: (T_Range) ->
                      (T_Name) ->
                      (T_Export)
-sem_Export_Module (_range) (_name) (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScope) (_lhs_tyconsInScope) =
+sem_Export_Module (_range) (_name) (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScop) (_lhs_tyconsInScope) =
     let (_self) =
             Export_Module _range_self _name_self
         ( _range_self) =
@@ -1030,7 +1035,7 @@ sem_Export_TypeOrClass :: (T_Range) ->
                           (T_Name) ->
                           (T_MaybeNames) ->
                           (T_Export)
-sem_Export_TypeOrClass (_range) (_name) (_names) (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScope) (_lhs_tyconsInScope) =
+sem_Export_TypeOrClass (_range) (_name) (_names) (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScop) (_lhs_tyconsInScope) =
     let (_self) =
             Export_TypeOrClass _range_self _name_self _names_self
         ( _range_self) =
@@ -1043,7 +1048,7 @@ sem_Export_TypeOrClass (_range) (_name) (_names) (_lhs_consInScope) (_lhs_module
 sem_Export_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Export)
-sem_Export_TypeOrClassComplete (_range) (_name) (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScope) (_lhs_tyconsInScope) =
+sem_Export_TypeOrClassComplete (_range) (_name) (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScop) (_lhs_tyconsInScope) =
     let (_self) =
             Export_TypeOrClassComplete _range_self _name_self
         ( _range_self) =
@@ -1054,7 +1059,7 @@ sem_Export_TypeOrClassComplete (_range) (_name) (_lhs_consInScope) (_lhs_modules
 sem_Export_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Export)
-sem_Export_Variable (_range) (_name) (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScope) (_lhs_tyconsInScope) =
+sem_Export_Variable (_range) (_name) (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScop) (_lhs_tyconsInScope) =
     let (_self) =
             Export_Variable _range_self _name_self
         ( _range_self) =
@@ -1062,7 +1067,7 @@ sem_Export_Variable (_range) (_name) (_lhs_consInScope) (_lhs_modulesInScope) (_
         ( _name_self) =
             (_name )
     in  ( checkExport ExportVariable _name_self
-             _lhs_namesInScope
+             _lhs_namesInScop
          ,_self
          )
 -- Exports -----------------------------------------------------
@@ -1080,16 +1085,16 @@ sem_Exports (list) =
 sem_Exports_Cons :: (T_Export) ->
                     (T_Exports) ->
                     (T_Exports)
-sem_Exports_Cons (_hd) (_tl) (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScope) (_lhs_tyconsInScope) =
+sem_Exports_Cons (_hd) (_tl) (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScop) (_lhs_tyconsInScope) =
     let (_self) =
             (:) _hd_self _tl_self
         ( _hd_exportErrors,_hd_self) =
-            (_hd (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScope) (_lhs_tyconsInScope))
+            (_hd (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScop) (_lhs_tyconsInScope))
         ( _tl_exportErrors,_tl_self) =
-            (_tl (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScope) (_lhs_tyconsInScope))
+            (_tl (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScop) (_lhs_tyconsInScope))
     in  ( _hd_exportErrors  ++  _tl_exportErrors,_self)
 sem_Exports_Nil :: (T_Exports)
-sem_Exports_Nil (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScope) (_lhs_tyconsInScope) =
+sem_Exports_Nil (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScop) (_lhs_tyconsInScope) =
     let (_self) =
             []
     in  ( [],_self)
@@ -2041,14 +2046,14 @@ sem_MaybeExports ((MaybeExports_Nothing )) =
     (sem_MaybeExports_Nothing )
 sem_MaybeExports_Just :: (T_Exports) ->
                          (T_MaybeExports)
-sem_MaybeExports_Just (_exports) (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScope) (_lhs_tyconsInScope) =
+sem_MaybeExports_Just (_exports) (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScop) (_lhs_tyconsInScope) =
     let (_self) =
             MaybeExports_Just _exports_self
         ( _exports_exportErrors,_exports_self) =
-            (_exports (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScope) (_lhs_tyconsInScope))
+            (_exports (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScop) (_lhs_tyconsInScope))
     in  ( _exports_exportErrors,_self)
 sem_MaybeExports_Nothing :: (T_MaybeExports)
-sem_MaybeExports_Nothing (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScope) (_lhs_tyconsInScope) =
+sem_MaybeExports_Nothing (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScop) (_lhs_tyconsInScope) =
     let (_self) =
             MaybeExports_Nothing
     in  ( [],_self)
@@ -2205,12 +2210,12 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
         (_derivedRanges) =
             map getNameRange (map fst _derivedFunctions)
         (_initialScope) =
-            map fst _derivedFunctions ++ concatMap (keysFM . typeEnvironment) _lhs_importEnvironments
+            map fst _derivedFunctions ++
+            concatMap (keysFM . typeEnvironment) _lhs_importEnvironments
         (_collectEnvironment) =
             setValueConstructors  (listToFM _body_collectValueConstructors)
             . setTypeConstructors (listToFM _body_collectTypeConstructors)
             . setTypeSynonyms     (listToFM _body_collectTypeSynonyms)
-            . setTypeEnvironment  (listToFM _body_typeSignatures)
             . setOperatorTable    (listToFM _body_operatorFixities)
             $ emptyEnvironment
         (_derivedFunctions) =
@@ -2303,9 +2308,9 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
             (_exports (_allValueConstructors)
                       ((_moduleName : _fileName : _body_importedModules))
                       (concat [ _body_declVarNames
-                              , concatMap (keysFM . typeEnvironment) _lhs_importEnvironments
-                              , map fst _derivedFunctions
-                              ])
+                               , concatMap (keysFM . typeEnvironment) _lhs_importEnvironments
+                               , map fst _derivedFunctions
+                               ])
                       (_allTypeConstructors))
         ( _body_collectScopeInfos,_body_collectTypeConstructors,_body_collectTypeSynonyms,_body_collectValueConstructors,_body_declVarNames,_body_importedModules,_body_kindErrors,_body_miscerrors,_body_operatorFixities,_body_self,_body_typeSignatures,_body_unboundNames,_body_warnings) =
             (_body (_allTypeConstructors) (_allValueConstructors) ([]) ([]) ([]) ([]) ([]) ([]) (_namesInScope) ([]) (_typeConstructors) (_valueConstructors) ([]))

@@ -431,7 +431,7 @@ break p = span (not . p)
 lines :: String -> [String]
 lines ""   = []
 lines s    = let l,s' :: String
-                 (l,s') = break (\x -> x `eqChar` '\n') s
+                 (l,s') = break (\x -> x == '\n') s
              in l : case s' of []      -> []
                                (_:s'') -> lines s''
 
@@ -604,7 +604,7 @@ print showElement e = putStrLn (showElement e)
 getLine   :: IO String
 getLine = do 
     c <- getChar
-    if eqChar c '\n' 
+    if c == '\n' 
         then return ""
         else do cs <- getLine
                 return (c:cs)
@@ -617,17 +617,20 @@ getLine = do
  -- Eq
  -----------------------------------------------}
 
+{-
 eqChar :: Char -> Char -> Bool
 eqChar c1 c2 = 
     case ordChar c1 c2 of
         EQ -> True
         _  -> False
+-}
 
 eqMaybe :: (a -> a -> Bool) -> Maybe a -> Maybe a -> Bool
 eqMaybe _ Nothing Nothing = True
 eqMaybe eq (Just a1) (Just a2) = a1 `eq` a2
 eqMaybe _ _ _ = False
 
+{-
 eqBool :: Bool -> Bool -> Bool
 eqBool True True = True
 eqBool False False = True
@@ -637,6 +640,7 @@ eqList :: (a -> a -> Bool) -> [a] -> [a] -> Bool
 eqList _      []     []     =  True
 eqList eqElem (x:xs) (y:ys) = x `eqElem` y && eqList eqElem xs ys
 eqList _      _      _      = False
+-}
 
 eqTuple2 :: (a -> a -> Bool) -> (b -> b -> Bool) -> (a, b) -> (a, b) -> Bool
 eqTuple2 eqA eqB (a1, b1) (a2, b2) = a1 `eqA` a2 && b1 `eqB` b2
@@ -678,7 +682,7 @@ ordFloat x y
     | otherwise = GT
 
 ordList :: (a -> a -> Ordering) -> [a] -> [a] -> Ordering
-ordList _ []     (_:_)  = LT
+ordList _ []     (_:_ )  = LT
 ordList _ []     []     = EQ
 ordList _ (_:_)  []     = GT
 ordList ordElem (x:xs) (y:ys) = 

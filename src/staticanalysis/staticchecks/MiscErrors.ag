@@ -12,7 +12,7 @@ ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alterna
      FunctionBinding FunctionBindings Body Qualifier Qualifiers          
      GuardedExpression GuardedExpressions Literal 
      Type Types AnnotatedTypes AnnotatedType ContextItem ContextItems Constructors Constructor FieldDeclaration
-     FieldDeclarations
+     FieldDeclarations  
      [ | miscerrors : {[Error]} | ]
 
 SEM Module
@@ -227,4 +227,6 @@ ATTR ContextItems ContextItem [ | | contextVars USE { ++ } { [] } : {[Name]} ]
 
 SEM ContextItem
   | ContextItem lhs.contextVars = @types.typevariables
-  
+                lhs.miscerrors = if elem (getNameName @name) (keysFM standardClasses) 
+                                    then @types.miscerrors  
+                                    else UnknownClass @name : @types.miscerrors  

@@ -23,7 +23,7 @@ SEM Export
                                     @names.toList
 -}
 SEM Module
-  | Module  exports . namesInScope   = concat [ @body.declVarNames
+  | Module  exports . namesInScop   = concat [ @body.declVarNames
                                               , concatMap (keysFM . typeEnvironment) @lhs.importEnvironments
                                               , map fst @derivedFunctions
                                               ]
@@ -35,7 +35,7 @@ SEM Module
   | Module    loc . exportErrors = @exports.exportErrors
                     
 ATTR MaybeExports Exports Export
-    [ namesInScope   : Names
+    [ namesInScop   : Names
       modulesInScope : Names
       tyconsInScope  : Names
       consInScope    : Names
@@ -59,7 +59,7 @@ equalName x y =
 
 SEM Export
     | Variable    lhs . exportErrors =  checkExport ExportVariable @name.self
-                                           @lhs.namesInScope
+                                           @lhs.namesInScop
     | Module      lhs . exportErrors =  checkExport ExportModule @name.self
                                            @lhs.modulesInScope    
 -------------------------------------------

@@ -932,7 +932,8 @@ SEM Expression
                                        in case mName of 
                                              [name] | any (equalNames name) @lhs.overloads
                                                -> let qtype = getQualifiedType (generalize [] @lhs.predicates (@lhs.substitution |-> @beta))
-                                                  in addToFM @lhs.overloadedVars (NameWithRange @name.self) (NameWithRange name, qtype) 
+                                                  in {- error (show (map NameWithRange @lhs.namesInScope)) -} 
+                                                    addToFM @lhs.overloadedVars (NameWithRange @name.self) (NameWithRange name, qtype) 
                                              _ -> @lhs.overloadedVars
 
 SEM Module 

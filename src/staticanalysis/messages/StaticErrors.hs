@@ -33,7 +33,9 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | RecursiveTypeSynonyms Names
             | PatternDefinesNoVars Range
             | IntLiteralTooBig Range String
+            
             | AmbiguousContext Name
+            | UnknownClass Name
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -52,6 +54,7 @@ instance HasMessage Error where
       PatternDefinesNoVars range  -> [range]
       IntLiteralTooBig range _    -> [range]
       AmbiguousContext name       -> [getNameRange name]
+      UnknownClass name           -> [getNameRange name]
       _                           -> internalError "Messages.hs" 
                                                    "instance IsMessage Error" 
                                                    "unknown type of Error"
@@ -159,6 +162,12 @@ showError anError = case anError of
       ( MessageString ("Type variable " ++ show (show name) ++ " appears in the context but not in the type")
       , []
       )
+      
+   UnknownClass name ->
+      ( MessageString ("Unknown class " ++ show (show name) ++ " (Helium only supports Eq, Ord, Num, Show)")
+      , []
+      )
+      
 
    _ -> internalError "Messages.hs" "showError" "unknown type of Error"
 

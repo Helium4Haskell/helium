@@ -19,10 +19,10 @@
 SEM Module
   | Module   loc . collectEnvironment = setValueConstructors  (listToFM @body.collectValueConstructors)
                                         . setTypeConstructors (listToFM @body.collectTypeConstructors)
-                                        . setTypeSynonyms     (listToFM @body.collectTypeSynonyms)
-                                        . setTypeEnvironment  (listToFM @body.typeSignatures)
+                                        . setTypeSynonyms     (listToFM @body.collectTypeSynonyms)          
                                         . setOperatorTable    (listToFM @body.operatorFixities)
                                         $ emptyEnvironment 
+                                        -- the type environment will be added after type inferencing.
                                         
                  . derivedFunctions = let f (n,i) = ( nameOfShowFunction n
                                                     , typeOfShowFunction n (take i [ nameFromString [c] | c <- ['a'..]])
