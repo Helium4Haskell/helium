@@ -187,9 +187,11 @@ compile fullName options doneModules =
                            
         -- Phase 4: Desugaring
         enterNewPhase "Desugaring" options
+
+        let moduleWithName = fixModuleName module_ baseName
         
         let coreModule = {-# SCC "CodeGeneration" #-}
-                         CodeGeneration.sem_Module module_ 
+                         CodeGeneration.sem_Module moduleWithName 
                             (typingStrategiesDecls ++ indirectionDecls)
                             finalEnvironment
                             toplevelTypes
@@ -234,6 +236,15 @@ stopCompilingIf bool = when bool (System.exitWith (ExitFailure 1))
 
 maximumNumberOfTypeErrors :: Int
 maximumNumberOfTypeErrors = 3
+
+-- | Make sure the module has a name. If there is no name (module without
+--   header) insert the base name of the file name as name.
+fixModuleName :: Module -> String -> Module
+fixModuleName original@(Module_Module r name es b) baseName =
+    case name of
+        MaybeName_Nothing -> 
+            Module_Module r (MaybeName_Just (Name_Identifier noRange [] baseName)) es b
+        _ -> original
 
 chaseImports :: String -> Module -> IO [[Core.CoreDecl]]
 chaseImports filePath mod =

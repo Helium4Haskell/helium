@@ -8,25 +8,29 @@ DOCUMENTATIE
 ! commentaar over List en Maybe
 
 INTERPRETER
-* springen naar internet browser bij :i map http://www.cs.uu.nl/~afie/helium/tourofprelude.html#map
-* interpreter gooit temp files weg a/h begin na iedere expressie
 * hint opties doorspelen naar Helium
-* foutmeldingen over Interpreter.hs afvangen
-* interpreter kan module die Main heet niet inlezen?! "module imports itself"
-* hint met .hs file
 * hint parameter mag ook .hs bevatten, maar geen pad (of wel?) 
   :l ook; pad van meegegeven file vooraan LVMPATH
 * testen of TEMP schrijfbaar is
-* Ctrl-C stopt niet alleen lvmrun maar ook hint
-* JCreator: Rijk-Jan
 * Wat voor een voorzieningen nodig in de compiler?
 * :r
+
+FANCY 
+* autoload feature (zie e-mails van Stephen Milborrow)
+* springen naar internet browser bij :i map http://www.cs.uu.nl/~afie/helium/tourofprelude.html#map
+
+COMMAND Interpreter
+
+* interpreter gooit temp files weg a/h begin na iedere expressie
+* foutmeldingen over Interpreter.hs afvangen
+* Ctrl-C stopt niet alleen lvmrun maar ook hint
 
 DAAN
 ! file IO exceptions; * EOF in getChar. How? catch werkt niet
 ! strictheid van error
 
 COMPILER
+* interpreter kan module die Main heet niet inlezen?! "module imports itself"
 ! XML uitvoer van errors en warnings t.b.v. interpreter
 ! parse error tests (zie Thompson)
 ! installer voor Windows
@@ -48,6 +52,7 @@ COMPILER
 
 ---- ONBELANGRIJK ----
                 
+* JCreator: Rijk-Jan
 * show implementeren met shows, ShowS; efficienter
 * HeliumCompatibility module voor Hugs/GHC
 * domein kopen
