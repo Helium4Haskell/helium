@@ -23,7 +23,7 @@ UPX	= @UPX@
 STRIP   = @STRIP@
 EXE	= @EXEEXT@
 INSTALL = @INSTALL@
-MKDIR   = ./mkinstalldirs
+MKDIR   = ../mkinstalldirs
 LOGGER  = @logger@
 
 prefix      = @prefix@
