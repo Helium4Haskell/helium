@@ -19,10 +19,11 @@
 -------------------------------------------------------------------------------
 
 SEM Module
-  | Module   loc . collectEnvironment = setValueConstructors  (listToFM @body.collectValueConstructors)
-                                        . setTypeConstructors (listToFM @body.collectTypeConstructors)
-                                        . setTypeSynonyms     (listToFM @body.collectTypeSynonyms)          
-                                        . setOperatorTable    (listToFM @body.operatorFixities)
+  | Module   loc . collectEnvironment = setValueConstructors   (listToFM @body.collectValueConstructors)
+                                        . setTypeConstructors  (listToFM @body.collectTypeConstructors)
+                                        . setTypeSynonyms      (listToFM @body.collectTypeSynonyms)          
+                                        . setOperatorTable     (listToFM @body.operatorFixities)
+					. addToTypeEnvironment (listToFM @derivedFunctions)
                                         $ emptyEnvironment 
                                         -- the type environment will be added after type inferencing.
                                         

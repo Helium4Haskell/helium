@@ -12492,10 +12492,14 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                    _orderedTypeSynonyms
                    _bodyIbetaUnique
                    _bodyIconstraints
-            (_bodyOdictionaryEnvironment@_) =
-                emptyDictionaryEnvironment
             (_bodyOavailablePredicates@_) =
                 []
+            (_bodyOdictionaryEnvironment@_) =
+                emptyDictionaryEnvironment
+            (_lhsOdictionaryEnvironment@_) =
+                if Overloading `elem` _lhsIoptions
+                  then _bodyIdictionaryEnvironment
+                  else emptyDictionaryEnvironment
             (_bodyOinferredTypes@_) =
                 listToFM [ (NameWithRange name, scheme)
                          | (name, scheme) <- fmToList (typeEnvironment _lhsIimportEnvironment)
@@ -12529,8 +12533,6 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 Module_Module _rangeIself _nameIself _exportsIself _bodyIself
             (_lhsOself@_) =
                 _self
-            (_lhsOdictionaryEnvironment@_) =
-                _bodyIdictionaryEnvironment
             (_lhsOtoplevelTypes@_) =
                 _bodyItoplevelTypes
             (_lhsOtypeErrors@_) =

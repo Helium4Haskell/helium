@@ -20,8 +20,13 @@ ATTR Declarations Declaration Expressions Expression Statements Statement
         ]
           
 SEM Module
-  | Module   body . availablePredicates   = []
-                  . dictionaryEnvironment = emptyDictionaryEnvironment
+  | Module
+       -- return an empty dictionary environment for the non-overloading setting
+       lhs  . dictionaryEnvironment = if Overloading `elem` @lhs.options 
+                                        then @body.dictionaryEnvironment
+					else emptyDictionaryEnvironment
+       body . dictionaryEnvironment = emptyDictionaryEnvironment
+	    . availablePredicates   = []
 
 SEM Declaration   
  

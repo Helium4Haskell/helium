@@ -7916,10 +7916,11 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 in map f _bodyIcollectTypeConstructors ++
                    map g _bodyIcollectTypeSynonyms
             (_collectEnvironment@_) =
-                setValueConstructors  (listToFM _bodyIcollectValueConstructors)
-                . setTypeConstructors (listToFM _bodyIcollectTypeConstructors)
-                . setTypeSynonyms     (listToFM _bodyIcollectTypeSynonyms)
-                . setOperatorTable    (listToFM _bodyIoperatorFixities)
+                setValueConstructors   (listToFM _bodyIcollectValueConstructors)
+                . setTypeConstructors  (listToFM _bodyIcollectTypeConstructors)
+                . setTypeSynonyms      (listToFM _bodyIcollectTypeSynonyms)
+                . setOperatorTable     (listToFM _bodyIoperatorFixities)
+                . addToTypeEnvironment (listToFM _derivedFunctions)
                 $ emptyEnvironment
             (_bodyOcollectTypeConstructors@_) =
                 []
