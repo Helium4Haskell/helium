@@ -140,7 +140,9 @@ patternMatchFail range =
         `app_` packedString (showRange range)
 
 showRange :: Range -> String
-showRange (Range_Range (Position_Position mod line column) _) = mod ++ show (line, column)
+showRange (Range_Range (Position_Position mod line column) (Position_Position _ line' column')) = 
+    "function bindings ranging from " ++ show (line, column) ++ " to " ++ show (line', column') ++
+    " in module " ++ mod
 showRange _ = internalError "ToCorePat.ag" "showRange" "unknown position"
 -- Alternative -------------------------------------------------
 -- semantic domain

@@ -15,15 +15,9 @@ INTERPRETER
 
 COMPILER
 
-DONE infix constructoren infix tonen
 ! parse error tests (zie Thompson)
 ! file IO exceptions; * EOF in getChar. How?
-DONE module header overbodig en dus optioneel in parser
-DONE corrupte lvm mededeling is lelijk
-! pattern-match failure beter presenteren (niet alleen begin)
 ! installer voor Windows
-DONE Als -O compileren dan moet ook coreasm met optimalisatie gecompileerd worden
-DONE Sections
 
 * read functies voor andere types dan Int
 * deriving Eq
@@ -55,12 +49,19 @@ Documentatie todo's
 
 ---- ONBELANGRIJK ----
                 
-* lvmrun compileren met -O
 * HeliumCompatibility module voor Hugs/GHC
 * pretty printer voor foutmeldingen
 * domein kopen
 
 ---- DONE ----
+
+* lvmrun compileren met -O
+! pattern-match failure beter presenteren (niet alleen begin)
+DONE infix constructoren infix tonen
+DONE module header overbodig en dus optioneel in parser
+DONE corrupte lvm mededeling is lelijk
+DONE Als -O compileren dan moet ook coreasm met optimalisatie gecompileerd worden
+DONE Sections
 
 2. Should (:) be Expr_Con ":" or Expr_Infix Nothing ":" Nothing?
    (I currently adopt the first solution; otherwise InfixCon3 is broken.)
