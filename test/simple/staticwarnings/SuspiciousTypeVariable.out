@@ -1,0 +1,18 @@
+Compiling staticwarnings/SuspiciousTypeVariable.hs
+(1,6): Warning: Suspicous type variable "int"
+  Hint: Did you mean the type constructor "Int" ?
+(1,13): Warning: Suspicous type variable "bool"
+  Hint: Did you mean the type constructor "Bool" ?
+(7,10): Warning: Suspicous type variable "tree"
+  Hint: Did you mean the type constructor "Tree" ?
+(1,1): Declared type is too general
+ expression       : f
+   declared type  : int -> bool
+   inferred type  : Int -> Bool
+
+(7,1): Declared type is too general
+ expression       : depth
+   declared type  : tree -> Int
+   inferred type  : Tree -> Int
+
+Compilation failed with 2 errors

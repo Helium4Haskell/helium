@@ -1,0 +1,9 @@
+Compiling typeerrors/Heuristics/UnaryMinus2.hs
+(1,12): Type error in infix application
+ expression       : sin -. 0.5
+ operator         : -.
+   type           : Float            -> Float -> Float
+   does not match : (Float -> Float) -> Float -> a    
+ possible fix     : Insert parentheses to negate the float literal: (-.0.5)
+
+Compilation failed with 1 error

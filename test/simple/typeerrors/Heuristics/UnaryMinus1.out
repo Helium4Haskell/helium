@@ -1,0 +1,9 @@
+Compiling typeerrors/Heuristics/UnaryMinus1.hs
+(1,12): Type error in infix application
+ expression       : abs - 4
+ operator         : -
+   type           : Int          -> Int -> Int
+   does not match : (Int -> Int) -> Int -> a  
+ possible fix     : Insert parentheses to negate the int literal: (-4)
+
+Compilation failed with 1 error
