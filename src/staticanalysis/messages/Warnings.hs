@@ -81,7 +81,7 @@ showWarning warning = case warning of
       )
 
    SuspiciousTypeVariable varName conName ->
-      ( MessageString ("Suspicous type variable " ++ (show.show) varName)
+      ( MessageString ("Suspicious type variable " ++ (show.show) varName)
       , [ MessageString ("Did you mean the type constructor " ++ (show.show) conName ++ " ?") ]
       )
       
