@@ -4,6 +4,5 @@ Compiling typeerrors/Heuristics/NewNegationSimilar.hs
  operator         : -.
    type           : Float -> Float
    does not match : Int   -> Int  
- probable fix     : use int negation (-) instead
 
 Compilation failed with 1 error
