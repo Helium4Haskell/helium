@@ -39,7 +39,7 @@ data LexerErrorInfo
     | IllegalEscapeInChar
     | EmptyChar
     | IllegalCharInChar
-    | NonTerminatedChar
+    | NonTerminatedChar (Maybe String)
     | EOFInChar
 
     | EOFInString
@@ -66,7 +66,12 @@ showLexerErrorInfo info =
         IllegalEscapeInChar -> [ "Illegal escape sequence in character literal", correctChars ]
         EmptyChar -> [ "Empty character literal", correctChars ]
         IllegalCharInChar -> [ "Illegal character in character literal", correctChars ]
-        NonTerminatedChar -> ["Non-terminated character literal", correctChars ]
+        NonTerminatedChar mn -> 
+            [ "Non-terminated character literal"
+            , correctChars
+            ] ++ case mn of
+                   Nothing -> []
+                   Just name -> ["To write a function in infix notation, use backquotes: `" ++ name ++ "`" ]
         EOFInChar -> [ "End of file in character literal", correctChars]
         
         EOFInString -> ["End of file in string literal", correctStrings ]

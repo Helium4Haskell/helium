@@ -1,4 +1,5 @@
 Compiling parser/NonTerminatedChar.hs
 (1,8): Non-terminated character literal
   Hint: Correct examples of Chars: 'a' '\n' '&'
+        To write a function in infix notation, use backquotes: `hello`
 Compilation failed with 1 error

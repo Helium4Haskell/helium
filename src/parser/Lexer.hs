@@ -160,22 +160,27 @@ lexChar :: Lexer
 lexChar input = do 
     pos <- getPos
     case input of
-        '\'':'\\':c:'\'':cs -> 
+        '\'':'\\':c:'\'':cs -> -- '\n' etc
             if c `elem` escapeChars then    
                 returnToken (LexChar ['\\',c]) 4 mainLexer cs
             else
                 lexerError IllegalEscapeInChar pos
-        '\'':'\'':_ ->
+        '\'':'\'':_ -> -- ''
             lexerError EmptyChar pos
-        '\'':c:'\'':cs ->
+        '\'':c:'\'':cs -> -- 'a' '%'
             if ord c >= 32 && ord c <= 126 then 
                 returnToken (LexChar [c]) 3 mainLexer cs
             else
                 lexerError IllegalCharInChar pos
-        ('\'':_:_) ->
-            lexerError NonTerminatedChar pos
-        ['\''] ->
+        ['\''] -> -- ' at end of file
             lexerError EOFInChar pos
+        ('\'':cs) -> -- if there is a name between single quotes, we give a hint that backquotes might be meant 
+            let (ds, es) = span (/= '\'') cs
+                ws = words ds
+            in if length es > 0 && head es == '\'' && length ws == 1 && isName (head ws) then
+                    lexerError (NonTerminatedChar (Just (head ws))) pos
+               else 
+                    lexerError (NonTerminatedChar Nothing) pos
         _ -> internalError "Lexer" "lexChar" "unexpected characters"
 
 lexString :: Lexer
@@ -283,6 +288,10 @@ myIsAlphaNum c = myIsLower c || myIsUpper c || myIsDigit c
 
 myIsSpace :: Char -> Bool
 myIsSpace c = c == ' ' || c == '\n' || c == '\t' || c == '\r'
+
+isName :: String -> Bool
+isName [] = False
+isName (hd:tl) = (myIsUpper hd || myIsLower hd) && all isLetter tl
 
 -----------------------------------------------------------
 -- Constants
