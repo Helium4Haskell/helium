@@ -1,5 +1,5 @@
 module Lexer
-    ( lexer
+    ( lexer, strategiesLexer
     , Token, Lexeme(..)
     , lexemeLength
     , LexerWarning(..), LexerError(..)
@@ -17,6 +17,12 @@ import Char(ord)
 lexer :: String -> [Char] -> Either LexerError ([Token], [LexerWarning])
 lexer fileName input = runLexerMonad fileName (mainLexer input)
 
+strategiesLexer :: String -> [Char] -> Either LexerError ([Token], [LexerWarning])
+strategiesLexer fileName input = 
+    case lexer fileName input of
+        Left err -> Left err
+        Right (tokens, warnings) -> Right (reserveStrategyNames tokens, warnings)
+        
 type Lexer = [Char] -> LexerMonad [Token]
 
 mainLexer :: Lexer
@@ -285,21 +291,29 @@ keywords =
     , "then", "else", "data", "type", "module", "import"
     , "infix", "infixl", "infixr", "_"
     , "class", "instance", "default", "deriving", "newtype" -- not supported
-    , "phase", "constraints" -- Bastiaan
     ]
 
 reservedConSyms :: [String]
 reservedConSyms =
-    [ "::"
-    , ":" -- Bastiaan
-    ]
+    [ "::" ]
 
 reservedVarSyms :: [String]
 reservedVarSyms =
-    [ "=>", "->", "<-", "..", "-", "-.", "@", "=", "\\", "|"
-    , "==" -- Bastiaan
-    ]
+    [ "=>", "->", "<-", "..", "-", "-.", "@", "=", "\\", "|" ]
 
 specialsWithoutBrackets :: String
 specialsWithoutBrackets = 
     ",`;" 
+
+reserveStrategyNames :: [Token] -> [Token]
+reserveStrategyNames tokens = 
+  map (\token@(pos, lexeme) -> case lexeme of 
+                   LexVar s    | s `elem` strategiesKeywords -> (pos, LexKeyword s)
+                   LexVarSym s | s == "=="                   -> (pos, LexResVarSym s)
+                   LexConSym s | s == ":"                    -> (pos, LexResConSym s)
+                   _ -> token
+      ) 
+      tokens
+
+strategiesKeywords :: [String]
+strategiesKeywords = [ "phase", "constraints", "siblings" ]

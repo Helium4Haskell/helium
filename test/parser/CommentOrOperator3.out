@@ -1,0 +1,4 @@
+Compiling parser/CommentOrOperator3.hs
+(2,10): Undefined constructor ":--"
+  Hint: If you wanted to start a comment, insert a space before --
+Compilation failed with 1 error

@@ -6,7 +6,7 @@ import TS_ToCore      (typingStrategyToCore)
 import System         (exitWith, ExitCode(..) )
 import Directory      (doesFileExist)
 import TS_Parser      (parseTypingStrategies)
-import Lexer          (lexer)
+import Lexer          (strategiesLexer)
 import TS_Analyse     (analyseTypingStrategies)
 import HeliumMessages (sortAndShowMessages)
 import Monad          (unless, when)
@@ -25,7 +25,7 @@ readTypingStrategiesFromFile options filename importEnvironment =
      \exists -> if not exists then return ([], []) else 
         
         do fileContent <- readFile filename            
-           case lexer filename fileContent of
+           case strategiesLexer filename fileContent of
               Left lexError -> do
                 putStrLn "Parse error in typing strategy: "
                 putStr . sortAndShowMessages $ [lexError]

@@ -26,14 +26,11 @@ tyvar   = name   lexVar  <?> "type variable"
 modid   = name   lexCon  <?> "module name"
 varid   = name   lexVar  <?> "variable"
 conid   = name   lexCon  <?> "constructor"
-consym  = opName (   lexConSym
-                 <|> do { lexCOL; return ":" }
-                 )
+consym  = opName lexConSym
        <?> "constructor operator"
 varsym  = opName (   lexVarSym 
                  <|> do { lexMIN;    return "-" } 
                  <|> do { lexMINDOT; return "-." }
-                 <|> do { lexASGASG; return "==" }
                  )
        <?> "operator"
 
@@ -113,7 +110,6 @@ lexSEMI     = lexeme (LexSpecial ';')
 lexBACKQUOTE = lexeme (LexSpecial '`')
 
 lexASG      = lexeme (LexResVarSym "=")
-lexASGASG   = lexeme (LexResVarSym "==")
 lexLARROW   = lexeme (LexResVarSym "<-")
 lexRARROW   = lexeme (LexResVarSym "->")
 lexBAR      = lexeme (LexResVarSym "|")
@@ -124,7 +120,6 @@ lexAT       = lexeme (LexResVarSym "@")
 lexDOTDOT   = lexeme (LexResVarSym "..")
 
 lexCOLCOL   = lexeme (LexResConSym "::")
-lexCOL      = lexeme (LexResConSym ":")
 
 lexDATA     = lexeme (LexKeyword "data")
 lexTYPE     = lexeme (LexKeyword "type")
@@ -144,8 +139,13 @@ lexINFIXL   = lexeme (LexKeyword "infixl")
 lexINFIXR   = lexeme (LexKeyword "infixr")
 lexUNDERSCORE = lexeme (LexKeyword "_")
 
+
+-- Typing strategies
 lexPHASE       = lexeme (LexKeyword "phase")
 lexCONSTRAINTS = lexeme (LexKeyword "constraints")
+lexSIBLINGS    = lexeme (LexKeyword "siblings")
+lexCOL         = lexeme (LexResConSym ":")
+lexASGASG      = lexeme (LexResVarSym "==")
 
 {-
 Expressions and patterns with operators are represented by lists. The Range

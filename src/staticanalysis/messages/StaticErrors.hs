@@ -13,7 +13,7 @@ import UHA_Syntax
 import UHA_Utils
 import UHA_Range
 import Messages
-import List        (intersperse, sort, partition)
+import List        (intersperse, sort, partition, isSuffixOf, isPrefixOf)
 import Maybe       (fromJust)
 import Utils       (commaList, internalError, minInt, maxInt)
 
@@ -77,6 +77,13 @@ showError anError = case anError of
         [ MessageString ("Did you mean " ++ prettyOrList (map (show . show) xs) ++ " ?")
         | let xs = findSimilar name inScope, not (null xs)
         ]
+        ++
+        (if "--" `isSuffixOf` getNameName name 
+         then [ MessageString "If you wanted to start a comment, insert a space before --" ]
+         else if "--" `isPrefixOf` getNameName name
+              then [ MessageString "If you wanted to start a comment, insert a space after --" ]
+              else []
+        )
       )
                          
    Duplicated entity names

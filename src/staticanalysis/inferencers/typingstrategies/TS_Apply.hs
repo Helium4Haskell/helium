@@ -17,7 +17,7 @@ import TypeErrors
 import ImportEnvironment
 import OperatorTable (OperatorTable)
 import Parser (exp_)
-import Lexer (lexer)
+import Lexer (strategiesLexer)
 import ParseLibrary (runHParser)
 import qualified ResolveOperators
 import TS_Attributes
@@ -40,7 +40,7 @@ matchInformation importEnvironment typingStrategy =
       
 expressionParser :: OperatorTable -> String -> Expression
 expressionParser operatorTable string = 
-    case lexer "TS_Apply" string of 
+    case strategiesLexer "TS_Apply" string of 
         Left lexErr -> intErr
         Right (tokens, _) ->
             case runHParser exp_ "TS_Apply" tokens True {- wait for EOF -} of

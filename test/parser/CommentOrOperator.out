@@ -1,0 +1,4 @@
+Compiling parser/CommentOrOperator.hs
+(2,11): Undefined variable "--++"
+  Hint: If you wanted to start a comment, insert a space after --
+Compilation failed with 1 error
