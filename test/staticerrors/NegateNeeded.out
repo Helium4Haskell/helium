@@ -1,0 +1,5 @@
+Prelude is up to date
+Compiling staticerrors/NegateNeeded.hs
+(3,9): "negate" from the Prelude is needed for unary minus
+(3,13): "negate" from the Prelude is needed for unary minus
+Compilation failed with 2 errors

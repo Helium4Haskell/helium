@@ -36,11 +36,6 @@ patternAlwaysSucceeds p =
         Pattern_Parenthesized _ p -> patternAlwaysSucceeds p
         _ -> False
 
-throwException :: String -> Core.Expr
-throwException message = 
-    var "primErrorPacked"
-        `app_` packedString message
-
 patternMatchFail :: String -> Range -> Core.Expr
 patternMatchFail nodeDescription range =
     var "primPatternFailPacked"

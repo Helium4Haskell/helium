@@ -1,8 +1,7 @@
 module ManyConstructs where
 
-
 -- Check whether we can compile these constructs 
--- without the Prelude
+-- without (most of) the Prelude
 
 import Prelude((>), (+), dictNumInt, dictOrdInt)
 

@@ -3,21 +3,29 @@
 -} 
 
 module HeliumLang
-    ( Bool(True, False), '':[]''('':[]'', (:)), '':()''('':()''), '':->''
+    ( Bool(True, False)
+    , '':[]''('':[]'', (:)) -- lists
+    , '':()''('':()'') -- unit tuple
+    , '':->'' -- function arrow
     , String, Int, Float, IO, Char
     
-    , showFunction, showIO, showPolymorphic
+    , showFunction, showIO, showPolymorphic -- all show functions are used in inserted main
     , showChar, showString, showInt, showList, showBool, showUnit, showFloat  
     , showTuple2, showTuple3, showTuple4, showTuple5, showTuple6, showTuple7
     , showTuple8, showTuple9, showTuple10
     
-    , primPutChar, primPutStr, primPutStrLn
-    , primBindIO, primUnsafePerformIO
-    , primErrorPacked, primPatternFailPacked
-    , primEnumFrom, primEnumFromThen, primEnumFromTo, primEnumFromThenTo
-    , primNegInt, primNegFloat, primStringToFloat, primEqFloat
-    , primConcat, primConcatMap
-    , primPackedToString
+    , primPutStrLn -- inserted main
+    , primPutChar, primPutStr -- necessary for primPutStrLn
+    , primBindIO -- do-notation
+    , primUnsafePerformIO -- inserted main
+    , primPatternFailPacked -- pattern-match failed runtime error
+    , primEnumFrom, primEnumFromThen, primEnumFromTo, primEnumFromThenTo -- [1..] etc
+    , primNegFloat -- unary minus for Expression_NegateFloat. Unnecessary in overloaded Helium?
+    , primStringToFloat -- float literals
+    , primEqFloat -- pattern-matching on floats
+    , primConcat -- derived show functions 
+    , primConcatMap -- list comprehensions
+    , primPackedToString -- string literals and the built-in string  "No main defined..." and derived shows
     ) where
 
 import LvmLang 

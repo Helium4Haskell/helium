@@ -230,3 +230,13 @@ SEM ContextItem
                 lhs.miscerrors = if elem (getNameName @name) (keysFM standardClasses) 
                                     then @types.miscerrors  
                                     else UnknownClass @name : @types.miscerrors  
+
+-- "negate" function is needed if unary negation appears in program
+SEM Expression
+    | Negate lhs.miscerrors = 
+        ( if nameFromString "negate" `elem` @lhs.namesInScope 
+          then []
+          else [ NegateNeeded @range.self ]
+        )
+        ++ @expression.miscerrors
+        

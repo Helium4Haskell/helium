@@ -33,6 +33,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | RecursiveTypeSynonyms Names
             | PatternDefinesNoVars Range
             | IntLiteralTooBig Range String
+            | NegateNeeded Range
             
             | AmbiguousContext Name
             | UnknownClass Name
@@ -53,6 +54,8 @@ instance HasMessage Error where
       RecursiveTypeSynonyms names -> sortRanges (map getNameRange names)
       PatternDefinesNoVars range  -> [range]
       IntLiteralTooBig range _    -> [range]
+      NegateNeeded range          -> [range]
+      
       AmbiguousContext name       -> [getNameRange name]
       UnknownClass name           -> [getNameRange name]
       _                           -> internalError "Messages.hs" 
@@ -156,6 +159,11 @@ showError anError = case anError of
    IntLiteralTooBig _ value ->
       ( MessageString ("Integer literal (" ++ value ++ ") too big")
       , [ MessageString $ "Maximum is " ++ show maxInt ]
+      )
+    
+   NegateNeeded range ->
+      ( MessageString ("\"negate\" from the Prelude is needed for unary minus")
+      , []
       )
       
    AmbiguousContext name ->

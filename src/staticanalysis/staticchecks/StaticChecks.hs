@@ -1342,7 +1342,17 @@ sem_Expression_Negate (_range) (_expression) (_lhs_allTypeConstructors) (_lhs_al
             (_range )
         ( _expression_collectScopeInfos,_expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
             (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectScopeInfos) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_lhs_warnings))
-    in  ( _expression_collectScopeInfos,_expression_kindErrors,_expression_miscerrors,_self,_expression_unboundNames,_expression_warnings)
+    in  ( _expression_collectScopeInfos
+         ,_expression_kindErrors
+         ,( if nameFromString "negate" `elem` _lhs_namesInScope
+            then []
+            else [ NegateNeeded _range_self ]
+          )
+          ++ _expression_miscerrors
+         ,_self
+         ,_expression_unboundNames
+         ,_expression_warnings
+         )
 sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
