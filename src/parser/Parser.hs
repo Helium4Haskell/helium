@@ -346,6 +346,7 @@ decl    ->  [[ var ]] decl1
 decl1   ->  "," vars "::" type
          |  "::" type
          |  varop pat10 rhs
+         |  "@" apat decl2
          |  apat* rhs
 decl2   ->  varop pat10 rhs
          |  rhs
@@ -394,7 +395,14 @@ decl1 (n, nr) =
         let lr = mergeRanges nr pr
         return $ \r -> Declaration_FunctionBindings r
             [FunctionBinding_FunctionBinding r 
-                (LeftHandSide_Infix lr (Pattern_Variable nr n) o p) b]                
+                (LeftHandSide_Infix lr (Pattern_Variable nr n) o p) b]
+    <|>
+    do
+        lexAT
+        (p, pr) <- withRange apat
+        let completeRange = mergeRanges nr pr
+            asPat = Pattern_As completeRange n p
+        decl2 (asPat, completeRange)
     <|>
     do
         (ps, rs) <- fmap unzip (many (withRange apat))

@@ -1,0 +1,5 @@
+Compiling parser/AsPatternBinding3.hs
+(1,10): Warning: Missing type signature: (+++) :: (Int, Int) -> Int -> (Int, Int, (Int, Int))
+(3,1): Warning: Missing type signature: main :: (Int, Int, (Int, Int))
+Compilation successful with 2 warnings
+(10,11,(4,5))
