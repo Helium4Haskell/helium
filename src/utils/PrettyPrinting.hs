@@ -44,7 +44,7 @@ sem_Alternative_Alternative :: (T_Range) ->
                                (T_Alternative)
 sem_Alternative_Alternative (_range) (_pattern) (_righthandside) =
     let (_text) =
-            _pattern_text <+> text "->" <$> _righthandside_text (text "->")
+            _pattern_text <$> indent 2 (_righthandside_text (text "->"))
         ( _range_text) =
             (_range )
         ( _pattern_text) =

@@ -1,7 +1,7 @@
 Compiling typeerrors/Examples/SameTypesInTypeError.hs
 
 (4,17): Type error in infix application
-*** Expression     : s==[]
+*** Expression     : s == []
 *** Term           : ==
 *** Type           : Int      -> Int -> Bool
 *** Does not match : [String] -> [a] -> Bool

@@ -538,7 +538,7 @@ SEM Qualifier
     --  range                    : Range
 
 SEM Alternative
-    | Alternative       loc.text = @pattern.text <+> text "->" <$> @righthandside.text (text "->")
+    | Alternative       loc.text = @pattern.text <$> indent 2 (@righthandside.text (text "->"))
     --  range                    : Range
     --  pattern                  : Pattern
     --  righthandside            : RightHandSide

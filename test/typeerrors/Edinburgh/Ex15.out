@@ -1,13 +1,13 @@
 Compiling typeerrors/Edinburgh/Ex15.hs
 
 (3,24): Type error in infix application
-*** Expression     : x+1
+*** Expression     : x + 1
 *** Term           : x
 *** Type           : Bool
 *** Does not match : Int 
 
 (3,33): Type error in infix application
-*** Expression     : x-2.2
+*** Expression     : x - 2.2
 *** Term           : -
 *** Type           : Int  -> Int   -> Int
 *** Does not match : Bool -> Float -> a  

@@ -8,7 +8,7 @@ ATTR Declaration Declarations [ | patBindNr : Int | ]
 SEM MaybeDeclarations [ | |   core : { Core.Expr -> Core.Expr } ]
     | Nothing     lhs.core = \continue -> continue
     | Just        declarations.patBindNr = 0
-                  declarations.types = Nothing
+                  declarations.isTopLevel = False
                   lhs.core = \continue -> letrec_ @declarations.decls continue  
 
 SEM Declaration          
@@ -67,7 +67,7 @@ SEM Declaration
             , Core.declAccess  = Core.private
             , Core.valueEnc    = Nothing
             , Core.valueValue  = foldr Core.Lam @bindings.core @ids
-            , Core.declCustoms = toplevelType (stringFromId @bindings.id) @lhs.types
+            , Core.declCustoms = toplevelType (nameFromId @bindings.id) @lhs.importEnv @lhs.isTopLevel
             }
         ]
     --  range                    : Range          
@@ -85,7 +85,7 @@ SEM Declaration
                         let_ 
                             nextClauseId (patternMatchFail @range.self)
                             @righthandside.core
-                    , Core.declCustoms = toplevelType (getNameName n) @lhs.types
+                    , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel
                     }
                ]
             _ ->
@@ -105,7 +105,7 @@ SEM Declaration
                         (let_ nextClauseId (patternMatchFail @range.self)
                             (patternToCore (patBindId, @pattern.self) (Core.Var v))
                         )
-                    , Core.declCustoms = toplevelType (stringFromId v) @lhs.types
+                    , Core.declCustoms = toplevelType (nameFromId v) @lhs.importEnv @lhs.isTopLevel
                     }
                 | v <- @pattern.vars
                 ]
@@ -294,7 +294,8 @@ SEM Constructor
             , Core.declAccess  = Core.private
             , Core.declArity   = @types.length
             , Core.conTag      = @lhs.tag
-            , Core.declCustoms = constructorTypeAndArity @constructor.self @lhs.constructorenv
+            , Core.declCustoms = constructorTypeAndArity @constructor.self 
+                                    (valueConstructors @lhs.importEnv)
             }
           )
         ]
@@ -308,7 +309,8 @@ SEM Constructor
             , Core.declAccess  = Core.private
             , Core.declArity   = 2
             , Core.conTag      = @lhs.tag
-            , Core.declCustoms = constructorTypeAndArity @constructorOperator.self @lhs.constructorenv
+            , Core.declCustoms = constructorTypeAndArity @constructorOperator.self 
+                                    (valueConstructors @lhs.importEnv)
             }
           )
         ]
@@ -329,14 +331,18 @@ SEM AnnotatedTypes [ | | length : Int ]
     | Nil  lhs.length = 0
 
 {
-toplevelType :: String -> Maybe (AssocList String TpScheme) -> [Core.Custom]
-toplevelType name Nothing    = []
-toplevelType name (Just tps) = [customType typeString]
+nameFromId :: Id -> Name
+nameFromId i = Name_Identifier noRange [] (stringFromId i)
+
+toplevelType :: Name -> ImportEnvironment -> Bool -> [Core.Custom]
+toplevelType name ie isTopLevel
+    | isTopLevel = [customType typeString]
+    | otherwise  = []
     where
         typeString = maybe
-            (internalError "UHA_ToCore" "Declaration" ("no type found for " ++ name))
+            (internalError "UHA_ToCore" "Declaration" ("no type found for " ++ getNameName name))
             show
-            (lookupAL name tps)
+            (lookupFM (typeEnvironment ie) name)
 
 constructorTypeAndArity :: Name -> ValueConstructorEnvironment -> [Core.Custom]
 constructorTypeAndArity name env =

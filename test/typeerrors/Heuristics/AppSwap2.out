@@ -1,7 +1,7 @@
 Compiling typeerrors/Heuristics/AppSwap2.hs
 
 (6,13): Type error in infix application
-*** Expression     : dictionary?0
+*** Expression     : dictionary ? 0
 *** Term           : ?
 *** Type           : Int             -> IntTable a -> a     
 *** Does not match : IntTable String -> Int        -> String

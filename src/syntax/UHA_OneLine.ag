@@ -176,19 +176,19 @@ SEM Expression                                   {- *** -}
     --  range                    : Range
     --  function                 : Expression
     --  arguments                : Expressions
-    | InfixApplication  loc.oneLineTree =   
+    | InfixApplication  loc.operatorName = 
+                            case @operator.oneLineTree of
+                                Node [Text (first:_)] 
+                                    | isAlpha first || first == '_' -> 
+                                        Node [ Text "`", @operator.oneLineTree, Text "`" ]
+                                _ -> 
+                                    @operator.oneLineTree
+                        loc.oneLineTree =   
             case (@leftExpression.oneLineTree, @rightExpression.oneLineTree) of
-                (Nothing, Nothing) -> parens @operator.oneLineTree
-                (Just l , Nothing) -> encloseSep "(" " " ")" [l, @operator.oneLineTree]
-                (Nothing, Just r ) -> encloseSep "(" " " ")" [@operator.oneLineTree, r]
-                (Just l , Just r ) -> 
-                    case @operator.oneLineTree of
-                        Node [Text (first:_)] -> if isAlpha first || first == '_' then
-                            Node [ l, Text " `", @operator.oneLineTree, Text "` ", r ]
-                               else
-                            Node [ l, @operator.oneLineTree, r ]   
-                        _ -> 
-                            Node [ l, @operator.oneLineTree, r ]
+                (Nothing, Nothing) -> parens @operatorName
+                (Just l , Nothing) -> encloseSep "(" " " ")" [l, @operatorName]
+                (Nothing, Just r ) -> encloseSep "(" " " ")" [@operatorName, r]
+                (Just l , Just r ) -> Node [ l, Text " ", @operatorName, Text " ", r ]
     --  range                    : Range
     --  leftExpression           : MaybeExpression
     --  operator                 : Expression

@@ -110,7 +110,7 @@ CODEGENERATION = \
 
 UTILS = \
 	utils/PPUtils.hs utils/Utils.hs utils/Logger.hs utils/PrettyPrinting.hs utils/OSSpecific.hs utils/OneLiner.hs \
-	utils/Similarity.hs utils/SortedAssocList.hs
+	utils/Similarity.hs 
 
 MAINFILES = \
 	main/Main.hs main/Version.hs main/Args.hs main/Compile.hs

@@ -1,7 +1,7 @@
 Compiling typeerrors/Heuristics/TupleSize1.hs
 
 (6,10): Type error in tuple
-*** Expression     : (a+b,a,b)
+*** Expression     : (a + b,a,b)
 *** Type           : (Int, Int, Int)
 *** Expected type  : (Int, Int)     
 *** Because        : a 3-tuple does not match a 2-tuple

@@ -1405,19 +1405,19 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
                   }
         (_size) =
             1 + _leftExpression_size + _rightExpression_size
+        (_operatorName) =
+            case _operator_oneLineTree of
+                Node [Text (first:_)]
+                    | isAlpha first || first == '_' ->
+                        Node [ Text "`", _operator_oneLineTree, Text "`" ]
+                _ ->
+                    _operator_oneLineTree
         (_oneLineTree) =
             case (_leftExpression_oneLineTree, _rightExpression_oneLineTree) of
-                (Nothing, Nothing) -> parens _operator_oneLineTree
-                (Just l , Nothing) -> encloseSep "(" " " ")" [l, _operator_oneLineTree]
-                (Nothing, Just r ) -> encloseSep "(" " " ")" [_operator_oneLineTree, r]
-                (Just l , Just r ) ->
-                    case _operator_oneLineTree of
-                        Node [Text (first:_)] -> if isAlpha first || first == '_' then
-                            Node [ l, Text " `", _operator_oneLineTree, Text "` ", r ]
-                               else
-                            Node [ l, _operator_oneLineTree, r ]
-                        _ ->
-                            Node [ l, _operator_oneLineTree, r ]
+                (Nothing, Nothing) -> parens _operatorName
+                (Just l , Nothing) -> encloseSep "(" " " ")" [l, _operatorName]
+                (Nothing, Just r ) -> encloseSep "(" " " ")" [_operatorName, r]
+                (Just l , Just r ) -> Node [ l, Text " ", _operatorName, Text " ", r ]
         (_self) =
             Expression_InfixApplication _range_self _leftExpression_self _operator_self _rightExpression_self
         ( _range_self) =

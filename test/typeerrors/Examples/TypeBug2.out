@@ -1,7 +1,7 @@
 Compiling typeerrors/Examples/TypeBug2.hs
 
 (5,18): Type error in infix application
-*** Expression     : sep++f xs
+*** Expression     : sep ++ f xs
 *** Term           : f xs
 *** Type           : [[a]] -> [[a]]
 *** Does not match : [b]           

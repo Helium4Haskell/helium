@@ -1,6 +1,5 @@
 module CoreToImportEnv(getImportEnvironment) where
 
-import SortedAssocList
 import UHA_Syntax(Name(..), Range(..), Position(..))
 import UHA_Utils
 import OperatorTable
@@ -103,22 +102,6 @@ makeImportName importedInMod importedFromMod n =
         (makeImportRange (idFromString importedInMod) importedFromMod)
         []
         (stringFromId n)
-
--- Haskell imports lists are strictly additive, so
--- duplicates are allowed, which are filtered out here.
-update :: Id -> CoreDecl -> AssocList Id CoreDecl -> AssocList Id CoreDecl
-update name elt list =
-    let elts = ( nubBy discardOneOf . (elt :) . fst) (lookups name list)
-        discardOneOf x y = case (x, y) of
-            (DeclAbstract{}, DeclAbstract{}) -> False
-            (DeclExtern  {}, DeclExtern  {}) -> False
-            (DeclCon     {}, DeclCon     {}) -> False
-            _                                -> True
-    in
-        if length elts > 1 then
-            list
-        else
-            add name elt list
 
 getImportEnvironment :: String -> [CoreDecl] -> ImportEnvironment
 getImportEnvironment importedInModule = foldr insert emptyEnvironment

@@ -24,13 +24,13 @@ interpreterMain = "interpreter_main"
 -- The interpreter_main has te be wrapped inside unsafePerformIO etcetera, too
 -- We can't just call it main because we'll get import clashes.  Sigh!
 
-insertedMain :: AssocList Name TpScheme -> CoreDecl
-insertedMain toplevelTypes =
+insertedMain :: ImportEnvironment -> CoreDecl
+insertedMain importEnv =
     let maybeWrapMainAndType = 
-            case lookupAL (Name_Identifier noRange [] "main") toplevelTypes of
+            case lookupFM typeEnv (Name_Identifier noRange [] "main")  of
                 Just t -> Just ("main", t)
                 Nothing ->
-                    case lookupAL (Name_Identifier noRange [] interpreterMain) toplevelTypes of
+                    case lookupFM typeEnv (Name_Identifier noRange [] interpreterMain) of
                         Just t -> Just (interpreterMain, t)
                         Nothing -> Nothing
     in
@@ -52,14 +52,14 @@ insertedMain toplevelTypes =
                         tp = unsafeInstantiate tpScheme
     where
         unsafePIO = var "primUnsafePerformIO"
-                
+        typeEnv = typeEnvironment importEnv        
                 
 }
 
 SEM Module
-    | Module    body.types = Just (mapKey getNameName @lhs.toplevelTypes)
-                -- insert "insertedMain" after modulePublic so that it remains private
-                lhs.core = @module_ { Module.moduleDecls = insertedMain @lhs.toplevelTypes : Module.moduleDecls @module_ }
+    | Module    -- insert "insertedMain" after modulePublic so that it remains private
+                lhs.core = @module_ { Module.moduleDecls = 
+                                insertedMain @lhs.importEnv : Module.moduleDecls @module_ }
                 loc.module_ = 
         CoreParse.modulePublic
             ( case @exports.self of
@@ -80,15 +80,14 @@ SEM Module
     --  exports                  : MaybeExports
     --  body                     : Body
 -- Since the parser cannot distinguish between types or constructors,
--- or between types and type classes, wie do not have different cases (yet?).
+-- or between types and type classes, we do not have different cases (yet?).
 
-ATTR Body [ toplevelTypes : {AssocList Name TpScheme} | | ]
-
-ATTR Body Declarations Declaration
-    [   types : { Maybe (AssocList String TpScheme) }
+ATTR Declarations Declaration
+    [   isTopLevel : Bool
     |
     |
     ]   
+    
 
 ATTR MaybeExports Export Exports
     [
@@ -131,8 +130,8 @@ ATTR Body Declarations Declaration
 
 SEM Body
     | Body             lhs.decls    = @declarations.decls
---                          .impdecls = @importdeclarations.impdecls
                        declarations.patBindNr = 0
+                       declarations.isTopLevel = True
     --  range                    : Range
     --  importdeclarations       : ImportDeclarations
     --  declarations             : Declarations

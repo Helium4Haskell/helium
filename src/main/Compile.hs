@@ -37,16 +37,11 @@ import Utils(refToCurrentFileName, refToCurrentImported)
 import Messages(errorsLogCode)
 
 -- Utilities
-import SortedAssocList(toList)
 import Utils(splitFilePath)
 import System(ExitCode(..), exitWith)
 import Monad(when, unless)
 import IOExts(unsafePerformIO, writeIORef)
-
--- Temporary !!!!!
-import SortedAssocList
 import FiniteMap
-import Types (TpScheme)
 
 ------------------------------------------------------------------------------------
 -- Compiling a single Helium file consists of the following phases:
@@ -180,9 +175,8 @@ compile fullName options doneModules =
         
         let coreModule = {-# SCC "CodeGeneration" #-}
                          CodeGeneration.sem_Module module_ 
-                             (valueConstructors finalEnvironment)
-                             indirectionDecls
-                             ((fromList . fmToList) toplevelTypes)
+                            finalEnvironment
+                            indirectionDecls
                              
             strippedCoreModule = coreRemoveDead coreModule
 

@@ -7,7 +7,7 @@ Compiling typeerrors/Examples/TypeBug6.hs
 *** Does not match : [String] -> [String] -> [String]
 
 (6,16): Type error in infix application
-*** Expression     : x:y
+*** Expression     : x : y
 *** Term           : :
 *** Type           : a        -> [a     ] -> [a       ]
 *** Does not match : [String] -> [String] -> [[String]]
