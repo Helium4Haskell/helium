@@ -3,8 +3,6 @@
 --   *** The Helium Compiler : Static Analysis ***
 --               ( Bastiaan Heeren )
 --
--- TypeGraphConstraintInfo.hs : !!! CLEAN UP THIS CODE !!!!
---
 ------------------------------------------------------------------------------
 
 module TypeGraphConstraintInfo where
@@ -20,28 +18,28 @@ import Utils         (internalError)
 class (Show constraintinfo,ConstraintInfo constraintinfo) => 
          TypeGraphConstraintInfo constraintinfo where
           
-   getPosition             :: constraintinfo -> Maybe Int
-   getTrustFactor          :: constraintinfo -> Float 
-   getConstraintPhaseNumber :: constraintinfo -> Maybe Int 
-   isFolkloreConstraint    :: constraintinfo -> Bool
-   isExplicitTypedBinding  :: constraintinfo -> Bool
-   isTupleEdge             :: constraintinfo -> Bool
-   maybeApplicationEdge    :: constraintinfo -> Maybe (Bool, [(OneLineTree, Tp, Range)])
-   maybeImportedFunction   :: constraintinfo -> Maybe Name
-   getTwoTypes             :: constraintinfo -> (Tp,Tp)
-   maybeLiteral            :: constraintinfo -> Maybe Literal
-   maybeNegation           :: constraintinfo -> Maybe Bool
-   isNegationResult        :: constraintinfo -> Bool
-   maybeFunctionBinding    :: constraintinfo -> Maybe Int
-   maybeUserConstraint     :: constraintinfo -> Maybe (Int, Int)
-   maybeUnifier            :: constraintinfo -> Maybe Int
-   setFolkloreConstraint   :: constraintinfo -> constraintinfo
-   setNewTypeError         :: TypeError -> constraintinfo -> constraintinfo
-   setNewHint              :: TypeErrorInfo -> constraintinfo -> constraintinfo
-   makeTypeError           :: constraintinfo -> TypeError
-   isPattern               :: constraintinfo -> Bool
-   isEmptyInfixApplication :: constraintinfo -> Bool
-   isReductionErrorInfo :: constraintinfo -> Bool
+   getPosition                  :: constraintinfo -> Maybe Int
+   getTrustFactor               :: constraintinfo -> Float 
+   getConstraintPhaseNumber     :: constraintinfo -> Maybe Int 
+   isFolkloreConstraint         :: constraintinfo -> Bool
+   isExplicitTypedBinding       :: constraintinfo -> Bool
+   isTupleEdge                  :: constraintinfo -> Bool
+   maybeApplicationEdge         :: constraintinfo -> Maybe (Bool, [(OneLineTree, Tp, Range)]) 
+   maybeImportedFunction        :: constraintinfo -> Maybe Name
+   getTwoTypes                  :: constraintinfo -> (Tp,Tp)
+   maybeLiteral                 :: constraintinfo -> Maybe Literal
+   maybeNegation                :: constraintinfo -> Maybe Bool
+   isNegationResult             :: constraintinfo -> Bool
+   maybeFunctionBinding         :: constraintinfo -> Maybe Int
+   maybeUserConstraint          :: constraintinfo -> Maybe (Int, Int)
+   maybeUnifier                 :: constraintinfo -> Maybe Int
+   setFolkloreConstraint        :: constraintinfo -> constraintinfo
+   setNewTypeError              :: TypeError -> constraintinfo -> constraintinfo
+   setNewHint                   :: TypeErrorInfo -> constraintinfo -> constraintinfo
+   makeTypeError                :: constraintinfo -> TypeError
+   isPattern                    :: constraintinfo -> Bool
+   isEmptyInfixApplication      :: constraintinfo -> Bool
+   isReductionErrorInfo         :: constraintinfo -> Bool
    maybeReductionErrorPredicate :: constraintinfo -> Maybe Predicate
    isExprVariable               :: constraintinfo -> Bool
    
@@ -63,7 +61,7 @@ makeTypeErrorForTerm (isInfixApplication,isPatternApplication) argumentNumber te
                                  _        -> internalError "TypeGraphConstraintInfo.hs"
                                                            "makeTypeErrorForTerm"
                                                            "unexpected empty list"
-             functionType = either MessageType MessageTypeScheme ftype
+             functionType = either (\tp -> MessageType ([] :=> tp)) MessageTypeScheme ftype
              subterm
                 | isInfixApplication = if argumentNumber == 0 then "left operand" else "right operand"
                 | otherwise          = ordinal False (argumentNumber + 1) ++ " argument"

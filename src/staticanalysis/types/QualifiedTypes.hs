@@ -32,12 +32,16 @@ isGround (Predicate s tp) = null (ftv tp)
 hasPredicates :: QType -> Bool
 hasPredicates (ps :=> tp) = not (null ps)
 
+showContext :: Predicates -> String
+showContext []  = ""
+showContext [p] = show p
+showContext ps  = let list = foldr1 (\x y -> x++", "++y) (sort (map show ps))
+                  in "(" ++ list ++ ")" 
+
 instance Show QType where
    show (ps :=> tp) = case ps of 
-                         []  -> show tp
-                         [p] -> show p ++ " => " ++ show tp
-                         _   -> let list = foldr1 (\x y -> x++", "++y) (sort (map show ps))
-                                in "(" ++ list ++ ") => " ++ show tp
+                         [] -> show tp
+                         ps -> showContext ps ++ " => " ++ show tp
    
 instance Show Predicate where
    show (Predicate s tp) = if priorityOfType tp == 2 

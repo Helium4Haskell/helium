@@ -25,7 +25,7 @@ SEM Module
                                         -- the type environment will be added after type inferencing.
                                         
                  . derivedFunctions = let f (n,i) = ( nameOfShowFunction n
-                                                    , typeOfShowFunction n (take i [ nameFromString [c] | c <- ['a'..]])
+                                                    , typeOfShowFunction n (take i [ nameFromString s | s <- variableList])
                                                     )
                                           g (n,(i,_)) = f (n,i)
                                       in map f @body.collectTypeConstructors ++

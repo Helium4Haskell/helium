@@ -7,11 +7,21 @@
 --
 -------------------------------------------------------------------------------
 
-module TypesToAlignedDocs (typesToAlignedDocs) where
+module TypesToAlignedDocs (qualifiedTypesToAlignedDocs, typesToAlignedDocs) where
 
 import List     ( (\\), union, transpose )
 import Types
 import PPrint
+
+qualifiedTypesToAlignedDocs :: [QType] -> [PPrint.Doc]
+qualifiedTypesToAlignedDocs qtps = 
+   let (contexts, types) = unzip [ (c, tp) | (c :=> tp) <- qtps ]
+       docContexts = map text . sameLength . map showContext $ contexts
+       docArrows   = map (\xs -> if null xs then text "  " else text "=>") contexts
+       docTypes    = typesToAlignedDocs types
+   in if null (concat contexts)
+         then docTypes
+         else zipWith3 (\x y z -> x <+> y <+> z) docContexts docArrows docTypes
 
 typesToAlignedDocs :: Tps -> [PPrint.Doc]
 typesToAlignedDocs []  = []

@@ -29,7 +29,7 @@ data MessageLine   = MessageOneLiner  MessageBlock
 type MessageBlocks = [MessageBlock]               
 data MessageBlock  = MessageString       String
                    | MessageRange        Range
-                   | MessageType         Tp
+                   | MessageType         QType
                    | MessageTypeScheme   TpScheme
                    | MessageKind         Kind
                    | MessagePredicate    Predicate                                      

@@ -14,7 +14,7 @@ import Types
 import qualified PPrint
 import qualified OneLiner
 import List                (intersperse, zipWith4)
-import TypesToAlignedDocs  (typesToAlignedDocs)
+import TypesToAlignedDocs  (qualifiedTypesToAlignedDocs)
 import UHA_Range           (isImportRange, showRanges)
 import Char                (isSpace)
 
@@ -102,20 +102,19 @@ renderTypesInRight :: Int -> [(MessageBlock, MessageBlock)] -> [(MessageBlock, M
 renderTypesInRight width table =
    case table of
       (l1, r1) : (l2, r2) : rest
-        -> case (maybeType r1, maybeType r2) of
-              (Just tp1, Just tp2) -> let [doc1, doc2] = typesToAlignedDocs [tp1, tp2]
+        -> case (maybeQType r1, maybeQType r2) of
+              (Just tp1, Just tp2) -> let [doc1, doc2] = qualifiedTypesToAlignedDocs [tp1, tp2]
                                           render = flip PPrint.displayS [] . PPrint.renderPretty 1.0 width
-                                      in (l1, MessageType (TCon (render doc1)))
-                                       : (l2, MessageType (TCon (render doc2)))
+                                      in (l1, MessageType ([] :=> TCon (render doc1)))
+                                       : (l2, MessageType ([] :=> TCon (render doc2)))
                                        : renderTypesInRight width rest
               _                    -> (l1, r1) : renderTypesInRight width ((l2, r2) : rest)
       _ -> table
 
-  where maybeType :: MessageBlock -> Maybe Tp
-        maybeType (MessageType tp      ) = Just tp
-        maybeType (MessageTypeScheme ts) | not . hasPredicates . getQualifiedType $ ts
-                                         = Just (unsafeInstantiate ts)                            
-        maybeType _                      = Nothing
+  where maybeQType :: MessageBlock -> Maybe QType
+        maybeQType (MessageType qtype   ) = Just qtype
+        maybeQType (MessageTypeScheme ts) = Just (getQualifiedType ts) -- unsafe?
+        maybeQType _                      = Nothing
 
 -- make sure that a string does not exceed a certain width.
 -- Two extra features:
@@ -167,7 +166,7 @@ prepareTypesAndTypeSchemes messageLine = newMessageLine
     --step 2
     giveTypeVariableIdentifiers :: MessageLine -> MessageLine
     giveTypeVariableIdentifiers ml = 
-       let sub = listToSubstitution (zip (ftv ml) [ TCon [c] | c <- ['a'..], [c] `notElem` names])
+       let sub = listToSubstitution (zip (ftv ml) [ TCon s | s <- variableList, s `notElem` names])
        in sub |-> ml
    
     f_Table :: Int -> [(MessageBlock, MessageBlock)] -> ([(MessageBlock, MessageBlock)], Int, [String])
@@ -188,7 +187,6 @@ prepareTypesAndTypeSchemes messageLine = newMessageLine
         case messageBlock of
            MessageCompose mbs   -> let (r, i, ns) = f_MessageBlocks unique mbs
                                    in (MessageCompose r, i, ns)
-           MessageTypeScheme ts | not . hasPredicates . getQualifiedType $ ts
-                                -> let (unique', _, its) = instantiateWithNameMap unique ts
-                                   in (MessageType its, unique', constantsInType its)
+           MessageTypeScheme ts -> let (unique', ps, its) = instantiateWithNameMap unique ts
+                                   in (MessageType (ps :=> its), unique', constantsInType its)
            _                    -> (messageBlock, unique, [])

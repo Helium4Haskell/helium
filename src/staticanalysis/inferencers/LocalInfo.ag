@@ -5,13 +5,24 @@
 ---------------------------------------------------------------------------------------
 -- RightHandSide
 
+ATTR RightHandSide [ assign:String | | ]
+
+SEM Alternative
+  | Alternative       righthandside . assign = "->"
+
+SEM Declaration
+  | PatternBinding    righthandside . assign = "="
+
+SEM FunctionBinding
+  | FunctionBinding   righthandside . assign = "="
+
 SEM RightHandSide 
   | Expression   
-       loc . localInfo = LocalInfo { self = UHA_RHS @self
+       loc . localInfo = LocalInfo { self = UHA_RHS @self @lhs.assign
                                    , assignedType = Nothing
                                    }
   | Guarded      
-       loc . localInfo = LocalInfo { self = UHA_RHS @self
+       loc . localInfo = LocalInfo { self = UHA_RHS @self @lhs.assign
                                    , assignedType = Nothing
                                    }
 

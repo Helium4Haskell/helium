@@ -358,7 +358,7 @@ SEM Alternative
 
 SEM GuardedExpression -- ToDo: or _Guard?
     | GuardedExpression loc.oneLineTree =
-            \assign -> OneLineNode [ @guard.oneLineTree, OneLineText assign, @expression.oneLineTree ]
+            \assign -> OneLineNode [ OneLineText "|", @guard.oneLineTree, OneLineText assign, @expression.oneLineTree ]
     --  range                    : Range
     --  guard                    : Expression -- type: Boolean
     --  expression               : Expression
@@ -401,7 +401,7 @@ SEM RightHandSide
     --  where                    : MaybeDeclarations
     | Guarded           loc.oneLineTree =
             \assign -> OneLineNode
-                (  [ punctuate " " [ ge assign | ge <- @guardedexpressions.oneLineTree ] ]
+                (  [ ge assign | ge <- @guardedexpressions.oneLineTree ] 
                 ++ case @where.oneLineTree of
                     Nothing -> []
                     Just ds -> [ OneLineText " where ", encloseSep "{" "; " "}" ds ]

@@ -57,31 +57,15 @@ SEM Expression | Constructor loc . cinfo =
 -- Expression.NormalApplication
 SEM Expression | NormalApplication loc . cinfo =
   childConstraint 0 "application" @parentTree
-     [ ApplicationEdge False (zip3 (map (self. attribute) @arguments.infoTrees)
-                                   @arguments.betas
-                                   (map getExprRange @arguments.self)
-                             )
-     ]
+     [ ApplicationEdge False (map attribute @arguments.infoTrees) ]
 
 -- Expression.InfixApplication
 SEM Expression | InfixApplication loc . operatorNr    = length @leftExpression.infoTrees
                                   loc . cinfoOperator =
-  childConstraint @operatorNr "infix application" @parentTree
-     (case (@leftExpression.infoTrees, @rightExpression.infoTrees) of
-        ([left], [right]) -> 
-           [ ApplicationEdge True
-                [ ( (self . attribute) left
-                  , @leftExpression.beta
-                  , getMaybeExprRange @leftExpression.self
-                  )
-                , ( (self . attribute) right
-                  , @rightExpression.beta
-                  , getMaybeExprRange @rightExpression.self
-                  )
-                ] 
-           ]
-        _  -> 
-           [ HasTrustFactor 10.0 ])
+  childConstraint @operatorNr "infix application" @parentTree $
+     if @leftExpression.section || @rightExpression.section 
+     then [ HasTrustFactor 10.0 ]
+     else [ ApplicationEdge True (map attribute (@leftExpression.infoTrees ++ @rightExpression.infoTrees)) ] 
 
 SEM Expression | InfixApplication loc . cinfoComplete =
   specialConstraint "infix application (INTERNAL ERROR)" @parentTree
@@ -226,10 +210,7 @@ SEM Pattern | Constructor loc . cinfoConstructor =
 SEM Pattern | Constructor loc . cinfoApply =
   specialConstraint "pattern application" @parentTree
      (self @localInfo, Just $ nameToSelfPat @name.self)
-     [ ApplicationEdge False (zip3 (map (self. attribute) @patterns.infoTrees)
-                                    @patterns.betas
-                                    (map getPatRange (@patterns.self))
-                              )]     
+     [ ApplicationEdge False (map attribute @patterns.infoTrees) ]    
                                    
 SEM Pattern | Constructor loc . cinfoEmpty =
   resultConstraint "pattern constructor" @parentTree
@@ -243,11 +224,7 @@ SEM Pattern | InfixConstructor loc . cinfoConstructor =
 SEM Pattern | InfixConstructor loc . cinfoApply =
   specialConstraint "infix pattern application" @parentTree 
      (self @localInfo, Just $ nameToSelfPat  @constructorOperator.self)
-     [ ApplicationEdge True
-                       [ ((self . attribute) @leftPattern.infoTree ,@leftPattern.beta ,getPatRange (@leftPattern.self))
-                       , ((self . attribute) @rightPattern.infoTree,@rightPattern.beta,getPatRange (@rightPattern.self))
-                       ]
-     ]  
+     [ ApplicationEdge True (map attribute [@leftPattern.infoTree, @rightPattern.infoTree]) ] 
 
 -- Pattern.List
 SEM Pattern | List loc . cinfoElem =

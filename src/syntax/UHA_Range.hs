@@ -130,13 +130,14 @@ getPatRange (Pattern_Irrefutable r _) = r
 getPatRange (Pattern_List r _) = r
 getPatRange (Pattern_Literal r _) = r
 getPatRange (Pattern_Negate r _) = r
+getPatRange (Pattern_NegateFloat r _) = r
 getPatRange (Pattern_Parenthesized r _) = r
 getPatRange (Pattern_Record r _ _) = r
 getPatRange (Pattern_Successor r _ _) = r
 getPatRange (Pattern_Tuple r _) = r
 getPatRange (Pattern_Variable r _) = r
 getPatRange (Pattern_Wildcard r) = r
-getPatRange _ = internalError "UHA_Utils" "getPatRange" "unknown pattern"
+getPatRange _ = internalError "UHA_Range" "getPatRange" "unknown pattern"
 
 getExprRange :: Expression -> Range
 getExprRange (Expression_Literal            r _    ) = r

@@ -1193,7 +1193,7 @@ sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) =
     let (_self) =
             GuardedExpression_GuardedExpression _range_self _guard_self _expression_self
         (_oneLineTree) =
-            \assign -> OneLineNode [ _guard_oneLineTree, OneLineText assign, _expression_oneLineTree ]
+            \assign -> OneLineNode [ OneLineText "|", _guard_oneLineTree, OneLineText assign, _expression_oneLineTree ]
         ( _range_self) =
             (_range )
         ( _guard_oneLineTree,_guard_self) =
@@ -2305,7 +2305,7 @@ sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) =
             RightHandSide_Guarded _range_self _guardedexpressions_self _where_self
         (_oneLineTree) =
             \assign -> OneLineNode
-                (  [ punctuate " " [ ge assign | ge <- _guardedexpressions_oneLineTree ] ]
+                (  [ ge assign | ge <- _guardedexpressions_oneLineTree ]
                 ++ case _where_oneLineTree of
                     Nothing -> []
                     Just ds -> [ OneLineText " where ", encloseSep "{" "; " "}" ds ]

@@ -45,7 +45,7 @@ data Property   = FolkloreConstraint
                 | HasTrustFactor Float
                 | IsImported
                 | IsLiteral Literal
-                | ApplicationEdge Bool{-is binary-} [(UHA_Source, Tp, Range)]{-info about terms-}
+                | ApplicationEdge Bool{-is binary-} [LocalInfo]{-info about terms-}
                 | IsTupleEdge
                 | ExplicitTypedBinding
                 | FuntionBindingEdge Int
@@ -111,9 +111,13 @@ instance TypeGraphConstraintInfo HeliumConstraintInfo where
    maybeLiteral cinfo = case [ literal | IsLiteral literal <- properties cinfo ] of
              []  -> Nothing
              t:_ -> Just t
-   maybeApplicationEdge cinfo = case [ (b, tuples) | ApplicationEdge b tuples <- properties cinfo ] of
-             []  -> Nothing
-             (b, tuples):_ -> Just (b, [ (oneLinerSource self, tp, range) | (self, tp, range) <- tuples])
+   maybeApplicationEdge cinfo = case [ (b, zip (map self infoTrees) (map fromJust tps)) 
+                                     | ApplicationEdge b infoTrees <- properties cinfo 
+                                     , let tps = map assignedType infoTrees
+                                     , all isJust tps
+                                     ] of
+             []        -> Nothing
+             (b, xs):_ -> Just (b, [ (oneLinerSource self, tp, rangeOfSource self) | (self, tp) <- xs])
    maybeFunctionBinding cinfo = case [ t | FuntionBindingEdge t <- properties cinfo ] of
              []  -> Nothing
              t:_ -> Just t            

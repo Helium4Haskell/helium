@@ -26,8 +26,8 @@ data TypeError  = TypeError
 
 data TypeErrorTable = UnificationErrorTable
                          [(String, MessageBlock)]     -- sources to be reported
-                         (Either Tp TpScheme) -- type or typescheme of n.t. or subterm of n.t.
-                         (Either Tp TpScheme) -- conflicting type or expected type
+                         (Either Tp TpScheme)         -- type or typescheme of n.t. or subterm of n.t.
+                         (Either Tp TpScheme)         -- conflicting type or expected type
                          
                     | NotGeneralEnoughTable           
                          OneLineTree          -- expression
@@ -102,7 +102,7 @@ makeMessageTable isFolklore typeErrorTable =
              reason     = if isFolklore
                             then "expected type"
                             else "does not match"
-             makeType   = either MessageType MessageTypeScheme
+             makeType   = either (\tp -> MessageType ([] :=> tp)) MessageTypeScheme
          in MessageTable (sourcePart ++ typePart)
 
       NotGeneralEnoughTable tree tpscheme1 tpscheme2 ->
@@ -146,39 +146,33 @@ makeNotGeneralEnoughTypeError (tree, range) tpscheme1 tpscheme2 =
    in TypeError range oneliner table hints
    
 makeUnresolvedOverloadingError :: Range -> OneLineTree -> Predicate -> TypeError
-makeUnresolvedOverloadingError range tree (Predicate className classTP) =
+makeUnresolvedOverloadingError range tree predicate =
    CustomTypeError [range]
       [ MessageOneLiner (MessageString "Unresolved overloading")
       , MessageTable
            [ (MessageString "function" , MessageOneLineTree tree) 
-           , (MessageString "predicate", MessageCompose [MessageString className, MessageString " ", parensIf (priorityOfType classTP < 2)(MessageType classTP)])
+           , (MessageString "predicate", MessagePredicate predicate)
            ]
       ]
-   where parensIf :: Bool -> MessageBlock -> MessageBlock
-         parensIf b s = if b then MessageCompose [MessageString "(", s, MessageString ")"] else s
-   
-   
+      
 makeReductionError :: Range -> OneLineTree -> (TpScheme, Tp) -> ClassEnvironment -> Predicate -> TypeError
-makeReductionError range tree (scheme, tp) classEnvironment (Predicate className classTP) =
+makeReductionError range tree (scheme, tp) classEnvironment predicate@(Predicate className _) =
    CustomTypeError [range] 
       [ MessageOneLiner (MessageString "Type error in overloaded function")
       , MessageTable 
            [ (MessageString "function" , MessageOneLineTree tree) 
            , (MessageString "type"     , MessageTypeScheme scheme)
-           , (MessageString "used as"  , MessageType tp)
-           , (MessageString "predicate", MessageCompose [MessageString className, MessageString " ", parensIf (priorityOfType classTP < 2)(MessageType classTP)])
+           , (MessageString "used as"  , MessageType ([] :=> tp))
+           , (MessageString "predicate", MessagePredicate predicate)
            ]
-      , MessageOneLiner (MessageString pretty)
+      , MessageOneLiner (MessageString hint)
       ]
 
-   where parensIf :: Bool -> MessageBlock -> MessageBlock
-         parensIf b s = if b then MessageCompose [MessageString "(", s, MessageString ")"] else s
-         
-         pretty :: String
-         pretty = case valids of
-                     []  -> "  hint: there are no valid instances of "++className
-                     [x] -> "  hint: valid instance of "++className++" is "++show x
-                     xs  -> "  hint: valid instance of "++className++" are "++andList valids
+   where hint :: String
+         hint = case valids of
+                   []  -> "  hint: there are no valid instances of "++className
+                   [x] -> "  hint: valid instance of "++className++" is "++show x
+                   xs  -> "  hint: valid instance of "++className++" are "++andList valids
          
          andList :: [String] -> String
          andList [x,y]    = x++" and "++y
@@ -189,7 +183,7 @@ makeReductionError range tree (scheme, tp) classEnvironment (Predicate className
                       (tuples, others) = let p (TCon s) = isTupleConstructor s
                                              p _        = False
                                          in partition (p . fst . leftSpine) tps
-                      f tp = listToSubstitution (zip (ftv tp) [ TCon [c] | c <- ['a'..] ]) |-> tp
+                      f tp = listToSubstitution (zip (ftv tp) [ TCon s | s <- variableList ]) |-> tp
                   in if length tuples > 4 -- magic number!
                        then map (show . f) others ++ ["tuples"]
                        else map (show . f) tps
@@ -202,4 +196,3 @@ documentationLinkForTypeError typeError =
             x:_ -> Just x
             _   -> Nothing
       _                     -> Nothing
-

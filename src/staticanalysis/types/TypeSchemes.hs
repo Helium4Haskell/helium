@@ -27,11 +27,16 @@ data TpScheme = TpScheme
                 , getQualifiedType   :: QType
                 }
 
+-- a, b, .., z, a1, b1 .., z1, a2, ..
+variableList :: [String]
+variableList =  [ [x]        | x <- ['a'..'z'] ]
+             ++ [ (x:show i) | i <- [1..], x <- ['a'..'z'] ]
+
 instance Show TpScheme where
    show (TpScheme quantifiers namemap qtype) = 
       let sub1     = filter ((`elem` quantifiers) . fst) namemap 
           unknown  = quantifiers \\ map fst sub1
-          sub2     = zip unknown [ [c] | c <- ['a'..], [c] `notElem` map snd sub1 ]
+          sub2     = zip unknown [ s | s <- variableList, s `notElem` map snd sub1 ]
           subTotal = listToSubstitution [ (i, TCon s) | (i, s) <- sub1 ++ sub2 ]
       in show (subTotal |-> qtype)
 

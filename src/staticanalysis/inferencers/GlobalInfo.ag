@@ -81,7 +81,7 @@ SEM Pattern [ parentTree : InfoTree | | infoTree : InfoTree ]
        loc . parentTree = node @lhs.parentTree @localInfo []
        lhs . infoTree   = @parentTree 
   | Constructor  
-       loc . parentTree = node @lhs.parentTree @localInfo (@patterns.infoTrees)
+       loc . parentTree = node @lhs.parentTree @localInfo @patterns.infoTrees
        lhs . infoTree   = @parentTree 
   | InfixConstructor   
        loc . parentTree = node @lhs.parentTree @localInfo [@leftPattern.infoTree, @rightPattern.infoTree]

@@ -167,9 +167,11 @@ applicationEdge edge@(EdgeID v1 v2) info =
                       do let (t1, t2) = getTwoTypes info
                          fullTp <- applySubst t1 -- ???
                          let i = head incorrectArguments
+                             {- bug fix 25 september 2003: don't forget to expand the type synonyms -}
+                             expandedTp = expandType (snd synonyms) fullTp
                              (oneLiner,tp,range) = tuplesForArguments !! i
                              typeError     = makeTypeErrorForTerm (isBinary,isPatternApplication) i oneLiner (tp,expargtp) range info
-                             expargtp      = fst (functionSpine fullTp) !! i
+                             expargtp      = fst (functionSpine expandedTp) !! i
                          return (Just (3, [SetTypeError typeError], ("incorrect argument of application="++show i)))                         
                   
                   -- too many arguments are given
@@ -249,7 +251,7 @@ applicationEdge edge@(EdgeID v1 v2) info =
                                               ]                     
 
                _ -> return Nothing
-                                                       
+                                                                
 tupleEdge :: (IsTypeGraph m info, MonadState (SolveState m info a) m, IsSolver m info) => RepairHeuristic m info
 tupleEdge edge@(EdgeID v1 v2) info
    | not (isTupleEdge info) = return Nothing

@@ -133,14 +133,15 @@ instance Show ImportEnvironment where
        datatypes = 
           let allDatas = filter ((`notElem` keysFM tss). fst) (fmToList tcs)
               (xs, ys) = partition (isIdentifierName . fst) allDatas
-              list     = map (\(n,i) -> "data "++showNameAsVariable n++concatMap (\t -> " " ++ [t])  (take i ['a'..])) (ys++xs)
+              list     = map f (ys++xs)
+              f (n,i)  = unwords ("data" : (showNameAsVariable n) : take i variableList)
           in showWithTitle "Data types" list
        
        typesynonyms =
-          let (xs, ys) = partition (isIdentifierName . fst) (fmToList tss)
-              list     = map (\(n,(i,f)) -> "type "++showNameAsVariable n++" "++pretty i f) (ys++xs)
-              pretty i f = let list = take i [ TCon [c] | c <- ['a'..]]
-                           in concatMap (\t -> show t ++ " ") list ++ "= " ++ show (f list)                   
+          let (xs, ys)    = partition (isIdentifierName . fst) (fmToList tss)
+              list        = map f (ys++xs)
+              f (n,(i,g)) = let tcons =  take i (map TCon variableList)
+                            in unwords ("type" : showNameAsVariable n : map show tcons ++ ["=", show (g tcons)])               
           in showWithTitle "Type synonyms" list  
                  
        valueConstructors =

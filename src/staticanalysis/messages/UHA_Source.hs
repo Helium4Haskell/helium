@@ -12,7 +12,7 @@ data UHA_Source =
    | UHA_Stat   Statement
    | UHA_Qual   Qualifier
    | UHA_Alt    Alternative
-   | UHA_RHS    RightHandSide
+   | UHA_RHS    RightHandSide String {- for pretty-printing -}
    | UHA_FB     FunctionBinding
    | UHA_Decl   Declaration
    | UHA_Decls  Declarations
@@ -25,7 +25,7 @@ rangeOfSource source =
       UHA_Stat  stat  -> getStatementRange stat
       UHA_Qual  qual  -> getQualifierRange qual
       UHA_Alt   alt   -> getAlternativeRange alt
-      UHA_RHS   rhs   -> getRHSRangeSpecial rhs
+      UHA_RHS   rhs _ -> getRHSRangeSpecial rhs
       UHA_FB    fb    -> getFBRange fb
       UHA_Decl  decl  -> getDeclarationRange decl
       UHA_Decls decls -> if null decls then noRange else foldr1 mergeRanges (map getDeclarationRange decls)
@@ -38,7 +38,7 @@ oneLinerSource source =
       UHA_Stat  stat  -> fst (PP.sem_Statement stat)
       UHA_Qual  qual  -> fst (PP.sem_Qualifier qual)
       UHA_Alt   alt   -> fst (PP.sem_Alternative alt)
-      UHA_RHS   rhs   -> fst (PP.sem_RightHandSide rhs) ""
+      UHA_RHS   rhs s -> fst (PP.sem_RightHandSide rhs) s
       UHA_FB    fb    -> fst (PP.sem_FunctionBinding fb)
       UHA_Decl  decl  -> fst (PP.sem_Declaration decl)
       UHA_Decls decls -> PP.encloseSep "{" "; " "}" (fst (PP.sem_Declarations decls))
@@ -51,7 +51,7 @@ descriptionOfSource source =
       UHA_Stat  stat  -> "statement"
       UHA_Qual  qual  -> "qualifier"
       UHA_Alt   alt   -> "alternative"
-      UHA_RHS   rhs   -> "right-hand side"
+      UHA_RHS   rhs _ -> "right-hand side"
       UHA_FB    fb    -> "function binding"
       UHA_Decl  decl  -> "declaration"
       UHA_Decls decls -> "declarations"

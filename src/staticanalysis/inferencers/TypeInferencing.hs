@@ -803,6 +803,7 @@ sem_Alternative_Alternative (_range)
             (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
         ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectChunkNumbers,_righthandside_collectErrors,_righthandside_collectWarnings,_righthandside_constraints,_righthandside_dictionaryEnvironment,_righthandside_fallthrough,_righthandside_infoTree,_righthandside_matchIO,_righthandside_patternMatchWarnings,_righthandside_self,_righthandside_unboundNames,_righthandside_uniqueChunk) =
             (_righthandside (_lhs_allPatterns)
+                            ("->")
                             (_lhs_availablePredicates)
                             (_pattern_betaUnique)
                             (_lhs_chunkNumberMap)
@@ -1873,6 +1874,7 @@ sem_Declaration_PatternBinding (_range)
             (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
         ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectChunkNumbers,_righthandside_collectErrors,_righthandside_collectWarnings,_righthandside_constraints,_righthandside_dictionaryEnvironment,_righthandside_fallthrough,_righthandside_infoTree,_righthandside_matchIO,_righthandside_patternMatchWarnings,_righthandside_self,_righthandside_unboundNames,_righthandside_uniqueChunk) =
             (_righthandside (_lhs_allPatterns)
+                            ("=")
                             (case _declPredicates of
                                 Just (n, ps) -> ps ++ _lhs_availablePredicates
                                 Nothing      -> _lhs_availablePredicates)
@@ -3059,22 +3061,10 @@ sem_Expression_InfixApplication (_range)
         (_operatorNr) =
             length _leftExpression_infoTrees
         (_cinfoOperator) =
-            childConstraint _operatorNr "infix application" _parentTree
-               (case (_leftExpression_infoTrees, _rightExpression_infoTrees) of
-                  ([left], [right]) ->
-                     [ ApplicationEdge True
-                          [ ( (self . attribute) left
-                            , _leftExpression_beta
-                            , getMaybeExprRange _leftExpression_self
-                            )
-                          , ( (self . attribute) right
-                            , _rightExpression_beta
-                            , getMaybeExprRange _rightExpression_self
-                            )
-                          ]
-                     ]
-                  _  ->
-                     [ HasTrustFactor 10.0 ])
+            childConstraint _operatorNr "infix application" _parentTree $
+               if _leftExpression_section || _rightExpression_section
+               then [ HasTrustFactor 10.0 ]
+               else [ ApplicationEdge True (map attribute (_leftExpression_infoTrees ++ _rightExpression_infoTrees)) ]
         (_cinfoComplete) =
             specialConstraint "infix application (INTERNAL ERROR)" _parentTree
                (self _localInfo, Nothing)
@@ -3809,11 +3799,7 @@ sem_Expression_NormalApplication (_range)
             [ (_function_beta .==. foldr (.->.) _beta _arguments_betas) _cinfo ]
         (_cinfo) =
             childConstraint 0 "application" _parentTree
-               [ ApplicationEdge False (zip3 (map (self. attribute) _arguments_infoTrees)
-                                             _arguments_betas
-                                             (map getExprRange _arguments_self)
-                                       )
-               ]
+               [ ApplicationEdge False (map attribute _arguments_infoTrees) ]
         (_localInfo) =
             LocalInfo { self = UHA_Expr _self
                       , assignedType = Just _beta
@@ -4599,6 +4585,7 @@ sem_FunctionBinding_FunctionBinding (_range)
             (_lefthandside (_lhs_betaUnique) (_lhs_importEnvironment) (_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
         ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectChunkNumbers,_righthandside_collectErrors,_righthandside_collectWarnings,_righthandside_constraints,_righthandside_dictionaryEnvironment,_righthandside_fallthrough,_righthandside_infoTree,_righthandside_matchIO,_righthandside_patternMatchWarnings,_righthandside_self,_righthandside_unboundNames,_righthandside_uniqueChunk) =
             (_righthandside (_lhs_allPatterns)
+                            ("=")
                             (_lhs_availablePredicates)
                             (_lefthandside_betaUnique)
                             (_lhs_chunkNumberMap)
@@ -6001,10 +5988,7 @@ sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_imp
         (_cinfoApply) =
             specialConstraint "pattern application" _parentTree
                (self _localInfo, Just $ nameToSelfPat _name_self)
-               [ ApplicationEdge False (zip3 (map (self. attribute) _patterns_infoTrees)
-                                              _patterns_betas
-                                              (map getPatRange (_patterns_self))
-                                        )]
+               [ ApplicationEdge False (map attribute _patterns_infoTrees) ]
         (_cinfoEmpty) =
             resultConstraint "pattern constructor" _parentTree
                [ HasTrustFactor 10.0 ]
@@ -6013,7 +5997,7 @@ sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_imp
                       , assignedType = Just _beta
                       }
         (_parentTree) =
-            node _lhs_parentTree _localInfo (_patterns_infoTrees)
+            node _lhs_parentTree _localInfo _patterns_infoTrees
         ( _range_self) =
             (_range )
         ( _name_self) =
@@ -6051,11 +6035,7 @@ sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_ri
         (_cinfoApply) =
             specialConstraint "infix pattern application" _parentTree
                (self _localInfo, Just $ nameToSelfPat  _constructorOperator_self)
-               [ ApplicationEdge True
-                                 [ ((self . attribute) _leftPattern_infoTree ,_leftPattern_beta ,getPatRange (_leftPattern_self))
-                                 , ((self . attribute) _rightPattern_infoTree,_rightPattern_beta,getPatRange (_rightPattern_self))
-                                 ]
-               ]
+               [ ApplicationEdge True (map attribute [_leftPattern_infoTree, _rightPattern_infoTree]) ]
         (_localInfo) =
             LocalInfo { self = UHA_Pat _self
                       , assignedType = Just _beta
@@ -7024,6 +7004,7 @@ sem_RecordPatternBindings_Nil (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
 -- RightHandSide -----------------------------------------------
 -- semantic domain
 type T_RightHandSide = ([((Expression, [String]), Core_TypingStrategy)]) ->
+                       (String) ->
                        (Predicates) ->
                        (Int) ->
                        (ChunkNumberMap) ->
@@ -7059,6 +7040,7 @@ sem_RightHandSide_Expression (_range)
                              (_expression)
                              (_where)
                              (_lhs_allPatterns)
+                             (_lhs_assign)
                              (_lhs_availablePredicates)
                              (_lhs_betaUnique)
                              (_lhs_chunkNumberMap)
@@ -7085,7 +7067,7 @@ sem_RightHandSide_Expression (_range)
         (_inferredTypes) =
             addListToFM _lhs_inferredTypes _where_localTypes
         (_localInfo) =
-            LocalInfo { self = UHA_RHS _self
+            LocalInfo { self = UHA_RHS _self _lhs_assign
                       , assignedType = Nothing
                       }
         (_parentTree) =
@@ -7148,6 +7130,7 @@ sem_RightHandSide_Guarded (_range)
                           (_guardedexpressions)
                           (_where)
                           (_lhs_allPatterns)
+                          (_lhs_assign)
                           (_lhs_availablePredicates)
                           (_lhs_betaUnique)
                           (_lhs_chunkNumberMap)
@@ -7176,7 +7159,7 @@ sem_RightHandSide_Guarded (_range)
         (_inferredTypes) =
             addListToFM _lhs_inferredTypes _where_localTypes
         (_localInfo) =
-            LocalInfo { self = UHA_RHS _self
+            LocalInfo { self = UHA_RHS _self _lhs_assign
                       , assignedType = Nothing
                       }
         (_parentTree) =

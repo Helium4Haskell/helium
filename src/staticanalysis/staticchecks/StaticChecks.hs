@@ -2232,7 +2232,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
             $ emptyEnvironment
         (_derivedFunctions) =
             let f (n,i) = ( nameOfShowFunction n
-                          , typeOfShowFunction n (take i [ nameFromString [c] | c <- ['a'..]])
+                          , typeOfShowFunction n (take i [ nameFromString s | s <- variableList])
                           )
                 g (n,(i,_)) = f (n,i)
             in map f _body_collectTypeConstructors ++
