@@ -7,6 +7,7 @@ import Monad
 import System
 import List
 import IO
+import Version
 
 ---------------------------------------------------
 -- Global variables and settings
@@ -33,21 +34,22 @@ logger logcode maybeSources | not loggerENABLED = return ()
    do username <- (getEnv loggerUSERNAME) `catch` (\exception -> return "unknown")
       sources  <- case maybeSources of 
             Nothing               -> return (loggerNOPROGRAMS)
-            Just (imports,hsFile) -> do --error (show (hsFile:imports))
-                                        let f name = do program <- readFile name                                                        
-                                                        return (  snd (extractPath name) 
-                                                               ++ "\n" 
-                                                               ++ program                
-                                                               ++ loggerSPLITSTRING 
-                                                               )
-                                            nrOfFiles = show (1 + length imports)
-                                        xs <- mapM f imports
-                                        x  <- f hsFile
-                                        return (concat (loggerSPLITSTRING:x:xs))
-                             
-                                              `catch` (\exception -> return (loggerNOPROGRAMS) )
+            Just (imports,hsFile) -> 
+               let f name = do program <- readFile name                                                        
+                               return (  snd (extractPath name) 
+                                      ++ "\n" 
+                                      ++ program                
+                                      ++ loggerSPLITSTRING 
+                                      )
+                   nrOfFiles = show (1 + length imports)
+               in 
+                  do xs <- mapM f imports
+                     x  <- f hsFile
+                     return (concat (loggerSPLITSTRING:x:xs))
+               
+                       `catch` (\exception -> return (loggerNOPROGRAMS) )
                          
-      sendLogString (username++":"++logcode++sources)
+      sendLogString (username++":"++logcode++":"++version++sources)
 
 sendLogString :: String -> IO ()
 sendLogString message = withSocketsDo (rec 0)
