@@ -1,19 +1,19 @@
 module CoreToImportEnv(getImportEnvironment) where
 
-import UHA_Syntax(Name(..), Range(..), Position(..))
-import UHA_Range(makeImportRange, setNameRange)
-import UHA_Utils
-import OperatorTable
-import ParseLibrary(intUnaryMinusName, floatUnaryMinusName)
-import Types
-import Utils
 import Core
-import Byte
-import Id
-import List(nubBy)
-import Char
-import qualified CoreParse as C
+import Utils
+import TypeConversion
+import ParseLibrary
+import Lexer(lexer)
+import Parser(type_, contextAndType)
 import ImportEnvironment
+import UHA_Utils
+import Id
+import UHA_Syntax
+import OperatorTable
+import Types
+import Byte(stringFromBytes)
+import UHA_Range(makeImportRange, setNameRange)
 
 typeFromCustoms :: String -> [Custom] -> TpScheme
 typeFromCustoms n [] =
@@ -21,16 +21,26 @@ typeFromCustoms n [] =
         ("function import without type: " ++ n)
 typeFromCustoms n ( CustomDecl (DeclKindCustom id) [CustomBytes bytes] : cs) 
     | stringFromId id == "type" =
-        stringToTpScheme n (Byte.stringFromBytes bytes) Nothing
+        let string = filter (/= '!') (Byte.stringFromBytes bytes) 
+        in makeTpSchemeFromType (parseFromString contextAndType string)
     | otherwise =
         typeFromCustoms n cs
 
-typeSynFromCustoms :: String -> [Custom] -> (Int, Tps -> Tp)
+parseFromString :: HParser a -> String -> a
+parseFromString p string = 
+    case lexer "CoreToImportEnv" string of 
+        Left lexErr -> internalError "CoreToImportEnv" "parseFromString" ("lex error in " ++ string)
+        Right (tokens, _) ->
+            case runHParser p "CoreToImportEnv" tokens True {- wait for EOF -} of
+                Left parseError  -> internalError "CoreToImportEnv" "parseFromString" ("parse error in " ++ string)
+                Right x -> x
+
+typeSynFromCustoms :: String -> [Custom] -> (Int, Tps -> Tp) -- !!! yuck
 typeSynFromCustoms n (CustomBytes bs:cs) =
     let
         typeSynDecl = Byte.stringFromBytes bs
-        -- (too?) simple parser
-        ids         = ( map (\x -> idFromString [x])
+        -- (too?) simple parser; works because type variables in synonym decls are renamed to 1 letter
+        ids         = ( map (\x -> nameFromString [x])
                       . filter    (' '/=)
                       . takeWhile ('='/=)
                       . drop (length n + 1)
@@ -42,7 +52,7 @@ typeSynFromCustoms n (CustomBytes bs:cs) =
                         typeSynDecl
     in
         ( arityFromCustoms n cs
-        , \ts -> stringToType n rhsType (Just (zip ids ts))
+        , \ts -> makeTpFromType (zip ids ts) (parseFromString type_ rhsType)
         )
 typeSynFromCustoms n _ =
     internalError "CoreToImportEnv" "typeSynFromCustoms"
@@ -185,67 +195,3 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
         
       intErr = internalError "CoreToImportEnv" "getImportEnvironment"
          
-stringToType :: String -> String -> Maybe [(Id, Tp)] -> Tp
-stringToType n typeStr table =
-    let
-        TpScheme _ _ (_  :=> tp) = stringToTpScheme n typeStr table
-    in
-        tp
--- Convert a core type (which is just a string) to Bastiaan's TpScheme type.
--- The function name n is used only for debugging and error messages.
-stringToTpScheme :: String -> String -> Maybe [(Id, Tp)] -> TpScheme
-stringToTpScheme n typeStr table =
-    let coreType =
-            (C.coreParseType "Compiler bug in CoreToImportEnv.stringToType" typeStr) -- !!! als je dit aanzet zie je veel imports van String ?? (trace (n ++ " :: " ++ typeStr) typeStr))
-        (ids, baseCoreType) =
-            splitForalls coreType
-        realTable =
-            case table of
-                Nothing -> zip ids (map TVar [0..])
-                Just t  -> t
-        tpScheme =
-            coreTypeToTpScheme n realTable baseCoreType
-    in
-        -- trace (n ++ " :: " ++ show coreType ++ " = " ++ typeStr ++ "\n")
-        tpScheme
-
-coreTypeToTpScheme :: String -> [(Id, Tp)] -> C.Type -> TpScheme
-coreTypeToTpScheme n table coreType =
-    generalize [] [] (convert True n table coreType)
-
-convert :: Bool -> String -> [(Id, Tp)] -> C.Type -> Tp
-convert strictAllowed n table t =
-    case t of
-        C.TFun    { C.tp1  = t1, C.tp2 = t2 } ->
-            TApp (TApp (TCon "->") (convert False n table t1)) (convert True n table t2)
-        C.TAp     { C.tp1  = t1, C.tp2 = t2 } ->
-            TApp (convert strictAllowed n table t1) (convert strictAllowed n table t2)
-        C.TForall { C.tpId = id, C.tp  = t  } ->
-            intErr ("Forall: " ++ n ++ " :: " ++ show t)
-        C.TExist  { C.tpId = id, C.tp  = t  } ->
-            intErr ("Exist:" ++ n ++ " :: " ++ show t)
-        C.TStrict { C.tp   = t              } ->
-            if strictAllowed then
-                convert strictAllowed n table t
-            else
-                intErr ("Strict:" ++ n ++ " :: " ++ show t)
-        C.TVar    { C.tpId = tpId             } ->
-            maybe
-                (intErr ("Var:" ++ n ++ " :: " ++ show t))
-                id
-                (lookup tpId table)
-        C.TCon    { C.tpId = id             } ->
-            TCon (stringFromId id)
-        C.TAny                                ->
-            intErr ("Any:" ++ n ++ " :: " ++ show t)
-        C.TString { C.tpString = t          } ->
-            intErr ("String:" ++ n ++ " :: " ++ show t)
-    where
-        intErr = internalError "CoreToImportEnv" "convert"
-
-splitForalls :: C.Type -> ([Id], C.Type)
-splitForalls (C.TForall { C.tpId = id, C.tp = rest }) = 
-    let (ids, coreType) = splitForalls rest
-    in
-        (id:ids, coreType)
-splitForalls t = ([], t)
