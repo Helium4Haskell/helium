@@ -11,12 +11,16 @@ import HeliumMessages (sortAndShowMessages)
 import Monad          (unless, when)
 import qualified Args (Option(..))
 
-readTypingStrategiesFromFile :: [Args.Option] -> String -> ImportEnvironment -> IO Core_TypingStrategies
+import CoreUtils
+import Core
+
+readTypingStrategiesFromFile :: [Args.Option] -> String -> ImportEnvironment -> 
+    IO (Core_TypingStrategies, [CoreDecl])
 readTypingStrategiesFromFile options filename importEnvironment = 
 
    doesFileExist filename >>= 
    
-     \exists -> if not exists then return [] else 
+     \exists -> if not exists then return ([], []) else 
         
         do fileContent <- readFile filename            
            case parseTypingStrategies (operatorTable importEnvironment) filename fileContent of
@@ -39,6 +43,7 @@ readTypingStrategiesFromFile options filename importEnvironment =
                        putStrLn ("Typing strategies...   (" ++ 
                           (if number == 1
                              then "1 strategy is included)"
-                             else show number ++ " strategies are included)"))
-              
-                    return (map typingStrategyToCore typingStrategies)
+                             else show number ++ " strategies are included)")) 
+                             
+                    let coreTypingStrategies = map typingStrategyToCore typingStrategies
+                    return ( coreTypingStrategies, [ customStrategy (show coreTypingStrategies) ] )

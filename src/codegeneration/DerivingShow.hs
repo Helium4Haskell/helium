@@ -37,7 +37,7 @@ derivingShow (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) 
                     )
                 )    
                 (map idFromName names ++ [valueId])
-        , declCustoms = [ customType typeString ] 
+        , declCustoms = [ custom "type" typeString ] 
         }
     where
         valueId = idFromString "value$"
@@ -56,7 +56,7 @@ derivingShow decl@(UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name name
         , valueValue = foldr Lam 
                 (showFunctionOfType False type_)
                 (map idFromName names)
-        , declCustoms = [ customType typeString ] 
+        , declCustoms = [ custom "type" typeString ] 
         }
 
 

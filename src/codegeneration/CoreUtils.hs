@@ -1,8 +1,8 @@
 module CoreUtils
-    (   customType 
+    (   custom, customStrategy
     ,   stringToCore, coreList
     ,   let_, if_, app_, letrec_
-    ,   cons, nil 
+    ,   cons, nil
     ,   var, decl
     ,   float, packedString
     ) where
@@ -14,11 +14,21 @@ import Byte(bytesFromString)
 
 infixl `app_`
 
-customType :: String -> Custom
-customType tp =
+custom :: String -> String -> Custom
+custom sort text =
     CustomDecl
-        (DeclKindCustom (idFromString "type"))
-        [CustomBytes (Byte.bytesFromString tp)]
+        (DeclKindCustom (idFromString sort))
+        [CustomBytes (Byte.bytesFromString text)]
+
+
+customStrategy :: String -> Decl a
+customStrategy text =
+    DeclCustom    
+        { declName = idFromString ""
+        , declAccess = Defined { accessPublic = True }
+        , declKind = DeclKindCustom (idFromString "strategy")
+        , declCustoms = [custom "strategy" text]
+        }
 
 app_ :: Expr -> Expr -> Expr
 app_ f x = Ap f x

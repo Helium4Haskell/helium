@@ -168,6 +168,16 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                       | stringFromId id == "infix" ->
               flip (foldr (uncurry addOperator)) (makeOperatorTable (stringFromId n) cs)
 
+           -- typing strategies
+           DeclCustom { declName    = _
+                      , declKind    = DeclKindCustom id
+                      , declCustoms = cs
+                      }
+                      | stringFromId id == "strategy" ->
+              let (CustomDecl _  [CustomBytes bytes]) = head cs
+                  text = stringFromBytes bytes
+              in addTypingStrategies (read text)
+
            -- !!! Print importedFromModId from "declAccess = Imported{importModule = importedFromModId}" as well
            DeclAbstract{ declName = n } ->
               intErr  ("don't know how to handle declared DeclAbstract: " ++ stringFromId n)

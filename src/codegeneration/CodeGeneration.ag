@@ -1,6 +1,6 @@
 ATTR Module
-   [   importEnv        : ImportEnvironment
-       indirectionDecls : { [Core.CoreDecl] }
+   [   additionalDecls  : { [Core.CoreDecl] }
+       importEnv        : ImportEnvironment
        toplevelTypes    : TypeEnvironment
    |
    |   core             : { Core.CoreModule }

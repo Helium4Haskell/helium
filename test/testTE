@@ -1,4 +1,5 @@
 #!/bin/bash
+for f in typeerrors/Strategies/*.hs ; do ./testOne ${f%.hs} ; done
 for f in typeerrors/Edinburgh/*.hs  ; do ./testOne ${f%.hs} ; done
 for f in typeerrors/Examples/*.hs   ; do ./testOne ${f%.hs} ; done
 for f in typeerrors/Heuristics/*.hs ; do ./testOne ${f%.hs} ; done

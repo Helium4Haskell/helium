@@ -1,0 +1,6 @@
+"mijn regel"
+  x :: a ; y :: Int ; 
+  ---------------------
+     x +++ y :: Int;;
+     
+a == Int : "linkerkant moet een Int zijn, sukkel!";

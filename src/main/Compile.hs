@@ -133,11 +133,14 @@ compile fullName options doneModules =
              then 
                   return (removeTypingStrategies combinedEnvironment, [])
              else 
-                  do typingStrategies <- readTypingStrategiesFromFile 
+                  do (typingStrategies, typingStrategiesDecls) <- 
+                        readTypingStrategiesFromFile 
                                          options
                                          (fullNameNoExt ++ ".type")
                                          combinedEnvironment
-                     return (addTypingStrategies typingStrategies combinedEnvironment, [])            
+                     return ( addTypingStrategies typingStrategies combinedEnvironment
+                            , typingStrategiesDecls
+                            )            
 
         -- Phase 3: Type inferencing
         enterNewPhase "Type inferencing" options
@@ -187,8 +190,8 @@ compile fullName options doneModules =
         
         let coreModule = {-# SCC "CodeGeneration" #-}
                          CodeGeneration.sem_Module module_ 
+                            (typingStrategiesDecls ++ indirectionDecls)
                             finalEnvironment
-                            indirectionDecls
                             toplevelTypes
                              
             strippedCoreModule = coreRemoveDead coreModule

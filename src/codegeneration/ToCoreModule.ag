@@ -72,7 +72,7 @@ SEM Module
             , @exports.mods     -- module ImportedModule, module ThisModule
             )
             (makeCoreModule @name.id 
-                ( @body.decls ++ @lhs.indirectionDecls
+                ( @body.decls ++ @lhs.additionalDecls
                 ))
     --  range                    : Range
     --  name                     : MaybeName

@@ -336,7 +336,7 @@ nameFromId i = Name_Identifier noRange [] (stringFromId i)
 
 toplevelType :: Name -> ImportEnvironment -> Bool -> [Core.Custom]
 toplevelType name ie isTopLevel
-    | isTopLevel = [customType typeString]
+    | isTopLevel = [custom "type" typeString]
     | otherwise  = []
     where
         typeString = maybe
@@ -349,7 +349,7 @@ constructorTypeAndArity name env =
     maybe 
         (internalError "UHA_ToCore" "Constructor" ("no type found for " ++ show name))
         (\tpScheme -> 
-            [ customType (show tpScheme)]
+            [ custom "type" (show tpScheme)]
         )
         (lookupFM env name)
 }

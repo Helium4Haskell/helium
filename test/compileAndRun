@@ -1,4 +1,4 @@
 #!/bin/bash
 # the ajustment to LVMPATH doesn't escape the braces { }
-../bin/helium -l $1.hs && { export LVMPATH="${1%/*};$LVMPATH" ; lvmrun $1 ; }
+../bin/helium -lT $1.hs && { export LVMPATH="${1%/*};$LVMPATH" ; lvmrun $1 ; }
 rm -f ${1%/*}/*.lvm

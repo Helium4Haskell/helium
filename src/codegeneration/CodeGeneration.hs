@@ -86,7 +86,7 @@ nameFromId i = Name_Identifier noRange [] (stringFromId i)
 
 toplevelType :: Name -> ImportEnvironment -> Bool -> [Core.Custom]
 toplevelType name ie isTopLevel
-    | isTopLevel = [customType typeString]
+    | isTopLevel = [custom "type" typeString]
     | otherwise  = []
     where
         typeString = maybe
@@ -99,7 +99,7 @@ constructorTypeAndArity name env =
     maybe 
         (internalError "UHA_ToCore" "Constructor" ("no type found for " ++ show name))
         (\tpScheme -> 
-            [ customType (show tpScheme)]
+            [ custom "type" (show tpScheme)]
         )
         (lookupFM env name)
 
@@ -1844,8 +1844,8 @@ sem_MaybeNames_Nothing  =
     in  (Nothing,_self)
 -- Module ------------------------------------------------------
 -- semantic domain
-type T_Module = (ImportEnvironment) ->
-                ( [Core.CoreDecl] ) ->
+type T_Module = ( [Core.CoreDecl] ) ->
+                (ImportEnvironment) ->
                 (TypeEnvironment) ->
                 (( Core.CoreModule ))
 -- cata
@@ -1858,7 +1858,7 @@ sem_Module_Module :: (T_Range) ->
                      (T_MaybeExports) ->
                      (T_Body) ->
                      (T_Module)
-sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnv) (_lhs_indirectionDecls) (_lhs_toplevelTypes) =
+sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_additionalDecls) (_lhs_importEnv) (_lhs_toplevelTypes) =
     let (_self) =
             Module_Module _range_self _name_self _exports_self _body_self
         (_module_) =
@@ -1874,7 +1874,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnv) (_lhs_ind
                 , _exports_mods
                 )
                 (makeCoreModule _name_id
-                    ( _body_decls ++ _lhs_indirectionDecls
+                    ( _body_decls ++ _lhs_additionalDecls
                     ))
         ( _range_self) =
             (_range )
