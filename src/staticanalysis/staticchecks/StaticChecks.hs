@@ -2120,11 +2120,8 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
             let (xs,ys) = partition ((>1) . length) . group . sort $ (map fst _body_operatorFixities)
             in (xs,map head ys)
         (_fixityButNoFunDefErrors) =
-            let list = concat [ _body_declVarNames
-                              , _allValueConstructors
-                              , concatMap (keysFM . typeEnvironment) _lhs_importEnvironments
-                              ]
-            in makeNoFunDef Fixity (filter (`notElem` list) _correctFixities) (nub list)
+            let list = nub (_body_declVarNames ++ _allValueConstructors)
+            in makeNoFunDef Fixity (filter (`notElem` list) _correctFixities) list
         (_recursiveTypeSynonymErrors) =
             map RecursiveTypeSynonyms _recursiveTypeSynonyms
         (_wrongFileNameErrors) =

@@ -15,7 +15,7 @@ import qualified CodeGeneration       (sem_Module)
 
 -- Parser
 import Parser(parseModule)
-import qualified ResolveOperators(resolveOperators, operatorsFromModule)
+import ResolveOperators(resolveOperators, operatorsFromModule)
 import OperatorTable
 
 -- UHA
@@ -100,9 +100,10 @@ compile fullName options doneModules =
         writeIORef refToCurrentFileName fullName    
         writeIORef refToCurrentImported doneModules
         
-        let importOperatorTable = concatMap operatorTable importEnvironments
+        let importOperatorTable = operatorsFromModule moduleBeforeResolve
+                               ++ concatMap operatorTable importEnvironments 
             module_ = {-# SCC "resolveOperators" #-} 
-                      resolveOperators moduleBeforeResolve importOperatorTable
+                      resolveOperators importOperatorTable moduleBeforeResolve
 
         when (DumpUHA `elem` options) $ 
             putStrLn $ show $ PrettyPrinting.sem_Module module_  
@@ -232,16 +233,6 @@ chaseImports filePath mod =
           findModule      = searchPath paths ".lvm" . stringFromId
    
       lvmImportDecls findModule coreImportDecls
-
--- Expressions 
-resolveOperators :: Module -> OperatorTable -> Module
-resolveOperators moduleBeforeResolve importOperatorTable =
-    let operatorTable = 
-            ResolveOperators.operatorsFromModule moduleBeforeResolve
-            ++
-            importOperatorTable
-    in
-        ResolveOperators.resolveOperators operatorTable moduleBeforeResolve
                              
 -- Add "import Prelude" if
 --   the currently compiled module is not the Prelude and

@@ -40,6 +40,7 @@ SEM Module
   
 ------------------------------------------------------------------------------
 -- duplicated fixity declarations
+
 SEM Module
   | Module   loc . fixityErrors = makeDuplicated Fixity @duplicatedFixities
                  . (duplicatedFixities,correctFixities) = let (xs,ys) = partition ((>1) . length) . group . sort $ (map fst @body.operatorFixities)
@@ -49,11 +50,8 @@ SEM Module
 -- fixity declarations without a definition
 
 SEM Module
-  | Module   loc . fixityButNoFunDefErrors = let list = concat [ @body.declVarNames
-                                                               , @allValueConstructors
-                                                               , concatMap (keysFM . typeEnvironment) @lhs.importEnvironments
-                                                               ]
-                                             in makeNoFunDef Fixity (filter (`notElem` list) @correctFixities) (nub list)
+  | Module   loc . fixityButNoFunDefErrors = let list = nub (@body.declVarNames ++ @allValueConstructors)
+                                             in makeNoFunDef Fixity (filter (`notElem` list) @correctFixities) list
                                                                                                          
 ------------------------------------------------------------------------------
 -- recursive type synonyms
