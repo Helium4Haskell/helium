@@ -16,8 +16,8 @@ loggerHOSTNAME    = {- Bastiaan     -} -- "ikaria.cs.uu.nl"
                     {- Jurriaan     -} -- "ranum.cs.uu.nl" 
                     {- StudentenNet -} "bellatrix.students.cs.uu.nl" 
 loggerPORTNUMBER  = 5010
-loggerDELAY       = 50000    -- in micro-seconds
-loggerRETRIES     = 5
+loggerDELAY       = 10000    -- in micro-seconds
+loggerTRIES       = 2
 loggerSPLITSTRING = "\n\NUL\n"
 loggerNOPROGRAMS  = "\n\SOH\n"
 loggerDEBUGMODE   = False
@@ -61,7 +61,7 @@ sendLogString message = withSocketsDo (rec 0)
              sendToAndFlush handle message
           `catch`       
               \exception -> 
-                 if i+1 >= loggerRETRIES 
+                 if i+1 >= loggerTRIES 
                    then debug "Could not make a connection: no send"
                    else do debug "Could not make a connection: sleeping"
                            threadDelay loggerDELAY
@@ -108,7 +108,7 @@ sendToAndFlush handle msg = do
         return line
       `catch`
         \exception -> 
-          if i+1 >= loggerRETRIES 
+          if i+1 >= loggerTRIES 
             then do
                    debug "Did not receive anything back"
                    return ""
