@@ -15,6 +15,7 @@ import Top.Types
 import List       (union, intersperse, partition)
 import OneLiner   (OneLineTree(..) )
 import UHA_Syntax (Range, Name)
+import UHA_Range  (getNameRange)
 import UHA_Source
 import Data.Maybe
 
@@ -116,3 +117,12 @@ makeReductionError source extra classEnvironment predicate@(Predicate className 
              in if length tuples > 4 -- magic number!
                   then map (show . f) others ++ ["tuples"]
                   else map (show . f) tps
+                  
+makeRestrictedButOverloadedError :: Name -> TpScheme -> TypeError
+makeRestrictedButOverloadedError name scheme = 
+   let message = MessageOneLiner $ MessageString $ "Illegal overloaded type inferred for " ++ show name
+       table   = [ "variable"      <:> MessageString (show name)
+                 , "inferred type" >:> MessageType scheme
+                 ]
+       hint    = "Only functions and simple patterns can have an overloaded type"
+   in TypeError [getNameRange name] [message] table [("hint", MessageString hint)]

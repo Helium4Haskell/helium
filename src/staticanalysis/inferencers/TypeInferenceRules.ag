@@ -25,7 +25,9 @@ SEM Module
                    
            . orderedTypeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment   
            . classEnv            = classEnvironment @lhs.importEnvironment           
-           . typeErrors          = makeTypeErrors @classEnv @orderedTypeSynonyms @substitution @solveErrors
+           . typeErrors          = case makeTypeErrors @classEnv @orderedTypeSynonyms @substitution @solveErrors of
+                                      []   -> @body.collectErrors
+                                      errs -> errs
            . warnings            = @body.collectWarnings ++ @tooSpecificWarnings
            . debugIO             = putStrLn @debugString
            . assumptions         = let f _ xs = [ (n, @substitution |-> tp) | (n, tp) <- xs ] 

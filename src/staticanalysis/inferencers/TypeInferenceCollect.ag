@@ -24,6 +24,7 @@ ATTR Expression Expressions MaybeExpression Alternative Alternatives
           allTypeSchemes      : {FiniteMap NameWithRange TpScheme}
           orderedTypeSynonyms : OrderedTypeSynonyms
         | collectWarnings     : Warnings
+          collectErrors       : TypeErrors
         | 
         ]
 
@@ -34,32 +35,43 @@ ATTR LeftHandSide Pattern Patterns [ importEnvironment : ImportEnvironment | | ]
 
 SEM Module
   | Module  body . collectWarnings = []
+                 . collectErrors   = []
 
 SEM Body
   | Body   loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-               . warnings           = missingTypeSignature True @inferredTypes
-           lhs . collectWarnings    = @warnings ++ @declarations.collectWarnings
+           lhs . collectWarnings    = missingTypeSignature True @inferredTypes 
+                                      ++ @declarations.collectWarnings
+               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+                                      ++ @declarations.collectErrors
 
 SEM MaybeDeclarations
   | Just   loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-               . warnings           = missingTypeSignature False @inferredTypes
-           lhs . collectWarnings    = @warnings ++ @declarations.collectWarnings 
-
+           lhs . collectWarnings    = missingTypeSignature False @inferredTypes
+                                      ++ @declarations.collectWarnings 
+               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+                                      ++ @declarations.collectErrors
+                                      
 SEM Expression
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-               . warnings           = missingTypeSignature False @inferredTypes
-           lhs . collectWarnings    = @warnings ++ @expression.collectWarnings
-                                     
+           lhs . collectWarnings    = missingTypeSignature False @inferredTypes 
+                                      ++ @expression.collectWarnings
+               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+                                      ++ @declarations.collectErrors
+                                      
 SEM Statement                  
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-               . warnings           = missingTypeSignature False @inferredTypes
-           lhs . collectWarnings    = @warnings ++ @declarations.collectWarnings
-
+           lhs . collectWarnings    = missingTypeSignature False @inferredTypes 
+                                      ++ @declarations.collectWarnings
+               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+                                      ++ @declarations.collectErrors
+                                      
 SEM Qualifier                    
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-               . warnings           = missingTypeSignature False @inferredTypes
-           lhs . collectWarnings    = @warnings ++ @declarations.collectWarnings
-
+           lhs . collectWarnings    = missingTypeSignature False @inferredTypes 
+                                      ++ @declarations.collectWarnings
+               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+                                      ++ @declarations.collectErrors
+                                      
 {
 findInferredTypes :: FiniteMap Int (Scheme Predicates) -> FiniteMap Name (Sigma Predicates) -> TypeEnvironment
 findInferredTypes typeschemeMap =
@@ -76,6 +88,14 @@ missingTypeSignature topLevel =
          | null (ftv scheme) && topLevel = [ NoTypeDef name scheme topLevel ]
          | otherwise                     = []
    in concatMap makeWarning . fmToList
+   
+restrictedNameErrors :: TypeEnvironment -> Names -> TypeErrors
+restrictedNameErrors env = 
+   let f name = case lookupFM env name of
+                   Just scheme -> [ makeRestrictedButOverloadedError name scheme | isOverloaded scheme ]
+                   Nothing     -> []
+   in concatMap f
+
 }
 
 ----------------------------------------------------------------------------------------
@@ -130,6 +150,24 @@ makeLocalTypeEnv local groups =
        f x   = maybe err id (find (==x) names) 
        err   = internalError "TypeInferenceCollect.ag" "makeLocalTypeEnv" "could not find name"
    in listToFM [ (NameWithRange (f name), scheme) | (name, scheme) <- fmToList local ]
+}
+
+-- context for restricted pattern error
+ATTR Declaration Declarations [ | | restrictedNames USE { ++ } { [] } : Names ]
+
+SEM Declaration
+  | PatternBinding   
+       lhs . restrictedNames = if isSimplePattern @pattern.self
+                                 then []
+                                 else @pattern.patVarNames
+
+{
+isSimplePattern :: Pattern -> Bool
+isSimplePattern pattern =
+   case pattern of
+      Pattern_Variable _ _ -> True
+      Pattern_Parenthesized  _ p -> isSimplePattern p
+      _ -> False
 }
 
 -------------------------------------------
