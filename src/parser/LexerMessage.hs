@@ -6,7 +6,7 @@ module LexerMessage
     , keepOneTabWarning
     ) where
 
-import ParsecPos
+import Text.ParserCombinators.Parsec.Pos
 import UHA_Syntax(Range(..), Position(..))
 import Messages
 

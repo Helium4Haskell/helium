@@ -14,6 +14,7 @@ default: all
 #directories
 HELIUMBINDIR = ../bin
 PARSECDIR = ../../parsec
+PARSECIMPDIR = $(PARSECDIR)/Text/ParserCombinators
 LVMLIBDIR  = ../../lvm/src/lib
 LVMRUNTIMEDIR  = ../../lvm/src/runtime
 
@@ -155,8 +156,8 @@ MAINFILES = \
 # Parsec sources
 
 PARSEC = \
-	$(PARSECDIR)/Parsec.hs $(PARSECDIR)/ParsecChar.hs $(PARSECDIR)/ParsecCombinator.hs $(PARSECDIR)/ParsecError.hs $(PARSECDIR)/ParsecExpr.hs \
-	$(PARSECDIR)/ParsecLanguage.hs $(PARSECDIR)/ParsecPerm.hs $(PARSECDIR)/ParsecPos.hs $(PARSECDIR)/ParsecPrim.hs $(PARSECDIR)/ParsecToken.hs
+	$(PARSECIMPDIR)/Parsec.hs $(PARSECIMPDIR)/Parsec/Char.hs $(PARSECIMPDIR)/Parsec/Combinator.hs $(PARSECIMPDIR)/Parsec/Error.hs $(PARSECIMPDIR)/Parsec/Expr.hs \
+	$(PARSECIMPDIR)/Parsec/Language.hs $(PARSECIMPDIR)/Parsec/Perm.hs $(PARSECIMPDIR)/Parsec/Pos.hs $(PARSECIMPDIR)/Parsec/Prim.hs $(PARSECIMPDIR)/Parsec/Token.hs
 
 
 # LVM sources

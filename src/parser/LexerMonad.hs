@@ -7,7 +7,7 @@ module LexerMonad
     ) where
 
 import LexerMessage
-import ParsecPos
+import Text.ParserCombinators.Parsec.Pos
 
 type Bracket = (SourcePos, Char)
 

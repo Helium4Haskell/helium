@@ -8,7 +8,7 @@ module Lexer
 import LexerMonad
 import LexerMessage
 import LexerToken
-import ParsecPos
+import Text.ParserCombinators.Parsec.Pos
 import Utils(internalError)
 
 import Monad(when)

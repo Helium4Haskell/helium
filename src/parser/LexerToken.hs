@@ -1,6 +1,6 @@
 module LexerToken where
 
-import ParsecPos(SourcePos)
+import Text.ParserCombinators.Parsec.Pos(SourcePos)
 
 type Token      = (SourcePos,Lexeme)
 

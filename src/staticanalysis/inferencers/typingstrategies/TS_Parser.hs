@@ -11,7 +11,7 @@ import Char
 import qualified UHA_Pretty as PP
 import qualified ResolveOperators
 import Parser
-import Parsec
+import Text.ParserCombinators.Parsec
 import ParseLibrary hiding (satisfy)
 import Lexer
 import OperatorTable

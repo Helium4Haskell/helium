@@ -1,7 +1,7 @@
 module LayoutRule(layout) where
 
 import LexerToken(Token, Lexeme(..), lexemeLength)
-import ParsecPos
+import Text.ParserCombinators.Parsec.Pos
 
 layout :: [Token] -> [Token]
 layout [] = []

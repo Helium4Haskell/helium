@@ -3,8 +3,8 @@ module ParseMessage() where
 import Messages hiding (Message)
 import UHA_Syntax(Range(..), Position(..))
 
-import ParsecError
-import ParsecPos
+import Text.ParserCombinators.Parsec.Error
+import Text.ParserCombinators.Parsec.Pos
 
 instance HasMessage ParseError where
     getMessage pe = 

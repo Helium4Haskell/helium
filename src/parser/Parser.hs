@@ -27,8 +27,8 @@ Simplified:
 -}
 
 import ParseLibrary hiding (satisfy)
-import Parsec
-import ParsecPos
+import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec.Pos
 import Lexer
 import LayoutRule
 

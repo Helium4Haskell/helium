@@ -1,7 +1,7 @@
 module ParseLibrary where 
 
-import Parsec hiding (satisfy)
-import ParsecPos(newPos)
+import Text.ParserCombinators.Parsec hiding (satisfy)
+import Text.ParserCombinators.Parsec.Pos(newPos)
 import Lexer
 import UHA_Syntax(Name(..), Range(..), Position(..))
 import UHA_Utils
@@ -241,12 +241,13 @@ lexConSym :: HParser String
 lexConSym
   = satisfy (\lex -> case lex of { LexConSym s -> Just s; other -> Nothing })
 
+
 satisfy :: (Lexeme -> Maybe a) -> HParser a
 satisfy pred
-  = superTokenPrim 
+  = tokenPrimEx
         showtok 
         nextpos 
-        (\(pos,lex) old -> incSourceColumn pos (lexemeLength lex)) 
+        (Just (\oldpos (pos,lex) lexemes old -> incSourceColumn pos (lexemeLength lex)))
         (\(pos,lex) -> pred lex)
   where
     showtok (pos,lex)   = show lex
