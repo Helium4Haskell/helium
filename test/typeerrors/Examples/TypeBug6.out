@@ -1,6 +1,6 @@
 Compiling typeerrors/Examples/TypeBug6.hs
 (4,4): Warning: Variable "x" is not used
-(5,48): Type error in application
+(5,49): Type error in application
  expression       : concat x y
  term             : concat
    type           : [[a]   ] -> [a]                 
@@ -9,7 +9,7 @@ Compiling typeerrors/Examples/TypeBug6.hs
 
 (6,17): Type error in infix application
  expression       : x : y
- operator         : :
+ term             : :
    type           : a        -> [a     ] -> [a       ]
    does not match : [String] -> [String] -> [[String]]
 

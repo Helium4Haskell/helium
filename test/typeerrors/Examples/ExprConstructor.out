@@ -1,5 +1,5 @@
 Compiling typeerrors/Examples/ExprConstructor.hs
-(4,3): Type error in right hand side
+(4,5): Type error in right-hand side
  expression       : (:)
    type           : a -> [a] -> [a]
    does not match : Int            

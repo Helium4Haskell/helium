@@ -1,7 +1,7 @@
 Compiling typeerrors/Examples/ExprTypedResult.hs
-(4,6): Type error in type annotation
+(4,6): Type error in right-hand side
  expression       : 3 :: Int
    type           : Int 
-   expected type  : Bool
+   does not match : Bool
 
 Compilation failed with 1 error

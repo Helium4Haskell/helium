@@ -1,8 +1,8 @@
 Compiling typeerrors/Heuristics/AppInsert2.hs
 (4,14): Type error in variable
  expression       : foldr
-   type           : (a   -> b   -> b  ) -> b     -> [a] -> b
-   expected type  : (Int -> Int -> Int) -> [Int] -> Int     
+   type           : (a -> b -> b) -> b     -> [a] -> b
+   expected type  : (c -> c -> c) -> [Int] -> Int     
  probable fix     : use foldr1 instead
 
 Compilation failed with 1 error

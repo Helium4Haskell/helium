@@ -1,8 +1,8 @@
 Compiling typeerrors/Heuristics/FBHasTooMany1.hs
 (4,1): Type error in explicitly typed binding
- term             : f
-   type           : Int       
-   does not match : Int -> Int
+ expression       : f
+   type           : Int   
+   does not match : a -> a
  because          : the function binding has 1 pattern, but its type
                     signature does not allow patterns
 

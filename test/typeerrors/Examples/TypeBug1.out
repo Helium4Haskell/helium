@@ -1,7 +1,7 @@
 Compiling typeerrors/Examples/TypeBug1.hs
 (4,3): Warning: Variable "x" is not used
-(4,5): Type error in right hand side
- term             : f
+(4,7): Type error in right-hand side
+ expression       : f
    type           : a -> a        -> [(a, b)] -> Bool
    does not match : c -> [(c, d)] -> Bool            
  because          : unification would give infinite type

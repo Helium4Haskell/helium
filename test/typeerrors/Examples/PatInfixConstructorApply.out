@@ -1,7 +1,7 @@
 Compiling typeerrors/Examples/PatInfixConstructorApply.hs
 (5,10): Type error in infix pattern application
  pattern          : 3 `A` True
- constructor      : `A`
+ constructor      : A
    type           : Int -> Int -> A
  right operand    : True
    type           : Bool

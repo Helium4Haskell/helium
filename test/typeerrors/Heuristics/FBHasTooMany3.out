@@ -1,8 +1,8 @@
 Compiling typeerrors/Heuristics/FBHasTooMany3.hs
 (4,1): Type error in explicitly typed binding
- term             : max3
-   type           : Int -> Int -> Int       
-   does not match : Int -> Int -> Int -> Int
+ expression       : max3
+   type           : Int -> Int -> Int   
+   does not match : a   -> a   -> a -> a
  because          : the function binding has 3 patterns, but its type
                     signature allows at most 2
 

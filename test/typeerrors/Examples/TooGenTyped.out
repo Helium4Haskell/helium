@@ -1,6 +1,6 @@
 Compiling typeerrors/Examples/TooGenTyped.hs
-(3,10): Declared type is too general
- expression       : (\y -> [x, y])
+(3,11): Declared type is too general
+ expression       : \y -> [x, y]
    declared type  : a  -> [a ]
    inferred type  : _1 -> [_1]
  hint             : try removing the type signature

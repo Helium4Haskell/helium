@@ -1,7 +1,8 @@
 Compiling typeerrors/Examples/AltLeft.hs
-(4,7): Type error in case pattern
- pattern          : True
-   type           : Bool  
-   does not match : String
+(3,10): Type error in scrutinee of case expression
+ expression       : case "paard" of {True -> "veulen"}
+ term             : "paard"
+   type           : String
+   does not match : Bool  
 
 Compilation failed with 1 error

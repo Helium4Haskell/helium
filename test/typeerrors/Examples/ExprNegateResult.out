@@ -1,5 +1,5 @@
 Compiling typeerrors/Examples/ExprNegateResult.hs
-(4,3): Type error in right hand side
+(4,5): Type error in right-hand side
  expression       : -13
    type           : Int 
    does not match : Bool

@@ -2,20 +2,25 @@ Compiling typeerrors/Examples/TypeBug4.hs
 (4,22): Type error in application
  expression       : maxInt length k (maxInt . map (length l))
  term             : maxInt
-   type           : Int          -> Int    -> Int                     
-   does not match : ([a] -> Int) -> [Char] -> (b -> Int -> Int) -> Int
+   type           : Int         
+                    -> Int                   
+                    -> Int                     
+   does not match : ([a] -> Int)
+                    -> ([b] -> Int -> String)
+                    -> (c -> Int -> Int) -> Int
+ because          : too many arguments are given
 
-(4,63): Type error in variable
+(4,65): Type error in infix application
+ expression       : k : sp k : " "
+ term             : :
+   type           : a                      -> [a   ] -> [a]   
+   does not match : ([b] -> Int -> String) -> [Char] -> String
+
+(5,63): Type error in guarded expression
  expression       : k
-   type           : [Char]
-   expected type  : Char  
-
-(4,67): Type error in application
- expression       : sp k
- term             : sp
-   type           : ([a] -> Int -> String) -> [a] -> String
-   does not match : [Char]                 -> Char         
+   type           : [a] -> Int -> String
+   does not match : String              
 
 (...)
 
-Compilation failed with 5 errors
+Compilation failed with 6 errors
