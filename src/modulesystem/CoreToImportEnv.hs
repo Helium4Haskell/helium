@@ -208,8 +208,7 @@ stringToTpScheme n typeStr table =
 
 coreTypeToTpScheme :: String -> [(Id, Tp)] -> C.Type -> TpScheme
 coreTypeToTpScheme n table coreType =
-    {- unfortunately, the nameMap of the type scheme is empty -}
-    Scheme [0..length table-1] [] (convert True n table coreType)
+    generalize [] (convert True n table coreType)
 
 convert :: Bool -> String -> [(Id, Tp)] -> C.Type -> Tp
 convert strictAllowed n table t =
