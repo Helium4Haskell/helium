@@ -88,7 +88,7 @@ SEM TypingStrategy
                               xs -> [ MetaVariableConstraintsNotExplicit @name xs ]  -}
 
            -- Solve the constraint set.           
-           . (SolveResult _ substitution _ solveErrors _ ()) =    
+           . (SolveResult _ substitution _ _ solveErrors _ ()) =    
                 runGreedy
                    @classEnv
                    (getOrderedTypeSynonyms @lhs.importEnvironment)

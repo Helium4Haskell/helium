@@ -2,59 +2,11 @@
 module TS_CoreSyntax where
 
 import Top.Types
-import Data.List
-import Utils (internalError)
 
 type Core_TypingStrategies = [Core_TypingStrategy]
-
-instance Read Tp where 
-   readsPrec i string
-      | "TVar " `isPrefixOf` string = [ (TVar int, rest)
-                                      | (int, rest) <- readsPrec i (drop 5 string) :: [(Int, String)]
-                                      ]  
-      | "TCon " `isPrefixOf` string = [ (TCon s, rest)
-                                      | (s, rest) <- readsPrec i (drop 5 string) :: [(String, String)]
-                                      ]                                        
-      | "TApp " `isPrefixOf` string = [ (TApp left right, rest')
-                                      | (left,  ' ':rest) <- readsPrec i (drop 5 string) :: [(Tp, String)]
-                                      , (right, rest') <- readsPrec i rest :: [(Tp, String)]
-                                      ]                                      
-      | "(" `isPrefixOf` string =  [ (tp, rest') 
-                                   | (tp, ')':rest') <- readsPrec i (tail string) :: [(Tp, String)] 
-                                   ]  
-      | " " `isPrefixOf` string = readsPrec i (tail string)                                   
-      | otherwise = internalError "TS_CoreSyntax.ag" "instance Read Tp" ("instance Read Tp: "++show string)
-
--- for Tp special show
-instance Show Core_Judgement where
-  show (Judgement s tp) = "(Judgement "++show s++" ("++showTp tp++"))"
- 
-instance Show Core_UserStatement where
-  show (Equal t1 t2 s)             = "Equal ("++showTp t1++") ("++showTp t2++") "++show s
-  show (Pred s tp msg)             = "Pred "++show s++" ("++showTp tp++") "++show msg
-  show (MetaVariableConstraints s) = "MetaVariableConstraints "++show s
-  show (CorePhase i)               = "CorePhase "++show i
-
-instance Show Core_TypingStrategy where
-   show (Siblings fs)                   = "(Siblings "++show fs++")"
-   show (TypingStrategy env rule stats) =
-      let showEnv = "[" ++ concat (intersperse "," [ "("++show f++","++showTp tp++")" | (f,tp) <- env]) ++ "]" 
-      in "(TypingStrategy "++showEnv++" ("++show rule++") ("++show stats++"))"
-   {-
-   | Siblings
-         functions  : {[String]}
-   | TypingStrategy
-        typeEnv     : {[(String, Tp)]}   
-        typerule    : Core_TypeRule
-        statements  : Core_UserStatements -}
-        
-showTp :: Tp -> String
-showTp (TVar i)   = "TVar "++show i
-showTp (TCon c)   = "TCon "++show c
-showTp (TApp l r) = "TApp ("++showTp l++") ("++showTp r++")"
 -- Core_Judgement ----------------------------------------------
 data Core_Judgement = Judgement (String) (Tp)
-                    deriving ( Read)
+                    deriving ( Read,Show)
 -- Core_Judgements ---------------------------------------------
 type Core_Judgements = [(Core_Judgement)]
 -- Core_TypeRule -----------------------------------------------
@@ -63,13 +15,13 @@ data Core_TypeRule = TypeRule (Core_Judgements) (Core_Judgement)
 -- Core_TypingStrategy -----------------------------------------
 data Core_TypingStrategy = Siblings ([String])
                          | TypingStrategy ([(String, Tp)]) (Core_TypeRule) (Core_UserStatements)
-                         deriving ( Read)
+                         deriving ( Read,Show)
 -- Core_UserStatement ------------------------------------------
 data Core_UserStatement = CorePhase (Int)
                         | Equal (Tp) (Tp) (String)
                         | MetaVariableConstraints (String)
                         | Pred (String) (Tp) (String)
-                        deriving ( Read)
+                        deriving ( Read,Show)
 -- Core_UserStatements -----------------------------------------
 type Core_UserStatements = [(Core_UserStatement)]
 

@@ -5,65 +5,52 @@
 -- Stability   :  experimental
 -- Portability :  unknown
 --
--- Make the (core) directives readable and showable.
+-- A datatype to represent the directives.
 --
 -- (directives based on "Scripting the Type Inference Process", ICFP 2003)
 -----------------------------------------------------------------------------
 
-INCLUDE "TS_CoreData.ag"
-
 imports {
 import Top.Types
-import Data.List
-import Utils (internalError)
 }
 
-{
-type Core_TypingStrategies = [Core_TypingStrategy]
+DERIVING Core_TypingStrategy Core_Judgement Core_UserStatement Core_TypeRule : Show, Read
 
-instance Read Tp where 
-   readsPrec i string
-      | "TVar " `isPrefixOf` string = [ (TVar int, rest)
-                                      | (int, rest) <- readsPrec i (drop 5 string) :: [(Int, String)]
-                                      ]  
-      | "TCon " `isPrefixOf` string = [ (TCon s, rest)
-                                      | (s, rest) <- readsPrec i (drop 5 string) :: [(String, String)]
-                                      ]                                        
-      | "TApp " `isPrefixOf` string = [ (TApp left right, rest')
-                                      | (left,  ' ':rest) <- readsPrec i (drop 5 string) :: [(Tp, String)]
-                                      , (right, rest') <- readsPrec i rest :: [(Tp, String)]
-                                      ]                                      
-      | "(" `isPrefixOf` string =  [ (tp, rest') 
-                                   | (tp, ')':rest') <- readsPrec i (tail string) :: [(Tp, String)] 
-                                   ]  
-      | " " `isPrefixOf` string = readsPrec i (tail string)                                   
-      | otherwise = internalError "TS_CoreSyntax.ag" "instance Read Tp" ("instance Read Tp: "++show string)
-
--- for Tp special show
-instance Show Core_Judgement where
-  show (Judgement s tp) = "(Judgement "++show s++" ("++showTp tp++"))"
- 
-instance Show Core_UserStatement where
-  show (Equal t1 t2 s)             = "Equal ("++showTp t1++") ("++showTp t2++") "++show s
-  show (Pred s tp msg)             = "Pred "++show s++" ("++showTp tp++") "++show msg
-  show (MetaVariableConstraints s) = "MetaVariableConstraints "++show s
-  show (CorePhase i)               = "CorePhase "++show i
-
-instance Show Core_TypingStrategy where
-   show (Siblings fs)                   = "(Siblings "++show fs++")"
-   show (TypingStrategy env rule stats) =
-      let showEnv = "[" ++ concat (intersperse "," [ "("++show f++","++showTp tp++")" | (f,tp) <- env]) ++ "]" 
-      in "(TypingStrategy "++showEnv++" ("++show rule++") ("++show stats++"))"
-   {-
+DATA Core_TypingStrategy 
    | Siblings
          functions  : {[String]}
    | TypingStrategy
         typeEnv     : {[(String, Tp)]}   
         typerule    : Core_TypeRule
-        statements  : Core_UserStatements -}
+        statements  : Core_UserStatements
         
-showTp :: Tp -> String
-showTp (TVar i)   = "TVar "++show i
-showTp (TCon c)   = "TCon "++show c
-showTp (TApp l r) = "TApp ("++showTp l++") ("++showTp r++")"
-} 
+DATA Core_TypeRule 
+   | TypeRule
+        premises    : Core_Judgements
+        conclusion  : Core_Judgement
+
+TYPE Core_Judgements = [Core_Judgement]
+DATA Core_Judgement
+   | Judgement
+        expression  : String
+        type        : Tp
+        
+TYPE Core_UserStatements = [Core_UserStatement]
+
+DATA Core_UserStatement
+   | Equal
+        leftType    : Tp
+        rightType   : Tp
+        message     : String
+   | Pred
+        predClass   : String
+        predType    : Tp
+        message     : String
+   | MetaVariableConstraints        
+        name        : String
+   | CorePhase 
+        phase       : Int
+
+{
+type Core_TypingStrategies = [Core_TypingStrategy]
+}

@@ -365,14 +365,13 @@ staticanalysis/directives/TS_Apply.hs : \
         staticanalysis/directives/TS_Syntax.ag \
         staticanalysis/directives/TS_Collect.ag \
         staticanalysis/directives/TS_Apply.ag \
-        staticanalysis/directives/TS_CoreData.ag \
+        staticanalysis/directives/TS_CoreSyntax.ag \
         syntax/UHA_Syntax.ag \
 	# AG TS_Syntax
 	cd staticanalysis/directives;$(AG) -mscf TS_Apply.ag;cd ../..
 
 staticanalysis/directives/TS_CoreSyntax.hs : \
 	staticanalysis/directives/TS_CoreSyntax.ag \
-        staticanalysis/directives/TS_CoreData.ag
 	# AG TS_CoreSyntax
 	cd staticanalysis/directives;$(AG) -md TS_CoreSyntax.ag;cd ../..
 

@@ -54,7 +54,7 @@ SEM Module
   | Module   lhs  . kindErrors      = @substitution |-> (map fst @kindErrors)
                   . debugIO         = putStrLn @debugString
              body . kappaUnique     = 0
-             loc  . (SolveResult kappaUniqueAtTheEnd substitution _ kindErrors debugString ()) = 
+             loc  . (SolveResult kappaUniqueAtTheEnd substitution _ _ kindErrors debugString ()) = 
                        runGreedy emptyClassEnvironment noOrderedTypeSynonyms @body.kappaUnique @body.constraints
                   . kindEnvironment = let f _ kind = generalizeAll ([] .=>. defaultToStar (@substitution |-> kind))
                                       in mapFM f @body.environment                     

@@ -16,7 +16,7 @@ SEM Module
 
   | Module
       loc  -- Solve the type constraints.
-           . (SolveResult betaUniqueAtTheEnd substitution typeschemeMap solveErrors debugString tooSpecificWarnings) =
+           . (SolveResult betaUniqueAtTheEnd substitution typeschemeMap _ solveErrors debugString tooSpecificWarnings) =
                 (selectConstraintSolver @lhs.options @lhs.importEnvironment) 
                    @classEnv
                    @orderedTypeSynonyms 

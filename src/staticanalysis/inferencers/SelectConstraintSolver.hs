@@ -100,22 +100,22 @@ warnForTooSpecificSignatures solver classEnv synonyms unique constraints =
                       $ map (fromJust . maybeExplicitlyTyped) explicits
        
        -- first solve the new constraint set and the "normal" constraints. Try to determine an "inferred" and more general
-       -- type from this result. Then, solve the explicit constraints that were left out to make the final substitution as
+       -- type from this result. Then, solve the explicit constraints that were skipped to make the final substitution as
        -- it would be originally.
        result1 = solver classEnv synonyms unique (newConstraints ++ normalConstraints)
        result2 = solver classEnv synonyms (uniqueFromResult result1) (substitutionFromResult result1 |-> explicits)
        
        -- make the warnings
-       warnings = [] {- -- disabled for the moment -- 
+       warnings =
           let f (monos, name, tp, signature) =
                  let ms  = substitutionFromResult result1 |-> monos
-                     ps  = predictesFromResult result1 
+                     ps  = qualifiersFromResult result1 
                      ts  = makeScheme (ftv ms) ps (substitutionFromResult result1 |-> tp)
                      b1  = genericInstanceOf synonyms classEnv signature ts
                      b2  = genericInstanceOf synonyms classEnv ts signature
                  in [ SignatureTooSpecific name signature ts | b1 && not b2 ] 
 
-          in [ warning | Just x <- map splitExplicit explicits, warning <- f x ]    -}     
+          in [ warning | Just x <- map splitExplicit explicits, warning <- f x ]    
        
    in (result1 { extensionFromResult = warnings ++ extensionFromResult result1 }) `plus` result2
 
@@ -127,13 +127,13 @@ warnForTooSpecificSignatures solver classEnv synonyms unique constraints =
       in [ (t1 .==. t2) info | (_, t2) <- rest ]
 
    maybeExplicitlyTyped :: TypeConstraint ConstraintInfo -> Maybe (NameWithRange, Tp)
-   maybeExplicitlyTyped (TC3 (Instantiate tp _ info)) = 
+   maybeExplicitlyTyped (TC3 (Skolemize tp _ info)) = 
       do (monos, name) <- maybeExplicitTypedDefinition info
          return (NameWithRange name, tp)
    maybeExplicitlyTyped _ = Nothing
          
    splitExplicit :: TypeConstraint ConstraintInfo -> Maybe (Tps, Name, Tp, TpScheme)
-   splitExplicit (TC3 (Instantiate tp (SigmaScheme tpscheme) info))
+   splitExplicit (TC3 (Skolemize tp (_, SigmaScheme tpscheme) info))
       | isExplicitTypedBinding info =
            do (monos, name) <- maybeExplicitTypedDefinition info
               return (monos, name, tp, tpscheme)

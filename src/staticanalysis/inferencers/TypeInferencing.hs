@@ -12198,7 +12198,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                       _bodyIcollectInstances
             (_orderedTypeSynonyms@_) =
                 getOrderedTypeSynonyms _lhsIimportEnvironment
-            ((SolveResult (_betaUniqueAtTheEnd@_)(_substitution@_)(_typeschemeMap@_)(_solveErrors@_)(_debugString@_)(_tooSpecificWarnings@_))) =
+            ((SolveResult (_betaUniqueAtTheEnd@_)(_substitution@_)(_typeschemeMap@_)(_)(_solveErrors@_)(_debugString@_)(_tooSpecificWarnings@_))) =
                 (selectConstraintSolver _lhsIoptions _lhsIimportEnvironment)
                    _classEnv
                    _orderedTypeSynonyms

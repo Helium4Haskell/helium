@@ -26,6 +26,8 @@ import UHA_Source
 import Data.FiniteMap
 import DoublyLinkedTree (root)
 
+import Top.Types
+
 applyTypingStrategy :: Core_TypingStrategy -> MetaVariableInfo -> MetaVariableTable -> Int 
                           -> (Assumptions, ConstraintSet, IO (), Int)
 applyTypingStrategy = sem_Core_TypingStrategy
@@ -56,6 +58,8 @@ exactlyOnce :: Eq a => [a] -> [a]
 exactlyOnce []     = []
 exactlyOnce (x:xs) | x `elem` xs = exactlyOnce . filter (/= x) $ xs
                    | otherwise   = x : exactlyOnce xs
+
+type Core_TypingStrategies = [Core_TypingStrategy]
 -- Core_Judgement ----------------------------------------------
 -- semantic domain
 type T_Core_Judgement = (MetaVariableInfo) ->

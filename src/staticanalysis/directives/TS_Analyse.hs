@@ -3598,7 +3598,7 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
                                       else [ Soundness _name inferredTpScheme constraintsTpScheme ]
             (_classEnv@_) =
                 createClassEnvironment _lhsIimportEnvironment
-            ((SolveResult (_)(_substitution@_)(_)(_solveErrors@_)(_)(()))) =
+            ((SolveResult (_)(_substitution@_)(_)(_)(_solveErrors@_)(_)(()))) =
                 runGreedy
                    _classEnv
                    (getOrderedTypeSynonyms _lhsIimportEnvironment)

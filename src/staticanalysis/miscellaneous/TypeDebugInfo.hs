@@ -5,7 +5,6 @@ module TypeDebugInfo
 
 import Data.FiniteMap
 import Top.Types
-import TS_CoreSyntax (showTp)
 
 ------------------------------------------------------
 
@@ -87,7 +86,7 @@ fromEntry (EntryId i, entry) =
        (getDescription entry) 
        (getNonTerminal entry) 
        (getPretty entry) 
-       (fmap showTp $ getMType entry) 
+       (fmap show $ getMType entry) 
        (fmap showTpScheme $ getMOriginal entry) 
        (getMono entry) 
        (fmap (\(EntryId i) -> i) $ getParent entry) 
@@ -108,7 +107,7 @@ makeEntryId = EntryId
 showTpScheme :: TpScheme -> String
 showTpScheme scheme =
    let (ps, tp) = split (unquantify scheme)
-   in "(" ++ show (quantifiers scheme) ++ "," ++ show ps ++ "," ++ showTp tp ++ ")"
+   in "(" ++ show (quantifiers scheme) ++ "," ++ show ps ++ "," ++ show tp ++ ")"
       
 readTpScheme :: String -> TpScheme
 readTpScheme s =

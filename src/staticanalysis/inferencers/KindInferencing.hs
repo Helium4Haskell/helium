@@ -3337,7 +3337,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             (_kindEnvironment@_) =
                 let f _ kind = generalizeAll ([] .=>. defaultToStar (_substitution |-> kind))
                 in mapFM f _bodyIenvironment
-            ((SolveResult (_kappaUniqueAtTheEnd@_)(_substitution@_)(_)(_kindErrors@_)(_debugString@_)(()))) =
+            ((SolveResult (_kappaUniqueAtTheEnd@_)(_substitution@_)(_)(_)(_kindErrors@_)(_debugString@_)(()))) =
                 runGreedy emptyClassEnvironment noOrderedTypeSynonyms _bodyIkappaUnique _bodyIconstraints
             (_bodyOkappaUnique@_) =
                 0
