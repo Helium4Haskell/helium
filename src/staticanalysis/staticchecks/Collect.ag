@@ -187,16 +187,16 @@ uniqueKeys = let comp (x,_) (y,_) = compare x y
 -------------------------------------------
 -- Collecting Type Signatures
 
-ATTR Declaration Declarations [ | typeSignatures:{AssocList Name TpScheme} | ]
-ATTR Body                     [ | | typeSignatures:{AssocList Name TpScheme} ]
+ATTR Declaration Declarations [ | typeSignatures:{[(Name,TpScheme)]} | ]
+ATTR Body                     [ | | typeSignatures:{[(Name,TpScheme)]} ]
 
-SEM Body              | Body    declarations . typeSignatures = empty
-SEM Expression        | Let     declarations . typeSignatures = empty
-SEM Statement         | Let     declarations . typeSignatures = empty
-SEM Qualifier         | Let     declarations . typeSignatures = empty
-SEM MaybeDeclarations | Just    declarations . typeSignatures = empty
+SEM Body              | Body    declarations . typeSignatures = []
+SEM Expression        | Let     declarations . typeSignatures = []
+SEM Statement         | Let     declarations . typeSignatures = []
+SEM Qualifier         | Let     declarations . typeSignatures = []
+SEM MaybeDeclarations | Just    declarations . typeSignatures = []
 
 SEM Declaration
   | TypeSignature
-      lhs . typeSignatures = foldr (uncurry add) @lhs.typeSignatures [ (n,@typeScheme) | n <- @names.self ]
+      lhs . typeSignatures = [ (name, @typeScheme) | name <- @names.self ] ++ @lhs.typeSignatures
       loc . typeScheme     = makeTpSchemeFromType @type.self

@@ -17,7 +17,6 @@ import Types
 import TypesToAlignedDocs
 import Similarity (similar)
 import Utils (internalError,commaList)
-import SortedAssocList
 import List   (sortBy,sort,partition, intersperse,union)
 import Maybe (fromJust,isNothing)
 import Char  (toUpper)

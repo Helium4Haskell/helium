@@ -22,7 +22,7 @@ SEM Module
 
 SEM Body 
   | Body   lhs . miscerrors = @duplicatedTypeSignature ++ @declarations.miscerrors
-           loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (keys @declarations.typeSignatures)
+           loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
                . duplicatedTypeSignature = [ Duplicated TypeSignature names | names <- @doubles ]
 
 -----------------------------------------
@@ -57,7 +57,7 @@ SEM Declaration
        
 SEM MaybeDeclarations
   | Just   lhs . miscerrors = @scopeErrors ++ @duplicatedTypeSignature ++ @declarations.miscerrors
-           loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (keys @declarations.typeSignatures)
+           loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
                . duplicatedTypeSignature = [ Duplicated TypeSignature names | names <- @doubles ]
 
 {- utility attribute: collecting the arities of the function bindings -}
@@ -83,9 +83,6 @@ SEM Statement
   | Let         lhs . lastStatementIsExpr = False
   
 {
-listToAssocList :: Ord a => [a] -> AssocList a ()
-listToAssocList list = fromList (zip list (repeat ()))
-
 mode :: Ord a => [a] -> Maybe a -- Just ... IF any of the elements is more common
 mode xs = 
     case filter ((== maxFreq) . snd) fs of
@@ -126,7 +123,7 @@ SEM Expression
                                                        Just _  -> []
                                                                           
   | Let          lhs . miscerrors = @scopeErrors ++ @duplicatedTypeSignature ++ @expression.miscerrors
-                 loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (keys @declarations.typeSignatures)
+                 loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
                      . duplicatedTypeSignature = [ Duplicated TypeSignature names | names <- @doubles ]
                
 -----------------------------------------
@@ -167,7 +164,7 @@ SEM Alternative
  SEM Statement
    | Generator  lhs . miscerrors = @scopeErrors ++ @expression.miscerrors    
    | Let        lhs . miscerrors = @scopeErrors ++ @duplicatedTypeSignature ++ @declarations.miscerrors 
-                loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (keys @declarations.typeSignatures)
+                loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
                     . duplicatedTypeSignature = [ Duplicated TypeSignature names | names <- @doubles ] 
                        
 -----------------------------------------
@@ -176,5 +173,5 @@ SEM Alternative
 SEM Qualifier
   | Generator lhs . miscerrors = @scopeErrors ++ @expression.miscerrors
   | Let       lhs . miscerrors = @scopeErrors ++ @duplicatedTypeSignature ++ @declarations.miscerrors
-              loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (keys @declarations.typeSignatures)
+              loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
                   . duplicatedTypeSignature = [ Duplicated TypeSignature names | names <- @doubles ]

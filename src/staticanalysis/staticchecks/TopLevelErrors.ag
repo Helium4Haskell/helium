@@ -51,7 +51,7 @@ SEM Module
 
 SEM Module
   | Module   loc . fixityButNoFunDefErrors = let list = nub (@body.declVarNames ++ @allValueConstructors)
-                                             in [] -- temporary !!! makeNoFunDef Fixity (filter (`notElem` list) @correctFixities) list
+                                             in makeNoFunDef Fixity (filter (`notElem` list) @correctFixities) list
                                                                                                          
 ------------------------------------------------------------------------------
 -- recursive type synonyms

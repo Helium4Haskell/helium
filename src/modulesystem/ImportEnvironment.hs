@@ -43,6 +43,11 @@ addTypeSynonym name (arity, function) importenv =
 addType :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment                      
 addType name tpscheme importenv = 
    importenv {typeEnvironment = addToFM (typeEnvironment importenv) name tpscheme} 
+
+addToTypeEnvironment :: TypeEnvironment -> ImportEnvironment -> ImportEnvironment
+addToTypeEnvironment new importenv =
+   importenv {typeEnvironment = typeEnvironment importenv `plusFM` new} 
+
    
 addValueConstructor :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment                      
 addValueConstructor name tpscheme importenv = 

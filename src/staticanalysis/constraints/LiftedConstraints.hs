@@ -3,7 +3,7 @@
 --   *** The Helium Compiler : Static Analysis ***
 --               ( Bastiaan Heeren )
 --
--- LiftedConstraints.hs : Type constraints lifted to sorted association lists.
+-- LiftedConstraints.hs : Type constraints lifted to finite maps.
 --
 -------------------------------------------------------------------------------
 
@@ -11,7 +11,6 @@ module LiftedConstraints where
 
 import Constraints
 import TypeRepresentation
-import SortedAssocList
 import FiniteMap
 
 infix 3 .===. , .:::. , .<==. , !:::!
@@ -21,55 +20,21 @@ infix 3 .===. , .:::. , .<==. , !:::!
 
 lift combinator = 
     \as bs cf -> 
-       let (_,binds,bsRest) = as ./\. bs 
-       in 
-          ( [ (a `combinator` b) (cf n) 
-            | (alist,blist) <- binds
-            , (_,a)         <- alist
-            , (n,b)         <- blist 
-            ]
-          , bsRest
-          )
-
-(.===.) :: Ord key =>        AssocList key Tp       -> AssocList key Tp -> (key -> (Tp,Tp) -> info) -> (Constraints info,AssocList key Tp)
-(.:::.) :: Ord key =>        AssocList key TpScheme -> AssocList key Tp -> (key -> (Tp,Tp) -> info) -> (Constraints info,AssocList key Tp)  
-(.<==.) :: Ord key => Tps -> AssocList key Tp       -> AssocList key Tp -> (key -> (Tp,Tp) -> info) -> (Constraints info,AssocList key Tp)
+       let constraints = concat (eltsFM (intersectFM_C f as bs))
+           rest        = delListFromFM bs (keysFM as)
+           f a list    = [ (a `combinator` b) (cf name) | (name,b) <- list ]
+       in (constraints, rest)
+       
+(.===.) :: Ord key =>        FiniteMap key Tp       -> FiniteMap key [(key,Tp)] -> (key -> (Tp,Tp) -> info) -> (Constraints info,FiniteMap key [(key,Tp)])
+(.:::.) :: Ord key =>        FiniteMap key TpScheme -> FiniteMap key [(key,Tp)] -> (key -> (Tp,Tp) -> info) -> (Constraints info,FiniteMap key [(key,Tp)])  
+(.<==.) :: Ord key => Tps -> FiniteMap key Tp       -> FiniteMap key [(key,Tp)] -> (key -> (Tp,Tp) -> info) -> (Constraints info,FiniteMap key [(key,Tp)])
 
 (.===.)    = lift (.==.)
 (.:::.)    = lift (flip (.::.))
 (.<==.) ms = lift (flip ((.<=.) ms))
 
-(!:::!) :: Ord key =>        FiniteMap key TpScheme -> AssocList key Tp -> (key -> (Tp,Tp) -> info) -> (Constraints info,AssocList key Tp)  
-xs !:::! ys = fromList (fmToList xs) .:::. ys
-
----------------------------------------------------------------------------------
--- utility functions
-
-onlyUniqueKeys :: Ord key => AssocList key a -> (AssocList key a,[[key]])
-onlyUniqueKeys aset = let (list,doubles) = rec (toList aset)
-                      in (unsafeFromList list,doubles)
-
-   where rec []       = ([],[])
-         rec ((name,e):rest) = let (rest1,rest2) = span ((name==).fst) rest
-                                   (rest',ds)    = rec rest2
-                               in if null rest1
-                                     then ((name,e):rest',ds)
-                                     else (rest',(name:map fst rest1):ds)
-
-(./\.) :: Ord key => AssocList key a -> AssocList key b -> (AssocList key a,[([(key,a)],[(key,b)])],AssocList key b) 
-a1 ./\. a2  = let (alist,binds,blist) = rec (toList a1) (toList a2)
-              in (unsafeFromList alist,binds,unsafeFromList blist)
-
-   where rec [] bs = ([],[],bs)
-         rec as [] = (as,[],[])
-         rec (a:as) (b:bs) = case compare (fst a) (fst b) of
-                               LT -> let (firstpart,rest) = span (\n -> fst n < fst b) as
-                                         (xs,ys,zs)       = rec rest (b:bs)
-                                     in (a:firstpart++xs,ys,zs)
-                               EQ -> let (firstA,restA) = span (\n -> fst n == fst a) as
-                                         (firstB,restB) = span (\n -> fst n == fst b) bs
-                                         (xs,ys,zs)     = rec restA restB
-                                     in (xs,(a:firstA,b:firstB):ys,zs)
-                               GT -> let (firstpart,rest) = span (\n -> fst n < fst a) bs
-                                         (xs,ys,zs)       = rec (a:as) rest
-                                     in (xs,ys,b:firstpart++zs)
+(!:::!) :: Ord key => FiniteMap key TpScheme -> FiniteMap key Tp -> (key -> (Tp,Tp) -> info) -> (Constraints info,FiniteMap key Tp)  
+(as !:::! bs) cf = let bs' = mapFM (\name tp -> [(name,tp)]) bs
+                       (xs,ys) = (as .:::. bs') cf                           
+                       ys' = mapFM (\_ -> snd . head) ys
+                   in (xs,ys')

@@ -117,16 +117,17 @@ SEM Declaration
                                                     _  -> @lhs.suspiciousFBs
 
 {
-findSimilarFunctionBindings :: AssocList Name a -> [(Name,Name)] -> [Warning]
+findSimilarFunctionBindings :: [(Name, TpScheme)] -> [(Name,Name)] -> [Warning]
 findSimilarFunctionBindings environment candidates = 
-   [ uncurry SimilarFunctionBindings pair
-   | (n1,n2) <- candidates
-   , let bool1 = n1 `elem` keys environment
-         bool2 = n2 `elem` keys environment
-         pair  = if bool1 then (n2,n1) else (n1,n2)
-   , bool1 `xor` bool2
-   ]
+   let namesWithTypeDef = map fst environment
+   in [ uncurry SimilarFunctionBindings pair
+      | (n1,n2) <- candidates
+      , let bool1 = n1 `elem` namesWithTypeDef
+            bool2 = n2 `elem` namesWithTypeDef
+            pair  = if bool1 then (n2,n1) else (n1,n2)
+      , bool1 `xor` bool2
+      ]
 
 xor :: Bool -> Bool -> Bool
 xor b1 b2 = not (b1 == b2)
-}                 
+}

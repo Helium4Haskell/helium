@@ -23,15 +23,13 @@ import ConstraintInfo
 import TypeGraphConstraintInfo
 import EquivalenceGroupsImplementation ( )
 import HeliumConstraintInfo
--- common
-import ImportEnvironment
-import SortedAssocList
 -- other
 import TopSort                 ( topSort )
 import Utils                   ( internalError )
 import DerivingShow            ( typeOfShowFunction, nameOfShowFunction ) 
 import UHA_Utils               ( noRange, getNameRange, getExprRange )
 import UHA_Syntax
+import ImportEnvironment
 import FiniteMap
  
 import OneLiner
@@ -41,18 +39,28 @@ import List (intersperse)
 import SATypes (isTupleConstructor)
 -}
 
-type Assumptions        = AssocList Name Tp
-type PatternAssumptions = AssocList Name Tp
+type Assumptions        = FiniteMap Name [(Name,Tp)]
+type PatternAssumptions = FiniteMap Name Tp
+
+noAssumptions :: FiniteMap Name a
+noAssumptions = emptyFM
+
+combine :: Assumptions -> Assumptions -> Assumptions
+combine = plusFM_C (++)
+
+single :: Name -> Tp -> Assumptions
+single n t = unitFM n [(n,t)]
+
 
 type BindingGroups = [BindingGroup]
 type BindingGroup  = (PatternAssumptions,Assumptions,ConstraintSets)
-type MonoTable    = [(PatternAssumptions,Tps)]
+type MonoTable    = [(Names,Tps)]
 
 emptyBindingGroup :: BindingGroup
-emptyBindingGroup = (empty,empty,[])
+emptyBindingGroup = (noAssumptions, noAssumptions, [])
 
 combineBindingGroup :: BindingGroup -> BindingGroup -> BindingGroup
-combineBindingGroup (e1,a1,c1) (e2,a2,c2) = (e1 `combine` e2,a1 `combine` a2,c1++c2)
+combineBindingGroup (e1,a1,c1) (e2,a2,c2) = (e1 `plusFM` e2,a1 `combine` a2,c1++c2)
 
 concatBindingGroups :: BindingGroups -> BindingGroup
 concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
@@ -60,46 +68,48 @@ concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
 type TypeAnnotations = [((Tps,Tp),TpScheme,(Tree,Range))]
 type NoTypeDefs      = [(Name,Tps,Tp,Bool)]
 
-findTypeAnnotations :: Bool -> Tps -> AssocList Name TpScheme -> BindingGroups -> (TypeAnnotations,NoTypeDefs)
+findTypeAnnotations :: Bool -> Tps -> FiniteMap Name TpScheme -> BindingGroups -> (TypeAnnotations,NoTypeDefs)
 findTypeAnnotations toplevel monos typeSignatures bdgs =
    let (environment,_,_) = concatBindingGroups bdgs
-       (_,binds,rest)    = typeSignatures ./\. environment
-       typeAnnotations   = [ ((monos,tp),ts,(Text (show n),getNameRange n')) | (as,bs) <- binds, (n',ts) <- as, (n,tp) <- bs ]
-       noTypeDefs        = [ (n,monos,t,toplevel) | (n,t) <- toList rest ]
+       typeAnnotations   = [ ((monos,tp),ts,(Text (show n),getNameRange n))
+                           | (n,(tp,ts)) <- fmToList (intersectFM_C (,) environment typeSignatures)
+                           ]
+       noTypeDefs        = [ (n,monos,tp,toplevel)
+                           | (n,tp) <- fmToList (delListFromFM environment (keysFM typeSignatures))
+                           ]
    in (typeAnnotations,noTypeDefs)
                     
-performBindingGroup :: Tps -> AssocList Name TpScheme -> BindingGroups -> (PatternAssumptions,Assumptions,ConstraintSet,MonoTable)
+performBindingGroup :: Tps -> FiniteMap Name TpScheme -> BindingGroups -> (Assumptions,ConstraintSet,MonoTable)
 performBindingGroup monos typeSignatures = variableDependencies . bindingGroupAnalysis
 
    where
         bindingGroupAnalysis :: BindingGroups -> BindingGroups
         bindingGroupAnalysis cs
-                        = let explicits = map fst (toList typeSignatures)
+                        = let explicits = keysFM typeSignatures
                               indexMap = concat (zipWith f cs [0..])
-                              f (env,_,_) i = [(n,i) | (n,_)<-toList env, n `notElem` explicits]
+                              f (env,_,_) i = [ (n,i) | n <- keysFM env, n `notElem` explicits ]
                               edges    = concat (zipWith f' cs [0..])
-                              f' (_,ass,_) i = [(i,j)|(n,_)<-toList ass,(n',j)<-indexMap,n==n']
+                              f' (_,ass,_) i = [ (i,j)| n <- keysFM ass, (n',j) <- indexMap, n==n' ]
                               list = topSort (length cs-1) edges
                           in map (concatBindingGroups . map (cs !!)) list
 
-        variableDependencies :: BindingGroups -> (PatternAssumptions,Assumptions,ConstraintSet,MonoTable)
-        variableDependencies = foldr op (empty,empty,ctEmpty,[]) where
-            op (e,a,c) (env,aset,cset,mt) =
-               let (cset1,e'   ) = ((listToFM . toList) typeSignatures !:::! e) cinfoBindingGroupExplicitTypedBinding
+        variableDependencies :: BindingGroups -> (Assumptions,ConstraintSet,MonoTable)
+        variableDependencies = foldr op (noAssumptions,ctEmpty,[]) where
+            op (e,a,c) (aset,cset,mt) =
+               let (cset1,e'   ) = (typeSignatures !:::! e) cinfoBindingGroupExplicitTypedBinding
                    (cset5,aset') = (.<==.) monos e' aset    cinfoBindingGroupImplicit
-                   (cset2,a'   ) = ((listToFM . toList) typeSignatures !:::! a) cinfoBindingGroupExplicit
+                   (cset2,a'   ) = (typeSignatures .:::. a) cinfoBindingGroupExplicit
                    (cset3,a''  ) = (e' .===. a')            cinfoSameBindingGroup
-               in ( e' `combine` env
-                  , a'' `combine` aset'
+               in ( a'' `combine` aset'
                   , cset2 .>>. cset3 .>>. cset5 .>>. 
                     ctStrictOrder [ cset1 .<<. ctNode (reverse c)
                                   , cset
                                   ] 
-                  , (e,elts e'):mt
+                  , (keysFM e,eltsFM e'):mt
                   )
 
-findMono :: Tp -> MonoTable -> Tps
-findMono i = let p = elem i . map snd . toList . fst
+findMono :: Name -> MonoTable -> Tps
+findMono n = let p = elem n . fst
              in snd . head . filter p
 
 cinfoBindingGroupExplicitTypedBinding :: Name -> (Tp,Tp) -> HeliumConstraintInfo
@@ -255,7 +265,7 @@ sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_betaLeft)
         ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_environment,_pattern_oneLineTree,_pattern_self,_pattern_size) =
             (_pattern (_lhs_betaUnique) (_lhs_importEnvironment))
         ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectednotypedef,_righthandside_constraints,_righthandside_oneLineTree,_righthandside_self,_righthandside_size,_righthandside_typeAnnotations) =
-            (_righthandside (_pattern_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (elts _pattern_environment ++ _lhs_monos) (_lhs_typeAnnotations))
+            (_righthandside (_pattern_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (eltsFM _pattern_environment ++ _lhs_monos) (_lhs_typeAnnotations))
     in  (_assumptions'
         ,_righthandside_betaUnique
         ,_righthandside_collectednotypedef
@@ -279,7 +289,7 @@ sem_Alternative_Empty (_range) (_lhs_betaLeft) (_lhs_betaRight) (_lhs_betaUnique
             Alternative_Empty _range_self
         ( _range_self) =
             (_range )
-    in  (empty,_lhs_betaUnique,_lhs_collectednotypedef,ctEmpty,_oneLineTree,_self,_size,_lhs_typeAnnotations)
+    in  (noAssumptions,_lhs_betaUnique,_lhs_collectednotypedef,ctEmpty,_oneLineTree,_self,_size,_lhs_typeAnnotations)
 -- Alternatives ------------------------------------------------
 -- semantic domain
 type T_Alternatives = (Tp) ->
@@ -310,7 +320,7 @@ sem_Alternatives_Nil :: (T_Alternatives)
 sem_Alternatives_Nil (_lhs_betaLeft) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_monos) (_lhs_typeAnnotations) =
     let (_self) =
             []
-    in  (empty,_lhs_betaUnique,_lhs_collectednotypedef,[],[],_self,0,_lhs_typeAnnotations)
+    in  (noAssumptions,_lhs_betaUnique,_lhs_collectednotypedef,[],[],_self,0,_lhs_typeAnnotations)
 -- AnnotatedType -----------------------------------------------
 -- semantic domain
 type T_AnnotatedType = ((AnnotatedType))
@@ -361,7 +371,7 @@ type T_Body = (Int) ->
               ([(Name,Tps,Tp,Bool)]) ->
               (ImportEnvironment) ->
               ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
-              ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(PatternAssumptions),(Body),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(AssocList Name TpScheme))
+              ((Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),([(Name,Tp)]),(Body),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(FiniteMap Name TpScheme))
 -- cata
 sem_Body :: (Body) ->
             (T_Body)
@@ -372,10 +382,10 @@ sem_Body_Body :: (T_Range) ->
                  (T_Declarations) ->
                  (T_Body)
 sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_typeAnnotations) =
-    let ((_env,_aset,_cset,_monoTable)) =
+    let ((_aset,_cset,_monoTable)) =
             performBindingGroup [] _declarations_typeSignatures _declarations_bindingGroups
         ((_csetBinds,_aset')) =
-            (typeEnvironment _lhs_importEnvironment !:::! _aset) _cinfo
+            (typeEnvironment _lhs_importEnvironment .:::. _aset) _cinfo
         ((_anns,_notypedefs)) =
             findTypeAnnotations True [] _declarations_typeSignatures _declarations_bindingGroups
         (_cinfo) =
@@ -397,8 +407,8 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_betaUnique) (
         ( _importdeclarations_self) =
             (_importdeclarations )
         ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_oneLineTree,_declarations_self,_declarations_size,_declarations_typeAnnotations,_declarations_typeSignatures) =
-            (_declarations (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_monoTable) ([]) (_lhs_typeAnnotations) (empty))
-    in  (_aset',_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,ctNode [ _csetBinds .<<. _cset ],_env,_self,_declarations_size,_anns ++ _declarations_typeAnnotations,_declarations_typeSignatures)
+            (_declarations (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_monoTable) ([]) (_lhs_typeAnnotations) (emptyFM))
+    in  (_aset',_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,ctNode [ _csetBinds .<<. _cset ],[ (n,tp) | (n,_,tp,_) <- _notypedefs ],_self,_declarations_size,_anns ++ _declarations_typeAnnotations,_declarations_typeSignatures)
 -- Constructor -------------------------------------------------
 -- semantic domain
 type T_Constructor = ((Constructor))
@@ -537,8 +547,8 @@ type T_Declaration = (Int) ->
                      (MonoTable) ->
                      (Tps) ->
                      ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
-                     (AssocList Name TpScheme) ->
-                     ((Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(Tree),(Declaration),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(AssocList Name TpScheme))
+                     (FiniteMap Name TpScheme) ->
+                     ((Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(Tree),(Declaration),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(FiniteMap Name TpScheme))
 -- cata
 sem_Declaration :: (Declaration) ->
                    (T_Declaration)
@@ -672,7 +682,7 @@ sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_betaUnique) (_lhs_bi
         (_newcon) =
             [ (_beta .==. foldr (.->.) _betaRight _betasLeft) _cinfo ]
         (_mybdggrp) =
-            ( single _bindings_name _beta
+            ( unitFM _bindings_name _beta
             , _bindings_assumptions
             , [ _newcon !<!
                 ctNode [ ctVariable _lhs_betaUnique
@@ -699,7 +709,7 @@ sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_betaUnique) (_lhs_bi
         ( _range_self) =
             (_range )
         ( _bindings_assumptions,_bindings_betaUnique,_bindings_collectednotypedef,_bindings_constraintslist,_bindings_name,_bindings_numberOfPatterns,_bindings_oneLineTree,_bindings_self,_bindings_size,_bindings_typeAnnotations) =
-            (_bindings (_betaRight) (_lhs_betaUnique + 2 + _bindings_numberOfPatterns) (_betasLeft) (_lhs_collectednotypedef) (_lhs_importEnvironment) (findMono _beta _lhs_monoTable ++ _lhs_monos) (_lhs_typeAnnotations))
+            (_bindings (_betaRight) (_lhs_betaUnique + 2 + _bindings_numberOfPatterns) (_betasLeft) (_lhs_collectednotypedef) (_lhs_importEnvironment) (findMono _bindings_name _lhs_monoTable ++ _lhs_monos) (_lhs_typeAnnotations))
     in  (_bindings_betaUnique,_mybdggrp : _lhs_bindingGroups,_bindings_collectednotypedef,_oneLineTree,_self,_bindings_size,_bindings_typeAnnotations,_lhs_typeSignatures)
 sem_Declaration_Instance :: (T_Range) ->
                             (T_ContextItems) ->
@@ -790,7 +800,7 @@ sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_betaUn
         ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_environment,_pattern_oneLineTree,_pattern_self,_pattern_size) =
             (_pattern (_lhs_betaUnique) (_lhs_importEnvironment))
         ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectednotypedef,_righthandside_constraints,_righthandside_oneLineTree,_righthandside_self,_righthandside_size,_righthandside_typeAnnotations) =
-            (_righthandside (_pattern_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (findMono (head (elts _pattern_environment)) _lhs_monoTable ++ _lhs_monos) (_lhs_typeAnnotations))
+            (_righthandside (_pattern_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (findMono (head (keysFM _pattern_environment)) _lhs_monoTable ++ _lhs_monos) (_lhs_typeAnnotations))
     in  (_righthandside_betaUnique,_mybdggrp : _lhs_bindingGroups,_righthandside_collectednotypedef,_oneLineTree,_self,_size,_righthandside_typeAnnotations,_lhs_typeSignatures)
 sem_Declaration_Type :: (T_Range) ->
                         (T_SimpleType) ->
@@ -829,7 +839,7 @@ sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_betaUnique) (_lhs_
             (_names )
         ( _type_self) =
             (_type )
-    in  (_lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_oneLineTree,_self,_size,_lhs_typeAnnotations,foldr (uncurry add) _lhs_typeSignatures [ (n,_typeScheme) | n <- _names_self ])
+    in  (_lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_oneLineTree,_self,_size,_lhs_typeAnnotations,addListToFM _lhs_typeSignatures [ (name, _typeScheme) | name <- _names_self ])
 -- Declarations ------------------------------------------------
 -- semantic domain
 type T_Declarations = (Int) ->
@@ -839,8 +849,8 @@ type T_Declarations = (Int) ->
                       (MonoTable) ->
                       (Tps) ->
                       ([((Tps,Tp),TpScheme,(Tree,Range))]) ->
-                      (AssocList Name TpScheme) ->
-                      ((Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),( [ Tree] ),(Declarations),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(AssocList Name TpScheme))
+                      (FiniteMap Name TpScheme) ->
+                      ((Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),( [ Tree] ),(Declarations),(Int),([((Tps,Tp),TpScheme,(Tree,Range))]),(FiniteMap Name TpScheme))
 -- cata
 sem_Declarations :: (Declarations) ->
                     (T_Declarations)
@@ -1117,7 +1127,7 @@ sem_Expression_Constructor (_range) (_name) (_lhs_betaUnique) (_lhs_collectednot
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
-    in  (empty,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,ctSingle _newcon,_oneLineTree,_self,_size,_lhs_typeAnnotations)
+    in  (noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,ctSingle _newcon,_oneLineTree,_self,_size,_lhs_typeAnnotations)
 sem_Expression_Do :: (T_Range) ->
                      (T_Statements) ->
                      (T_Expression)
@@ -1151,7 +1161,7 @@ sem_Expression_Do (_range) (_statements) (_lhs_betaUnique) (_lhs_collectednotype
         ( _range_self) =
             (_range )
         ( _statements_assumptions,_statements_betaUnique,_statements_collectednotypedef,_statements_constraints,_statements_generatorBeta,_statements_oneLineTree,_statements_self,_statements_size,_statements_typeAnnotations) =
-            (_statements (empty) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (ctEmpty) (Nothing) (_lhs_importEnvironment) (_lhs_monos) (_lhs_typeAnnotations))
+            (_statements (noAssumptions) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (ctEmpty) (Nothing) (_lhs_importEnvironment) (_lhs_monos) (_lhs_typeAnnotations))
     in  (_statements_assumptions,_beta,_statements_betaUnique,_statements_collectednotypedef,ctNode [ _newcon .<. _statements_constraints ],_oneLineTree,_self,_size,_statements_typeAnnotations)
 sem_Expression_Enum :: (T_Range) ->
                        (T_Expression) ->
@@ -1453,7 +1463,7 @@ sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_betaUnique) (_lhs
         ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_self,_patterns_size) =
             (_patterns (_lhs_betaUnique + 1) (_lhs_importEnvironment))
         ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_oneLineTree,_expression_self,_expression_size,_expression_typeAnnotations) =
-            (_expression (_patterns_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (elts _patterns_environment ++ _lhs_monos) (_lhs_typeAnnotations))
+            (_expression (_patterns_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (eltsFM _patterns_environment ++ _lhs_monos) (_lhs_typeAnnotations))
     in  (_assumptions'
         ,_beta
         ,_expression_betaUnique
@@ -1475,8 +1485,8 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_betaUnique) (_lh
     let (_beta) =
             TVar _lhs_betaUnique
         (_mybdggroup) =
-            (empty,_expression_assumptions,[_expression_constraints])
-        ((_env,_aset,_cset,_monoTable)) =
+            (noAssumptions,_expression_assumptions,[_expression_constraints])
+        ((_aset,_cset,_monoTable)) =
             performBindingGroup _lhs_monos _declarations_typeSignatures (_mybdggroup : _declarations_bindingGroups)
         ((_anns,_notypedefs)) =
             findTypeAnnotations False _lhs_monos _declarations_typeSignatures (_mybdggroup : _declarations_bindingGroups)
@@ -1507,7 +1517,7 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_betaUnique) (_lh
         ( _range_self) =
             (_range )
         ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_oneLineTree,_declarations_self,_declarations_size,_declarations_typeAnnotations,_declarations_typeSignatures) =
-            (_declarations (_lhs_betaUnique + 1) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (empty))
+            (_declarations (_lhs_betaUnique + 1) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (emptyFM))
         ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_oneLineTree,_expression_self,_expression_size,_expression_typeAnnotations) =
             (_expression (_declarations_betaUnique) (_declarations_collectednotypedef) (_lhs_importEnvironment) (_lhs_monos) (_declarations_typeAnnotations))
     in  (_aset,_beta,_expression_betaUnique,_notypedefs ++ _declarations_collectednotypedef,[ (_expression_beta .==. _beta) _cinfoType ] .>. _cset,_oneLineTree,_self,_size,_anns ++ _expression_typeAnnotations)
@@ -1592,7 +1602,7 @@ sem_Expression_Literal (_range) (_literal) (_lhs_betaUnique) (_lhs_collectednoty
             (_range )
         ( _literal_literalType,_literal_oneLineTree,_literal_self) =
             (_literal )
-    in  (empty,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,ctSingle [ (_literal_literalType .==. _beta) _cinfo ],_oneLineTree,_self,_size,_lhs_typeAnnotations)
+    in  (noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,ctSingle [ (_literal_literalType .==. _beta) _cinfo ],_oneLineTree,_self,_size,_lhs_typeAnnotations)
 sem_Expression_Negate :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
@@ -1906,7 +1916,7 @@ sem_Expressions_Nil :: (T_Expressions)
 sem_Expressions_Nil (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_monos) (_lhs_typeAnnotations) =
     let (_self) =
             []
-    in  (empty,_lhs_betaUnique,[],_lhs_collectednotypedef,[],[],_self,0,_lhs_typeAnnotations)
+    in  (noAssumptions,_lhs_betaUnique,[],_lhs_collectednotypedef,[],[],_self,0,_lhs_typeAnnotations)
 -- FieldDeclaration --------------------------------------------
 -- semantic domain
 type T_FieldDeclaration = ((FieldDeclaration))
@@ -2050,7 +2060,7 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_
         ( _lefthandside_betaUnique,_lefthandside_betas,_lefthandside_constraints,_lefthandside_environment,_lefthandside_name,_lefthandside_numberOfPatterns,_lefthandside_oneLineTree,_lefthandside_patternTrees,_lefthandside_self,_lefthandside_size) =
             (_lefthandside (_lhs_betaUnique) (_lhs_importEnvironment))
         ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectednotypedef,_righthandside_constraints,_righthandside_oneLineTree,_righthandside_self,_righthandside_size,_righthandside_typeAnnotations) =
-            (_righthandside (_lefthandside_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (elts _lefthandside_environment ++ _lhs_monos) (_lhs_typeAnnotations))
+            (_righthandside (_lefthandside_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (eltsFM _lefthandside_environment ++ _lhs_monos) (_lhs_typeAnnotations))
     in  (_assumptions'
         ,_righthandside_betaUnique
         ,_righthandside_collectednotypedef
@@ -2095,7 +2105,7 @@ sem_FunctionBindings_Nil :: (T_FunctionBindings)
 sem_FunctionBindings_Nil (_lhs_betaRight) (_lhs_betaUnique) (_lhs_betasLeft) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_monos) (_lhs_typeAnnotations) =
     let (_self) =
             []
-    in  (empty,_lhs_betaUnique,_lhs_collectednotypedef,[],internalError "TypeInferencing.ag" "n/a" "FunctionBindings(2)",internalError "TypeInferencing.ag" "n/a" "FunctionBindings(1)",[],_self,0,_lhs_typeAnnotations)
+    in  (noAssumptions,_lhs_betaUnique,_lhs_collectednotypedef,[],internalError "TypeInferencing.ag" "n/a" "FunctionBindings(2)",internalError "TypeInferencing.ag" "n/a" "FunctionBindings(1)",[],_self,0,_lhs_typeAnnotations)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
 type T_GuardedExpression = (Int) ->
@@ -2191,7 +2201,7 @@ sem_GuardedExpressions_Nil :: (T_GuardedExpressions)
 sem_GuardedExpressions_Nil (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_monos) (_lhs_rightBeta) (_lhs_typeAnnotations) =
     let (_self) =
             []
-    in  (empty,_lhs_betaUnique,[],_lhs_collectednotypedef,[],[],_self,0,_lhs_typeAnnotations)
+    in  (noAssumptions,_lhs_betaUnique,[],_lhs_collectednotypedef,[],[],_self,0,_lhs_typeAnnotations)
 -- Import ------------------------------------------------------
 -- semantic domain
 type T_Import = ((Import))
@@ -2399,7 +2409,7 @@ sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) (_lhs
         ,ctNode [ _leftPattern_constraints
                 , _rightPattern_constraints
                 ]
-        ,_leftPattern_environment `combine` _rightPattern_environment
+        ,_leftPattern_environment `plusFM` _rightPattern_environment
         ,_operator_self
         ,2
         ,_oneLineTree
@@ -2424,7 +2434,7 @@ sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) (_lhs_betaUn
             (_lefthandside (_lhs_betaUnique) (_lhs_importEnvironment))
         ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_self,_patterns_size) =
             (_patterns (_lefthandside_betaUnique) (_lhs_importEnvironment))
-    in  (_patterns_betaUnique,_lefthandside_betas ++ _patterns_betas,ctNode ( _lefthandside_constraints : _patterns_constraintslist ),_lefthandside_environment `combine` _patterns_environment,_lefthandside_name,_lefthandside_numberOfPatterns + _patterns_numberOfPatterns,_oneLineTree,_lefthandside_patternTrees ++ _patterns_oneLineTree,_self,_size)
+    in  (_patterns_betaUnique,_lefthandside_betas ++ _patterns_betas,ctNode ( _lefthandside_constraints : _patterns_constraintslist ),_lefthandside_environment `plusFM` _patterns_environment,_lefthandside_name,_lefthandside_numberOfPatterns + _patterns_numberOfPatterns,_oneLineTree,_lefthandside_patternTrees ++ _patterns_oneLineTree,_self,_size)
 -- Literal -----------------------------------------------------
 -- semantic domain
 type T_Literal = ((Tp),(Tree),(Literal))
@@ -2503,10 +2513,10 @@ sem_MaybeDeclarations ((MaybeDeclarations_Nothing )) =
 sem_MaybeDeclarations_Just :: (T_Declarations) ->
                               (T_MaybeDeclarations)
 sem_MaybeDeclarations_Just (_declarations) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_monos) (_lhs_typeAnnotations) =
-    let ((_env,_aset,_cset,_monoTable)) =
+    let ((_aset,_cset,_monoTable)) =
             performBindingGroup _lhs_monos _declarations_typeSignatures (_mybdggroup : _declarations_bindingGroups)
         (_mybdggroup) =
-            (empty,_lhs_assumptions,[_lhs_constraints])
+            (emptyFM,_lhs_assumptions,[_lhs_constraints])
         ((_anns,_notypedefs)) =
             findTypeAnnotations False _lhs_monos _declarations_typeSignatures (_mybdggroup : _declarations_bindingGroups)
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
@@ -2516,7 +2526,7 @@ sem_MaybeDeclarations_Just (_declarations) (_lhs_assumptions) (_lhs_betaUnique) 
         (_self) =
             MaybeDeclarations_Just _declarations_self
         ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_oneLineTree,_declarations_self,_declarations_size,_declarations_typeAnnotations,_declarations_typeSignatures) =
-            (_declarations (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (empty))
+            (_declarations (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (emptyFM))
     in  (_aset,_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_cset,_oneLineTree,_self,_declarations_size,_anns ++ _declarations_typeAnnotations)
 sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
 sem_MaybeDeclarations_Nothing (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_monos) (_lhs_typeAnnotations) =
@@ -2581,7 +2591,7 @@ sem_MaybeExpression_Nothing (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_im
             Nothing
         (_self) =
             MaybeExpression_Nothing
-    in  (empty,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,ctEmpty,_oneLineTree,True,_self,0,_lhs_typeAnnotations)
+    in  (noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,ctEmpty,_oneLineTree,True,_self,0,_lhs_typeAnnotations)
 -- MaybeImportSpecification ------------------------------------
 -- semantic domain
 type T_MaybeImportSpecification = ((MaybeImportSpecification))
@@ -2677,7 +2687,7 @@ sem_MaybeNames_Nothing  =
 type T_Module = (ImportEnvironment) ->
                 (Strategy) ->
                 (Bool) ->
-                ((IO ()),(AssocList Name TpScheme),(TypeErrors),(Warnings))
+                ((IO ()),(TypeEnvironment),(TypeErrors),(Warnings))
 -- cata
 sem_Module :: (Module) ->
               (T_Module)
@@ -2711,7 +2721,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
                                 ]
                                 _constraints
         (_inferredgamma) =
-            mapElt ( generalizeAll . (_substitution |->) ) _body_environment
+            map (\(name,tp) -> (name,generalizeAll (_substitution |-> tp))) _body_namesWithoutTypeDef
         ((_typeErrors,_filteredBool)) =
             let notGeneralEnoughErrors =
                    let f ((m,t),s2,info) = let m' = _substitution |-> m
@@ -2728,7 +2738,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
                                               Nothing -> (list,True)
             in foldr op (notGeneralEnoughErrors,False) (map makeTypeError _solveErrors)
         (_toplevelTypes) =
-            _body_typeSignatures `combine` _inferredgamma
+            addListToFM _body_typeSignatures _inferredgamma
         (_warnings) =
             let f (n,ms,t,b) = let ms'    = _substitution |-> ms
                                    t'     = _substitution |-> t
@@ -2745,7 +2755,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
             (_name )
         ( _exports_self) =
             (_exports )
-        ( _body_assumptions,_body_betaUnique,_body_collectednotypedef,_body_constraints,_body_environment,_body_self,_body_size,_body_typeAnnotations,_body_typeSignatures) =
+        ( _body_assumptions,_body_betaUnique,_body_collectednotypedef,_body_constraints,_body_namesWithoutTypeDef,_body_self,_body_size,_body_typeAnnotations,_body_typeSignatures) =
             (_body (0) ([]) (_lhs_importEnvironment) ([]))
     in  (_debugIO,_toplevelTypes,_typeErrors,_warnings)
 -- Name --------------------------------------------------------
@@ -2902,7 +2912,7 @@ sem_Pattern_As (_range) (_name) (_pattern) (_lhs_betaUnique) (_lhs_importEnviron
          ctNode [ ctVariable _lhs_betaUnique
                 , _pattern_constraints
                 ]
-        ,add _name_self _beta _pattern_environment
+        ,addToFM _pattern_environment _name_self _beta
         ,_oneLineTree
         ,_self
         ,_size
@@ -3047,7 +3057,7 @@ sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_ri
                 , _leftPattern_constraints
                 , _rightPattern_constraints
                 ]
-        ,_leftPattern_environment `combine` _rightPattern_environment
+        ,_leftPattern_environment `plusFM` _rightPattern_environment
         ,_oneLineTree
         ,_self
         ,_size
@@ -3143,7 +3153,7 @@ sem_Pattern_Literal (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironmen
             (_range )
         ( _literal_literalType,_literal_oneLineTree,_literal_self) =
             (_literal )
-    in  (_beta,_lhs_betaUnique + 1,ctSingle [ (_literal_literalType .==. _beta) _cinfo ],empty,_oneLineTree,_self,_size)
+    in  (_beta,_lhs_betaUnique + 1,ctSingle [ (_literal_literalType .==. _beta) _cinfo ],noAssumptions,_oneLineTree,_self,_size)
 sem_Pattern_Negate :: (T_Range) ->
                       (T_Literal) ->
                       (T_Pattern)
@@ -3185,7 +3195,7 @@ sem_Pattern_Negate (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment
             (_range )
         ( _literal_literalType,_literal_oneLineTree,_literal_self) =
             (_literal )
-    in  (_beta,_lhs_betaUnique + 1,_conResult .>. ctNode [ ctSingle _conPat ],empty,_oneLineTree,_self,_size)
+    in  (_beta,_lhs_betaUnique + 1,_conResult .>. ctNode [ ctSingle _conPat ],noAssumptions,_oneLineTree,_self,_size)
 sem_Pattern_NegateFloat :: (T_Range) ->
                            (T_Literal) ->
                            (T_Pattern)
@@ -3227,7 +3237,7 @@ sem_Pattern_NegateFloat (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnviro
             (_range )
         ( _literal_literalType,_literal_oneLineTree,_literal_self) =
             (_literal )
-    in  (_beta,_lhs_betaUnique + 1,_conResult .>. ctNode [ ctSingle _conPat ],empty,_oneLineTree,_self,_size)
+    in  (_beta,_lhs_betaUnique + 1,_conResult .>. ctNode [ ctSingle _conPat ],noAssumptions,_oneLineTree,_self,_size)
 sem_Pattern_Parenthesized :: (T_Range) ->
                              (T_Pattern) ->
                              (T_Pattern)
@@ -3325,7 +3335,7 @@ sem_Pattern_Variable (_range) (_name) (_lhs_betaUnique) (_lhs_importEnvironment)
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
-    in  (_beta,_lhs_betaUnique + 1,ctVariable _lhs_betaUnique,single _name_self _beta,_oneLineTree,_self,_size)
+    in  (_beta,_lhs_betaUnique + 1,ctVariable _lhs_betaUnique,unitFM _name_self _beta,_oneLineTree,_self,_size)
 sem_Pattern_Wildcard :: (T_Range) ->
                         (T_Pattern)
 sem_Pattern_Wildcard (_range) (_lhs_betaUnique) (_lhs_importEnvironment) =
@@ -3339,7 +3349,7 @@ sem_Pattern_Wildcard (_range) (_lhs_betaUnique) (_lhs_importEnvironment) =
             Pattern_Wildcard _range_self
         ( _range_self) =
             (_range )
-    in  (_beta,_lhs_betaUnique + 1,ctEmpty,empty,_oneLineTree,_self,_size)
+    in  (_beta,_lhs_betaUnique + 1,ctEmpty,noAssumptions,_oneLineTree,_self,_size)
 -- Patterns ----------------------------------------------------
 -- semantic domain
 type T_Patterns = (Int) ->
@@ -3360,12 +3370,12 @@ sem_Patterns_Cons (_hd) (_tl) (_lhs_betaUnique) (_lhs_importEnvironment) =
             (_hd (_lhs_betaUnique) (_lhs_importEnvironment))
         ( _tl_betaUnique,_tl_betas,_tl_constraintslist,_tl_environment,_tl_numberOfPatterns,_tl_oneLineTree,_tl_self,_tl_size) =
             (_tl (_hd_betaUnique) (_lhs_importEnvironment))
-    in  (_tl_betaUnique,_hd_beta : _tl_betas,_hd_constraints : _tl_constraintslist,_hd_environment `combine` _tl_environment,1 + _tl_numberOfPatterns,_hd_oneLineTree  :  _tl_oneLineTree,_self,_hd_size  +  _tl_size)
+    in  (_tl_betaUnique,_hd_beta : _tl_betas,_hd_constraints : _tl_constraintslist,_hd_environment `plusFM` _tl_environment,1 + _tl_numberOfPatterns,_hd_oneLineTree  :  _tl_oneLineTree,_self,_hd_size  +  _tl_size)
 sem_Patterns_Nil :: (T_Patterns)
 sem_Patterns_Nil (_lhs_betaUnique) (_lhs_importEnvironment) =
     let (_self) =
             []
-    in  (_lhs_betaUnique,[],[],empty,0,[],_self,0)
+    in  (_lhs_betaUnique,[],[],noAssumptions,0,[],_self,0)
 -- Position ----------------------------------------------------
 -- semantic domain
 type T_Position = ((Position))
@@ -3462,7 +3472,7 @@ sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_assumptions) (_l
                 , _expression_constraints
                 , _lhs_constraints
                 ]
-        ,elts _pattern_environment ++ _lhs_monos
+        ,eltsFM _pattern_environment ++ _lhs_monos
         ,_oneLineTree
         ,_self
         ,_size
@@ -3507,10 +3517,10 @@ sem_Qualifier_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Qualifier)
 sem_Qualifier_Let (_range) (_declarations) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_monos) (_lhs_typeAnnotations) =
-    let ((_env,_aset,_cset,_monoTable)) =
+    let ((_aset,_cset,_monoTable)) =
             performBindingGroup _lhs_monos _declarations_typeSignatures (_mybdggroup : _declarations_bindingGroups)
         (_mybdggroup) =
-            (empty,_lhs_assumptions,[_lhs_constraints])
+            (noAssumptions,_lhs_assumptions,[_lhs_constraints])
         ((_anns,_notypedefs)) =
             findTypeAnnotations False _lhs_monos _declarations_typeSignatures (_mybdggroup : _declarations_bindingGroups)
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
@@ -3522,7 +3532,7 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_assumptions) (_lhs_betaUnique) 
         ( _range_self) =
             (_range )
         ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_oneLineTree,_declarations_self,_declarations_size,_declarations_typeAnnotations,_declarations_typeSignatures) =
-            (_declarations (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (empty))
+            (_declarations (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (emptyFM))
     in  (_aset,_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_cset,_lhs_monos,_oneLineTree,_self,_declarations_size,_anns ++ _declarations_typeAnnotations)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
@@ -3872,7 +3882,7 @@ sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_assumptions) (_l
                 , _lhs_constraints
                 ]
         ,Nothing
-        ,elts _pattern_environment ++ _lhs_monos
+        ,eltsFM _pattern_environment ++ _lhs_monos
         ,_oneLineTree
         ,_self
         ,_size
@@ -3882,10 +3892,10 @@ sem_Statement_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Statement)
 sem_Statement_Let (_range) (_declarations) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_monos) (_lhs_typeAnnotations) =
-    let ((_env,_aset,_cset,_monoTable)) =
+    let ((_aset,_cset,_monoTable)) =
             performBindingGroup _lhs_monos _declarations_typeSignatures (_mybdggroup : _declarations_bindingGroups)
         (_mybdggroup) =
-            (empty,_lhs_assumptions,[_lhs_constraints])
+            (noAssumptions ,_lhs_assumptions,[_lhs_constraints])
         ((_anns,_notypedefs)) =
             findTypeAnnotations False _lhs_monos _declarations_typeSignatures (_mybdggroup : _declarations_bindingGroups)
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
@@ -3897,7 +3907,7 @@ sem_Statement_Let (_range) (_declarations) (_lhs_assumptions) (_lhs_betaUnique) 
         ( _range_self) =
             (_range )
         ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_oneLineTree,_declarations_self,_declarations_size,_declarations_typeAnnotations,_declarations_typeSignatures) =
-            (_declarations (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (empty))
+            (_declarations (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (emptyFM))
     in  (_aset,_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_cset,Nothing,_lhs_monos,_oneLineTree,_self,_declarations_size,_anns ++ _declarations_typeAnnotations)
 -- Statements --------------------------------------------------
 -- semantic domain

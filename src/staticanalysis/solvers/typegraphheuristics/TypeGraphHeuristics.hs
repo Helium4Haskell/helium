@@ -19,7 +19,6 @@ import SolveState
 import Messages
 import Types
 import List
-import SortedAssocList
 import ConstraintInfo
 import SolverOptions        ( getTypeSynonyms, getTypeSignatures )
 import Utils                ( internalError )

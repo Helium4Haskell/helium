@@ -146,7 +146,8 @@ compile fullName options doneModules =
                     strategy 
                     useTypeGraph
         
-            finalEnvironment = foldr (uncurry addType) completeEnvironment (toList toplevelTypes)    
+            -- add the top-level types (including the inferred types)
+            finalEnvironment = addToTypeEnvironment toplevelTypes completeEnvironment
 
         unless (null typeErrors) $
            do 
@@ -162,7 +163,7 @@ compile fullName options doneModules =
             putStr . unlines $
                 map
                     (\(name,tp) -> show name ++ " :: " ++ show tp)
-                    (toList toplevelTypes)                   
+                    (fmToList toplevelTypes)                   
 
         stopCompilingIf (StopAfterTypeInferencing `elem` options || not (null typeErrors))         
                     
@@ -179,7 +180,7 @@ compile fullName options doneModules =
                          CodeGeneration.sem_Module module_ 
                              (valueConstructors finalEnvironment)
                              indirectionDecls
-                             toplevelTypes
+                             ((fromList . fmToList) toplevelTypes)
                              
             strippedCoreModule = coreRemoveDead coreModule
 

@@ -11,7 +11,6 @@ imports {
 import UHA_Syntax
 import Types
 import Messages
-import SortedAssocList
 import UHA_Utils
 import TopSort
 import List

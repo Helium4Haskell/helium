@@ -4,7 +4,6 @@ module StaticChecks where
 import UHA_Syntax
 import Types
 import Messages
-import SortedAssocList
 import UHA_Utils
 import TopSort
 import List
@@ -136,21 +135,19 @@ checkKind tycon typeConstructors useArity namesInScope =
             else
                 [ ]
 
-findSimilarFunctionBindings :: AssocList Name a -> [(Name,Name)] -> [Warning]
+findSimilarFunctionBindings :: [(Name, TpScheme)] -> [(Name,Name)] -> [Warning]
 findSimilarFunctionBindings environment candidates = 
-   [ uncurry SimilarFunctionBindings pair
-   | (n1,n2) <- candidates
-   , let bool1 = n1 `elem` keys environment
-         bool2 = n2 `elem` keys environment
-         pair  = if bool1 then (n2,n1) else (n1,n2)
-   , bool1 `xor` bool2
-   ]
+   let namesWithTypeDef = map fst environment
+   in [ uncurry SimilarFunctionBindings pair
+      | (n1,n2) <- candidates
+      , let bool1 = n1 `elem` namesWithTypeDef
+            bool2 = n2 `elem` namesWithTypeDef
+            pair  = if bool1 then (n2,n1) else (n1,n2)
+      , bool1 `xor` bool2
+      ]
 
 xor :: Bool -> Bool -> Bool
 xor b1 b2 = not (b1 == b2)
-
-listToAssocList :: Ord a => [a] -> AssocList a ()
-listToAssocList list = fromList (zip list (repeat ()))
 
 mode :: Ord a => [a] -> Maybe a -- Just ... IF any of the elements is more common
 mode xs = 
@@ -338,7 +335,7 @@ type T_Body = (Names) ->
               (FiniteMap Name Int) ->
               (FiniteMap Name TpScheme) ->
               ([Warning]) ->
-              (([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),(Names),(Names),([Error]),([Error]),([(Name,(Int,Assoc))]),(Body),(AssocList Name TpScheme),(Names),([Warning]))
+              (([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),(Names),(Names),([Error]),([Error]),([(Name,(Int,Assoc))]),(Body),([(Name,TpScheme)]),(Names),([Warning]))
 -- cata
 sem_Body :: (Body) ->
             (T_Body)
@@ -354,7 +351,7 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_allTypeConstr
         (_suspiciousErrors) =
             findSimilarFunctionBindings _declarations_typeSignatures _declarations_suspiciousFBs
         ((_uniqueTypeSignatures,_doubles)) =
-            uniqueAppearance (keys _declarations_typeSignatures)
+            uniqueAppearance (map fst _declarations_typeSignatures)
         (_duplicatedTypeSignature) =
             [ Duplicated TypeSignature names | names <- _doubles ]
         ( _range_self) =
@@ -362,7 +359,7 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_allTypeConstr
         ( _importdeclarations_importedModules,_importdeclarations_self) =
             (_importdeclarations ([]))
         ( _declarations_collectTypeConstructors,_declarations_collectTypeSynonyms,_declarations_collectValueConstructors,_declarations_declVarNames,_declarations_kindErrors,_declarations_miscerrors,_declarations_operatorFixities,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
-            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) (empty) (_lhs_valueConstructors) (_lhs_warnings))
+            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_lhs_collectTypeConstructors) (_lhs_collectTypeSynonyms) (_lhs_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_lhs_namesInScope) (_lhs_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) ([]) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_declarations_collectTypeConstructors
         ,_declarations_collectTypeSynonyms
         ,_declarations_collectValueConstructors
@@ -544,10 +541,10 @@ type T_Declaration = (Names) ->
                      (Maybe Name) ->
                      ([(Name,Name)]) ->
                      (FiniteMap Name Int) ->
-                     (AssocList Name TpScheme) ->
+                     ([(Name,TpScheme)]) ->
                      (FiniteMap Name TpScheme) ->
                      ([Warning]) ->
-                     (([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),(Names),([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),(Declaration),([(Name,Name)]),(AssocList Name TpScheme),(Names),([Warning]))
+                     (([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),(Names),([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),(Declaration),([(Name,Name)]),([(Name,TpScheme)]),(Names),([Warning]))
 -- cata
 sem_Declaration :: (Declaration) ->
                    (T_Declaration)
@@ -818,7 +815,7 @@ sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_allTypeConstructor
             (_names )
         ( _type_self,_type_typevariables) =
             (_type )
-    in  (_lhs_collectTypeConstructors,_lhs_collectTypeSynonyms,_lhs_collectValueConstructors,[],_newErrors ++ _lhs_kindErrors,_lhs_miscerrors,_lhs_operatorFixities,Nothing,_self,_lhs_suspiciousFBs,foldr (uncurry add) _lhs_typeSignatures [ (n,_typeScheme) | n <- _names_self ],[],_lhs_warnings)
+    in  (_lhs_collectTypeConstructors,_lhs_collectTypeSynonyms,_lhs_collectValueConstructors,[],_newErrors ++ _lhs_kindErrors,_lhs_miscerrors,_lhs_operatorFixities,Nothing,_self,_lhs_suspiciousFBs,[ (name, _typeScheme) | name <- _names_self ] ++ _lhs_typeSignatures,[],_lhs_warnings)
 -- Declarations ------------------------------------------------
 -- semantic domain
 type T_Declarations = (Names) ->
@@ -833,10 +830,10 @@ type T_Declarations = (Names) ->
                       (Maybe Name) ->
                       ([(Name,Name)]) ->
                       (FiniteMap Name Int) ->
-                      (AssocList Name TpScheme) ->
+                      ([(Name,TpScheme)]) ->
                       (FiniteMap Name TpScheme) ->
                       ([Warning]) ->
-                      (([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),(Names),([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),(Declarations),([(Name,Name)]),(AssocList Name TpScheme),(Names),([Warning]))
+                      (([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),(Names),([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),(Declarations),([(Name,Name)]),([(Name,TpScheme)]),(Names),([Warning]))
 -- cata
 sem_Declarations :: (Declarations) ->
                     (T_Declarations)
@@ -1155,7 +1152,7 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_allTypeConstruct
         (_suspiciousErrors) =
             findSimilarFunctionBindings _declarations_typeSignatures _declarations_suspiciousFBs
         ((_uniqueTypeSignatures,_doubles)) =
-            uniqueAppearance (keys _declarations_typeSignatures)
+            uniqueAppearance (map fst _declarations_typeSignatures)
         (_duplicatedTypeSignature) =
             [ Duplicated TypeSignature names | names <- _doubles ]
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
@@ -1163,7 +1160,7 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_allTypeConstruct
         ( _range_self) =
             (_range )
         ( _declarations_collectTypeConstructors,_declarations_collectTypeSynonyms,_declarations_collectValueConstructors,_declarations_declVarNames,_declarations_kindErrors,_declarations_miscerrors,_declarations_operatorFixities,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
-            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) (empty) (_lhs_valueConstructors) (_lhs_warnings))
+            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) ([]) (_lhs_valueConstructors) (_lhs_warnings))
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
             (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_declarations_kindErrors) (_declarations_miscerrors) (_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_declarations_warnings))
     in  (_expression_kindErrors
@@ -1864,13 +1861,13 @@ sem_MaybeDeclarations_Just (_declarations) (_lhs_allTypeConstructors) (_lhs_allV
         (_suspiciousErrors) =
             findSimilarFunctionBindings _declarations_typeSignatures _declarations_suspiciousFBs
         ((_uniqueTypeSignatures,_doubles)) =
-            uniqueAppearance (keys _declarations_typeSignatures)
+            uniqueAppearance (map fst _declarations_typeSignatures)
         (_duplicatedTypeSignature) =
             [ Duplicated TypeSignature names | names <- _doubles ]
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel MaybeDeclaration"
         ( _declarations_collectTypeConstructors,_declarations_collectTypeSynonyms,_declarations_collectValueConstructors,_declarations_declVarNames,_declarations_kindErrors,_declarations_miscerrors,_declarations_operatorFixities,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
-            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) (empty) (_lhs_valueConstructors) (_lhs_warnings))
+            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) ([]) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_declarations_kindErrors
         ,_scopeErrors ++ _duplicatedTypeSignature ++ _declarations_miscerrors
         ,_namesInScope
@@ -2121,7 +2118,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
             in (xs,map head ys)
         (_fixityButNoFunDefErrors) =
             let list = nub (_body_declVarNames ++ _allValueConstructors)
-            in []
+            in makeNoFunDef Fixity (filter (`notElem` list) _correctFixities) list
         (_recursiveTypeSynonymErrors) =
             map RecursiveTypeSynonyms _recursiveTypeSynonyms
         (_wrongFileNameErrors) =
@@ -2583,7 +2580,7 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_allTypeConstructors) (_lhs_allV
         (_suspiciousErrors) =
             findSimilarFunctionBindings _declarations_typeSignatures _declarations_suspiciousFBs
         ((_uniqueTypeSignatures,_doubles)) =
-            uniqueAppearance (keys _declarations_typeSignatures)
+            uniqueAppearance (map fst _declarations_typeSignatures)
         (_duplicatedTypeSignature) =
             [ Duplicated TypeSignature names | names <- _doubles ]
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
@@ -2591,7 +2588,7 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_allTypeConstructors) (_lhs_allV
         ( _range_self) =
             (_range )
         ( _declarations_collectTypeConstructors,_declarations_collectTypeSynonyms,_declarations_collectValueConstructors,_declarations_declVarNames,_declarations_kindErrors,_declarations_miscerrors,_declarations_operatorFixities,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
-            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) (empty) (_lhs_valueConstructors) (_lhs_warnings))
+            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) ([]) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_declarations_kindErrors
         ,_scopeErrors ++ _duplicatedTypeSignature ++ _declarations_miscerrors
         ,_namesInScope
@@ -2899,7 +2896,7 @@ sem_Statement_Let (_range) (_declarations) (_lhs_allTypeConstructors) (_lhs_allV
         (_suspiciousErrors) =
             findSimilarFunctionBindings _declarations_typeSignatures _declarations_suspiciousFBs
         ((_uniqueTypeSignatures,_doubles)) =
-            uniqueAppearance (keys _declarations_typeSignatures)
+            uniqueAppearance (map fst _declarations_typeSignatures)
         (_duplicatedTypeSignature) =
             [ Duplicated TypeSignature names | names <- _doubles ]
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
@@ -2907,7 +2904,7 @@ sem_Statement_Let (_range) (_declarations) (_lhs_allTypeConstructors) (_lhs_allV
         ( _range_self) =
             (_range )
         ( _declarations_collectTypeConstructors,_declarations_collectTypeSynonyms,_declarations_collectValueConstructors,_declarations_declVarNames,_declarations_kindErrors,_declarations_miscerrors,_declarations_operatorFixities,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
-            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) (empty) (_lhs_valueConstructors) (_lhs_warnings))
+            (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) ([]) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_declarations_kindErrors
         ,False
         ,_scopeErrors ++ _duplicatedTypeSignature ++ _declarations_miscerrors
