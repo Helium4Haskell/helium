@@ -155,6 +155,7 @@ similarNegation  =
 
 -----------------------------------------------------------------------------
 
+-- Clean up this function: split into smaller heuristics, and remove duplicated code.
 applicationEdge :: (HasTypeGraph m info, MaybeApplication info, IsPattern info, HasTwoTypes info, WithHints info) => Selector m info
 applicationEdge =
    Selector ("Application heuristics", f) where
@@ -208,15 +209,29 @@ applicationEdge =
                        case typesZippedWithHoles of
 
                           -- there is only one possible set to remove arguments 
-                          [is] | not isBinary
+                          [is] | not isBinary && maybe True (> 1) maximumForFunction
                               -> let hint = fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" argument")
                                  in return $ Just
                                        (4, "too many arguments are given: "++show is, [edge], hint info)
 
+
+                          _    -- the expression to which arguments are given does not have a function type
+                               | maybe False (<= 0) maximumForFunction && not isBinary && not (isPattern info) ->                       
+                                    let hint = becauseHint "it is not a function"
+                                    in return $ Just
+                                          (6, "not a function", [edge], hint info)
+
+                               -- function used as infix that expects < 2 arguments
+                               | maybe False (<= 1) maximumForFunction && isBinary && not (isPattern info) ->
+                                    let hint = becauseHint "it is not a binary function"
+                                    in return $ Just
+                                          (6, "no binary function", [edge], hint info)
+
                           -- more than one or no possible set of arguments to be removed
-                          _   -> let hint = becauseHint "too many arguments are given"
-                                 in return $ Just
-                                       (2, "too many arguments are given", [edge], hint info)
+                               | otherwise -> 
+                                    let hint = becauseHint "too many arguments are given"
+                                    in return $ Just
+                                          (2, "too many arguments are given", [edge], hint info)
                                          
                   -- not enough arguments are given
                   | minimumForContext > numberOfArguments && not isPatternApplication && contextIsUnifiable ->
