@@ -1,0 +1,6 @@
+Compiling staticwarnings/TypeSynonymsBug.hs
+(5,1): Warning: Missing patterns in function bindings: 
+  main (B (_ : _)) = ...
+  main (B []) = ...
+Compilation successful with 1 warning
+<<function>>

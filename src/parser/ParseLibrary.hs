@@ -92,10 +92,6 @@ brackets   p = between lexLBRACKET  lexRBRACKET  p
 commas  p = p `sepBy`  lexCOMMA
 commas1 p = p `sepBy1` lexCOMMA
 
-intUnaryMinusName, floatUnaryMinusName :: Name
-intUnaryMinusName   = nameFromString "intUnaryMinus"
-floatUnaryMinusName = nameFromString "floatUnaryMinus"
-
 lexINSERTED_SEMI     = lexeme LexInsertedSemicolon
 lexINSERTED_LBRACE   = lexeme LexInsertedOpenBrace
 lexINSERTED_RBRACE   = lexeme LexInsertedCloseBrace

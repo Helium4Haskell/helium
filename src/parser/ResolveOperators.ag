@@ -4,7 +4,6 @@ import UHA_Syntax
 import UHA_Range
 import OperatorTable
 import Char
-import ParseLibrary(intUnaryMinusName, floatUnaryMinusName)
 import Utils
 import Messages
 import FiniteMap

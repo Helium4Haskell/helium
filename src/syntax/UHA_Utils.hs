@@ -92,3 +92,6 @@ stringFromImportDeclaration importDecl =
             internalError "UHA_Utils" "stringFromImportDeclaration" "empty import declaration"
 
 
+intUnaryMinusName, floatUnaryMinusName :: Name
+intUnaryMinusName   = nameFromString "negate"
+floatUnaryMinusName = nameFromString "floatUnaryMinus"

@@ -43,7 +43,23 @@ getDictionary synonyms availablePredicates p@(Predicate className tp) =
                             dictInstance
                             (getDictionaries synonyms availablePredicates predicates)
 
-    --Core.Var (idFromString $ "<<<" ++ show availablePredicates ++ ";" ++ show p ++ ">>>")
+insertDictionaries predicates importEnv overloadedVars inferredTypes name =
+    case lookupFM overloadedVars (NameWithRange name) of
+        Nothing -> Core.Var (idFromName name)
+        Just (defName, _ :=> useType) ->
+            case lookupFM inferredTypes defName of
+                Nothing -> internalError "ToCoreExpr" "Expression.Variable" ("can't find: " ++ show defName ++ " in " ++ show (fmToList inferredTypes))
+                Just defType -> 
+                    let i  = maximum (0 : ftv useType) + 1
+                        (_, instantiatedPreds, instantiatedType) = instantiate i defType
+                        synonyms = getOrderedTypeSynonyms importEnv
+                    in -- one-way unification is necessary!
+                       case mguWithTypeSynonyms synonyms instantiatedType useType of
+                          Left _ -> internalError "ToCoreExpr" "Expression.Variable" ("unify: " ++ show useType ++ " with " ++ show instantiatedType)
+                          Right (_, sub) ->
+                             foldl Core.Ap (Core.Var (idFromName name))
+                                           (getDictionaries synonyms predicates (sub |-> instantiatedPreds))
+
 }
 
 SEM Expression [ | | core : { Core.Expr } ]
@@ -51,7 +67,9 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  literal                  : Literal
 
-    | Variable           lhs.core = 
+    | Variable           lhs.core = insertDictionaries @lhs.predicates @lhs.importEnv
+                                                       @lhs.overloadedVars @lhs.inferredTypes @name.self
+    {-
         case lookupFM @lhs.overloadedVars (NameWithRange @name.self) of
             Nothing -> Core.Var (idFromName @name.self)
             Just (defName, _ :=> useType) ->
@@ -67,6 +85,7 @@ SEM Expression [ | | core : { Core.Expr } ]
                               Right (_, sub) ->
                                  foldl Core.Ap (Core.Var (idFromName @name.self))
                                                (getDictionaries synonyms @lhs.predicates (sub |-> instantiatedPreds))
+                                               -}
                         
 
     --  range                    : Range
@@ -170,8 +189,11 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  expression               : Expression
     --  type                     : Type
 
-    | Negate             lhs.core = 
-            var "primNegInt" `app_` @expression.core 
+    -- negate is overloaded and we need to insert a dictionary argument
+    | Negate             lhs.core = insertDictionaries @lhs.predicates @lhs.importEnv
+                                                       @lhs.overloadedVars @lhs.inferredTypes 
+                                                       (setNameRange intUnaryMinusName @range.self)
+                                    `app_` @expression.core 
     --  range                    : Range
     --  expression               : Expression
 

@@ -130,6 +130,14 @@ patternToCore' (name, pat) continue nr =
                 nr
             where
                 neg = show (-(read v :: Int))
+
+        Pattern_Negate _ (Literal_Float r v) -> 
+            patternToCore'
+                (name, Pattern_Literal r (Literal_Float r neg))
+                continue
+                nr
+            where
+                neg = show (-(read v :: Float))
             
         Pattern_NegateFloat _ (Literal_Float r v) -> 
             patternToCore'

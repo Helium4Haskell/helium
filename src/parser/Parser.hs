@@ -929,19 +929,12 @@ pat = addRange $
 unaryMinusPat :: HParser [Pattern]
 unaryMinusPat = 
     do 
-        (_, mr) <- withRange (lexMINDOT)
-        (d, dr) <- withRange lexDouble <?> "floating-point literal"
+        (n, mr) <- withRange (do { lexMINDOT; return floatUnaryMinusName } <|> 
+                              do { lexMIN;    return intUnaryMinusName   } )
+        (l, lr) <- withRange numericLiteral
         return 
-            [ Pattern_Variable noRange (setNameRange floatUnaryMinusName mr)
-            , Pattern_Literal dr (Literal_Float dr d)
-            ]
-    <|>
-    do 
-        (_, mr) <- withRange (lexMIN) 
-        (i, ir) <- withRange lexInt <?> "integer literal"
-        return 
-            [ Pattern_Variable noRange (setNameRange intUnaryMinusName mr)
-            , Pattern_Literal ir (Literal_Int ir i)
+            [ Pattern_Variable noRange (setNameRange n mr)
+            , Pattern_Literal lr l
             ]
     <|>
     do
@@ -1122,6 +1115,16 @@ literal = addRange (
         s <- lexString
         return $ \r -> Literal_String r s
     ) <?> "literal"
+
+numericLiteral = addRange (
+    do
+        i <- lexInt
+        return $ \r -> Literal_Int r i
+    <|>
+    do
+        d <- lexDouble
+        return $ \r -> Literal_Float r d
+    ) <?> "numeric literal"
 
 {- Niet nodig, want voor class declaraties
 

@@ -136,7 +136,23 @@ getDictionary synonyms availablePredicates p@(Predicate className tp) =
                             dictInstance
                             (getDictionaries synonyms availablePredicates predicates)
 
-    --Core.Var (idFromString $ "<<<" ++ show availablePredicates ++ ";" ++ show p ++ ">>>")
+insertDictionaries predicates importEnv overloadedVars inferredTypes name =
+    case lookupFM overloadedVars (NameWithRange name) of
+        Nothing -> Core.Var (idFromName name)
+        Just (defName, _ :=> useType) ->
+            case lookupFM inferredTypes defName of
+                Nothing -> internalError "ToCoreExpr" "Expression.Variable" ("can't find: " ++ show defName ++ " in " ++ show (fmToList inferredTypes))
+                Just defType -> 
+                    let i  = maximum (0 : ftv useType) + 1
+                        (_, instantiatedPreds, instantiatedType) = instantiate i defType
+                        synonyms = getOrderedTypeSynonyms importEnv
+                    in -- one-way unification is necessary!
+                       case mguWithTypeSynonyms synonyms instantiatedType useType of
+                          Left _ -> internalError "ToCoreExpr" "Expression.Variable" ("unify: " ++ show useType ++ " with " ++ show instantiatedType)
+                          Right (_, sub) ->
+                             foldl Core.Ap (Core.Var (idFromName name))
+                                           (getDictionaries synonyms predicates (sub |-> instantiatedPreds))
+
 
 
 -- Function "bind" is used in the translation of do-expressions
@@ -1183,7 +1199,12 @@ sem_Expression_Negate (_range) (_expression) (_lhs_importEnv) (_lhs_inferredType
             (_range )
         ( _expression_core,_expression_self) =
             (_expression (_lhs_importEnv) (_lhs_inferredTypes) (_lhs_overloadedVars) (_lhs_predicates))
-    in  ( var "primNegInt" `app_` _expression_core,_self)
+    in  ( insertDictionaries _lhs_predicates _lhs_importEnv
+                             _lhs_overloadedVars _lhs_inferredTypes
+                             (setNameRange intUnaryMinusName _range_self)
+          `app_` _expression_core
+         ,_self
+         )
 sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
@@ -1293,21 +1314,8 @@ sem_Expression_Variable (_range) (_name) (_lhs_importEnv) (_lhs_inferredTypes) (
             (_range )
         ( _name_self) =
             (_name )
-    in  ( case lookupFM _lhs_overloadedVars (NameWithRange _name_self) of
-              Nothing -> Core.Var (idFromName _name_self)
-              Just (defName, _ :=> useType) ->
-                  case lookupFM _lhs_inferredTypes defName of
-                      Nothing -> internalError "ToCoreExpr" "Expression.Variable" ("can't find: " ++ show defName ++ " in " ++ show (fmToList _lhs_inferredTypes))
-                      Just defType ->
-                          let i  = maximum (0 : ftv useType) + 1
-                              (_, instantiatedPreds, instantiatedType) = instantiate i defType
-                              synonyms = getOrderedTypeSynonyms _lhs_importEnv
-                          in
-                             case mguWithTypeSynonyms synonyms instantiatedType useType of
-                                Left _ -> internalError "ToCoreExpr" "Expression.Variable" ("unify: " ++ show useType ++ " with " ++ show instantiatedType)
-                                Right (_, sub) ->
-                                   foldl Core.Ap (Core.Var (idFromName _name_self))
-                                                 (getDictionaries synonyms _lhs_predicates (sub |-> instantiatedPreds))
+    in  ( insertDictionaries _lhs_predicates _lhs_importEnv
+                             _lhs_overloadedVars _lhs_inferredTypes _name_self
          ,_self
          )
 -- Expressions -------------------------------------------------
