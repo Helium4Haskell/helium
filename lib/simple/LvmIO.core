@@ -10,6 +10,7 @@ module LvmIO( Input, Output, Channel, Descriptor
             , flush, close
             , outputChar, outputPacked, outputString
             , inputChar
+            , CreateMode(..), openInputFile, openOutputFile
             ) where
 
 import LvmLang( primIO, packedLength, packedFromString, bindIO, unsafePerformStrictIO, False, True )
@@ -129,7 +130,7 @@ flush out
 
 close :: Channel a -> IO ()
 close chan
-  = let action _ = (let! chan = chan in prim_close chan) 
+  = let action _ = (let! chan = chan in prim_close_channel chan) 
     in primIO action
 
 outputChar :: Channel Output -> Char -> IO ()
