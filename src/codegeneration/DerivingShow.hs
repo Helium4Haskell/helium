@@ -69,16 +69,30 @@ makeAlt c =
         (id, types) = nameAndTypes c
 
 showConstructor :: Id -> [UHA.Type] -> Expr
-showConstructor c ts =
-    Ap (Var (idFromString "primConcat")) $ coreList 
-        (  (if null ts then [] else [stringToCore "("])
-        ++ [stringToCore (stringFromId c)]
-        ++ concat
-               [ [stringToCore " ", Ap (showFunctionOfType False t) (Var (idFromNumber i))]
-               | (t, i) <- zip ts [1..] 
-               ]
-        ++ (if null ts then [] else [stringToCore ")"])
-        )
+showConstructor c ts 
+    | isConOp && length ts == 2 = 
+        Ap (Var (idFromString "primConcat")) $ coreList 
+            [   stringToCore "("
+            ,   Ap (showFunctionOfType False (ts!!0)) (Var (idFromNumber 1))
+            ,   stringToCore name
+            ,   Ap (showFunctionOfType False (ts!!1)) (Var (idFromNumber 2)) 
+            ,   stringToCore ")"
+            ]
+    | otherwise =
+        Ap (Var (idFromString "primConcat")) $ coreList 
+            (  (if null ts then [] else [stringToCore "("])
+            ++ ((if isConOp then parens else id) [stringToCore name])
+            ++ concat
+                   [ [stringToCore " ", Ap (showFunctionOfType False t) (Var (idFromNumber i))]
+                   | (t, i) <- zip ts [1..] 
+                   ]
+            ++ (if null ts then [] else [stringToCore ")"])
+            )
+    where
+        name = stringFromId c
+        isConOp = head name == ':'
+
+parens s = [ stringToCore "(" ] ++ s ++ [ stringToCore ")" ]
 
 showFunctionOfType :: Bool -> UHA.Type -> Expr
 showFunctionOfType isMainType t =
@@ -110,7 +124,7 @@ checkForPrimitive name =
             let arity = length commasAndClose
             in 
                 if arity > 10 then
-                    internalError "DerivingShow" "checkForPrimitive" "can't generate show function for tuples greater than 10"
+                    error "Limitation: can't generate show function for tuples greater than 10"
                 else
                     "Tuple" ++ show arity -- !!!
         _ -> name 

@@ -1,0 +1,4 @@
+Compiling correct/Sections.hs
+(8,1): Missing type signature: main :: ([Int], [Expr], [[Char]])
+Compilation successful with 1 warning
+([3,(-1),2,13,3,1,(-2),13,2,3,2,4,6,8,10,12,14,16,18,20,2,4,6,8,10,12,14,16,18,20],[(((Num 4):+:(Num 5)):+:(Num 3)),((Num 4):+:(Num 6)),((:-) 4)],["waterval","apestaart","b"])

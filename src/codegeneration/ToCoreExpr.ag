@@ -35,14 +35,12 @@ SEM Expression [ | | core : { Core.Expr } ]
     | InfixApplication   lhs.core =
         case (@leftExpression.core, @rightExpression.core) of
             (Nothing, Nothing) -> @operator.core
-            (Just l , Nothing) -> intErr "Expression" "sections not supported"
-            {- Core.Ap @operator.core l -}
-            (Nothing, Just r ) -> intErr "Expression" "sections not supported"
+            (Just l , Nothing) -> Core.Ap @operator.core l
+            (Nothing, Just r ) -> Core.Lam parameterId 
+                                    (foldl Core.Ap @operator.core [Core.Var parameterId, r])
             {-
                 -- At most one new variable is needed. Consider
                 --  (. (+ 3))  ==  \x -> (.) x (\x -> (+) x 3)
-                let core_x = Core.Var leftSectionId in
-                    Core.Lam leftSectionId (foldr Core.Ap (expr f) [core_x, expr y])
             -}
             (Just l , Just r ) -> foldl Core.Ap @operator.core [l,r]
     --  range                    : Range
@@ -128,8 +126,6 @@ SEM Expression [ | | core : { Core.Expr } ]
             var "primNegFloat" `app_` @expression.core 
     --  range                    : Range
     --  expression               : Expression
-
--- Not supported
 
     | Enum               lhs.core = 
             case (@then.core, @to.core) of

@@ -336,6 +336,12 @@ aexp    ->  var  (variable)
          |  "[" exp "|" qual1 "," ... "," qualn "]"
 -}
 
+operatorAsExpression :: HParser Expression
+operatorAsExpression =
+    try (fmap (\(n, r) -> Expression_Variable r n) (withRange varop))
+    <|>
+    fmap ((\(n, r) -> Expression_Constructor r n)) (withRange conop)
+    
 aexp :: HParser Expression    
 aexp = addRange (
     do 
@@ -350,9 +356,7 @@ aexp = addRange (
             do      -- operator followed by optional expression
                     -- either full section (if there is no expression) or 
                     -- a left section (if there is)
-                opExpr <- try (fmap (\(n, r) -> Expression_Variable r n) (withRange varop))
-                          <|>
-                          fmap ((\(n, r) -> Expression_Constructor r n)) (withRange conop)
+                opExpr <- operatorAsExpression
                 me <- option Nothing (fmap Just fexp)
                 special ")"
                 return $ \r -> 
@@ -364,15 +368,18 @@ aexp = addRange (
                             Just e  -> MaybeExpression_Just e) 
             <|>
             try (do -- right section, expression followed by operator
-                    -- must 'try' because there may be no operator "(3)"
+                    -- or a parenthesized expression (if no operator is found)
                 e <- fexp
-                o <- op
+                mo <- option Nothing (fmap Just operatorAsExpression)
                 special ")"
                 return $ \r ->
-                    Expression_InfixApplication r
-                        (MaybeExpression_Just e)
-                        (Expression_Variable r o)
-                        MaybeExpression_Nothing
+                    case mo of
+                        Nothing -> Expression_Parenthesized r e
+                        Just opExpr -> 
+                            Expression_InfixApplication r
+                                (MaybeExpression_Just e)
+                                opExpr
+                                MaybeExpression_Nothing
             )
             <|>
             do -- unit "()", expression between parenthesis or a tuple

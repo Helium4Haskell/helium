@@ -1016,8 +1016,9 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
             (_rightExpression (_lhs_constructorenv))
     in  (case (_leftExpression_core, _rightExpression_core) of
              (Nothing, Nothing) -> _operator_core
-             (Just l , Nothing) -> intErr "Expression" "sections not supported"
-             (Nothing, Just r ) -> intErr "Expression" "sections not supported"
+             (Just l , Nothing) -> Core.Ap _operator_core l
+             (Nothing, Just r ) -> Core.Lam parameterId
+                                     (foldl Core.Ap _operator_core [Core.Var parameterId, r])
              (Just l , Just r ) -> foldl Core.Ap _operator_core [l,r]
         ,_self
         )
