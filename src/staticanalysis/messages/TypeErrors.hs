@@ -120,10 +120,11 @@ checkTypeError synonyms typeError@(TypeError r o table h) =
    case table of
       UnificationErrorTable sources type1 type2 ->
          let becauseHint = TypeErrorHint "because" . MessageString
+             fun i     = (\(_,_,a) -> a) . instantiate i
              unique    = maximum (0 : ftv type1 ++ ftv type2) + 1
-             t1        = either id (snd . instantiate unique) type1
+             t1        = either id (fun unique) type1
              unique'   = maximum (0 : ftv t1 ++ ftv type2) + 1
-             t2        = either id (snd . instantiate unique') type2
+             t2        = either id (fun unique') type2
          in
             case mguWithTypeSynonyms synonyms t1 t2 of
                Left InfiniteType  -> let hint = TypeErrorHint "because" (MessageString "unification would give infinite type")
@@ -136,7 +137,9 @@ checkTypeError synonyms typeError = Just typeError
 
 makeNotGeneralEnoughTypeError :: Range -> Tree -> TpScheme -> TpScheme -> TypeError
 makeNotGeneralEnoughTypeError range tree tpscheme1 tpscheme2 =
-   let [ts1, ts2] = freezeMonosInTypeSchemes [tpscheme1, tpscheme2]
+   let sub      = listToSubstitution (zip (ftv [tpscheme1, tpscheme2]) [ TVar i | i <- [1..] ])
+       ts1      = freezeFreeTypeVariables (sub |-> tpscheme1)
+       ts2      = freezeFreeTypeVariables (sub |-> tpscheme2)
        oneliner = MessageString "Declared type is too general"
        table    = NotGeneralEnoughTable tree ts2 ts1
        hints    = if null (ftv tpscheme1)

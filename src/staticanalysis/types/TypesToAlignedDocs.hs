@@ -93,14 +93,6 @@ sameLength xs =
    let n = maximum (0 : map length xs)  
        f = take n . (++repeat ' ') 
    in map f xs
-   
-isTCon :: Tp -> Bool
-isTCon (TCon _) = True
-isTCon _        = False   
-
-isTVar :: Tp -> Bool
-isTVar (TVar _) = True
-isTVar _        = False
 
 appDocs :: [Doc] -> Doc
 appDocs = foldl1 (\d1 d2 -> PPrint.group $ d1 <> line <> d2)

@@ -41,7 +41,7 @@ makeTpSchemeFromType :: Type -> TpScheme
 makeTpSchemeFromType uhaType = 
    let nameMap = makeNameMap (namesInType uhaType)
        tp = makeTpFromType nameMap uhaType
-   in TpScheme (ftv tp) [] [ (i,getNameName n) | (n,TVar i) <- nameMap] tp
+   in TpScheme (ftv tp) [ (i,getNameName n) | (n,TVar i) <- nameMap] ([] :=> tp)
 
 makeTpFromType :: [(Name,Tp)] -> Type -> Tp    
 makeTpFromType nameMap = rec 

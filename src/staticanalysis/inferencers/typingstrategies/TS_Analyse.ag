@@ -81,7 +81,7 @@ SEM TypingStrategy
                   then []
                   else let premiseTypes = reverse (map snd @typerule.simpleJudgements) 
                            constraintsTpScheme = generalizeAll (@substitution |-> tupleType (premiseTypes ++ [@typerule.conclusionType]))
-                           extendedEnvironment = let op (s, i) = addType (nameFromString s) (generalize [i] (TVar i))
+                           extendedEnvironment = let op (s, i) = addType (nameFromString s) (generalize [i] [] (TVar i))
                                                  in foldr op @lhs.importEnvironment (zip @allMetaVariables [0..])
                            extendedExpression  = let premiseVars = reverse (map (Expression_Variable noRange . nameFromString . fst) @typerule.simpleJudgements)
                                                  in Expression_Tuple noRange (premiseVars ++ [@typerule.conclusionExpression])
@@ -92,9 +92,9 @@ SEM TypingStrategy
                            synonyms = getOrderedTypeSynonyms @lhs.importEnvironment
                        in if not (null inferredTypeErrors) 
                             then map (TypeErrorTS @name) inferredTypeErrors
-                            else if genericInstanceOf synonyms inferredTpScheme constraintsTpScheme 
+                            else if genericInstanceOf synonyms standardClasses inferredTpScheme constraintsTpScheme 
                                         &&
-                                    genericInstanceOf synonyms constraintsTpScheme inferredTpScheme 
+                                    genericInstanceOf synonyms standardClasses constraintsTpScheme inferredTpScheme 
                                       then []
                                       else [ Soundness @name inferredTpScheme constraintsTpScheme ]
 

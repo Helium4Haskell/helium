@@ -2538,7 +2538,7 @@ sem_TypingStrategy_TypingStrategy (_typerule) (_statements) (_lhs_importEnvironm
               then []
               else let premiseTypes = reverse (map snd _typerule_simpleJudgements)
                        constraintsTpScheme = generalizeAll (_substitution |-> tupleType (premiseTypes ++ [_typerule_conclusionType]))
-                       extendedEnvironment = let op (s, i) = addType (nameFromString s) (generalize [i] (TVar i))
+                       extendedEnvironment = let op (s, i) = addType (nameFromString s) (generalize [i] [] (TVar i))
                                              in foldr op _lhs_importEnvironment (zip _allMetaVariables [0..])
                        extendedExpression  = let premiseVars = reverse (map (Expression_Variable noRange . nameFromString . fst) _typerule_simpleJudgements)
                                              in Expression_Tuple noRange (premiseVars ++ [_typerule_conclusionExpression])
@@ -2549,9 +2549,9 @@ sem_TypingStrategy_TypingStrategy (_typerule) (_statements) (_lhs_importEnvironm
                        synonyms = getOrderedTypeSynonyms _lhs_importEnvironment
                    in if not (null inferredTypeErrors)
                         then map (TypeErrorTS _name) inferredTypeErrors
-                        else if genericInstanceOf synonyms inferredTpScheme constraintsTpScheme
+                        else if genericInstanceOf synonyms standardClasses inferredTpScheme constraintsTpScheme
                                     &&
-                                genericInstanceOf synonyms constraintsTpScheme inferredTpScheme
+                                genericInstanceOf synonyms standardClasses constraintsTpScheme inferredTpScheme
                                   then []
                                   else [ Soundness _name inferredTpScheme constraintsTpScheme ]
         (_allImportedVariables) =

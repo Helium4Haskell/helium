@@ -15,11 +15,11 @@ module SolveState
    , setErrors, getErrors, addError          -- errors
    , getSolverOptions, setSolverOptions      -- solver options
    , getDebug, addDebug                      -- debug IO
-   , getClassPredicates, addClassPredicates
-   , setClassPredicates                      -- type classes
+   , getPredicates, addPredicate
+   , setPredicates                           -- type classes
    ) where
 
-import TypeClasses    ( ClassPredicates )
+import Types          ( Predicate )
 import SolverOptions  ( SolverOptions )
 import Utils          ( internalError )
 import ST
@@ -36,7 +36,7 @@ newtype SolveState
         , STRef state (solver info state)    -- representation of a substitution
         , STRef state [info]                 -- error messages
         , STRef state SolverOptions          -- solver options
-        , STRef state ClassPredicates        -- type classes
+        , STRef state [(Predicate,info)]     -- type classes
         , STRef state (IO ())                -- debug IO
         ) ->
         ST state result )
@@ -109,14 +109,14 @@ setSolverOptions t = S (\(ru,rs,re,rt,rp,ri) -> do writeSTRef rt t)
 -------------------------------------------------
 --- type class predicates
 
-getClassPredicates :: SolveState solver info ClassPredicates
-getClassPredicates = S (\(ru,rs,re,rt,rp,ri) -> do readSTRef rp)
+getPredicates :: SolveState solver info [(Predicate, info)]
+getPredicates = S (\(ru,rs,re,rt,rp,ri) -> do readSTRef rp)
 
-addClassPredicates :: ClassPredicates -> SolveState solver info ()
-addClassPredicates qs = S (\(ru,rs,re,rt,rp,ri) -> do ps <- readSTRef rp ; writeSTRef rp (qs ++ ps))
+addPredicate :: Predicate -> info -> SolveState solver info ()
+addPredicate p i = S (\(ru,rs,re,rt,rp,ri) -> do ps <- readSTRef rp ; writeSTRef rp ((p,i) : ps))
 
-setClassPredicates :: ClassPredicates -> SolveState solver info ()
-setClassPredicates qs = S (\(ru,rs,re,rt,rp,ri) -> do writeSTRef rp qs)
+setPredicates :: [(Predicate, info)] -> SolveState solver info ()
+setPredicates qs = S (\(ru,rs,re,rt,rp,ri) -> do writeSTRef rp qs)
 
 -------------------------------------------------
 --- debug IO

@@ -10,8 +10,7 @@
 module LiftedConstraints where
 
 import Constraints
-import TypeSchemeBasics
-import TypeBasics
+import Types
 import FiniteMap
 
 infix 3 .===. , .:::. , .<==. , !:::!

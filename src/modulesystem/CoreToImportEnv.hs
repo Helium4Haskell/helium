@@ -188,7 +188,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
 stringToType :: String -> String -> Maybe [(Id, Tp)] -> Tp
 stringToType n typeStr table =
     let
-        TpScheme _ _ _ tp = stringToTpScheme n typeStr table
+        TpScheme _ _ (_  :=> tp) = stringToTpScheme n typeStr table
     in
         tp
 -- Convert a core type (which is just a string) to Bastiaan's TpScheme type.
@@ -211,7 +211,7 @@ stringToTpScheme n typeStr table =
 
 coreTypeToTpScheme :: String -> [(Id, Tp)] -> C.Type -> TpScheme
 coreTypeToTpScheme n table coreType =
-    generalize [] (convert True n table coreType)
+    generalize [] [] (convert True n table coreType)
 
 convert :: Bool -> String -> [(Id, Tp)] -> C.Type -> Tp
 convert strictAllowed n table t =

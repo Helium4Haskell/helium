@@ -183,6 +183,6 @@ prepareTypesAndTypeSchemes messageLine = newMessageLine
         case messageBlock of
            MessageCompose mbs   -> let (r, i, ns) = f_MessageBlocks unique mbs
                                    in (MessageCompose r, i, ns)
-           MessageTypeScheme ts -> let (unique', its) = instantiateWithNameMap unique ts
+           MessageTypeScheme ts -> let (unique', _, its) = instantiateWithNameMap unique ts
                                    in (MessageType its, unique', constantsInType its)
            _                    -> (messageBlock, unique, [])

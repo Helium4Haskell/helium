@@ -28,9 +28,9 @@ import Utils            ( internalError, doubleSizeOfSTArray )
 solveGreedy :: ConstraintInfo info => RunnableSolver info
 solveGreedy = runSolver buildSubstitution where
 
-   buildSubstitution :: ConstraintInfo info => SolveState ArraySubstitution info Subst
+   buildSubstitution :: ConstraintInfo info => SolveState ArraySubstitution info WrappedSubstitution
    buildSubstitution = do arraysubstitution <- useSolver (\(A starray) -> freezeSTArray starray) 
-                          return (Left arraysubstitution)
+                          return (wrapSubstitution arraysubstitution)
 
 newtype ArraySubstitution info state = A (STArray state Int (Maybe Tp))
 

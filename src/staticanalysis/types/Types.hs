@@ -9,16 +9,18 @@
 
 module Types 
    ( module TypeBasics
+   , module QualifiedTypes
    , module TypeSubstitution      
    , module TypeSynonyms     
    , module TypeUnification
    , module TypeClasses
-   , module TypeSchemeBasics
+   , module TypeSchemes
    ) where
 
 import TypeBasics
+import QualifiedTypes
 import TypeSubstitution      
 import TypeSynonyms    
 import TypeUnification
 import TypeClasses
-import TypeSchemeBasics
+import TypeSchemes

@@ -2898,14 +2898,14 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
         (_monos) =
             map TVar _monomorphics
         (_inferredgamma) =
-            map (\(name,tp) -> (name,generalize (ftv (_substitution |-> _monos)) (_substitution |-> tp))) _body_namesWithoutTypeDef
+            map (\(name,tp) -> (name,generalize (ftv (_substitution |-> _monos)) [] (_substitution |-> tp))) _body_namesWithoutTypeDef
         ((_typeErrors,_filteredBool)) =
             let notGeneralEnoughErrors =
                    let f ((m,t),s2,(tree,range)) =
                           let m' = _substitution |-> m
                               t' = _substitution |-> t
-                              s1 = generalize (ftv m') t'
-                         in if not (genericInstanceOf _orderedTypeSynonyms s2 s1) &&
+                              s1 = generalize (ftv m') [] t'
+                         in if not (genericInstanceOf _orderedTypeSynonyms standardClasses s2 s1) &&
                                unifiableTypeSchemes   _orderedTypeSynonyms s1 s2
                             then [makeNotGeneralEnoughTypeError range tree s1 s2]
                             else []
@@ -2923,7 +2923,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
             let f (n,ms,t,isToplevel) =
                                let ms'    = _substitution |-> ms
                                    t'     = _substitution |-> t
-                                   scheme = generalize (ftv ms') t'
+                                   scheme = generalize (ftv ms') [] t'
                                in if null (ftv scheme) && isToplevel
                                     then [NoTypeDef n scheme isToplevel]
                                     else []

@@ -45,14 +45,14 @@ SEM Module
                                  ++ (eltsFM $ typeEnvironment @lhs.importEnvironment)
                                  )
            . monos = map TVar @monomorphics
-           . inferredgamma = map (\(name,tp) -> (name,generalize (ftv (@substitution |-> @monos)) (@substitution |-> tp))) @body.namesWithoutTypeDef
+           . inferredgamma = map (\(name,tp) -> (name,generalize (ftv (@substitution |-> @monos)) [] (@substitution |-> tp))) @body.namesWithoutTypeDef
            . (typeErrors,filteredBool)    
                   = let notGeneralEnoughErrors = 
                            let f ((m,t),s2,(tree,range)) = 
                                   let m' = @substitution |-> m
                                       t' = @substitution |-> t
-                                      s1 = generalize (ftv m') t'
-                                 in if not (genericInstanceOf @orderedTypeSynonyms s2 s1) &&  
+                                      s1 = generalize (ftv m') [] t'
+                                 in if not (genericInstanceOf @orderedTypeSynonyms standardClasses s2 s1) &&  
                                        unifiableTypeSchemes   @orderedTypeSynonyms s1 s2
                                     then [makeNotGeneralEnoughTypeError range tree s1 s2]
                                     else []                                                                  
@@ -874,7 +874,7 @@ SEM Module
         let f (n,ms,t,isToplevel) = 
                            let ms'    = @substitution |-> ms
                                t'     = @substitution |-> t
-                               scheme = generalize (ftv ms') t'
+                               scheme = generalize (ftv ms') [] t'
                            in if null (ftv scheme) && isToplevel
                                 then [NoTypeDef n scheme isToplevel] 
                                 else []

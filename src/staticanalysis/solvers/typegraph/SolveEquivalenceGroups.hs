@@ -114,11 +114,11 @@ representativesOfAllParents i = useSolver (rec [i] []) where
 solveEquivalenceGroups :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => RunnableSolver info
 solveEquivalenceGroups unique = runSolver buildSubstitution unique where
 
-   buildSubstitution :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => SolveState EquivalenceGroups info Subst 
+   buildSubstitution :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => SolveState EquivalenceGroups info WrappedSubstitution 
    buildSubstitution = do -- equivalenceGroupsToHTML
                           newUnique <- getUnique
                           bintreesubst <- rec (0, newUnique - 1)
-                          return (Right bintreesubst)
+                          return (wrapSubstitution bintreesubst)
    
    rec (a,b) 
      | a == b    = do tp <- findSubstForVar a

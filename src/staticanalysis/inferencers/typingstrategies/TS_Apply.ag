@@ -202,11 +202,6 @@ sourceTerm, sourceExpression :: Tree -> (String, Tree)
 sourceTerm        = (,) "term"
 sourceExpression  = (,) "expression"
 
--- see TypesToAlignedDocs.hs
-isTVar :: Tp -> Bool
-isTVar (TVar _) = True
-isTVar _        = False
-
 exactlyOnce :: Eq a => [a] -> [a]
 exactlyOnce []     = []
 exactlyOnce (x:xs) | x `elem` xs = exactlyOnce . filter (/= x) $ xs

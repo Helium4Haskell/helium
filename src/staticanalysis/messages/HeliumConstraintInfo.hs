@@ -150,12 +150,6 @@ addProperty property info = let old = properties info
                             in info { properties = property : old }
 
 setPosition :: Int -> Constraint HeliumConstraintInfo -> Constraint HeliumConstraintInfo
-setPosition i c = case c of
-                    Equiv        a t1    t2 -> Equiv (f a) t1 t2
-                    ImplInstance a t1 ms t2 -> ImplInstance (f' a) t1 ms t2
-                    ExplInstance a t1    t2 -> ExplInstance (f' a) t1 t2
-                    _                       -> c
-   where f info = addProperty (PositionInTreeWalk i) info
-         f' a = \(t1,t2) -> f (a (t1,t2))
+setPosition = applyToConstraintInfo . addProperty . PositionInTreeWalk
 
 

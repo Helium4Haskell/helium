@@ -714,7 +714,7 @@ sem_Declaration_Type (_range) (_simpletype) (_type) (_lhs_importEnv) (_lhs_isTop
     in  ( let
               (t1,[t2])   = convertFromSimpleTypeAndTypes _simpletype_self [_type_self]
               allTypeVars = ftv [t1,t2]
-              (ts1,ts2)   = (TpScheme allTypeVars [] [] t1,TpScheme allTypeVars [] [] t2)
+              (ts1,ts2)   = (TpScheme allTypeVars [] ([] :=> t1),TpScheme allTypeVars [] ([] :=> t2))
           in
           [ Core.DeclCustom
               { Core.declName    = idFromString (getNameName _simpletype_name)

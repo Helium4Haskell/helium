@@ -143,7 +143,7 @@ edgeheuristics = [ orderOfUnification
                  , tupleEdge
                  , similarFunctions                 
                  , applicationEdge
-                 , variableFunction                 
+                 , variableFunction         
                  ]
 
 orderOfUnification :: TypeGraphConstraintInfo info => EdgeHeuristic info
@@ -601,14 +601,7 @@ getAdjacentEdges vertexID =
    useSolver
       (\groups -> do eqc <- equivalenceGroupOf vertexID groups
                      let predicate (EdgeID v1 v2) = v1 == vertexID || v2 == vertexID
-                     return (filter (predicate . fst) (edges eqc)))
-         
-
--- see TypesToAllignedDocs      
-isTVar :: Tp -> Bool
-isTVar (TVar _) = True
-isTVar _        = False
-                     
+                     return (filter (predicate . fst) (edges eqc)))                              
 
 showNumber :: Int -> String
 showNumber i | i <= 10 && i >=0 = list !! i

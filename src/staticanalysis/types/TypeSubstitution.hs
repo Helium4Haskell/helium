@@ -19,6 +19,8 @@ import Utils                ( internalError )
 ----------------------------------------------------------------------
 -- Substitutions and substitutables
 
+infix 4 |->
+
 class Substitution s where
    lookupInt   :: Int -> s -> Maybe Tp   -- lookup Int in substitution   
    removeDom   :: [Int] -> s -> s        -- remove from the domain of the substitution
@@ -81,8 +83,6 @@ instance Substitution (Array Int (Maybe Tp)) where
 
 -- Either of two substitutions
 
-type Subst = Either (Array Int (Maybe Tp)) BinTreeSubst
-
 instance (Substitution a,Substitution b) => Substitution (Either a b) where 
    lookupInt   i  = either (lookupInt i) (lookupInt i)
    removeDom   is = either (Left . removeDom   is) (Right . removeDom   is)
@@ -107,6 +107,36 @@ instance Substitution BinTreeSubst where
    restrictDom _ = internalError "SATypes.hs" "BinTreeSubst" "restrictDom: substitution is static" 
    dom            = internalError "SATypes.hs" "BinTreeSubst" "dom: substitution is static" 
    cod            = internalError "SATypes.hs" "BinTreeSubst" "cod: substitution is static" 
+
+----------------------------------------------------------------------
+-- A wrapper for substitutions
+
+wrapSubstitution :: Substitution substitution => substitution -> WrappedSubstitution                                     
+wrapSubstitution substitution = 
+   WrappedSubstitution substitution 
+      ( lookupInt
+      , removeDom
+      , restrictDom
+      , dom
+      , cod
+      )
+
+data WrappedSubstitution = 
+   forall a . Substitution a => 
+      WrappedSubstitution a 
+         ( Int -> a -> Maybe Tp   
+         , [Int] -> a -> a
+         , [Int] -> a -> a
+         , a -> [Int]
+         , a -> Tps
+         )
+
+instance Substitution WrappedSubstitution where
+   lookupInt   i  (WrappedSubstitution x (f,_,_,_,_)) = f i x
+   removeDom   is (WrappedSubstitution x (_,f,_,_,_)) = wrapSubstitution (f is x)
+   restrictDom is (WrappedSubstitution x (_,_,f,_,_)) = wrapSubstitution (f is x)
+   dom            (WrappedSubstitution x (_,_,_,f,_)) = f x
+   cod            (WrappedSubstitution x (_,_,_,_,f)) = f x
 
 ----------------------------------------------------------------------
 -- Substitutables instances

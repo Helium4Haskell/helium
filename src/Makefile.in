@@ -100,8 +100,9 @@ STATICANALYSIS = \
 	staticanalysis/types/TypeConversion.hs \
 	staticanalysis/types/TypeSubstitution.hs \
 	staticanalysis/types/TypeClasses.hs \
-	staticanalysis/types/TypeSchemeBasics.hs \
+	staticanalysis/types/TypeSchemes.hs \
 	staticanalysis/types/TypesToAlignedDocs.hs \
+        staticanalysis/types/QualifiedTypes.hs \
 	staticanalysis/staticchecks/StaticChecks.hs \
 	staticanalysis/inferencers/TypeInferencing.hs \
         staticanalysis/inferencers/ExpressionTypeInferencer.hs \

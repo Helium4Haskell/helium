@@ -18,7 +18,7 @@ typeOfShowFunction name names =
     -- e.g. data T a b = ...  ===> (0 -> String) -> (1 -> String) -> (T 0 1 -> String)
     let vars  = map TVar (take (length names) [0..])
         types = vars ++ [foldl TApp (TCon (getNameName name)) vars]
-    in generalize [] (foldr1 (.->.) (map (.->. stringType) types))
+    in generalize [] [] (foldr1 (.->.) (map (.->. stringType) types))
 
 derivingShow :: UHA.Declaration -> CoreDecl
 derivingShow (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
