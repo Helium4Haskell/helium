@@ -23,7 +23,10 @@ SEM Export
                                     @names.toList
 -}
 SEM Module
-  | Module  exports . namesInScope   = @body.namesInScope
+  | Module  exports . namesInScope   = concat [ @body.declVarNames
+                                              , keys (typeEnvironment @lhs.importEnvironment)
+                                              , keys @body.derivedFunctions
+                                              ]
                     . modulesInScope = (@moduleName : @fileName : @body.importedModules)
                     . tyconsInScope  = keys @tyconEnv
                     . consInScope    = keys @constructorenv

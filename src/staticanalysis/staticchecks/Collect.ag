@@ -98,12 +98,12 @@ SEM Declaration
 ATTR Expression Expressions Pattern Patterns MaybeExpression Alternative Alternatives Declaration Declarations
      Constructors Constructor
      Statement Statements FunctionBinding FunctionBindings LeftHandSide RightHandSide
-     MaybeDeclarations Qualifier Qualifiers GuardedExpression GuardedExpressions Body
+     MaybeDeclarations Qualifier Qualifiers GuardedExpression GuardedExpressions Body AnnotatedTypes AnnotatedType
      [ constructorenv:ConstructorEnvironment | | ]
 
 SEM Module
   | Module   loc . (constructorenv,duplicatedValueConstructors) = 
-                        onlyUniqueKeys ( valueConstructors @body.collectEnvironment `combine` @lhs.importConstructorEnv )
+                        onlyUniqueKeys ( valueConstructors @body.collectEnvironment `combine` valueConstructors @lhs.importEnvironment )
 
 -- 8) type constructors (!also from type synonyms!) and their arity
 ATTR Expression Expressions Alternative Alternatives Declaration Declarations MaybeExpression
@@ -116,8 +116,7 @@ ATTR Expression Expressions Alternative Alternatives Declaration Declarations Ma
 SEM Module
   | Module loc . (tyconEnv,duplicatedTypeConstructors) 
                      = onlyUniqueKeys ( typeConstructors @body.collectEnvironment `combine`
-                                        @lhs.importTyConEnv           `combine` 
-                                        mapElt fst @lhs.importTypeSynEnv 
+                                        typeConstructors @lhs.importEnvironment 
                                       )
 
 ------------------------------------------------------------------------------
@@ -125,12 +124,12 @@ SEM Module
 
 SEM Module
   | Module   loc . (orderedTypeSynonyms,recursiveTypeSynonyms) = 
-                       checkRecursionTypeSynonyms (typeSynonyms @body.collectEnvironment `combine` @lhs.importTypeSynEnv)
+                       checkRecursionTypeSynonyms (typeSynonyms @body.collectEnvironment)
                                               
 {
 checkRecursionTypeSynonyms :: TypeSynonymEnvironment -> (OrderedTypeSynonyms,[Names])
-checkRecursionTypeSynonyms assoclist = 
-    let synonyms  = toList assoclist
+checkRecursionTypeSynonyms unordered =
+    let synonyms  = [ (n,(i,f)) | (n,i,f) <- unordered ]
         nameTable = zip (map fst synonyms) [0..]
         synTable  = zip [0..] synonyms 
         edges = concat [ let Just i1 = lookup n1 nameTable

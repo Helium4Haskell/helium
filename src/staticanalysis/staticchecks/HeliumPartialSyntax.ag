@@ -11,8 +11,8 @@
 -------------------------------------------------------------------------------
 
 SEM Declaration
-  | Instance  loc . (assumptions,constraints) = internalError "PartialSyntax.ag" "n/a" "Declaration.Instance"
-  | Class     loc . (assumptions,constraints) = internalError "PartialSyntax.ag" "n/a" "Declaration.Class"
+  | Instance  loc . (assumptions,constraints,unboundNames) = internalError "PartialSyntax.ag" "n/a" "Declaration.Instance"
+  | Class     loc . (assumptions,constraints,unboundNames) = internalError "PartialSyntax.ag" "n/a" "Declaration.Class"
 
 SEM Expression
   | RecordConstruction  loc . (assumptions,constraints,beta) = internalError "PartialSyntax.ag" "n/a" "Expression.RecordConstruction"
@@ -22,13 +22,13 @@ SEM Pattern
   | Successor loc . (beta,constraints,environment) = internalError "PartialSyntax.ag" "n/a" "Pattern.Successor"
 
 SEM RecordExpressionBinding
-  | RecordExpressionBinding  loc . (monos,constructorenv,betaUnique,miscerrors,warnings,kindErrors,tyconEnv) = internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
+  | RecordExpressionBinding  loc . (monos,constructorenv,betaUnique,miscerrors,warnings,kindErrors,tyconEnv,importEnvironment) = internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
 
 SEM RecordPatternBinding
-  | RecordPatternBinding    loc . (constructorenv,betaUnique,miscerrors,warnings,tyconEnv) = internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
+  | RecordPatternBinding    loc . (constructorenv,betaUnique,miscerrors,warnings,tyconEnv,importEnvironment) = internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
 
 SEM FieldDeclaration
-  | FieldDeclaration    loc . (kindErrors,tyconEnv) = internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
+  | FieldDeclaration    loc . (kindErrors,tyconEnv,constructorenv) = internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
 
 SEM ContextItem
   | ContextItem    loc . (tyconEnv) = internalError "PartialSyntax.ag" "n/a" "ContextItem.ContextItem"

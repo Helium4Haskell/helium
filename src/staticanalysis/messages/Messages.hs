@@ -3,7 +3,7 @@
 --   *** The Helium Compiler : Static Analysis ***
 --               ( Bastiaan Heeren )
 --
--- Messages.hs : !!! CLEAN UP THIS MODULE !!!
+-- Messages.hs : ...
 -- 
 -------------------------------------------------------------------------------
 
@@ -23,41 +23,250 @@ import Maybe (fromJust,isNothing)
 import Char  (toUpper)
 import ConstraintInfo
 
-type Errors     = [Error]
+class IsMessage a where
+   getRanges :: a -> [Range]
+   display   :: a -> String
+
+-------------------------------------------------------------
+-- (Static) Errors
+
+type Errors = [Error]
+data Error  = NoFunDef Entity Name {-names in scope-}Names
+            | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}(Maybe String)
+            | Duplicated Entity Names
+            | LastStatementNotExpr Range
+            | WrongFileName {-file name-}String {-module name-}String Range {- of module name -}
+            | TypeVarApplication Name
+            | ArityMismatch {-type constructor-}Entity Name {-verwacht aantal parameters-}Int {-aangetroffen aantal parameters-}Int
+            | DefArityMismatch Name (Maybe Int) {- verwacht -} Range
+            | RecursiveTypeSynonyms Names
+            | PatternDefinesNoVars Range
+
+instance IsMessage Error where
+   display = showError
+   getRanges anError = case anError of
+   
+      NoFunDef _ name _           -> [getNameRange name]
+      Undefined _ name _ _        -> [getNameRange name]
+      Duplicated _ names          -> map getNameRange names
+      LastStatementNotExpr range  -> [range]
+      WrongFileName _ _ range     -> [range]
+      TypeVarApplication name     -> [getNameRange name]
+      ArityMismatch _ name _ _    -> [getNameRange name]             
+      DefArityMismatch _ _ range  -> [range]
+      RecursiveTypeSynonyms names -> map getNameRange names
+      PatternDefinesNoVars range  -> [range]
+      _                           -> internalError "Messages.hs" 
+                                                   "instance IsMessage Error" 
+                                                   "unknown type of Error"
+         
+showError :: Error -> String
+showError anError = case anError of 
+   
+   NoFunDef TypeSignature name inScope ->
+      "Type signature for " ++ show (show name) ++ " without a definition " ++
+      case findSimilar name inScope of
+          [] -> ""
+          xs -> "\n  HINT - Did you mean "++prettyOrList (map (show . show) xs)++" ?"
+   
+   NoFunDef Fixity name inScope ->
+      "Infix declaration for " ++ show (show name) ++ " without a definition " ++
+      case findSimilar name inScope of
+          [] -> ""
+          xs -> "\n  HINT - Did you mean "++prettyOrList (map (show . show) xs)++" ?"
+     
+   Undefined entity name inScope wrongNameSpace ->
+      "Undefined " ++ show entity ++ " " ++ show (show name) ++ maybeHint
+      
+        where similarNames  = findSimilar name inScope
+              similarHint   = if null similarNames 
+                               then []
+                               else ["Did you mean " ++ prettyOrList (map (show . show) similarNames) ++ " ?"]
+              namespaceHint = case wrongNameSpace of
+                                 Nothing -> []
+                                 Just h  -> [h]                     
+              maybeHint     = if null (similarHint ++ namespaceHint)
+                                then ""
+                                else "\n" ++ 
+                                     concat (intersperse "\n" 
+                                         (zipWith (++) 
+                                             ("  HINT - " : repeat "         ")
+                                             (namespaceHint ++ similarHint))
+                                         )
+                         
+   Duplicated entity names
+      | all isImportRange nameRanges ->
+           capitalize (show entity) ++ " " ++
+           (show . show . head) names ++
+           " imported from multiple modules: " ++ 
+           commaList (map (snd.fromJust.modulesFromImportRange) nameRanges)
+        
+      | any isImportRange nameRanges ->
+           let 
+               (importRanges, localRanges) = partition isImportRange nameRanges
+               plural = if length importRanges > 1 then "s" else ""
+           in
+              capitalize (show entity) ++ " " ++ (show.show.head) names ++
+              " clashes with definition" ++ plural ++
+              " in imported module" ++ plural ++ " " ++ 
+              commaList
+              [ snd (fromJust (modulesFromImportRange importRange))
+              | importRange <- importRanges
+              ]
+      | otherwise ->
+           "Duplicated " ++ show entity ++ " " ++ (show . show . head) names
+                 
+    where
+        fromRanges = [ if isImportRange range then
+                         Range_Range position position
+                       else
+                         range
+                     | range <- nameRanges
+                     , let position = getRangeEnd range
+                     ]
+        nameRanges   = sort (map getNameRange names)
+
+   LastStatementNotExpr range ->
+      "Last generator in do {...} must be an expression "
+    
+   TypeVarApplication name ->
+      "Type variable " ++ show (show name) ++ " cannot be applied to another type"
+
+   ArityMismatch entity name expected actual ->
+      capitalize (show entity) ++ " " ++show (show name) ++
+      " should have " ++ prettyNumberOfParameters expected ++
+      ", but has " ++ if actual == 0 then "none" else show actual
+      
+   RecursiveTypeSynonyms strings ->
+      ( if length strings == 1 
+          then "Recursive Type Synonym " ++ show (show (head strings)) ++ "\n  HINT: use \"data\" to write a recursive data type"
+          else "Recursive Type Synonyms " ++ prettyAndList (map (show . show) strings)
+      )
+       where ranges = sort (map getNameRange strings)
+       
+   DefArityMismatch name maybeExpected range ->
+      "arity mismatch in function bindings for " ++ show (show name) ++
+      case maybeExpected of
+          Just arity -> "\n  HINT: " ++ show arity ++ " parameters in most of the clauses"
+          Nothing -> ""
+
+   PatternDefinesNoVars range ->
+      "left hand side pattern defines no variables"
+
+   WrongFileName fileName moduleName range ->
+      "The file name " ++ show fileName ++ " doesn't match the module name " ++ show moduleName
+
+   _ -> internalError "Messages.hs" "showError" "unknown type of Error"
+
+-------------------------------------------------------------
+-- Type Errors
+
 type TypeErrors = [TypeError]
-type Warnings   = [Warning]
+data TypeError  = TypeError Bool String Range SourceDocs (Maybe (Bool,TpScheme),Tp,Tp) Hint
+                | NotGeneralEnough TpScheme TpScheme (Tree,Range)
+
+instance IsMessage TypeError where
+   display = showTypeError
+   getRanges typeError = case typeError of
+                            TypeError _ _ range _ _ _      -> [range]
+                            NotGeneralEnough _ _ (_,range) -> [range]    
+
+showTypeError :: TypeError -> String
+showTypeError typeError = case typeError of
+
+   TypeError folklore location range sourcedocs (mts,t1,t2) hint ->
+             unlines $ ("Type error in " ++ location)
+                     : prettySourcedocs
+                    ++ prettyTypesDontMatch
+                    ++ prettyHint
+
+    where prettySourcedocs = let f (SD_Expr tree) = prefix "Expression" ++ showOneLine lineLength tree
+                                 f (SD_Pat  tree) = prefix "Pattern"    ++ showOneLine lineLength tree
+                                 f (SD_Term tree) = prefix "Term"       ++ showOneLine lineLength tree
+                             in map f sourcedocs
+
+          prettyTypesDontMatch = let tuple = case mts of 
+                                                Nothing     -> (t1,t2)
+                                                Just (b,ts) -> if b then (instantiateWithNameMap ts,t2) else (t2,instantiateWithNameMap ts)
+                                     render = flip PPrint.displayS [] . PPrint.renderPretty 1.0 lineLength
+                                     (d1,d2) = showTwoTypesSpecial tuple
+                                     (x1:xs1,x2:xs2) = (lines $ render d1,lines $ render d2)
+                                     reason  = if folklore then "Expected type" else "Does not match"
+                                 in ( (prefix "Type" ++ x1)
+                                    : map (replicate indentation ' ' ++) xs1 
+                                    ) ++
+                                    ( (prefix reason ++ x2)
+                                    : map (replicate indentation ' ' ++) xs2
+                                    )
+                                     
+          prettyHint = case hint of 
+                         Fix s     -> [prefix "Probable fix"++s]
+                         Because s -> [prefix "Because"++s]
+                         _         -> []
+          
+   NotGeneralEnough scheme1 scheme2 (tree,range) ->
+
+           let [s1,s2]   = freezeMonosInTypeSchemes [scheme1,scheme2]
+               maybeHint | null (ftv scheme1) = []
+                         | otherwise          = [ prefix "Hint" ++ "Try removing the type signature" ]
+           in unlines ([ "Declared type is too general"
+                       , prefix "Expression"    ++ showOneLine lineLength tree
+                       , prefix "Declared type" ++ show s2
+                       , prefix "Inferred type" ++ show s1
+                       ] ++ maybeHint)
+
+-------------------------------------------------------------
+-- (Static) Warnings
+
+type Warnings = [Warning]
+data Warning  = NoTypeDef Name TpScheme Bool
+              | Shadow Name Name
+              | Unused Entity Name {- toplevel or not -} Bool
+              | SimilarFunctionBindings Name {- without typesignature -} Name {- with type signature -}
+
+instance IsMessage Warning where
+   display  = showWarning
+   getRanges warning = case warning of
+      NoTypeDef name _ _             -> [getNameRange name]
+      Shadow _ name                  -> [getNameRange name]
+      Unused _ name _                -> [getNameRange name]
+      SimilarFunctionBindings name _ -> [getNameRange name]
+      _                              -> internalError "Messages.hs" 
+                                                      "instance IsMessage Warning" 
+                                                      "unknown type of Warning"
+
+showWarning :: Warning -> String
+showWarning warning = case warning of
+
+   NoTypeDef name tpscheme topLevel ->
+      "Missing type signature: " ++ show name ++ " :: "++show tpscheme
+
+   Shadow shadowee shadower ->
+      "Variable " ++ show (show shadower) ++
+      " shadows the one at " ++
+      showPosition (getNameRange shadowee)
+
+   Unused entity name toplevel ->
+      capitalize (show entity) ++ " " ++ show (show name) ++ " is not used"
+    
+   SimilarFunctionBindings suspect witness ->
+      "Suspicious adjacent functions "++ show (show suspect) ++ " and " ++ show (show witness)
+   
+   _ -> internalError "Messages" "showWarning" "unknown type of Warning"
+
+-------------------------------------------------------------
+-- Misc
+
 data Hint       = Fix String
                 | Because String
                 | NoHint
-
-data Error = NoFunDef Entity Name {-names in scope-}Names
-           | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}(Maybe String)
-           | Duplicated Entity Names
-           | LastStatementNotExpr Range
-           | WrongFileName {-file name-}String {-module name-}String Range {- of module name -}
-           | TypeVarApplication Name
-           | ArityMismatch {-type constructor-}Entity Name {-verwacht aantal parameters-}Int {-aangetroffen aantal parameters-}Int
-           | DefArityMismatch Name (Maybe Int) {- verwacht -} Range
-           | RecursiveTypeSynonyms Names
-           | PatternDefinesNoVars Range
-
-data TypeError = TypeError Bool String Range SourceDocs (Maybe (Bool,TpScheme),Tp,Tp) Hint
-               | NotGeneralEnough TpScheme TpScheme (Tree,Range)
-
-data Warning = NoTypeDef Name TpScheme Bool
-             | Shadow Name Name
-             | Unused Entity Name {- toplevel or not -} Bool
-             | SimilarFunctionBindings Name {- without typesignature -} Name {- with type signature -}
 
 data Entity = TypeSignature
             | TypeVariable
             | TypeConstructor
             | Definition
---            | PatternVariable
             | Constructor
---            | Parameter
             | Variable
---            | FixityDecl
             | Import
             | ExportVariable
             | ExportModule
@@ -127,24 +336,26 @@ showPosition (Range_Range Position_Unknown _) =
 showPosition _ =
     internalError "SAMessages" "showPosition" "unknown kind of position"
 
-instance Show Error where
-    show = snd.showError
-
 sortAndShowErrors :: [Error] -> [String]
-sortAndShowErrors = sortAndShow showError
+sortAndShowErrors = sortAndShow -- weg
 
 sortAndShowTypeErrors :: [TypeError] -> [String]
-sortAndShowTypeErrors = sortAndShow showTypeError
+sortAndShowTypeErrors = sortAndShow  -- weg
 
 sortAndShowWarnings :: [Warning] -> [String]
-sortAndShowWarnings = sortAndShow showWarning
+sortAndShowWarnings = sortAndShow  -- weg
 
-sortAndShow :: (a -> (Range, String)) ->  [a] -> [String]
-sortAndShow showFun xs =
-    map snd $
-    sortBy
-        (\x y -> compare (fst x) (fst y))
-        (map showFun xs)
+sortRanges :: [Range] -> [Range]
+sortRanges ranges = let (xs,ys) = partition isImportRange ranges
+                    in sort ys ++ xs
+                                        
+sortAndShow :: IsMessage a => [a] -> [String]
+sortAndShow xs = let displayAll x = f (filter (not . isImportRange) (getRanges x)) ++ display x
+                     f [] = ""
+                     f xs = showPositions xs ++ ": "
+                 in map (displayAll . snd)
+                  . sortBy (\x y -> compare (fst x) (fst y)) 
+                  $ [ (sortRanges (getRanges x), x) | x <- xs ]
 
 showFullRange :: Range -> String
 showFullRange (Range_Range p1 p2) = "<" ++ showFullPosition p1 ++ "," ++ showFullPosition p2 ++ ">"
@@ -152,163 +363,6 @@ showFullRange (Range_Range p1 p2) = "<" ++ showFullPosition p1 ++ "," ++ showFul
 showFullPosition :: Position -> String
 showFullPosition (Position_Position m l c) = "<" ++ m ++ "," ++ show l ++ "," ++ show c ++ ">"
 showFullPosition (Position_Unknown) = "<unknown>"
-
-
-showError :: Error -> (Range, String)
-showError (NoFunDef TypeSignature name inScope) =
-    ( getNameRange name
-    , showPosition (getNameRange name) ++ ": " ++
-      "Type signature for " ++ show (show name) ++ " without a definition " ++
-      case findSimilar name inScope of
-          [] -> ""
-          xs -> "\n  HINT - Did you mean "++prettyOrList (map (show . show) xs)++" ?"
-    )
-showError (NoFunDef Fixity name inScope) =
-    ( getNameRange name
-    , showPosition (getNameRange name) ++ ": " ++
-      "Infix declaration for " ++ show (show name) ++ " without a definition " ++
-      case findSimilar name inScope of
-          [] -> ""
-          xs -> "\n  HINT - Did you mean "++prettyOrList (map (show . show) xs)++" ?"
-    )
-showError (Undefined entity name inScope wrongNameSpace) =
-    ( getNameRange name
-    , showPosition (getNameRange name) ++ ": " ++
-      "Undefined " ++ show entity ++ " " ++ show (show name) ++ maybeHint)
-      
-   where similarNames  = findSimilar name inScope
-         similarHint   = if null similarNames 
-                          then []
-                          else ["Did you mean " ++ prettyOrList (map (show . show) similarNames) ++ " ?"]
-         namespaceHint = case wrongNameSpace of
-                            Nothing -> []
-                            Just h  -> [h]                     
-         maybeHint     = if null (similarHint ++ namespaceHint)
-                           then ""
-                           else "\n" ++ 
-                                concat (intersperse "\n" 
-                                    (zipWith (++) 
-                                        ("  HINT - " : repeat "         ")
-                                        (namespaceHint ++ similarHint))
-                                    )
-                          
-showError (Duplicated entity names)
-    | all isImportRange nameRanges =
-        ( head nameRanges -- it is only used for sorting
-        , capitalize (show entity) ++ " " ++
-          (show . show . head) names ++
-          " imported from multiple modules: " ++ 
-          commaList (map (snd.fromJust.modulesFromImportRange) nameRanges)
-        )
-    | any isImportRange nameRanges =
-        let 
-            (importRanges, localRanges) = partition isImportRange nameRanges
-            plural = if length importRanges > 1 then "s" else ""
-        in
-            ( head localRanges
-            , showPositions localRanges ++ ": " ++
-              capitalize (show entity) ++ " " ++ (show.show.head) names ++
-              " clashes with definition" ++ plural ++
-              " in imported module" ++ plural ++ " " ++ 
-              commaList
-              [ snd (fromJust (modulesFromImportRange importRange))
-              | importRange <- importRanges
---              , let Just (_,s) = 
-              ]
-            )
-    | otherwise =
-        ( head nameRanges
-        , showPositions nameRanges ++ ": " ++
-          "Duplicated " ++ show entity ++ " " ++ (show . show . head) names
-        )
-    where
-        fromRanges = [ if isImportRange range then
-                         Range_Range position position
-                       else
-                         range
-                     | range <- nameRanges
-                     , let position = getRangeEnd range
-                     ]
-        nameRanges   = sort (map getNameRange names)
-showError (LastStatementNotExpr range) =
-    ( range
-    , showPosition range ++ ": " ++
-      "Last generator in do {...} must be an expression "
-    )
-showError (TypeVarApplication name) =
-    ( getNameRange name
-    , showPosition (getNameRange name) ++ ": " ++
-      "Type variable " ++ show (show name) ++ " cannot be applied to another type"
-    )
-showError (ArityMismatch entity name expected actual) =
-    ( getNameRange name
-    , showPosition (getNameRange name) ++ ": " ++
-      capitalize (show entity) ++ " " ++show (show name) ++
-      " should have " ++ prettyNumberOfParameters expected ++
-      ", but has " ++ if actual == 0 then "none" else show actual
-    )
-showError (RecursiveTypeSynonyms strings) =
-    ( head ranges
-    , showPositions ranges ++ ": " ++ 
-      ( if length strings == 1 
-          then "Recursive Type Synonym " ++ show (show (head strings)) ++ "\n  HINT: use \"data\" to write a recursive data type"
-          else "Recursive Type Synonyms " ++ prettyAndList (map (show . show) strings)
-      )
-    )
-    where ranges = sort (map getNameRange strings)
-showError (DefArityMismatch name maybeExpected range) =
-    ( range
-    , showPosition range ++ ": " ++
-      "arity mismatch in function bindings for " ++ show (show name) ++
-      case maybeExpected of
-          Just arity -> "\n  HINT: " ++ show arity ++ " parameters in most of the clauses"
-          Nothing -> ""
-    )
-showError (PatternDefinesNoVars range) =
-    ( range
-    , showPosition range ++ ": " ++
-      "left hand side pattern defines no variables"
-    )
-showError (WrongFileName fileName moduleName range) =
-    ( range
-    , showPosition range ++ ": " ++
-      "The file name " ++ show fileName ++ " doesn't match the module name " ++ show moduleName
-    )
-showError _ = internalError "SAMessages" "showError" "unknown type of Error"
-
-showTypeError :: TypeError -> (Range, String)
-showTypeError typeError = case typeError of
-                             TypeError _ _ range _ _ _      -> (range,show typeError)
-                             NotGeneralEnough _ _ (_,range) -> (range,show typeError)
-
-instance Show Warning where
-    show = snd . showWarning
-
-showWarning :: Warning -> (Range, String)
-showWarning (NoTypeDef name tpscheme topLevel) =
-    ( getNameRange name
-    , showPosition (getNameRange name) ++ ": " ++
-      "Missing type signature: " ++ show name ++ " :: "++show tpscheme
-    )
-showWarning (Shadow shadowee shadower) =
-    ( getNameRange shadower
-    , showPosition (getNameRange shadower) ++ ": " ++
-      "Variable " ++ show (show shadower) ++
-      " shadows the one at " ++
-      showPosition (getNameRange shadowee)
-    )
-showWarning (Unused entity name toplevel) =
-    ( getNameRange name
-    , showPosition (getNameRange name) ++ ": " ++
-      capitalize (show entity) ++ " " ++ show (show name) ++ " is not used"
-    )
-showWarning (SimilarFunctionBindings suspect witness) =
-    ( getNameRange suspect
-    , showPosition (getNameRange suspect) ++ ": " ++
-      "Suspicious adjacent functions "++ show (show suspect) ++ " and " ++ show (show witness)
-    )   
-showWarning _ =
-    internalError "SAMessages" "show (Warning)" "unknown type of warning"
 
 prettyOrList :: [String] -> String
 prettyOrList []  = ""
@@ -330,48 +384,6 @@ data SourceDoc       = SD_Expr Tree
                      | SD_Pat  Tree
                      | SD_Term Tree
                
-instance Show TypeError where
-   show (TypeError folklore location range sourcedocs (mts,t1,t2) hint) =
-             unlines $ (showPosition range ++ ": Type error in " ++ location)
-                     : prettySourcedocs
-                    ++ prettyTypesDontMatch
-                    ++ prettyHint
-
-    where prettySourcedocs = let f (SD_Expr tree) = prefix "Expression" ++ showOneLine lineLength tree
-                                 f (SD_Pat  tree) = prefix "Pattern"    ++ showOneLine lineLength tree
-                                 f (SD_Term tree) = prefix "Term"       ++ showOneLine lineLength tree
-                             in map f sourcedocs
-
-          prettyTypesDontMatch = let tuple = case mts of 
-                                                Nothing     -> (t1,t2)
-                                                Just (b,ts) -> if b then (instantiateWithNameMap ts,t2) else (t2,instantiateWithNameMap ts)
-                                     render = flip PPrint.displayS [] . PPrint.renderPretty 1.0 lineLength
-                                     (d1,d2) = showTwoTypesSpecial tuple
-                                     (x1:xs1,x2:xs2) = (lines $ render d1,lines $ render d2)
-                                     reason  = if folklore then "Expected type" else "Does not match"
-                                 in ( (prefix "Type" ++ x1)
-                                    : map (replicate indentation ' ' ++) xs1 
-                                    ) ++
-                                    ( (prefix reason ++ x2)
-                                    : map (replicate indentation ' ' ++) xs2
-                                    )
-                                     
-          prettyHint = case hint of 
-                         Fix s     -> [prefix "Probable fix"++s]
-                         Because s -> [prefix "Because"++s]
-                         _         -> []
-          
-   show (NotGeneralEnough scheme1 scheme2 (tree,range)) =
-
-           let [s1,s2]   = freezeMonosInTypeSchemes [scheme1,scheme2]
-               maybeHint | null (ftv scheme1) = []
-                         | otherwise          = [ prefix "Hint" ++ "Try removing the type signature" ]
-           in unlines ([ showPosition range ++ ": Declared type is too general"
-                       , prefix "Expression"    ++ showOneLine lineLength tree
-                       , prefix "Declared type" ++ show s2
-                       , prefix "Inferred type" ++ show s1
-                       ] ++ maybeHint)
-
 checkTypeError :: OrderedTypeSynonyms -> TypeError -> Maybe TypeError
 checkTypeError synonyms typeError@(TypeError folklore location range sourcedocs (mts,t1,t2) hint) = 
    let (x1,x2) = case mts of 

@@ -32,94 +32,142 @@
 --
 -------------------------------------------------------------------------------
 
-ATTR Expression Statement RightHandSide
-     RecordExpressionBinding Qualifier Statements RecordExpressionBindings
-     Qualifiers MaybeExpression GuardedExpression FunctionBinding
+ATTR Expression RightHandSide
+     RecordExpressionBinding RecordExpressionBindings
+     MaybeExpression GuardedExpression FunctionBinding
      Expressions Declaration Declarations Alternative FunctionBindings
-     MaybeDeclarations Alternatives GuardedExpressions RecordPatternBinding
+     Alternatives GuardedExpressions RecordPatternBinding
      Patterns Pattern LeftHandSide RecordPatternBindings AnnotatedType
-     AnnotatedTypes Constructor Constructors FieldDeclaration FieldDeclarations
-     [ namesInScope : Names | | ]
-
-ATTR Body
-     [ | namesInScope : Names | ]
-
--- imported functions
+     AnnotatedTypes Constructor Constructors FieldDeclaration FieldDeclarations Body -- too much???
+     [ namesInScope : Names | | unboundNames USE {++} {[]} : Names ]
 
 SEM Module
-  | Module   body . namesInScope = concat [ keys @lhs.importTypeEnv 
-                                          , keys @body.derivedFunctions
-                                          , keys @lhs.importConstructorEnv
-                                          , keys (valueConstructors @body.collectEnvironment)
-                                          ]
--- binding-groups
-
-SEM Body
-  | Body   loc . (environment,assumptions,_)  = concatBindingGroups @declarations.bindingGroups
-               . (namesInScope,shadowing)     = addToScope (keys @environment) @lhs.namesInScope
-
+  | Module   loc . initialNames = concat [ keys (typeEnvironment @lhs.importEnvironment)
+                                         , keys @body.derivedFunctions
+                                         ]
+                 . (namesInScope,unboundNames,scopeErrors,_) = changeOfScope (@initialNames ++ @body.declVarNames) Definition @body.unboundNames []
+                 
 SEM MaybeDeclarations
-  | Just   loc . (environment,assumptions,_)  = concatBindingGroups @declarations.bindingGroups
-               . (namesInScope,shadowing)     = addToScope (keys @environment) @lhs.namesInScope
-
+  | Just   loc . (namesInScope,unboundNames,scopeErrors,scopeWarnings)     = changeOfScope @declarations.declVarNames Definition (@declarations.unboundNames ++ @lhs.unboundNames) @lhs.namesInScope
+           lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!
+           
 SEM Expression
-  | Let    loc . (environment,assumptions,_)  = concatBindingGroups @declarations.bindingGroups
-               . (namesInScope,shadowing)     = addToScope (keys @environment) @lhs.namesInScope
-
+  | Let    loc . (namesInScope,unboundNames,scopeErrors,scopeWarnings)     = changeOfScope @declarations.declVarNames Definition (@declarations.unboundNames ++ @expression.unboundNames) @lhs.namesInScope
+           lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!
+           
 SEM Statement
-  | Let    loc . (environment,assumptions,_)  = concatBindingGroups @declarations.bindingGroups
-               . (namesInScope,shadowing)     = addToScope (keys @environment) @lhs.namesInScope
-
+  | Let    loc . (namesInScope,unboundNames,scopeErrors,scopeWarnings)     = changeOfScope @declarations.declVarNames Definition (@declarations.unboundNames ++ @lhs.unboundNames) @lhs.namesInScope
+           
 SEM Qualifier
-  | Let    loc . (environment,assumptions,_)  = concatBindingGroups @declarations.bindingGroups
-               . (namesInScope,shadowing)     = addToScope (keys @environment) @lhs.namesInScope
-
+  | Let    loc . (namesInScope,unboundNames,scopeErrors,scopeWarnings)     = changeOfScope @declarations.declVarNames Definition (@declarations.unboundNames ++ @lhs.unboundNames) @lhs.namesInScope
+           
 -- monomorphic binding constructions
 
 SEM FunctionBinding
-  | FunctionBinding   loc . (namesInScope,shadowing) = addToScope (keys @lefthandside.environment) @lhs.namesInScope
-
+  | FunctionBinding   loc . (namesInScope,unboundNames,scopeErrors,scopeWarnings) = changeOfScope @lefthandside.patVarNames Variable @righthandside.unboundNames @lhs.namesInScope
+                      lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!
+                      
 SEM Expression
-  | Lambda            loc . (namesInScope,shadowing) = addToScope (keys @patterns.environment) @lhs.namesInScope
+  | Lambda            loc . (namesInScope,unboundNames,scopeErrors,scopeWarnings) = changeOfScope @patterns.patVarNames Variable @expression.unboundNames @lhs.namesInScope
+                      lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!
 
 SEM Alternative
-  | Alternative       loc . (namesInScope,shadowing) = addToScope (keys @pattern.environment) @lhs.namesInScope
-
+  | Alternative       loc . (namesInScope,unboundNames,scopeErrors,scopeWarnings) = changeOfScope @pattern.patVarNames Variable @righthandside.unboundNames @lhs.namesInScope
+                      lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!
+                      
 SEM Statement
-  | Generator         loc . (namesInScope,shadowing) = addToScope (keys @pattern.environment) @lhs.namesInScope
+  | Generator         loc . (namesInScope,unboundNames,scopeErrors,scopeWarnings) = changeOfScope @pattern.patVarNames Variable (@expression.unboundNames ++ @lhs.unboundNames) @lhs.namesInScope
 
 SEM Qualifier
-  | Generator         loc . (namesInScope,shadowing) = addToScope (keys @pattern.environment) @lhs.namesInScope
-
+  | Generator         loc . (namesInScope,unboundNames,scopeErrors,scopeWarnings) = changeOfScope @pattern.patVarNames Variable (@expression.unboundNames  ++ @lhs.unboundNames)  @lhs.namesInScope
+                      
 -- correcte scope voor RightHandSides (where)
 
-ATTR MaybeDeclarations [ | | namesInScope : Names ]
+ATTR MaybeDeclarations [ | unboundNames : Names namesInScope : Names | ]
 
 SEM RightHandSide 
-  | Expression   expression         . namesInScope = @where.namesInScope
-  | Guarded      guardedexpressions . namesInScope = @where.namesInScope
+  | Expression   lhs                . unboundNames = @where.unboundNames
+                 expression         . namesInScope = @where.namesInScope
+                 where              . unboundNames = @expression.unboundNames
+  | Guarded      lhs                . unboundNames = @where.unboundNames
+                 guardedexpressions . namesInScope = @where.namesInScope 
+                 where              . unboundNames = @guardedexpressions.unboundNames
 
 -- correcte scope voor Statements/Qualifiers
 
-ATTR Statement Qualifier Qualifiers [ | | namesInScope:Names ]
+ATTR Statements Statement Qualifier Qualifiers [ | namesInScope : Names unboundNames : Names | ]
+
+SEM Expression
+  | Do  statements . unboundNames = []
 
 SEM Statement
   | Generator   lhs        . namesInScope = @namesInScope
+                           . unboundNames = @unboundNames
                 expression . namesInScope = @lhs.namesInScope
+  | Let         lhs        . unboundNames = @unboundNames                
+  | Expression  lhs        . unboundNames = @expression.unboundNames ++ @lhs.unboundNames                 
+
+SEM Statements
+  | Cons   lhs . unboundNames = @hd.unboundNames
+           tl  . unboundNames = @lhs.unboundNames
+           hd  . unboundNames = @tl.unboundNames
+  | Nil    lhs . unboundNames = @lhs.unboundNames
+  
+SEM Expression
+  | Comprehension    lhs        . unboundNames = @qualifiers.unboundNames
+                     expression . namesInScope = @qualifiers.namesInScope
+                     qualifiers . namesInScope = @lhs.namesInScope
+                                . unboundNames = @expression.unboundNames
 
 SEM Qualifier
   | Generator   lhs        . namesInScope = @namesInScope
+                           . unboundNames = @unboundNames
                 expression . namesInScope = @lhs.namesInScope
+  | Let         lhs        . unboundNames = @unboundNames                
+  | Guard       lhs        . unboundNames = @guard.unboundNames ++ @lhs.unboundNames  
 
-SEM Expression
-  | Comprehension    expression . namesInScope = @qualifiers.namesInScope
+SEM Qualifiers
+  | Cons   lhs . unboundNames = @hd.unboundNames
+           tl  . unboundNames = @lhs.unboundNames
+           hd  . unboundNames = @tl.unboundNames
+  | Nil    lhs . unboundNames = @lhs.unboundNames
 
 -- utility function
-{
-addToScope :: Names -> Names -> (Names,[Warning])
-addToScope as bs = foldr op (bs,[]) (nub as)
-   where op a (names,wars) = case partition (==a) names of
-                               ([name],rest) -> (a : rest,Shadow name a : wars)
-                               _             -> (a : names,wars)
+{                              
+changeOfScope :: Names -> Entity -> Names -> Names -> (Names,Names,Errors,Warnings)
+changeOfScope names entity unboundNames namesInScope = 
+   let (uniqueNames, duplicatedNames)   = uniqueAppearance names
+       removedNames = map (nameFromString . show . head) duplicatedNames
+       op name (scope,unbound,ws) =   
+          let (newScope, ws1)   = case partition (==name) scope of
+                                     ([], _)     -> (name : scope, [])
+                                     (old, rest) -> (name : rest, [ Shadow x name | x <- old ])
+              (newUnbound, ws2) = case partition (==name) unbound of 
+                                     ([], _)   -> (unbound, [Unused entity name False]) 
+                                     (_, rest) -> (rest, [])
+          in (newScope,newUnbound,ws2++ws1++ws)
+       (xs,ys,warnings) =  foldr op (namesInScope,unboundNames,[]) uniqueNames                       
+       errors = [ Duplicated entity xs | xs <- duplicatedNames ]
+   in (removedNames ++ (xs \\ removedNames),ys \\ removedNames,errors,warnings)
+      
+uniqueAppearance :: Ord a => [a] -> ([a],[[a]])
+uniqueAppearance = foldr insert ([],[]) . group . sort
+   where insert [x] (as,bs) = (x:as,bs)
+         insert xs  (as,bs) = (as,xs:bs)
 }
 
+ATTR Pattern Patterns 
+     LeftHandSide [ | | patVarNames USE {++} {[]} : Names ]
+
+SEM Pattern 
+  | Variable   lhs . patVarNames = [ @name.self ]
+  | As         lhs . patVarNames = @name.self : @pattern.patVarNames
+
+SEM Expression 
+  | Variable   lhs . unboundNames = [ @name.self ]    
+  
+ATTR Body Declaration Declarations [ | | declVarNames USE {++} {[]} : Names ]
+
+SEM Declaration 
+  | FunctionBindings  lhs . declVarNames = [@bindings.name]
+  | PatternBinding    lhs . declVarNames = @pattern.patVarNames

@@ -20,14 +20,11 @@ import Similarity ( similar )
 SEM Module
   | Module   loc . topLevelErrors = concat [ @typeConstructorErrors  
                                            , @valueConstructorErrors
-                                           , @toplevelDefinitionErrors
                                            , @fixityErrors
                                            , @fixityButNoFunDefErrors
                                            , @recursiveTypeSynonymErrors
                                            , @wrongFileNameErrors
                                            ]
-                 . removedEntities = [ (name,TypeConstructor) | name:_ <- @duplicatedTypeConstructors  ] ++
-                                     [ (name,Constructor    ) | name:_ <- @duplicatedValueConstructors ]
                  
 ------------------------------------------------------------------------------
 -- duplicated type constructors
@@ -41,20 +38,6 @@ SEM Module
   | Module   loc . valueConstructorErrors = makeDuplicated Constructor @duplicatedValueConstructors
   
 ------------------------------------------------------------------------------
--- clashing top-level function definitions, imported functions, and derived show functions
--- note: filter out the duplicated errors for derived functions 
---          (this is done by comparing the ranges of the names)
-SEM Module
-  | Module   loc . toplevelDefinitionErrors = makeDuplicated Definition @duplicatedDefinitions
-                 . duplicatedDefinitions = let list = concat [ @body.toplevelNames
-                                                             , keys @body.derivedFunctions
-                                                             , keys @lhs.importTypeEnv
-                                                             ]
-                                               derivedRanges = map getNameRange (keys @body.derivedFunctions)
-                                           in filter (\ns -> length ns > 1 && any (`notElem` derivedRanges) (map getNameRange ns)) 
-                                              (group (sort list))
-
-------------------------------------------------------------------------------
 -- duplicated fixity declarations
 SEM Module
   | Module   loc . fixityErrors = makeDuplicated Fixity @duplicatedFixities
@@ -64,10 +47,10 @@ SEM Module
 ------------------------------------------------------------------------------
 -- fixity declarations without a definition
 SEM Module
-  | Module   loc . fixityButNoFunDefErrors = let list = concat [ @body.toplevelNames
-                                                               , keys @lhs.importTypeEnv 
+  | Module   loc . fixityButNoFunDefErrors = let list = concat [ @body.declVarNames
+                                                               , keys (typeEnvironment @lhs.importEnvironment)
                                                                , keys (valueConstructors @body.collectEnvironment)
-                                                               , keys @lhs.importConstructorEnv
+                                                               , keys (valueConstructors @lhs.importEnvironment)
                                                                ]
                                              in makeNoFunDef Fixity (filter (`notElem` list) @correctFixities) (nub list)
                                                                                                          
@@ -90,11 +73,3 @@ SEM Module
                                       MaybeName_Just name -> name 
                                       MaybeName_Nothing   -> Name_Identifier noRange [] ""                                    
                 . fileName       = Name_Identifier noRange [] @lhs.baseName 
-
----------------------------------------------------------------
--- utility attribute: collect the names of top-level functions
-
-ATTR Body [ | | toplevelNames : Names ]
-
-SEM Body 
-  | Body  lhs . toplevelNames = concatMap ( keys . fst3 ) @declarations.bindingGroups

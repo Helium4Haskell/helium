@@ -69,7 +69,6 @@ MODULESYSTEM = \
 	modulesystem/CoreToImportEnv.hs modulesystem/ExtractImportDecls.hs
 
 STATICANALYSIS = \
-	staticanalysis/StaticAnalysis.hs \
 	staticanalysis/constraints/LiftedConstraints.hs \
 	staticanalysis/constraints/Constraints.hs \
 	staticanalysis/constraints/ConstraintTree.hs \
@@ -96,7 +95,9 @@ STATICANALYSIS = \
 	staticanalysis/types/TypeConversion.hs \
 	staticanalysis/types/TypeSubstitution.hs \
 	staticanalysis/types/TypeRepresentation.hs \
-	staticanalysis/types/TypesToAlignedDocs.hs 
+	staticanalysis/types/TypesToAlignedDocs.hs \
+	staticanalysis/staticchecks/StaticChecks.hs \
+	staticanalysis/inferencers/TypeInferencing.hs
 
 UHA = \
 	syntax/UHA_Syntax.hs syntax/UHA_Utils.hs
@@ -142,7 +143,7 @@ CORE	= $(LVMLIBDIR)/core/Core.hs $(LVMLIBDIR)/core/CorePretty.hs $(LVMLIBDIR)/co
 	  $(LVMLIBDIR)/core/CoreNoShadow.hs $(LVMLIBDIR)/core/CoreFreeVar.hs $(LVMLIBDIR)/core/CoreLetSort.hs \
 	  $(LVMLIBDIR)/core/CoreLift.hs $(LVMLIBDIR)/core/CoreSaturate.hs
 
-IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:$(PARSECDIR):./parser:./staticanalysis:./staticanalysis/solvers:./staticanalysis/solvers/typegraph:./staticanalysis/solvers/typegraphheuristics:./staticanalysis/constraints:./staticanalysis/types:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem
+IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:$(PARSECDIR):./parser:./staticanalysis:./staticanalysis/solvers:./staticanalysis/inferencers:./staticanalysis/staticchecks:./staticanalysis/solvers/typegraph:./staticanalysis/solvers/typegraphheuristics:./staticanalysis/constraints:./staticanalysis/types:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem
 
 
 #Sources and object files
@@ -185,7 +186,7 @@ hi: interpreter/Main.hs utils/OSSpecific.hs
 
 # AG sources
 
-ag : utils/PrettyPrinting.hs staticanalysis/StaticAnalysis.hs codegeneration/CodeGeneration.hs \
+ag : utils/PrettyPrinting.hs staticanalysis/staticchecks/StaticChecks.hs staticanalysis/inferencers/TypeInferencing.hs codegeneration/CodeGeneration.hs \
      syntax/UHA_Syntax.hs modulesystem/ExtractImportDecls.hs
 
 ifdef AG
@@ -194,10 +195,8 @@ utils/PrettyPrinting.hs : \
 	# AG PrettyPrinting
 	cd utils;$(AG) $(AG_OPTS) PrettyPrinting.ag;cd ..
 
-staticanalysis/StaticAnalysis.hs : \
-		staticanalysis/StaticAnalysis.ag \
-                staticanalysis/inferencers/TypeInferencing.ag \
-                staticanalysis/inferencers/TypeInferencingInfo.ag \
+staticanalysis/staticchecks/StaticChecks.hs : \
+		staticanalysis/staticchecks/StaticChecks.ag \
 		staticanalysis/staticchecks/KindChecking.ag \
                 staticanalysis/staticchecks/TopLevelErrors.ag \
                 staticanalysis/staticchecks/MiscErrors.ag \
@@ -208,13 +207,23 @@ staticanalysis/StaticAnalysis.hs : \
                 staticanalysis/staticchecks/Scope.ag \
 		syntax/UHA_Syntax.ag \
                 syntax/UHA_Self.ag \
+                
+	# AG StaticAnalysis
+	cd staticanalysis/staticchecks;$(AG) $(AG_OPTS) StaticChecks.ag;cd ../..
+
+staticanalysis/inferencers/TypeInferencing.hs : \
+		staticanalysis/inferencers/TypeInferencing.ag \
+                staticanalysis/inferencers/TypeInferenceRules.ag \
+                staticanalysis/inferencers/TypeInferenceInfo.ag \
+                staticanalysis/staticchecks/HeliumPartialSyntax.ag \
+		syntax/UHA_Syntax.ag \
+                syntax/UHA_Self.ag \
                 syntax/UHA_Size.ag \
-                syntax/UHA_Range.ag \
                 syntax/UHA_OneLine.ag \
                 
 	# AG StaticAnalysis
-	cd staticanalysis;$(AG) $(AG_OPTS) StaticAnalysis.ag;cd ..
-
+	cd staticanalysis/inferencers;$(AG) $(AG_OPTS) TypeInferencing.ag;cd ../..
+        
 codegeneration/CodeGeneration.hs : \
 		codegeneration/CodeGeneration.ag syntax/UHA_Pretty.ag syntax/UHA_Self.ag \
 		syntax/UHA_Syntax.ag syntax/UHA_Self.ag codegeneration/ToCoreModule.ag codegeneration/ToCoreDecl.ag \

@@ -124,7 +124,7 @@ getImportInfo :: String -> [CoreDecl] ->
                  ( TypeEnvironment
                  , ConstructorEnvironment
                  , TypeConstructorEnvironment
-                 , TypeSynonymEnvironment
+                 , AssocList Name (Int,Tps -> Tp) -- TypeSynonymEnvironment
                  , OperatorTable
                  , [CoreDecl]
                  )

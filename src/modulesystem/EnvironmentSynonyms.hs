@@ -16,6 +16,6 @@ import SortedAssocList
 type TypeEnvironment            = AssocList Name TpScheme
 type ConstructorEnvironment     = AssocList Name TpScheme
 type TypeConstructorEnvironment = AssocList Name Int
-type TypeSynonymEnvironment     = AssocList Name (Int,Tps -> Tp)
+type TypeSynonymEnvironment     = [(Name, Int, Tps -> Tp)]
 type Assumptions        = AssocList Name Tp
 type PatternAssumptions = AssocList Name Tp

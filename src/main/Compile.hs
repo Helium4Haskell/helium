@@ -9,7 +9,8 @@ import Strategy(algM, algW)
 -- Semantic functions from the ag-world
 import qualified PrettyPrinting       (sem_Module)
 import qualified ExtractImportDecls   (sem_Module)
-import qualified StaticAnalysis       (sem_Module)
+import qualified StaticChecks         (sem_Module)
+import qualified TypeInferencing      (sem_Module)
 import qualified CodeGeneration       (sem_Module)
 
 -- Parser
@@ -41,6 +42,7 @@ import Utils(splitFilePath)
 import System(ExitCode(..), exitWith)
 import Monad(when, unless)
 import IOExts(unsafePerformIO, writeIORef)
+import ImportEnvironment
 
 compile :: String -> [Option] -> [String] -> IO ()
 compile fullName options doneModules =
@@ -94,17 +96,25 @@ compile fullName options doneModules =
                | AlgorithmM `elem` options = (algM,False)
                | otherwise                 = (algW,True ) -- default algorithm W + TypeGraphs
             
+            importEnvironment = tempConverter importConstructorEnv importTyConEnv importTypeEnv importTypeSynEnv
+            
             -- Tree traversal with the attribute grammar
-            (collectedEnv,debugTypes,errors,toplevelTypes, typeErrors , warnings) = 
-                {-# SCC "StaticAnalysis" #-}
-                StaticAnalysis.sem_Module module_ 
+            (collectEnvironment, errors, warnings1) = 
+                {-# SCC "StaticAnalysis" #-} 
+                StaticChecks.sem_Module module_ 
                     baseName 
-                    importConstructorEnv  
-                    importTyConEnv 
-                    importTypeEnv                    
-                    importTypeSynEnv 
+                    importEnvironment
+            
+            completeEnvironment = collectEnvironment `combineImportEnvironments` importEnvironment
+                     
+            (debugTypes, toplevelTypes, typeErrors, warnings2) = 
+                {-# SCC "StaticAnalysis" #-} 
+                TypeInferencing.sem_Module module_ 
+                    completeEnvironment
                     strategy 
-                    useTypeGraph
+                    useTypeGraph     
+        
+            finalEnvironment = foldr (uncurry addType) completeEnvironment (toList toplevelTypes)          
 
         when (DumpUHA `elem` options) $ 
             putStrLn $ show $ PrettyPrinting.sem_Module module_
@@ -128,7 +138,7 @@ compile fullName options doneModules =
                         toplevelTypes
                         errors
                         typeErrors
-                        warnings
+                        (warnings1 ++ warnings2)
                         debugTypes
                         doneModules
                         fullName
@@ -141,7 +151,7 @@ compile fullName options doneModules =
         when verbose $ putStrLn "Desugaring..."
         let coreModule = {-# SCC "CodeGeneration" #-}
                             CodeGeneration.sem_Module module_ 
-                                collectedEnv 
+                                (valueConstructors finalEnvironment) 
                                 indirectionDecls
                                 toplevelTypes
             strippedCoreModule = coreRemoveDead coreModule

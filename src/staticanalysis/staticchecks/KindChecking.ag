@@ -24,14 +24,14 @@ SEM Module
                     loc . kindErrors   = @body.kindErrors
   
 SEM Expression
-  | Typed           lhs . kindErrors   = checkType @lhs.tyconEnv @lhs.namesInScope @type.self ++ @expression.kindErrors
+  | Typed           lhs . kindErrors   = checkType @lhs.tyconEnv  (@lhs.namesInScope ++ keys @lhs.constructorenv) @type.self ++ @expression.kindErrors
 
 SEM Declaration
-  | Type            lhs . kindErrors   =  checkType @lhs.tyconEnv @lhs.namesInScope @type.self ++ @lhs.kindErrors
-  | TypeSignature   lhs . kindErrors   =  checkType @lhs.tyconEnv @lhs.namesInScope @type.self ++ @lhs.kindErrors
+  | Type            lhs . kindErrors   =  checkType @lhs.tyconEnv (@lhs.namesInScope ++ keys @lhs.constructorenv) @type.self ++ @lhs.kindErrors
+  | TypeSignature   lhs . kindErrors   =  checkType @lhs.tyconEnv (@lhs.namesInScope ++ keys @lhs.constructorenv) @type.self ++ @lhs.kindErrors
 
 SEM AnnotatedType
-  | AnnotatedType   lhs . kindErrors   =  checkType @lhs.tyconEnv @lhs.namesInScope @type.self ++ @lhs.kindErrors
+  | AnnotatedType   lhs . kindErrors   =  checkType @lhs.tyconEnv (@lhs.namesInScope ++ keys @lhs.constructorenv) @type.self ++ @lhs.kindErrors
   
 {
 checkType :: TypeConstructorEnvironment -> Names -> Type -> [Error]

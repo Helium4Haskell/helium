@@ -14,7 +14,6 @@ import TypeRepresentation
 import SortedAssocList
 
 infix 3 .===. , .:::. , .<==.
-infix 3 !===! , !:::! , !<==!
 
 ------------------------------------------------------------------------------
 -- Lifted constructors
@@ -38,32 +37,6 @@ lift combinator =
 (.===.)    = lift (.==.)
 (.:::.)    = lift (flip (.::.))
 (.<==.) ms = lift (flip ((.<=.) ms))
-
-------------------------------------------------------------------------------
--- Check and Lift constructors
-
-checkAndLift combinator =
-   \as bs cf -> 
-       let (asUnique,asDuplicated) = onlyUniqueKeys as
-           (asUnused,binds,bsRest) = asUnique ./\. bs
-       in 
-          ( [ (a `combinator` b) (cf n) 
-            | (alist,blist) <- binds
-            , (_,a)         <- alist
-            , (n,b)         <- blist 
-            ]
-          , bsRest
-          , asDuplicated
-          , keys asUnused
-          )
-
-(!===!) :: Ord key =>        AssocList key Tp       -> AssocList key Tp -> (key -> (Tp,Tp) -> info) -> (Constraints info,AssocList key Tp,[[key]],[key])
-(!:::!) :: Ord key =>        AssocList key TpScheme -> AssocList key Tp -> (key -> (Tp,Tp) -> info) -> (Constraints info,AssocList key Tp,[[key]],[key])
-(!<==!) :: Ord key => Tps -> AssocList key Tp       -> AssocList key Tp -> (key -> (Tp,Tp) -> info) -> (Constraints info,AssocList key Tp,[[key]],[key])
-
-(!===!)    = checkAndLift (.==.)
-(!:::!)    = checkAndLift (flip (.::.))
-(!<==!) ms = checkAndLift (flip ((.<=.) ms))
 
 ---------------------------------------------------------------------------------
 -- utility functions
