@@ -12,6 +12,7 @@ import Directory(doesFileExist, getModificationTime)
 import IOExts(writeIORef, newIORef, readIORef, IORef)
 import Args
 import Utils
+import TopSort
 
 main :: IO ()
 main = do
@@ -43,10 +44,73 @@ main = do
     mapM (checkExistence lvmPath) 
         ["Prelude", "PreludePrim", "HeliumLang", "LvmLang", "LvmIO", "LvmException"]
 
+{-
+    verticesRef <- newIORef []
+    fullNamesRef <- newIORef []
+    edgesRef <- newIORef []
+    
+    buildImportGraph newFullName lvmPath fullNamesRef verticesRef edgesRef
+    
+    vertices <- readIORef verticesRef
+    fullNames <- readIORef fullNamesRef
+    edges <- readIORef edgesRef
+    
+    let groups = generalTopSort vertices edges 
+    
+    putStrLn ("FullNames " ++ show fullNames)
+    putStrLn ("Vertices " ++ show vertices)
+    putStrLn ("Edges " ++ show edges)
+    putStrLn ("Groups " ++ show groups)
+-}
+
     doneRef <- newIORef []
     make newFullName lvmPath [moduleName] options doneRef
     return ()
+
+{-
+generalTopSort :: Eq a => [a] -> [(a, a)] -> [[a]]
+generalTopSort vertices edges = 
+    let indexOf vertex = fromJust (elemIndex vertex vertices)
+        numberedEdges = map (\(v1, v2) -> (indexOf v1, indexOf v2)) edges
+    in map (map (vertices !!)) (
+        topSort (length vertices - 1) numberedEdges)
     
+addIORef :: a -> IORef [a] -> IO ()
+addIORef x ioRef = do 
+    xs <- readIORef ioRef
+    writeIORef ioRef (x:xs)
+    
+buildImportGraph :: String -> [String] -> 
+                    IORef [(String, String)] ->
+                    IORef [String] ->
+                    IORef [(String, String)] -> IO ()
+buildImportGraph fullName lvmPath fullNamesRef verticesRef edgesRef = do
+    let (_, moduleName, _) = splitFilePath fullName
+    vertices <- readIORef verticesRef
+    when (moduleName `notElem` vertices) $ do
+        addIORef (moduleName, fullName) fullNamesRef
+        addIORef moduleName verticesRef
+
+        imports <- parseOnlyImports fullName
+        foreach imports $ \importModuleName -> do
+            maybeImportFullName <- resolve lvmPath importModuleName
+            
+            when (isNothing maybeImportFullName) $ do
+                putStrLn $ 
+                    "Unable to find module " ++ importModuleName ++  
+                    "\nimported from module " ++ fullName ++
+                    "\nin the search path\n" ++ showSearchPath lvmPath
+                exitWith (ExitFailure 1)
+
+            let Just importFullName = maybeImportFullName
+
+            -- We don't look at imports if we only have an LVM 
+            unless (".lvm" `isSuffixOf` importFullName) $ do
+                addIORef (moduleName, importModuleName) edgesRef
+                buildImportGraph importFullName lvmPath fullNamesRef verticesRef edgesRef    
+        return ()
+-}
+
 -- fullName = file name including path of ".hs" file that is to be compiled
 -- lvmPath = where to look for files
 -- chain = chain of imports that led to the current module

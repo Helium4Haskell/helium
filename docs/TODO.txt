@@ -7,6 +7,8 @@
 * Hint: autoload feature (zie e-mails van Stephen Milborrow)?
 * Hint: Er mogen niet twee punten in een filenaam zitten
 
+* TextHint: pijltjestoetsen onder Win95/98/Me en UNIX
+
 * Daan: file IO exceptions; * EOF in getChar. How? catch werkt niet
 * Daan: strictheid van error
 * Daan: let f x = f (x+1) in f 0
