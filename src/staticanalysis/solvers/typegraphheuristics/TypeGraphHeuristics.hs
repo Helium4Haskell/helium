@@ -114,7 +114,7 @@ instance Eq HeuristicResult where
    ModifierHeuristic _ _   == ModifierHeuristic _ _   = True
    NotApplicableHeuristic  == NotApplicableHeuristic  = True
    _                       == _                       = False       
-   
+
 instance Ord HeuristicResult where     
    NotApplicableHeuristic  `compare` NotApplicableHeuristic  = EQ
    NotApplicableHeuristic  `compare` _                       = LT
@@ -164,7 +164,7 @@ minimizeSizeOfExpression edge info =
                    in return (ModifierHeuristic modifier ("size="++show size))
   
 trustFactorOfConstraint :: TypeGraphConstraintInfo info => EdgeHeuristic info
-trustFactorOfConstraint edge info = 
+trustFactorOfConstraint edge info =
    case getTrustFactor info of
       Nothing    -> return NotApplicableHeuristic
       Just trust -> let modifier = 1 / fromInt trust
@@ -189,7 +189,7 @@ similarFunctions :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo in
 similarFunctions edge@(EdgeID v1 v2) info = 
    case maybeImportedFunction info of 
       Nothing   -> return NotApplicableHeuristic
-      Just name -> 
+      Just name ->
       
          let (t1,t2)   = getTwoTypes info 
              string    = show name
@@ -339,7 +339,7 @@ applicationEdge edge@(EdgeID v1 v2) info =
                                  | i <- [0..length ftps-1]
                                  , predicate (deleteIndex i (zip ftps etps)) 
                                  , not (unifiable synonyms (ftps !! i) (etps !! i)) 
-                                 ]) of 
+                                 ]) of
                             
                              ([p],_) 
                                  | p==[1,0] && isBinary -> let hint = SetHint (fixHint "swap the two arguments")
@@ -356,20 +356,20 @@ applicationEdge edge@(EdgeID v1 v2) info =
                              _   -> return NotApplicableHeuristic
  
                         ordering -> -- the number of arguments is incorrect. (LT -> too many ; GT -> not enough)                           
-                           case ( [ is | (is,zl) <- take heuristics_MAX (zipWithHoles ftps etps), predicate zl ] , ordering ) of 
-                       
+                           case ( [ is | (is,zl) <- take heuristics_MAX (zipWithHoles ftps etps), predicate zl ] , ordering ) of
+
                              ([is],LT) | not isBinary && maximum is < length tuplesForArguments
-                                -> let hint = SetHint (fixHint ("remove "++prettyAndList (map (ordinal . (+1)) is)++" argument"))
+                                -> let hint = SetHint (fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" argument"))
                                    in return (ConcreteHeuristic 4 [hint] ("too many arguments are given: "++show is))
- 
-                             (_:_ ,LT) 
+
+                             (_:_ ,LT)
                                 -> let hint = SetHint (becauseHint "too many arguments are given")
                                    in return (ConcreteHeuristic 2 [hint] "too many arguments are given")
- 
+
                              ([is],GT) | not isBinary
-                                -> let hint = SetHint (fixHint ("insert a "++prettyAndList (map (ordinal . (+1)) is)++" argument"))
-                                   in return (ConcreteHeuristic 4 [hint] ("not enough arguments are given"++show is)) 
- 
+                                -> let hint = SetHint (fixHint ("insert a "++prettyAndList (map (ordinal True . (+1)) is)++" argument"))
+                                   in return (ConcreteHeuristic 4 [hint] ("not enough arguments are given"++show is))
+
                              (_:_ ,GT)
                                 -> let hint = SetHint (becauseHint "not enough arguments are given")
                                    in return (ConcreteHeuristic 2 [hint] "not enough arguments are given")
@@ -389,7 +389,7 @@ tupleEdge edge@(EdgeID v1 v2) info
          mTupleTp    <- safeApplySubst t1    
          mExpectedTp <- safeApplySubst t2
          case (fmap leftSpine mTupleTp,fmap leftSpine mExpectedTp) of 
-             
+
           (Just (TCon s,tupleTps),Just (TCon t,expectedTps)) | isTupleConstructor s && isTupleConstructor t -> 
             case compare (length tupleTps) (length expectedTps) of
             
@@ -408,9 +408,9 @@ tupleEdge edge@(EdgeID v1 v2) info
                                , uncurry (unifiable synonyms) . applyBoth tupleType . unzip $ zl
                                ] of
                        [is] -> case compare of
-                                 LT -> let hint = SetHint (fixHint ("insert a "++prettyAndList (map (ordinal . (+1)) is)++" element to the tuple"))
+                                 LT -> let hint = SetHint (fixHint ("insert a "++prettyAndList (map (ordinal True. (+1)) is)++" element to the tuple"))
                                        in return (ConcreteHeuristic 4 [hint] ("tuple:insert "++show is)) 
-                                 GT -> let hint = SetHint (fixHint ("remove "++prettyAndList (map (ordinal . (+1)) is)++" element of tuple"))
+                                 GT -> let hint = SetHint (fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" element of tuple"))
                                        in return (ConcreteHeuristic 4 [hint] ("tuple:remove "++show is))
                        _    -> let hint = SetHint (becauseHint ("a "++show (length tupleTps)++"-tuple does not match a "++show (length expectedTps)++"-tuple"))
                                in return (ConcreteHeuristic 2 [hint] "different sizes of tuple")
@@ -419,7 +419,7 @@ tupleEdge edge@(EdgeID v1 v2) info
 fbHasTooManyArguments :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
 fbHasTooManyArguments edge info 
    | not (isExplicitTypedBinding info) = return NotApplicableHeuristic
-   | otherwise                         = 
+   | otherwise                         =
 
       do options <- getSolverOptions
          let (t1,t2)         = getTwoTypes info
@@ -466,24 +466,6 @@ deleteIndex :: Int -> [a] -> [a]
 deleteIndex _ []     = []
 deleteIndex 0 (a:as) = as
 deleteIndex i (a:as) = a : deleteIndex (i-1) as
-
--- from old Helium-compiler....move to Utils or SAMessages?
-ordinal :: Int -> String                                                                   
-ordinal i                                                                                        
-    | i >= 1 && i <= 10 = table !! (i - 1)                                                       
-    | i > 10 = show i ++ extension i                                                             
-    | otherwise = internalError "TypeGraphHeuristics.hs" "ordinal" "can't show numbers smaller than 1" 
-    where                                                                                      
-        table =                                                                                  
-            [ "first", "second", "third", "fourth", "fifth", "sixth","seventh"                                                                                        
-            , "eighth", "ninth", "tenth"                                                         
-            ]                                                                                 
-        extension i                                                                              
-            | i < 20 = "th"                                                                      
-            | i `mod` 10 == 1 = "st"                                                             
-            | i `mod` 10 == 2 = "nd"                                                             
-            | i `mod` 10 == 3 = "rd"                                                             
-            | otherwise       = "th"
 
 initAndLast :: [a] -> ([a],a)
 initAndLast []    = internalError "TypeGraphHeuristics.hs" "initAndLast" "unexpected empty list"

@@ -57,6 +57,7 @@ import Utils                   ( internalError )
 import DerivingShow            ( typeOfShowFunction, nameOfShowFunction ) 
 import UHA_Range               ( noRange, getNameRange, getExprRange )
 import UHA_Syntax
+import UHA_Utils               ( showNameAsOperator )
 import ImportEnvironment
 import FiniteMap
 }

@@ -34,7 +34,7 @@ data MessageBlock  = MessageString       String
                    | MessageInfoLink     String
                    | MessageOneLineTree  OneLiner.Tree
                    | MessageCompose      MessageBlocks                   
-                  
+
 class HasMessage a where
    getRanges            :: a -> [Range]
    getDocumentationLink :: a -> Maybe String
@@ -96,10 +96,31 @@ sortMessages = let f x y = compare (sortRanges (getRanges x))
                in sortBy f
 
 sortNamesByRange :: Names -> Names
-sortNamesByRange names = 
+sortNamesByRange names =
    let tupleList = [ (name, getNameRange name) | name <- names ]
        (xs,ys)   = partition (isImportRange . snd) tupleList
    in map fst (sortBy (\a b -> snd a `compare` snd b) ys ++ xs)
+
+-- The first argument indicates whether numbers up to ten should be
+-- printed "verbose"
+ordinal :: Bool -> Int -> String
+ordinal b i
+    | i >= 1 && i <= 10 && b = table !! (i - 1)
+    | i >= 0                 = show i ++ extension i
+    | otherwise              = internalError "Messages.hs"
+                                             "ordinal"
+                                             "can't show numbers smaller than 0"
+    where
+        table =
+            [ "first", "second", "third", "fourth", "fifth", "sixth","seventh"
+            , "eighth", "ninth", "tenth"
+            ]
+        extension i
+            | i > 3 && i < 20 = "th"
+            | i `mod` 10 == 1 = "st"
+            | i `mod` 10 == 2 = "nd"
+            | i `mod` 10 == 3 = "rd"
+            | otherwise       = "th"
 
 prettyOrList :: [String] -> String
 prettyOrList []  = ""
@@ -115,7 +136,7 @@ prettyNumberOfParameters :: Int -> String
 prettyNumberOfParameters 0 = "no parameters"
 prettyNumberOfParameters 1 = "1 parameter"
 prettyNumberOfParameters n = show n++" parameters"
-                    
+
 capitalize :: String -> String
 capitalize (x:xs) = toUpper x : xs
 

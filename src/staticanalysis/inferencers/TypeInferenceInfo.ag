@@ -48,7 +48,7 @@ SEM Declaration | PatternBinding loc . cinfo =
         , sources    = [ sourceExpression (@righthandside.oneLineTree "") ]
         , typepair   = tppair
         , properties = [ Size @size ]    
-        }        
+        }
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : FunctionBinding
@@ -73,7 +73,7 @@ SEM FunctionBinding | FunctionBinding loc . cinfoRight =
         }
 
 SEM FunctionBinding | FunctionBinding loc . cinfoBind = 
-   variableBindingCInfo (NTFunctionBinding, AltFunctionBinding, 2)        
+   variableBindingCInfo (NTFunctionBinding, AltFunctionBinding, 2)
    
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Expression
@@ -102,11 +102,11 @@ SEM Expression | Constructor loc . cinfo =
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
-                       , IsImported @name.self 
+                       , IsImported @name.self
                        , Size @size ]
         }
-        
--- Expression.NormalApplication    
+
+-- Expression.NormalApplication
 SEM Expression | NormalApplication loc . cinfo =
   \tppair ->
   CInfo { info       = (NTExpression, AltNormalApplication, 0, "")
@@ -114,24 +114,24 @@ SEM Expression | NormalApplication loc . cinfo =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm @function.oneLineTree ]
         , typepair   = tppair
-        , properties = [ ApplicationEdge False (zip @arguments.oneLineTree @arguments.betas)  
-                       , Size @size ]  
+        , properties = [ ApplicationEdge False (zip @arguments.oneLineTree @arguments.betas)
+                       , Size @size ]
         }
-        
+
 -- Expression.InfixApplication
 SEM Expression | InfixApplication loc . cinfoOperator =
   \tppair ->
   CInfo { info       = (NTExpression, AltInfixApplication, 0, "operator")
         , location   = "infix application"
         , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm (@operator.oneLineTree)]
+        , sources    = [ sourceExpression @oneLineTree, sourceOperator @operatorName ]
         , typepair   = tppair
-        , properties = (if @leftExpression.section || @rightExpression.section 
-                          then [ HighlyTrusted ] 
+        , properties = (if @leftExpression.section || @rightExpression.section
+                          then [ HighlyTrusted ]
                           else [ ApplicationEdge True
                                          [ (convertMaybeOneLineTree @leftExpression.oneLineTree ,@leftExpression.beta )
                                          , (convertMaybeOneLineTree @rightExpression.oneLineTree,@rightExpression.beta)
-                                         ] ]) 
+                                         ] ])
                        ++
                        [ Size @size ]
         }
@@ -148,7 +148,7 @@ SEM Expression | InfixApplication loc . cinfoComplete =
                        , Size @size ]  
         }
 
-SEM Expression | InfixApplication loc . cinfoLeftSection = 
+SEM Expression | InfixApplication loc . cinfoLeftSection =
   \tppair ->
   CInfo { info       = (NTExpression, AltInfixApplication, 2, "left")
         , location   = "left section"
@@ -198,7 +198,7 @@ SEM Expression | If loc . cinfoThen =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm @thenExpression.oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @size ]    
+        , properties = [ Size @size ]
         }
 
 SEM Expression | If loc . cinfoElse =
@@ -223,7 +223,7 @@ SEM Expression | Lambda loc . cinfoType =
         , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint 
-                       , Size @size ]    
+                       , Size @size ]
         }
            
 -- Expression.Case              
@@ -348,7 +348,7 @@ SEM Expression | Enum loc . cinfoThen =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm (convertMaybeOneLineTree @then.oneLineTree) ]
         , typepair   = tppair
-        , properties = [ Size @size]    
+        , properties = [ Size @size]
         }
 
 SEM Expression | Enum loc . cinfoTo =
@@ -457,7 +457,7 @@ SEM Pattern | Literal loc . cinfo =
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
                        , IsLiteral @literal.self
-                       , Size @size ]   
+                       , Size @size ]
         }   
         
 -- Pattern.Constructor
@@ -493,7 +493,7 @@ SEM Pattern | InfixConstructor loc . cinfoConstructor =
   CInfo { info       = (NTPattern, AltInfixConstructor, 0, "")
         , location   = "pattern constructor"
         , errorrange = getNameRange @constructorOperator.self
-        , sources    = [ sourcePattern @constructorOperator.oneLineTree ]
+        , sources    = [ sourceOperator @constructorOperator.oneLineTree ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
@@ -505,7 +505,7 @@ SEM Pattern | InfixConstructor loc . cinfoApply =
   CInfo { info       = (NTPattern, AltInfixConstructor, 1, "apply")
         , location   = "infix pattern application"
         , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree, sourceTerm (Text (show @constructorOperator.self))]
+        , sources    = [ sourcePattern @oneLineTree, sourceOperator (Text (showNameAsOperator @constructorOperator.self))]
         , typepair   = tppair
         , properties = [ Size @size ]   
                           {- ApplicationEdge True
@@ -513,7 +513,7 @@ SEM Pattern | InfixConstructor loc . cinfoApply =
                                  , (@rightPattern.oneLineTree,@rightPattern.beta)
                                  ] -}       
         }
-        
+
 -- Pattern.List
 SEM Pattern | List loc . cinfoElem =
   \elemtext tppair ->
@@ -573,7 +573,7 @@ SEM Pattern | Negate loc . cinfoPat =
         , properties = [ Size @size 
                        , Negation (tpToInt @beta) ]    
         }
-        
+
 -- Pattern.As 
 SEM Pattern |  As loc . cinfo =
   \tppair ->
@@ -765,12 +765,13 @@ getMaybeExprRange (MaybeExpression_Just expr) = getExprRange expr
 getMaybeExprRange (MaybeExpression_Nothing)   = noRange
 
 tpToInt :: Tp -> Int
-tpToInt tp = case ftv tp of 
+tpToInt tp = case ftv tp of
                [i] -> i
                _   -> (-1)
-               
-sourceTerm, sourceExpression, sourcePattern :: Tree -> (String, Tree)
-sourceTerm       = (,) "Term" 
-sourceExpression = (,) "Expression"
-sourcePattern    = (,) "Pattern"
+
+sourceTerm, sourceExpression, sourcePattern, sourceOperator :: Tree -> (String, Tree)
+sourceTerm       = (,) "term"
+sourceExpression = (,) "expression"
+sourcePattern    = (,) "pattern"
+sourceOperator   = (,) "operator"
 }

@@ -31,6 +31,7 @@ import Utils                   ( internalError )
 import DerivingShow            ( typeOfShowFunction, nameOfShowFunction ) 
 import UHA_Range               ( noRange, getNameRange, getExprRange )
 import UHA_Syntax
+import UHA_Utils               ( showNameAsOperator )
 import ImportEnvironment
 import FiniteMap
  
@@ -184,14 +185,15 @@ getMaybeExprRange (MaybeExpression_Just expr) = getExprRange expr
 getMaybeExprRange (MaybeExpression_Nothing)   = noRange
 
 tpToInt :: Tp -> Int
-tpToInt tp = case ftv tp of 
+tpToInt tp = case ftv tp of
                [i] -> i
                _   -> (-1)
-               
-sourceTerm, sourceExpression, sourcePattern :: Tree -> (String, Tree)
-sourceTerm       = (,) "Term" 
-sourceExpression = (,) "Expression"
-sourcePattern    = (,) "Pattern"
+
+sourceTerm, sourceExpression, sourcePattern, sourceOperator :: Tree -> (String, Tree)
+sourceTerm       = (,) "term"
+sourceExpression = (,) "expression"
+sourcePattern    = (,) "pattern"
+sourceOperator   = (,) "operator"
 
 
 encloseSep :: String -> String -> String -> [Tree] -> Tree
@@ -1515,7 +1517,7 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
             CInfo { info       = (NTExpression, AltInfixApplication, 0, "operator")
                   , location   = "infix application"
                   , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm (_operator_oneLineTree)]
+                  , sources    = [ sourceExpression _oneLineTree, sourceOperator _operatorName ]
                   , typepair   = tppair
                   , properties = (if _leftExpression_section || _rightExpression_section
                                     then [ HighlyTrusted ]
@@ -3280,7 +3282,7 @@ sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_ri
             CInfo { info       = (NTPattern, AltInfixConstructor, 0, "")
                   , location   = "pattern constructor"
                   , errorrange = getNameRange _constructorOperator_self
-                  , sources    = [ sourcePattern _constructorOperator_oneLineTree ]
+                  , sources    = [ sourceOperator _constructorOperator_oneLineTree ]
                   , typepair   = tppair
                   , properties = [ FolkloreConstraint
                                  , HighlyTrusted
@@ -3291,7 +3293,7 @@ sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_ri
             CInfo { info       = (NTPattern, AltInfixConstructor, 1, "apply")
                   , location   = "infix pattern application"
                   , errorrange = _range_self
-                  , sources    = [ sourcePattern _oneLineTree, sourceTerm (Text (show _constructorOperator_self))]
+                  , sources    = [ sourcePattern _oneLineTree, sourceOperator (Text (showNameAsOperator _constructorOperator_self))]
                   , typepair   = tppair
                   , properties = [ Size _size ]
                   }

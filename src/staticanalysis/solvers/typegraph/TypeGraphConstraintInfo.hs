@@ -15,13 +15,14 @@ import ConstraintInfo
 import OneLiner
 import TypeErrors
 import Messages
+import Utils         (internalError)
  
 class (Show constraintinfo,ConstraintInfo constraintinfo) => 
-         TypeGraphConstraintInfo constraintinfo where 
+         TypeGraphConstraintInfo constraintinfo where
              
    getInfoSource           :: constraintinfo -> InfoSource
    getPosition             :: constraintinfo -> Maybe Int
-   getTrustFactor          :: constraintinfo -> Maybe Int 
+   getTrustFactor          :: constraintinfo -> Maybe Int
    getConstraintPhaseNumber :: constraintinfo -> Maybe Int 
    isFolkloreConstraint    :: constraintinfo -> Bool
    isExplicitTypedBinding  :: constraintinfo -> Bool
@@ -41,35 +42,40 @@ class (Show constraintinfo,ConstraintInfo constraintinfo) =>
    setNewHint              :: TypeErrorInfo -> constraintinfo -> constraintinfo
    makeTypeError           :: constraintinfo -> TypeError
   
--- not a nice solution!  
+-- not a nice solution!
 makeTypeErrorForTerm :: TypeGraphConstraintInfo constraintinfo => Bool -> Int -> Tree -> (Tp,Tp) -> constraintinfo -> TypeError
-makeTypeErrorForTerm isInfixApplication argumentNumber termOneLiner (t1, t2) cinfo = 
+makeTypeErrorForTerm isInfixApplication argumentNumber termOneLiner (t1, t2) cinfo =
    case makeTypeError cinfo of
-   
-      TypeError range oneliner (UnificationErrorTable sources _ _) infos -> 
-         let newSources = filter onlyExpression sources ++ [ -- (function, functionPretty)
-                                                             -- , ("Type", Text "???")
-                                                             (subterm, MessageOneLineTree termOneLiner)
+
+      TypeError range oneliner (UnificationErrorTable sources ftype _) infos ->
+         let newSources = filter onlyExpression sources ++ [ (function, functionPretty)
+                                                           , ("type", functionType)
+                                                           , (subterm, MessageOneLineTree termOneLiner)
                                                            ]
-             onlyExpression = ("Expression"==) . fst
-             functionPretty = snd (head (filter (("Term"==) . fst) sources))
-             function = if isInfixApplication then "Operator" else "Function"
-             subterm = "Term" {-
-                | isInfixApplication = if argumentNumber == 0 then "Left operand" else "Right operand"
-                | otherwise          = "Argument #"++show (argumentNumber + 1) -}
-         in TypeError range oneliner (UnificationErrorTable newSources (Left t1) (Left t2)) infos 
-         
+             onlyExpression = ("expression"==) . fst
+             function = if isInfixApplication then "operator" else "function"
+             functionPretty = case filter (\(x, _) -> x=="term" || x=="operator") sources of
+                                 (_, x):_ -> x
+                                 _        -> internalError "TypeGraphConstraintInfo.hs"
+                                                           "makeTypeErrorForTerm"
+                                                           "unexpected empty list"
+             functionType = either MessageType MessageTypeScheme ftype
+             subterm
+                | isInfixApplication = if argumentNumber == 0 then "left operand" else "right operand"
+                | otherwise          = ordinal False (argumentNumber + 1) ++ " argument"
+         in TypeError range oneliner (UnificationErrorTable newSources (Left t1) (Left t2)) infos
+
       typeError -> typeError
 
 -- Info source
-type InfoSource = (InfoNT, InfoAlt, Int, String) 
+type InfoSource = (InfoNT, InfoAlt, Int, String)
            
 data InfoNT = NTBody              | NTDeclaration  | NTFunctionBinding | NTExpression 
             | NTGuardedExpression | NTPattern      | NTAlternative     | NTStatement  
             | NTQualifier         | NTBindingGroup
    deriving (Show,Eq)
    
-data InfoAlt = AltBody             | AltFunctionBindings | AltPatternBinding    | AltFunctionBinding 
+data InfoAlt = AltBody             | AltFunctionBindings | AltPatternBinding    | AltFunctionBinding
              | AltLiteral          | AltConstructor      | AltLet               | AltCase
              | AltLambda           | AltInfixApplication | AltDo                | AltIf 
              | AltEnum             | AltNegate           | AltTyped             | AltList 
