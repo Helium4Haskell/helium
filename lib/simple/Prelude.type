@@ -1,0 +1,57 @@
+--------------------------------------------------------
+-- Type inference directives: Sibling functions
+
+-- int versus float arithmatic
+siblings   +   , +. ;
+siblings   *   , *. ; 
+siblings   -   , -. ; 
+siblings   ^   , ^. ;
+siblings   div , /. ;
+siblings   /   , /. ;
+
+-- int versus float comparison functioons
+siblings   >== , >=. ;
+siblings   <=  , <=. ;
+siblings   ==  , ==. ;
+siblings   /=  , /=. ;
+siblings   <   , <.  ;
+siblings   >   , >.  ;
+   
+-- binary and n-ary operations 
+siblings   max     , maximum ;
+siblings   min     , minimum ;
+siblings   sum     , + ;
+siblings   product , * ;
+
+-- maybe constructors
+siblings   Just , Nothing ;
+
+-- either constructors
+siblings   Left , Right ;
+
+-- tuple functions 
+siblings   fst   , snd ;
+siblings   curry , uncurry ;
+siblings   zip   , zip3 , unzip , unzip3 ;
+
+-- list functions
+siblings   :     , ++ ;
+siblings   foldl , foldl1 , scanl , scanl1 ;
+siblings   foldr , foldr1 , scanr , scanr1 ;
+siblings   words , unwords ;
+siblings   lines , unlines ;
+siblings   map   , concatMap ;
+
+-- Helium specific functions
+siblings   == , eqChar, eqMaybe, eqBool, eqList, eqTuple2, eqString ;
+siblings   ordString, ordChar, ordInt, ordList ;
+siblings   showBool , showChar , showFloat , showInt  ;
+siblings   showString , showList , showMaybe , showEither , showOrdering ,
+           howUnit , showTuple2 , showTuple3 , showTuple4 , showTuple5 ,
+           showTuple6 , showTuple7 , showTuple8, showTuple9, showTuple10 ;
+
+-- Java string concat
+siblings   + , ++ ;
+
+-- Char, Int conversions
+siblings   ord , chr ;
