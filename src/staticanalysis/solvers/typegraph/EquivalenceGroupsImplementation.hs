@@ -24,8 +24,6 @@ import Types                ( UnificationError(..)    )
 import Utils                ( internalError           )
 import Monad                ( foldM, filterM, unless  )
 import List                 ( nub                     )
-
-
 import Int 
 import Monad
 import ConstraintInfo 
@@ -53,8 +51,9 @@ instance TypeGraphConstraintInfo info => TypeGraph EquivalenceGroups info where
          Initial info -> do combineClasses v1 v2
                             useSolver
                                (updateEquivalenceGroupOf v1 (insertEdge (EdgeID v1 v2) info))
-                            paths <- infinitePaths v1
-                            unless (null paths) (signalInconsistency InfiniteType v1)
+                            paths <- infinitePaths v1 
+                            mapM_ (signalInconsistency InfiniteType . fst) (concat paths)
+                            signalInconsistency InfiniteType v1
          _            -> internalError "EquivalenceGroupsImplementation.hs" "addEdge" "should not be called with this kind of edge"
 
    addImpliedClique (cnr,lists) =      
@@ -83,7 +82,11 @@ instance TypeGraphConstraintInfo info => TypeGraph EquivalenceGroups info where
       might result in a second visit of the same equivalence group, which then might result in unfolding the same implied 
       edge over and over again.  
       5 december: Actually, a second visit of the same equivalence group should not be a problem at all, and should even 
-      be allowed. Only the unfolding of an implied edge that has already been unfolded before should be forbidden! -}  
+      be allowed. Only the unfolding of an implied edge that has already been unfolded before should be forbidden! 
+      10 february: ...and if you encounter an implied edge that has already been unfolded, then you 
+      should return a single empty path (which is [[]]), and not the empty list (which is no path 
+      at all)!
+      -}  
    getPathsFrom v1 vs = do ps <- useSolver  
                                     (\groups -> do eqc <- equivalenceGroupOf v1 groups
                                                    rec 20 [] (pathsFrom v1 vs eqc) groups) 
@@ -100,7 +103,7 @@ instance TypeGraphConstraintInfo info => TypeGraph EquivalenceGroups info where
                       case edgeInfo of
                          Implied cnr p1 p2 -> do eqc <- equivalenceGroupOf p1 groups                                                 
                                                  parentspaths <- if (p1,p2) `elem` history
-                                                                   then return []
+                                                                   then return [[]]
                                                                    else rec i ((p1,p2):history) (pathsFrom p1 [p2] eqc) groups     
                                                  let f path = [(EdgeID p1 v1,Child cnr)] 
                                                            ++ path 

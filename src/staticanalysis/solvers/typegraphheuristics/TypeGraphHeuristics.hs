@@ -28,12 +28,12 @@ import UHA_Utils            ( nameFromString )
 import UHA_Syntax           ( Literal(..), Range(..), Position(..) )
 import Monad                ( unless, when, filterM )
 import Int                  ( fromInt )
-import Maybe                ( catMaybes )
-
-heuristics_MAX        =   120 :: Int
-upperbound_GOODPATHS  =    50 :: Int
-upperbound_ERRORPATHS =    50 :: Int
-testMode              = False :: Bool
+import Maybe                ( catMaybes, isJust )
+ 
+heuristics_MAX        =    120 :: Int
+upperbound_GOODPATHS  =     50 :: Int
+upperbound_ERRORPATHS =     50 :: Int
+testMode              = False  :: Bool
 
 heuristics :: (TypeGraph EquivalenceGroups info, TypeGraphConstraintInfo info, Show info) => SolveState EquivalenceGroups info [(Float,[EdgeID],[info])]
 heuristics = do conflicts <- getConflicts
@@ -43,31 +43,30 @@ heuristics = do conflicts <- getConflicts
                   then heuristicsConstantClash clashes
                   else heuristicsInfiniteType infinites
 
-{- question: why are there empty lists in xs???? -}
 heuristicsInfiniteType :: (TypeGraph EquivalenceGroups info, TypeGraphConstraintInfo info, Show info) =>  [Int] -> SolveState EquivalenceGroups info [(Float,[EdgeID],[info])]
-heuristicsInfiniteType is =
+heuristicsInfiniteType is = 
    do addDebug (putStrLn "Infinite Type") 
       pathsList <- mapM infinitePaths is
       let selectTheBest path =  
-             do let f (v1,v2) = getPathsFrom v1 [v2]                               
+             do let f (v1,v2) = getPathsFrom v1 [v2]                                               
                 xs <- mapM f (shift path)
                 let tupleWithPosition as = [(maybe 0 id (getPosition info),(edge,info)) | (edge,Initial info) <- as ]
                     compareFirst x y = compare (fst x) (fst y)
-                    maximumBy' f xs = if null xs then (minBound,err "maximumBy'") else maximumBy f xs -- not safe
-                    minimumBy' f xs = if null xs then (maxBound,err "minimumBy'") else minimumBy f xs -- not safe
-                    err = internalError "TypeGraphHeuristics.hs" "heuristicsInfiniteType"
+                    maximumBy' f xs = if null xs then (minBound, err "maximumBy'") else maximumBy f xs -- not safe
+                    minimumBy' f xs = if null xs then (maxBound, err "minimumBy'") else minimumBy f xs -- not safe
+                    err = internalError "TypeGraphHeuristics.hs" ("heuristicsInfiniteType\n"++show xs)
                     (position,(edge,info))  = maximumBy' compareFirst
-                                            . map ( minimumBy' compareFirst
+                                            . map ( minimumBy' compareFirst                                          
                                                   . map ( maximumBy' compareFirst
                                                         . tupleWithPosition
                                                         )
-                                                  )
-                                            $ filter (not . null) xs
+                                                  )                                           
+                                            $ xs
                 
                 return ( 1.0 - (fromInt position / 1000) 
                        , [edge]
                        , [info]
-                       ) 
+                       )
       mapM selectTheBest . nub . concat $ pathsList       
 
 shift :: [(a,a)] -> [(a,a)]
