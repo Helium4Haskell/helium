@@ -380,12 +380,12 @@ decl1 (n, nr) =
         lexCOMMA
         ns <- vars
         lexCOLCOL
-        t <- type_
+        t <- contextAndType
         return $ \r -> Declaration_TypeSignature r (n:ns) t
     <|>
     do
         lexCOLCOL
-        t <- type_
+        t <- contextAndType
         return $ \r -> Declaration_TypeSignature r [n] t
     <|>
     do  
@@ -514,11 +514,19 @@ exp_ = addRange (
         option (\_ -> e) $ 
             do 
                 lexCOLCOL
-                t <- type_
+                t <- contextAndType
                 return $ \r -> Expression_Typed r e t
     )
     <?> "expression"        
 
+contextAndType :: HParser Type
+contextAndType = addRange $ do
+    mc <- option Nothing (try $ do { c <- scontext; lexDARROW; return (Just c) })
+    t <- type_
+    case mc of 
+        Nothing -> return $ \_ -> t
+        Just c  -> return $ \r -> Type_Qualified r c t
+    
 {-
 expi  ->  expi+1 [op(n,i) expi+1]  
  |  lexpi  
@@ -1007,6 +1015,26 @@ apat = addRange (
     ) <?> "pattern"
 
 {-
+scontext -> class | "(" class1 "," ... "," classn ")"    (n>=0)
+simpleclass -> tycls tyvar
+         (other case in Haskell report at 'class' is not supported in Helium
+          because we do not have type variable application)
+-}
+
+scontext :: HParser ContextItems
+scontext = 
+    do { c <- simpleclass; return [c] }
+    <|>
+    parens (commas simpleclass)
+
+simpleclass :: HParser ContextItem
+simpleclass = addRange (do
+    c <- tycon
+    (v, vr) <- withRange tyvar
+    return $ \r -> ContextItem_ContextItem r c [Type_Variable vr v]
+    )
+    
+{-
 type  ->  btype ( "->" type )? 
 -}
 
@@ -1094,4 +1122,42 @@ literal = addRange (
         s <- lexString
         return $ \r -> Literal_String r s
     ) <?> "literal"
+
+{- Niet nodig, want voor class declaraties
+
+    ...
+    <|>
+    do
+        lexCLASS
+        contextItems <- option [] (do { is <- scontext; lexDARROW; return is } )
+        st <- simpleTypeOneVar
+        maybeDecls <- option MaybeDeclarations_Nothing 
+                        (fmap MaybeDeclarations_Just (do { lexWHERE; decls }))
+        return $ \r -> Declaration_Class r contextItems st maybeDecls
+
+simpleTypeOneVar :: HParser SimpleType
+simpleTypeOneVar =
+    addRange (
+        do
+            c  <- tycon
+            v  <- tyvar
+            return $ \r -> SimpleType_SimpleType r c [v]
+    ) <?> "simple type"
+
+scontext :: HParser ContextItems
+scontext = 
+    do
+        sc <- simpleclass
+        return [sc]
+    <|>
+    parens (semiSepTerm simpleclass)
+
+simpleclass :: HParser ContextItem
+simpleclass = addRange ( 
+    do
+        c <- tycon
+        (v, r) <- withRange tyvar
+        return (\r -> ContextItem_ContextItem r c [Type_Variable r v])
+    ) <?> "context"
+-}
 
