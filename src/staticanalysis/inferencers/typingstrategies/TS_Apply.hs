@@ -3,7 +3,6 @@ module TS_Apply where
 
 import UHA_Syntax
 import TS_CoreSyntax
-import ConstraintTree
 import TypeConstraints
 import HeliumConstraintInfo
 import TypeGraphConstraintInfo
@@ -250,14 +249,14 @@ sem_Core_TypingStrategy_TypingStrategy (_typerule) (_statements) (_lhs_localInfo
 -- Core_UserStatement ------------------------------------------
 -- semantic domain
 type T_Core_UserStatement = ([((String, Maybe String), MessageBlock)]) ->
-                            (ConstraintTrees HeliumConstraintInfo) ->
+                            (Trees (TypeConstraint HeliumConstraintInfo)) ->
                             (Maybe Int) ->
                             ((Int, Int)) ->
                             ((ConstraintSet, MetaVariableInfo)) ->
                             (MetaVariableTable MetaVariableInfo) ->
-                            ([(String,ConstraintTree HeliumConstraintInfo)]) ->
+                            ([(String,Tree (TypeConstraint HeliumConstraintInfo))]) ->
                             (FiniteMapSubstitution) ->
-                            ( (ConstraintTrees HeliumConstraintInfo),(Maybe Int),((Int, Int)),([Int]),([(String,ConstraintTree HeliumConstraintInfo)]))
+                            ( (Trees (TypeConstraint HeliumConstraintInfo)),(Maybe Int),((Int, Int)),([Int]),([(String,Tree (TypeConstraint HeliumConstraintInfo))]))
 -- cata
 sem_Core_UserStatement :: (Core_UserStatement) ->
                           (T_Core_UserStatement)
@@ -307,14 +306,14 @@ sem_Core_UserStatement_MetaVariableConstraints (_name) (_lhs_attributeTable) (_l
 -- Core_UserStatements -----------------------------------------
 -- semantic domain
 type T_Core_UserStatements = ([((String, Maybe String), MessageBlock)]) ->
-                             (ConstraintTrees HeliumConstraintInfo) ->
+                             (Trees (TypeConstraint HeliumConstraintInfo)) ->
                              (Maybe Int) ->
                              ((Int, Int)) ->
                              ((ConstraintSet, MetaVariableInfo)) ->
                              (MetaVariableTable MetaVariableInfo) ->
-                             ([(String,ConstraintTree HeliumConstraintInfo)]) ->
+                             ([(String,Tree (TypeConstraint HeliumConstraintInfo))]) ->
                              (FiniteMapSubstitution) ->
-                             ( (ConstraintTrees HeliumConstraintInfo),(Maybe Int),((Int, Int)),([Int]),([(String,ConstraintTree HeliumConstraintInfo)]))
+                             ( (Trees (TypeConstraint HeliumConstraintInfo)),(Maybe Int),((Int, Int)),([Int]),([(String,Tree (TypeConstraint HeliumConstraintInfo))]))
 -- cata
 sem_Core_UserStatements :: (Core_UserStatements) ->
                            (T_Core_UserStatements)

@@ -3,7 +3,6 @@ INCLUDE "TS_AG_CoreSyntax.ag"
 imports {
 import UHA_Syntax
 import TS_CoreSyntax
-import ConstraintTree
 import TypeConstraints
 import HeliumConstraintInfo
 import TypeGraphConstraintInfo
@@ -109,10 +108,10 @@ SEM Core_Judgement
 
 ATTR Core_UserStatements Core_UserStatement 
      [ attributeTable     : {[((String, Maybe String), MessageBlock)]}
-     | collectConstraints : {ConstraintTrees HeliumConstraintInfo} 
+     | collectConstraints : {Trees (TypeConstraint HeliumConstraintInfo)} 
        currentPhase       : {Maybe Int} 
        currentPosition    : {(Int, Int)}
-       metavarConstraints : {[(String,ConstraintTree HeliumConstraintInfo)]}
+       metavarConstraints : {[(String,Tree (TypeConstraint HeliumConstraintInfo))]}
      | 
      ]
 

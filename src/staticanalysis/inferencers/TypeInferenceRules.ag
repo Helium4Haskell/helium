@@ -26,7 +26,7 @@ SEM Module
                               putStrLn $ "constraints in set: "++show (length @constraints)
                               @solveDebug
                                 
-      loc  . constraints = zipWith setPosition [0..] (flatten @lhs.flattening @body.constraints)
+      loc  . constraints = zipWith setPosition [0..] (flattenTree (snd @lhs.flattening) (phaseTree (spreadTree variableInConstraint @body.constraints)))
            . orderedTypeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment
            
            . (betaUniqueAtTheEnd,substitution,predicates,solveErrors,solveDebug) 

@@ -12,7 +12,6 @@ import TypeConversion
 -- constraints
 import TypeConstraints
 import LiftedConstraints
-import ConstraintTree
 import TreeWalk
 import Tree
 -- messages
@@ -3630,7 +3629,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_flattening) (_lhs_im
                putStrLn $ "constraints in set: "++show (length _constraints)
                _solveDebug
         (_constraints) =
-            zipWith setPosition [0..] (flatten _lhs_flattening _body_constraints)
+            zipWith setPosition [0..] (flattenTree (snd _lhs_flattening) (phaseTree (spreadTree variableInConstraint _body_constraints)))
         (_orderedTypeSynonyms) =
             getOrderedTypeSynonyms _lhs_importEnvironment
         ((_betaUniqueAtTheEnd,_substitution,_predicates,_solveErrors,_solveDebug)) =

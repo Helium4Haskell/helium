@@ -1,6 +1,5 @@
 module HeliumConstraintInfo where
 
-import ConstraintTree
 import UHA_Syntax
 import OneLiner
 import Types
@@ -10,6 +9,7 @@ import TypeGraphConstraintInfo
 import ConstraintInfo
 import TypeConstraints
 import List
+import Tree
 
 data HeliumConstraintInfo =
    CInfo { info       :: InfoSource
@@ -44,8 +44,8 @@ data Property   = FolkloreConstraint
 instance Show HeliumConstraintInfo where
    show = show . getInfoSource
 
-type ConstraintSet  = ConstraintTree  HeliumConstraintInfo 
-type ConstraintSets = ConstraintTrees HeliumConstraintInfo
+type ConstraintSet  = Tree  (TypeConstraint HeliumConstraintInfo)
+type ConstraintSets = Trees (TypeConstraint HeliumConstraintInfo)
 
 instance ConstraintInfo HeliumConstraintInfo where                                  
                                    
