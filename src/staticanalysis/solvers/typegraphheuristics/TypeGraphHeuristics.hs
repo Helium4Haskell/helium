@@ -8,7 +8,7 @@
 --
 -------------------------------------------------------------------------------
 
-module TypeGraphHeuristics where
+module TypeGraphHeuristics (heuristics) where
 
 import EquivalenceGroup
 import SolveEquivalenceGroups
@@ -29,52 +29,24 @@ import UHA_Syntax           ( Literal(..), Range(..), Position(..) )
 import Monad                ( unless, when, filterM )
 import Int                  ( fromInt )
 import Maybe                ( catMaybes, isJust )
+import InfiniteTypeHeuristic  (infiniteTypeHeuristic)
  
 heuristics_MAX        =    120 :: Int
 upperbound_GOODPATHS  =     50 :: Int
 upperbound_ERRORPATHS =     50 :: Int
 testMode              = False  :: Bool
 
-heuristics :: (TypeGraph EquivalenceGroups info, TypeGraphConstraintInfo info, Show info) => SolveState EquivalenceGroups info [(Float,[EdgeID],[info])]
+heuristics :: (TypeGraph EquivalenceGroups info, TypeGraphConstraintInfo info, Show info) => 
+              SolveState EquivalenceGroups info ([EdgeID], [info])
 heuristics = do conflicts <- getConflicts
-                let clashes   = [ i | ( ConstantClash , i ) <- conflicts ]
-                    infinites = [ i | ( InfiniteType  , i ) <- conflicts ]
+                let clashes   = [ i | (ConstantClash, i) <- conflicts ]
+                    infinites = [ i | (InfiniteType , i) <- conflicts ]
                 if null infinites
                   then heuristicsConstantClash clashes
-                  else heuristicsInfiniteType infinites
-
-heuristicsInfiniteType :: (TypeGraph EquivalenceGroups info, TypeGraphConstraintInfo info, Show info) =>  [Int] -> SolveState EquivalenceGroups info [(Float,[EdgeID],[info])]
-heuristicsInfiniteType is = 
-   do addDebug (putStrLn "Infinite Type") 
-      pathsList <- mapM infinitePaths is
-      let selectTheBest path =  
-             do let f (v1,v2) = getPathsFrom v1 [v2]                                               
-                xs <- mapM f (shift path)
-                let tupleWithPosition as = [(maybe 0 id (getPosition info),(edge,info)) | (edge,Initial info) <- as ]
-                    compareFirst x y = compare (fst x) (fst y)
-                    maximumBy' f xs = if null xs then (minBound, err "maximumBy'") else maximumBy f xs -- not safe
-                    minimumBy' f xs = if null xs then (maxBound, err "minimumBy'") else minimumBy f xs -- not safe
-                    err = internalError "TypeGraphHeuristics.hs" ("heuristicsInfiniteType\n"++show xs)
-                    (position,(edge,info))  = maximumBy' compareFirst
-                                            . map ( minimumBy' compareFirst                                          
-                                                  . map ( maximumBy' compareFirst
-                                                        . tupleWithPosition
-                                                        )
-                                                  )                                           
-                                            $ xs
-                
-                return ( 1.0 - (fromInt position / 1000) 
-                       , [edge]
-                       , [info]
-                       )
-      mapM selectTheBest . nub . concat $ pathsList       
-
-shift :: [(a,a)] -> [(a,a)]
-shift []                 = internalError "TypeGraphHeuristics" "shift" "empty list"
-shift [(a,b)]            = [(b,a)]
-shift ((a,b):(c,d):rest) = (b,c) : shift ((a,d):rest)
-
-heuristicsConstantClash :: (TypeGraph EquivalenceGroups info, TypeGraphConstraintInfo info, Show info) => [Int] -> SolveState EquivalenceGroups info [(Float,[EdgeID],[info])]
+                  else infiniteTypeHeuristic infinites
+                        
+heuristicsConstantClash :: (TypeGraph EquivalenceGroups info, TypeGraphConstraintInfo info, Show info) => 
+                           [Int] -> SolveState EquivalenceGroups info ([EdgeID], [info])
 heuristicsConstantClash is = 
 
    do (goodPaths,errorPaths) <- 
@@ -162,7 +134,7 @@ heuristicsConstantClash is =
                                          in foldr op standard as
              _                        -> standard
           
-      return [(1.0,edgesToRemove,[typeError])]
+      return (edgesToRemove, [typeError])
 
 data HeuristicResult = ConcreteHeuristic Int [HeuristicAction] String
                      | ModifierHeuristic Float String
@@ -449,8 +421,8 @@ tupleEdge edge@(EdgeID v1 v2) info
    doWithoutEdge (edge,info) $ 
    
       do options     <- getSolverOptions
-         let (t1,t2)   = getTwoTypes info                            
-             synonyms  = getTypeSynonyms options
+         let (t1,t2)  = getTwoTypes info                            
+             synonyms = getTypeSynonyms options
          mTupleTp    <- safeApplySubst t1    
          mExpectedTp <- safeApplySubst t2
          case (fmap leftSpine mTupleTp,fmap leftSpine mExpectedTp) of 

@@ -69,7 +69,7 @@ class TypeGraph typegraph info where
    getPathsFrom               :: VertexID -> [VertexID] -> SolveState typegraph info [Path info]
    getConflicts               :: SolveState typegraph info [(UnificationError,Int) ]
    deleteEdge                 :: EdgeID -> SolveState typegraph info ()
-   getHeuristics              :: SolveState typegraph info [(Float,[EdgeID],[info])]
+   getHeuristics              :: SolveState typegraph info ([EdgeID], [info])
 
    -- additional functions
    getConstantsInGroup :: VertexID -> SolveState typegraph info [String]
@@ -119,9 +119,7 @@ instance (TypeGraphConstraintInfo info,TypeGraph typegraph info) => ConstraintSo
            then 
              checkErrors
            else 
-             do suggestions <- getHeuristics               
-                let fst3 (a,_,_) = a
-                    (trust,edges,errors) = maximumBy (\a b -> compare (fst3 a :: Float) (fst3 b :: Float)) suggestions               
+             do (edges, errors) <- getHeuristics                         
                 mapM_ addError errors               
                 mapM_ deleteEdge edges                        
                 addDebug (putStrLn $ "> removed edges "++show edges)

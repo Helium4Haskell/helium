@@ -91,6 +91,7 @@ STATICANALYSIS = \
 	staticanalysis/solvers/typegraph/EquivalenceGroupsImplementation.hs \
 	staticanalysis/solvers/typegraph/EquivalenceGroupsToHTML.hs \
 	staticanalysis/solvers/typegraphheuristics/TypeGraphHeuristics.hs \
+        staticanalysis/solvers/typegraphheuristics/InfiniteTypeHeuristic.hs \
 	staticanalysis/solvers/typegraphheuristics/SimilarFunctionTable.hs \
 	staticanalysis/types/TypeUnification.hs \
 	staticanalysis/types/Types.hs \

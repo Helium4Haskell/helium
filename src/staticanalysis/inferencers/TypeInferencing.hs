@@ -307,7 +307,7 @@ generalMatch exprVarMatcher converter metaVariableInfo unique matcher tryPats al
           case m of
              NoMatch             -> (Nothing:res, nts)
              NonTerminalMatch _  -> (allMatch (head nts):res, tail nts)
-             MetaVariableMatch s -> (Just [(s,metaVariableInfo)]:res, nts)
+             MetaVariableMatch s -> (Just [(s,(constraintSet, snd metaVariableInfo))]:res, nts) --  !!!
        
        result   = fst (foldr inspectMatch ([],reverse $ transpose resultTry) matchListTry)       
        complete = let (list,_) = foldr inspectMatch ([],reverse $ transpose resultNew) matchListNew
