@@ -114,7 +114,7 @@ type InfoTree = DoublyLinkedTree LocalInfo
 data LocalInfo = 
      LocalInfo { self           :: UHA_Source  
                , assignedType   :: Maybe Tp
-               , monos          :: FiniteMap Name Tp
+               , monos          :: Tps
                }
             
 type ConstraintSet  = Tree  (TypeConstraint ConstraintInfo)
@@ -172,6 +172,18 @@ maybeOriginalTypeScheme cinfo =
          []  -> Nothing
          t:_ -> Just (flipped, t)
 
+maybeUserConstraint :: ConstraintInfo -> Maybe (Int, Int)
+maybeUserConstraint info =
+   case [ (x, y) | IsUserConstraint x y <- properties info ] of
+      tuple:_ -> Just tuple
+      _       -> Nothing
+      
+phaseOfConstraint :: ConstraintInfo -> Int
+phaseOfConstraint info =
+   case [ i | ConstraintPhaseNumber i <- properties info ] of  
+      []  -> 5 -- default phase number
+      i:_ -> i
+      
 setTypeError :: TypeError -> ConstraintInfo -> ConstraintInfo
 setTypeError typeError cinfo =
    let p (WithTypeError _) = False

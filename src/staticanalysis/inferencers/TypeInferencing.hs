@@ -74,7 +74,7 @@ expandPredicate (_, synonyms) (Predicate className tp) = Predicate className (ex
 getInferredTypes :: Substitution substitution => Monos -> substitution -> Predicates -> BindingGroups -> [(NameWithRange, TpScheme)]
 getInferredTypes monos substitution predicates groups = 
    let (environment, _, _) = concatBindingGroups groups
-       monos' = ftv (substitution |-> (eltsFM monos))
+       monos' = ftv (substitution |-> monos)
    in [ (NameWithRange name, makeScheme monos' predicates tp')
       | (name, tp) <- fmToList environment 
       , let  tp' = substitution |-> tp
@@ -669,7 +669,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
                      , _righthandsideIconstraints
                      ]
             (_righthandsideOmonos@_) =
-                _patternIenvironment `plusFM` getMonos _csetBinds `plusFM` _lhsImonos
+                eltsFM _patternIenvironment ++ getMonos _csetBinds ++ _lhsImonos
             (_cinfoLeft@_) =
                 resultConstraint "case pattern" _patternIinfoTree
                    [ Unifier (head (ftv _lhsIbetaLeft)) ("case patterns", attribute _lhsIparentTree, "case pattern") ]
@@ -1438,7 +1438,8 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                                (_declarationsOtypeSignatures)
                                (_declarationsOuniqueChunk))
             ((_aset@_,_cset@_,_inheritedBDG@_,_chunkNr@_)) =
-                performBindingGroup _lhsIcurrentChunk _declarationsIuniqueChunk _lhsIchunkNumberMap _lhsImonos _declarationsItypeSignatures Nothing _declarationsIbindingGroups
+                let inputBDG = (_lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsIchunkNumberMap, _lhsImonos, _declarationsItypeSignatures, Nothing)
+                in performBindingGroup inputBDG _declarationsIbindingGroups
             (_constraints@_) =
                 Chunk _lhsIcurrentChunk _cset [] (dependencyBinds _lhsIchunkNumberMap _csetBinds) emptyTree
             ((_csetBinds@_,_lhsOassumptions@_)) =
@@ -1447,7 +1448,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                 []
             (_lhsOtoplevelTypes@_) =
                 let (environment, _, _) = concatBindingGroups _declarationsIbindingGroups
-                    monos' = ftv (_lhsIsubstitution |-> eltsFM _lhsImonos)
+                    monos' = ftv (_lhsIsubstitution |-> _lhsImonos)
                     make _ = makeScheme monos' _lhsIpredicates . (_lhsIsubstitution |->)
                 in mapFM make environment
             (_localTypes@_) =
@@ -2458,7 +2459,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
             (_beta@_) =
                 TVar _lhsIbetaUnique
             (_bindingsOmonos@_) =
-                findMono _bindingsIname _lhsIinheritedBDG `plusFM` _lhsImonos
+                findMono _bindingsIname _lhsIinheritedBDG ++ _lhsImonos
             (_bindingsObetaUnique@_) =
                 _lhsIbetaUnique + 2 + _bindingsInumberOfPatterns
             (_lhsObindingGroups@_) =
@@ -2985,7 +2986,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             (_betaRight@_) =
                 TVar _lhsIbetaUnique
             (_righthandsideOmonos@_) =
-                findMono (head (keysFM _patternIenvironment)) _lhsIinheritedBDG `plusFM` _lhsImonos
+                findMono (head (keysFM _patternIenvironment)) _lhsIinheritedBDG ++ _lhsImonos
             (_patternObetaUnique@_) =
                 _lhsIbetaUnique + 1
             (_lhsObindingGroups@_) =
@@ -6351,7 +6352,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
                      , _expressionIconstraints
                      ]
             (_expressionOmonos@_) =
-                _patternsIenvironment `plusFM` getMonos _csetBinds `plusFM` _lhsImonos
+                eltsFM _patternsIenvironment ++ getMonos _csetBinds ++ _lhsImonos
             (_patternsObetaUnique@_) =
                 _lhsIbetaUnique + 1
             (_cinfoBind@_) =
@@ -6638,9 +6639,9 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                              (_expressionOuniqueChunk)
                              (_expressionOuniqueSecondRound))
             ((_lhsOassumptions@_,_cset@_,_inheritedBDG@_,_chunkNr@_)) =
-                performBindingGroup _lhsIcurrentChunk _expressionIuniqueChunk _lhsIchunkNumberMap _lhsImonos _declarationsItypeSignatures _mybdggroup _declarationsIbindingGroups
-            (_mybdggroup@_) =
-                Just (_expressionIassumptions, [_expressionIconstraints])
+                let inputBDG   = (_lhsIcurrentChunk, _expressionIuniqueChunk, _lhsIchunkNumberMap, _lhsImonos, _declarationsItypeSignatures, mybdggroup)
+                    mybdggroup = Just (_expressionIassumptions, [_expressionIconstraints])
+                in performBindingGroup inputBDG _declarationsIbindingGroups
             (_beta@_) =
                 TVar _lhsIbetaUnique
             (_constraints@_) =
@@ -8805,7 +8806,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
                 _errors ++ _expressionIcollectErrors
             (_errors@_) =
                 let scheme = makeScheme monos' _lhsIpredicates tp'
-                    monos' = ftv (_lhsIsubstitution |-> eltsFM _lhsImonos)
+                    monos' = ftv (_lhsIsubstitution |-> _lhsImonos)
                     tp'    = _lhsIsubstitution |-> _expressionIbeta
                     info   = (self . attribute) _expressionIinfoTree
                 in checkNotTooGeneral info _lhsIorderedTypeSynonyms _typeScheme scheme
@@ -9711,7 +9712,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
                      , _righthandsideIconstraints
                      ]
             (_righthandsideOmonos@_) =
-                _lefthandsideIenvironment `plusFM` getMonos _csetBinds `plusFM` _lhsImonos
+                eltsFM _lefthandsideIenvironment ++ getMonos _csetBinds ++ _lhsImonos
             (_cinfoLeft@_) =
                 \num  ->
                 orphanConstraint num "pattern of function binding" _parentTree
@@ -11756,9 +11757,9 @@ sem_MaybeDeclarations_Just (declarations_) =
                                (_declarationsOtypeSignatures)
                                (_declarationsOuniqueChunk))
             ((_lhsOassumptions@_,_lhsOconstraints@_,_inheritedBDG@_,_chunkNr@_)) =
-                performBindingGroup _lhsIcurrentChunk _declarationsIuniqueChunk _lhsIchunkNumberMap _lhsImonos _declarationsItypeSignatures _mybdggroup _declarationsIbindingGroups
-            (_mybdggroup@_) =
-                Just (_lhsIassumptions, [_lhsIconstraints])
+                let inputBDG   = (_lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsIchunkNumberMap, _lhsImonos, _declarationsItypeSignatures, mybdggroup)
+                    mybdggroup = Just (_lhsIassumptions, [_lhsIconstraints])
+                in performBindingGroup inputBDG _declarationsIbindingGroups
             (_declarationsObindingGroups@_) =
                 []
             (_localTypes@_) =
@@ -12465,13 +12466,15 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             (_lhsOwarnings@_) =
                 _warnings     ++ _bodyIpatternMatchWarnings
             (_bodyObetaUnique@_) =
-                maximum ((-1) : _monomorphics) + 1
+                if null _monomorphics
+                  then 0
+                  else maximum _monomorphics + 1
             (_monomorphics@_) =
                 ftv (  (eltsFM $ valueConstructors _lhsIimportEnvironment)
                     ++ (eltsFM $ typeEnvironment   _lhsIimportEnvironment)
                     )
             (_monos@_) =
-                listToFM [ (nameFromString "_import", TVar i) | i <- _monomorphics ]
+                map TVar _monomorphics
             (_initialScope@_) =
                 keysFM (typeEnvironment _lhsIimportEnvironment)
             (_debugIO@_) =
@@ -14282,7 +14285,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
                         , _lhsIconstraints
                         ]
             (_lhsOmonos@_) =
-                _patternIenvironment `plusFM` getMonos _csetBinds `plusFM` _lhsImonos
+                eltsFM _patternIenvironment ++ getMonos _csetBinds ++ _lhsImonos
             (_lhsOconstraints@_) =
                 _locConstraints
             (_lhsOassumptions@_) =
@@ -14712,9 +14715,9 @@ sem_Qualifier_Let (range_) (declarations_) =
                                (_declarationsOtypeSignatures)
                                (_declarationsOuniqueChunk))
             ((_lhsOassumptions@_,_lhsOconstraints@_,_inheritedBDG@_,_chunkNr@_)) =
-                performBindingGroup _lhsIcurrentChunk _declarationsIuniqueChunk _lhsIchunkNumberMap _lhsImonos _declarationsItypeSignatures _mybdggroup _declarationsIbindingGroups
-            (_mybdggroup@_) =
-                Just (_lhsIassumptions, [_lhsIconstraints])
+                let inputBDG   = (_lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsIchunkNumberMap, _lhsImonos, _declarationsItypeSignatures, mybdggroup)
+                    mybdggroup = Just (_lhsIassumptions, [_lhsIconstraints])
+                in performBindingGroup inputBDG _declarationsIbindingGroups
             (_declarationsObindingGroups@_) =
                 []
             (_localTypes@_) =
@@ -16958,7 +16961,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
                         , _lhsIconstraints
                         ]
             (_lhsOmonos@_) =
-                _patternIenvironment `plusFM` getMonos _csetBinds `plusFM` _lhsImonos
+                eltsFM _patternIenvironment ++ getMonos _csetBinds ++ _lhsImonos
             (_lhsOassumptions@_) =
                 _assumptions' `combine` _expressionIassumptions
             (_lhsOconstraints@_) =
@@ -17189,9 +17192,9 @@ sem_Statement_Let (range_) (declarations_) =
                                (_declarationsOtypeSignatures)
                                (_declarationsOuniqueChunk))
             ((_lhsOassumptions@_,_lhsOconstraints@_,_inheritedBDG@_,_chunkNr@_)) =
-                performBindingGroup _lhsIcurrentChunk _declarationsIuniqueChunk _lhsIchunkNumberMap _lhsImonos _declarationsItypeSignatures _mybdggroup _declarationsIbindingGroups
-            (_mybdggroup@_) =
-                Just (_lhsIassumptions, [_lhsIconstraints])
+                let inputBDG    = (_lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsIchunkNumberMap, _lhsImonos, _declarationsItypeSignatures, mybdggroup)
+                    mybdggroup = Just (_lhsIassumptions, [_lhsIconstraints])
+                in performBindingGroup inputBDG _declarationsIbindingGroups
             (_declarationsObindingGroups@_) =
                 []
             (_lhsOgeneratorBeta@_) =

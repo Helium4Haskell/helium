@@ -54,65 +54,49 @@ expressionParser operatorTable string =
   where
     intErr = internalError "TS_Apply.ag" "n/a" ("unparsable expression: "++show string)
 
-standardConstraintInfo :: (Int, Int) -> (Tp, Tp) -> ConstraintInfo
-standardConstraintInfo pos tppair =
+emptyConstraintInfo :: (Tp, Tp) -> ConstraintInfo
+emptyConstraintInfo tppair =
    CInfo { location   = "Typing Strategy"
          , sources    = (UHA_Decls [], Nothing)
          , typepair   = tppair
-         , localInfo  = root (LocalInfo (UHA_Decls []) Nothing emptyFM) []
-         , properties = [ ]
+         , localInfo  = root (LocalInfo (UHA_Decls []) Nothing []) []
+         , properties = []
          }
 
-typeRuleCInfo :: String -> Maybe (String, UHA_Source) -> LocalInfo -> (Tp, Tp) -> ConstraintInfo
-typeRuleCInfo loc mTuple source tppair =
-   CInfo { location   = loc
-         , sources    = (UHA_Decls [], Nothing)
-         , localInfo  = root source []
+defaultConstraintInfo :: (UHA_Source, Maybe UHA_Source) -> (Tp, Tp) -> ConstraintInfo
+defaultConstraintInfo sourceTuple@(s1, s2) tppair =
+   CInfo { location   = descriptionOfSource theSource -- not very precise: expression, pattern, etc.
+         , sources    = sourceTuple
+         , localInfo  = root myLocal []
          , typepair   = tppair
          , properties = []
          }
--- where (infoString, srcs, props) = case mTuple of 
---          Just (s,t) -> ("meta variable "++s, [sourceExpression t, sourceTerm tree], [])
---          Nothing    -> ("conclusion", [sourceExpression tree], [FolkloreConstraint])
-
+ where myLocal   = LocalInfo {self = theSource, assignedType = Nothing, monos = []}
+       theSource = maybe s1 id s2
+       
 exactlyOnce :: Eq a => [a] -> [a]
 exactlyOnce []     = []
 exactlyOnce (x:xs) | x `elem` xs = exactlyOnce . filter (/= x) $ xs
                    | otherwise   = x : exactlyOnce xs
 
-setCustomTypeError :: LocalInfo -> ConstraintInfo -> ConstraintInfo
-setCustomTypeError source cinfo =
-   addProperty (WithTypeError customTypeError) cinfo        
-
-     where customTypeError = TypeError [rangeOfSource (self source)] message [] []
-           message = [ MessageOneLiner (MessageString ("Type error in "++"Typing Strategy"))
-                     , MessageTable
-                          [ (MessageString "Expression", MessageOneLineTree (oneLinerSource (self source))) ]                     
-                     , MessageOneLiner (MessageString "   implies that the following types are equal:")
-                     , MessageTable 
-                          [ (MessageString "Type 1", MessageType (toTpScheme (fst (typepair cinfo))))
-                          , (MessageString "Type 2", MessageType (toTpScheme (snd (typepair cinfo))))
-                          ]                     
-                     ]  
-
 makeMessageAlgebra :: AttributeTable MessageBlock -> AttributeAlgebra MessageBlock
-makeMessageAlgebra table = ( MessageString
-                           , table
-                           , \attribute -> internalError 
-                                              "TS_Apply" "makeMessageAlgebra"
-                                              ("unknown attribute " ++ showAttribute attribute ++
-                                               "; known attributes are " ++ show (map (showAttribute . fst) table))
-                           )
+makeMessageAlgebra table = 
+   (MessageString, table, \a -> internalError "TS_Apply" "makeMessageAlgebra" ("unknown attribute " ++ showAttribute a))
 
 makeAttributeTable :: LocalInfo -> MetaVariableTable LocalInfo -> FiniteMapSubstitution -> [((String, Maybe String), MessageBlock)]
 makeAttributeTable local table substitution = 
-   let f :: String -> LocalInfo -> [((String, Maybe String), MessageBlock)]
-       f string source = [ ((string, Just "type" ), MessageType (toTpScheme (getTheType source)))
-                         , ((string, Just "pp"   ), MessageOneLineTree (oneLinerSource (self source)))
-                         , ((string, Just "range"), MessageRange (rangeOfSource (self source)))
-                         ]
-   in f "expr" local 
-   ++ concatMap (\(s,(_,info)) -> f s info) table 
+   let 
+       metaVariables :: [(String, LocalInfo)]
+       metaVariables = ("expr", local) : [ (s, li) | (s, (_, li)) <- table ]
+       
+       attributes :: [(String, LocalInfo -> MessageBlock)]
+       attributes = 
+          [ ("type" , MessageType . toTpScheme . getTheType)
+          , ("pp"   , MessageOneLineTree . oneLinerSource . self)
+          , ("range", MessageRange . rangeOfSource . self)
+          ]
+   in 
+      [ ((mv, Just attr), f li) | (mv, li) <- metaVariables, (attr, f) <- attributes ]
    ++ [ ((show i, Nothing), MessageType (toTpScheme (substitution |-> TVar i))) | i <- dom substitution ]  
 -- Core_Judgement ----------------------------------------------
 -- semantic domain
@@ -238,15 +222,15 @@ sem_Core_TypeRule_TypeRule (premises_) (conclusion_) =
             ( _conclusionIftv,_conclusionIjudgements) =
                 (conclusion_ (_conclusionOinfoTuple) (_conclusionOmetaVariableTable) (_conclusionOsubstitution))
             (_lhsOconstraints@_) =
-                let infoTuple = snd _lhsIinfoTuple
-                    localLocation = "expression"
-                in [ (_lhsIsubstitution |-> tp1 .==. getTheType infoTuple)
-                        (typeRuleCInfo localLocation Nothing infoTuple)
-                   | (s1, tp1) <- _conclusionIjudgements
+                let conclusionSource = self       (snd _lhsIinfoTuple)
+                    conclusionType   = getTheType (snd _lhsIinfoTuple)
+                in [ (_lhsIsubstitution |-> tp1 .==. conclusionType)
+                        (addProperty FolkloreConstraint . defaultConstraintInfo (conclusionSource, Nothing))
+                   | (_, tp1) <- _conclusionIjudgements
                    ]
                    ++
                    [ (getTheType mvinfo .==. _lhsIsubstitution |-> tp1)
-                        (typeRuleCInfo localLocation (Just (s1, self infoTuple)) mvinfo)
+                        (defaultConstraintInfo (conclusionSource, Just (self mvinfo)))
                    | (s1, tp1)         <- _premisesIjudgements
                    , (s2, (_, mvinfo)) <- _lhsImetaVariableTable
                    , s1 == s2
@@ -433,10 +417,10 @@ sem_Core_UserStatement_Constraint (leftType_) (rightType_) (message_) =
             (_lhsOcurrentPosition@_) =
                 (\(x, y) -> (x, y+1)) _lhsIcurrentPosition
             (_newConstraint@_) =
-                let cinfo   = addProperty (WithTypeError (TypeError [] message [] [])) .
-                              addProperty (uncurry IsUserConstraint _lhsIcurrentPosition) .
-                              inPhase .
-                              standardConstraintInfo _lhsIcurrentPosition
+                let cinfo   = addProperty (WithTypeError (TypeError [] message [] []))
+                            . addProperty (uncurry IsUserConstraint _lhsIcurrentPosition)
+                            . inPhase
+                            . emptyConstraintInfo
                     inPhase = case _lhsIcurrentPhase of
                                  Just phase | phase /= 5
                                     -> addProperty (ConstraintPhaseNumber phase)

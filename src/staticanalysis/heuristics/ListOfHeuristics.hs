@@ -21,10 +21,10 @@ import RepairHeuristics
 import UnifierHeuristics
 import OnlyResultHeuristics
 import TieBreakerHeuristics
+
 -- temporary
 import Top.TypeGraph.TypeGraphState
 import Top.TypeGraph.Paths
-import Data.List
 import Data.Maybe
 import Top.TypeGraph.Basics
 
@@ -48,6 +48,7 @@ listOfHeuristics options siblings =
    ] ++
    [ applicationResult
    , negationResult
+   -- , typeVariableInvolved {- I am not convinced yet. Bastiaan -}
    , trustFactorOfConstraint
    , isTopDownEdge
    , positionInList
@@ -57,10 +58,7 @@ listOfHeuristics options siblings =
 -- (move to another module?)
 phaseFilter :: Heuristic ConstraintInfo
 phaseFilter = Heuristic (
-   let f (_, _, info) = 
-          case [ i | ConstraintPhaseNumber i <- properties info ] of  
-	     []  -> return 5 -- default phase number
-	     i:_ -> return i
+   let f (_, _, info) = return (phaseOfConstraint info)
    in maximalEdgeFilter "Highest phase number" f)
 
 constraintFromUser :: HasTypeGraph m ConstraintInfo => Selector m ConstraintInfo
@@ -97,12 +95,6 @@ constraintFromUser =
 		                       case maybeUserConstraint info of
 				          Just (a, b) -> a == groupID && b > number
 					  Nothing     -> False
-		                in [ e | (e, _, i) <- edges, p i ] -- no, over all edges!
+		                in [ e | (e, _, i) <- edges, p i ] -- perhaps over all edges!
 	       in return . Just $
 	             (8, "constraints from .type file", edgeID:otherEdges, [info])
-		  
-maybeUserConstraint :: ConstraintInfo -> Maybe (Int, Int)
-maybeUserConstraint info =
-   case [ (x, y) | IsUserConstraint x y <- properties info ] of
-      tuple:_ -> Just tuple
-      _       -> Nothing

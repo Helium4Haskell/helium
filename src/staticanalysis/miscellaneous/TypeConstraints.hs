@@ -108,8 +108,8 @@ lift combinator =
 (.<=.) :: (Show info, SetReduction info, OriginalTypeScheme info) => Tps -> Tp -> Tp -> ((Tp, Tp) -> info) -> TypeConstraint info
 (.<=.) ms t1 t2 cinfo = TC_Inst (ImplicitInstance t1 ms t2 (cinfo, setReduction))
 
-(.<==.) :: (Show info, SetReduction info, Ord key, OriginalTypeScheme info) => FiniteMap key Tp -> FiniteMap key Tp -> FiniteMap key [(key,Tp)] -> (key -> (Tp,Tp) -> info) -> ([TypeConstraint info],FiniteMap key [(key,Tp)])
-(.<==.) ms as bs cinfo = lift (flip ((.<=.) (eltsFM ms))) as bs cinfo
+(.<==.) :: (Show info, SetReduction info, Ord key, OriginalTypeScheme info) => Tps -> FiniteMap key Tp -> FiniteMap key [(key,Tp)] -> (key -> (Tp,Tp) -> info) -> ([TypeConstraint info],FiniteMap key [(key,Tp)])
+(.<==.) ms as bs cinfo = lift (flip ((.<=.) ms)) as bs cinfo
                    
 class SetReduction a where
    setReduction :: Predicate -> a -> a

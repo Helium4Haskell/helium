@@ -17,10 +17,11 @@ import TopSort (topSort)
 import ImportEnvironment hiding (setTypeSynonyms)
 import KindErrors
 import Char (isLower)
+import BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, combine, single) 
 
 type KindEnvironment = FiniteMap Name TpScheme
 type KindConstraints = TypeConstraints KindError
-
+{-
 type Assumptions        = FiniteMap Name [(Name,Tp)]
 type PatternAssumptions = FiniteMap Name Tp
 
@@ -32,7 +33,7 @@ combine = plusFM_C (++)
 
 single :: Name -> Tp -> Assumptions
 single n t = unitFM n [(n,t)]     
-
+-}
 type BindingGroups = [BindingGroup]
 type BindingGroup  = (PatternAssumptions,Assumptions,KindConstraints)
 
@@ -61,8 +62,8 @@ performBindingGroup = glueGroups . bindingGroupAnalysis
       glueGroups = foldr op (noAssumptions, noAssumptions, []) 
          where
             op (env, aset, cset) (environment, assumptions, constraints) = 
-               let (cset1,aset')        = (env .===. aset)                 (\n _ -> unexpected $ "BindingGroup.same "++show n)
-                   (cset2,assumptions') = (.<==.) emptyFM env assumptions  (\n _ -> unexpected $ "BindingGroup.instance "++show n)
+               let (cset1,aset')        = (env .===. aset)            (\n _ -> unexpected $ "BindingGroup.same "++show n)
+                   (cset2,assumptions') = (.<==.) [] env assumptions  (\n _ -> unexpected $ "BindingGroup.instance "++show n)
                in ( env `plusFM` environment
                   , aset' `combine` assumptions'
                   , cset1 ++ cset ++ cset2 ++ constraints

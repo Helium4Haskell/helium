@@ -162,28 +162,26 @@ SEM Core_UserStatement
 SEM Core_UserStatement
   | Constraint  
        loc . newConstraint = 
-          let cinfo   = addProperty (WithTypeError (TypeError [] message [] [])) . 
-                        addProperty (uncurry IsUserConstraint @lhs.currentPosition) .
-                        inPhase .
-                        standardConstraintInfo @lhs.currentPosition
-                           -- (setCustomTypeError (snd @lhs.infoTuple) . standardConstraintInfo)
+          let cinfo   = addProperty (WithTypeError (TypeError [] message [] []))
+                      . addProperty (uncurry IsUserConstraint @lhs.currentPosition)
+                      . inPhase
+                      . emptyConstraintInfo
               inPhase = case @lhs.currentPhase of
-                           Just phase | phase /= 5 
+                           Just phase | phase /= 5
                               -> addProperty (ConstraintPhaseNumber phase)
                            _  -> id 
-                                             
               message = let f = MessageOneLiner . MessageCompose . substituteAttributes (makeMessageAlgebra @lhs.attributeTable)
                         in map f (lines @message)                
           in (@lhs.substitution |-> @leftType .==. @lhs.substitution |-> @rightType) cinfo
 
 {
-standardConstraintInfo :: (Int, Int) -> (Tp, Tp) -> ConstraintInfo
-standardConstraintInfo pos tppair =
+emptyConstraintInfo :: (Tp, Tp) -> ConstraintInfo
+emptyConstraintInfo tppair =
    CInfo { location   = "Typing Strategy"
          , sources    = (UHA_Decls [], Nothing)
          , typepair   = tppair
-         , localInfo  = root (LocalInfo (UHA_Decls []) Nothing emptyFM) []
-         , properties = [ ]
+         , localInfo  = root (LocalInfo (UHA_Decls []) Nothing []) []
+         , properties = []
          }
 }
 
@@ -191,71 +189,55 @@ ATTR Core_TypeRule [ | | constraints : {TypeConstraints ConstraintInfo} ]
 
 SEM Core_TypeRule             
   | TypeRule        
-       lhs .  constraints = let infoTuple = snd @lhs.infoTuple
-                                localLocation = "expression" -- not very precise
-                            in [ (@lhs.substitution |-> tp1 .==. getTheType infoTuple) 
-                                    (typeRuleCInfo localLocation Nothing infoTuple)
-                               | (s1, tp1) <- @conclusion.judgements
+       lhs .  constraints = let conclusionSource = self       (snd @lhs.infoTuple)
+                                conclusionType   = getTheType (snd @lhs.infoTuple)
+                            in [ (@lhs.substitution |-> tp1 .==. conclusionType) 
+                                    (addProperty FolkloreConstraint . defaultConstraintInfo (conclusionSource, Nothing))
+                               | (_, tp1) <- @conclusion.judgements
                                ]
                                ++
                                [ (getTheType mvinfo .==. @lhs.substitution |-> tp1) 
-                                    (typeRuleCInfo localLocation (Just (s1, self infoTuple)) mvinfo)
+                                    (defaultConstraintInfo (conclusionSource, Just (self mvinfo)))
                                | (s1, tp1)         <- @premises.judgements 
                                , (s2, (_, mvinfo)) <- @lhs.metaVariableTable
                                , s1 == s2
                                ]
 
 {
-typeRuleCInfo :: String -> Maybe (String, UHA_Source) -> LocalInfo -> (Tp, Tp) -> ConstraintInfo
-typeRuleCInfo loc mTuple source tppair =
-   CInfo { location   = loc
-         , sources    = (UHA_Decls [], Nothing)
-         , localInfo  = root source []
+defaultConstraintInfo :: (UHA_Source, Maybe UHA_Source) -> (Tp, Tp) -> ConstraintInfo
+defaultConstraintInfo sourceTuple@(s1, s2) tppair =
+   CInfo { location   = descriptionOfSource theSource -- not very precise: expression, pattern, etc.
+         , sources    = sourceTuple
+         , localInfo  = root myLocal []
          , typepair   = tppair
          , properties = []
          }
--- where (infoString, srcs, props) = case mTuple of 
---          Just (s,t) -> ("meta variable "++s, [sourceExpression t, sourceTerm tree], [])
---          Nothing    -> ("conclusion", [sourceExpression tree], [FolkloreConstraint])
-
+ where myLocal   = LocalInfo {self = theSource, assignedType = Nothing, monos = []}
+       theSource = maybe s1 id s2
+       
 exactlyOnce :: Eq a => [a] -> [a]
 exactlyOnce []     = []
 exactlyOnce (x:xs) | x `elem` xs = exactlyOnce . filter (/= x) $ xs
                    | otherwise   = x : exactlyOnce xs
 
-setCustomTypeError :: LocalInfo -> ConstraintInfo -> ConstraintInfo
-setCustomTypeError source cinfo =
-   addProperty (WithTypeError customTypeError) cinfo        
-
-     where customTypeError = TypeError [rangeOfSource (self source)] message [] []
-           message = [ MessageOneLiner (MessageString ("Type error in "++"Typing Strategy"))
-                     , MessageTable
-                          [ (MessageString "Expression", MessageOneLineTree (oneLinerSource (self source))) ]                     
-                     , MessageOneLiner (MessageString "   implies that the following types are equal:")
-                     , MessageTable 
-                          [ (MessageString "Type 1", MessageType (toTpScheme (fst (typepair cinfo))))
-                          , (MessageString "Type 2", MessageType (toTpScheme (snd (typepair cinfo))))
-                          ]                     
-                     ]  
-
 makeMessageAlgebra :: AttributeTable MessageBlock -> AttributeAlgebra MessageBlock
-makeMessageAlgebra table = ( MessageString
-                           , table
-                           , \attribute -> internalError 
-                                              "TS_Apply" "makeMessageAlgebra"
-                                              ("unknown attribute " ++ showAttribute attribute ++
-                                               "; known attributes are " ++ show (map (showAttribute . fst) table))
-                           )
+makeMessageAlgebra table = 
+   (MessageString, table, \a -> internalError "TS_Apply" "makeMessageAlgebra" ("unknown attribute " ++ showAttribute a))
 
 makeAttributeTable :: LocalInfo -> MetaVariableTable LocalInfo -> FiniteMapSubstitution -> [((String, Maybe String), MessageBlock)]
 makeAttributeTable local table substitution = 
-   let f :: String -> LocalInfo -> [((String, Maybe String), MessageBlock)]
-       f string source = [ ((string, Just "type" ), MessageType (toTpScheme (getTheType source)))
-                         , ((string, Just "pp"   ), MessageOneLineTree (oneLinerSource (self source)))
-                         , ((string, Just "range"), MessageRange (rangeOfSource (self source)))
-                         ]
-   in f "expr" local 
-   ++ concatMap (\(s,(_,info)) -> f s info) table 
+   let 
+       metaVariables :: [(String, LocalInfo)]
+       metaVariables = ("expr", local) : [ (s, li) | (s, (_, li)) <- table ]
+       
+       attributes :: [(String, LocalInfo -> MessageBlock)]
+       attributes = 
+          [ ("type" , MessageType . toTpScheme . getTheType)
+          , ("pp"   , MessageOneLineTree . oneLinerSource . self)
+          , ("range", MessageRange . rangeOfSource . self)
+          ]
+   in 
+      [ ((mv, Just attr), f li) | (mv, li) <- metaVariables, (attr, f) <- attributes ]
    ++ [ ((show i, Nothing), MessageType (toTpScheme (substitution |-> TVar i))) | i <- dom substitution ]  
 }
 
