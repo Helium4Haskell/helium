@@ -36,7 +36,9 @@ data Warning  = NoTypeDef Name TpScheme Bool
               | FallThrough Range
 
 instance HasMessage Warning where
-   getMessage x = [MessageOneLiner (MessageString ("Warning: " ++ showWarning x))]
+   getMessage x = let (oneliner, hints) = showWarning x
+                      firstLine = MessageOneLiner (MessageCompose [MessageString "Warning: ", oneliner])
+                  in [firstLine, MessageHints "Hint" hints]
    getRanges warning = case warning of
       NoTypeDef name _ _            -> [getNameRange name]
       Shadow _ name                 -> [getNameRange name]
@@ -54,45 +56,75 @@ instance HasMessage Warning where
                                                      "instance IsMessage Warning" 
                                                      "unknown type of Warning"
 
-showWarning :: Warning -> String
+showWarning :: Warning -> (MessageBlock {- oneliner -}, MessageBlocks {- hints -})
 showWarning warning = case warning of
 
    NoTypeDef name tpscheme topLevel ->
-      "Missing type signature: " ++ showNameAsVariable name ++ " :: " ++ show tpscheme
+      ( MessageString ("Missing type signature: " ++ showNameAsVariable name ++ " :: " ++ show tpscheme)
+      , []
+      )
 
    Shadow shadowee shadower ->
-      "Variable " ++ show (show shadower) ++ " shadows the one at " ++ showRange (getNameRange shadowee)
+      ( MessageString ("Variable " ++ show (show shadower) ++ " shadows the one at " ++ showRange (getNameRange shadowee))
+      , []
+      )
 
    Unused entity name ->
-      capitalize (show entity) ++ " " ++ show (show name) ++ " is not used"
-    
+      ( MessageString (capitalize (show entity) ++ " " ++ show (show name) ++ " is not used")
+      , []
+      )
+
    SimilarFunctionBindings suspect witness ->
-      let [n1, n2] = sortNamesByRange [suspect, witness]
-      in "Suspicious adjacent functions " ++ (show.show) n1 ++ " and " ++ (show.show) n2
+      ( let [n1, n2] = sortNamesByRange [suspect, witness]
+        in MessageString ("Suspicious adjacent functions " ++ (show.show) n1 ++ " and " ++ (show.show) n2)
+      , []
+      )
 
    SuspiciousTypeVariable varName conName ->
-      "Suspicous type variable " ++ (show.show) varName ++ ". Did you mean " ++ (show.show) conName ++ "?"
+      ( MessageString ("Suspicous type variable " ++ (show.show) varName)
+      , [ MessageString ("Did you mean the type constructor " ++ (show.show) conName ++ " ?") ]
+      )
       
    MissingPatterns _ Nothing tp pss place sym ->
-      "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
-      ++ concatMap (("\n  " ++).(++ (sym ++ " ...")).concatMap ((++ " ").show.PP.sem_Pattern)) pss
+      let text = "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
+                 ++ concatMap (("\n  " ++).(++ (sym ++ " ...")).concatMap ((++ " ").show.PP.sem_Pattern)) pss
+      in (MessageString text, [])
    
    MissingPatterns _ (Just n) tp pss place sym
-     | isOperatorName n -> let name = getNameName n in
-        "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
-        ++ concatMap (\[l, r] -> "\n  " ++ (show.PP.sem_Pattern) l ++ " " ++ name ++ " " ++ (show.PP.sem_Pattern) r ++ " " ++ sym ++ " ...") pss
-     | otherwise        -> let name = getNameName n in
-        "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
-        ++ concatMap (("\n  " ++).(name ++).(' ' :).(++ (sym ++ " ...")).concatMap ((++ " ").show.PP.sem_Pattern)) pss
+     | isOperatorName n -> 
+          let name = getNameName n 
+	      text = "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
+                     ++ concatMap (\[l, r] -> "\n  " ++ (show.PP.sem_Pattern) l ++ " " ++ name ++ " " 
+		     ++ (show.PP.sem_Pattern) r ++ " " ++ sym ++ " ...") pss
+	  in (MessageString text, [])
+	  
+     | otherwise -> 
+          let name = getNameName n
+	      text =  "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
+                      ++ concatMap (("\n  " ++).(name ++).(' ' :).(++ (sym ++ " ...")).concatMap ((++ " ").show.PP.sem_Pattern)) pss
+          in (MessageString text, [])
 
-   UnreachablePatternLHS  lhs -> "Unreachable pattern: " ++ (show.PP.sem_LeftHandSide) lhs
-   UnreachablePatternCase _ p -> "Unreachable pattern: " ++ (show.PP.sem_Pattern     ) p
+   UnreachablePatternLHS  lhs -> 
+      ( MessageString ("Unreachable pattern: " ++ (show.PP.sem_LeftHandSide) lhs)
+      , []
+      )
+   
+   UnreachablePatternCase _ p -> 
+      ( MessageString ("Unreachable pattern: " ++ (show.PP.sem_Pattern ) p)
+      , []
+      )
 
-   UnreachableGuard _ e -> "Unreachable guard: | " ++ (show.PP.sem_Expression) e
+   UnreachableGuard _ e -> 
+      ( MessageString ("Unreachable guard: | " ++ (show.PP.sem_Expression) e)
+      , []
+      )
 
-   FallThrough _ -> "Possible fallthrough"
+   FallThrough _ -> 
+      ( MessageString "Possible fallthrough"
+      , []
+      )
 
-   _ -> internalError "Messages" "showWarning" "unknown type of Warning"
+   _ -> internalError "Warnings" "showWarning" "unknown type of Warning"
 
 plural :: [a] -> String -> String
 plural [_] = id
