@@ -107,7 +107,6 @@ STATICANALYSIS = \
         $(TOPDIR)/Types/Substitution.hs \
         $(TOPDIR)/Types/Kinds.hs \
         $(TOPDIR)/Types/Synonyms.hs \
-        $(TOPDIR)/Types/Qualified.hs \
         $(TOPDIR)/Types/Unification.hs \
         $(TOPDIR)/Types.hs \
         $(TOPDIR)/../Graph.hs \
