@@ -1,0 +1,9 @@
+Compiling typeerrors/Examples/Verzahne.hs
+(6,11): Type error in infix application
+ expression       : x `le` y
+ term             : le
+   type           : [a] -> [a] -> Bool
+   does not match : a   -> a   -> Bool
+ because          : unification would give infinite type
+
+Compilation failed with 1 error
