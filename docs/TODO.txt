@@ -4,6 +4,7 @@
 HELIUM
 - Unit tests voor type classes nalopen (*)
 - Nieuwe tests in simple overbrengen naar type class unit tests (*)
+- Libraries met en zonder overloading in overeenstemming brengen (*)
 - Internationalisatie
 - Hints meer vragend brengen: Question: did you mean to use ++ ? o.i.d.
 - Bastiaan: type could be more general warning (heel moeilijk)
@@ -42,6 +43,7 @@ TEXTHINT
 - paden via command-line
 
 LVM
+- File I/O op Mac
 - nieuwe core syntax
 - nieuwe directory structuur: coreasm - runtime
 - standaard libraries bij runtime (gedeeld met helium)

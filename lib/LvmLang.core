@@ -256,12 +256,28 @@ stringFromPacked packed
 
 packedFromString :: String -> PackedString
 packedFromString s
-  = let forceLength n xs = case xs of
+  = let forced s = case s of
+                     []       -> []
+                     (:) x xs -> let! y  = x
+                                      ys = forced xs
+                                 in (:) y ys
+        length n s = case s of
+                       []       -> n
+                       (:) x xs -> let! m = (+) n 1
+                                   in length m xs
+    in let! fs  = forced s
+            len = length 0 fs
+       in prim_string_of_chars len fs
+            
+  
+    {-
+    let forceLength n xs = case xs of
                              (:) x xx -> seq x (forceLength ((+) n 1) xx)
                              []       -> n 
     in let! len = forceLength 0 s 
-            s   = s 
-       in prim_string_of_chars len s
+            t   = s 
+       in prim_string_of_chars len t
+    -}
 
 packedLength :: PackedString -> Int
 packedLength s

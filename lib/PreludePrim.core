@@ -22,16 +22,22 @@ module PreludePrim
     , (/)
     , sqrt, (**.), exp, log, sin, cos, tan
         
-    -- IO
+    -- IO monad
     , return -- primUnsafePerformIO, primBindIO in HeliumLang
+
+    -- IO files
     , getChar
+    , Handle, stdin, stdout, stderr
+    , IOMode(..), openFile, hClose
+    , hGetChar, hPutChar, hPutString
     
     -- strictness
     , ($!), seq
     
     -- misc
-    , error, catch
-    
+    , error, catch, catchEof, raise
+
+	-- dictionaries    
     , dictShowInt, dictShowFloat, dictShowChar, dictShowBool, ''dictShow[]''
     , ''dictShow()'', ''dictShow(,)'', ''dictShow(,,)'', ''dictShow(,,,)'', ''dictShow(,,,,)'', ''dictShow(,,,,,)''
     , ''dictShow(,,,,,,)'', ''dictShow(,,,,,,,)'', ''dictShow(,,,,,,,,)'', ''dictShow(,,,,,,,,,)''
@@ -74,17 +80,27 @@ import LvmLang
     , Bool(True, False)
     , '':[]''('':[]'', (:))
     , '':()''('':()'')
-    , primBindIO = bindIO, primReturnIO = returnIO
+    , bindIO, return = returnIO
     , primPackedToString = stringFromPacked
     , primUnsafePerformIO = unsafePerformIO
     
-    , return = returnIO
     , ($!), seq
     , True -- hack
     )
 
-import LvmIO(stdin, inputChar)
-import LvmException(error, errorPacked {- hack -}, catch )
+import LvmIO
+    ( stdinChannel = stdin, stdoutChannel = stdout, stderrChannel = stderr
+    , Channel(), Input(), Output()
+    , CreateMode(CreateIfNotExists, CreateOverwrite)
+    , openInputFile, openOutputFile
+    , close, flush
+    , inputChar, outputChar, outputString
+    )
+
+import LvmException
+    ( error, errorPacked {- hack -}, catch, raise 
+    , Exception(System), SystemException(EndOfFile)
+    )
 
 custom infix (+)  : public [6,"left"]
 custom infix (-)  : public [6,"left"]
@@ -111,9 +127,6 @@ ord x = x
 
 chr :: Int -> Char
 chr x = x
-
-getChar :: IO Char
-getChar = inputChar stdin
 
 -- Float
 
@@ -644,3 +657,82 @@ primAppend xs ys =
     {   '':[]'' -> ys
     ;   (:) z zs -> (:) z (primAppend zs ys)
     }
+
+{--------------------------------------------------------------------------
+  IO
+--------------------------------------------------------------------------}
+data Handle
+ = HandleRead  (Channel Input)
+ | HandleWrite (Channel Output)
+
+data IOMode
+ = ReadMode
+ | WriteMode
+ | AppendMode
+
+stdin :: Handle
+stdin
+  = HandleRead stdinChannel
+
+stdout :: Handle
+stdout
+  = HandleWrite stdoutChannel
+
+stderr :: Handle
+stderr
+  = HandleWrite stderrChannel
+
+getChar :: IO Char
+getChar 
+  = inputChar stdinChannel  -- hGetChar stdin
+
+openFile :: String -> IOMode -> IO Handle
+openFile fpath mode
+  = case mode of
+      ReadMode  -> bindIO (openInputFile fpath True) (\ch -> return (HandleRead ch))
+      WriteMode -> bindIO (openOutputFile fpath True CreateOverwrite) (\ch -> return (HandleWrite ch))
+      AppendMode-> bindIO (openOutputFile fpath True CreateIfNotExists) (\ch -> return (HandleWrite ch))
+
+hClose :: Handle -> IO ()
+hClose handle
+  = case handle of
+      HandleRead ch   -> close ch
+      HandleWrite ch  -> -- Yuck: alleen maar om altijd geflushed te closen..
+                         catch (bindIO (flush ch) (\_ -> close ch)) 
+                               (\exn -> bindIO (catch (close ch) (\_ -> raise exn))
+                                               (\_ -> raise exn))
+
+hFlush :: Handle -> IO ()
+hFlush handle
+  = case handle of
+      HandleRead ch   -> flush ch
+      HandleWrite ch  -> flush ch
+
+hGetChar :: Handle -> IO Char
+hGetChar handle
+  = case handle of
+      HandleRead ch  -> inputChar ch
+      HandleWrite ch -> errorPacked "PreludePrim.hGetChar: Handle is not open for reading"
+
+hPutChar :: Handle -> Char -> IO ()
+hPutChar handle c
+  = case handle of
+      HandleRead ch  -> errorPacked "PreludePrim.hPutChar: Handle is not open for writing"
+      HandleWrite ch -> outputChar ch c
+
+hPutString :: Handle -> String -> IO ()
+hPutString handle s
+  = case handle of
+      HandleRead ch  -> errorPacked "PreludePrim.hPutString: Handle is not open for writing"
+      HandleWrite ch -> outputString ch s
+
+catchEof :: IO a -> IO a -> IO a
+catchEof io onEof
+  = catch io
+     (\exn -> case exn of
+                System sysexn -> case sysexn of
+                                   EndOfFile -> onEof
+                                   _         -> raise exn
+                _             -> raise exn
+     )
+

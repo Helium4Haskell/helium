@@ -400,6 +400,14 @@ endif
 	$(AG) -a $<
 
 
+# Documentation target (use Haddock 0.5 in combination with GHC 6.0.1) Ê
+doc:
+ Ê Ê Ê Êhaddock +RTS -K8M -RTS \
+ Ê Ê Ê Ê Ê Ê Ê Ê-h -o ../docs/haddock --lib /usr/local/lib/haddock-0.5 \
+ Ê Ê Ê Ê Ê Ê Ê Ê--read-interface http://haskell.cs.yale.edu/ghc/docs/latest/html/libraries/base,C:\apps\ghc\doc\html\base\base.haddock \
+ Ê Ê Ê Ê Ê Ê Ê Ê$(SRCS)
+
+
 # Clean	up
 clean:
 	$(RM) `find . -name "*.o" -print`

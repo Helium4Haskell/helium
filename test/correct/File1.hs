@@ -5,4 +5,4 @@ main
   = do h <- openFile "correct/File1.hs" ReadMode
        c <- hGetChar h 
        hPutChar stdout c
-           
+
