@@ -107,11 +107,11 @@ patternMatchWarnings :: Substitution substitution
 patternMatchWarnings impenv sub tp strip elementss rng name parens unrwars place sym
   = unreachablewarnings ++ missingwarnings
     where
-      env                 = map rearrange $ fmToList $ valueConstructors impenv
+      env                 = importEnvironmentToEnv impenv
       exprtype            = expandTypeFromImportEnvironment impenv $ sub |-> tp
       types               = strip exprtype
-      unreachables        = unreachable env types $ map (\((a, b), c) -> (a, c)) $ filter (not.snd.fst) $ zip elementss [0..]
-      missing             = complement  env types $ map fst elementss
+      unreachables        = unreachable impenv types $ map (\((a, b), c) -> (a, c)) $ filter (not.snd.fst) $ zip elementss [0..]
+      missing             = complement  impenv types $ map fst elementss
       unreachablewarnings = map (unrwars !!) unreachables
       missingwarnings
         | null $ unMissing missing = []
@@ -239,6 +239,7 @@ SEM GuardedExpression
 
 -- environment of constructors [(type, (constructorname, arguments))]
 type Env = [(Tp, (Name, [Tp]))]
+importEnvironmentToEnv = map rearrange . fmToList . valueConstructors
 
 -- return the number of arguments of a constructor
 -- tuples ar not in the Env so they require special treatment
@@ -258,10 +259,10 @@ rearrange (name, tpscheme) = let (args, res) = functionSpine $ unqualify $ getQu
 
 -- get the constructors of a given type out of an Env
 -- tuples ar not in the Env so they require special treatment
-constructors :: Env -> Tp -> [(Name, [Tp])]
+constructors :: ImportEnvironment -> Tp -> [(Name, [Tp])]
 constructors _ (TVar _) = []
-constructors env tp | isTupleConstructor name = [tupleconstructor]
-                    | otherwise               = concatMap (substitute tp) env
+constructors impenv tp | isTupleConstructor name = [tupleconstructor]
+                       | otherwise               = map expand $ concatMap (substitute tp) $ importEnvironmentToEnv impenv
   where
     name :: String
     name = unTCon $ fst $ leftSpine tp
@@ -270,6 +271,8 @@ constructors env tp | isTupleConstructor name = [tupleconstructor]
     unTCon :: Tp -> String
     unTCon (TCon c) = c
     unTCon tp = pmError "unTCon" $ "type " ++ show tp ++ " is not a TCon"
+    expand :: (Name, [Tp]) -> (Name, [Tp])
+    expand (n, ts) = (n, map (expandTypeFromImportEnvironment impenv) ts)
 
 -- check of an entry in an Env is a constructor for the given type
 -- if so, return this constructor, but with variables substituted for whatever is in the given type
@@ -382,7 +385,7 @@ parensPattern b = if b then rap . par else fst . par
 --------------------------------------
 
 -- returns the tree of missing patterns for a given list of patterns    
-complement :: Env -> [Tp] -> [[PatternElement]] -> PatternsMissing
+complement :: ImportEnvironment -> [Tp] -> [[PatternElement]] -> PatternsMissing
 complement _   []       _      = PatternsMissing []
 complement _   _        ([]:_) = PatternsMissing []
 complement env (tp:tps) pss    | null $ unMissing anyComplement                              = PatternsMissing []
@@ -412,13 +415,13 @@ complement env (tp:tps) pss    | null $ unMissing anyComplement                 
 ----------------------------
 
 -- complements the list of reachable patterns
-unreachable :: Env -> [Tp] -> [([PatternElement], Int)] -> [Int]
+unreachable :: ImportEnvironment -> [Tp] -> [([PatternElement], Int)] -> [Int]
 unreachable env tps ps = let reach = reachable env tps ps
                          in  filter (not . flip elem reach) (map snd ps)
 
 -- determines which patterns are reachable
 -- possibly multiple occurances of indices
-reachable :: Env -> [Tp] -> [([PatternElement], Int)] -> [Int]
+reachable :: ImportEnvironment -> [Tp] -> [([PatternElement], Int)] -> [Int]
 reachable _   []       _  = pmError "reachable" "empty type list!"
 reachable env (tp:tps) ps 
   | all ((== WildcardElement).head.fst) ps = conReachable ps
@@ -429,7 +432,7 @@ reachable env (tp:tps) ps
     conPats :: PatternElement -> [([PatternElement], Int)]
     conPats con = map (\(es, i) -> (fill con es, i)) $ filter (((== con) |^| (== WildcardElement)).head.fst) ps
     fill :: PatternElement -> [PatternElement] -> [PatternElement]
-    fill e@(FiniteElement c) (WildcardElement : es) = e : replicate (nrOfArguments env c) WildcardElement ++ es
+    fill e@(FiniteElement c) (WildcardElement : es) = e : replicate (nrOfArguments (importEnvironmentToEnv env) c) WildcardElement ++ es
     fill e                   (_               : es) = e : es
     stop :: [PatternElement] -> [PatternElement]
     stop es | length (constructors env tp) > length es = FiniteElement "[*]" : es
