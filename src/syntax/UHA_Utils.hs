@@ -20,12 +20,14 @@ module UHA_Utils
     , stringFromImportDeclaration
     , rangeFromImportDeclaration
     , isOperatorName
+    , nameFromString
+    , nameFromId
+    , setRange
     , isIdentifierName    
     , showNameAsOperator
     , showNameAsVariable
     -- These functions misuse ranges
     , makeImportRange, isImportRange, isImportName, modulesFromImportRange
-    , nameFromString
     ) where
 
 import UHA_Syntax
@@ -33,6 +35,8 @@ import Utils
 import Maybe
 import Id
 import IOExts -- Debug
+import Char(isAlpha)
+import Types (isTupleConstructor)
 
 -- From SAUtils
 instance Eq Name where
@@ -205,6 +209,9 @@ idFromName (Name_Special _ _ s) = idFromString s
 idFromName (Name_Identifier _ _ s) = idFromString s
 idFromName (Name_Operator _ _ s) = idFromString s
 
+nameFromId :: Id -> Name
+nameFromId = nameFromString . stringFromId
+
 stringFromImportDeclaration :: ImportDeclaration -> String
 stringFromImportDeclaration importDecl =
     case importDecl of
@@ -219,11 +226,21 @@ rangeFromImportDeclaration importDecl =
         ImportDeclaration_Empty r -> r
     
 nameFromString :: String -> Name
-nameFromString s = Name_Identifier noRange [] s
+nameFromString str@(first:_) 
+    | isAlpha first = Name_Identifier noRange [] str 
+    | str == "[]" || isTupleConstructor str || str == "->" 
+                    = Name_Special noRange [] str
+    | otherwise     = Name_Operator noRange [] str
+nameFromString _ = internalError "UHA_Utils" "nameFromString" "empty string"
 
 isOperatorName :: Name -> Bool
 isOperatorName (Name_Operator   _ _ name) = True
 isOperatorName _ = False
+
+setRange :: Range -> Name -> Name
+setRange r (Name_Special    _ ms s) = Name_Special r ms s
+setRange r (Name_Identifier _ ms s) = Name_Identifier r ms s
+setRange r (Name_Operator   _ ms s) = Name_Operator r ms s
 
 isIdentifierName :: Name -> Bool
 isIdentifierName (Name_Identifier   _ _ name) = True

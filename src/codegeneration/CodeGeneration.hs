@@ -81,9 +81,6 @@ insertedMain toplevelTypes =
         unsafePIO = var "primUnsafePerformIO"    
                 
 
-nameFromId :: Id -> Name
-nameFromId i = Name_Identifier noRange [] (stringFromId i)
-
 toplevelType :: Name -> ImportEnvironment -> Bool -> [Core.Custom]
 toplevelType name ie isTopLevel
     | isTopLevel = [custom "type" typeString]

@@ -131,7 +131,7 @@ showError anError = case anError of
       )     
         
    DefArityMismatch name maybeExpected range ->
-      ( MessageString ("arity mismatch in function bindings for " ++ show (show name))
+      ( MessageString ("Arity mismatch in function bindings for " ++ show (show name))
       , [ MessageString (show arity ++ " parameters in most of the clauses")
         | Just arity <- [maybeExpected]
         ]

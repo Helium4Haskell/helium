@@ -102,7 +102,7 @@ showFunctionOfType isMainType t =
             
         -- show Strings not as List of Char but using showString
         UHA.Type_Application _ _ 
-                    ( UHA.Type_Constructor _ (UHA.Name_Identifier _ _ "[]") ) 
+                    ( UHA.Type_Constructor _ (UHA.Name_Special    _ _ "[]") ) 
                     [ UHA.Type_Constructor _ (UHA.Name_Identifier _ _ "Char") ] ->
             var "showString"
             

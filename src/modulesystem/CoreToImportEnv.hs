@@ -86,22 +86,9 @@ makeOperatorTable op cs =
 
 makeImportName :: String -> Id -> Id -> Name
 makeImportName importedInMod importedFromMod n =
-    let
-        n' = stringFromId n
-        name =
-            case head n' of
-                a | isAlpha a             -> Name_Identifier
-                  | n' == "[]" 
-                    ||
-                    isTupleConstructor n'
-                    ||
-                    n' == "->"            -> Name_Special
-                  | otherwise             -> Name_Operator
-    in
-    name
+    setRange 
         (makeImportRange (idFromString importedInMod) importedFromMod)
-        []
-        (stringFromId n)
+        (nameFromId n)
 
 getImportEnvironment :: String -> [CoreDecl] -> ImportEnvironment
 getImportEnvironment importedInModule = foldr insert emptyEnvironment
