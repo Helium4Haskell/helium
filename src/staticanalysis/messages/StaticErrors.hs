@@ -124,7 +124,7 @@ showError anError = case anError of
            ", but has " ++ if actual == 0 then "none" else show actual), [])
     
    RecursiveTypeSynonyms strings ->
-      ( MessageString ("Recursive Type Synonyms " ++ prettyAndList (map (show . show) strings))
+      ( MessageString ("Recursive Type Synonyms " ++ prettyAndList (map (show . show) (sortNamesByRange strings)))
       , [ MessageString "use \"data\" to write a recursive data type"
         | length strings == 1
         ]  

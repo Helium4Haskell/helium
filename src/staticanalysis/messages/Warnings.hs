@@ -50,7 +50,8 @@ showWarning warning = case warning of
       MessageString (capitalize (show entity) ++ " " ++ show (show name) ++ " is not used")
     
    SimilarFunctionBindings suspect witness ->
-      MessageString ("Suspicious adjacent functions "++ show (show suspect) ++ " and " ++ show (show witness))
+      let [n1, n2] = sortNamesByRange [suspect, witness] 
+      in MessageString ("Suspicious adjacent functions "++ show (show n1) ++ " and " ++ show (show n2))
    
    _ -> internalError "Messages" "showWarning" "unknown type of Warning"
    

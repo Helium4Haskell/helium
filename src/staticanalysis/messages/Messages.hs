@@ -137,6 +137,13 @@ sortMessages = let f x y = compare (sortRanges (getRanges x))
 sortRanges :: [Range] -> [Range]
 sortRanges ranges = let (xs,ys) = partition isImportRange ranges
                     in sort ys ++ xs
+
+sortNamesByRange :: Names -> Names
+sortNamesByRange names = 
+   let tupleList = [ (name, getNameRange name) | name <- names ]
+       (xs,ys)   = partition (isImportRange . snd) tupleList
+   in map fst (sortBy (\a b -> snd a `compare` snd b) ys ++ xs)
+
                                         
 showFullRange :: Range -> String
 showFullRange (Range_Range p1 p2) = "<" ++ showFullPosition p1 ++ "," ++ showFullPosition p2 ++ ">"

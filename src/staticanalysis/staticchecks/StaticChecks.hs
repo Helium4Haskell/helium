@@ -155,6 +155,19 @@ patternConstructorErrors maybetparity name env useArity namesTyconEnv =
                then [ ArityMismatch Constructor name arity useArity ]
                else []
 
+-- Type signature but no function definition
+-- Duplicated type signatures
+checkTypeSignatures :: Names -> [(Name,TpScheme)] -> Errors
+checkTypeSignatures declVarNames xs = 
+   let (unique, doubles) = uniqueAppearance (map fst xs)
+   in [ Duplicated TypeSignature names 
+      | names <- doubles 
+      ] 
+   ++ [ NoFunDef TypeSignature name declVarNames
+      | name <- unique
+      , name `notElem` declVarNames
+      ]
+
 checkExport entity name inScope =
     makeUndefined entity
         (if name `elem` inScope then
@@ -333,10 +346,8 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_allTypeConstr
             Body_Body _range_self _importdeclarations_self _declarations_self
         (_suspiciousErrors) =
             findSimilarFunctionBindings _declarations_typeSignatures _declarations_suspiciousFBs
-        ((_uniqueTypeSignatures,_doubles)) =
-            uniqueAppearance (map fst _declarations_typeSignatures)
-        (_duplicatedTypeSignature) =
-            [ Duplicated TypeSignature names | names <- _doubles ]
+        (_typeSignatureErrors) =
+            checkTypeSignatures _declarations_declVarNames _declarations_typeSignatures
         ( _range_self) =
             (_range )
         ( _importdeclarations_importedModules,_importdeclarations_self) =
@@ -349,7 +360,7 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_allTypeConstr
         ,_declarations_declVarNames
         ,_importdeclarations_importedModules
         ,_declarations_kindErrors
-        ,_duplicatedTypeSignature ++ _declarations_miscerrors
+        ,_typeSignatureErrors ++ _declarations_miscerrors
         ,_declarations_operatorFixities
         ,_self
         ,_declarations_typeSignatures
@@ -1134,10 +1145,10 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_allTypeConstruct
             changeOfScope _declarations_declVarNames Definition (_declarations_unboundNames ++ _expression_unboundNames) _lhs_namesInScope
         (_suspiciousErrors) =
             findSimilarFunctionBindings _declarations_typeSignatures _declarations_suspiciousFBs
-        ((_uniqueTypeSignatures,_doubles)) =
+        ((_,_doubles)) =
             uniqueAppearance (map fst _declarations_typeSignatures)
-        (_duplicatedTypeSignature) =
-            [ Duplicated TypeSignature names | names <- _doubles ]
+        (_typeSignatureErrors) =
+            checkTypeSignatures _declarations_declVarNames _declarations_typeSignatures
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel Expression"
         ( _range_self) =
@@ -1147,7 +1158,7 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_allTypeConstruct
         ( _expression_kindErrors,_expression_miscerrors,_expression_self,_expression_unboundNames,_expression_warnings) =
             (_expression (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_declarations_kindErrors) (_declarations_miscerrors) (_namesInScope) (_lhs_typeConstructors) (_lhs_valueConstructors) (_declarations_warnings))
     in  (_expression_kindErrors
-        ,_scopeErrors ++ _duplicatedTypeSignature ++ _expression_miscerrors
+        ,_scopeErrors ++ _typeSignatureErrors ++ _expression_miscerrors
         ,_self
         ,_unboundNames
         ,_scopeWarnings ++
@@ -1843,16 +1854,16 @@ sem_MaybeDeclarations_Just (_declarations) (_lhs_allTypeConstructors) (_lhs_allV
             changeOfScope _declarations_declVarNames Definition (_declarations_unboundNames ++ _lhs_unboundNames) _lhs_namesInScope
         (_suspiciousErrors) =
             findSimilarFunctionBindings _declarations_typeSignatures _declarations_suspiciousFBs
-        ((_uniqueTypeSignatures,_doubles)) =
+        ((_,_doubles)) =
             uniqueAppearance (map fst _declarations_typeSignatures)
-        (_duplicatedTypeSignature) =
-            [ Duplicated TypeSignature names | names <- _doubles ]
+        (_typeSignatureErrors) =
+            checkTypeSignatures _declarations_declVarNames _declarations_typeSignatures
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel MaybeDeclaration"
         ( _declarations_collectTypeConstructors,_declarations_collectTypeSynonyms,_declarations_collectValueConstructors,_declarations_declVarNames,_declarations_kindErrors,_declarations_miscerrors,_declarations_operatorFixities,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
             (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) ([]) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_declarations_kindErrors
-        ,_scopeErrors ++ _duplicatedTypeSignature ++ _declarations_miscerrors
+        ,_scopeErrors ++ _typeSignatureErrors ++ _declarations_miscerrors
         ,_namesInScope
         ,_self
         ,_unboundNames
@@ -2569,10 +2580,10 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_allTypeConstructors) (_lhs_allV
             changeOfScope _declarations_declVarNames Definition (_declarations_unboundNames ++ _lhs_unboundNames) _lhs_namesInScope
         (_suspiciousErrors) =
             findSimilarFunctionBindings _declarations_typeSignatures _declarations_suspiciousFBs
-        ((_uniqueTypeSignatures,_doubles)) =
+        ((_,_doubles)) =
             uniqueAppearance (map fst _declarations_typeSignatures)
-        (_duplicatedTypeSignature) =
-            [ Duplicated TypeSignature names | names <- _doubles ]
+        (_typeSignatureErrors) =
+            checkTypeSignatures _declarations_declVarNames _declarations_typeSignatures
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel Qualifier"
         ( _range_self) =
@@ -2580,7 +2591,7 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_allTypeConstructors) (_lhs_allV
         ( _declarations_collectTypeConstructors,_declarations_collectTypeSynonyms,_declarations_collectValueConstructors,_declarations_declVarNames,_declarations_kindErrors,_declarations_miscerrors,_declarations_operatorFixities,_declarations_previousWasAlsoFB,_declarations_self,_declarations_suspiciousFBs,_declarations_typeSignatures,_declarations_unboundNames,_declarations_warnings) =
             (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) ([]) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_declarations_kindErrors
-        ,_scopeErrors ++ _duplicatedTypeSignature ++ _declarations_miscerrors
+        ,_scopeErrors ++ _typeSignatureErrors ++ _declarations_miscerrors
         ,_namesInScope
         ,_self
         ,_unboundNames
@@ -2885,10 +2896,10 @@ sem_Statement_Let (_range) (_declarations) (_lhs_allTypeConstructors) (_lhs_allV
             changeOfScope _declarations_declVarNames Definition (_declarations_unboundNames ++ _lhs_unboundNames) _lhs_namesInScope
         (_suspiciousErrors) =
             findSimilarFunctionBindings _declarations_typeSignatures _declarations_suspiciousFBs
-        ((_uniqueTypeSignatures,_doubles)) =
+        ((_,_doubles)) =
             uniqueAppearance (map fst _declarations_typeSignatures)
-        (_duplicatedTypeSignature) =
-            [ Duplicated TypeSignature names | names <- _doubles ]
+        (_typeSignatureErrors) =
+            checkTypeSignatures _declarations_declVarNames _declarations_typeSignatures
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel Statement"
         ( _range_self) =
@@ -2897,7 +2908,7 @@ sem_Statement_Let (_range) (_declarations) (_lhs_allTypeConstructors) (_lhs_allV
             (_declarations (_lhs_allTypeConstructors) (_lhs_allValueConstructors) (_collectTypeConstructors) (_collectTypeSynonyms) (_collectValueConstructors) (_lhs_kindErrors) (_lhs_miscerrors) (_namesInScope) (_operatorFixities) (Nothing) ([]) (_lhs_typeConstructors) ([]) (_lhs_valueConstructors) (_lhs_warnings))
     in  (_declarations_kindErrors
         ,False
-        ,_scopeErrors ++ _duplicatedTypeSignature ++ _declarations_miscerrors
+        ,_scopeErrors ++ _typeSignatureErrors ++ _declarations_miscerrors
         ,_namesInScope
         ,_self
         ,_unboundNames

@@ -21,9 +21,8 @@ SEM Module
 -- Body
 
 SEM Body 
-  | Body   lhs . miscerrors = @duplicatedTypeSignature ++ @declarations.miscerrors
-           loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
-               . duplicatedTypeSignature = [ Duplicated TypeSignature names | names <- @doubles ]
+  | Body   lhs . miscerrors = @typeSignatureErrors ++ @declarations.miscerrors
+           loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
 
 -----------------------------------------
 -- Declaration
@@ -56,9 +55,9 @@ SEM Declaration
                  . undef   = filter (`notElem` @simpletype.typevariables) @type.typevariables 
        
 SEM MaybeDeclarations
-  | Just   lhs . miscerrors = @scopeErrors ++ @duplicatedTypeSignature ++ @declarations.miscerrors
-           loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
-               . duplicatedTypeSignature = [ Duplicated TypeSignature names | names <- @doubles ]
+  | Just   lhs . miscerrors = @scopeErrors ++ @typeSignatureErrors ++ @declarations.miscerrors
+           loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
+           loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
 
 {- utility attribute: collecting the arities of the function bindings -}
 ATTR FunctionBindings [ | | arities : { [Int] } ]
@@ -122,9 +121,9 @@ SEM Expression
                                                        Nothing -> [ undefinedConstructor @name.self (@lhs.namesInScope ++ @lhs.allValueConstructors) @lhs.allTypeConstructors ]
                                                        Just _  -> []
                                                                           
-  | Let          lhs . miscerrors = @scopeErrors ++ @duplicatedTypeSignature ++ @expression.miscerrors
-                 loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
-                     . duplicatedTypeSignature = [ Duplicated TypeSignature names | names <- @doubles ]
+  | Let          lhs . miscerrors = @scopeErrors ++ @typeSignatureErrors ++ @expression.miscerrors
+                 loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
+                 loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
                
 -----------------------------------------
 -- Pattern
@@ -163,15 +162,30 @@ SEM Alternative
 
  SEM Statement
    | Generator  lhs . miscerrors = @scopeErrors ++ @expression.miscerrors    
-   | Let        lhs . miscerrors = @scopeErrors ++ @duplicatedTypeSignature ++ @declarations.miscerrors 
-                loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
-                    . duplicatedTypeSignature = [ Duplicated TypeSignature names | names <- @doubles ] 
+   | Let        lhs . miscerrors = @scopeErrors ++ @typeSignatureErrors ++ @declarations.miscerrors 
+                loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
+                    . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
                        
 -----------------------------------------
 -- Qualifier    
        
 SEM Qualifier
   | Generator lhs . miscerrors = @scopeErrors ++ @expression.miscerrors
-  | Let       lhs . miscerrors = @scopeErrors ++ @duplicatedTypeSignature ++ @declarations.miscerrors
-              loc . (uniqueTypeSignatures,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
-                  . duplicatedTypeSignature = [ Duplicated TypeSignature names | names <- @doubles ]
+  | Let       lhs . miscerrors = @scopeErrors ++ @typeSignatureErrors ++ @declarations.miscerrors
+              loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
+                  . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
+
+{
+-- Type signature but no function definition
+-- Duplicated type signatures
+checkTypeSignatures :: Names -> [(Name,TpScheme)] -> Errors
+checkTypeSignatures declVarNames xs = 
+   let (unique, doubles) = uniqueAppearance (map fst xs)
+   in [ Duplicated TypeSignature names 
+      | names <- doubles 
+      ] 
+   ++ [ NoFunDef TypeSignature name declVarNames
+      | name <- unique
+      , name `notElem` declVarNames
+      ]
+}
