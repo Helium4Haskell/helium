@@ -6,22 +6,6 @@ import Id
 import qualified Core
 import Utils (internalError)
 -- Alternative -------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Alternative.Alternative:
-
--}
-{-
-   local variables for Alternative.Empty:
-
--}
 -- semantic domain
 type T_Alternative = ()
 -- cata
@@ -44,22 +28,6 @@ sem_Alternative_Empty (_range) =
     let 
     in  ()
 -- Alternatives ------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Alternatives.Cons:
-
--}
-{-
-   local variables for Alternatives.Nil:
-
--}
 -- semantic domain
 type T_Alternatives = ()
 -- cata
@@ -78,18 +46,6 @@ sem_Alternatives_Nil  =
     let 
     in  ()
 -- AnnotatedType -----------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for AnnotatedType.AnnotatedType:
-
--}
 -- semantic domain
 type T_AnnotatedType = ()
 -- cata
@@ -105,22 +61,6 @@ sem_AnnotatedType_AnnotatedType (_range) (_strict) (_type) =
     let 
     in  ()
 -- AnnotatedTypes ----------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for AnnotatedTypes.Cons:
-
--}
-{-
-   local variables for AnnotatedTypes.Nil:
-
--}
 -- semantic domain
 type T_AnnotatedTypes = ()
 -- cata
@@ -139,19 +79,6 @@ sem_AnnotatedTypes_Nil  =
     let 
     in  ()
 -- Body --------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      coreImportDecls      :  [Core.CoreDecl] 
-
--}
-{-
-   local variables for Body.Body:
-
--}
 -- semantic domain
 type T_Body = (( [Core.CoreDecl] ))
 -- cata
@@ -168,26 +95,6 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) =
             (_importdeclarations )
     in  (_importdeclarations_coreImportDecls)
 -- Constructor -------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Constructor.Constructor:
-
--}
-{-
-   local variables for Constructor.Infix:
-
--}
-{-
-   local variables for Constructor.Record:
-
--}
 -- semantic domain
 type T_Constructor = ()
 -- cata
@@ -225,22 +132,6 @@ sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) =
             (_constructor )
     in  ()
 -- Constructors ------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Constructors.Cons:
-
--}
-{-
-   local variables for Constructors.Nil:
-
--}
 -- semantic domain
 type T_Constructors = ()
 -- cata
@@ -259,18 +150,6 @@ sem_Constructors_Nil  =
     let 
     in  ()
 -- ContextItem -------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for ContextItem.ContextItem:
-
--}
 -- semantic domain
 type T_ContextItem = ()
 -- cata
@@ -287,22 +166,6 @@ sem_ContextItem_ContextItem (_range) (_name) (_types) =
             (_name )
     in  ()
 -- ContextItems ------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for ContextItems.Cons:
-
--}
-{-
-   local variables for ContextItems.Nil:
-
--}
 -- semantic domain
 type T_ContextItems = ()
 -- cata
@@ -321,58 +184,6 @@ sem_ContextItems_Nil  =
     let 
     in  ()
 -- Declaration -------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Declaration.Class:
-
--}
-{-
-   local variables for Declaration.Data:
-
--}
-{-
-   local variables for Declaration.Default:
-
--}
-{-
-   local variables for Declaration.Empty:
-
--}
-{-
-   local variables for Declaration.Fixity:
-
--}
-{-
-   local variables for Declaration.FunctionBindings:
-
--}
-{-
-   local variables for Declaration.Instance:
-
--}
-{-
-   local variables for Declaration.Newtype:
-
--}
-{-
-   local variables for Declaration.PatternBinding:
-
--}
-{-
-   local variables for Declaration.Type:
-
--}
-{-
-   local variables for Declaration.TypeSignature:
-
--}
 -- semantic domain
 type T_Declaration = ()
 -- cata
@@ -487,22 +298,6 @@ sem_Declaration_TypeSignature (_range) (_names) (_type) =
             (_names )
     in  ()
 -- Declarations ------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Declarations.Cons:
-
--}
-{-
-   local variables for Declarations.Nil:
-
--}
 -- semantic domain
 type T_Declarations = ()
 -- cata
@@ -521,30 +316,6 @@ sem_Declarations_Nil  =
     let 
     in  ()
 -- Export ------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Export.Module:
-
--}
-{-
-   local variables for Export.TypeOrClass:
-
--}
-{-
-   local variables for Export.TypeOrClassComplete:
-
--}
-{-
-   local variables for Export.Variable:
-
--}
 -- semantic domain
 type T_Export = ()
 -- cata
@@ -590,22 +361,6 @@ sem_Export_Variable (_range) (_name) =
             (_name )
     in  ()
 -- Exports -----------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Exports.Cons:
-
--}
-{-
-   local variables for Exports.Nil:
-
--}
 -- semantic domain
 type T_Exports = ()
 -- cata
@@ -624,94 +379,6 @@ sem_Exports_Nil  =
     let 
     in  ()
 -- Expression --------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Expression.Case:
-
--}
-{-
-   local variables for Expression.Comprehension:
-
--}
-{-
-   local variables for Expression.Constructor:
-
--}
-{-
-   local variables for Expression.Do:
-
--}
-{-
-   local variables for Expression.Enum:
-
--}
-{-
-   local variables for Expression.If:
-
--}
-{-
-   local variables for Expression.InfixApplication:
-
--}
-{-
-   local variables for Expression.Lambda:
-
--}
-{-
-   local variables for Expression.Let:
-
--}
-{-
-   local variables for Expression.List:
-
--}
-{-
-   local variables for Expression.Literal:
-
--}
-{-
-   local variables for Expression.Negate:
-
--}
-{-
-   local variables for Expression.NegateFloat:
-
--}
-{-
-   local variables for Expression.NormalApplication:
-
--}
-{-
-   local variables for Expression.Parenthesized:
-
--}
-{-
-   local variables for Expression.RecordConstruction:
-
--}
-{-
-   local variables for Expression.RecordUpdate:
-
--}
-{-
-   local variables for Expression.Tuple:
-
--}
-{-
-   local variables for Expression.Typed:
-
--}
-{-
-   local variables for Expression.Variable:
-
--}
 -- semantic domain
 type T_Expression = ()
 -- cata
@@ -895,22 +562,6 @@ sem_Expression_Variable (_range) (_name) =
             (_name )
     in  ()
 -- Expressions -------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Expressions.Cons:
-
--}
-{-
-   local variables for Expressions.Nil:
-
--}
 -- semantic domain
 type T_Expressions = ()
 -- cata
@@ -929,18 +580,6 @@ sem_Expressions_Nil  =
     let 
     in  ()
 -- FieldDeclaration --------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for FieldDeclaration.FieldDeclaration:
-
--}
 -- semantic domain
 type T_FieldDeclaration = ()
 -- cata
@@ -957,22 +596,6 @@ sem_FieldDeclaration_FieldDeclaration (_range) (_names) (_type) =
             (_names )
     in  ()
 -- FieldDeclarations -------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for FieldDeclarations.Cons:
-
--}
-{-
-   local variables for FieldDeclarations.Nil:
-
--}
 -- semantic domain
 type T_FieldDeclarations = ()
 -- cata
@@ -991,26 +614,6 @@ sem_FieldDeclarations_Nil  =
     let 
     in  ()
 -- Fixity ------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Fixity.Infix:
-
--}
-{-
-   local variables for Fixity.Infixl:
-
--}
-{-
-   local variables for Fixity.Infixr:
-
--}
 -- semantic domain
 type T_Fixity = ()
 -- cata
@@ -1038,18 +641,6 @@ sem_Fixity_Infixr (_range) =
     let 
     in  ()
 -- FunctionBinding ---------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for FunctionBinding.FunctionBinding:
-
--}
 -- semantic domain
 type T_FunctionBinding = ()
 -- cata
@@ -1065,22 +656,6 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) =
     let 
     in  ()
 -- FunctionBindings --------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for FunctionBindings.Cons:
-
--}
-{-
-   local variables for FunctionBindings.Nil:
-
--}
 -- semantic domain
 type T_FunctionBindings = ()
 -- cata
@@ -1099,18 +674,6 @@ sem_FunctionBindings_Nil  =
     let 
     in  ()
 -- GuardedExpression -------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for GuardedExpression.GuardedExpression:
-
--}
 -- semantic domain
 type T_GuardedExpression = ()
 -- cata
@@ -1126,22 +689,6 @@ sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) =
     let 
     in  ()
 -- GuardedExpressions ------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for GuardedExpressions.Cons:
-
--}
-{-
-   local variables for GuardedExpressions.Nil:
-
--}
 -- semantic domain
 type T_GuardedExpressions = ()
 -- cata
@@ -1160,27 +707,6 @@ sem_GuardedExpressions_Nil  =
     let 
     in  ()
 -- Import ------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      imps                 : [(Id, Core.DeclKind)]
-
--}
-{-
-   local variables for Import.TypeOrClass:
-
--}
-{-
-   local variables for Import.TypeOrClassComplete:
-
--}
-{-
-   local variables for Import.Variable:
-
--}
 -- semantic domain
 type T_Import = (([(Id, Core.DeclKind)]))
 -- cata
@@ -1219,23 +745,6 @@ sem_Import_Variable (_range) (_name) =
             (_name )
     in  ([(_name_id, Core.DeclKindValue)])
 -- ImportDeclaration -------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      coreImportDecls      :  [Core.CoreDecl] 
-
--}
-{-
-   local variables for ImportDeclaration.Empty:
-
--}
-{-
-   local variables for ImportDeclaration.Import:
-
--}
 -- semantic domain
 type T_ImportDeclaration = (( [Core.CoreDecl] ))
 -- cata
@@ -1301,23 +810,6 @@ sem_ImportDeclaration_Import (_range) (_qualified) (_name) (_asname) (_importspe
                  _importspecification_imps
         )
 -- ImportDeclarations ------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      coreImportDecls      :  [Core.CoreDecl] 
-
--}
-{-
-   local variables for ImportDeclarations.Cons:
-
--}
-{-
-   local variables for ImportDeclarations.Nil:
-
--}
 -- semantic domain
 type T_ImportDeclarations = (( [Core.CoreDecl] ))
 -- cata
@@ -1339,19 +831,6 @@ sem_ImportDeclarations_Nil  =
     let 
     in  ([])
 -- ImportSpecification -----------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      imps                 : [(Id, Core.DeclKind)]
-
--}
-{-
-   local variables for ImportSpecification.Import:
-
--}
 -- semantic domain
 type T_ImportSpecification = (([(Id, Core.DeclKind)]))
 -- cata
@@ -1372,23 +851,6 @@ sem_ImportSpecification_Import (_range) (_hiding) (_imports) =
              _imports_imps
         )
 -- Imports -----------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      imps                 : [(Id, Core.DeclKind)]
-
--}
-{-
-   local variables for Imports.Cons:
-
--}
-{-
-   local variables for Imports.Nil:
-
--}
 -- semantic domain
 type T_Imports = (([(Id, Core.DeclKind)]))
 -- cata
@@ -1410,26 +872,6 @@ sem_Imports_Nil  =
     let 
     in  ([])
 -- LeftHandSide ------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for LeftHandSide.Function:
-
--}
-{-
-   local variables for LeftHandSide.Infix:
-
--}
-{-
-   local variables for LeftHandSide.Parenthesized:
-
--}
 -- semantic domain
 type T_LeftHandSide = ()
 -- cata
@@ -1466,30 +908,6 @@ sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) =
     let 
     in  ()
 -- Literal -----------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Literal.Char:
-
--}
-{-
-   local variables for Literal.Float:
-
--}
-{-
-   local variables for Literal.Int:
-
--}
-{-
-   local variables for Literal.String:
-
--}
 -- semantic domain
 type T_Literal = ()
 -- cata
@@ -1528,22 +946,6 @@ sem_Literal_String (_range) (_value) =
     let 
     in  ()
 -- MaybeDeclarations -------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for MaybeDeclarations.Just:
-
--}
-{-
-   local variables for MaybeDeclarations.Nothing:
-
--}
 -- semantic domain
 type T_MaybeDeclarations = ()
 -- cata
@@ -1563,22 +965,6 @@ sem_MaybeDeclarations_Nothing  =
     let 
     in  ()
 -- MaybeExports ------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for MaybeExports.Just:
-
--}
-{-
-   local variables for MaybeExports.Nothing:
-
--}
 -- semantic domain
 type T_MaybeExports = ()
 -- cata
@@ -1598,22 +984,6 @@ sem_MaybeExports_Nothing  =
     let 
     in  ()
 -- MaybeExpression ---------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for MaybeExpression.Just:
-
--}
-{-
-   local variables for MaybeExpression.Nothing:
-
--}
 -- semantic domain
 type T_MaybeExpression = ()
 -- cata
@@ -1633,23 +1003,6 @@ sem_MaybeExpression_Nothing  =
     let 
     in  ()
 -- MaybeImportSpecification ------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      imps                 : Maybe [(Id, Core.DeclKind)]
-
--}
-{-
-   local variables for MaybeImportSpecification.Just:
-
--}
-{-
-   local variables for MaybeImportSpecification.Nothing:
-
--}
 -- semantic domain
 type T_MaybeImportSpecification = ((Maybe [(Id, Core.DeclKind)]))
 -- cata
@@ -1670,22 +1023,6 @@ sem_MaybeImportSpecification_Nothing  =
     let 
     in  (Nothing)
 -- MaybeInt ----------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for MaybeInt.Just:
-
--}
-{-
-   local variables for MaybeInt.Nothing:
-
--}
 -- semantic domain
 type T_MaybeInt = ()
 -- cata
@@ -1705,24 +1042,6 @@ sem_MaybeInt_Nothing  =
     let 
     in  ()
 -- MaybeName ---------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      id                   :  Maybe Id 
-      isNothing            : Bool
-
--}
-{-
-   local variables for MaybeName.Just:
-
--}
-{-
-   local variables for MaybeName.Nothing:
-
--}
 -- semantic domain
 type T_MaybeName = (( Maybe Id ),(Bool))
 -- cata
@@ -1743,23 +1062,6 @@ sem_MaybeName_Nothing  =
     let 
     in  (Nothing,True)
 -- MaybeNames --------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      ids                  :  Maybe [Id] 
-
--}
-{-
-   local variables for MaybeNames.Just:
-
--}
-{-
-   local variables for MaybeNames.Nothing:
-
--}
 -- semantic domain
 type T_MaybeNames = (( Maybe [Id] ))
 -- cata
@@ -1780,19 +1082,6 @@ sem_MaybeNames_Nothing  =
     let 
     in  (Nothing)
 -- Module ------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      coreImportDecls      :  [Core.CoreDecl] 
-
--}
-{-
-   local variables for Module.Module:
-
--}
 -- semantic domain
 type T_Module = (( [Core.CoreDecl] ))
 -- cata
@@ -1812,27 +1101,6 @@ sem_Module_Module (_range) (_name) (_exports) (_body) =
             (_body )
     in  (_body_coreImportDecls)
 -- Name --------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      id                   : Id
-
--}
-{-
-   local variables for Name.Identifier:
-
--}
-{-
-   local variables for Name.Operator:
-
--}
-{-
-   local variables for Name.Special:
-
--}
 -- semantic domain
 type T_Name = ((Id))
 -- cata
@@ -1866,23 +1134,6 @@ sem_Name_Special (_range) (_module) (_name) =
     let 
     in  (idFromString _name)
 -- Names -------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      ids                  : [Id]
-
--}
-{-
-   local variables for Names.Cons:
-
--}
-{-
-   local variables for Names.Nil:
-
--}
 -- semantic domain
 type T_Names = (([Id]))
 -- cata
@@ -1904,70 +1155,6 @@ sem_Names_Nil  =
     let 
     in  ([])
 -- Pattern -----------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Pattern.As:
-
--}
-{-
-   local variables for Pattern.Constructor:
-
--}
-{-
-   local variables for Pattern.InfixConstructor:
-
--}
-{-
-   local variables for Pattern.Irrefutable:
-
--}
-{-
-   local variables for Pattern.List:
-
--}
-{-
-   local variables for Pattern.Literal:
-
--}
-{-
-   local variables for Pattern.Negate:
-
--}
-{-
-   local variables for Pattern.NegateFloat:
-
--}
-{-
-   local variables for Pattern.Parenthesized:
-
--}
-{-
-   local variables for Pattern.Record:
-
--}
-{-
-   local variables for Pattern.Successor:
-
--}
-{-
-   local variables for Pattern.Tuple:
-
--}
-{-
-   local variables for Pattern.Variable:
-
--}
-{-
-   local variables for Pattern.Wildcard:
-
--}
 -- semantic domain
 type T_Pattern = ()
 -- cata
@@ -2097,22 +1284,6 @@ sem_Pattern_Wildcard (_range) =
     let 
     in  ()
 -- Patterns ----------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Patterns.Cons:
-
--}
-{-
-   local variables for Patterns.Nil:
-
--}
 -- semantic domain
 type T_Patterns = ()
 -- cata
@@ -2131,22 +1302,6 @@ sem_Patterns_Nil  =
     let 
     in  ()
 -- Position ----------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Position.Position:
-
--}
-{-
-   local variables for Position.Unknown:
-
--}
 -- semantic domain
 type T_Position = ()
 -- cata
@@ -2168,30 +1323,6 @@ sem_Position_Unknown  =
     let 
     in  ()
 -- Qualifier ---------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Qualifier.Empty:
-
--}
-{-
-   local variables for Qualifier.Generator:
-
--}
-{-
-   local variables for Qualifier.Guard:
-
--}
-{-
-   local variables for Qualifier.Let:
-
--}
 -- semantic domain
 type T_Qualifier = ()
 -- cata
@@ -2230,22 +1361,6 @@ sem_Qualifier_Let (_range) (_declarations) =
     let 
     in  ()
 -- Qualifiers --------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Qualifiers.Cons:
-
--}
-{-
-   local variables for Qualifiers.Nil:
-
--}
 -- semantic domain
 type T_Qualifiers = ()
 -- cata
@@ -2264,18 +1379,6 @@ sem_Qualifiers_Nil  =
     let 
     in  ()
 -- Range -------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Range.Range:
-
--}
 -- semantic domain
 type T_Range = ()
 -- cata
@@ -2290,18 +1393,6 @@ sem_Range_Range (_start) (_stop) =
     let 
     in  ()
 -- RecordExpressionBinding -------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for RecordExpressionBinding.RecordExpressionBinding:
-
--}
 -- semantic domain
 type T_RecordExpressionBinding = ()
 -- cata
@@ -2318,22 +1409,6 @@ sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expressio
             (_name )
     in  ()
 -- RecordExpressionBindings ------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for RecordExpressionBindings.Cons:
-
--}
-{-
-   local variables for RecordExpressionBindings.Nil:
-
--}
 -- semantic domain
 type T_RecordExpressionBindings = ()
 -- cata
@@ -2352,18 +1427,6 @@ sem_RecordExpressionBindings_Nil  =
     let 
     in  ()
 -- RecordPatternBinding ----------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for RecordPatternBinding.RecordPatternBinding:
-
--}
 -- semantic domain
 type T_RecordPatternBinding = ()
 -- cata
@@ -2380,22 +1443,6 @@ sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) =
             (_name )
     in  ()
 -- RecordPatternBindings ---------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for RecordPatternBindings.Cons:
-
--}
-{-
-   local variables for RecordPatternBindings.Nil:
-
--}
 -- semantic domain
 type T_RecordPatternBindings = ()
 -- cata
@@ -2414,22 +1461,6 @@ sem_RecordPatternBindings_Nil  =
     let 
     in  ()
 -- RightHandSide -----------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for RightHandSide.Expression:
-
--}
-{-
-   local variables for RightHandSide.Guarded:
-
--}
 -- semantic domain
 type T_RightHandSide = ()
 -- cata
@@ -2454,18 +1485,6 @@ sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) =
     let 
     in  ()
 -- SimpleType --------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for SimpleType.SimpleType:
-
--}
 -- semantic domain
 type T_SimpleType = ()
 -- cata
@@ -2484,30 +1503,6 @@ sem_SimpleType_SimpleType (_range) (_name) (_typevariables) =
             (_typevariables )
     in  ()
 -- Statement ---------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Statement.Empty:
-
--}
-{-
-   local variables for Statement.Expression:
-
--}
-{-
-   local variables for Statement.Generator:
-
--}
-{-
-   local variables for Statement.Let:
-
--}
 -- semantic domain
 type T_Statement = ()
 -- cata
@@ -2546,22 +1541,6 @@ sem_Statement_Let (_range) (_declarations) =
     let 
     in  ()
 -- Statements --------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Statements.Cons:
-
--}
-{-
-   local variables for Statements.Nil:
-
--}
 -- semantic domain
 type T_Statements = ()
 -- cata
@@ -2580,22 +1559,6 @@ sem_Statements_Nil  =
     let 
     in  ()
 -- Strings -----------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Strings.Cons:
-
--}
-{-
-   local variables for Strings.Nil:
-
--}
 -- semantic domain
 type T_Strings = ()
 -- cata
@@ -2614,42 +1577,6 @@ sem_Strings_Nil  =
     let 
     in  ()
 -- Type --------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Type.Application:
-
--}
-{-
-   local variables for Type.Constructor:
-
--}
-{-
-   local variables for Type.Exists:
-
--}
-{-
-   local variables for Type.Forall:
-
--}
-{-
-   local variables for Type.Parenthesized:
-
--}
-{-
-   local variables for Type.Qualified:
-
--}
-{-
-   local variables for Type.Variable:
-
--}
 -- semantic domain
 type T_Type = ()
 -- cata
@@ -2721,22 +1648,6 @@ sem_Type_Variable (_range) (_name) =
             (_name )
     in  ()
 -- Types -------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-
--}
-{-
-   local variables for Types.Cons:
-
--}
-{-
-   local variables for Types.Nil:
-
--}
 -- semantic domain
 type T_Types = ()
 -- cata

@@ -360,56 +360,6 @@ checkExport entity name inScope =
 equalName x y =
     getNameName x == getNameName y        
 -- Alternative -------------------------------------------------
-{-
-   inherited attributes:
-      betaLeft             : Tp
-      betaRight            : Tp
-      constructorenv       : ConstructorEnvironment
-      monos                : Tps
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      assumptions          : Assumptions
-      constraints          : ConstraintSet
-      oneLineTree          : Tree
-      self                 : Alternative
-      size                 : Int
-
--}
-{-
-   local variables for Alternative.Alternative:
-      shadowing
-      namesInScope
-      oneLineTree
-      size
-      cinfoRight
-      cinfoLeft
-      cinfoBind
-      conRight
-      conLeft
-      unused
-      duplicated
-      assumptions'
-      csetBinds
-      self
-
--}
-{-
-   local variables for Alternative.Empty:
-      oneLineTree
-      size
-      self
-
--}
 -- semantic domain
 type T_Alternative = (Tp) ->
                      (Tp) ->
@@ -508,41 +458,6 @@ sem_Alternative_Empty (_range) (_lhs_betaLeft) (_lhs_betaRight) (_lhs_betaUnique
             (_range )
     in  (empty,_lhs_betaUnique,_lhs_collectednotypedef,ctEmpty,_lhs_kindErrors,_lhs_miscerrors,_oneLineTree,_self,_size,_lhs_typeAnnotations,_lhs_warnings)
 -- Alternatives ------------------------------------------------
-{-
-   inherited attributes:
-      betaLeft             : Tp
-      betaRight            : Tp
-      constructorenv       : ConstructorEnvironment
-      monos                : Tps
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      assumptions          : Assumptions
-      constraintslist      : ConstraintSets
-      oneLineTree          :  [ Tree] 
-      self                 : Alternatives
-      size                 : Int
-
--}
-{-
-   local variables for Alternatives.Cons:
-      self
-
--}
-{-
-   local variables for Alternatives.Nil:
-      self
-
--}
 -- semantic domain
 type T_Alternatives = (Tp) ->
                       (Tp) ->
@@ -579,25 +494,6 @@ sem_Alternatives_Nil (_lhs_betaLeft) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_co
             []
     in  (empty,_lhs_betaUnique,_lhs_collectednotypedef,[],_lhs_kindErrors,_lhs_miscerrors,[],_self,0,_lhs_typeAnnotations,_lhs_warnings)
 -- AnnotatedType -----------------------------------------------
-{-
-   inherited attributes:
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      kindErrors           : [Error]
-
-   synthesised attributes:
-      self                 : AnnotatedType
-      type                 : Type
-      typevariables        : Names
-
--}
-{-
-   local variables for AnnotatedType.AnnotatedType:
-      self
-
--}
 -- semantic domain
 type T_AnnotatedType = ([Error]) ->
                        (Names) ->
@@ -621,30 +517,6 @@ sem_AnnotatedType_AnnotatedType (_range) (_strict) (_type) (_lhs_kindErrors) (_l
             (_type (_lhs_tyconEnv))
     in  (checkType _lhs_tyconEnv _lhs_namesInScope _type_self ++ _lhs_kindErrors,_self,_type_self,_type_typevariables)
 -- AnnotatedTypes ----------------------------------------------
-{-
-   inherited attributes:
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      kindErrors           : [Error]
-
-   synthesised attributes:
-      self                 : AnnotatedTypes
-      types                : Types
-      typevariables        : Names
-
--}
-{-
-   local variables for AnnotatedTypes.Cons:
-      self
-
--}
-{-
-   local variables for AnnotatedTypes.Nil:
-      self
-
--}
 -- semantic domain
 type T_AnnotatedTypes = ([Error]) ->
                         (Names) ->
@@ -672,56 +544,6 @@ sem_AnnotatedTypes_Nil (_lhs_kindErrors) (_lhs_namesInScope) (_lhs_tyconEnv) =
             []
     in  (_lhs_kindErrors,_self,[],[])
 -- Body --------------------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      importTypeEnv        : TypeEnvironment
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      collectEnvironment   : ImportEnvironment
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      namesInScope         : Names
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      assumptions          : Assumptions
-      constraints          : ConstraintSet
-      derivedFunctions     : TypeEnvironment
-      environment          : PatternAssumptions
-      fixOps               : Names
-      importedModules      : Names
-      self                 : Body
-      size                 : Int
-      toplevelNames        : Names
-      typeSignatures       : TypeEnvironment
-
--}
-{-
-   local variables for Body.Body:
-      suspiciousErrors
-      shadowing
-      namesInScope
-      assumptions
-      environment
-      cinfo
-      aset'
-      csetBinds
-      anns
-      tiNoTypeDefinition
-      tiWarnings
-      tiErrors
-      monoTable
-      cset
-      aset
-      env
-      self
-
--}
 -- semantic domain
 type T_Body = (Int) ->
               (ImportEnvironment) ->
@@ -798,43 +620,6 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_betaUnique) (
          _suspiciousErrors
         )
 -- Constructor -------------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      namesInScope         : Names
-      simpletype           : SimpleType
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      collectEnvironment   : ImportEnvironment
-      kindErrors           : [Error]
-
-   synthesised attributes:
-      self                 : Constructor
-      typevariables        : Names
-
--}
-{-
-   local variables for Constructor.Constructor:
-      tps
-      tp
-      typeScheme
-      self
-
--}
-{-
-   local variables for Constructor.Infix:
-      tps
-      tp
-      typeScheme
-      self
-
--}
-{-
-   local variables for Constructor.Record:
-      self
-
--}
 -- semantic domain
 type T_Constructor = (ImportEnvironment) ->
                      (ConstructorEnvironment) ->
@@ -906,32 +691,6 @@ sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) (_lhs_collec
             (_fieldDeclarations (_lhs_namesInScope))
     in  (_lhs_collectEnvironment,_lhs_kindErrors,_self,[])
 -- Constructors ------------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      namesInScope         : Names
-      simpletype           : SimpleType
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      collectEnvironment   : ImportEnvironment
-      kindErrors           : [Error]
-
-   synthesised attributes:
-      self                 : Constructors
-      typevariables        : Names
-
--}
-{-
-   local variables for Constructors.Cons:
-      self
-
--}
-{-
-   local variables for Constructors.Nil:
-      self
-
--}
 -- semantic domain
 type T_Constructors = (ImportEnvironment) ->
                       (ConstructorEnvironment) ->
@@ -962,21 +721,6 @@ sem_Constructors_Nil (_lhs_collectEnvironment) (_lhs_constructorenv) (_lhs_kindE
             []
     in  (_lhs_collectEnvironment,_lhs_kindErrors,_self,[])
 -- ContextItem -------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : ContextItem
-
--}
-{-
-   local variables for ContextItem.ContextItem:
-      tyconEnv
-      self
-
--}
 -- semantic domain
 type T_ContextItem = ((ContextItem))
 -- cata
@@ -1001,25 +745,6 @@ sem_ContextItem_ContextItem (_range) (_name) (_types) =
             (_types (_tyconEnv))
     in  (_self)
 -- ContextItems ------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : ContextItems
-
--}
-{-
-   local variables for ContextItems.Cons:
-      self
-
--}
-{-
-   local variables for ContextItems.Nil:
-      self
-
--}
 -- semantic domain
 type T_ContextItems = ((ContextItems))
 -- cata
@@ -1044,134 +769,6 @@ sem_ContextItems_Nil  =
             []
     in  (_self)
 -- Declaration -------------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      monoTable            : MonoTable
-      monos                : Tps
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      bindingGroups        : BindingGroups
-      collectEnvironment   : ImportEnvironment
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      derivedFunctions     : TypeEnvironment
-      fixOps               : Names
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      previousWasAlsoFB    : Maybe Name
-      suspiciousFBs        : [(Name,Name)]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      typeSignatures       : TypeEnvironment
-      warnings             : [Warning]
-
-   synthesised attributes:
-      oneLineTree          : Tree
-      self                 : Declaration
-      size                 : Int
-
--}
-{-
-   local variables for Declaration.Class:
-      constraints
-      assumptions
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for Declaration.Data:
-      undef
-      doubles
-      unused
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for Declaration.Default:
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for Declaration.Empty:
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for Declaration.Fixity:
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for Declaration.FunctionBindings:
-      arityErrors
-      oneLineTree
-      cinfo
-      mybdggrp
-      newcon
-      betasLeft
-      betaRight
-      beta
-      self
-
--}
-{-
-   local variables for Declaration.Instance:
-      constraints
-      assumptions
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for Declaration.Newtype:
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for Declaration.PatternBinding:
-      patternDefinesNoVarsErrors
-      oneLineTree
-      size
-      cinfo
-      mybdggrp
-      newcon
-      self
-
--}
-{-
-   local variables for Declaration.Type:
-      undef
-      doubles
-      unused
-      typeSynonymInfo
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for Declaration.TypeSignature:
-      oneLineTree
-      size
-      typeScheme
-      self
-
--}
 -- semantic domain
 type T_Declaration = (Int) ->
                      (BindingGroups) ->
@@ -1569,45 +1166,6 @@ sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_betaUnique) (_lhs_
             (_type (_lhs_tyconEnv))
     in  (_lhs_betaUnique,_lhs_bindingGroups,_lhs_collectEnvironment,_lhs_collectednotypedef,_lhs_derivedFunctions,_lhs_fixOps,checkType _lhs_tyconEnv _lhs_namesInScope _type_self ++ _lhs_kindErrors,_lhs_miscerrors,_oneLineTree,Nothing,_self,_size,_lhs_suspiciousFBs,_lhs_typeAnnotations,foldr (uncurry add) _lhs_typeSignatures [ (n,_typeScheme) | n <- _names_self ],_lhs_warnings)
 -- Declarations ------------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      monoTable            : MonoTable
-      monos                : Tps
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      bindingGroups        : BindingGroups
-      collectEnvironment   : ImportEnvironment
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      derivedFunctions     : TypeEnvironment
-      fixOps               : Names
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      previousWasAlsoFB    : Maybe Name
-      suspiciousFBs        : [(Name,Name)]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      typeSignatures       : TypeEnvironment
-      warnings             : [Warning]
-
-   synthesised attributes:
-      oneLineTree          :  [ Tree] 
-      self                 : Declarations
-      size                 : Int
-
--}
-{-
-   local variables for Declarations.Cons:
-      self
-
--}
-{-
-   local variables for Declarations.Nil:
-      self
-
--}
 -- semantic domain
 type T_Declarations = (Int) ->
                       (BindingGroups) ->
@@ -1650,40 +1208,6 @@ sem_Declarations_Nil (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectEnviron
             []
     in  (_lhs_betaUnique,_lhs_bindingGroups,_lhs_collectEnvironment,_lhs_collectednotypedef,_lhs_derivedFunctions,_lhs_fixOps,_lhs_kindErrors,_lhs_miscerrors,[],_lhs_previousWasAlsoFB,_self,0,_lhs_suspiciousFBs,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_warnings)
 -- Export ------------------------------------------------------
-{-
-   inherited attributes:
-      consInScope          : Names
-      modulesInScope       : Names
-      namesInScope         : Names
-      tyconsInScope        : Names
-
-   chained attributes:
-
-   synthesised attributes:
-      exportErrors         : [Error]
-      self                 : Export
-
--}
-{-
-   local variables for Export.Module:
-      self
-
--}
-{-
-   local variables for Export.TypeOrClass:
-      self
-
--}
-{-
-   local variables for Export.TypeOrClassComplete:
-      self
-
--}
-{-
-   local variables for Export.Variable:
-      self
-
--}
 -- semantic domain
 type T_Export = (Names) ->
                 (Names) ->
@@ -1755,30 +1279,6 @@ sem_Export_Variable (_range) (_name) (_lhs_consInScope) (_lhs_modulesInScope) (_
         ,_self
         )
 -- Exports -----------------------------------------------------
-{-
-   inherited attributes:
-      consInScope          : Names
-      modulesInScope       : Names
-      namesInScope         : Names
-      tyconsInScope        : Names
-
-   chained attributes:
-
-   synthesised attributes:
-      exportErrors         : [Error]
-      self                 : Exports
-
--}
-{-
-   local variables for Exports.Cons:
-      self
-
--}
-{-
-   local variables for Exports.Nil:
-      self
-
--}
 -- semantic domain
 type T_Exports = (Names) ->
                  (Names) ->
@@ -1807,274 +1307,6 @@ sem_Exports_Nil (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInScope) (_l
             []
     in  ([],_self)
 -- Expression --------------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      monos                : Tps
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      assumptions          : Assumptions
-      beta                 : Tp
-      constraints          : ConstraintSet
-      oneLineTree          : Tree
-      self                 : Expression
-      size                 : Int
-
--}
-{-
-   local variables for Expression.Case:
-      oneLineTree
-      size
-      cinfo
-      newcon
-      beta'
-      beta
-      self
-
--}
-{-
-   local variables for Expression.Comprehension:
-      oneLineTree
-      size
-      cinfo
-      newcon
-      beta
-      self
-
--}
-{-
-   local variables for Expression.Constructor:
-      undefinedConstructorErrors
-      oneLineTree
-      size
-      cinfo
-      newcon
-      maybetp
-      beta
-      self
-
--}
-{-
-   local variables for Expression.Do:
-      lastStatementErrors
-      oneLineTree
-      size
-      cinfo
-      newcon
-      beta
-      self
-
--}
-{-
-   local variables for Expression.Enum:
-      oneLineTree
-      size
-      cinfoResult
-      cinfoTo
-      cinfoThen
-      cinfoFrom
-      conTo
-      conThen
-      conFrom
-      beta
-      self
-
--}
-{-
-   local variables for Expression.If:
-      oneLineTree
-      size
-      cinfoElse
-      cinfoThen
-      cinfoGuard
-      conElse
-      conThen
-      conGuard
-      beta
-      self
-
--}
-{-
-   local variables for Expression.InfixApplication:
-      oneLineTree
-      size
-      cinfoOperator
-      cinfoEmpty
-      cinfoComplete
-      conResult
-      conOperator
-      betaResOp
-      beta
-      self
-
--}
-{-
-   local variables for Expression.Lambda:
-      shadowing
-      namesInScope
-      oneLineTree
-      size
-      cinfoType
-      cinfoBind
-      newcon
-      unused
-      duplicated
-      assumptions'
-      csetBinds
-      beta
-      self
-
--}
-{-
-   local variables for Expression.Let:
-      suspiciousErrors
-      shadowing
-      namesInScope
-      assumptions
-      environment
-      collectDataTypes
-      fixOps
-      derivedFunctions
-      typeSynonyms
-      collectConstructorEnv
-      collectEnvironment
-      oneLineTree
-      size
-      cinfoType
-      anns
-      tiNoTypeDefinition
-      tiWarnings
-      tiErrors
-      monoTable
-      cset
-      aset
-      env
-      mybdggroup
-      beta
-      self
-
--}
-{-
-   local variables for Expression.List:
-      oneLineTree
-      size
-      cinfoElem
-      cinfoResult
-      zipf
-      newcon
-      beta'
-      beta
-      self
-
--}
-{-
-   local variables for Expression.Literal:
-      oneLineTree
-      size
-      cinfo
-      beta
-      self
-
--}
-{-
-   local variables for Expression.Negate:
-      oneLineTree
-      size
-      cinfoExpr
-      cinfoResult
-      conExpr
-      conResult
-      beta
-      self
-
--}
-{-
-   local variables for Expression.NegateFloat:
-      oneLineTree
-      size
-      cinfoExpr
-      cinfoResult
-      conExpr
-      conResult
-      beta
-      self
-
--}
-{-
-   local variables for Expression.NormalApplication:
-      oneLineTree
-      size
-      cinfo
-      newcon
-      beta
-      self
-
--}
-{-
-   local variables for Expression.Parenthesized:
-      oneLineTree
-      self
-
--}
-{-
-   local variables for Expression.RecordConstruction:
-      beta
-      constraints
-      assumptions
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for Expression.RecordUpdate:
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for Expression.Tuple:
-      oneLineTree
-      size
-      cinfo
-      newcon
-      beta
-      self
-
--}
-{-
-   local variables for Expression.Typed:
-      oneLineTree
-      size
-      cinfoResult
-      cinfoExpr
-      conExpr
-      conResult
-      typeScheme
-      beta
-      self
-
--}
-{-
-   local variables for Expression.Variable:
-      undefinedErrors
-      oneLineTree
-      size
-      beta
-      self
-
--}
 -- semantic domain
 type T_Expression = (Int) ->
                     ([(Name,Tps,Tp,Bool)]) ->
@@ -3071,40 +2303,6 @@ sem_Expression_Variable (_range) (_name) (_lhs_betaUnique) (_lhs_collectednotype
             (_name )
     in  (_name_self `single` _beta,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,ctNode [ ctVariable _lhs_betaUnique ],_lhs_kindErrors,_undefinedErrors ++ _lhs_miscerrors,_oneLineTree,_self,_size,_lhs_typeAnnotations,_lhs_warnings)
 -- Expressions -------------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      monos                : Tps
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      assumptions          : Assumptions
-      betas                : Tps
-      constraintslist      : ConstraintSets
-      oneLineTree          :  [ Tree] 
-      self                 : Expressions
-      size                 : Int
-
--}
-{-
-   local variables for Expressions.Cons:
-      self
-
--}
-{-
-   local variables for Expressions.Nil:
-      self
-
--}
 -- semantic domain
 type T_Expressions = (Int) ->
                      ([(Name,Tps,Tp,Bool)]) ->
@@ -3139,23 +2337,6 @@ sem_Expressions_Nil (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constructo
             []
     in  (empty,_lhs_betaUnique,[],_lhs_collectednotypedef,[],_lhs_kindErrors,_lhs_miscerrors,[],_self,0,_lhs_typeAnnotations,_lhs_warnings)
 -- FieldDeclaration --------------------------------------------
-{-
-   inherited attributes:
-      namesInScope         : Names
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : FieldDeclaration
-
--}
-{-
-   local variables for FieldDeclaration.FieldDeclaration:
-      tyconEnv
-      kindErrors
-      self
-
--}
 -- semantic domain
 type T_FieldDeclaration = (Names) ->
                           ((FieldDeclaration))
@@ -3181,26 +2362,6 @@ sem_FieldDeclaration_FieldDeclaration (_range) (_names) (_type) (_lhs_namesInSco
             (_type (_kindErrors) (_lhs_namesInScope) (_tyconEnv))
     in  (_self)
 -- FieldDeclarations -------------------------------------------
-{-
-   inherited attributes:
-      namesInScope         : Names
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : FieldDeclarations
-
--}
-{-
-   local variables for FieldDeclarations.Cons:
-      self
-
--}
-{-
-   local variables for FieldDeclarations.Nil:
-      self
-
--}
 -- semantic domain
 type T_FieldDeclarations = (Names) ->
                            ((FieldDeclarations))
@@ -3226,30 +2387,6 @@ sem_FieldDeclarations_Nil (_lhs_namesInScope) =
             []
     in  (_self)
 -- Fixity ------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : Fixity
-
--}
-{-
-   local variables for Fixity.Infix:
-      self
-
--}
-{-
-   local variables for Fixity.Infixl:
-      self
-
--}
-{-
-   local variables for Fixity.Infixr:
-      self
-
--}
 -- semantic domain
 type T_Fixity = ((Fixity))
 -- cata
@@ -3286,52 +2423,6 @@ sem_Fixity_Infixr (_range) =
             (_range )
     in  (_self)
 -- FunctionBinding ---------------------------------------------
-{-
-   inherited attributes:
-      betaRight            : Tp
-      betasLeft            : Tps
-      constructorenv       : ConstructorEnvironment
-      monos                : Tps
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      arity                : Int
-      assumptions          : Assumptions
-      constraints          : ConstraintSet
-      name                 : Name
-      numberOfPatterns     : Int
-      oneLineTree          : Tree
-      self                 : FunctionBinding
-      size                 : Int
-
--}
-{-
-   local variables for FunctionBinding.FunctionBinding:
-      shadowing
-      namesInScope
-      oneLineTree
-      size
-      cinfoLeft
-      cinfoRight
-      cinfoBind
-      conRight
-      conLeft
-      unused
-      duplicated
-      assumptions'
-      csetBinds
-      self
-
--}
 -- semantic domain
 type T_FunctionBinding = (Tp) ->
                          (Int) ->
@@ -3419,44 +2510,6 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_
          _righthandside_warnings
         )
 -- FunctionBindings --------------------------------------------
-{-
-   inherited attributes:
-      betaRight            : Tp
-      betasLeft            : Tps
-      constructorenv       : ConstructorEnvironment
-      monos                : Tps
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      arities              :  [Int] 
-      assumptions          : Assumptions
-      constraintslist      : ConstraintSets
-      name                 : Name
-      numberOfPatterns     : Int
-      oneLineTree          :  [ Tree] 
-      self                 : FunctionBindings
-      size                 : Int
-
--}
-{-
-   local variables for FunctionBindings.Cons:
-      self
-
--}
-{-
-   local variables for FunctionBindings.Nil:
-      self
-
--}
 -- semantic domain
 type T_FunctionBindings = (Tp) ->
                           (Int) ->
@@ -3493,42 +2546,6 @@ sem_FunctionBindings_Nil (_lhs_betaRight) (_lhs_betaUnique) (_lhs_betasLeft) (_l
             []
     in  ([],empty,_lhs_betaUnique,_lhs_collectednotypedef,[],_lhs_kindErrors,_lhs_miscerrors,internalError "TypeInferencing.ag" "n/a" "FunctionBindings(2)",internalError "TypeInferencing.ag" "n/a" "FunctionBindings(1)",[],_self,0,_lhs_typeAnnotations,_lhs_warnings)
 -- GuardedExpression -------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      monos                : Tps
-      namesInScope         : Names
-      rightBeta            : Tp
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      assumptions          : Assumptions
-      beta                 : Tp
-      constraints          : ConstraintSet
-      oneLineTree          :  String -> Tree 
-      self                 : GuardedExpression
-      size                 : Int
-
--}
-{-
-   local variables for GuardedExpression.GuardedExpression:
-      oneLineTree
-      size
-      cinfoExpr
-      cinfoGuard
-      newconExpr
-      newconGuard
-      self
-
--}
 -- semantic domain
 type T_GuardedExpression = (Int) ->
                            ([(Name,Tps,Tp,Bool)]) ->
@@ -3603,41 +2620,6 @@ sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_be
         ,_expression_warnings
         )
 -- GuardedExpressions ------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      monos                : Tps
-      namesInScope         : Names
-      rightBeta            : Tp
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      assumptions          : Assumptions
-      betas                : Tps
-      constraintslist      : ConstraintSets
-      oneLineTree          :  [ String -> Tree ] 
-      self                 : GuardedExpressions
-      size                 : Int
-
--}
-{-
-   local variables for GuardedExpressions.Cons:
-      self
-
--}
-{-
-   local variables for GuardedExpressions.Nil:
-      self
-
--}
 -- semantic domain
 type T_GuardedExpressions = (Int) ->
                             ([(Name,Tps,Tp,Bool)]) ->
@@ -3673,30 +2655,6 @@ sem_GuardedExpressions_Nil (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_con
             []
     in  (empty,_lhs_betaUnique,[],_lhs_collectednotypedef,[],_lhs_kindErrors,_lhs_miscerrors,[],_self,0,_lhs_typeAnnotations,_lhs_warnings)
 -- Import ------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : Import
-
--}
-{-
-   local variables for Import.TypeOrClass:
-      self
-
--}
-{-
-   local variables for Import.TypeOrClassComplete:
-      self
-
--}
-{-
-   local variables for Import.Variable:
-      self
-
--}
 -- semantic domain
 type T_Import = ((Import))
 -- cata
@@ -3745,26 +2703,6 @@ sem_Import_Variable (_range) (_name) =
             (_name )
     in  (_self)
 -- ImportDeclaration -------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-      importedModules      : Names
-
-   synthesised attributes:
-      self                 : ImportDeclaration
-
--}
-{-
-   local variables for ImportDeclaration.Empty:
-      self
-
--}
-{-
-   local variables for ImportDeclaration.Import:
-      self
-
--}
 -- semantic domain
 type T_ImportDeclaration = (Names) ->
                            ((Names),(ImportDeclaration))
@@ -3802,26 +2740,6 @@ sem_ImportDeclaration_Import (_range) (_qualified) (_name) (_asname) (_importspe
             (_importspecification )
     in  (_name_self : _lhs_importedModules,_self)
 -- ImportDeclarations ------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-      importedModules      : Names
-
-   synthesised attributes:
-      self                 : ImportDeclarations
-
--}
-{-
-   local variables for ImportDeclarations.Cons:
-      self
-
--}
-{-
-   local variables for ImportDeclarations.Nil:
-      self
-
--}
 -- semantic domain
 type T_ImportDeclarations = (Names) ->
                             ((Names),(ImportDeclarations))
@@ -3847,20 +2765,6 @@ sem_ImportDeclarations_Nil (_lhs_importedModules) =
             []
     in  (_lhs_importedModules,_self)
 -- ImportSpecification -----------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : ImportSpecification
-
--}
-{-
-   local variables for ImportSpecification.Import:
-      self
-
--}
 -- semantic domain
 type T_ImportSpecification = ((ImportSpecification))
 -- cata
@@ -3881,25 +2785,6 @@ sem_ImportSpecification_Import (_range) (_hiding) (_imports) =
             (_imports )
     in  (_self)
 -- Imports -----------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : Imports
-
--}
-{-
-   local variables for Imports.Cons:
-      self
-
--}
-{-
-   local variables for Imports.Nil:
-      self
-
--}
 -- semantic domain
 type T_Imports = ((Imports))
 -- cata
@@ -3924,49 +2809,6 @@ sem_Imports_Nil  =
             []
     in  (_self)
 -- LeftHandSide ------------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      miscerrors           : [Error]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      betas                : Tps
-      constraints          : ConstraintSet
-      environment          : PatternAssumptions
-      name                 : Name
-      numberOfPatterns     : Int
-      oneLineTree          : Tree
-      patternTrees         : [Tree]
-      self                 : LeftHandSide
-      size                 : Int
-
--}
-{-
-   local variables for LeftHandSide.Function:
-      oneLineTree
-      self
-
--}
-{-
-   local variables for LeftHandSide.Infix:
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for LeftHandSide.Parenthesized:
-      oneLineTree
-      size
-      self
-
--}
 -- semantic domain
 type T_LeftHandSide = (Int) ->
                       (ConstructorEnvironment) ->
@@ -4054,41 +2896,6 @@ sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) (_lhs_betaUn
             (_patterns (_lefthandside_betaUnique) (_lhs_constructorenv) (_lefthandside_miscerrors) (_lhs_namesInScope) (_lhs_tyconEnv) (_lefthandside_warnings))
     in  (_patterns_betaUnique,_lefthandside_betas ++ _patterns_betas,ctNode ( _lefthandside_constraints : _patterns_constraintslist ),_lefthandside_environment `combine` _patterns_environment,_patterns_miscerrors,_lefthandside_name,_lefthandside_numberOfPatterns + _patterns_numberOfPatterns,_oneLineTree,_lefthandside_patternTrees ++ _patterns_oneLineTree,_self,_size,_patterns_warnings)
 -- Literal -----------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      literalType          : Tp
-      oneLineTree          : Tree
-      self                 : Literal
-
--}
-{-
-   local variables for Literal.Char:
-      oneLineTree
-      self
-
--}
-{-
-   local variables for Literal.Float:
-      oneLineTree
-      self
-
--}
-{-
-   local variables for Literal.Int:
-      oneLineTree
-      self
-
--}
-{-
-   local variables for Literal.String:
-      oneLineTree
-      self
-
--}
 -- semantic domain
 type T_Literal = ((Tp),(Tree),(Literal))
 -- cata
@@ -4147,61 +2954,6 @@ sem_Literal_String (_range) (_value) =
             (_range )
     in  (stringType,_oneLineTree,_self)
 -- MaybeDeclarations -------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      monos                : Tps
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      assumptions          : Assumptions
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      constraints          : ConstraintSet
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      namesInScope         : Names
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      oneLineTree          :  Maybe [Tree] 
-      self                 : MaybeDeclarations
-      size                 : Int
-
--}
-{-
-   local variables for MaybeDeclarations.Just:
-      suspiciousErrors
-      shadowing
-      namesInScope
-      assumptions
-      environment
-      collectDataTypes
-      fixOps
-      derivedFunctions
-      typeSynonyms
-      collectConstructorEnv
-      collectEnvironment
-      oneLineTree
-      mybdggroup
-      anns
-      tiNoTypeDefinition
-      tiWarnings
-      tiErrors
-      monoTable
-      cset
-      aset
-      env
-      self
-
--}
-{-
-   local variables for MaybeDeclarations.Nothing:
-      oneLineTree
-      self
-
--}
 -- semantic domain
 type T_MaybeDeclarations = (Assumptions) ->
                            (Int) ->
@@ -4268,30 +3020,6 @@ sem_MaybeDeclarations_Nothing (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collect
             Nothing
     in  (_lhs_assumptions,_lhs_betaUnique,_lhs_collectednotypedef,_lhs_constraints,_lhs_kindErrors,_lhs_miscerrors,_lhs_namesInScope,_oneLineTree,_self,0,_lhs_typeAnnotations,_lhs_warnings)
 -- MaybeExports ------------------------------------------------
-{-
-   inherited attributes:
-      consInScope          : Names
-      modulesInScope       : Names
-      namesInScope         : Names
-      tyconsInScope        : Names
-
-   chained attributes:
-
-   synthesised attributes:
-      exportErrors         : [Error]
-      self                 : MaybeExports
-
--}
-{-
-   local variables for MaybeExports.Just:
-      self
-
--}
-{-
-   local variables for MaybeExports.Nothing:
-      self
-
--}
 -- semantic domain
 type T_MaybeExports = (Names) ->
                       (Names) ->
@@ -4319,44 +3047,6 @@ sem_MaybeExports_Nothing (_lhs_consInScope) (_lhs_modulesInScope) (_lhs_namesInS
             MaybeExports_Nothing
     in  ([],_self)
 -- MaybeExpression ---------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      monos                : Tps
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      assumptions          : Assumptions
-      beta                 : Tp
-      constraints          : ConstraintSet
-      oneLineTree          :  Maybe Tree 
-      section              : Bool
-      self                 : MaybeExpression
-      size                 : Int
-
--}
-{-
-   local variables for MaybeExpression.Just:
-      oneLineTree
-      self
-
--}
-{-
-   local variables for MaybeExpression.Nothing:
-      oneLineTree
-      beta
-      self
-
--}
 -- semantic domain
 type T_MaybeExpression = (Int) ->
                          ([(Name,Tps,Tp,Bool)]) ->
@@ -4396,25 +3086,6 @@ sem_MaybeExpression_Nothing (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_co
             Nothing
     in  (empty,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,ctEmpty,_lhs_kindErrors,_lhs_miscerrors,_oneLineTree,True,_self,0,_lhs_typeAnnotations,_lhs_warnings)
 -- MaybeImportSpecification ------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : MaybeImportSpecification
-
--}
-{-
-   local variables for MaybeImportSpecification.Just:
-      self
-
--}
-{-
-   local variables for MaybeImportSpecification.Nothing:
-      self
-
--}
 -- semantic domain
 type T_MaybeImportSpecification = ((MaybeImportSpecification))
 -- cata
@@ -4438,25 +3109,6 @@ sem_MaybeImportSpecification_Nothing  =
             MaybeImportSpecification_Nothing
     in  (_self)
 -- MaybeInt ----------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : MaybeInt
-
--}
-{-
-   local variables for MaybeInt.Just:
-      self
-
--}
-{-
-   local variables for MaybeInt.Nothing:
-      self
-
--}
 -- semantic domain
 type T_MaybeInt = ((MaybeInt))
 -- cata
@@ -4478,25 +3130,6 @@ sem_MaybeInt_Nothing  =
             MaybeInt_Nothing
     in  (_self)
 -- MaybeName ---------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : MaybeName
-
--}
-{-
-   local variables for MaybeName.Just:
-      self
-
--}
-{-
-   local variables for MaybeName.Nothing:
-      self
-
--}
 -- semantic domain
 type T_MaybeName = ((MaybeName))
 -- cata
@@ -4520,25 +3153,6 @@ sem_MaybeName_Nothing  =
             MaybeName_Nothing
     in  (_self)
 -- MaybeNames --------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : MaybeNames
-
--}
-{-
-   local variables for MaybeNames.Just:
-      self
-
--}
-{-
-   local variables for MaybeNames.Nothing:
-      self
-
--}
 -- semantic domain
 type T_MaybeNames = ((MaybeNames))
 -- cata
@@ -4562,67 +3176,6 @@ sem_MaybeNames_Nothing  =
             MaybeNames_Nothing
     in  (_self)
 -- Module ------------------------------------------------------
-{-
-   inherited attributes:
-      baseName             : String
-      importConstructorEnv : ConstructorEnvironment
-      importTyConEnv       : TypeConstructorEnvironment
-      importTypeEnv        : TypeEnvironment
-      importTypeSynEnv     : TypeSynonymEnvironment
-      strategy             : Strategy
-      useTypeGraph         : Bool
-
-   chained attributes:
-
-   synthesised attributes:
-      constructorenv       : ConstructorEnvironment
-      debugIO              : IO ()
-      errors               : Errors
-      toplevelTypes        : TypeEnvironment
-      typeErrors           : TypeErrors
-      warnings             : Warnings
-
--}
-{-
-   local variables for Module.Module:
-      exportErrors
-      miscerrors
-      fileName
-      moduleName
-      wrongFileNameErrors
-      recursiveTypeSynonymErrors
-      fixityButNoFunDefErrors
-      correctFixities
-      duplicatedFixities
-      fixityErrors
-      duplicatedDefinitions
-      toplevelDefinitionErrors
-      valueConstructorErrors
-      typeConstructorErrors
-      removedEntities
-      topLevelErrors
-      notypedef
-      warnings
-      kindErrors
-      recursiveTypeSynonyms
-      orderedTypeSynonyms
-      duplicatedTypeConstructors
-      tyconEnv
-      duplicatedValueConstructors
-      constructorenv
-      toplevelTypes
-      filteredBool
-      typeErrors
-      inferredgamma
-      solveDebug
-      solveErrors
-      substitution
-      betaUniqueAtTheEnd
-      constraints
-      debugIO
-      self
-
--}
 -- semantic domain
 type T_Module = (String) ->
                 (ConstructorEnvironment) ->
@@ -4801,37 +3354,6 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
         ,_warnings
         )
 -- Name --------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      isIdentifier         : Bool
-      isOperator           : Bool
-      isSpecial            : Bool
-      oneLineTree          : Tree
-      self                 : Name
-
--}
-{-
-   local variables for Name.Identifier:
-      oneLineTree
-      self
-
--}
-{-
-   local variables for Name.Operator:
-      oneLineTree
-      self
-
--}
-{-
-   local variables for Name.Special:
-      oneLineTree
-      self
-
--}
 -- semantic domain
 type T_Name = ((Bool),(Bool),(Bool),(Tree),(Name))
 -- cata
@@ -4886,29 +3408,6 @@ sem_Name_Special (_range) (_module) (_name) =
             (_module )
     in  (False,False,True,_oneLineTree,_self)
 -- Names -------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      isIdentifier         :  [Bool] 
-      isOperator           :  [Bool] 
-      isSpecial            :  [Bool] 
-      oneLineTree          :  [ Tree] 
-      self                 : Names
-
--}
-{-
-   local variables for Names.Cons:
-      self
-
--}
-{-
-   local variables for Names.Nil:
-      self
-
--}
 -- semantic domain
 type T_Names = (( [Bool] ),( [Bool] ),( [Bool] ),( [ Tree] ),(Names))
 -- cata
@@ -4933,168 +3432,6 @@ sem_Names_Nil  =
             []
     in  ([],[],[],[],_self)
 -- Pattern -----------------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      miscerrors           : [Error]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      beta                 : Tp
-      constraints          : ConstraintSet
-      environment          : PatternAssumptions
-      oneLineTree          : Tree
-      self                 : Pattern
-      size                 : Int
-
--}
-{-
-   local variables for Pattern.As:
-      oneLineTree
-      size
-      cinfo
-      newcon
-      beta
-      self
-
--}
-{-
-   local variables for Pattern.Constructor:
-      patConstructorErrors
-      oneLineTree
-      size
-      cinfoApply
-      cinfoConstructor
-      conConstructor
-      conApply
-      maybetp
-      betaCon
-      beta
-      self
-
--}
-{-
-   local variables for Pattern.InfixConstructor:
-      patConstructorErrors
-      oneLineTree
-      size
-      cinfoApply
-      cinfoConstructor
-      conConstructor
-      conApply
-      maybetp
-      betaCon
-      beta
-      self
-
--}
-{-
-   local variables for Pattern.Irrefutable:
-      oneLineTree
-      self
-
--}
-{-
-   local variables for Pattern.List:
-      oneLineTree
-      cinfoElem
-      cinfoResult
-      zipf
-      newcon
-      beta'
-      beta
-      self
-
--}
-{-
-   local variables for Pattern.Literal:
-      oneLineTree
-      size
-      cinfo
-      beta
-      self
-
--}
-{-
-   local variables for Pattern.Negate:
-      oneLineTree
-      size
-      cinfoPat
-      cinfoResult
-      conPat
-      conResult
-      beta
-      self
-
--}
-{-
-   local variables for Pattern.NegateFloat:
-      oneLineTree
-      size
-      cinfoPat
-      cinfoResult
-      conPat
-      conResult
-      beta
-      self
-
--}
-{-
-   local variables for Pattern.Parenthesized:
-      oneLineTree
-      self
-
--}
-{-
-   local variables for Pattern.Record:
-      environment
-      constraints
-      beta
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for Pattern.Successor:
-      environment
-      constraints
-      beta
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for Pattern.Tuple:
-      oneLineTree
-      cinfo
-      newcon
-      beta
-      self
-
--}
-{-
-   local variables for Pattern.Variable:
-      oneLineTree
-      size
-      beta
-      self
-
--}
-{-
-   local variables for Pattern.Wildcard:
-      oneLineTree
-      size
-      beta
-      self
-
--}
 -- semantic domain
 type T_Pattern = (Int) ->
                  (ConstructorEnvironment) ->
@@ -5629,37 +3966,6 @@ sem_Pattern_Wildcard (_range) (_lhs_betaUnique) (_lhs_constructorenv) (_lhs_misc
             (_range )
     in  (_beta,_lhs_betaUnique + 1,ctEmpty,empty,_lhs_miscerrors,_oneLineTree,_self,_size,_lhs_warnings)
 -- Patterns ----------------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      miscerrors           : [Error]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      betas                : Tps
-      constraintslist      : ConstraintSets
-      environment          : PatternAssumptions
-      numberOfPatterns     : Int
-      oneLineTree          :  [ Tree] 
-      self                 : Patterns
-      size                 : Int
-
--}
-{-
-   local variables for Patterns.Cons:
-      self
-
--}
-{-
-   local variables for Patterns.Nil:
-      self
-
--}
 -- semantic domain
 type T_Patterns = (Int) ->
                   (ConstructorEnvironment) ->
@@ -5690,25 +3996,6 @@ sem_Patterns_Nil (_lhs_betaUnique) (_lhs_constructorenv) (_lhs_miscerrors) (_lhs
             []
     in  (_lhs_betaUnique,[],[],empty,_lhs_miscerrors,0,[],_self,0,_lhs_warnings)
 -- Position ----------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : Position
-
--}
-{-
-   local variables for Position.Position:
-      self
-
--}
-{-
-   local variables for Position.Unknown:
-      self
-
--}
 -- semantic domain
 type T_Position = ((Position))
 -- cata
@@ -5732,86 +4019,6 @@ sem_Position_Unknown  =
             Position_Unknown
     in  (_self)
 -- Qualifier ---------------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      assumptions          : Assumptions
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      constraints          : ConstraintSet
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      monos                : Tps
-      namesInScope         : Names
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      oneLineTree          : Tree
-      self                 : Qualifier
-      size                 : Int
-
--}
-{-
-   local variables for Qualifier.Empty:
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for Qualifier.Generator:
-      shadowing
-      namesInScope
-      oneLineTree
-      size
-      cinfoBind
-      cinfoResult
-      newcon
-      unused
-      duplicated
-      assumptions'
-      csetBinds
-      self
-
--}
-{-
-   local variables for Qualifier.Guard:
-      oneLineTree
-      cinfo
-      newcon
-      self
-
--}
-{-
-   local variables for Qualifier.Let:
-      suspiciousErrors
-      shadowing
-      namesInScope
-      assumptions
-      environment
-      collectDataTypes
-      fixOps
-      derivedFunctions
-      typeSynonyms
-      collectConstructorEnv
-      collectEnvironment
-      oneLineTree
-      mybdggroup
-      anns
-      tiNoTypeDefinition
-      tiWarnings
-      tiErrors
-      monoTable
-      cset
-      aset
-      env
-      self
-
--}
 -- semantic domain
 type T_Qualifier = (Assumptions) ->
                    (Int) ->
@@ -5984,39 +4191,6 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_assumptions) (_lhs_betaUnique) 
          _suspiciousErrors
         )
 -- Qualifiers --------------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      assumptions          : Assumptions
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      constraints          : ConstraintSet
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      monos                : Tps
-      namesInScope         : Names
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      oneLineTree          :  [ Tree] 
-      self                 : Qualifiers
-      size                 : Int
-
--}
-{-
-   local variables for Qualifiers.Cons:
-      self
-
--}
-{-
-   local variables for Qualifiers.Nil:
-      self
-
--}
 -- semantic domain
 type T_Qualifiers = (Assumptions) ->
                     (Int) ->
@@ -6053,20 +4227,6 @@ sem_Qualifiers_Nil (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef
             []
     in  (_lhs_assumptions,_lhs_betaUnique,_lhs_collectednotypedef,_lhs_constraints,_lhs_kindErrors,_lhs_miscerrors,_lhs_monos,_lhs_namesInScope,[],_self,0,_lhs_typeAnnotations,_lhs_warnings)
 -- Range -------------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : Range
-
--}
-{-
-   local variables for Range.Range:
-      self
-
--}
 -- semantic domain
 type T_Range = ((Range))
 -- cata
@@ -6086,30 +4246,6 @@ sem_Range_Range (_start) (_stop) =
             (_stop )
     in  (_self)
 -- RecordExpressionBinding -------------------------------------
-{-
-   inherited attributes:
-      namesInScope         : Names
-
-   chained attributes:
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-
-   synthesised attributes:
-      self                 : RecordExpressionBinding
-
--}
-{-
-   local variables for RecordExpressionBinding.RecordExpressionBinding:
-      tyconEnv
-      kindErrors
-      warnings
-      miscerrors
-      betaUnique
-      constructorenv
-      monos
-      self
-
--}
 -- semantic domain
 type T_RecordExpressionBinding = ([(Name,Tps,Tp,Bool)]) ->
                                  (Names) ->
@@ -6137,28 +4273,6 @@ sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expressio
             (_expression (_betaUnique) (_lhs_collectednotypedef) (_constructorenv) (_kindErrors) (_miscerrors) (_monos) (_lhs_namesInScope) (_tyconEnv) (_lhs_typeAnnotations) (_warnings))
     in  (_expression_collectednotypedef,_self,_expression_typeAnnotations)
 -- RecordExpressionBindings ------------------------------------
-{-
-   inherited attributes:
-      namesInScope         : Names
-
-   chained attributes:
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-
-   synthesised attributes:
-      self                 : RecordExpressionBindings
-
--}
-{-
-   local variables for RecordExpressionBindings.Cons:
-      self
-
--}
-{-
-   local variables for RecordExpressionBindings.Nil:
-      self
-
--}
 -- semantic domain
 type T_RecordExpressionBindings = ([(Name,Tps,Tp,Bool)]) ->
                                   (Names) ->
@@ -6186,26 +4300,6 @@ sem_RecordExpressionBindings_Nil (_lhs_collectednotypedef) (_lhs_namesInScope) (
             []
     in  (_lhs_collectednotypedef,_self,_lhs_typeAnnotations)
 -- RecordPatternBinding ----------------------------------------
-{-
-   inherited attributes:
-      namesInScope         : Names
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : RecordPatternBinding
-
--}
-{-
-   local variables for RecordPatternBinding.RecordPatternBinding:
-      tyconEnv
-      warnings
-      miscerrors
-      betaUnique
-      constructorenv
-      self
-
--}
 -- semantic domain
 type T_RecordPatternBinding = (Names) ->
                               ((RecordPatternBinding))
@@ -6231,26 +4325,6 @@ sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) (_lhs_
             (_pattern (_betaUnique) (_constructorenv) (_miscerrors) (_lhs_namesInScope) (_tyconEnv) (_warnings))
     in  (_self)
 -- RecordPatternBindings ---------------------------------------
-{-
-   inherited attributes:
-      namesInScope         : Names
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : RecordPatternBindings
-
--}
-{-
-   local variables for RecordPatternBindings.Cons:
-      self
-
--}
-{-
-   local variables for RecordPatternBindings.Nil:
-      self
-
--}
 -- semantic domain
 type T_RecordPatternBindings = (Names) ->
                                ((RecordPatternBindings))
@@ -6276,45 +4350,6 @@ sem_RecordPatternBindings_Nil (_lhs_namesInScope) =
             []
     in  (_self)
 -- RightHandSide -----------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      monos                : Tps
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      assumptions          : Assumptions
-      beta                 : Tp
-      constraints          : ConstraintSet
-      oneLineTree          :  String -> Tree 
-      self                 : RightHandSide
-      size                 : Int
-
--}
-{-
-   local variables for RightHandSide.Expression:
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for RightHandSide.Guarded:
-      oneLineTree
-      size
-      beta
-      self
-
--}
 -- semantic domain
 type T_RightHandSide = (Int) ->
                        ([(Name,Tps,Tp,Bool)]) ->
@@ -6383,22 +4418,6 @@ sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) (_lhs_betaUniq
             (_where (_guardedexpressions_assumptions) (_guardedexpressions_betaUnique) (_guardedexpressions_collectednotypedef) (ctNode _guardedexpressions_constraintslist) (_lhs_constructorenv) (_guardedexpressions_kindErrors) (_guardedexpressions_miscerrors) (_lhs_monos) (_lhs_namesInScope) (_lhs_tyconEnv) (_guardedexpressions_typeAnnotations) (_guardedexpressions_warnings))
     in  (_where_assumptions,_beta,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_kindErrors,_where_miscerrors,_oneLineTree,_self,_size,_where_typeAnnotations,_where_warnings)
 -- SimpleType --------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      name                 : Name
-      self                 : SimpleType
-      typevariables        : Names
-
--}
-{-
-   local variables for SimpleType.SimpleType:
-      self
-
--}
 -- semantic domain
 type T_SimpleType = ((Name),(SimpleType),(Names))
 -- cata
@@ -6421,88 +4440,6 @@ sem_SimpleType_SimpleType (_range) (_name) (_typevariables) =
             (_typevariables )
     in  (_name_self,_self,_typevariables_self)
 -- Statement ---------------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      assumptions          : Assumptions
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      constraints          : ConstraintSet
-      generatorBeta        : Maybe Tp
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      monos                : Tps
-      namesInScope         : Names
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      oneLineTree          : Tree
-      self                 : Statement
-      size                 : Int
-
--}
-{-
-   local variables for Statement.Empty:
-      oneLineTree
-      size
-      self
-
--}
-{-
-   local variables for Statement.Expression:
-      oneLineTree
-      cinfo
-      newcon
-      beta
-      self
-
--}
-{-
-   local variables for Statement.Generator:
-      shadowing
-      namesInScope
-      oneLineTree
-      size
-      cinfoBind
-      cinfoResult
-      newcon
-      unused
-      duplicated
-      assumptions'
-      csetBinds
-      self
-
--}
-{-
-   local variables for Statement.Let:
-      suspiciousErrors
-      shadowing
-      namesInScope
-      assumptions
-      environment
-      collectDataTypes
-      fixOps
-      derivedFunctions
-      typeSynonyms
-      collectConstructorEnv
-      collectEnvironment
-      oneLineTree
-      mybdggroup
-      anns
-      tiNoTypeDefinition
-      tiWarnings
-      tiErrors
-      monoTable
-      cset
-      aset
-      env
-      self
-
--}
 -- semantic domain
 type T_Statement = (Assumptions) ->
                    (Int) ->
@@ -6681,40 +4618,6 @@ sem_Statement_Let (_range) (_declarations) (_lhs_assumptions) (_lhs_betaUnique) 
          _suspiciousErrors
         )
 -- Statements --------------------------------------------------
-{-
-   inherited attributes:
-      constructorenv       : ConstructorEnvironment
-      monos                : Tps
-      namesInScope         : Names
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-      assumptions          : Assumptions
-      betaUnique           : Int
-      collectednotypedef   : [(Name,Tps,Tp,Bool)]
-      constraints          : ConstraintSet
-      generatorBeta        : Maybe Tp
-      kindErrors           : [Error]
-      miscerrors           : [Error]
-      typeAnnotations      : [((Tps,Tp),TpScheme,(Tree,Range))]
-      warnings             : [Warning]
-
-   synthesised attributes:
-      oneLineTree          :  [ Tree] 
-      self                 : Statements
-      size                 : Int
-
--}
-{-
-   local variables for Statements.Cons:
-      self
-
--}
-{-
-   local variables for Statements.Nil:
-      self
-
--}
 -- semantic domain
 type T_Statements = (Assumptions) ->
                     (Int) ->
@@ -6752,26 +4655,6 @@ sem_Statements_Nil (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef
             []
     in  (_lhs_assumptions,_lhs_betaUnique,_lhs_collectednotypedef,_lhs_constraints,_lhs_generatorBeta,_lhs_kindErrors,_lhs_miscerrors,[],_self,0,_lhs_typeAnnotations,_lhs_warnings)
 -- Strings -----------------------------------------------------
-{-
-   inherited attributes:
-
-   chained attributes:
-
-   synthesised attributes:
-      oneLineTree          :  [ Tree] 
-      self                 : Strings
-
--}
-{-
-   local variables for Strings.Cons:
-      self
-
--}
-{-
-   local variables for Strings.Nil:
-      self
-
--}
 -- semantic domain
 type T_Strings = (( [ Tree] ),(Strings))
 -- cata
@@ -6794,52 +4677,6 @@ sem_Strings_Nil  =
             []
     in  ([],_self)
 -- Type --------------------------------------------------------
-{-
-   inherited attributes:
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : Type
-      typevariables        : Names
-
--}
-{-
-   local variables for Type.Application:
-      self
-
--}
-{-
-   local variables for Type.Constructor:
-      self
-
--}
-{-
-   local variables for Type.Exists:
-      self
-
--}
-{-
-   local variables for Type.Forall:
-      self
-
--}
-{-
-   local variables for Type.Parenthesized:
-      self
-
--}
-{-
-   local variables for Type.Qualified:
-      self
-
--}
-{-
-   local variables for Type.Variable:
-      self
-
--}
 -- semantic domain
 type T_Type = (TypeConstructorEnvironment) ->
               ((Type),(Names))
@@ -6951,27 +4788,6 @@ sem_Type_Variable (_range) (_name) (_lhs_tyconEnv) =
             (_name )
     in  (_self,[ _name_self ])
 -- Types -------------------------------------------------------
-{-
-   inherited attributes:
-      tyconEnv             : TypeConstructorEnvironment
-
-   chained attributes:
-
-   synthesised attributes:
-      self                 : Types
-      typevariables        : Names
-
--}
-{-
-   local variables for Types.Cons:
-      self
-
--}
-{-
-   local variables for Types.Nil:
-      self
-
--}
 -- semantic domain
 type T_Types = (TypeConstructorEnvironment) ->
                ((Types),(Names))

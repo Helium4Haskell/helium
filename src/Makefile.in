@@ -55,7 +55,7 @@ HC_OPTS = -static -cpp -fallow-overlapping-instances -fglasgow-exts \
 		-i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
-AG_OPTS = -pmscfr
+AG_OPTS = -mscfr
 
 # Helium sources
 
