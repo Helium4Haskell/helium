@@ -11,10 +11,11 @@ module HeliumLang
     , showTuple2, showTuple3, showTuple4, showTuple5, showTuple6, showTuple7
     , showTuple8, showTuple9, showTuple10
     
+	, enumFrom, enumFromThen, enumFromTo, enumFromThenTo
+	
     , primPutChar, primPutStr, primPutStrLn
     , primBindIO, primUnsafePerformIO
     , primErrorPacked, primPatternFailPacked
-    , primEnumFrom, primEnumFromThen, primEnumFromTo, primEnumFromThenTo
     , primNegInt, primNegFloat, primStringToFloat, primEqFloat
     , primConcat, primConcatMap
     , primPackedToString
@@ -103,24 +104,24 @@ primAppend xs ys =
     ;   (:) z zs -> (:) z (primAppend zs ys)
     }
 
--- the primEnum functions are used in the translation of the .. notation
--- [1..10]   === primEnumFromTo 1 10
--- [1..]     === primEnumFrom 1 
--- [1,3..10] === primEnumFromThenTo 1 3 10
--- [1,3..]   === primEnumFromThen 1 3
+-- the enumeration functions are used in the translation of the .. notation
+-- [1..10]   === enumFromTo 1 10
+-- [1..]     === enumFrom 1 
+-- [1,3..10] === enumFromThenTo 1 3 10
+-- [1,3..]   === enumFromThen 1 3
 
-primEnumFrom :: Int -> [Int]
-primEnumFrom n = (:) n (primEnumFrom ((+) n 1))
+enumFrom :: Int -> [Int]
+enumFrom n = (:) n (enumFrom ((+) n 1))
 
-primEnumFromTo :: Int -> Int -> [Int]
-primEnumFromTo n m =
+enumFromTo :: Int -> Int -> [Int]
+enumFromTo n m =
     case (>) n m of
     {   True -> []
-    ;   _    -> (:) n (primEnumFromTo ((+) n 1) m)
+    ;   _    -> (:) n (enumFromTo ((+) n 1) m)
     }
 
-primEnumFromThenTo :: Int -> Int -> Int -> [Int]
-primEnumFromThenTo n a m =
+enumFromThenTo :: Int -> Int -> Int -> [Int]
+enumFromThenTo n a m =
     case (>) a n of
     {   True -> primAscendToWithStep n m ((-) a n) 
     ;   _    -> primDescendToWithStep n m ((-) a n) 
@@ -141,8 +142,8 @@ primDescendToWithStep n m step =
     ;   _    -> (:) n (primDescendToWithStep ((+) n step) m step)
     }
 
-primEnumFromThen :: Int -> Int -> [Int]
-primEnumFromThen n a = (:) n (primEnumFromThen a ((+) a ((-) a n)))
+enumFromThen :: Int -> Int -> [Int]
+enumFromThen n a = (:) n (enumFromThen a ((+) a ((-) a n)))
 
 -- Show
 

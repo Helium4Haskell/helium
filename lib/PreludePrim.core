@@ -15,6 +15,9 @@ module PreludePrim
     -- Show
     , show
     
+	-- Enum
+	, toEnum, fromEnum, enumFrom, enumFromThen, succ, pred, enumFromTo, enumFromThenTo
+	
     -- Int
     , div, mod, quot, rem
     
@@ -55,6 +58,7 @@ module PreludePrim
     
     , getEqFromOrd, getEqFromNum, getShowFromNum
     
+	, dictEnumInt, dictEnumFloat, ''dictEnum()'', dictEnumChar, dictEnumBool
     ) where
 
 import HeliumLang
@@ -205,12 +209,6 @@ round x
            z = primFloatNear     y
            i = primFloatRoundInt z
       in i
-
-
-
-
-
-
 
 -- Overloading
 
@@ -624,7 +622,142 @@ compareBool x y =
                           _    -> GT
         _    -> case y of True -> LT
                           _    -> EQ
-                          
+
+{- Enum -}
+
+const x y = x
+map f xs = case xs of
+              [] -> [] ;
+			  (:) x xs -> (:) (f x) (map f xs)
+
+dictEnumInt :: "DictEnumInt"
+dictEnumInt = (@0, 8) id id enumFromInt enumFromThenInt enumSuccInt enumPredInt enumFromToInt enumFromThenToInt
+
+enumSuccInt x = (+#) x 1
+enumPredInt x = (-#) x 1
+enumFromInt = enumIntWithSteps (const True) 1
+enumFromThenInt x y = enumIntWithSteps (const True) ((-#) y x) x
+enumFromToInt x y = enumIntWithSteps ((>=#) y) 1 x
+enumFromThenToInt x y z = 
+   case compareInt x y of
+      LT -> enumIntWithSteps ((>=#) z) ((-#) y x) x;
+	  EQ -> enumIntWithSteps (const True) 0 x ;
+	  GT -> enumIntWithSteps ((<=#) z) ((-#) y x) x
+
+enumIntWithSteps p d x = 
+   case p x of 
+      True -> (:) x (enumIntWithSteps p d ((+#) d x)) ;
+	  _ -> []
+
+dictEnumFloat :: "DictEnumFloat"
+dictEnumFloat = (@0, 8) toEnumFloat truncate enumFromFloat enumFromThenFloat enumSuccFloat enumPredFloat enumFromToFloat enumFromThenToFloat
+
+toEnumFloat x   = let! x = x in primIntToFloat x
+enumSuccFloat x = let! x = ((+#) (truncate x) 1) in primIntToFloat x
+enumPredFloat x = let! x = ((-#) (truncate x) 1) in primIntToFloat x
+enumFromFloat = let! one = primIntToFloat 1 in enumFloatWithSteps (const True) one
+enumFromThenFloat x y = enumFloatWithSteps (const True) ((-.) y x) x
+enumFromToFloat x y = let! one = primIntToFloat 1 in enumFloatWithSteps ((>=.) y) one x
+enumFromThenToFloat x y z =
+   case compareFloat x y of
+      LT -> enumFloatWithSteps ((>=.) z) ((-.) y x) x;
+	  EQ -> let! zero = primIntToFloat 0 in enumFloatWithSteps (const True) zero x ;
+	  GT -> enumFloatWithSteps ((<=.) z) ((-.) y x) x
+
+enumFloatWithSteps p d x = 
+   case p x of 
+      True -> (:) x (enumFloatWithSteps p d ((+.) d x)) ;
+	  _ -> []
+
+''dictEnum()'' :: "DictEnumTuple0"
+''dictEnum()'' = makeEnumDict toEnumVoid fromEnumVoid enumFromVoid enumFromThenVoid
+
+toEnumVoid i = 
+   case i of 
+      0 -> () ;
+	  _ -> errorPacked "illegal () enumeration"	  
+fromEnumVoid _ = 0
+enumFromVoid _ = [()]
+enumFromThenVoid _ _ = [()]
+	  
+dictEnumChar :: "DictEnumChar"
+dictEnumChar = makeEnumDict chr ord enumFromChar enumFromThenChar
+
+enumFromChar x = enumCharWithSteps 1 (ord x)
+enumFromThenChar x y = enumCharWithSteps ((-#) (ord y) (ord x)) (ord x)
+enumCharWithSteps d x =
+   case (<#) x 0 of
+      True -> [] ;
+	  _ -> case (>#) x 255 of
+	          True -> [] ;
+			  _ -> (:) (chr x) (enumCharWithSteps d ((+#) d x))
+
+dictEnumBool :: "DictEnumBool"
+dictEnumBool = makeEnumDict toEnumBool fromEnumBool enumFromBool enumFromThenBool
+
+toEnumBool i =
+   case i of 
+      0 -> False ;
+	  1 -> True ;
+	  _ -> errorPacked "illegal boolean enumeration"
+fromEnumBool b =
+   case b of {
+      False -> 0 ;
+      True -> 1 } 
+enumFromBool b = map toEnumBool (enumFromToInt (fromEnumBool b) 1)
+enumFromThenBool b1 b2 =
+   case b1 of {
+      False -> map toEnumBool (enumFromThenToInt (fromEnumBool b1) (fromEnumBool b2) 1) ;
+      _ -> map toEnumBool (enumFromThenToInt (fromEnumBool b1) (fromEnumBool b2) 0) }
+
+toEnum :: "Enum a => Int -> a"
+toEnum dEnum = 
+    case dEnum of
+        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x1
+		
+fromEnum :: "Enum a => a -> Int"
+fromEnum dEnum = 
+    case dEnum of
+        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x2
+
+enumFrom :: "Enum a => a -> [a]"
+enumFrom dEnum = 
+    case dEnum of
+        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x3
+		
+enumFromThen :: "Enum a => a -> a -> [a]"
+enumFromThen dEnum = 
+    case dEnum of
+        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x4
+	
+succ :: "Enum a => a -> a"
+succ dEnum = 
+    case dEnum of
+        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x5
+		
+pred :: "Enum a => a -> a"
+pred dEnum = 
+    case dEnum of
+        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x6
+
+enumFromTo :: "Enum a => a -> a -> [a]"
+enumFromTo dEnum = 
+    case dEnum of
+        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x7
+		
+enumFromThenTo :: "Enum a => a -> a -> a -> [a]"
+enumFromThenTo dEnum = 
+    case dEnum of
+        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x8
+
+makeEnumDict f1 f2 f3 f4 =
+    (@0, 8) f1 f2 f3 f4 (enumSuccDefault f1 f2) (enumPredDefault f1 f2) (enumFromToDefault f1 f2) (enumFromThenToDefault f1 f2)
+
+enumSuccDefault f1 f2 x = f1 ((+#) (f2 x) 1)
+enumPredDefault f1 f2 x = f1 ((-#) (f2 x) 1)
+enumFromToDefault f1 f2 x y = map f1 (enumFromToInt (f2 x) (f2 y))
+enumFromThenToDefault f1 f2 x y z = map f1 (enumFromThenToInt (f2 x) (f2 y) (f2 z))
+
 data Ordering = LT | EQ | GT 
 
 showOrdering :: Ordering -> String

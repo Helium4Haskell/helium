@@ -86,6 +86,22 @@ minimum :: Ord a => [a] -> a
 minimum = foldl1 min
 
 {-----------------------------------------------
+ -- Enum
+ -----------------------------------------------}
+
+{- imported from PreludePrim
+
+succ           :: Enum a => a -> a
+pred           :: Enum a => a -> a
+enumFromTo     :: Enum a => a -> a -> [a]
+enumFromThenTo :: Enum a => a -> a -> a -> [a]
+toEnum         :: Enum a => Int -> a
+fromEnum       :: Enum a => a -> Int
+enumFrom       :: Enum a => a -> [a]
+enumFromThen   :: Enum a => a -> a -> [a]
+-}
+
+{-----------------------------------------------
  -- Int
  -----------------------------------------------}
 

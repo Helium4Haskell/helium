@@ -11,7 +11,7 @@ module PreludePrim
     , (+.), (-.), (*.), (/.)
     , (==.), (/=.), (<.), (>.), (<=.), (>=.)
     , sqrt, (**.), exp, log, sin, cos, tan
-        
+	
     -- IO monad
     , return -- primUnsafePerformIO, primBindIO in HeliumLang
 
