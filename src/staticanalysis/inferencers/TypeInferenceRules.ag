@@ -895,7 +895,7 @@ SEM MaybeDeclarations
                               `plusFM` @declarations.localTypes 
 SEM Expression                    
   | Let    lhs . localTypes = makeInferredTypeEnvironment @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups
-                              `plusFM` @declarations.localTypes 
+                              `plusFM` @expression.localTypes 
 SEM Statement                  
   | Let    lhs . localTypes = makeInferredTypeEnvironment @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups
                               `plusFM` @declarations.localTypes 

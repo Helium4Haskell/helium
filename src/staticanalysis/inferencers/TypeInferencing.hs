@@ -2250,7 +2250,7 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_allPatterns) (_l
          ,_notypedefs ++ _declarations_collectednotypedef
          ,_constraints
          ,makeInferredTypeEnvironment _lhs_monos _lhs_substitution _lhs_predicates _declarations_bindingGroups
-          `plusFM` _declarations_localTypes
+          `plusFM` _expression_localTypes
          ,_expression_matchIO
          ,matchOnlyVariable _localInfo _lhs_tryPatterns
          ,_oneLineTree
