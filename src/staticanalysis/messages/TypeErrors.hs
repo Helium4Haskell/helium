@@ -110,6 +110,7 @@ makeMessageTable isFolklore typeErrorTable =
                       , (MessageString "Inferred type", MessageTypeScheme tpscheme2)
                       ]
 
+
 -- not a nice solution!
 checkTypeError :: OrderedTypeSynonyms -> TypeError -> Maybe TypeError
 checkTypeError synonyms typeError@(TypeError r o table h) =

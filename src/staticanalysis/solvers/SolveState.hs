@@ -12,7 +12,7 @@ module SolveState
    , runState, skip                       -- standard functionality
    , getUnique, setUnique                 -- unique counter for type variables
    , setSolver, useSolver, updateSolver   -- representation of a substitution
-   , getTypeErrors, addTypeError          -- type errors
+   , setErrors, getErrors, addError       -- errors
    , getSolverOptions, setSolverOptions   -- solver options
    , getDebug, addDebug                   -- debug IO
    ) where
@@ -83,11 +83,14 @@ updateSolver f = S (\(ru,rs,re,rt,ri) -> do solver <- readSTRef rs ; solver' <- 
 -------------------------------------------------
 --- errors
 
-getTypeErrors :: SolveState solver info [info]
-getTypeErrors = do S (\(ru,rs,re,rt,ri) -> do readSTRef re)
+setErrors :: [info] -> SolveState solver info ()
+setErrors xs = S (\(ru,rs,re,rt,ri) -> do writeSTRef re xs)
+
+getErrors :: SolveState solver info [info]
+getErrors = do S (\(ru,rs,re,rt,ri) -> do readSTRef re)
                                           
-addTypeError :: info -> SolveState solver info ()
-addTypeError e = S (\(ru,rs,re,rt,ri) -> do es <- readSTRef re ;writeSTRef re (e:es))
+addError :: info -> SolveState solver info ()
+addError e = S (\(ru,rs,re,rt,ri) -> do es <- readSTRef re ;writeSTRef re (e:es))
 
 -------------------------------------------------
 --- solver options

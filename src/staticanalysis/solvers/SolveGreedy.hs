@@ -57,7 +57,7 @@ instance ConstraintInfo info => ConstraintSolver ArraySubstitution info where
                                    let utp = equalUnderTypeSynonyms synonyms (sub |-> t1') (sub |-> t2')
                                    writeExpandedType synonyms starray t1 utp 
                                    writeExpandedType synonyms starray t2 utp) )
-                Left _ -> addTypeError info      
+                Left _ -> addError info      
 
     findSubstForVar i =
       do maybetp <- useSolver (\(A starray) -> readSTArray starray i)

@@ -16,8 +16,8 @@ import Types
 import SolveConstraints
 import SolverOptions           ( getTypeSynonyms )
 import List                    ( partition, groupBy, sortBy, transpose, nub, nubBy, maximumBy )
-import Utils                   ( internalError                       )
-import Monad                   ( unless                              )
+import Utils                   ( internalError )
+import Monad                   ( unless, filterM )
 import ConstraintInfo          ( ConstraintInfo(..) )
 import TypeGraphConstraintInfo ( TypeGraphConstraintInfo(..) ) 
 
@@ -112,19 +112,22 @@ instance (TypeGraphConstraintInfo info,TypeGraph typegraph info) => ConstraintSo
    unifyTerms info t1 t2 =
       do v1 <- makeTermGraph t1
          v2 <- makeTermGraph t2      
-         propagateEquality [v1,v2]               
+         propagateEquality [v1,v2]    
          addEdge (EdgeID v1 v2) (Initial info)
 
    makeConsistent =
       do consistent <- isConsistent
-         unless consistent $
-            do suggestions <- getHeuristics               
-               let fst3 (a,_,_) = a
-                   (trust,edges,errors) = maximumBy (\a b -> compare (fst3 a :: Float) (fst3 b :: Float)) suggestions               
-               mapM_ addTypeError errors               
-               mapM_ deleteEdge edges                        
-               addDebug (putStrLn $ "> removed edges "++show edges)
-               makeConsistent
+         if consistent 
+           then 
+             checkErrors
+           else 
+             do suggestions <- getHeuristics               
+                let fst3 (a,_,_) = a
+                    (trust,edges,errors) = maximumBy (\a b -> compare (fst3 a :: Float) (fst3 b :: Float)) suggestions               
+                mapM_ addError errors               
+                mapM_ deleteEdge edges                        
+                addDebug (putStrLn $ "> removed edges "++show edges)
+                makeConsistent
 
    newVariables is =
       mapM_ (\i -> addVertexWithChildren i (Nothing,[],Nothing)) is
@@ -218,3 +221,20 @@ infinitePaths i = do xs <- rec [] i
                            case bs of 
                               []  -> return [] {- this should never occur: INTERNAL ERROR ! -}
                               b:_ ->  return $ reverse (as++[b])
+
+checkErrors :: (TypeGraphConstraintInfo info, TypeGraph typegraph info) => SolveState typegraph info ()
+checkErrors = 
+   do errors  <- getErrors
+      options <- getSolverOptions
+      let isValidError info = 
+             let (t1,t2)  = getTwoTypes info
+                 synonyms = getTypeSynonyms options
+             in do t1' <- applySubst t1
+                   t2' <- applySubst t2
+                   case mguWithTypeSynonyms synonyms t1' t2' of
+                      Left  _ -> return True
+                      Right _ -> do addDebug $ putStrLn $ "Re-inserted edge ("++show t1++"-"++show t2++")"
+                                    unifyTerms info t1 t2
+                                    return False
+      validErrors <- filterM isValidError errors
+      setErrors validErrors

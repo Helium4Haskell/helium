@@ -91,7 +91,7 @@ runSolver buildSubstitution unique options constraints =
                  solve unique constraints                 
                  u  <- getUnique
                  s  <- buildSubstitution 
-                 e  <- getTypeErrors
+                 e  <- getErrors
                  -- e' <- mapM substitute e
                  d  <- getDebug                  
                  return (u,s,e,d)                                
