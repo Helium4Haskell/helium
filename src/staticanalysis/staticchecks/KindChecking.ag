@@ -82,9 +82,9 @@ checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity namesInScope =
 checkKind tycon typeConstructors useArity namesInScope =
     case lookupFM typeConstructors tycon of
         Nothing ->
-            let hint = if tycon `elem` namesInScope 
-                         then Just ("Constructor "++show (show tycon)++" cannot be used in a type") 
-                         else Nothing 
+            let hint = [ "Constructor "++show (show tycon)++" cannot be used in a type"
+                       | tycon `elem` namesInScope
+                       ]
             in [ Undefined TypeConstructor tycon (keysFM typeConstructors) hint ]
         Just defArity ->
             if useArity /= defArity then

@@ -3,7 +3,7 @@
 --   *** The Helium Compiler : Static Analysis ***
 --               ( Bastiaan Heeren )
 --
--- TypeInferenceInfo.ag : Additional information (a local attribute) is 
+-- TypeInferenceInfo.ag : Additional information (a local attribute) is
 --    provided for each type constraint.
 --
 -------------------------------------------------------------------------------
@@ -21,7 +21,7 @@ SEM Body | Body loc . cinfo =
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
                        , IsImported var
-                       , Size @declarations.size ]
+                       ]
         }
 
 ---------------------------------------------------------------------------------------
@@ -36,10 +36,10 @@ SEM Declaration | FunctionBindings loc . cinfo =
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , SuperHighlyTrusted
-                       , FuntionBindingEdge @bindings.numberOfPatterns 
-                       , Size @bindings.size ]
+                       , FuntionBindingEdge @bindings.numberOfPatterns
+                       ]
         }
-        
+
 SEM Declaration | PatternBinding loc . cinfo =
   \tppair ->
   CInfo { info       = (NTDeclaration, AltPatternBinding, 0, "")
@@ -47,7 +47,7 @@ SEM Declaration | PatternBinding loc . cinfo =
         , errorrange = getRHSRange @righthandside.self
         , sources    = [ sourceExpression (@righthandside.oneLineTree "") ]
         , typepair   = tppair
-        , properties = [ Size @size ]    
+        , properties = [ ]
         }
 
 ---------------------------------------------------------------------------------------
@@ -59,9 +59,9 @@ SEM FunctionBinding | FunctionBinding loc . cinfoLeft =
         , errorrange = @range.self
         , sources    = [ sourcePattern txt ]
         , typepair   = tppair
-        , properties = [ Size @size ] 
+        , properties = [ ]
         }
-        
+
 SEM FunctionBinding | FunctionBinding loc . cinfoRight =
   \tppair ->
   CInfo { info       = (NTFunctionBinding, AltFunctionBinding, 1, "right")
@@ -69,16 +69,16 @@ SEM FunctionBinding | FunctionBinding loc . cinfoRight =
         , errorrange = @range.self
         , sources    = [ sourceTerm (@righthandside.oneLineTree "") ]
         , typepair   = tppair
-        , properties = [ Size @size ]
+        , properties = [ SubTermRange (getRHSRange @righthandside.self) ]                       
         }
 
-SEM FunctionBinding | FunctionBinding loc . cinfoBind = 
+SEM FunctionBinding | FunctionBinding loc . cinfoBind =
    variableBindingCInfo (NTFunctionBinding, AltFunctionBinding, 2)
-   
+
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Expression
 
--- Expression.Literal     
+-- Expression.Literal
 SEM Expression | Literal loc . cinfo =
   \tppair ->
   CInfo { info       = (NTExpression, AltLiteral, 0, "")
@@ -88,11 +88,11 @@ SEM Expression | Literal loc . cinfo =
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
-                       , IsLiteral @literal.self 
-                       , Size @size ]  
-        }                                     
+                       , IsLiteral @literal.self
+                       ]
+        }
 
--- Expression.Constructor       
+-- Expression.Constructor
 SEM Expression | Constructor loc . cinfo =
   \tppair ->
   CInfo { info       = (NTExpression, AltConstructor, 0, "")
@@ -103,7 +103,7 @@ SEM Expression | Constructor loc . cinfo =
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
                        , IsImported @name.self
-                       , Size @size ]
+                       ]
         }
 
 -- Expression.NormalApplication
@@ -114,8 +114,12 @@ SEM Expression | NormalApplication loc . cinfo =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm @function.oneLineTree ]
         , typepair   = tppair
-        , properties = [ ApplicationEdge False (zip @arguments.oneLineTree @arguments.betas)
-                       , Size @size ]
+        , properties = [ ApplicationEdge False (zip3 @arguments.oneLineTree
+                                                     @arguments.betas
+                                                     (map getExprRange @arguments.self)
+                                               )
+                       , SubTermRange (getExprRange @function.self)
+                       ]
         }
 
 -- Expression.InfixApplication
@@ -129,11 +133,17 @@ SEM Expression | InfixApplication loc . cinfoOperator =
         , properties = (if @leftExpression.section || @rightExpression.section
                           then [ HighlyTrusted ]
                           else [ ApplicationEdge True
-                                         [ (convertMaybeOneLineTree @leftExpression.oneLineTree ,@leftExpression.beta )
-                                         , (convertMaybeOneLineTree @rightExpression.oneLineTree,@rightExpression.beta)
+                                         [ ( convertMaybeOneLineTree @leftExpression.oneLineTree 
+                                           , @leftExpression.beta
+                                           , getMaybeExprRange @leftExpression.self
+                                           )
+                                         , ( convertMaybeOneLineTree @rightExpression.oneLineTree
+                                           , @rightExpression.beta
+                                           , getMaybeExprRange @rightExpression.self
+                                           )
                                          ] ])
                        ++
-                       [ Size @size ]
+                       [ SubTermRange (getExprRange @operator.self) ]
         }
 
 SEM Expression | InfixApplication loc . cinfoComplete =
@@ -144,8 +154,8 @@ SEM Expression | InfixApplication loc . cinfoComplete =
         , sources    = [ ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
-                       , SuperHighlyTrusted 
-                       , Size @size ]  
+                       , SuperHighlyTrusted
+                       ]
         }
 
 SEM Expression | InfixApplication loc . cinfoLeftSection =
@@ -155,18 +165,18 @@ SEM Expression | InfixApplication loc . cinfoLeftSection =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @size ]  
+        , properties = [ ]
         }
-        
-SEM Expression | InfixApplication loc . cinfoRightSection = 
+
+SEM Expression | InfixApplication loc . cinfoRightSection =
   \tppair ->
   CInfo { info       = (NTExpression, AltInfixApplication, 3, "right")
         , location   = "right section"
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @size ]  
-        }        
+        , properties = [ ]
+        }
 
 SEM Expression | InfixApplication loc . cinfoEmpty =
   \tppair ->
@@ -176,10 +186,10 @@ SEM Expression | InfixApplication loc . cinfoEmpty =
         , sources    = [ sourceExpression @oneLineTree ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
-                       , HighlyTrusted 
-                       , Size @size ]  
+                       , HighlyTrusted
+                       ]
         }
-                
+
 -- Expression.If
 SEM Expression | If loc . cinfoGuard =
   \tppair ->
@@ -188,7 +198,7 @@ SEM Expression | If loc . cinfoGuard =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm @guardExpression.oneLineTree  ]
         , typepair   = tppair
-        , properties = [ Size @size ]    
+        , properties = [ SubTermRange (getExprRange @guardExpression.self) ]
         }
 
 SEM Expression | If loc . cinfoThen =
@@ -198,7 +208,7 @@ SEM Expression | If loc . cinfoThen =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm @thenExpression.oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @size ]
+        , properties = [ SubTermRange (getExprRange @thenExpression.self) ]
         }
 
 SEM Expression | If loc . cinfoElse =
@@ -208,11 +218,11 @@ SEM Expression | If loc . cinfoElse =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm @elseExpression.oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @size ]   
+        , properties = [ SubTermRange (getExprRange @elseExpression.self) ]
         }
-                
--- Expression.Lambda                
-SEM Expression | Lambda loc . cinfoBind = 
+
+-- Expression.Lambda
+SEM Expression | Lambda loc . cinfoBind =
    variableBindingCInfo (NTExpression, AltLambda, 0)
 
 SEM Expression | Lambda loc . cinfoType =
@@ -222,11 +232,10 @@ SEM Expression | Lambda loc . cinfoType =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
-        , properties = [ FolkloreConstraint 
-                       , Size @size ]
+        , properties = [ FolkloreConstraint ]
         }
-           
--- Expression.Case              
+
+-- Expression.Case
 SEM Expression | Case loc . cinfo =
   \tppair ->
   CInfo { info       = (NTExpression, AltCase, 0, "")
@@ -234,10 +243,10 @@ SEM Expression | Case loc . cinfo =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @size ]    
+        , properties = [ SubTermRange (getExprRange @expression.self) ]
         }
-        
--- Expression.Let                 
+
+-- Expression.Let
 SEM Expression | Let loc . cinfoType =
   \tppair ->
   CInfo { info       = (NTExpression, AltLet, 0, "")
@@ -246,11 +255,12 @@ SEM Expression | Let loc . cinfoType =
         , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
-                       , SuperHighlyTrusted 
-                       , Size @size ]  
+                       , SuperHighlyTrusted
+                       , SubTermRange (getExprRange @expression.self)
+                       ]
         }
-        
--- Expression.Do    
+
+-- Expression.Do
 SEM Expression | Do loc . cinfo =
   \tppair ->
   CInfo { info       = (NTExpression, AltDo, 0, "")
@@ -258,21 +268,21 @@ SEM Expression | Do loc . cinfo =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , Size @size ]
+        , properties = [ FolkloreConstraint ]
         }
-        
--- Expression.List  
+
+-- Expression.List
 SEM Expression | List loc . cinfoElem =
-  \elemtext tppair ->
-  CInfo { info       = (NTExpression, AltList, 0, "element") 
+  \(elemtext, elemrange) tppair ->
+  CInfo { info       = (NTExpression, AltList, 0, "element")
         , location   = "element of list"
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm elemtext ]
         , typepair   = tppair
-        , properties = [ Size @size ]
+        , properties = [ SubTermRange elemrange ] ++
+                       if length @expressions.betas > 1 then [] else [ HighlyTrusted ]
         }
-        
+
 SEM Expression | List loc . cinfoResult =
   \tppair ->
   CInfo { info       = (NTExpression, AltList, 1, "result")
@@ -280,10 +290,9 @@ SEM Expression | List loc . cinfoResult =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
-        , properties = [ Size @size 
-                       , FolkloreConstraint ]   
+        , properties = [ FolkloreConstraint ]
         }
-                        
+
 -- Expression.Tuple   
 SEM Expression | Tuple loc . cinfo =
   \tppair ->
@@ -292,9 +301,8 @@ SEM Expression | Tuple loc . cinfo =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
-        , properties = [ Size @size 
-                       , FolkloreConstraint
-                       , IsTupleEdge ]   
+        , properties = [ FolkloreConstraint
+                       , IsTupleEdge ]
         }
         
 -- Expression.Comprehension   
@@ -305,11 +313,10 @@ SEM Expression | Comprehension loc . cinfo =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
-        , properties = [ FolkloreConstraint 
-                       , Size @size ]    
+        , properties = [ FolkloreConstraint ]
         }
-        
--- Expression.Typed                       
+
+-- Expression.Typed
 SEM Expression | Typed loc . cinfoExpr =
   \tppair ->
   CInfo { info       = (NTExpression, AltTyped, 0, "expression")
@@ -317,9 +324,9 @@ SEM Expression | Typed loc . cinfoExpr =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree  ]
         , typepair   = tppair
-        , properties = [ Size @size ]    
+        , properties = [ SubTermRange (getExprRange @expression.self) ]
         }
-        
+
 SEM Expression | Typed loc . cinfoResult =
   \tppair ->
   CInfo { info       = (NTExpression, AltTyped, 1, "result")
@@ -327,10 +334,10 @@ SEM Expression | Typed loc . cinfoResult =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
-        , properties = [ Size @size, FolkloreConstraint ]     {- ??? -}
+        , properties = [ FolkloreConstraint ]     {- ??? -}
         }
-              
--- Expression.Enum                   
+
+-- Expression.Enum
 SEM Expression | Enum loc . cinfoFrom =
   \tppair ->
   CInfo { info       = (NTExpression, AltEnum, 0, "from")
@@ -338,7 +345,7 @@ SEM Expression | Enum loc . cinfoFrom =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm @from.oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @size]    
+        , properties = [ SubTermRange (getExprRange @from.self) ]
         }
 
 SEM Expression | Enum loc . cinfoThen =
@@ -348,7 +355,7 @@ SEM Expression | Enum loc . cinfoThen =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm (convertMaybeOneLineTree @then.oneLineTree) ]
         , typepair   = tppair
-        , properties = [ Size @size]
+        , properties = [ SubTermRange (getMaybeExprRange @then.self) ]
         }
 
 SEM Expression | Enum loc . cinfoTo =
@@ -358,7 +365,7 @@ SEM Expression | Enum loc . cinfoTo =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm (convertMaybeOneLineTree @to.oneLineTree) ]
         , typepair   = tppair
-        , properties = [ Size @size ]    
+        , properties = [ SubTermRange (getMaybeExprRange @to.self) ]
         }
 
 SEM Expression | Enum loc . cinfoResult =
@@ -368,56 +375,27 @@ SEM Expression | Enum loc . cinfoResult =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , Size @size ]    
+        , properties = [ FolkloreConstraint ]
         }
-                
--- Expression.Negate
-SEM Expression | Negate loc . cinfoExpr =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltNegate, 0, "expression")
-        , location   = "negation"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ Size @size
-                       , Negation (tpToInt @beta) ]    
-        }
-        
-SEM Expression | Negate loc . cinfoResult =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltNegate, 1, "result")
-        , location   = "negation"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint 
-                       , Size @size
-                       , NegationResult ]    
-        }
-        
--- Expression.NegateFloat          
-SEM Expression | NegateFloat loc . cinfoExpr =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltNegateFloat, 0, "expression")
-        , location   = "negation"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ Size @size 
-                       , Negation (tpToInt @beta) ]    
-        }  
 
-SEM Expression | NegateFloat loc . cinfoResult =
+SEM Expression | Negate loc . cinfo =
   \tppair ->
-  CInfo { info       = (NTExpression, AltNegateFloat, 1, "result")
+  CInfo { info       = (NTExpression, AltNegate, 0, "")
         , location   = "negation"
         , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
+        , sources    = [ sourceExpression @oneLineTree, sourceOperator (Text "-") ]
         , typepair   = tppair
-        , properties = [ FolkloreConstraint 
-                       , Size @size 
-                       , NegationResult ]    
+        , properties = [ Negation True ]
+        }
+
+SEM Expression | NegateFloat loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTExpression, AltNegateFloat, 0, "")
+        , location   = "negation"
+        , errorrange = @range.self
+        , sources    = [ sourceExpression @oneLineTree, sourceOperator (Text "-.") ]
+        , typepair   = tppair
+        , properties = [ Negation False ]
         }
 
 ---------------------------------------------------------------------------------------
@@ -430,7 +408,7 @@ SEM GuardedExpression | GuardedExpression loc . cinfoGuard =
         , errorrange = getExprRange @guard.self
         , sources    = [ sourceExpression @guard.oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @size ]    
+        , properties = [ ]
         }
 
 SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
@@ -440,7 +418,7 @@ SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
         , errorrange = @range.self
         , sources    = [ sourceExpression @expression.oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @size ]   
+        , properties = if @lhs.numberOfGuards > 1 then [] else [ HighlyTrusted ]
         }
 
 ---------------------------------------------------------------------------------------
@@ -457,9 +435,9 @@ SEM Pattern | Literal loc . cinfo =
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
                        , IsLiteral @literal.self
-                       , Size @size ]
-        }   
-        
+                       ]
+        }
+
 -- Pattern.Constructor
 SEM Pattern | Constructor loc . cinfoConstructor =
   \tppair ->
@@ -468,25 +446,25 @@ SEM Pattern | Constructor loc . cinfoConstructor =
         , errorrange = getNameRange @name.self
         , sources    = [ sourcePattern @oneLineTree ]
         , typepair   = tppair
-        , properties = [ FolkloreConstraint,HighlyTrusted 
-                        {- ,ApplicationEdge False (zip @patterns.oneLineTree @patterns.betas) -} 
-                       , Size @size ]  
+        , properties = [ FolkloreConstraint
+                       , HighlyTrusted
+                       ]
         }
 
 SEM Pattern | Constructor loc . cinfoApply =
   \tppair ->
   CInfo { info       = (NTPattern, AltConstructor, 1, "apply")
-        , location   = if @patterns.numberOfPatterns == 0 
+        , location   = if @patterns.numberOfPatterns == 0
                          then "pattern constructor"
                          else "pattern application"
         , errorrange = @range.self
-        , sources    = if @patterns.numberOfPatterns == 0 
+        , sources    = if @patterns.numberOfPatterns == 0
                          then [ sourcePattern @oneLineTree                            ]
                          else [ sourcePattern @oneLineTree, sourceTerm @name.oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @size ]    
+        , properties = [ SubTermRange (getNameRange @name.self) ]
         }
-                
+
 -- Pattern.InfixConstructor
 SEM Pattern | InfixConstructor loc . cinfoConstructor =
   \tppair ->
@@ -497,7 +475,8 @@ SEM Pattern | InfixConstructor loc . cinfoConstructor =
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
-                       , Size @size ]   
+                       , SubTermRange (getNameRange @constructorOperator.self)
+                       ]
         }
 
 SEM Pattern | InfixConstructor loc . cinfoApply =
@@ -507,25 +486,21 @@ SEM Pattern | InfixConstructor loc . cinfoApply =
         , errorrange = @range.self
         , sources    = [ sourcePattern @oneLineTree, sourceOperator (Text (showNameAsOperator @constructorOperator.self))]
         , typepair   = tppair
-        , properties = [ Size @size ]   
-                          {- ApplicationEdge True
-                                 [ (@leftPattern.oneLineTree ,@leftPattern.beta )
-                                 , (@rightPattern.oneLineTree,@rightPattern.beta)
-                                 ] -}       
+        , properties = [ SubTermRange (getNameRange @constructorOperator.self) ]
         }
 
 -- Pattern.List
 SEM Pattern | List loc . cinfoElem =
-  \elemtext tppair ->
+  \(elemtext, elemrange) tppair ->
   CInfo { info       = (NTPattern, AltList, 0, "element")
         , location   = "element of pattern list"
         , errorrange = @range.self
         , sources    = [ sourcePattern @oneLineTree, sourceTerm elemtext ]
         , typepair   = tppair
-        , properties = [ Size @patterns.size
-                       ]
-        } 
-        
+        , properties = [ SubTermRange elemrange ] ++
+                       if length @patterns.constraintslist > 1 then [] else [ HighlyTrusted  ]
+        }
+
 SEM Pattern | List loc . cinfoResult =
   \tppair ->
   CInfo { info       = (NTPattern, AltList, 1, "result")
@@ -533,10 +508,9 @@ SEM Pattern | List loc . cinfoResult =
         , errorrange = @range.self
         , sources    = [ sourcePattern @oneLineTree  ]
         , typepair   = tppair
-        , properties = [ FolkloreConstraint 
-                       , Size @patterns.size ]   
+        , properties = [ FolkloreConstraint ]
         }
-                
+
 -- Pattern.Tuple
 SEM Pattern | Tuple loc . cinfo =
   \tppair ->
@@ -547,34 +521,21 @@ SEM Pattern | Tuple loc . cinfo =
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , IsTupleEdge
-                       , Size @patterns.size ]    
+                       ]
         }
-        
+
 -- Pattern.Negate
-SEM Pattern | Negate loc . cinfoResult =
+SEM Pattern | Negate loc . cinfo =
   \tppair ->
-  CInfo { info       = (NTPattern, AltNegate, 0, "result")
+  CInfo { info       = (NTPattern, AltNegate, 0, "")
         , location   = "pattern negation"
         , errorrange = @range.self
         , sources    = [ sourcePattern @oneLineTree  ]
         , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , Size @size
-                       , NegationResult ] 
-        } 
-
-SEM Pattern | Negate loc . cinfoPat =
-  \tppair ->
-   CInfo { info       = (NTPattern, AltNegate, 1, "pattern")
-        , location   = "pattern negation "
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree, sourceTerm @literal.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ Size @size 
-                       , Negation (tpToInt @beta) ]    
+        , properties = [ FolkloreConstraint ]
         }
 
--- Pattern.As 
+-- Pattern.As
 SEM Pattern |  As loc . cinfo =
   \tppair ->
   CInfo { info       = (NTPattern, AltAs, 0, "")
@@ -582,31 +543,20 @@ SEM Pattern |  As loc . cinfo =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm (Text (show @name.self)) ]
         , typepair   = tppair
-        , properties = [ Size @size ] 
+        , properties = [ SubTermRange (getNameRange @name.self) ]
         }
-       
--- Pattern.NegateFloat  
-SEM Pattern | NegateFloat loc . cinfoResult =
+
+-- Pattern.NegateFloat
+SEM Pattern | NegateFloat loc . cinfo =
   \tppair ->
-  CInfo { info       = (NTPattern, AltNegateFloat, 0, "result")
+  CInfo { info       = (NTPattern, AltNegateFloat, 0, "")
         , location   = "pattern negation"
         , errorrange = @range.self
         , sources    = [ sourcePattern @oneLineTree  ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
-                       , Size @size 
-                       , NegationResult ] 
-        } 
-
-SEM Pattern | NegateFloat loc . cinfoPat =
-  \tppair ->
-  CInfo { info       = (NTPattern, AltNegateFloat, 1, "pattern")
-        , location   = "pattern negation "
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree, sourceTerm @literal.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ Size @size 
-                       , Negation (tpToInt @beta) ]    
+                       , NegationResult
+                       ]
         }
 
 ---------------------------------------------------------------------------------------
@@ -619,7 +569,7 @@ SEM Alternative | Alternative loc . cinfoLeft =
         , errorrange = @range.self
         , sources    = [ sourcePattern @pattern.oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @size ]    
+        , properties = [ SubTermRange (getPatRange @pattern.self) ]
         }
 
 SEM Alternative | Alternative loc . cinfoRight =
@@ -629,23 +579,24 @@ SEM Alternative | Alternative loc . cinfoRight =
         , errorrange = @range.self
         , sources    = [ sourceExpression (@righthandside.oneLineTree "") ]
         , typepair   = tppair
-        , properties = [ Size @size ]  
+        , properties = [ SubTermRange (getRHSRange @righthandside.self) ] ++
+                       if @lhs.nrOfAlternatives > 1 then [] else [ HighlyTrusted ]
         }
 
-SEM Alternative | Alternative loc . cinfoBind = 
+SEM Alternative | Alternative loc . cinfoBind =
    variableBindingCInfo (NTAlternative, AltAlternative, 2)
-        
+
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Statement
 
 SEM Statement | Expression loc . cinfo =
   \tppair ->
-  CInfo { info       = (NTStatement,AltExpression,0, "") 
+  CInfo { info       = (NTStatement,AltExpression,0, "")
         , location   = "generator"
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @expression.size ] 
+        , properties = [ ]
         }
 
 SEM Statement | Generator loc . cinfoResult =
@@ -655,15 +606,15 @@ SEM Statement | Generator loc . cinfoResult =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @size ]    
+        , properties = [ SubTermRange (getExprRange @expression.self) ]
         }
-        
-SEM Statement | Generator loc . cinfoBind = 
+
+SEM Statement | Generator loc . cinfoBind =
    variableBindingCInfo (NTStatement, AltGenerator, 1)
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Qualifier
-        
+
 SEM Qualifier | Guard loc . cinfo =
   \tppair ->
   CInfo { info       = (NTQualifier,AltGuard,0, "")
@@ -671,7 +622,7 @@ SEM Qualifier | Guard loc . cinfo =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree  ]
         , typepair   = tppair
-        , properties = [ Size @guard.size ]  
+        , properties = [ ]
         }
 
 SEM Qualifier | Generator loc . cinfoResult =
@@ -681,10 +632,10 @@ SEM Qualifier | Generator loc . cinfoResult =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
         , typepair   = tppair
-        , properties = [ Size @size ]    
+        , properties = [ SubTermRange (getExprRange @expression.self) ]
         }
 
-SEM Qualifier | Generator loc . cinfoBind = 
+SEM Qualifier | Generator loc . cinfoBind =
    variableBindingCInfo (NTQualifier,AltGenerator,1 )
 
 ----------------------------------------------------------------------------------------------------------------------------------
@@ -701,8 +652,8 @@ cinfoBindingGroupExplicitTypedBinding =
         , typepair   = tppair
         , properties = [ {- FolkloreConstraint -}
                          ExplicitTypedBinding
-                       , HighlyTrusted
-                       , Size 1 ]  
+                       , HighlyTrusted 
+                       ]
         }
 
 variableBindingCInfo :: (InfoNT, InfoAlt, Int) -> Name -> (Tp,Tp) -> HeliumConstraintInfo
@@ -712,10 +663,9 @@ variableBindingCInfo (infoNT,infoAlt,i) var tppair =
         , errorrange = getNameRange var
         , sources    = [ sourceExpression (Text (show var)) ]
         , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , Size 1 ]  
+        , properties = [ FolkloreConstraint ]  
         }
-        
+
 cinfoSameBindingGroup :: Name -> (Tp,Tp) -> HeliumConstraintInfo
 cinfoSameBindingGroup var = variableBindingCInfo (NTBindingGroup,AltBindingGroup,0) var
 
@@ -728,8 +678,7 @@ cinfoBindingGroupImplicit =
         , sources    = [ sourceExpression (Text (show var)) ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
-                       , HighlyTrusted
-                       , Size 1 ]   
+                       , HighlyTrusted ]
         }
 
 cinfoBindingGroupExplicit :: Name -> (Tp,Tp) -> HeliumConstraintInfo
@@ -740,8 +689,7 @@ cinfoBindingGroupExplicit =
         , errorrange = getNameRange var
         , sources    = [ sourceExpression (Text (show var)) ]
         , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , Size 1 ]  
+        , properties = [ FolkloreConstraint ]  
         }
 }
 

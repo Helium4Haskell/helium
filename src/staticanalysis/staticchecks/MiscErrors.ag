@@ -29,7 +29,7 @@ SEM Body
 
 SEM Declaration
     | FunctionBindings   lhs . miscerrors  = @arityErrors ++ @bindings.miscerrors
-                         loc . arityErrors = if all (== head @bindings.arities) @bindings.arities 
+                         loc . arityErrors = if all (== head @bindings.arities) @bindings.arities
                                                then []
                                                else [ DefArityMismatch @bindings.name (mode @bindings.arities) @range.self ]
                                                
@@ -75,7 +75,7 @@ ATTR Statements Statement [ | lastStatementIsExpr : Bool | ]
 
 SEM Expression
   | Do    statements . lastStatementIsExpr = False
-  
+
 SEM Statement
   | Expression  lhs . lastStatementIsExpr = True
   | Generator   lhs . lastStatementIsExpr = False
@@ -108,7 +108,7 @@ SEM Expression
   | Variable     lhs . miscerrors     = @undefinedErrors ++ @lhs.miscerrors 
                  loc . undefinedErrors = if @name.self `elem` @lhs.namesInScope
                                            then []
-                                           else [ Undefined Variable @name.self @lhs.namesInScope Nothing ]
+                                           else [ Undefined Variable @name.self @lhs.namesInScope [] ]
   | Do           lhs . miscerrors = @lastStatementErrors ++ @statements.miscerrors
                  loc . lastStatementErrors = if @statements.lastStatementIsExpr
                                                then []
@@ -117,43 +117,68 @@ SEM Expression
                                                 
   | Lambda       lhs . miscerrors = @scopeErrors ++ @expression.miscerrors  
   | Constructor  lhs . miscerrors = @undefinedConstructorErrors ++ @lhs.miscerrors
-                 loc . undefinedConstructorErrors = case lookupFM @lhs.valueConstructors @name.self of 
-                                                       Nothing -> [ undefinedConstructor @name.self (@lhs.namesInScope ++ @lhs.allValueConstructors) @lhs.allTypeConstructors ]
+                 loc . undefinedConstructorErrors = case lookupFM @lhs.valueConstructors @name.self of
+                                                       Nothing -> [ undefinedConstructorInExpr @name.self (@lhs.namesInScope ++ @lhs.allValueConstructors) @lhs.allTypeConstructors ]
                                                        Just _  -> []
-                                                                          
+
   | Let          lhs . miscerrors = @scopeErrors ++ @typeSignatureErrors ++ @expression.miscerrors
                  loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
                  loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
-               
+
 -----------------------------------------
 -- Pattern
 
 SEM Pattern
     | Constructor        lhs . miscerrors = @patConstructorErrors ++ @patterns.miscerrors
-                         loc . patConstructorErrors = patternConstructorErrors @maybetp @name.self (@lhs.namesInScope ++ @lhs.allValueConstructors) @patterns.numberOfPatterns @lhs.allTypeConstructors
+                         loc . patConstructorErrors = patternConstructorErrors @maybetp @name.self @lhs.allValueConstructors @patterns.numberOfPatterns @lhs.lhsPattern @lhs.allTypeConstructors
                              . maybetp    = lookupFM @lhs.valueConstructors @name.self
-                         
+
     | InfixConstructor   lhs . miscerrors = @patConstructorErrors ++ @rightPattern.miscerrors
-                         loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self (@lhs.namesInScope ++ @lhs.allValueConstructors) 2 @lhs.allTypeConstructors
+                         loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self @lhs.allValueConstructors 2 False @lhs.allTypeConstructors
                              . maybetp    = lookupFM @lhs.valueConstructors @constructorOperator.self
 
-       
+
 {
-patternConstructorErrors :: Maybe TpScheme -> Name -> Names -> Int -> Names -> [Error]
-patternConstructorErrors maybetparity name env useArity namesTyconEnv =
+patternConstructorErrors :: Maybe TpScheme -> Name -> Names -> Int -> Bool -> Names -> [Error]
+patternConstructorErrors maybetparity name env useArity lhsPattern namesTyconEnv =
     case maybetparity of
-        Nothing -> 
-            [ undefinedConstructor name env namesTyconEnv ]
-        Just tpScheme -> 
+        Nothing ->
+            [ undefinedConstructorInPat lhsPattern name env namesTyconEnv ]
+        Just tpScheme ->
             let arity = arityOfTpScheme tpScheme
             in if arity /= useArity
                then [ ArityMismatch Constructor name arity useArity ]
                else []
 }
 
+ATTR Patterns Pattern [ lhsPattern : Bool | | ]
+
+SEM Declaration  | PatternBinding pattern      . lhsPattern = simplePattern @pattern.self
+
+SEM Pattern      | Constructor    patterns     . lhsPattern = False
+SEM Expression   | Lambda         patterns     . lhsPattern = False
+SEM Alternative  | Alternative    pattern      . lhsPattern = False
+SEM Statement    | Generator      pattern      . lhsPattern = False
+SEM Qualifier    | Generator      pattern      . lhsPattern = False
+SEM LeftHandSide | Infix          leftPattern  . lhsPattern = False
+                                  rightPattern . lhsPattern = False
+                 | Function       patterns     . lhsPattern = False
+                 | Parenthesized  patterns     . lhsPattern = False
+
+SEM RecordPatternBinding | RecordPatternBinding   pattern . lhsPattern = False
+
+{
+simplePattern :: Pattern -> Bool
+simplePattern pattern =
+   case pattern of
+      Pattern_Constructor _ name _ -> case show name of 
+                                         x:_ -> isUpper x
+                                         _   -> False
+      _                            -> False
+}
 -----------------------------------------
 -- Alternative
-                                           
+
 SEM Alternative
   | Alternative    lhs . miscerrors = @scopeErrors ++ @righthandside.miscerrors
   
@@ -161,7 +186,7 @@ SEM Alternative
 -- Statement  
 
  SEM Statement
-   | Generator  lhs . miscerrors = @scopeErrors ++ @expression.miscerrors    
+   | Generator  lhs . miscerrors = @scopeErrors ++ @expression.miscerrors
    | Let        lhs . miscerrors = @scopeErrors ++ @typeSignatureErrors ++ @declarations.miscerrors 
                 loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
                     . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures

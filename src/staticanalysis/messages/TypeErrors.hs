@@ -35,7 +35,7 @@ data TypeErrorTable = UnificationErrorTable
                          Tree                 -- expression
                          TpScheme             -- declared type
                          TpScheme             -- inferred type
-                         
+
 type TypeErrorInfos = [TypeErrorInfo]
 data TypeErrorInfo  = TypeErrorHint String MessageBlock
                     | IsFolkloreTypeError
@@ -46,9 +46,9 @@ instance HasMessage TypeError where
    getMessage (TypeError range oneliner table infos) =
       let MessageTable newtable = makeMessageTable isFolklore table
           isFolklore = length [ () | IsFolkloreTypeError <- infos ] > 0
-          hints      = [ MessageHints s [b] | TypeErrorHint s b <- infos ]
+          hints      = [ (MessageString s, b) | TypeErrorHint s b <- infos ]
           emptyLine  = MessageOneLiner (MessageString "")
-      in [MessageOneLiner oneliner, MessageTable newtable] ++ hints ++ [emptyLine]
+      in [MessageOneLiner oneliner, MessageTable (newtable ++ hints), emptyLine]
 
    getMessage (CustomTypeError ranges message) = message ++ [MessageOneLiner (MessageString "")]
 
@@ -62,7 +62,7 @@ instance Substitutable TypeError where
    sub |-> (TypeError range oneliner table hints) =
       TypeError range (sub |-> oneliner) (sub |-> table) (sub |-> hints)
 
-   sub |-> (CustomTypeError ranges message) = 
+   sub |-> (CustomTypeError ranges message) =
       CustomTypeError ranges (sub |-> message)
 
    ftv (TypeError range oneliner table hints) =
@@ -119,14 +119,14 @@ checkTypeError :: OrderedTypeSynonyms -> TypeError -> Maybe TypeError
 checkTypeError synonyms typeError@(TypeError r o table h) =
    case table of
       UnificationErrorTable sources type1 type2 ->
-         let becauseHint = TypeErrorHint "Because" . MessageString
+         let becauseHint = TypeErrorHint "because" . MessageString
              unique    = maximum (0 : ftv type1 ++ ftv type2) + 1
              t1        = either id (snd . instantiate unique) type1
              unique'   = maximum (0 : ftv t1 ++ ftv type2) + 1
              t2        = either id (snd . instantiate unique') type2
          in
             case mguWithTypeSynonyms synonyms t1 t2 of
-               Left InfiniteType  -> let hint = TypeErrorHint "Because" (MessageString "unification would give infinite type")
+               Left InfiniteType  -> let hint = TypeErrorHint "because" (MessageString "unification would give infinite type")
                                      in Just (TypeError r o table (hint:h))
                Left ConstantClash -> Just typeError
                Right _            -> Nothing
@@ -141,7 +141,7 @@ makeNotGeneralEnoughTypeError range tree tpscheme1 tpscheme2 =
        table    = NotGeneralEnoughTable tree ts2 ts1
        hints    = if null (ftv tpscheme1)
                     then []
-                    else [TypeErrorHint "Hint" (MessageString "Try removing the type signature")]
+                    else [TypeErrorHint "hint" (MessageString "try removing the type signature")]
    in TypeError range oneliner table hints
 
 documentationLinkForTypeError :: TypeError -> Maybe String

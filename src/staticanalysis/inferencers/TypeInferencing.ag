@@ -21,7 +21,6 @@ ATTR Module
 INCLUDE "TypeInferenceRules.ag"
 INCLUDE "TypeInferenceInfo.ag"
 INCLUDE "../staticchecks/HeliumPartialSyntax.ag"
-INCLUDE "../../syntax/UHA_Size.ag"
 INCLUDE "../../syntax/UHA_OneLine.ag"
 INCLUDE "../../syntax/UHA_Syntax.ag"
 INCLUDE "../../syntax/UHA_Self.ag"
@@ -55,7 +54,7 @@ import HeliumConstraintInfo
 import TopSort                 ( topSort )
 import Utils                   ( internalError )
 import DerivingShow            ( typeOfShowFunction, nameOfShowFunction ) 
-import UHA_Range               ( noRange, getNameRange, getExprRange )
+import UHA_Range               ( noRange, getNameRange, getExprRange, getPatRange, getLitRange )
 import UHA_Syntax
 import UHA_Utils               ( showNameAsOperator )
 import ImportEnvironment

@@ -196,7 +196,7 @@ SEM LeftHandSide
                                       ]
           . name             = @operator.self
 
-  | Parenthesized 
+  | Parenthesized
       lhs . numberOfPatterns = @lefthandside.numberOfPatterns + @patterns.numberOfPatterns
           . environment      = @lefthandside.environment `plusFM` @patterns.environment
           . betas            = @lefthandside.betas ++ @patterns.betas
@@ -211,13 +211,14 @@ SEM RightHandSide
            . constraints = @expression.constraints
 
   | Guarded
-     lhs                . assumptions = @where.assumptions
-                        . constraints = @where.constraints
-     guardedexpressions . betaUnique  = @lhs.betaUnique + 1
-                        . rightBeta   = @beta
-     where              . assumptions = @guardedexpressions.assumptions
-                        . constraints = ctNode @guardedexpressions.constraintslist
-     loc                . beta        = TVar @lhs.betaUnique
+     lhs                . assumptions    = @where.assumptions
+                        . constraints    = @where.constraints
+     guardedexpressions . betaUnique     = @lhs.betaUnique + 1
+                        . rightBeta      = @beta
+                        . numberOfGuards = length @guardedexpressions.constraintslist
+     where              . assumptions    = @guardedexpressions.assumptions
+                        . constraints    = ctNode @guardedexpressions.constraintslist
+     loc                . beta           = TVar @lhs.betaUnique
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Expression, Expressions, MaybeExpression, GuardedExpression, GuardedExpressions
@@ -227,6 +228,7 @@ ATTR Expression                             GuardedExpression                   
 ATTR            Expressions                                   GuardedExpressions [ | | betas:Tps constraintslist:ConstraintSets ]
 ATTR                        MaybeExpression                                      [ | | beta:Tp constraints:ConstraintSet section:Bool ]
 ATTR                                        GuardedExpression GuardedExpressions [ rightBeta:Tp | | ]
+ATTR GuardedExpressions GuardedExpression [ numberOfGuards:Int | | ]
 
 SEM Expression
 
@@ -297,7 +299,7 @@ SEM Expression
       loc        . constraints = @newcon .>. @csetBinds .>>.
                                  ctNode [ ctNode @patterns.constraintslist
                                         , @expression.constraints
-                                        ]      
+                                        ]
                  . beta        = TVar @lhs.betaUnique
                  . (csetBinds,assumptions') = (@patterns.environment .===. @expression.assumptions) @cinfoBind
                  . newcon      = [ (foldr (.->.) @expression.beta @patterns.betas .==. @beta) @cinfoType ]
@@ -307,6 +309,7 @@ SEM Expression
       expression   . betaUnique  = @lhs.betaUnique + 2
       alternatives . betaLeft    = @beta'
                    . betaRight   = @beta
+                   . nrOfAlternatives = length @alternatives.constraintslist
       loc          . constraints = ctNode [ @newcon .<. @expression.constraints
                                           , ctNode @alternatives.constraintslist
                                           ]                   
@@ -337,15 +340,16 @@ SEM Expression
                                       Just b  -> [ (ioType b .==. @beta) @cinfo ]
 
   | List
-      expressions . betaUnique  = @lhs.betaUnique + 2
-      loc         . constraints = @newcon .>.
-                                  ctNode (zipWith3 @zipf @expressions.betas @expressions.oneLineTree @expressions.constraintslist)
-                  . beta        = TVar @lhs.betaUnique
-                  . beta'       = TVar (@lhs.betaUnique + 1)
-                  . newcon      = [ (listType @beta' .==. @beta) @cinfoResult ]
-                  . zipf        = \tp txt ctree -> [ (tp .==. @beta') (@cinfoElem txt) ] .<. ctree
+      expressions . betaUnique   = @lhs.betaUnique + 2
+      loc         . constraints  = @newcon .>.
+                                    ctNode (zipWith3 @zipf @expressions.betas @childrenInfo @expressions.constraintslist)
+                  . beta         = TVar @lhs.betaUnique
+                  . beta'        = TVar (@lhs.betaUnique + 1)
+                  . newcon       = [ (listType @beta' .==. @beta) @cinfoResult ]
+                  . childrenInfo = zip @expressions.oneLineTree (map getExprRange @expressions.self)
+                  . zipf         = \tp pair ctree -> [ (tp .==. @beta') (@cinfoElem pair) ] .<. ctree
 
-  | Tuple      
+  | Tuple
       expressions . betaUnique  = @lhs.betaUnique + 1
       loc         . constraints = @newcon .>. ctNode @expressions.constraintslist
                   . beta        = TVar @lhs.betaUnique
@@ -384,19 +388,21 @@ SEM Expression
             . conThen     = [ (@then.beta .==. intType) @cinfoThen ]
             . conTo       = [ (@to.beta   .==. intType) @cinfoTo   ]
 
-  | Negate     
+  | Negate
        expression . betaUnique  = @lhs.betaUnique + 1
-       loc        . constraints = @conResult .>. ctNode [ @conExpr .<. @expression.constraints ]
+       loc        . constraints = @newcon .>. ctNode [ @expression.constraints ]
                   . beta        = TVar @lhs.betaUnique
-                  . conResult   = [ (intType .==. @beta) @cinfoResult ]
-                  . conExpr     = [ (@expression.beta .==. intType) @cinfoExpr]
+                  . newcon      = [ (intType .->. intType .==. @expression.beta .->. @beta) @cinfo]
+--                  . conResult   = [ (intType .==. @beta) @cinfoResult ]
+--                  . conExpr     = [ (@expression.beta .==. intType) @cinfoExpr]
 
-  | NegateFloat     
+  | NegateFloat
        expression . betaUnique  = @lhs.betaUnique + 1
-       loc        . constraints = @conResult .>. ctNode [ @conExpr .<. @expression.constraints ]
+       loc        . constraints = @newcon .>. ctNode [ @expression.constraints ]
                   . beta        = TVar @lhs.betaUnique
-                  . conResult   = [ (floatType .==. @beta) @cinfoResult ]
-                  . conExpr     = [ (@expression.beta .==. floatType) @cinfoExpr]
+                  . newcon      = [ (floatType .->. floatType .==. @expression.beta .->. @beta) @cinfo]
+--                  . conResult   = [ (floatType .==. @beta) @cinfoResult ]
+--                  . conExpr     = [ (@expression.beta .==. floatType) @cinfoExpr]
 
 SEM Expressions
 
@@ -512,13 +518,14 @@ SEM Pattern
       loc . beta        = TVar @lhs.betaUnique
 
   | List
-      lhs      . constraints = @newcon .>.
-                               ctNode (zipWith3 @zipf @patterns.betas @patterns.oneLineTree @patterns.constraintslist)
-      patterns . betaUnique  = @lhs.betaUnique + 2
-      loc      . beta        = TVar @lhs.betaUnique
-               . beta'       = TVar (@lhs.betaUnique + 1)
-               . newcon      = [ (listType @beta' .==. @beta) @cinfoResult ]
-               . zipf        = \tp txt ctree -> [ (tp .==. @beta') (@cinfoElem txt) ] .<. ctree
+      lhs      . constraints  = @newcon .>.
+                                ctNode (zipWith3 @zipf @patterns.betas @childrenInfo @patterns.constraintslist)
+      patterns . betaUnique   = @lhs.betaUnique + 2
+      loc      . beta         = TVar @lhs.betaUnique
+               . beta'        = TVar (@lhs.betaUnique + 1)
+               . newcon       = [ (listType @beta' .==. @beta) @cinfoResult ]
+               . childrenInfo = zip @patterns.oneLineTree (map getPatRange @patterns.self)
+               . zipf         = \tp pair ctree -> [ (tp .==. @beta') (@cinfoElem pair) ] .<. ctree
 
   | Tuple
       lhs      . constraints = @newcon .>. ctNode @patterns.constraintslist
@@ -527,20 +534,22 @@ SEM Pattern
                . newcon      = [ (tupleType @patterns.betas .==. @beta) @cinfo ]
 
   | Negate
-      lhs . constraints = @conResult .>. ctNode [ ctSingle @conPat ]
+      lhs . constraints = ctSingle @newcon
           . betaUnique  = @lhs.betaUnique + 1
           . environment = noAssumptions
       loc . beta        = TVar @lhs.betaUnique
-          . conResult   = [ (intType .==. @beta) @cinfoResult ]
-          . conPat      = [ (@literal.literalType .==. intType) @cinfoPat ]
+          . newcon      = [ (intType .==. @beta) @cinfo ]
+          -- The parser only accepts an int literal after '-' in a Pattern
+          -- . conPat      = [ (@literal.literalType .==. intType) @cinfoPat ]
 
   | NegateFloat
-      lhs . constraints = @conResult .>. ctNode [ ctSingle @conPat ]
+      lhs . constraints = ctSingle @newcon
           . betaUnique  = @lhs.betaUnique + 1
           . environment = noAssumptions
       loc . beta        = TVar @lhs.betaUnique
-          . conResult   = [ (floatType .==. @beta) @cinfoResult ]
-          . conPat      = [ (@literal.literalType .==. floatType) @cinfoPat ]
+          . newcon      = [ (floatType .==. @beta) @cinfo ]
+          -- The parser only accepts a float literal after '-.' in a Pattern
+          -- . conPat      = [ (@literal.literalType .==. floatType) @cinfoPat ]
 
 SEM Patterns
 
@@ -562,6 +571,7 @@ SEM Patterns
 ATTR Alternative Alternatives [ betaLeft:Tp betaRight:Tp monos:Tps | betaUnique:Int | assumptions:Assumptions ]
 ATTR Alternative              [ | | constraints:ConstraintSet ]
 ATTR             Alternatives [ | | constraintslist:ConstraintSets ]
+ATTR Alternative Alternatives [ nrOfAlternatives:Int | | ]
 
 SEM Alternative
 

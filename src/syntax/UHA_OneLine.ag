@@ -1,6 +1,7 @@
-imports{ 
+imports{
 import OneLiner
 import Char
+import UHA_Utils (showNameAsOperator)
 {-
 import List (intersperse)
 import SATypes (isTupleConstructor)
@@ -29,6 +30,13 @@ sepBy separator list =
 intErr :: String -> String -> a
 intErr node message = internalError "UHA_OneLine" node message
 
+oneLineTreeAsOperator :: Tree -> Tree
+oneLineTreeAsOperator tree =
+   case tree of
+      Node [Text (first:_)]
+         |  isAlpha first || first == '_'
+         -> Node [ Text "`", tree, Text "`" ]
+      _  -> tree
 }
 
 ATTR
@@ -132,7 +140,7 @@ SEM Declaration                                  {- *** -}
     | PatternBinding    loc.oneLineTree =
             Node
                 [ Node [@pattern.oneLineTree]
-                , Node [@righthandside.oneLineTree "="]
+                , Node [@righthandside.oneLineTree " = "]
                 ]
     --  range                    : Range
     --  pattern                  : Pattern
@@ -176,14 +184,8 @@ SEM Expression                                   {- *** -}
     --  range                    : Range
     --  function                 : Expression
     --  arguments                : Expressions
-    | InfixApplication  loc.operatorName = 
-                            case @operator.oneLineTree of
-                                Node [Text (first:_)] 
-                                    | isAlpha first || first == '_' -> 
-                                        Node [ Text "`", @operator.oneLineTree, Text "`" ]
-                                _ -> 
-                                    @operator.oneLineTree
-                        loc.oneLineTree =   
+    | InfixApplication  loc.operatorName = oneLineTreeAsOperator @operator.oneLineTree
+                        loc.oneLineTree =
             case (@leftExpression.oneLineTree, @rightExpression.oneLineTree) of
                 (Nothing, Nothing) -> parens @operatorName
                 (Just l , Nothing) -> encloseSep "(" " " ")" [l, @operatorName]
@@ -206,10 +208,10 @@ SEM Expression                                   {- *** -}
     --  guardExpression          : Expression
     --  thenExpression           : Expression
     --  elseExpression           : Expression
-    | Lambda    
+    | Lambda
             loc.oneLineTree =
                 Node
-                    (  [ Text "\\", punctuate " " @patterns.oneLineTree, Text " -> " 
+                    (  [ Text "\\", punctuate " " @patterns.oneLineTree, Text " -> "
                        , Node [@expression.oneLineTree]
                        ]
                     )
@@ -221,7 +223,7 @@ SEM Expression                                   {- *** -}
                     [ Text "case "
                     , Node [@expression.oneLineTree]
                     , Text " of "
-                    , encloseSep "{" ";" "}" @alternatives.oneLineTree
+                    , encloseSep "{" "; " "}" @alternatives.oneLineTree
                     ]
     --  range                    : Range
     --  expression               : Expression
@@ -229,7 +231,7 @@ SEM Expression                                   {- *** -}
     | Let   loc.oneLineTree =
                 Node
                     [ Text "let "
-                    , encloseSep "{" ";" "}" @declarations.oneLineTree
+                    , encloseSep "{" "; " "}" @declarations.oneLineTree
                     , Text " in "
                     , Node [@expression.oneLineTree]
                     ]
@@ -243,20 +245,20 @@ SEM Expression                                   {- *** -}
                     ]
     --  range                    : Range
     --  statements               : Statements
-    | List  loc.oneLineTree = encloseSep "[" "," "]" @expressions.oneLineTree
+    | List  loc.oneLineTree = encloseSep "[" ", " "]" @expressions.oneLineTree
     --  range                    : Range
     --  expressions              : Expressions
-    | Tuple loc.oneLineTree = encloseSep "(" "," ")" @expressions.oneLineTree
+    | Tuple loc.oneLineTree = encloseSep "(" ", " ")" @expressions.oneLineTree
     --  range                    : Range
     --  expressions              : Expressions
     | Comprehension
             loc.oneLineTree =
                 Node
-                    [ Text "["
+                    [ Text "[ "
                     , Node [@expression.oneLineTree]
                     , Text " | "
-                    , Node [ punctuate "," @qualifiers.oneLineTree ]
-                    , Text "]"
+                    , Node [ punctuate ", " @qualifiers.oneLineTree ]
+                    , Text " ]"
                     ]
     --  range                    : Range
     --  expression               : Expression
@@ -270,19 +272,19 @@ SEM Expression                                   {- *** -}
     --  range                    : Range
     --  expression               : Expression
     --  type                     : Type
-    | RecordConstruction 
+    | RecordConstruction
             loc.oneLineTree = intErr "Expression" "record construction"
     --  range                    : Range
     --  name                     : Name
     --  recordExpressionBindings : RecordExpressionBindings
-    | RecordUpdate       
+    | RecordUpdate
             loc.oneLineTree = intErr "Expression" "record update"
     --  range                    : Range
     --  expression               : Expression
     --  recordExpressionBindings : RecordExpressionBindings
     | Enum  loc.oneLineTree =
                 Node (
-                    [ Text "[ "
+                    [ Text "["
                     , Node [@from.oneLineTree]
                     ]
                     ++
@@ -292,13 +294,13 @@ SEM Expression                                   {- *** -}
                     ++
                     maybe [] (\x -> [Node [x]]) @to.oneLineTree
                     ++
-                    [ Text " ]" ]
+                    [ Text "]" ]
                 )
     --  range                    : Range
     --  from                     : Expression
     --  then                     : MaybeExpression
     --  to                       : MaybeExpression
-    | Negate    
+    | Negate
             loc.oneLineTree = Node [ Text "-", Node [@expression.oneLineTree] ]
     | NegateFloat
             loc.oneLineTree = Node [ Text "-.", Node [@expression.oneLineTree] ]
@@ -309,12 +311,12 @@ SEM Statement
     | Expression        loc.oneLineTree = @expression.oneLineTree
     --  range                    : Range
     --  expression               : Expression
-    | Let               loc.oneLineTree = 
-            Node [ Text "let ", encloseSep "{" ";" "}" @declarations.oneLineTree ] 
+    | Let               loc.oneLineTree =
+            Node [ Text "let ", encloseSep "{" "; " "}" @declarations.oneLineTree ]
     --  range                    : Range
     --  declarations             : Declarations
-    | Generator         loc.oneLineTree = 
-            Node [ @pattern.oneLineTree, Text "<-", @expression.oneLineTree ]                                    
+    | Generator         loc.oneLineTree =
+            Node [ @pattern.oneLineTree, Text " <- ", @expression.oneLineTree ]
     --  range                    : Range
     --  pattern                  : Pattern
     --  expression               : Expression
@@ -325,12 +327,12 @@ SEM Qualifier
     | Guard             loc.oneLineTree = @guard.oneLineTree
     --  range                    : Range
     --  guard                    : Expression -- type: Boolean
-    | Let               loc.oneLineTree = 
-            Node [ Text "let ", encloseSep "{" ";" "}" @declarations.oneLineTree ] 
+    | Let               loc.oneLineTree =
+            Node [ Text "let ", encloseSep "{" "; " "}" @declarations.oneLineTree ]
     --  range                    : Range
     --  declarations             : Declarations
-    | Generator         loc.oneLineTree =  
-            Node [ @pattern.oneLineTree, Text "<-", @expression.oneLineTree ]                                    
+    | Generator         loc.oneLineTree =
+            Node [ @pattern.oneLineTree, Text " <- ", @expression.oneLineTree ]
     --  range                    : Range
     --  pattern                  : Pattern
     --  expression               : Expression
@@ -338,8 +340,8 @@ SEM Qualifier
     --  range                    : Range
 
 SEM Alternative
-    | Alternative       loc.oneLineTree = 
-            Node [ @pattern.oneLineTree, @righthandside.oneLineTree "->" ]
+    | Alternative       loc.oneLineTree =
+            Node [ @pattern.oneLineTree, @righthandside.oneLineTree " -> " ]
     --  range                    : Range
     --  pattern                  : Pattern
     --  righthandside            : RightHandSide
@@ -347,15 +349,15 @@ SEM Alternative
     --  range                    : Range
 
 SEM GuardedExpression -- ToDo: or _Guard?
-    | GuardedExpression loc.oneLineTree = 
+    | GuardedExpression loc.oneLineTree =
             \assign -> Node [ @guard.oneLineTree, Text assign, @expression.oneLineTree ]
     --  range                    : Range
     --  guard                    : Expression -- type: Boolean
     --  expression               : Expression
 
 SEM FunctionBinding
-    | FunctionBinding   loc.oneLineTree = 
-            Node [@lefthandside.oneLineTree, @righthandside.oneLineTree "=" ]
+    | FunctionBinding   loc.oneLineTree =
+            Node [@lefthandside.oneLineTree, @righthandside.oneLineTree " = " ]
     --  range                    : Range
     --  lefthandside             : LeftHandSide
     --  righthandside            : RightHandSide
@@ -365,35 +367,36 @@ SEM LeftHandSide
     --  range                    : Range
     --  name                     : Name
     --  patterns                 : Patterns
-    | Infix             loc.oneLineTree = 
-            punctuate " " [@leftPattern.oneLineTree, @operator.oneLineTree, @rightPattern.oneLineTree]
+    | Infix             loc.operatorName = oneLineTreeAsOperator @operator.oneLineTree
+                        loc.oneLineTree =
+            punctuate " " [@leftPattern.oneLineTree, @operatorName, @rightPattern.oneLineTree]
     --  range                    : Range
     --  leftPattern              : Pattern
     --  operator                 : Name
     --  rightPattern             : Pattern
-    | Parenthesized     loc.oneLineTree = 
+    | Parenthesized     loc.oneLineTree =
             punctuate " " ( parens @lefthandside.oneLineTree : @patterns.oneLineTree )
     --  range                    : Range
     --  lefthandside             : LeftHandSide
     --  patterns                 : Patterns
 
 SEM RightHandSide
-    | Expression        loc.oneLineTree = 
-            \assign -> Node 
-                (  [ Text assign, @expression.oneLineTree ] 
+    | Expression        loc.oneLineTree =
+            \assign -> Node
+                (  [ Text assign, @expression.oneLineTree ]
                 ++ case @where.oneLineTree of
                     Nothing -> []
-                    Just ds -> [ Text "where", encloseSep "{" ";" "}" ds ]
+                    Just ds -> [ Text " where ", encloseSep "{" "; " "}" ds ]
                 )
     --  range                    : Range
     --  expression               : Expression
     --  where                    : MaybeDeclarations
     | Guarded           loc.oneLineTree =
-            \assign -> Node 
-                (  [ punctuate " " [ ge assign | ge <- @guardedexpressions.oneLineTree ] ] 
+            \assign -> Node
+                (  [ punctuate " " [ ge assign | ge <- @guardedexpressions.oneLineTree ] ]
                 ++ case @where.oneLineTree of
                     Nothing -> []
-                    Just ds -> [ Text "where", encloseSep "{" ";" "}" ds ]
+                    Just ds -> [ Text " where ", encloseSep "{" "; " "}" ds ]
                 )
     --  range                    : Range
     --  guardedexpressions       : GuardedExpressions
@@ -404,46 +407,33 @@ SEM RightHandSide
 -- ------------------------------------------------------------------------
 
 SEM Pattern
-    | Literal               
+    | Literal
              loc.oneLineTree = @literal.oneLineTree
     --  range                    : Range
     --  literal                  : Literal
-    | Variable              
+    | Variable
              loc.oneLineTree = @name.oneLineTree
     --  range                    : Range
     --  name                     : Name
-    | Constructor           
-             loc.oneLineTree =
-                Node
-                    ( ( if @name.isOperator then
-                            \x ->
-                            ( Text "("
-                            : @name.oneLineTree
-                            : Text ") "
-                            : x
-                            )
-                        else
-                            \x ->
-                            ( @name.oneLineTree
-                            : Text " "
-                            : x
-                            )
-                      )
-                          (sepBy (Text " ") @patterns.oneLineTree)
-                    )
+    | Constructor
+             loc.operatorName = if @name.isOperator
+                                  then Node [Text "(", @name.oneLineTree, Text ")"]
+                                  else @name.oneLineTree
+             loc.oneLineTree = Node (sepBy (Text " ") (@operatorName : @patterns.oneLineTree))
     --  range                    : Range
     --  name                     : Name
     --  patterns                 : Patterns
-    | Parenthesized         
+    | Parenthesized
              loc.oneLineTree = parens @pattern.oneLineTree
     --  range                    : Range
     --  pattern                  : Pattern
-    | InfixConstructor      
+    | InfixConstructor
+             loc.operatorName = Text (showNameAsOperator @constructorOperator.self)
              loc.oneLineTree =
                 Node
                     [ Node [@leftPattern.oneLineTree]
                     , Text " "
-                    , Node [@constructorOperator.oneLineTree]
+                    , Node [@operatorName]
                     , Text " "
                     , Node [@rightPattern.oneLineTree]
                     ]
@@ -451,10 +441,10 @@ SEM Pattern
     --  leftPattern              : Pattern
     --  constructorOperator      : Name
     --  rightPattern             : Pattern
-    | List              loc.oneLineTree = encloseSep "[" "," "]" @patterns.oneLineTree
+    | List              loc.oneLineTree = encloseSep "[" ", " "]" @patterns.oneLineTree
     --  range                    : Range
     --  patterns                 : Patterns
-    | Tuple             loc.oneLineTree = encloseSep "(" "," ")" @patterns.oneLineTree
+    | Tuple             loc.oneLineTree = encloseSep "(" ", " ")" @patterns.oneLineTree
     --  range                    : Range
     --  patterns                 : Patterns
     | Record            loc.oneLineTree = intErr "pattern" "record"
@@ -467,7 +457,7 @@ SEM Pattern
     | NegateFloat       loc.oneLineTree = Node [ Text "-." , @literal.oneLineTree ]
     --  range                    : Range
     --  literal                  : Literal -- only numbers allowed here
-    | As               
+    | As
              loc.oneLineTree =
                 Node
                     [ Node [@name.oneLineTree]
@@ -477,14 +467,14 @@ SEM Pattern
     --  range                    : Range
     --  name                     : Name
     --  pattern                  : Pattern
-    | Wildcard              
+    | Wildcard
              loc.oneLineTree = Text "_"
     --  range                    : Range
-    | Irrefutable           
+    | Irrefutable
              loc.oneLineTree = intErr "pattern" "irrefutable"
     --  range                    : Range
     --  pattern                  : Pattern
-    | Successor             
+    | Successor
              loc.oneLineTree = intErr "pattern" "successor"
     --  range                    : Range
     --  name                     : Name
@@ -524,4 +514,3 @@ SEM Name                                         {- *** -}
     --  range                    : Range
     --  module                   : Strings
     --  name                     : String
-    

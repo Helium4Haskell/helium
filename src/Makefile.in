@@ -241,7 +241,6 @@ staticanalysis/inferencers/TypeInferencing.hs : \
                 staticanalysis/staticchecks/HeliumPartialSyntax.ag \
 		syntax/UHA_Syntax.ag \
                 syntax/UHA_Self.ag \
-                syntax/UHA_Size.ag \
                 syntax/UHA_OneLine.ag \
                 staticanalysis/inferencers/typingstrategies/TS_PatternMatching.ag
                 
@@ -251,8 +250,7 @@ staticanalysis/inferencers/TypeInferencing.hs : \
 codegeneration/CodeGeneration.hs : \
 		codegeneration/CodeGeneration.ag syntax/UHA_Pretty.ag syntax/UHA_Self.ag \
 		syntax/UHA_Syntax.ag syntax/UHA_Self.ag codegeneration/ToCoreModule.ag codegeneration/ToCoreDecl.ag \
-		codegeneration/ToCoreExpr.ag codegeneration/ToCorePat.ag codegeneration/ToCoreName.ag \
-                syntax/UHA_Size.ag
+		codegeneration/ToCoreExpr.ag codegeneration/ToCorePat.ag codegeneration/ToCoreName.ag
 	# AG CodeGeneration
 	cd codegeneration;$(AG) $(AG_OPTS) CodeGeneration.ag;cd ..
 

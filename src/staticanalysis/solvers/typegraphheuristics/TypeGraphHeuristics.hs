@@ -46,7 +46,7 @@ heuristics = do conflicts <- getConflicts
                 if null infinites
                   then heuristicsConstantClash clashes
                   else infiniteTypeHeuristic infinites
-                        
+
 heuristicsConstantClash :: (TypeGraph EquivalenceGroups info, TypeGraphConstraintInfo info, Show info) => 
                            [Int] -> SolveState EquivalenceGroups info ([EdgeID], [info])
 heuristicsConstantClash is = 
@@ -60,13 +60,13 @@ heuristicsConstantClash is =
          zipWith (\i p -> "Path #"++show i++"\n"++replicate 25 '='++"\n"++showPath p) [1..] [ p | (p, (_, _, False)) <- pathsWithInfo ]    
 
       maxPhaseEdges          <- applyEdgesFilter constraintPhaseFilter allEdges  
-      maybeUserConstraint    <- applyEdgesFilter (maybeUserConstraintFilter pathsWithInfo) maxPhaseEdges      
+      maybeUserConstraint    <- applyEdgesFilter (maybeUserConstraintFilter pathsWithInfo) maxPhaseEdges
       maxDifferentGroupEdges <- applyEdgesFilter (differentGroupsFilter edgeInfoTable) maybeUserConstraint                           
           
       let applyHeuristicsToEdge (edge, info) = 
              do xs <- mapM (\heuristic -> heuristic edge info) (errorAndGoodPaths edgeInfoTable : edgeheuristics)
                 return (foldr combineHeuristicResult NotApplicableHeuristic xs)
-      
+
       bestForEachEdge <- mapM (\t -> do r <- applyHeuristicsToEdge t ; return (r,t) ) maxDifferentGroupEdges
       let sortedList = sortBy (\x y -> fst x `compare` fst y) bestForEachEdge
 
@@ -78,10 +78,10 @@ heuristicsConstantClash is =
                                     | otherwise       = last sortedList
       
       standardEdges <- moreEdgesFromUser info edge                                    
-      
+
       let standard                  = (info,standardEdges)
-          (typeError,edgesToRemove) = case hresult of 
-             ConcreteHeuristic _ as _ -> let op action (te,es) = case action of 
+          (typeError,edgesToRemove) = case hresult of
+             ConcreteHeuristic _ as _ -> let op action (te,es) = case action of
                                                                     SetHint h      -> (setNewHint h te,es)
                                                                     SetTypeError t -> (setNewTypeError t te,es)
                                                                     RemoveEdge e   -> (te,e:es)
@@ -99,10 +99,10 @@ data HeuristicAction = SetHint      TypeErrorInfo
                      | RemoveEdge   EdgeID
 
 fixHint :: String -> TypeErrorInfo
-fixHint = TypeErrorHint "Probable fix". MessageString
+fixHint = TypeErrorHint "probable fix". MessageString
 
 becauseHint :: String -> TypeErrorInfo
-becauseHint = TypeErrorHint "Because" . MessageString
+becauseHint = TypeErrorHint "because" . MessageString
 
 instance Show HeuristicResult where
    show (ConcreteHeuristic i h s) = "trust="++show i++"   ("++s++")"
@@ -136,8 +136,7 @@ combineHeuristicResult hr1 hr2 =
 type EdgeHeuristic info = EdgeID -> info -> SolveState EquivalenceGroups info HeuristicResult
 
 edgeheuristics :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => [EdgeHeuristic info]
-edgeheuristics = [ orderOfUnification 
-                 , minimizeSizeOfExpression
+edgeheuristics = [ orderOfUnification
                  , trustFactorOfConstraint
                  , isFolkloreEdge
                  , edgeIsPartOfCycle
@@ -156,13 +155,6 @@ orderOfUnification edge info =
       Just position -> let modifier = 1 + fromInt position / 10000
                        in return (ModifierHeuristic modifier ("position="++show position))
 
-minimizeSizeOfExpression :: TypeGraphConstraintInfo info => EdgeHeuristic info
-minimizeSizeOfExpression edge info = 
-   case getSize info of
-      Nothing   -> return NotApplicableHeuristic
-      Just size -> let modifier = 0.95 ^ size
-                   in return (ModifierHeuristic modifier ("size="++show size))
-  
 trustFactorOfConstraint :: TypeGraphConstraintInfo info => EdgeHeuristic info
 trustFactorOfConstraint edge info =
    case getTrustFactor info of
@@ -191,21 +183,21 @@ similarFunctions edge@(EdgeID v1 v2) info =
       Nothing   -> return NotApplicableHeuristic
       Just name ->
       
-         let (t1,t2)   = getTwoTypes info 
+         let (t1,t2)   = getTwoTypes info
              string    = show name
              functions = filter (string /=)
-                       . concat 
+                       . concat
                        . filter (string `elem`) 
                        $ similarFunctionTable
          in if null functions 
               then return NotApplicableHeuristic
-              else do options <- getSolverOptions 
+              else do options <- getSolverOptions
                       let tryFunctions = map (\s -> (s, lookup s importedFunctions)) functions  
                           importedFunctions = getTypeSignatures options 
                           synonyms = getTypeSynonyms options
                                                                  
                       doWithoutEdge (edge,info) $ 
-                      
+
                          do unique   <- getUnique
                             mtp      <- safeApplySubst t2
                             
@@ -213,32 +205,32 @@ similarFunctions edge@(EdgeID v1 v2) info =
                                Nothing -> return NotApplicableHeuristic
                                Just tp -> case [ ConcreteHeuristic 10 [SetHint (fixHint ("use "++s++" instead"))] (show string++" is similar to "++show s)
                                                | (s,Just scheme) <- tryFunctions                                                   
-                                               , unifiable synonyms tp (unsafeInstantiate scheme) 
+                                               , unifiable synonyms tp (unsafeInstantiate scheme)
                                                ] of
                                             []  -> return NotApplicableHeuristic
-                                            t:_ -> return t   
+                                            t:_ -> return t
 
 similarLiterals :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
 similarLiterals edge@(EdgeID v1 v2) info = 
    case maybeLiteral info of 
       Nothing      -> return NotApplicableHeuristic
-      Just literal -> 
-         
+      Just literal ->
+
          doWithoutEdge (edge,info) $
-         
+
             do options  <- getSolverOptions
-               let (t1,t2)   = getTwoTypes info                                         
+               let (t1,t2)   = getTwoTypes info
                    synonyms  = getTypeSynonyms options
                unique   <- getUnique
                mtp      <- safeApplySubst t2
-               
-               case (literal,mtp) of 
 
-                  (Literal_Int    _ s,Just (TCon "Float"))  
+               case (literal,mtp) of
+
+                  (Literal_Int    _ s,Just (TCon "Float"))
                        -> let hint = SetHint (fixHint "use a float literal instead")
                           in return $ ConcreteHeuristic 5 [hint] "int literal should be a float"
 
-                  (Literal_Float  _ s,Just (TCon "Int"  ))  
+                  (Literal_Float  _ s,Just (TCon "Int"  ))
                        -> let hint = SetHint (fixHint "use an int literal instead")
                           in return $ ConcreteHeuristic 5 [hint] "float literal should be an int"
 
@@ -253,109 +245,101 @@ similarLiterals edge@(EdgeID v1 v2) info =
                   _ -> return NotApplicableHeuristic
 
 similarNegation :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
-similarNegation edge@(EdgeID v1 v2) info = 
-   case maybeNegation info of 
-      Nothing   -> return NotApplicableHeuristic
-      Just beta -> 
-      
-         do xs <- useSolver 
-                    (\groups -> do eqc <- equivalenceGroupOf beta groups
-                                   return [ (edge,info) 
-                                          | (edge@(EdgeID a b),info) <- edges eqc 
-                                          , (a == beta || b == beta)
-                                          , isNegationResult info
-                                          ])
-            case xs of 
-               [(edge',info')] -> 
-                  
-                  doWithoutEdges [(edge,info),(edge',info')] $
-                  
-                  do options  <- getSolverOptions
-                     let (t1,t2)   = getTwoTypes info                
-                         synonyms  = getTypeSynonyms options
-                     unique   <- getUnique
-                     mt1      <- safeApplySubst t1
-                     mt2      <- safeApplySubst (TVar beta)
+similarNegation edge@(EdgeID v1 v2) info =
+   case maybeNegation info of
+      Nothing            -> return NotApplicableHeuristic
+      Just isIntNegation ->
 
-                     case (mt1,mt2) of
-                     
-                          (Just t1,Just t2) 
-                             | intNegation && not floatNegation -> let hint = SetHint (fixHint "use int negation (-) instead")
-                                                                   in return $ ConcreteHeuristic 6 [RemoveEdge edge',hint] "int negation should be used"       
-                             | floatNegation && not intNegation -> let hint = SetHint (fixHint "use float negation (-.) instead")
-                                                                   in return $ ConcreteHeuristic 6 [RemoveEdge edge',hint] "float negation should be used"     
-                             | otherwise                        -> return $ NotApplicableHeuristic
-                               where intNegation   = unifiable synonyms t1 intType   && unifiable synonyms t2 intType
-                                     floatNegation = unifiable synonyms t1 floatType && unifiable synonyms t2 floatType
-                          _ -> return $ NotApplicableHeuristic
-                  
-               _ -> return NotApplicableHeuristic
-            
+         doWithoutEdge (edge,info) $
+
+            do options  <- getSolverOptions
+               let (t1,t2)   = getTwoTypes info
+                   synonyms  = getTypeSynonyms options
+               unique   <- getUnique
+               mtp      <- safeApplySubst t2
+               case mtp of
+                  Just tp
+                     | intNegation && not floatNegation && floatNegationEdge
+                        -> let hint = SetHint (fixHint "use int negation (-) instead")
+                           in return $ ConcreteHeuristic 6 [hint] "int negation should be used"
+
+                     | not intNegation && floatNegation && intNegationEdge
+                        -> let hint = SetHint (fixHint "use float negation (-.) instead")
+                           in return $ ConcreteHeuristic 6 [hint] "float negation should be used"
+
+                    where intNegation       = unifiable synonyms tp (intType .->. intType)
+                          floatNegation     = unifiable synonyms tp (floatType .->. floatType)
+                          intNegationEdge   = isIntNegation
+                          floatNegationEdge = not isIntNegation
+
+                  _ -> return NotApplicableHeuristic
+
 applicationEdge :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
-applicationEdge edge@(EdgeID v1 v2) info = 
+applicationEdge edge@(EdgeID v1 v2) info =
    case maybeApplicationEdge info of
       Nothing                            -> return NotApplicableHeuristic
-      Just (isBinary,tuplesForArguments) -> 
-      
-       doWithoutEdge (edge,info) $      
-       
-          do options     <- getSolverOptions 
-             let (t1,t2)  = getTwoTypes info                           
+      Just (isBinary,tuplesForArguments) ->
+
+       doWithoutEdge (edge,info) $
+
+          do options     <- getSolverOptions
+             let (t1,t2)  = getTwoTypes info
                  synonyms = getTypeSynonyms options
-             mFunctionTp <- safeApplySubst t1    
-             mExpectedTp <- safeApplySubst t2    
-          
-             case (mFunctionTp,mExpectedTp) of 
-               
+             mFunctionTp <- safeApplySubst t1
+             mExpectedTp <- safeApplySubst t2
+
+             case (mFunctionTp,mExpectedTp) of
+
                (Nothing        ,_              ) -> return NotApplicableHeuristic
                (_              ,Nothing        ) -> return NotApplicableHeuristic
-               (Just functionTp,Just expectedTp) -> 
- 
-                  let [(ftps,resFunction), (etps,resExpected)] = spineOfFunctionTypesWithSameLength [functionTp,expectedTp]           
+               (Just functionTp,Just expectedTp) ->
+
+                  let [(ftps,resFunction), (etps,resExpected)] = spineOfFunctionTypesWithSameLength [functionTp,expectedTp]
                       predicate = uncurry (unifiable synonyms)
                                 . applyBoth tupleType
                                 . unzip
-                               . ((resFunction,resExpected):)
+                                . ((resFunction,resExpected):)
                       onlyArgumentsMatch = unifiable synonyms (tupleType ftps) (tupleType etps)
-                  in case compare (length ftps) (length etps) of 
- 
-                        LT | null ftps && not isBinary -> -- the expression to which arguments are given does not have a function type                            
+                  in case compare (length ftps) (length etps) of
+
+                        LT | null ftps && not isBinary -> -- the expression to which arguments are given does not have a function type
                                 let hint = SetHint (becauseHint "it is not a function")
                                 in return (ConcreteHeuristic 6 [hint] "no function")
- 
+
                            | length ftps < 2 && isBinary -> --function used as infix that expects < 2 arguments
                                 let hint = SetHint (becauseHint "it is not a binary function")
                                 in return (ConcreteHeuristic 6 [hint] "no binary function")
-  
-                        EQ | onlyArgumentsMatch && length ftps >= length tuplesForArguments -> -- error in result 
+
+                        EQ | onlyArgumentsMatch && length ftps >= length tuplesForArguments -> -- error in result
                                 return (ModifierHeuristic 0.000001 "application: only result is incorrect")
-                                
-                           | not onlyArgumentsMatch -> -- test if there is one argument in particular that is incorrect                          
+
+                           | not onlyArgumentsMatch -> -- test if there is one argument in particular that is incorrect
                            case ([ p
                                  | p <- take heuristics_MAX (permutationsForLength (length ftps))
                                  , predicate (zip ftps (permute p etps))
                                  ]
-                                 ,[ i 
+                                 ,[ i
                                  | i <- [0..length ftps-1]
-                                 , predicate (deleteIndex i (zip ftps etps)) 
-                                 , not (unifiable synonyms (ftps !! i) (etps !! i)) 
+                                 , predicate (deleteIndex i (zip ftps etps))
+                                 , not (unifiable synonyms (ftps !! i) (etps !! i))
+                                 -- , not (unifiable synonyms functionTp expectedTp)     -- more liberal, but incorrect (edge is re-inserted)
                                  ]) of
-                            
-                             ([p],_) 
+
+                             ([p],_)
                                  | p==[1,0] && isBinary -> let hint = SetHint (fixHint "swap the two arguments")
                                                            in return (ConcreteHeuristic 3 [hint] "swap the two arguments")
                                  | otherwise            -> let hint = SetHint (fixHint "re-order arguments")
                                                            in return (ConcreteHeuristic 1 [hint] ("application: permute with "++show p))
-                         
+
                              (_,[i]) | i < length tuplesForArguments
-                                  -> do expfulltp <- applySubst t1                                   
-                                        let (oneLiner,tp) = tuplesForArguments !! i
-                                            typeError     = makeTypeErrorForTerm isBinary i oneLiner (tp,expargtp) info
+                                  -> do expfulltp <- applySubst t1
+                                        let (oneLiner,tp,range) = tuplesForArguments !! i
+                                            typeError     = makeTypeErrorForTerm isBinary i oneLiner (tp,expargtp) range info
                                             expargtp      = fst (functionSpine expfulltp) !! i
                                         return (ConcreteHeuristic 3 [SetTypeError typeError] ("incorrect argument of application="++show i))
-                             _   -> return NotApplicableHeuristic
- 
-                        ordering -> -- the number of arguments is incorrect. (LT -> too many ; GT -> not enough)                           
+                             _    -> return NotApplicableHeuristic
+
+                        ordering -> -- the number of arguments is incorrect. (LT -> too many ; GT -> not enough)
                            case ( [ is | (is,zl) <- take heuristics_MAX (zipWithHoles ftps etps), predicate zl ] , ordering ) of
 
                              ([is],LT) | not isBinary && maximum is < length tuplesForArguments
@@ -379,7 +363,7 @@ applicationEdge edge@(EdgeID v1 v2) info =
 tupleEdge :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
 tupleEdge edge@(EdgeID v1 v2) info
    | not (isTupleEdge info) = return NotApplicableHeuristic
-   | otherwise              = 
+   | otherwise              =
    
    doWithoutEdge (edge,info) $ 
    
@@ -390,7 +374,7 @@ tupleEdge edge@(EdgeID v1 v2) info
          mExpectedTp <- safeApplySubst t2
          case (fmap leftSpine mTupleTp,fmap leftSpine mExpectedTp) of 
 
-          (Just (TCon s,tupleTps),Just (TCon t,expectedTps)) | isTupleConstructor s && isTupleConstructor t -> 
+          (Just (TCon s,tupleTps),Just (TCon t,expectedTps)) | isTupleConstructor s && isTupleConstructor t ->
             case compare (length tupleTps) (length expectedTps) of
             
                EQ -> -- try if a permutation can make the tuple types equivalent
@@ -576,7 +560,7 @@ findPathsInTypeGraph is =
        rec (gp,ep) []          = return []
        rec (gp,ep) (i:is)      
           | gp <= 0 && ep <= 0 = return []
-          | otherwise          = do (rgp1,rep1) <- recGroup (gp,ep) i 
+          | otherwise          = do (rgp1,rep1) <- recGroup (gp,ep) i
                                     recPaths    <- rec (gp - length rgp1,ep - length rep1) is
                                     return (recPaths++rgp1++rep1)                
                                     
@@ -638,7 +622,7 @@ constraintPhaseFilter :: (Monad monad, TypeGraphConstraintInfo cinfo) => EdgesFi
 constraintPhaseFilter = maximalEdgeFilter (const (return . maybe 0 id . getConstraintPhaseNumber))
 
 differentGroupsFilter :: Monad monad => EdgeInfoTable cinfo -> EdgesFilter monad cinfo
-differentGroupsFilter edgeInfoTable = maximalEdgeFilter f 
+differentGroupsFilter edgeInfoTable = maximalEdgeFilter f
    where f edgeID cinfo = return $
             case find ((edgeID==) . fst . fst) edgeInfoTable of 
                Nothing            -> 0

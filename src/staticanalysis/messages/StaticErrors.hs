@@ -22,7 +22,7 @@ import Utils       (commaList, internalError)
 
 type Errors = [Error]
 data Error  = NoFunDef Entity Name {-names in scope-}Names
-            | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}(Maybe String)
+            | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}[String] {- hints -}
             | Duplicated Entity Names
             | LastStatementNotExpr Range
             | WrongFileName {-file name-}String {-module name-}String Range {- of module name -}
@@ -34,7 +34,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
-                  in [MessageOneLiner oneliner, MessageHints "HINT" hints]
+                  in [MessageOneLiner oneliner, MessageHints "Hint" hints]
    getRanges anError = case anError of
    
       NoFunDef _ name _           -> [getNameRange name]
@@ -65,14 +65,12 @@ showError anError = case anError of
       ( MessageString ("Infix declaration for " ++ show (show name) ++ " without a definition ")
       , [ MessageString ("Did you mean "++prettyOrList (map (show . show) xs)++" ?")
         | let xs = findSimilar name inScope, not (null xs) 
-        ] 
+        ]
       )
 
-   Undefined entity name inScope wrongNameSpace ->
+   Undefined entity name inScope hints ->
       ( MessageString ("Undefined " ++ show entity ++ " " ++ show (show name))
-      , [ MessageString hint
-        | Just hint <- [wrongNameSpace]
-        ]
+      , map MessageString hints
         ++
         [ MessageString ("Did you mean " ++ prettyOrList (map (show . show) xs) ++ " ?")
         | let xs = findSimilar name inScope, not (null xs)
@@ -88,7 +86,7 @@ showError anError = case anError of
                 commaList (map (snd.fromJust.modulesFromImportRange) nameRanges)), [])
                 
       | any isImportRange nameRanges ->
-           let 
+           let
                (importRanges, localRanges) = partition isImportRange nameRanges
                plural = if length importRanges > 1 then "s" else ""
            in
@@ -99,7 +97,7 @@ showError anError = case anError of
                    commaList [ snd (fromJust (modulesFromImportRange importRange)) 
                              | importRange <- importRanges
                              ]), [])
-                             
+
       | otherwise ->
            ( MessageString ("Duplicated " ++ show entity ++ " " ++ (show . show . head) names), [])
                  
@@ -123,17 +121,17 @@ showError anError = case anError of
       ( MessageString ( capitalize (show entity) ++ " " ++show (show name) ++
            " should have " ++ prettyNumberOfParameters expected ++
            ", but has " ++ if actual == 0 then "none" else show actual), [])
-    
+
    RecursiveTypeSynonyms [string] ->
       ( MessageString ("Recursive type synonym " ++ show (show string))
-      , [ MessageString "use \"data\" to write a recursive data type" ]  
-      )     
+      , [ MessageString "use \"data\" to write a recursive data type" ]
+      )
    RecursiveTypeSynonyms strings ->
-      ( MessageString ("Recursive type synonyms " ++ 
+      ( MessageString ("Recursive type synonyms " ++
             prettyAndList (map (show . show) (sortNamesByRange strings)))
       , []
-      )     
-        
+      )
+
    DefArityMismatch name maybeExpected range ->
       ( MessageString ("Arity mismatch in function bindings for " ++ show (show name))
       , [ MessageString (show arity ++ " parameters in most of the clauses")
@@ -146,20 +144,32 @@ showError anError = case anError of
 
    WrongFileName fileName moduleName range ->
       ( MessageString ("The file name " ++ show fileName ++ " doesn't match the module name " ++ show moduleName), [])
-      
+
    _ -> internalError "Messages.hs" "showError" "unknown type of Error"
 
 makeUndefined :: Entity -> Names -> Names -> [Error]
-makeUndefined entity names inScope = [ Undefined entity name inScope Nothing | name <- names ]
+makeUndefined entity names inScope = [ Undefined entity name inScope [] | name <- names ]
 
 makeDuplicated :: Entity -> [Names] -> [Error]
 makeDuplicated entity nameslist = [ Duplicated entity names | names <- nameslist ]
 
-undefinedConstructor :: Name -> Names -> Names -> Error
-undefinedConstructor name sims tyconNames = Undefined Constructor name sims hint
-   where hint = if name `elem` tyconNames
-                  then Just ("Type constructor "++show (show name)++" cannot be used in an expression or pattern") 
-                  else Nothing
+undefinedConstructorInExpr :: Name -> Names -> Names -> Error
+undefinedConstructorInExpr name sims tyconNames =
+   let hints = [ "Type constructor "++show (show name)++" cannot be used in an expression"
+               | name `elem` tyconNames
+               ]
+   in Undefined Constructor name sims hints
+
+undefinedConstructorInPat :: Bool -> Name -> Names -> Names -> Error
+undefinedConstructorInPat lhsPattern name sims tyconNames =
+   let hints = [ "Use identifiers starting with a lower case letter to define a function or a variable" 
+               | lhsPattern 
+               ] ++
+               [ "Type constructor "++show (show name)++" cannot be used in a pattern"
+               | name `elem` tyconNames
+               ]
+
+   in Undefined Constructor name sims hints
 
 makeNoFunDef :: Entity -> Names -> Names -> [Error]
 makeNoFunDef entity names inScope = [ NoFunDef entity name inScope | name <- names ]
@@ -188,4 +198,4 @@ errorLogCode anError = case anError of
                        , (Definition       ,"de"), (Constructor          ,"co"), (Variable       ,"va") 
                        , (Import           ,"im"), (ExportVariable       ,"ev"), (ExportModule   ,"em")
                        , (ExportConstructor,"ec"), (ExportTypeConstructor,"et"), (Fixity         ,"fx")
-                       ]   
+                       ]

@@ -155,6 +155,20 @@ getExprRange (Expression_RecordUpdate       r _ _  ) = r
 getExprRange (Expression_Enum               r _ _ _) = r
 getExprRange (Expression_Negate             r _    ) = r
 
+getRHSRange :: RightHandSide -> Range
+getRHSRange (RightHandSide_Expression r _ _) = r
+getRHSRange (RightHandSide_Guarded    r _ _) = r
+
+getMaybeExprRange :: MaybeExpression -> Range
+getMaybeExprRange (MaybeExpression_Just e)  = getExprRange e
+getMaybeExprRange (MaybeExpression_Nothing) = noRange
+
+getLitRange :: Literal -> Range
+getLitRange (Literal_Char   r _) = r
+getLitRange (Literal_Float  r _) = r
+getLitRange (Literal_Int    r _) = r
+getLitRange (Literal_String r _) = r
+
 showRanges :: [Range] -> String
 showRanges rs = showRanges' (sort rs)
   where

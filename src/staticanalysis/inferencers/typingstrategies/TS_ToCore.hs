@@ -17,9 +17,10 @@ import OneLiner
 import TS_Attributes
 
 import UHA_Syntax
- 
+
 import OneLiner
 import Char
+import UHA_Utils (showNameAsOperator)
 {-
 import List (intersperse)
 import SATypes (isTupleConstructor)
@@ -67,6 +68,13 @@ sepBy separator list =
 intErr :: String -> String -> a
 intErr node message = internalError "UHA_OneLine" node message
 
+oneLineTreeAsOperator :: Tree -> Tree
+oneLineTreeAsOperator tree =
+   case tree of
+      Node [Text (first:_)]
+         |  isAlpha first || first == '_'
+         -> Node [ Text "`", tree, Text "`" ]
+      _  -> tree
 -- Alternative -------------------------------------------------
 -- semantic domain
 type T_Alternative = ((Tree),(Alternative))
@@ -85,7 +93,7 @@ sem_Alternative_Alternative (_range) (_pattern) (_righthandside) =
     let (_self) =
             Alternative_Alternative _range_self _pattern_self _righthandside_self
         (_oneLineTree) =
-            Node [ _pattern_oneLineTree, _righthandside_oneLineTree "->" ]
+            Node [ _pattern_oneLineTree, _righthandside_oneLineTree " -> " ]
         ( _range_self) =
             (_range )
         ( _pattern_oneLineTree,_pattern_self) =
@@ -498,7 +506,7 @@ sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) =
         (_oneLineTree) =
             Node
                 [ Node [_pattern_oneLineTree]
-                , Node [_righthandside_oneLineTree "="]
+                , Node [_righthandside_oneLineTree " = "]
                 ]
         ( _range_self) =
             (_range )
@@ -706,7 +714,7 @@ sem_Expression_Case (_range) (_expression) (_alternatives) =
                 [ Text "case "
                 , Node [_expression_oneLineTree]
                 , Text " of "
-                , encloseSep "{" ";" "}" _alternatives_oneLineTree
+                , encloseSep "{" "; " "}" _alternatives_oneLineTree
                 ]
         ( _range_self) =
             (_range )
@@ -724,11 +732,11 @@ sem_Expression_Comprehension (_range) (_expression) (_qualifiers) =
             Expression_Comprehension _range_self _expression_self _qualifiers_self
         (_oneLineTree) =
             Node
-                [ Text "["
+                [ Text "[ "
                 , Node [_expression_oneLineTree]
                 , Text " | "
-                , Node [ punctuate "," _qualifiers_oneLineTree ]
-                , Text "]"
+                , Node [ punctuate ", " _qualifiers_oneLineTree ]
+                , Text " ]"
                 ]
         ( _range_self) =
             (_range )
@@ -776,7 +784,7 @@ sem_Expression_Enum (_range) (_from) (_then) (_to) =
             Expression_Enum _range_self _from_self _then_self _to_self
         (_oneLineTree) =
             Node (
-                [ Text "[ "
+                [ Text "["
                 , Node [_from_oneLineTree]
                 ]
                 ++
@@ -786,7 +794,7 @@ sem_Expression_Enum (_range) (_from) (_then) (_to) =
                 ++
                 maybe [] (\x -> [Node [x]]) _to_oneLineTree
                 ++
-                [ Text " ]" ]
+                [ Text "]" ]
             )
         ( _range_self) =
             (_range )
@@ -832,12 +840,7 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
     let (_self) =
             Expression_InfixApplication _range_self _leftExpression_self _operator_self _rightExpression_self
         (_operatorName) =
-            case _operator_oneLineTree of
-                Node [Text (first:_)]
-                    | isAlpha first || first == '_' ->
-                        Node [ Text "`", _operator_oneLineTree, Text "`" ]
-                _ ->
-                    _operator_oneLineTree
+            oneLineTreeAsOperator _operator_oneLineTree
         (_oneLineTree) =
             case (_leftExpression_oneLineTree, _rightExpression_oneLineTree) of
                 (Nothing, Nothing) -> parens _operatorName
@@ -883,7 +886,7 @@ sem_Expression_Let (_range) (_declarations) (_expression) =
         (_oneLineTree) =
             Node
                 [ Text "let "
-                , encloseSep "{" ";" "}" _declarations_oneLineTree
+                , encloseSep "{" "; " "}" _declarations_oneLineTree
                 , Text " in "
                 , Node [_expression_oneLineTree]
                 ]
@@ -901,7 +904,7 @@ sem_Expression_List (_range) (_expressions) =
     let (_self) =
             Expression_List _range_self _expressions_self
         (_oneLineTree) =
-            encloseSep "[" "," "]" _expressions_oneLineTree
+            encloseSep "[" ", " "]" _expressions_oneLineTree
         ( _range_self) =
             (_range )
         ( _expressions_oneLineTree,_expressions_self) =
@@ -1014,7 +1017,7 @@ sem_Expression_Tuple (_range) (_expressions) =
     let (_self) =
             Expression_Tuple _range_self _expressions_self
         (_oneLineTree) =
-            encloseSep "(" "," ")" _expressions_oneLineTree
+            encloseSep "(" ", " ")" _expressions_oneLineTree
         ( _range_self) =
             (_range )
         ( _expressions_oneLineTree,_expressions_self) =
@@ -1175,7 +1178,7 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) =
     let (_self) =
             FunctionBinding_FunctionBinding _range_self _lefthandside_self _righthandside_self
         (_oneLineTree) =
-            Node [_lefthandside_oneLineTree, _righthandside_oneLineTree "=" ]
+            Node [_lefthandside_oneLineTree, _righthandside_oneLineTree " = " ]
         ( _range_self) =
             (_range )
         ( _lefthandside_oneLineTree,_lefthandside_self) =
@@ -1461,8 +1464,10 @@ sem_LeftHandSide_Infix :: (T_Range) ->
 sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) =
     let (_self) =
             LeftHandSide_Infix _range_self _leftPattern_self _operator_self _rightPattern_self
+        (_operatorName) =
+            oneLineTreeAsOperator _operator_oneLineTree
         (_oneLineTree) =
-            punctuate " " [_leftPattern_oneLineTree, _operator_oneLineTree, _rightPattern_oneLineTree]
+            punctuate " " [_leftPattern_oneLineTree, _operatorName, _rightPattern_oneLineTree]
         ( _range_self) =
             (_range )
         ( _leftPattern_oneLineTree,_leftPattern_self) =
@@ -1877,24 +1882,12 @@ sem_Pattern_Constructor :: (T_Range) ->
 sem_Pattern_Constructor (_range) (_name) (_patterns) =
     let (_self) =
             Pattern_Constructor _range_self _name_self _patterns_self
+        (_operatorName) =
+            if _name_isOperator
+              then Node [Text "(", _name_oneLineTree, Text ")"]
+              else _name_oneLineTree
         (_oneLineTree) =
-            Node
-                ( ( if _name_isOperator then
-                        \x ->
-                        ( Text "("
-                        : _name_oneLineTree
-                        : Text ") "
-                        : x
-                        )
-                    else
-                        \x ->
-                        ( _name_oneLineTree
-                        : Text " "
-                        : x
-                        )
-                  )
-                      (sepBy (Text " ") _patterns_oneLineTree)
-                )
+            Node (sepBy (Text " ") (_operatorName : _patterns_oneLineTree))
         ( _range_self) =
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
@@ -1910,11 +1903,13 @@ sem_Pattern_InfixConstructor :: (T_Range) ->
 sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_rightPattern) =
     let (_self) =
             Pattern_InfixConstructor _range_self _leftPattern_self _constructorOperator_self _rightPattern_self
+        (_operatorName) =
+            Text (showNameAsOperator _constructorOperator_self)
         (_oneLineTree) =
             Node
                 [ Node [_leftPattern_oneLineTree]
                 , Text " "
-                , Node [_constructorOperator_oneLineTree]
+                , Node [_operatorName]
                 , Text " "
                 , Node [_rightPattern_oneLineTree]
                 ]
@@ -1947,7 +1942,7 @@ sem_Pattern_List (_range) (_patterns) =
     let (_self) =
             Pattern_List _range_self _patterns_self
         (_oneLineTree) =
-            encloseSep "[" "," "]" _patterns_oneLineTree
+            encloseSep "[" ", " "]" _patterns_oneLineTree
         ( _range_self) =
             (_range )
         ( _patterns_oneLineTree,_patterns_self) =
@@ -2044,7 +2039,7 @@ sem_Pattern_Tuple (_range) (_patterns) =
     let (_self) =
             Pattern_Tuple _range_self _patterns_self
         (_oneLineTree) =
-            encloseSep "(" "," ")" _patterns_oneLineTree
+            encloseSep "(" ", " ")" _patterns_oneLineTree
         ( _range_self) =
             (_range )
         ( _patterns_oneLineTree,_patterns_self) =
@@ -2152,7 +2147,7 @@ sem_Qualifier_Generator (_range) (_pattern) (_expression) =
     let (_self) =
             Qualifier_Generator _range_self _pattern_self _expression_self
         (_oneLineTree) =
-            Node [ _pattern_oneLineTree, Text "<-", _expression_oneLineTree ]
+            Node [ _pattern_oneLineTree, Text " <- ", _expression_oneLineTree ]
         ( _range_self) =
             (_range )
         ( _pattern_oneLineTree,_pattern_self) =
@@ -2180,7 +2175,7 @@ sem_Qualifier_Let (_range) (_declarations) =
     let (_self) =
             Qualifier_Let _range_self _declarations_self
         (_oneLineTree) =
-            Node [ Text "let ", encloseSep "{" ";" "}" _declarations_oneLineTree ]
+            Node [ Text "let ", encloseSep "{" "; " "}" _declarations_oneLineTree ]
         ( _range_self) =
             (_range )
         ( _declarations_oneLineTree,_declarations_self) =
@@ -2343,7 +2338,7 @@ sem_RightHandSide_Expression (_range) (_expression) (_where) =
                 (  [ Text assign, _expression_oneLineTree ]
                 ++ case _where_oneLineTree of
                     Nothing -> []
-                    Just ds -> [ Text "where", encloseSep "{" ";" "}" ds ]
+                    Just ds -> [ Text " where ", encloseSep "{" "; " "}" ds ]
                 )
         ( _range_self) =
             (_range )
@@ -2364,7 +2359,7 @@ sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) =
                 (  [ punctuate " " [ ge assign | ge <- _guardedexpressions_oneLineTree ] ]
                 ++ case _where_oneLineTree of
                     Nothing -> []
-                    Just ds -> [ Text "where", encloseSep "{" ";" "}" ds ]
+                    Just ds -> [ Text " where ", encloseSep "{" "; " "}" ds ]
                 )
         ( _range_self) =
             (_range )
@@ -2484,7 +2479,7 @@ sem_Statement_Generator (_range) (_pattern) (_expression) =
     let (_self) =
             Statement_Generator _range_self _pattern_self _expression_self
         (_oneLineTree) =
-            Node [ _pattern_oneLineTree, Text "<-", _expression_oneLineTree ]
+            Node [ _pattern_oneLineTree, Text " <- ", _expression_oneLineTree ]
         ( _range_self) =
             (_range )
         ( _pattern_oneLineTree,_pattern_self) =
@@ -2499,7 +2494,7 @@ sem_Statement_Let (_range) (_declarations) =
     let (_self) =
             Statement_Let _range_self _declarations_self
         (_oneLineTree) =
-            Node [ Text "let ", encloseSep "{" ";" "}" _declarations_oneLineTree ]
+            Node [ Text "let ", encloseSep "{" "; " "}" _declarations_oneLineTree ]
         ( _range_self) =
             (_range )
         ( _declarations_oneLineTree,_declarations_self) =

@@ -16,7 +16,7 @@ import OneLiner
 import TypeErrors
 import Messages
 import Utils         (internalError)
- 
+
 class (Show constraintinfo,ConstraintInfo constraintinfo) => 
          TypeGraphConstraintInfo constraintinfo where
              
@@ -27,27 +27,27 @@ class (Show constraintinfo,ConstraintInfo constraintinfo) =>
    isFolkloreConstraint    :: constraintinfo -> Bool
    isExplicitTypedBinding  :: constraintinfo -> Bool
    isTupleEdge             :: constraintinfo -> Bool
-   maybeApplicationEdge    :: constraintinfo -> Maybe (Bool,[(Tree,Tp)])
+   maybeApplicationEdge    :: constraintinfo -> Maybe (Bool, [(Tree, Tp, Range)])
    maybeImportedFunction   :: constraintinfo -> Maybe Name
    getTwoTypes             :: constraintinfo -> (Tp,Tp)
    maybeLiteral            :: constraintinfo -> Maybe Literal
-   maybeNegation           :: constraintinfo -> Maybe Int
-   getSize                 :: constraintinfo -> Maybe Int
+   maybeNegation           :: constraintinfo -> Maybe Bool
    isNegationResult        :: constraintinfo -> Bool
-   maybeFunctionBinding    :: constraintinfo -> Maybe Int   
+   maybeFunctionBinding    :: constraintinfo -> Maybe Int
    maybeOriginalTypeScheme :: constraintinfo -> Maybe (Bool,TpScheme)
    maybeUserConstraint     :: constraintinfo -> Maybe (Int, Int)
-   setFolkloreConstraint   :: constraintinfo -> constraintinfo 
+   setFolkloreConstraint   :: constraintinfo -> constraintinfo
    setNewTypeError         :: TypeError -> constraintinfo -> constraintinfo
    setNewHint              :: TypeErrorInfo -> constraintinfo -> constraintinfo
    makeTypeError           :: constraintinfo -> TypeError
-  
+   getErrorRange           :: constraintinfo -> Range
+
 -- not a nice solution!
-makeTypeErrorForTerm :: TypeGraphConstraintInfo constraintinfo => Bool -> Int -> Tree -> (Tp,Tp) -> constraintinfo -> TypeError
-makeTypeErrorForTerm isInfixApplication argumentNumber termOneLiner (t1, t2) cinfo =
+makeTypeErrorForTerm :: TypeGraphConstraintInfo constraintinfo => Bool -> Int -> Tree -> (Tp,Tp) -> Range -> constraintinfo -> TypeError
+makeTypeErrorForTerm isInfixApplication argumentNumber termOneLiner (t1, t2) range cinfo =
    case makeTypeError cinfo of
 
-      TypeError range oneliner (UnificationErrorTable sources ftype _) infos ->
+      TypeError _ oneliner (UnificationErrorTable sources ftype _) infos ->
          let newSources = filter onlyExpression sources ++ [ (function, functionPretty)
                                                            , ("type", functionType)
                                                            , (subterm, MessageOneLineTree termOneLiner)
@@ -71,7 +71,7 @@ makeTypeErrorForTerm isInfixApplication argumentNumber termOneLiner (t1, t2) cin
 type InfoSource = (InfoNT, InfoAlt, Int, String)
            
 data InfoNT = NTBody              | NTDeclaration  | NTFunctionBinding | NTExpression 
-            | NTGuardedExpression | NTPattern      | NTAlternative     | NTStatement  
+            | NTGuardedExpression | NTPattern      | NTAlternative     | NTStatement
             | NTQualifier         | NTBindingGroup
    deriving (Show,Eq)
    

@@ -25,6 +25,7 @@ import LiftedConstraints
 import FiniteMap
 import ImportEnvironment
 import OperatorTable
+import Char ( isUpper )
 }
 
 INCLUDE "Collect.ag"

@@ -69,28 +69,29 @@ tableWidthRight :: Int
 tableWidthRight = lineLength - tableWidthLeft - 7 -- see leftStars and middleSep
 
 showTable :: [(MessageBlock, MessageBlock)] -> String
-showTable = let leftStars = "> "
+showTable = let leftStars = " "
                 middleSep = " : "
                 showTuple (x, y) =
-                   let tableWidthLeft'| isMessageOneLineTree y = tableWidthLeft
-                                      | otherwise              = tableWidthLeft - 2
+                   let tableWidthLeft'| isTypeOrTypeSchemeMessage y = tableWidthLeft - 2
+                                      | otherwise                   = tableWidthLeft
                        zipf a b c d = a ++ b ++ c ++ d
                        xs  = splitString tableWidthLeft  (show x)
                        ys  = splitString tableWidthRight (show y)
                        i   = length xs `max` length ys
                        xs' = map (\s -> take tableWidthLeft' (s++repeat ' ')) (xs ++ repeat "")
                        ys' = ys ++ repeat (replicate tableWidthRight ' ')
-                       left   | isMessageOneLineTree y = leftStars : repeat (replicate (length leftStars) ' ')
-                              | otherwise              = repeat (replicate (length leftStars + 2) ' ')
+                       left   | isTypeOrTypeSchemeMessage y = repeat (replicate (length leftStars + 2) ' ')
+                              | otherwise                   = leftStars : repeat (replicate (length leftStars) ' ')
                        middle = middleSep : repeat "   "
                    in unlines (take i (zipWith4 zipf left xs' middle ys'))
             in concatMap showTuple . renderTypesInRight tableWidthRight
 
-isMessageOneLineTree :: MessageBlock -> Bool
-isMessageOneLineTree mb =
+isTypeOrTypeSchemeMessage :: MessageBlock -> Bool
+isTypeOrTypeSchemeMessage mb =
    case mb of
-      MessageOneLineTree _ -> True
-      _                    -> False
+      MessageType _       -> True
+      MessageTypeScheme _ -> True
+      _                   -> False
 
 -- if two types or type schemes follow each other in a table (on the right-hand side)
 -- then the two types are rendered in a special way.
@@ -101,8 +102,8 @@ renderTypesInRight width table =
         -> case (maybeType r1, maybeType r2) of
               (Just tp1, Just tp2) -> let [doc1, doc2] = typesToAlignedDocs [tp1, tp2]
                                           render = flip PPrint.displayS [] . PPrint.renderPretty 1.0 width
-                                      in (l1, MessageString (render doc1))
-                                       : (l2, MessageString (render doc2))
+                                      in (l1, MessageType (TCon (render doc1)))
+                                       : (l2, MessageType (TCon (render doc2)))
                                        : renderTypesInRight width rest
               _                    -> (l1, r1) : renderTypesInRight width ((l2, r2) : rest)
       _ -> table
