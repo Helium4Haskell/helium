@@ -1,7 +1,7 @@
 Compiling typeerrors/Examples/ExprComprehension.hs
-(4,5): Type error in list comprehension
+(4,5): Type error in right-hand side
  expression       : [ x | x <- [0 .. 9] ]
    type           : [Int]
-   expected type  : Int  
+   does not match : Int  
 
 Compilation failed with 1 error

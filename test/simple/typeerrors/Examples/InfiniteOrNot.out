@@ -1,6 +1,6 @@
 Compiling typeerrors/Examples/InfiniteOrNot.hs
-(7,13): Type error in right hand side
- term             : [sum x, main xs]
+(7,15): Type error in right-hand side
+ expression       : [sum x, main xs]
    type           : [Int]
    does not match : Int  
 

@@ -1,6 +1,6 @@
 Compiling typeerrors/Examples/PatAs.hs
 (4,2): Type error in as pattern
- expression       : a@[y]
+ pattern          : a@[y]
  term             : a
    type           : Int
    does not match : [a]

@@ -1,7 +1,7 @@
 Compiling typeerrors/Examples/ExprEnumResult.hs
-(4,5): Type error in enumeration
+(4,5): Type error in right-hand side
  expression       : [0 .. 9]
    type           : [Int]
-   expected type  : Bool 
+   does not match : Bool 
 
 Compilation failed with 1 error

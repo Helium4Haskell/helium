@@ -1,7 +1,7 @@
 Compiling typeerrors/Examples/LineBug.hs
-(4,8): Type error in tuple
+(4,8): Type error in right-hand side
  expression       : ("\n", '\n')
    type           : (String, Char)
-   expected type  : Int           
+   does not match : Int           
 
 Compilation failed with 1 error
