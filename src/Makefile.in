@@ -149,6 +149,7 @@ STATICANALYSIS = \
         $(TOPDIR)/TypeGraph/TypeGraphMonad.hs \
         $(TOPDIR)/TypeGraph/TypeGraphSolver.hs \
         $(TOPDIR)/TypeGraph/TypeGraphState.hs \
+        $(TOPDIR)/TypeGraph/Implementation.hs \
         $(TOPDIR)/TypeGraph/TypeGraphSubst.hs \
         
 UHA = \

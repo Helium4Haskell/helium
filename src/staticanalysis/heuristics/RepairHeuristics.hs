@@ -386,7 +386,7 @@ fbHasTooManyArguments =
              maximumExplicit = arityOfTp (expandType (snd synonyms) t1)
              tvar            = if null (ftv t2) then (-1) else head (ftv t2) -- !!!!!!!!!!!!!!!!!!!
    
-         edgeList <- edgesFrom tvar       
+         edgeList <- edgesFrom (VertexId tvar)      
          let maybeNumberOfPatterns = 
                 case [ i | Just i <- map (\(_,_,info) -> maybeFunctionBinding info) edgeList ] of 
                    [i] -> Just i
@@ -423,10 +423,10 @@ variableFunction =
               (mt1, mt2) <- getSubstitutedTypes info
               
               -- is this variable involved in an application?
-              let EdgeID v1 v2 = edge
+              let EdgeId v1 v2 = edge
               edges1 <- edgesFrom v1
               edges2 <- edgesFrom v2
-              let f ((EdgeID v1 v2),_,_) = [v1,v2]
+              let f ((EdgeId v1 v2),_,_) = [v1,v2]
               let special = concatMap f (filter (isEmptyInfixApplication . (\(_,_,info) -> info)) (edges1 ++ edges2)) \\ [v1,v2]
               edges3 <- mapM edgesFrom special
               let isApplicationEdge = isJust . maybeApplicationEdge

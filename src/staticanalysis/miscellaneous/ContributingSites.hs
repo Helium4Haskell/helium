@@ -47,11 +47,11 @@ areaFromType tp =
 areaFromTypeVariable :: HasTypeGraph m ConstraintInfo => Int -> m Area
 areaFromTypeVariable i = 
    do printMessage ("Area from type variable " ++ show i)
-      vertices <- verticesInGroupOf i
+      vertices <- verticesInGroupOf (VertexId i)
       let constants    = [ (i, []    ) | (i, (VCon _  , _)) <- vertices ] 
-          applications = [ (i, [l, r]) | (i, (VApp l r, _)) <- vertices ]
+          applications = [ (i, [l, r]) | (i, (VApp (VertexId l) (VertexId r), _)) <- vertices ]
           (targets, childrenList) = unzip (constants ++ applications)
-      paths  <- allPathsList i targets
+      paths  <- allPathsList (VertexId i) targets
       let edges = map snd (nubBy (\x y -> fst x == fst y) (steps paths))
       areas1 <- mapM areaFromEdge edges
       areas2 <- mapM areaFromTypeVariable (concat childrenList)

@@ -34,9 +34,9 @@ unifierVertex =
     case isUnifier info of
        Nothing -> return Nothing
        Just (unifier, _) -> 
-          do neighbours <- edgesFrom unifier
+          do neighbours <- edgesFrom (VertexId unifier)
 	     let (unifiersUnsorted, contexts) = partition p (map f neighbours)
-	         f (EdgeID v1 v2, _, info)
+	         f (EdgeId (VertexId v1) (VertexId v2), _, info)
 		    | v1 == unifier = (v2, info)
 		    | otherwise     = (v1, info)
 	         p (_, info) = 
@@ -63,7 +63,7 @@ unifierVertex =
 			    [index1, index2] ->
 			       let (v1, info1) = unifiers !! index1
 			           (v2, info2) = unifiers !! index2
-			           edges   = [EdgeID unifier v1, EdgeID unifier v2]
+			           edges   = [EdgeId (VertexId unifier) (VertexId v1), EdgeId (VertexId unifier) (VertexId v2)]
 				   newInfo = typeErrorForUnifier (TVar v1, TVar v2) (info1, info2) 
 			       in return $ Just 
 			             (7, "two inconsistent branches", edges, [newInfo])
