@@ -217,7 +217,7 @@ lexString :: HParser String
 lexString
   = satisfy (\lex -> case lex of { LexString s -> Just s; other -> Nothing })
 
-lexDouble :: HParser String;
+lexDouble :: HParser String
 lexDouble
   = satisfy (\lex -> case lex of { LexFloat d -> Just d; other -> Nothing })
 

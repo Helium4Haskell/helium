@@ -7,7 +7,7 @@ import OperatorTable
 import Char
 import ParseLibrary(intUnaryMinusName, floatUnaryMinusName)
 import Utils
-import Messages
+import Messages hiding (showPosition)
 
 
 data ResolveError = 

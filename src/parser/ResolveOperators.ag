@@ -5,7 +5,7 @@ import OperatorTable
 import Char
 import ParseLibrary(intUnaryMinusName, floatUnaryMinusName)
 import Utils
-import Messages
+import Messages hiding (showPosition)
 }
 
 INCLUDE "../syntax/UHA_Syntax.ag"

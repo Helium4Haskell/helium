@@ -23,7 +23,7 @@ Verschillen:
 - geen "where" bij alternatieven
 -}
 
-import ParseLibrary
+import ParseLibrary hiding (satisfy)
 import Parsec
 import ParsecPos
 
