@@ -11,27 +11,63 @@
 <H1>Helium, differences when compared to Haskell 98</H1>
 
 
+<H2>Not supported</H2>
 <UL>
 
-<LI>Data type, show function
+<LI>Labelled fields in data types in Helium (a.k.a. records)
+<LI><TT>newtype</TT> declarations
+<LI>Qualified imports and renaming an imported module with <TT>as</TT>
+<LI><TT>class</TT>, <TT>instance</TT> and <TT>default</TT> declarations
+<LI>Strictness annotations
+<LI><TT>n+k</TT> patterns
+<LI>(,) and (,,,) etc as (type) constructors, i.e. you cannot write <TT>(,) 3 4</TT>
+<LI><TT>[]</TT> as type constructor, i.e. you cannot write <TT>x :: [] Int</TT>
+<LI>Literate programming
+</UL>
+
+<H2>Different</H2>
+<UL>
+<LI>The <A HREF="http://www.cs.uu.nl/helium/docs/LayoutRule.html">layout rule</A> is somewhat simpler.
+<LI>For each data type a show function is generated. Its name is show followed by the name
+    of the data type, e.g. <TT>showMaybe</TT>. The function has the same number of parameters as the
+    data type, e.g. <TT>showMaybe showInt (Just 3)</TT>.
+<LI>If main is not of type IO the value is printed using the show functions. The show functions
+    can print anything, e.g. functions are printed as <<function>>. Therefore, there is
+    a difference between <TT>main = expression</TT> and <TT>main = show expression</TT>. In the
+    latter case, the expression must be in the Show class.
 <LI>The module system is very simple:
 	<UL>
 	<LI>Everything is always exported: data types, functions, synonyms, instances.
 	<LI>It is not allowed to import something via two different import declarations.
 	    This means that if you have a module A and both B and C import A and then a fourth
 	    module D imports both B and C that you will get clashes for all the names
-	    from module A.
+	    from module A. However, it is no problem if module A is the Prelude.
+	<LI>The Prelude is always imported, just like in Haskell. You can hide functions from
+	    the Prelude by explicitly writing an import declaration: <TT>import Prelude hiding (map, filter)</TT>
 	<LI>You can hide functions in an import declaration with <TT>hiding</TT>; you cannot
 	    hide the show... functions that are generated for each data type. Hiding other
-	    things like types and constructors is not possible.
-	<LI><TT>qualified</TT> imports and imports with <TT>as</TT>
+	    things like types and constructors is also not possible.
+	<LI>Import and export lists are not supported. You cannot limit what you import or
+	    export, except for hiding functions.
 	</UL>
 <LI>The following character sequences are supported in characters and strings:
 		\\, \n, \a, \b, \f, \r, \t, \v, \", \'.
 	Other escape sequences like the ones with numbers are not supported.
 <LI>Numeric literals are not overloaded. <TT>3</TT> is of type <TT>Int</TT> and
     <TT>3.0</TT> is of type <TT>Float</TT>
-
+<LI>Type variables are always of kind star (*) in Helium
+<LI>A more restrictive syntax for operator sections,
+	<TT>(+2*3)</TT> is not allowed, this should be <TT>(+(2*3))</TT>
+<LI>A slightly more restrictive syntax for left-hand sides of function definitions.
+For example, in Helium the parentheses in the following definitions
+are necessary whereas in Haskell they are not:
+<PRE>
+(x:xs) ++ ys = ...
+(x:xs) = ...</PRE>
+Helium rejects a definition if operator precedence is necessary to understand the
+left-hand side. See the end of <A HREF="http://www.haskell.org/onlinereport/decls.html#sect4.4">section 4.4</A> (A note
+about syntax) of the Haskell report to see why we have done this.
+<LI>Fixity declarations are only allowed at top-level
 </UL>
 
 </BODY>
