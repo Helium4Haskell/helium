@@ -445,7 +445,7 @@ install : smaller
 
 movetohome: smaller
 	# *** Copying library sources to projects directory
-	cp ../lib/Prelude.hs ../lib/List.hs ../lib/Maybe.hs ../distribution/helium/lib
+	cp ../lib/simple/Prelude.hs ../lib/simple/List.hs ../lib/simple/Maybe.hs ../distribution/helium/lib
 	# *** Copying executables to projects directory
 	cp $(HELIUMBINDIR)/$(MAIN)$(EXE) ../distribution/helium/bin
 	cp $(LVMRUNTIMEDIR)/lvmrun$(EXE) ../distribution/helium/bin
@@ -453,7 +453,7 @@ movetohome: smaller
 	# *** Copying demos to projects directory
 	cp ../demo/Calendar.hs ../demo/ParserLibrary.hs ../demo/ParserDemo.hs ../demo/TicTacToe.hs ../distribution/helium/demo
 	# *** Copy generated lvms and touch them
-	cp ../lib/*.lvm ../distribution/helium/lib
+	cp ../lib/simple/*.lvm ../distribution/helium/lib
 	touch ../distribution/helium/lib/*.lvm # so that they are seen as up to date
 
 movetobbl: smaller
