@@ -1,4 +1,4 @@
 echo $1
 bash compileAndRun $* > result.txt 2>&1
-diff --strip-trailing-cr result.txt $1.out
+diff -b result.txt $1.out
 rm result.txt
