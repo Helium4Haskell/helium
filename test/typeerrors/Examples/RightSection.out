@@ -1,7 +1,8 @@
 Compiling typeerrors/Examples/RightSection.hs
-(4,15): Type error in right section
- expression       : (False ==)
-   type           : Bool -> Bool
-   does not match : Int  -> Bool
+(4,8): Type error in application
+ expression       : filter (False ==) [1 .. 10]
+ term             : filter
+   type           : (a    -> Bool) -> [a  ] -> [a  ]
+   does not match : (Bool -> Bool) -> [Int] -> [Int]
 
 Compilation failed with 1 error

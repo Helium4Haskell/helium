@@ -1,8 +1,9 @@
 Compiling thompson/Thompson15.hs
-(1,13): Type error in variable
- expression       : abs
-   type           : Int -> Int
-   expected type  : Int       
- probable fix     : insert one argument
+(1,17): Type error in infix application
+ expression       : x + abs - 2
+ operator         : -
+   type           : a            -> a   -> a
+   does not match : (Int -> Int) -> Int -> b
+ possible fix     : Insert parentheses to negate the int literal: (-2)
 
 Compilation failed with 1 error

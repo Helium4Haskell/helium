@@ -9,7 +9,7 @@ Compiling typeerrors/Examples/TypeBug5.hs
  expression       : eqString unwords (concat x xs)
  term             : eqString
    type           : String               -> String -> Bool
-   does not match : ([String] -> [Char]) -> a      -> Bool
+   does not match : ([String] -> String) -> a      -> Bool
 
 (4,46): Type error in application
  expression       : concat x xs

@@ -5,12 +5,12 @@ Compiling parser/Contexts.hs
    inferred type  :          Int
 
 (10,1): Declared type is too general
- expression       : a
+ function         : a
    declared type  : Show a => a  
    inferred type  :           Int
 
 (10,4): Declared type is too general
- expression       : b
+ function         : b
    declared type  : Show a => a  
    inferred type  :           Int
 

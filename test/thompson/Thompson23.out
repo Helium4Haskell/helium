@@ -1,7 +1,9 @@
 Compiling thompson/Thompson23.hs
-(1,1): Declared type is too general
- expression       : empty
+(1,1): Missing class constraint in declared type
+ function         : empty
    declared type  :         [a] -> Bool
    inferred type  : Eq b => [b] -> Bool
+ hint             : add a class constraint to the type signature for empty (see
+                    inferred type)
 
 Compilation failed with 1 error

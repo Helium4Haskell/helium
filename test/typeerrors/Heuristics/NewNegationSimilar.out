@@ -1,7 +1,7 @@
 Compiling typeerrors/Heuristics/NewNegationSimilar.hs
 (5,9): Type error in negation
  expression       : -.3
- term             : -.
+ operator         : -.
    type           : Float -> Float
    does not match : Int   -> Int  
  probable fix     : use int negation (-) instead

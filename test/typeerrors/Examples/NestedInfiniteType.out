@@ -1,23 +1,15 @@
 Compiling typeerrors/Examples/NestedInfiniteType.hs
-(5,14): Type error in right-hand side
- expression       : [a]
-   type           : [[a]]
-   does not match : [a  ]
+(5,1): Type error in explicitly typed binding
+ expression       : f
+   type           : [a] -> [a] -> [a]
+   does not match : b   -> [b] -> [b]
  because          : unification would give infinite type
 
-(6,21): Type error in guarded expression
- expression       : a : x : xs
-   type           : [[a]]
-   does not match : [a  ]
+(8,23): Type error in application
+ expression       : f a xs
+ term             : f
+   type           : [a] -> [a] -> [a]
+   does not match : b   -> [b] -> [b]
  because          : unification would give infinite type
 
-(7,24): Type error in infix application
- expression       : x : xs
- term             : :
-   type           : a -> [a] -> [a  ]
-   does not match : b -> [b] -> [[b]]
- because          : unification would give infinite type
-
-(...)
-
-Compilation failed with 8 errors
+Compilation failed with 2 errors

@@ -1,7 +1,9 @@
 Compiling thompson/Thompson24.hs
-(1,1): Declared type is too general
- expression       : compress
+(1,1): Missing class constraint in declared type
+ function         : compress
    declared type  :         [a] -> [a]
    inferred type  : Eq b => [b] -> [b]
+ hint             : add a class constraint to the type signature for compress
+                    (see inferred type)
 
 Compilation failed with 1 error

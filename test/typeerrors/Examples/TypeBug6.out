@@ -9,7 +9,7 @@ Compiling typeerrors/Examples/TypeBug6.hs
 
 (6,17): Type error in infix application
  expression       : x : y
- term             : :
+ constructor      : :
    type           : a        -> [a     ] -> [a       ]
    does not match : [String] -> [String] -> [[String]]
 

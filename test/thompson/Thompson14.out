@@ -1,8 +1,9 @@
 Compiling thompson/Thompson14.hs
-(4,8): Type error in variable
- expression       : double
-   type           : Int -> Int
-   expected type  : Int       
- probable fix     : insert one argument
+(4,15): Type error in infix application
+ expression       : double - 4
+ operator         : -
+   type           : a            -> a   -> a
+   does not match : (Int -> Int) -> Int -> b
+ possible fix     : Insert parentheses to negate the int literal: (-4)
 
 Compilation failed with 1 error
