@@ -43,9 +43,13 @@ DATA SimpleJudgement
 TYPE UserStatements = [UserStatement]
 
 DATA UserStatement 
-   | Constraint
+   | Equal
         leftType    : Type
         rightType   : Type
+        message     : String
+   | Pred
+        predClass   : Name
+        predType    : Type
         message     : String
    | MetaVariableConstraints        
         name        : Name

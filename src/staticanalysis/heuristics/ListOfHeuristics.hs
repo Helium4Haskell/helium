@@ -29,7 +29,7 @@ import Top.TypeGraph.Basics
 
 listOfHeuristics :: [Option] -> Siblings -> [Heuristic ConstraintInfo]
 listOfHeuristics options siblings =
-   let is = [ i | SelectConstraintNumber i <- options ]
+   let is = [ makeEdgeNr i | SelectConstraintNumber i <- options ]
    in [ selectConstraintNumbers is | not (null is) ]
    ++
    [ highlyTrustedFilter
@@ -50,6 +50,7 @@ listOfHeuristics options siblings =
         [ unifierVertex | UnifierHeuristics `elem` options ]))
    | NoRepairHeuristics `notElem` options
    ] ++
+   [ inPredicatePath | Overloading `elem` options ] ++
    [ applicationResult
    , negationResult
    -- , typeVariableInvolved {- I am not convinced yet. Bastiaan -}

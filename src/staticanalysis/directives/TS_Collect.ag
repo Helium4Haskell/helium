@@ -9,6 +9,10 @@
 --
 -- (directives based on "Scripting the Type Inference Process", ICFP 2003)
 -----------------------------------------------------------------------------
+imports {
+import ExpressionTypeInferencer (expressionTypeInferencer)
+import Data.FiniteMap
+}
 
 -- Collect all type variables 
 
@@ -27,17 +31,22 @@ ATTR UserStatement UserStatements TypeRule Judgement SimpleJudgement SimpleJudge
      
 -- Construct type constraints from the constraint-set     
 
-ATTR UserStatement UserStatements [ | userConstraints : {TypeConstraints ConstraintInfo} | ]
+ATTR UserStatement UserStatements [ | userConstraints : {TypeConstraints ConstraintInfo} 
+                                      userPredicates  : Predicates | ]
 
 SEM TypingStrategy 
   | TypingStrategy
        statements . userConstraints = []
+                  . userPredicates  = []
        
 SEM UserStatement
-  | Constraint 
+  | Equal 
        lhs . userConstraints = @newConstraint : @lhs.userConstraints
        loc . newConstraint   = (makeTpFromType @lhs.nameMap @leftType.self .==. makeTpFromType @lhs.nameMap @rightType.self) @lhs.standardConstraintInfo
-                     
+  | Pred
+       lhs . userPredicates = @newPredicate : @lhs.userPredicates
+       loc . newPredicate   = Predicate (show @predClass.self) (makeTpFromType @lhs.nameMap @predType.self)
+       
 -- Collect judgements in typerule
 
 ATTR SimpleJudgement SimpleJudgements TypeRule [ | simpleJudgements:{[(String,Tp)]} | ]
@@ -45,7 +54,7 @@ ATTR SimpleJudgement SimpleJudgements TypeRule [ | simpleJudgements:{[(String,Tp
 SEM TypingStrategy
   | TypingStrategy
        typerule . simpleJudgements = []
-
+       
 SEM SimpleJudgement
   | SimpleJudgement   
        lhs . simpleJudgements = @newJudgement : @lhs.simpleJudgements       
@@ -80,7 +89,7 @@ SEM TypingStrategy
   | TypingStrategy
        loc . standardConstraintInfo = standardConstraintInfo
            . attributeTable         = [] 
-{     
+{
 standardConstraintInfo :: (Tp, Tp) -> ConstraintInfo
 standardConstraintInfo tppair =
    CInfo { location   = "Typing Strategy"
@@ -89,3 +98,11 @@ standardConstraintInfo tppair =
          , properties = [ ]
          }      
 }                                                                       
+          
+--
+
+ATTR TypeRule  [ | | conclusionExpression:Expression ]
+ATTR Judgement [ | | theExpression:Expression ]
+           
+SEM TypeRule  | TypeRule   lhs . conclusionExpression = @conclusion.theExpression           
+SEM Judgement | Judgement  lhs . theExpression = @expression.self

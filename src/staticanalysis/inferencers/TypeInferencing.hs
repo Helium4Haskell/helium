@@ -43,10 +43,18 @@ import Data.List
 
 import List
 import Matchers
-import TS_Apply (applyTypingStrategy, matchInformation, MetaVariableTable)
+import TS_Apply (applyTypingStrategy, matchInformation)
 import TS_CoreSyntax
+import TS_Attributes
 
 import UHA_Utils
+
+typeInferencing :: [Option] -> ImportEnvironment -> Module
+                      -> (IO (), DictionaryEnvironment, TypeEnvironment, TypeErrors, Warnings)
+typeInferencing options importEnv module_ =
+   let (_, debugIO, dictionaryEnv, _, toplevelTypes, typeErrors, warnings) =
+            TypeInferencing.sem_Module module_ importEnv options
+   in (debugIO, dictionaryEnv, toplevelTypes, typeErrors, warnings)
          
 getRequiredDictionaries :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
 getRequiredDictionaries synonyms useType defType = 
@@ -58,10 +66,10 @@ getRequiredDictionaries synonyms useType defType =
          Right (_, sub) -> 
             expandPredicates synonyms (sub |-> instantiatedPreds)
             
-resolveOverloading :: Name -> Predicates -> Predicates -> TypeError -> DictionaryEnvironment 
+resolveOverloading :: ClassEnvironment -> Name -> Predicates -> Predicates -> TypeError -> DictionaryEnvironment 
                          -> (DictionaryEnvironment, [TypeError])
-resolveOverloading name availablePredicates predicates message dEnv = 
-   let maybeTrees = map (makeDictionaryTree availablePredicates) predicates
+resolveOverloading classEnv name availablePredicates predicates message dEnv = 
+   let maybeTrees = map (makeDictionaryTree classEnv availablePredicates) predicates
    in if all isJust maybeTrees
         then (addForVariable name (map fromJust maybeTrees) dEnv, [])
         else (dEnv, [message])
@@ -81,8 +89,8 @@ getInferredTypes monos substitution predicates groups =
       , let  tp' = substitution |-> tp
       ]
 
-checkAnnotations :: Bool -> OrderedTypeSynonyms -> FiniteMap Name TpScheme -> [(NameWithRange, TpScheme)] -> (TypeErrors, Warnings)
-checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
+checkAnnotations :: Bool -> ClassEnvironment -> OrderedTypeSynonyms -> FiniteMap Name TpScheme -> [(NameWithRange, TpScheme)] -> (TypeErrors, Warnings)
+checkAnnotations topLevel classEnv synonyms typeSignatures = foldr op ([], [])
    where   
        op (nameWR, scheme) pair@(errors, warnings) =
           case lookupFM typeSignatures (nameWithRangeToName nameWR) of
@@ -91,7 +99,7 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
                 -- is the signature not too general?
                 let -- this name has a different range!
                     nameOfSignature = head [ n | n <- keysFM typeSignatures, n == nameWithRangeToName nameWR ]      
-                    newErrors = checkNotTooGeneral False (Left nameOfSignature) synonyms signature scheme             
+                    newErrors = checkNotTooGeneral False (Left nameOfSignature) classEnv synonyms signature scheme             
                 in (newErrors ++ errors, warnings)               
                        
              Nothing 
@@ -102,10 +110,10 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
                      
              _ -> pair      
 
-checkNotTooGeneral :: Bool -> Either Name UHA_Source -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
-checkNotTooGeneral isAnnotation mySource synonyms signature scheme
-   | genericInstanceOf synonyms standardClasses signature scheme = []
-   | genericInstanceOf synonyms standardClasses (removePredicates signature) (removePredicates scheme) = 
+checkNotTooGeneral :: Bool -> Either Name UHA_Source -> ClassEnvironment -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
+checkNotTooGeneral isAnnotation mySource classEnv synonyms signature scheme
+   | genericInstanceOf synonyms classEnv signature scheme = []
+   | genericInstanceOf synonyms classEnv (removePredicates signature) (removePredicates scheme) = 
         [makeMissingConstraintTypeError mySource scheme signature]
    | otherwise = 
         [makeNotGeneralEnoughTypeError isAnnotation source scheme signature]
@@ -184,7 +192,7 @@ match1' = generalMatch noMatch matchConverter1 noMetaVariableInfo 0
 match2' = generalMatch noMatch matchConverter2 noMetaVariableInfo 0
 
 matchOnlyVariable infoTuple tryPats = 
-   let ((),matches,_,_,_) = match0 infoTuple 0 noMatch tryPats [] []
+       let ((),matches,_,_,_,_) = match0 infoTuple 0 noMatch tryPats [] []
    in matches
 
 noMatch :: a -> Maybe b
@@ -194,20 +202,21 @@ noMetaVariableInfo = internalError "PatternMatching.ag" "noMetaVariableInfo" ""
 
 generalMatch :: (nonTerminal -> Maybe String) 
              -> ([([String], childrenTuple)] -> childrenResult)
-             -> (ConstraintSet, LocalInfo)
-             -> Int             
+             -> MetaVariableInfo
+             -> Int
              -> (nonTerminal -> Maybe childrenTuple) 
              -> [(nonTerminal, [String])] 
              -> [((nonTerminal, [String]), Core_TypingStrategy)] 
-             -> [[Maybe (MetaVariableTable LocalInfo)]] 
+             -> [[Maybe MetaVariableTable]] 
              -> ( childrenResult
-                , [Maybe (MetaVariableTable LocalInfo)]
+                , [Maybe MetaVariableTable]
                 , ConstraintSet
+                , Assumptions
                 , Int
                 , IO ()
                 )
 
-generalMatch exprVarMatcher converter metaVariableInfo unique matcher tryPats allPats childrenResults =
+generalMatch exprVarMatcher converter metaInfo unique matcher tryPats allPats childrenResults =
    let match (expr,metas) = 
           case exprVarMatcher expr of
              Just s | s `elem` metas -> MetaVariableMatch s
@@ -232,30 +241,20 @@ generalMatch exprVarMatcher converter metaVariableInfo unique matcher tryPats al
           case m of
              NoMatch             -> (Nothing:res, nts)
              NonTerminalMatch _  -> (allMatch (head nts):res, tail nts)
-             MetaVariableMatch s -> (Just [(s,(constraintSet, snd metaVariableInfo))]:res, nts) --  !!!
+             MetaVariableMatch s -> (Just [(s, metaInfo)]:res, nts) --  !!!
        
        result   = fst (foldr inspectMatch ([],reverse $ transpose resultTry) matchListTry)       
        complete = let (list,_) = foldr inspectMatch ([],reverse $ transpose resultNew) matchListNew
                   in [ (x, y) | (Just x, y) <- zip list allStrategies ]
 
-       (constraintSet, debugIO, newUnique) = 
+       (assumptions, constraintSet, debugIO, newUnique) = 
           case complete of
           
-             [] -> (fst metaVariableInfo, return (), unique)
+             [] -> (getAssumptions metaInfo, getConstraintSet metaInfo, return (), unique)
              
              (childrenInfo, typingStrategy):_ 
-                -> applyTypingStrategy typingStrategy metaVariableInfo childrenInfo unique            
-   in (forChildren, result, constraintSet, newUnique, debugIO)
-   
-     {-  msg = unlines [ "try-in: " ++ show (length tryPats)
-              , "result: " ++ show (length result)
-              , "strategies: " ++ show (length allStrategies)
-              , "nt-match try: " ++ show (length matchNTTry)
-              , "nt-match new: " ++ show (length matchNTNew)
-              , "result try: " ++ if null childrenResults then "???" else show (length $ transpose resultTry)
-              , "result new: " ++ if null childrenResults then "???" else show (map (map (maybe "N" (const "J"))) (transpose resultNew))
-              , "complete matches: " ++ show (length complete)
-              ] -}
+                -> applyTypingStrategy typingStrategy metaInfo childrenInfo unique            
+   in (forChildren, result, constraintSet, assumptions, newUnique, debugIO)
 
 pmError = internalError "PatternMatchWarnings"
 
@@ -1508,7 +1507,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             (_lhsOcollectErrors@_) =
                 _errors ++ _declarationsIcollectErrors
             ((_errors@_,_warnings@_)) =
-                checkAnnotations True _lhsIorderedTypeSynonyms _declarationsItypeSignatures _localTypes
+                checkAnnotations True (classEnvironment _lhsIimportEnvironment) _lhsIorderedTypeSynonyms _declarationsItypeSignatures _localTypes
             (_declarationsOtypeSignatures@_) =
                 emptyFM
             (_lhsOuniqueChunk@_) =
@@ -3950,7 +3949,7 @@ type T_Expression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (Int) ->
                     (Int) ->
                     (TypeErrors) ->
-                    ( (Assumptions),(Tp),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTree),(IO ()),([Maybe (MetaVariableTable LocalInfo)]),([Warning]),(Expression),(Names),(Int),(Int),(TypeErrors))
+                    ( (Assumptions),(Tp),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTree),(IO ()),([Maybe MetaVariableTable]),([Warning]),(Expression),(Names),(Int),(Int),(TypeErrors))
 -- cata
 sem_Expression :: (Expression) ->
                   (T_Expression)
@@ -4032,7 +4031,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -4050,7 +4049,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -4195,14 +4194,14 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
                 Node [ _newcon .<. _expressionIconstraints
                      , Node _alternativesIconstraintslist
                      ]
+            (_assumptions@_) =
+                _expressionIassumptions `combine` _alternativesIassumptions
             (_alternativesObetaRight@_) =
                 _beta
             (_alternativesObetaLeft@_) =
                 _beta'
             (_expressionObetaUnique@_) =
                 _lhsIbetaUnique + 2
-            (_lhsOassumptions@_) =
-                _expressionIassumptions `combine` _alternativesIassumptions
             (_cinfo@_) =
                 childConstraint 0 "scrutinee of case expression" _parentTree
                    [ Unifier (head (ftv _beta')) ("case patterns", _localInfo, "scrutinee") ]
@@ -4215,12 +4214,11 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
                 _parentTree
             (_parentTree@_) =
                 node _lhsIparentTree _localInfo (_expressionIinfoTree : _alternativesIinfoTrees)
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
+            (_lhsOmatches@_) =
+                let infoTuple = metaVarInfo _constraints _assumptions _localInfo
+                in matchOnlyVariable infoTuple _lhsItryPatterns
             (_expressionOtryPatterns@_) =
                 []
-            (_lhsOmatches@_) =
-                matchOnlyVariable _infoTuple _lhsItryPatterns
             (_lhsOpatternMatchWarnings@_) =
                 patternMatchWarnings _lhsIimportEnvironment
                                      _lhsIsubstitution
@@ -4240,6 +4238,8 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
                 Expression_Case _rangeIself _expressionIself _alternativesIself
             (_lhsOself@_) =
                 _self
+            (_lhsOassumptions@_) =
+                _assumptions
             (_lhsObeta@_) =
                 _beta
             (_lhsObetaUnique@_) =
@@ -4385,7 +4385,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -4403,7 +4403,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -4533,6 +4533,8 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
                 TVar _lhsIbetaUnique
             (_constraints@_) =
                 _newcon .>. Node [ _qualifiersIconstraints ]
+            (_assumptions@_) =
+                _qualifiersIassumptions
             (_qualifiersOmonos@_) =
                 _lhsImonos
             (_qualifiersOconstraints@_) =
@@ -4543,8 +4545,6 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
                 _qualifiersImonos
             (_expressionObetaUnique@_) =
                 _lhsIbetaUnique + 1
-            (_lhsOassumptions@_) =
-                _qualifiersIassumptions
             (_cinfo@_) =
                 resultConstraint "list comprehension" _parentTree
                    [ FolkloreConstraint ]
@@ -4565,16 +4565,17 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
                 _qualifiersInamesInScope
             (_lhsOunboundNames@_) =
                 _qualifiersIunboundNames
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
+            (_lhsOmatches@_) =
+                let infoTuple = metaVarInfo _constraints _assumptions _localInfo
+                in matchOnlyVariable infoTuple _lhsItryPatterns
             (_expressionOtryPatterns@_) =
                 []
-            (_lhsOmatches@_) =
-                matchOnlyVariable _infoTuple _lhsItryPatterns
             (_self@_) =
                 Expression_Comprehension _rangeIself _expressionIself _qualifiersIself
             (_lhsOself@_) =
                 _self
+            (_lhsOassumptions@_) =
+                _assumptions
             (_lhsObeta@_) =
                 _beta
             (_lhsObetaUnique@_) =
@@ -4715,7 +4716,7 @@ sem_Expression_Constructor (range_) (name_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -4736,7 +4737,7 @@ sem_Expression_Constructor (range_) (name_) =
                 TVar _lhsIbetaUnique
             (_constraints@_) =
                 listTree _newcon
-            (_lhsOassumptions@_) =
+            (_assumptions@_) =
                 noAssumptions
             (_lhsObetaUnique@_) =
                 _lhsIbetaUnique + 1
@@ -4752,19 +4753,14 @@ sem_Expression_Constructor (range_) (name_) =
                 _parentTree
             (_parentTree@_) =
                 node _lhsIparentTree _localInfo []
-            (((),_matches@_,_newConstraintSet@_,_newUnique@_,_ioMatch@_)) =
-                match0 _infoTuple _lhsIuniqueSecondRound
-                       (match_Expression_Constructor _nameIself)
-                       _lhsItryPatterns _lhsIallPatterns
-                       []
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
-            (_lhsOuniqueSecondRound@_) =
-                _newUnique
-            (_lhsOconstraints@_) =
-                _newConstraintSet
+            (((),_lhsOmatches@_,_lhsOconstraints@_,_lhsOassumptions@_,_lhsOuniqueSecondRound@_,_ioMatch@_)) =
+                let infoTuple = metaVarInfo _constraints _assumptions _localInfo
+                in match0 infoTuple _lhsIuniqueSecondRound
+                          (match_Expression_Constructor _nameIself)
+                          _lhsItryPatterns _lhsIallPatterns
+                          []
             (_lhsOmatchIO@_) =
-                _lhsImatchIO >> _ioMatch
+                _lhsImatchIO             >> _ioMatch
             (_lhsOunboundNames@_) =
                 []
             (_self@_) =
@@ -4781,8 +4777,6 @@ sem_Expression_Constructor (range_) (name_) =
                 _lhsIcollectWarnings
             (_lhsOdictionaryEnvironment@_) =
                 _lhsIdictionaryEnvironment
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _lhsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -4827,7 +4821,7 @@ sem_Expression_Do (range_) (statements_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -4932,6 +4926,8 @@ sem_Expression_Do (range_) (statements_) =
                 TVar _lhsIbetaUnique
             (_constraints@_) =
                 emptyTree
+            (_assumptions@_) =
+                _statementsIassumptions
             (_statementsOassumptions@_) =
                 noAssumptions
             (_statementsOgeneratorBeta@_) =
@@ -4954,10 +4950,9 @@ sem_Expression_Do (range_) (statements_) =
                 node _lhsIparentTree _localInfo _statementsIinfoTrees
             (_statementsOunboundNames@_) =
                 []
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
             (_lhsOmatches@_) =
-                matchOnlyVariable _infoTuple _lhsItryPatterns
+                let infoTuple = metaVarInfo _constraints _assumptions _localInfo
+                in matchOnlyVariable infoTuple _lhsItryPatterns
             (_lhsOunboundNames@_) =
                 _statementsIunboundNames
             (_self@_) =
@@ -4965,7 +4960,7 @@ sem_Expression_Do (range_) (statements_) =
             (_lhsOself@_) =
                 _self
             (_lhsOassumptions@_) =
-                _statementsIassumptions
+                _assumptions
             (_lhsObeta@_) =
                 _beta
             (_lhsObetaUnique@_) =
@@ -5072,7 +5067,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -5090,7 +5085,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _fromIdictionaryEnvironment :: (DictionaryEnvironment)
             _fromIinfoTree :: (InfoTree)
             _fromImatchIO :: (IO ())
-            _fromImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _fromImatches :: ([Maybe MetaVariableTable])
             _fromIpatternMatchWarnings :: ([Warning])
             _fromIself :: (Expression)
             _fromIunboundNames :: (Names)
@@ -5130,7 +5125,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _thenIdictionaryEnvironment :: (DictionaryEnvironment)
             _thenIinfoTrees :: (InfoTrees)
             _thenImatchIO :: (IO ())
-            _thenImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _thenImatches :: ([Maybe MetaVariableTable])
             _thenIpatternMatchWarnings :: ([Warning])
             _thenIsection :: (Bool)
             _thenIself :: (MaybeExpression)
@@ -5171,7 +5166,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _toIdictionaryEnvironment :: (DictionaryEnvironment)
             _toIinfoTrees :: (InfoTrees)
             _toImatchIO :: (IO ())
-            _toImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _toImatches :: ([Maybe MetaVariableTable])
             _toIpatternMatchWarnings :: ([Warning])
             _toIsection :: (Bool)
             _toIself :: (MaybeExpression)
@@ -5290,10 +5285,10 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                      , _conThen .<. _thenIconstraints
                      , _conTo   .<. _toIconstraints
                      ]
+            (_assumptions@_) =
+                _fromIassumptions `combine` _thenIassumptions `combine` _toIassumptions
             (_fromObetaUnique@_) =
                 _lhsIbetaUnique + 1
-            (_lhsOassumptions@_) =
-                _fromIassumptions `combine` _thenIassumptions `combine` _toIassumptions
             (_cinfoFrom@_) =
                 childConstraint 0 "enumeration" _parentTree
                    []
@@ -5317,25 +5312,14 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                 _parentTree
             (_parentTree@_) =
                 node _lhsIparentTree _localInfo (_fromIinfoTree : _thenIinfoTrees ++ _toIinfoTrees)
-            (((_t1@_,_t2@_,_t3@_),_matches@_,_newConstraintSet@_,_newUnique@_,_ioMatch@_)) =
-                match3 _infoTuple _toIuniqueSecondRound
-                       match_Expression_Enum
-                       _lhsItryPatterns _lhsIallPatterns
-                       [_fromImatches, _thenImatches, _toImatches]
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
-            (_lhsOuniqueSecondRound@_) =
-                _newUnique
-            (_lhsOconstraints@_) =
-                _newConstraintSet
+            (((_fromOtryPatterns@_,_thenOtryPatterns@_,_toOtryPatterns@_),_lhsOmatches@_,_lhsOconstraints@_,_lhsOassumptions@_,_lhsOuniqueSecondRound@_,_ioMatch@_)) =
+                let infoTuple = metaVarInfo _constraints _assumptions _localInfo
+                in match3 infoTuple _toIuniqueSecondRound
+                          match_Expression_Enum
+                          _lhsItryPatterns _lhsIallPatterns
+                          [_fromImatches, _thenImatches, _toImatches]
             (_lhsOmatchIO@_) =
-                _toImatchIO >> _ioMatch
-            (_toOtryPatterns@_) =
-                _t3
-            (_thenOtryPatterns@_) =
-                _t2
-            (_fromOtryPatterns@_) =
-                _t1
+                _toImatchIO              >> _ioMatch
             (_lhsOunboundNames@_) =
                 _fromIunboundNames ++ _thenIunboundNames ++ _toIunboundNames
             (_self@_) =
@@ -5354,8 +5338,6 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                 _toIcollectWarnings
             (_lhsOdictionaryEnvironment@_) =
                 _toIdictionaryEnvironment
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _toIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -5532,7 +5514,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -5550,7 +5532,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _guardExpressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _guardExpressionIinfoTree :: (InfoTree)
             _guardExpressionImatchIO :: (IO ())
-            _guardExpressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _guardExpressionImatches :: ([Maybe MetaVariableTable])
             _guardExpressionIpatternMatchWarnings :: ([Warning])
             _guardExpressionIself :: (Expression)
             _guardExpressionIunboundNames :: (Names)
@@ -5590,7 +5572,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _thenExpressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _thenExpressionIinfoTree :: (InfoTree)
             _thenExpressionImatchIO :: (IO ())
-            _thenExpressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _thenExpressionImatches :: ([Maybe MetaVariableTable])
             _thenExpressionIpatternMatchWarnings :: ([Warning])
             _thenExpressionIself :: (Expression)
             _thenExpressionIunboundNames :: (Names)
@@ -5630,7 +5612,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _elseExpressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _elseExpressionIinfoTree :: (InfoTree)
             _elseExpressionImatchIO :: (IO ())
-            _elseExpressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _elseExpressionImatches :: ([Maybe MetaVariableTable])
             _elseExpressionIpatternMatchWarnings :: ([Warning])
             _elseExpressionIself :: (Expression)
             _elseExpressionIunboundNames :: (Names)
@@ -5798,10 +5780,10 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                      , _conThen  .<. _thenExpressionIconstraints
                      , _conElse  .<. _elseExpressionIconstraints
                      ]
+            (_assumptions@_) =
+                _guardExpressionIassumptions `combine` _thenExpressionIassumptions `combine` _elseExpressionIassumptions
             (_guardExpressionObetaUnique@_) =
                 _lhsIbetaUnique + 1
-            (_lhsOassumptions@_) =
-                _guardExpressionIassumptions `combine` _thenExpressionIassumptions `combine` _elseExpressionIassumptions
             (_cinfoGuard@_) =
                 childConstraint 0 "conditional" _parentTree
                    []
@@ -5820,25 +5802,14 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                 _parentTree
             (_parentTree@_) =
                 node _lhsIparentTree _localInfo [_guardExpressionIinfoTree, _thenExpressionIinfoTree, _elseExpressionIinfoTree]
-            (((_t1@_,_t2@_,_t3@_),_matches@_,_newConstraintSet@_,_newUnique@_,_ioMatch@_)) =
-                match3 _infoTuple _elseExpressionIuniqueSecondRound
-                       match_Expression_If
-                       _lhsItryPatterns _lhsIallPatterns
-                       [_guardExpressionImatches,_thenExpressionImatches,_elseExpressionImatches]
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
-            (_lhsOuniqueSecondRound@_) =
-                _newUnique
-            (_lhsOconstraints@_) =
-                _newConstraintSet
+            (((_guardExpressionOtryPatterns@_,_thenExpressionOtryPatterns@_,_elseExpressionOtryPatterns@_),_lhsOmatches@_,_lhsOconstraints@_,_lhsOassumptions@_,_lhsOuniqueSecondRound@_,_ioMatch@_)) =
+                let infoTuple = metaVarInfo _constraints _assumptions _localInfo
+                in match3 infoTuple _elseExpressionIuniqueSecondRound
+                          match_Expression_If
+                          _lhsItryPatterns _lhsIallPatterns
+                          [_guardExpressionImatches,_thenExpressionImatches,_elseExpressionImatches]
             (_lhsOmatchIO@_) =
-                _elseExpressionImatchIO >> _ioMatch
-            (_elseExpressionOtryPatterns@_) =
-                _t3
-            (_thenExpressionOtryPatterns@_) =
-                _t2
-            (_guardExpressionOtryPatterns@_) =
-                _t1
+                _elseExpressionImatchIO  >> _ioMatch
             (_lhsOunboundNames@_) =
                 _guardExpressionIunboundNames ++ _thenExpressionIunboundNames ++ _elseExpressionIunboundNames
             (_self@_) =
@@ -5857,8 +5828,6 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                 _elseExpressionIcollectWarnings
             (_lhsOdictionaryEnvironment@_) =
                 _elseExpressionIdictionaryEnvironment
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _elseExpressionIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -6035,7 +6004,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -6053,7 +6022,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _leftExpressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _leftExpressionIinfoTrees :: (InfoTrees)
             _leftExpressionImatchIO :: (IO ())
-            _leftExpressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _leftExpressionImatches :: ([Maybe MetaVariableTable])
             _leftExpressionIpatternMatchWarnings :: ([Warning])
             _leftExpressionIsection :: (Bool)
             _leftExpressionIself :: (MaybeExpression)
@@ -6094,7 +6063,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _operatorIdictionaryEnvironment :: (DictionaryEnvironment)
             _operatorIinfoTree :: (InfoTree)
             _operatorImatchIO :: (IO ())
-            _operatorImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _operatorImatches :: ([Maybe MetaVariableTable])
             _operatorIpatternMatchWarnings :: ([Warning])
             _operatorIself :: (Expression)
             _operatorIunboundNames :: (Names)
@@ -6134,7 +6103,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _rightExpressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _rightExpressionIinfoTrees :: (InfoTrees)
             _rightExpressionImatchIO :: (IO ())
-            _rightExpressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _rightExpressionImatches :: ([Maybe MetaVariableTable])
             _rightExpressionIpatternMatchWarnings :: ([Warning])
             _rightExpressionIsection :: (Bool)
             _rightExpressionIself :: (MaybeExpression)
@@ -6293,10 +6262,10 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                      , _leftExpressionIconstraints
                      , _rightExpressionIconstraints
                      ]
+            (_assumptions@_) =
+                _leftExpressionIassumptions `combine` _operatorIassumptions `combine` _rightExpressionIassumptions
             (_leftExpressionObetaUnique@_) =
                 _lhsIbetaUnique + 2
-            (_lhsOassumptions@_) =
-                _leftExpressionIassumptions `combine` _operatorIassumptions `combine` _rightExpressionIassumptions
             (_cinfoOperator@_) =
                 childConstraint _operatorNr "infix application" _parentTree $
                    if _leftExpressionIsection || _rightExpressionIsection
@@ -6330,25 +6299,14 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             (_parentTree@_) =
                 node _lhsIparentTree _localInfo
                   (_leftExpressionIinfoTrees ++ [_operatorIinfoTree] ++ _rightExpressionIinfoTrees)
-            (((_t1@_,_t2@_,_t3@_),_matches@_,_newConstraintSet@_,_newUnique@_,_ioMatch@_)) =
-                match3 _infoTuple _rightExpressionIuniqueSecondRound
-                       match_Expression_InfixApplication
-                       _lhsItryPatterns _lhsIallPatterns
-                       [_leftExpressionImatches, _operatorImatches,_rightExpressionImatches]
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
-            (_lhsOuniqueSecondRound@_) =
-                _newUnique
-            (_lhsOconstraints@_) =
-                _newConstraintSet
+            (((_leftExpressionOtryPatterns@_,_operatorOtryPatterns@_,_rightExpressionOtryPatterns@_),_lhsOmatches@_,_lhsOconstraints@_,_lhsOassumptions@_,_lhsOuniqueSecondRound@_,_ioMatch@_)) =
+                let infoTuple = metaVarInfo _constraints _assumptions _localInfo
+                in match3 infoTuple _rightExpressionIuniqueSecondRound
+                          match_Expression_InfixApplication
+                          _lhsItryPatterns _lhsIallPatterns
+                          [_leftExpressionImatches, _operatorImatches,_rightExpressionImatches]
             (_lhsOmatchIO@_) =
                 _rightExpressionImatchIO >> _ioMatch
-            (_rightExpressionOtryPatterns@_) =
-                _t3
-            (_operatorOtryPatterns@_) =
-                _t2
-            (_leftExpressionOtryPatterns@_) =
-                _t1
             (_lhsOunboundNames@_) =
                 _leftExpressionIunboundNames ++ _operatorIunboundNames ++ _rightExpressionIunboundNames
             (_self@_) =
@@ -6367,8 +6325,6 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                 _rightExpressionIcollectWarnings
             (_lhsOdictionaryEnvironment@_) =
                 _rightExpressionIdictionaryEnvironment
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _rightExpressionIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -6544,7 +6500,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -6579,7 +6535,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -6637,7 +6593,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
                              (_expressionOuniqueChunk)
                              (_expressionOuniqueSecondRound)
                              (_expressionOunresolvedErrors))
-            ((_csetBinds@_,_lhsOassumptions@_)) =
+            ((_csetBinds@_,_assumptions@_)) =
                 (_patternsIenvironment .===. _expressionIassumptions) _cinfoBind
             (_newcon@_) =
                 [ (foldr (.->.) _expressionIbeta _patternsIbetas .==. _beta) _cinfoType ]
@@ -6673,12 +6629,11 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
                 _unboundNames
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
                 changeOfScope _patternsIpatVarNames _expressionIunboundNames _lhsInamesInScope
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
+            (_lhsOmatches@_) =
+                let infoTuple = metaVarInfo _constraints _assumptions _localInfo
+                in matchOnlyVariable infoTuple _lhsItryPatterns
             (_expressionOtryPatterns@_) =
                 []
-            (_lhsOmatches@_) =
-                matchOnlyVariable _infoTuple _lhsItryPatterns
             (_lhsOpatternMatchWarnings@_) =
                 patternMatchWarnings _lhsIimportEnvironment
                                      _lhsIsubstitution
@@ -6696,6 +6651,8 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
                 Expression_Lambda _rangeIself _patternsIself _expressionIself
             (_lhsOself@_) =
                 _self
+            (_lhsOassumptions@_) =
+                _assumptions
             (_lhsObeta@_) =
                 _beta
             (_lhsObetaUnique@_) =
@@ -6809,7 +6766,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -6866,7 +6823,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -6947,7 +6904,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                              (_expressionOuniqueChunk)
                              (_expressionOuniqueSecondRound)
                              (_expressionOunresolvedErrors))
-            ((_lhsOassumptions@_,_cset@_,_inheritedBDG@_,_chunkNr@_)) =
+            ((_assumptions@_,_cset@_,_inheritedBDG@_,_chunkNr@_)) =
                 let inputBDG   = (_lhsIcurrentChunk, _expressionIuniqueChunk, _lhsIchunkNumberMap, _lhsImonos, _declarationsItypeSignatures, mybdggroup)
                     mybdggroup = Just (_expressionIassumptions, [_expressionIconstraints])
                 in performBindingGroup inputBDG _declarationsIbindingGroups
@@ -6968,7 +6925,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             (_lhsOcollectErrors@_) =
                 _errors ++ _expressionIcollectErrors
             ((_errors@_,_warnings@_)) =
-                checkAnnotations False _lhsIorderedTypeSynonyms _declarationsItypeSignatures _localTypes
+                checkAnnotations False (classEnvironment _lhsIimportEnvironment) _lhsIorderedTypeSynonyms _declarationsItypeSignatures _localTypes
             (_declarationsOtypeSignatures@_) =
                 emptyFM
             (_lhsOuniqueChunk@_) =
@@ -7002,16 +6959,17 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                 _unboundNames
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
                 changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _expressionIunboundNames) _lhsInamesInScope
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
+            (_lhsOmatches@_) =
+                let infoTuple = metaVarInfo _constraints _assumptions _localInfo
+                in matchOnlyVariable infoTuple _lhsItryPatterns
             (_expressionOtryPatterns@_) =
                 []
-            (_lhsOmatches@_) =
-                matchOnlyVariable _infoTuple _lhsItryPatterns
             (_self@_) =
                 Expression_Let _rangeIself _declarationsIself _expressionIself
             (_lhsOself@_) =
                 _self
+            (_lhsOassumptions@_) =
+                _assumptions
             (_lhsObeta@_) =
                 _beta
             (_lhsObetaUnique@_) =
@@ -7150,7 +7108,7 @@ sem_Expression_List (range_) (expressions_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -7168,7 +7126,7 @@ sem_Expression_List (range_) (expressions_) =
             _expressionsIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionsIinfoTrees :: (InfoTrees)
             _expressionsImatchIO :: (IO ())
-            _expressionsImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionsImatches :: ([Maybe MetaVariableTable])
             _expressionsIpatternMatchWarnings :: ([Warning])
             _expressionsIself :: (Expressions)
             _expressionsIunboundNames :: (Names)
@@ -7271,29 +7229,20 @@ sem_Expression_List (range_) (expressions_) =
                 _parentTree
             (_parentTree@_) =
                 node _lhsIparentTree _localInfo (_expressionsIinfoTrees)
-            ((_t1@_,_matches@_,_newConstraintSet@_,_newUnique@_,_ioMatch@_)) =
-                match1 _infoTuple _expressionsIuniqueSecondRound
-                   match_Expression_List
-                   _lhsItryPatterns _lhsIallPatterns
-                   [_expressionsImatches]
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
-            (_lhsOuniqueSecondRound@_) =
-                _newUnique
-            (_lhsOconstraints@_) =
-                _newConstraintSet
+            ((_expressionsOtryPatterns@_,_lhsOmatches@_,_lhsOconstraints@_,_lhsOassumptions@_,_lhsOuniqueSecondRound@_,_ioMatch@_)) =
+                let infoTuple = metaVarInfo _constraints _expressionsIassumptions _localInfo
+                in match1 infoTuple _expressionsIuniqueSecondRound
+                          match_Expression_List
+                          _lhsItryPatterns _lhsIallPatterns
+                          [_expressionsImatches]
             (_lhsOmatchIO@_) =
-                _expressionsImatchIO
-            (_expressionsOtryPatterns@_) =
-                _t1
+                _expressionsImatchIO     >> _ioMatch
             (_lhsOunboundNames@_) =
                 _expressionsIunboundNames
             (_self@_) =
                 Expression_List _rangeIself _expressionsIself
             (_lhsOself@_) =
                 _self
-            (_lhsOassumptions@_) =
-                _expressionsIassumptions
             (_lhsObeta@_) =
                 _beta
             (_lhsObetaUnique@_) =
@@ -7306,8 +7255,6 @@ sem_Expression_List (range_) (expressions_) =
                 _expressionsIcollectWarnings
             (_lhsOdictionaryEnvironment@_) =
                 _expressionsIdictionaryEnvironment
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _expressionsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -7394,7 +7341,7 @@ sem_Expression_Literal (range_) (literal_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -7413,7 +7360,7 @@ sem_Expression_Literal (range_) (literal_) =
                 TVar _lhsIbetaUnique
             (_constraints@_) =
                 unitTree ((_literalIliteralType .==. _beta) _cinfo)
-            (_lhsOassumptions@_) =
+            (_assumptions@_) =
                 noAssumptions
             (_lhsObetaUnique@_) =
                 _lhsIbetaUnique + 1
@@ -7429,19 +7376,14 @@ sem_Expression_Literal (range_) (literal_) =
                 _parentTree
             (_parentTree@_) =
                 node _lhsIparentTree _localInfo []
-            (((),_matches@_,_newConstraintSet@_,_newUnique@_,_ioMatch@_)) =
-                match0 _infoTuple _lhsIuniqueSecondRound
-                       (match_Expression_Literal _literalIself)
-                       _lhsItryPatterns _lhsIallPatterns
-                       []
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
-            (_lhsOuniqueSecondRound@_) =
-                _newUnique
-            (_lhsOconstraints@_) =
-                _newConstraintSet
+            (((),_lhsOmatches@_,_lhsOconstraints@_,_lhsOassumptions@_,_lhsOuniqueSecondRound@_,_ioMatch@_)) =
+                let infoTuple = metaVarInfo _constraints _assumptions _localInfo
+                in match0 infoTuple _lhsIuniqueSecondRound
+                          (match_Expression_Literal _literalIself)
+                          _lhsItryPatterns _lhsIallPatterns
+                          []
             (_lhsOmatchIO@_) =
-                _lhsImatchIO >> _ioMatch
+                _lhsImatchIO             >> _ioMatch
             (_lhsOunboundNames@_) =
                 []
             (_self@_) =
@@ -7458,8 +7400,6 @@ sem_Expression_Literal (range_) (literal_) =
                 _lhsIcollectWarnings
             (_lhsOdictionaryEnvironment@_) =
                 _lhsIdictionaryEnvironment
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _lhsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -7504,7 +7444,7 @@ sem_Expression_Negate (range_) (expression_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -7522,7 +7462,7 @@ sem_Expression_Negate (range_) (expression_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -7591,7 +7531,7 @@ sem_Expression_Negate (range_) (expression_) =
             (_lhsOunresolvedErrors@_) =
                 _overloadingErrors ++ _expressionIunresolvedErrors
             ((_newDEnv@_,_overloadingErrors@_)) =
-                resolveOverloading _localName
+                resolveOverloading (classEnvironment _lhsIimportEnvironment)  _localName
                                    _lhsIavailablePredicates
                                    _requiredDictionaries
                                    _unresolvedMessage
@@ -7627,29 +7567,20 @@ sem_Expression_Negate (range_) (expression_) =
                 _parentTree
             (_parentTree@_) =
                 node _lhsIparentTree _localInfo [_expressionIinfoTree]
-            ((_t1@_,_matches@_,_newConstraintSet@_,_newUnique@_,_ioMatch@_)) =
-                match1 _infoTuple _expressionIuniqueSecondRound
-                       match_Expression_Negate
-                       _lhsItryPatterns _lhsIallPatterns
-                       [_expressionImatches]
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
-            (_lhsOuniqueSecondRound@_) =
-                _newUnique
-            (_lhsOconstraints@_) =
-                _newConstraintSet
+            ((_expressionOtryPatterns@_,_lhsOmatches@_,_lhsOconstraints@_,_lhsOassumptions@_,_lhsOuniqueSecondRound@_,_ioMatch@_)) =
+                let infoTuple = metaVarInfo _constraints _expressionIassumptions _localInfo
+                in match1 infoTuple _expressionIuniqueSecondRound
+                          match_Expression_Negate
+                          _lhsItryPatterns _lhsIallPatterns
+                          [_expressionImatches]
             (_lhsOmatchIO@_) =
-                _expressionImatchIO >> _ioMatch
-            (_expressionOtryPatterns@_) =
-                _t1
+                _expressionImatchIO      >> _ioMatch
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
                 Expression_Negate _rangeIself _expressionIself
             (_lhsOself@_) =
                 _self
-            (_lhsOassumptions@_) =
-                _expressionIassumptions
             (_lhsObeta@_) =
                 _beta
             (_lhsObetaUnique@_) =
@@ -7660,8 +7591,6 @@ sem_Expression_Negate (range_) (expression_) =
                 _expressionIcollectErrors
             (_lhsOcollectWarnings@_) =
                 _expressionIcollectWarnings
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _expressionIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -7746,7 +7675,7 @@ sem_Expression_NegateFloat (range_) (expression_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -7764,7 +7693,7 @@ sem_Expression_NegateFloat (range_) (expression_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -7841,29 +7770,20 @@ sem_Expression_NegateFloat (range_) (expression_) =
                 _parentTree
             (_parentTree@_) =
                 node _lhsIparentTree _localInfo [_expressionIinfoTree]
-            ((_t1@_,_matches@_,_newConstraintSet@_,_newUnique@_,_ioMatch@_)) =
-                match1 _infoTuple _expressionIuniqueSecondRound
-                       match_Expression_NegateFloat
-                       _lhsItryPatterns _lhsIallPatterns
-                       [_expressionImatches]
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
-            (_lhsOuniqueSecondRound@_) =
-                _newUnique
-            (_lhsOconstraints@_) =
-                _newConstraintSet
+            ((_expressionOtryPatterns@_,_lhsOmatches@_,_lhsOconstraints@_,_lhsOassumptions@_,_lhsOuniqueSecondRound@_,_ioMatch@_)) =
+                let infoTuple = metaVarInfo _constraints _expressionIassumptions _localInfo
+                in match1 infoTuple _expressionIuniqueSecondRound
+                          match_Expression_NegateFloat
+                          _lhsItryPatterns _lhsIallPatterns
+                          [_expressionImatches]
             (_lhsOmatchIO@_) =
-                _expressionImatchIO >> _ioMatch
-            (_expressionOtryPatterns@_) =
-                _t1
+                _expressionImatchIO      >> _ioMatch
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
                 Expression_NegateFloat _rangeIself _expressionIself
             (_lhsOself@_) =
                 _self
-            (_lhsOassumptions@_) =
-                _expressionIassumptions
             (_lhsObeta@_) =
                 _beta
             (_lhsObetaUnique@_) =
@@ -7876,8 +7796,6 @@ sem_Expression_NegateFloat (range_) (expression_) =
                 _expressionIcollectWarnings
             (_lhsOdictionaryEnvironment@_) =
                 _expressionIdictionaryEnvironment
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _expressionIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -7965,7 +7883,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -7983,7 +7901,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _functionIdictionaryEnvironment :: (DictionaryEnvironment)
             _functionIinfoTree :: (InfoTree)
             _functionImatchIO :: (IO ())
-            _functionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _functionImatches :: ([Maybe MetaVariableTable])
             _functionIpatternMatchWarnings :: ([Warning])
             _functionIself :: (Expression)
             _functionIunboundNames :: (Names)
@@ -8023,7 +7941,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _argumentsIdictionaryEnvironment :: (DictionaryEnvironment)
             _argumentsIinfoTrees :: (InfoTrees)
             _argumentsImatchIO :: (IO ())
-            _argumentsImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _argumentsImatches :: ([Maybe MetaVariableTable])
             _argumentsIpatternMatchWarnings :: ([Warning])
             _argumentsIself :: (Expressions)
             _argumentsIunboundNames :: (Names)
@@ -8112,10 +8030,10 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
                 Node [ _functionIconstraints
                      , Node _argumentsIconstraintslist
                      ]
+            (_assumptions@_) =
+                _functionIassumptions `combine` _argumentsIassumptions
             (_functionObetaUnique@_) =
                 _lhsIbetaUnique + 1
-            (_lhsOassumptions@_) =
-                _functionIassumptions `combine` _argumentsIassumptions
             (_cinfo@_) =
                 childConstraint 0 "application" _parentTree
                    [ ApplicationEdge False (map attribute _argumentsIinfoTrees) ]
@@ -8128,23 +8046,14 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
                 _parentTree
             (_parentTree@_) =
                 node _lhsIparentTree _localInfo (_functionIinfoTree : _argumentsIinfoTrees)
-            (((_t1@_,_t2@_),_matches@_,_newConstraintSet@_,_newUnique@_,_ioMatch@_)) =
-                match2 _infoTuple _argumentsIuniqueSecondRound
-                       match_Expression_NormalApplication
-                       _lhsItryPatterns _lhsIallPatterns
-                       [_functionImatches, _argumentsImatches]
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
-            (_lhsOuniqueSecondRound@_) =
-                _newUnique
-            (_lhsOconstraints@_) =
-                _newConstraintSet
+            (((_functionOtryPatterns@_,_argumentsOtryPatterns@_),_lhsOmatches@_,_lhsOconstraints@_,_lhsOassumptions@_,_lhsOuniqueSecondRound@_,_ioMatch@_)) =
+                let infoTuple = metaVarInfo _constraints _assumptions _localInfo
+                in match2 infoTuple _argumentsIuniqueSecondRound
+                          match_Expression_NormalApplication
+                          _lhsItryPatterns _lhsIallPatterns
+                          [_functionImatches, _argumentsImatches]
             (_lhsOmatchIO@_) =
-                _argumentsImatchIO >> _ioMatch
-            (_argumentsOtryPatterns@_) =
-                _t2
-            (_functionOtryPatterns@_) =
-                _t1
+                _argumentsImatchIO       >> _ioMatch
             (_lhsOunboundNames@_) =
                 _functionIunboundNames ++ _argumentsIunboundNames
             (_self@_) =
@@ -8163,8 +8072,6 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
                 _argumentsIcollectWarnings
             (_lhsOdictionaryEnvironment@_) =
                 _argumentsIdictionaryEnvironment
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _argumentsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -8295,7 +8202,7 @@ sem_Expression_Parenthesized (range_) (expression_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -8313,7 +8220,7 @@ sem_Expression_Parenthesized (range_) (expression_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -8490,7 +8397,7 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -8658,7 +8565,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -8676,7 +8583,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -8926,7 +8833,7 @@ sem_Expression_Tuple (range_) (expressions_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -8944,7 +8851,7 @@ sem_Expression_Tuple (range_) (expressions_) =
             _expressionsIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionsIinfoTrees :: (InfoTrees)
             _expressionsImatchIO :: (IO ())
-            _expressionsImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionsImatches :: ([Maybe MetaVariableTable])
             _expressionsIpatternMatchWarnings :: ([Warning])
             _expressionsIself :: (Expressions)
             _expressionsIunboundNames :: (Names)
@@ -9037,29 +8944,20 @@ sem_Expression_Tuple (range_) (expressions_) =
                 _parentTree
             (_parentTree@_) =
                 node _lhsIparentTree _localInfo (_expressionsIinfoTrees)
-            ((_t1@_,_matches@_,_newConstraintSet@_,_newUnique@_,_ioMatch@_)) =
-                match1 _infoTuple _expressionsIuniqueSecondRound
-                       match_Expression_Tuple
-                       _lhsItryPatterns _lhsIallPatterns
-                       [_expressionsImatches]
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
-            (_lhsOuniqueSecondRound@_) =
-                _newUnique
-            (_lhsOconstraints@_) =
-                _newConstraintSet
+            ((_expressionsOtryPatterns@_,_lhsOmatches@_,_lhsOconstraints@_,_lhsOassumptions@_,_lhsOuniqueSecondRound@_,_ioMatch@_)) =
+                let infoTuple = metaVarInfo _constraints _expressionsIassumptions _localInfo
+                in match1 infoTuple _expressionsIuniqueSecondRound
+                          match_Expression_Tuple
+                          _lhsItryPatterns _lhsIallPatterns
+                          [_expressionsImatches]
             (_lhsOmatchIO@_) =
-                _expressionsImatchIO >> _ioMatch
-            (_expressionsOtryPatterns@_) =
-                _t1
+                _expressionsImatchIO     >> _ioMatch
             (_lhsOunboundNames@_) =
                 _expressionsIunboundNames
             (_self@_) =
                 Expression_Tuple _rangeIself _expressionsIself
             (_lhsOself@_) =
                 _self
-            (_lhsOassumptions@_) =
-                _expressionsIassumptions
             (_lhsObeta@_) =
                 _beta
             (_lhsObetaUnique@_) =
@@ -9072,8 +8970,6 @@ sem_Expression_Tuple (range_) (expressions_) =
                 _expressionsIcollectWarnings
             (_lhsOdictionaryEnvironment@_) =
                 _expressionsIdictionaryEnvironment
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _expressionsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -9161,7 +9057,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -9179,7 +9075,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -9249,6 +9145,8 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             (_constraints@_) =
                 _conResult .>.
                 Node [ _conExpr .<. _expressionIconstraints ]
+            (_assumptions@_) =
+                _expressionIassumptions
             (_expressionObetaUnique@_) =
                 _lhsIbetaUnique + 1
             (_lhsOcollectErrors@_) =
@@ -9258,7 +9156,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
                     monos' = ftv (_lhsIsubstitution |-> _lhsImonos)
                     tp'    = _lhsIsubstitution |-> _expressionIbeta
                     info   = (self . attribute) _expressionIinfoTree
-                in checkNotTooGeneral True (Right info) _lhsIorderedTypeSynonyms _typeScheme scheme
+                in checkNotTooGeneral True (Right info) (classEnvironment _lhsIimportEnvironment) _lhsIorderedTypeSynonyms _typeScheme scheme
             (_cinfoExpr@_) =
                 childConstraint 0 "type annotation" _parentTree
                    []
@@ -9274,12 +9172,11 @@ sem_Expression_Typed (range_) (expression_) (type_) =
                 _parentTree
             (_parentTree@_) =
                 node _lhsIparentTree _localInfo [_expressionIinfoTree]
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
+            (_lhsOmatches@_) =
+                let infoTuple = metaVarInfo _constraints _assumptions _localInfo
+                in matchOnlyVariable infoTuple _lhsItryPatterns
             (_expressionOtryPatterns@_) =
                 []
-            (_lhsOmatches@_) =
-                matchOnlyVariable _infoTuple _lhsItryPatterns
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -9287,7 +9184,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             (_lhsOself@_) =
                 _self
             (_lhsOassumptions@_) =
-                _expressionIassumptions
+                _assumptions
             (_lhsObeta@_) =
                 _beta
             (_lhsObetaUnique@_) =
@@ -9390,7 +9287,7 @@ sem_Expression_Variable (range_) (name_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expression)
             _lhsOunboundNames :: (Names)
@@ -9407,7 +9304,7 @@ sem_Expression_Variable (range_) (name_) =
                 TVar _lhsIbetaUnique
             (_constraints@_) =
                 Node [ Receive _lhsIbetaUnique ]
-            (_lhsOassumptions@_) =
+            (_assumptions@_) =
                 _nameIself `single` _beta
             (_lhsObetaUnique@_) =
                 _lhsIbetaUnique + 1
@@ -9419,7 +9316,8 @@ sem_Expression_Variable (range_) (name_) =
             (_usedAsType@_) =
                 _lhsIsubstitution |-> _beta
             ((_newDEnv@_,_overloadingErrors@_)) =
-                resolveOverloading _nameIself
+                resolveOverloading (classEnvironment _lhsIimportEnvironment)
+                                   _nameIself
                                    _lhsIavailablePredicates
                                    _requiredDictionaries
                                    _unresolvedMessage
@@ -9452,19 +9350,14 @@ sem_Expression_Variable (range_) (name_) =
                 node _lhsIparentTree _localInfo []
             (_lhsOunboundNames@_) =
                 [ _nameIself ]
-            (((),_matches@_,_newConstraintSet@_,_newUnique@_,_ioMatch@_)) =
-                match0 _infoTuple _lhsIuniqueSecondRound
-                       (match_Expression_Variable _nameIself)
-                       _lhsItryPatterns _lhsIallPatterns
-                       []
-            (_infoTuple@_) =
-                (_constraints, _localInfo)
-            (_lhsOuniqueSecondRound@_) =
-                _newUnique
-            (_lhsOconstraints@_) =
-                _newConstraintSet
+            (((),_lhsOmatches@_,_lhsOconstraints@_,_lhsOassumptions@_,_lhsOuniqueSecondRound@_,_ioMatch@_)) =
+                let infoTuple = metaVarInfo _constraints _assumptions _localInfo
+                in match0 infoTuple _lhsIuniqueSecondRound
+                          (match_Expression_Variable _nameIself)
+                          _lhsItryPatterns _lhsIallPatterns
+                          []
             (_lhsOmatchIO@_) =
-                _lhsImatchIO >> _ioMatch
+                _lhsImatchIO             >> _ioMatch
             (_self@_) =
                 Expression_Variable _rangeIself _nameIself
             (_lhsOself@_) =
@@ -9475,8 +9368,6 @@ sem_Expression_Variable (range_) (name_) =
                 _lhsIcollectErrors
             (_lhsOcollectWarnings@_) =
                 _lhsIcollectWarnings
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _lhsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -9507,7 +9398,7 @@ type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (Int) ->
                      (Int) ->
                      (TypeErrors) ->
-                     ( (Assumptions),(Int),(Tps),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSets),(DictionaryEnvironment),(InfoTrees),(IO ()),([Maybe (MetaVariableTable LocalInfo)]),([Warning]),(Expressions),(Names),(Int),(Int),(TypeErrors))
+                     ( (Assumptions),(Int),(Tps),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSets),(DictionaryEnvironment),(InfoTrees),(IO ()),([Maybe MetaVariableTable]),([Warning]),(Expressions),(Names),(Int),(Int),(TypeErrors))
 -- cata
 sem_Expressions :: (Expressions) ->
                    (T_Expressions)
@@ -9550,7 +9441,7 @@ sem_Expressions_Cons (hd_) (tl_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTrees :: (InfoTrees)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expressions)
             _lhsOunboundNames :: (Names)
@@ -9567,7 +9458,7 @@ sem_Expressions_Cons (hd_) (tl_) =
             _hdIdictionaryEnvironment :: (DictionaryEnvironment)
             _hdIinfoTree :: (InfoTree)
             _hdImatchIO :: (IO ())
-            _hdImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _hdImatches :: ([Maybe MetaVariableTable])
             _hdIpatternMatchWarnings :: ([Warning])
             _hdIself :: (Expression)
             _hdIunboundNames :: (Names)
@@ -9607,7 +9498,7 @@ sem_Expressions_Cons (hd_) (tl_) =
             _tlIdictionaryEnvironment :: (DictionaryEnvironment)
             _tlIinfoTrees :: (InfoTrees)
             _tlImatchIO :: (IO ())
-            _tlImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _tlImatches :: ([Maybe MetaVariableTable])
             _tlIpatternMatchWarnings :: ([Warning])
             _tlIself :: (Expressions)
             _tlIunboundNames :: (Names)
@@ -9693,11 +9584,7 @@ sem_Expressions_Cons (hd_) (tl_) =
                 _hdIbeta : _tlIbetas
             (_lhsOinfoTrees@_) =
                 _hdIinfoTree : _tlIinfoTrees
-            (_tlOtryPatterns@_) =
-                _t2
-            (_hdOtryPatterns@_) =
-                _t1
-            (((_t1@_,_t2@_),_matches@_,_,_,_)) =
+            (((_hdOtryPatterns@_,_tlOtryPatterns@_),_lhsOmatches@_,_,_,_,_)) =
                 match2' match_Expressions_Cons _lhsItryPatterns [] [_hdImatches, _tlImatches]
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
@@ -9717,8 +9604,6 @@ sem_Expressions_Cons (hd_) (tl_) =
                 _tlIdictionaryEnvironment
             (_lhsOmatchIO@_) =
                 _tlImatchIO
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _tlIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -9851,7 +9736,7 @@ sem_Expressions_Nil  =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTrees :: (InfoTrees)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOself :: (Expressions)
             _lhsOunboundNames :: (Names)
@@ -9866,7 +9751,7 @@ sem_Expressions_Nil  =
                 []
             (_lhsOinfoTrees@_) =
                 []
-            (((),_matches@_,_,_,_)) =
+            (((),_lhsOmatches@_,_,_,_,_)) =
                 match0' match_Expressions_Nil _lhsItryPatterns [] []
             (_lhsOunboundNames@_) =
                 []
@@ -9886,8 +9771,6 @@ sem_Expressions_Nil  =
                 _lhsIdictionaryEnvironment
             (_lhsOmatchIO@_) =
                 _lhsImatchIO
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _lhsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -10834,7 +10717,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _guardIdictionaryEnvironment :: (DictionaryEnvironment)
             _guardIinfoTree :: (InfoTree)
             _guardImatchIO :: (IO ())
-            _guardImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _guardImatches :: ([Maybe MetaVariableTable])
             _guardIpatternMatchWarnings :: ([Warning])
             _guardIself :: (Expression)
             _guardIunboundNames :: (Names)
@@ -10874,7 +10757,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -12325,7 +12208,7 @@ sem_MaybeDeclarations_Just (declarations_) =
             (_lhsOcollectErrors@_) =
                 _errors ++ _declarationsIcollectErrors
             ((_errors@_,_warnings@_)) =
-                checkAnnotations False _lhsIorderedTypeSynonyms _declarationsItypeSignatures _localTypes
+                checkAnnotations False (classEnvironment _lhsIimportEnvironment) _lhsIorderedTypeSynonyms _declarationsItypeSignatures _localTypes
             (_declarationsOtypeSignatures@_) =
                 emptyFM
             (_lhsOuniqueChunk@_) =
@@ -12544,7 +12427,7 @@ type T_MaybeExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (Int) ->
                          (Int) ->
                          (TypeErrors) ->
-                         ( (Assumptions),(Tp),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTrees),(IO ()),([Maybe (MetaVariableTable LocalInfo)]),([Warning]),(Bool),(MaybeExpression),(Names),(Int),(Int),(TypeErrors))
+                         ( (Assumptions),(Tp),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTrees),(IO ()),([Maybe MetaVariableTable]),([Warning]),(Bool),(MaybeExpression),(Names),(Int),(Int),(TypeErrors))
 -- cata
 sem_MaybeExpression :: (MaybeExpression) ->
                        (T_MaybeExpression)
@@ -12588,7 +12471,7 @@ sem_MaybeExpression_Just (expression_) =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTrees :: (InfoTrees)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOsection :: (Bool)
             _lhsOself :: (MaybeExpression)
@@ -12606,7 +12489,7 @@ sem_MaybeExpression_Just (expression_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -12664,9 +12547,7 @@ sem_MaybeExpression_Just (expression_) =
                 False
             (_lhsOinfoTrees@_) =
                 [_expressionIinfoTree]
-            (_expressionOtryPatterns@_) =
-                _t1
-            ((_t1@_,_matches@_,_,_,_)) =
+            ((_expressionOtryPatterns@_,_lhsOmatches@_,_,_,_,_)) =
                 match1' match_MaybeExpression_Just _lhsItryPatterns [] [_expressionImatches]
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
@@ -12692,8 +12573,6 @@ sem_MaybeExpression_Just (expression_) =
                 _expressionIdictionaryEnvironment
             (_lhsOmatchIO@_) =
                 _expressionImatchIO
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _expressionIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -12782,7 +12661,7 @@ sem_MaybeExpression_Nothing  =
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTrees :: (InfoTrees)
             _lhsOmatchIO :: (IO ())
-            _lhsOmatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _lhsOmatches :: ([Maybe MetaVariableTable])
             _lhsOpatternMatchWarnings :: ([Warning])
             _lhsOsection :: (Bool)
             _lhsOself :: (MaybeExpression)
@@ -12802,7 +12681,7 @@ sem_MaybeExpression_Nothing  =
                 True
             (_lhsOinfoTrees@_) =
                 []
-            (((),_matches@_,_,_,_)) =
+            (((),_lhsOmatches@_,_,_,_,_)) =
                 match0' match_MaybeExpression_Nothing _lhsItryPatterns [] []
             (_lhsOunboundNames@_) =
                 []
@@ -12822,8 +12701,6 @@ sem_MaybeExpression_Nothing  =
                 _lhsIdictionaryEnvironment
             (_lhsOmatchIO@_) =
                 _lhsImatchIO
-            (_lhsOmatches@_) =
-                _matches
             (_lhsOpatternMatchWarnings@_) =
                 _lhsIpatternMatchWarnings
             (_lhsOuniqueChunk@_) =
@@ -12954,7 +12831,7 @@ sem_MaybeNames_Nothing  =
 -- semantic domain
 type T_Module = (ImportEnvironment) ->
                 ([Option]) ->
-                ( (IO ()),(DictionaryEnvironment),(Module),(TypeEnvironment),(TypeErrors),(Warnings))
+                ( (Assumptions),(IO ()),(DictionaryEnvironment),(Module),(TypeEnvironment),(TypeErrors),(Warnings))
 -- cata
 sem_Module :: (Module) ->
               (T_Module)
@@ -12968,7 +12845,8 @@ sem_Module_Module :: (T_Range) ->
 sem_Module_Module (range_) (name_) (exports_) (body_) =
     \ _lhsIimportEnvironment
       _lhsIoptions ->
-        let _lhsOdebugIO :: (IO ())
+        let _lhsOassumptions :: (Assumptions)
+            _lhsOdebugIO :: (IO ())
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOself :: (Module)
             _lhsOtoplevelTypes :: (TypeEnvironment)
@@ -13058,10 +12936,13 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 map TVar _monomorphics
             (_initialScope@_) =
                 keysFM (typeEnvironment _lhsIimportEnvironment)
+            (_assumptions@_) =
+                let f _ xs = [ (n, _substitution |-> tp) | (n, tp) <- xs ]
+                in mapFM f _bodyIassumptions
             (_debugIO@_) =
                 putStrLn _debugString
             (_warnings@_) =
-                _bodyIcollectWarnings
+                _bodyIcollectWarnings ++ _tooSpecificWarnings
             (_typeErrors@_) =
                 if null _checkedSolveErrors
                   then if null _bodyIcollectErrors
@@ -13069,11 +12950,14 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                          else _bodyIcollectErrors
                   else _checkedSolveErrors
             (_checkedSolveErrors@_) =
-                makeTypeErrors _orderedTypeSynonyms _substitution _solveErrors
+                makeTypeErrors _classEnv _orderedTypeSynonyms _substitution _solveErrors
+            (_classEnv@_) =
+                classEnvironment _lhsIimportEnvironment
             (_orderedTypeSynonyms@_) =
                 getOrderedTypeSynonyms _lhsIimportEnvironment
-            ((SolveResult (_betaUniqueAtTheEnd@_)(_substitution@_)(_predicates@_)(_solveErrors@_)(_debugString@_))) =
+            ((SolveResult (_betaUniqueAtTheEnd@_)(_substitution@_)(_predicates@_)(_solveErrors@_)(_debugString@_)(_tooSpecificWarnings@_))) =
                 (selectConstraintSolver _lhsIoptions _lhsIimportEnvironment)
+                   _classEnv
                    _orderedTypeSynonyms
                    _bodyIbetaUnique
                    _bodyIconstraints
@@ -13124,6 +13008,8 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 Module_Module _rangeIself _nameIself _exportsIself _bodyIself
             (_lhsOself@_) =
                 _self
+            (_lhsOassumptions@_) =
+                _assumptions
             (_lhsOtoplevelTypes@_) =
                 _bodyItoplevelTypes
             (_lhsOtypeErrors@_) =
@@ -13140,7 +13026,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 _predicates
             (_bodyOsubstitution@_) =
                 _substitution
-        in  ( _lhsOdebugIO,_lhsOdictionaryEnvironment,_lhsOself,_lhsOtoplevelTypes,_lhsOtypeErrors,_lhsOwarnings)
+        in  ( _lhsOassumptions,_lhsOdebugIO,_lhsOdictionaryEnvironment,_lhsOself,_lhsOtoplevelTypes,_lhsOtypeErrors,_lhsOwarnings)
 -- Name --------------------------------------------------------
 -- semantic domain
 type T_Name = ( (Name))
@@ -14819,7 +14705,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -15067,7 +14953,7 @@ sem_Qualifier_Guard (range_) (guard_) =
             _guardIdictionaryEnvironment :: (DictionaryEnvironment)
             _guardIinfoTree :: (InfoTree)
             _guardImatchIO :: (IO ())
-            _guardImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _guardImatches :: ([Maybe MetaVariableTable])
             _guardIpatternMatchWarnings :: ([Warning])
             _guardIself :: (Expression)
             _guardIunboundNames :: (Names)
@@ -15350,7 +15236,7 @@ sem_Qualifier_Let (range_) (declarations_) =
             (_lhsOcollectErrors@_) =
                 _errors ++ _declarationsIcollectErrors
             ((_errors@_,_warnings@_)) =
-                checkAnnotations False _lhsIorderedTypeSynonyms _declarationsItypeSignatures _localTypes
+                checkAnnotations False (classEnvironment _lhsIimportEnvironment) _lhsIorderedTypeSynonyms _declarationsItypeSignatures _localTypes
             (_declarationsOtypeSignatures@_) =
                 emptyFM
             (_lhsOuniqueChunk@_) =
@@ -15967,7 +15853,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -16558,7 +16444,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -17377,7 +17263,7 @@ sem_Statement_Expression (range_) (expression_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -17612,7 +17498,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
             _expressionIdictionaryEnvironment :: (DictionaryEnvironment)
             _expressionIinfoTree :: (InfoTree)
             _expressionImatchIO :: (IO ())
-            _expressionImatches :: ([Maybe (MetaVariableTable LocalInfo)])
+            _expressionImatches :: ([Maybe MetaVariableTable])
             _expressionIpatternMatchWarnings :: ([Warning])
             _expressionIself :: (Expression)
             _expressionIunboundNames :: (Names)
@@ -17937,7 +17823,7 @@ sem_Statement_Let (range_) (declarations_) =
             (_lhsOcollectErrors@_) =
                 _errors ++ _declarationsIcollectErrors
             ((_errors@_,_warnings@_)) =
-                checkAnnotations False _lhsIorderedTypeSynonyms _declarationsItypeSignatures _localTypes
+                checkAnnotations False (classEnvironment _lhsIimportEnvironment) _lhsIorderedTypeSynonyms _declarationsItypeSignatures _localTypes
             (_declarationsOtypeSignatures@_) =
                 emptyFM
             (_lhsOuniqueChunk@_) =

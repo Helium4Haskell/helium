@@ -10,18 +10,19 @@
 -- (directives based on "Scripting the Type Inference Process", ICFP 2003)
 -----------------------------------------------------------------------------
 
-DERIVING Core_TypingStrategy Core_TypeRule : Show, Read
-DERIVING Core_Judgement Core_UserStatement : Read
+DERIVING Core_TypeRule : Show, Read
+DERIVING Core_TypingStrategy Core_Judgement Core_UserStatement : Read
 
 DATA Core_TypingStrategy 
    | Siblings
          functions  : {[String]}
-   | TypingStrategy       
+   | TypingStrategy
+        typeEnv     : {[(String, Tp)]}   
         typerule    : Core_TypeRule
         statements  : Core_UserStatements
         
 DATA Core_TypeRule 
-   | TypeRule 
+   | TypeRule
         premises    : Core_Judgements
         conclusion  : Core_Judgement
 
@@ -34,9 +35,13 @@ DATA Core_Judgement
 TYPE Core_UserStatements = [Core_UserStatement]
 
 DATA Core_UserStatement
-   | Constraint
+   | Equal
         leftType    : Tp
         rightType   : Tp
+        message     : String
+   | Pred
+        predClass   : String
+        predType    : Tp
         message     : String
    | MetaVariableConstraints        
         name        : String

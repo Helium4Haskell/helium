@@ -43,10 +43,24 @@ instance Show Core_Judgement where
   show (Judgement s tp) = "(Judgement "++show s++" ("++showTp tp++"))"
  
 instance Show Core_UserStatement where
-  show (Constraint t1 t2 s)        = "Constraint ("++showTp t1++") ("++showTp t2++") "++show s
+  show (Equal t1 t2 s)             = "Equal ("++showTp t1++") ("++showTp t2++") "++show s
+  show (Pred s tp msg)             = "Pred "++show s++" ("++showTp tp++") "++show msg
   show (MetaVariableConstraints s) = "MetaVariableConstraints "++show s
   show (CorePhase i)               = "CorePhase "++show i
-   
+
+instance Show Core_TypingStrategy where
+   show (Siblings fs)                   = "(Siblings "++show fs++")"
+   show (TypingStrategy env rule stats) =
+      let showEnv = "[" ++ concat (intersperse "," [ "("++show f++","++showTp tp++")" | (f,tp) <- env]) ++ "]" 
+      in "(TypingStrategy "++showEnv++" ("++show rule++") ("++show stats++"))"
+   {-
+   | Siblings
+         functions  : {[String]}
+   | TypingStrategy
+        typeEnv     : {[(String, Tp)]}   
+        typerule    : Core_TypeRule
+        statements  : Core_UserStatements -}
+        
 showTp :: Tp -> String
 showTp (TVar i)   = "TVar "++show i
 showTp (TCon c)   = "TCon "++show c

@@ -16,8 +16,9 @@
 imports {
 import List
 import Matchers
-import TS_Apply (applyTypingStrategy, matchInformation, MetaVariableTable)
+import TS_Apply (applyTypingStrategy, matchInformation)
 import TS_CoreSyntax
+import TS_Attributes
 }
 
 ATTR Body Statement Qualifier Statements Qualifiers Expression RightHandSide MaybeExpression
@@ -63,210 +64,198 @@ SEM Module
                                        
 ---------------------------------------------------------------------------------------------------------
 
-ATTR Expressions     [ tryPatterns     : {[(Expressions    , [String])]} | | ]
-ATTR Expression      [ tryPatterns     : {[(Expression     , [String])]} | | ]
-ATTR MaybeExpression [ tryPatterns     : {[(MaybeExpression, [String])]} | | ]
+ATTR Expressions     [ tryPatterns : {[(Expressions    , [String])]} | | ]
+ATTR Expression      [ tryPatterns : {[(Expression     , [String])]} | | ]
+ATTR MaybeExpression [ tryPatterns : {[(MaybeExpression, [String])]} | | ]
                             
 ---------------------------------------------------------------------------------------------------------
 
-ATTR Expression Expressions MaybeExpression [ | | matches : {[Maybe (MetaVariableTable LocalInfo)]} ]
+ATTR Expression Expressions MaybeExpression [ | | matches : {[Maybe MetaVariableTable]} ]
                                 
 SEM Expression   
   | Literal 
-       lhs . matchIO           = @lhs.matchIO >> @ioMatch
-           . constraints       = @newConstraintSet
-           . uniqueSecondRound = @newUnique       
-       loc . infoTuple         = (@constraints, @localInfo)
-           . ((),matches,newConstraintSet,newUnique,ioMatch) = 
-                match0 @infoTuple @lhs.uniqueSecondRound 
-                       (match_Expression_Literal @literal.self) 
-                       @lhs.tryPatterns @lhs.allPatterns 
-                       []               
+       ((), lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch) = 
+          let infoTuple = metaVarInfo @constraints @assumptions @localInfo
+          in match0 infoTuple @lhs.uniqueSecondRound
+                    (match_Expression_Literal @literal.self) 
+                    @lhs.tryPatterns @lhs.allPatterns 
+                    []               
            
   | Variable
-       lhs . matchIO           = @lhs.matchIO >> @ioMatch
-           . constraints       = @newConstraintSet
-           . uniqueSecondRound = @newUnique      
-       loc . infoTuple         = (@constraints, @localInfo)
-           . ((),matches,newConstraintSet,newUnique,ioMatch) = 
-                match0 @infoTuple @lhs.uniqueSecondRound 
-                       (match_Expression_Variable @name.self) 
-                       @lhs.tryPatterns @lhs.allPatterns 
-                       []
+       ((), lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch) = 
+          let infoTuple = metaVarInfo @constraints @assumptions @localInfo
+          in match0 infoTuple @lhs.uniqueSecondRound
+                    (match_Expression_Variable @name.self) 
+                    @lhs.tryPatterns @lhs.allPatterns 
+                    []
            
   | Constructor  
-       lhs . matchIO           = @lhs.matchIO >> @ioMatch
-           . constraints       = @newConstraintSet
-           . uniqueSecondRound = @newUnique     
-       loc . infoTuple         = (@constraints, @localInfo)
-           . ((),matches,newConstraintSet,newUnique,ioMatch) = 
-                match0 @infoTuple @lhs.uniqueSecondRound 
-                       (match_Expression_Constructor @name.self) 
-                       @lhs.tryPatterns @lhs.allPatterns 
-                       []
+       ((), lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch) = 
+          let infoTuple = metaVarInfo @constraints @assumptions @localInfo
+          in match0 infoTuple @lhs.uniqueSecondRound
+                    (match_Expression_Constructor @name.self) 
+                    @lhs.tryPatterns @lhs.allPatterns 
+                    []
 
   | NormalApplication
-       function  . tryPatterns       = @t1
-       arguments . tryPatterns       = @t2
-       lhs       . matchIO           = @arguments.matchIO >> @ioMatch  
-                 . constraints       = @newConstraintSet
-                 . uniqueSecondRound = @newUnique   
-       loc       . infoTuple         = (@constraints, @localInfo)
-                 . ((t1,t2),matches,newConstraintSet,newUnique,ioMatch) = 
-                      match2 @infoTuple @arguments.uniqueSecondRound 
-                             match_Expression_NormalApplication 
-                             @lhs.tryPatterns @lhs.allPatterns 
-                             [@function.matches, @arguments.matches]
+       ( (function.tryPatterns, arguments.tryPatterns)
+       , lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch
+       ) = let infoTuple = metaVarInfo @constraints @assumptions @localInfo
+           in match2 infoTuple @arguments.uniqueSecondRound
+                     match_Expression_NormalApplication 
+                     @lhs.tryPatterns @lhs.allPatterns 
+                     [@function.matches, @arguments.matches]
 
-  | InfixApplication 
-       leftExpression  . tryPatterns       = @t1
-       operator        . tryPatterns       = @t2
-       rightExpression . tryPatterns       = @t3
-       lhs             . matchIO           = @rightExpression.matchIO >> @ioMatch
-                       . constraints       = @newConstraintSet
-                       . uniqueSecondRound = @newUnique
-       loc             . infoTuple         = (@constraints, @localInfo)
-           . ((t1,t2,t3),matches,newConstraintSet,newUnique,ioMatch) = 
-                match3 @infoTuple @rightExpression.uniqueSecondRound 
-                       match_Expression_InfixApplication 
-                       @lhs.tryPatterns @lhs.allPatterns 
-                       [@leftExpression.matches, @operator.matches,@rightExpression.matches]  
+  | InfixApplication
+       ( (leftExpression.tryPatterns, operator.tryPatterns, rightExpression.tryPatterns)
+       , lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch
+       ) = let infoTuple = metaVarInfo @constraints @assumptions @localInfo
+           in match3 infoTuple @rightExpression.uniqueSecondRound
+                     match_Expression_InfixApplication 
+                     @lhs.tryPatterns @lhs.allPatterns 
+                     [@leftExpression.matches, @operator.matches,@rightExpression.matches]  
        
-  | If   
-       guardExpression . tryPatterns       = @t1
-       thenExpression  . tryPatterns       = @t2
-       elseExpression  . tryPatterns       = @t3
-       lhs             . matchIO           = @elseExpression.matchIO >> @ioMatch     
-                       . constraints       = @newConstraintSet
-                       . uniqueSecondRound = @newUnique  
-       loc             . infoTuple         = (@constraints, @localInfo)
-                       . ((t1,t2,t3),matches,newConstraintSet,newUnique,ioMatch) =
-                            match3 @infoTuple @elseExpression.uniqueSecondRound  
-                                   match_Expression_If 
-                                   @lhs.tryPatterns @lhs.allPatterns 
-                                   [@guardExpression.matches,@thenExpression.matches,@elseExpression.matches]
+  | If 
+       ( (guardExpression.tryPatterns, thenExpression.tryPatterns, elseExpression.tryPatterns)
+       , lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch
+       ) = let infoTuple = metaVarInfo @constraints @assumptions @localInfo
+           in match3 infoTuple @elseExpression.uniqueSecondRound
+                     match_Expression_If 
+                     @lhs.tryPatterns @lhs.allPatterns 
+                     [@guardExpression.matches,@thenExpression.matches,@elseExpression.matches]
 
-   | List 
-       expressions . tryPatterns       = @t1
-       lhs         . matchIO           = @expressions.matchIO
-                   . constraints       = @newConstraintSet
-                   . uniqueSecondRound = @newUnique     
-       loc         . infoTuple         = (@constraints, @localInfo)
-                   . ((t1),matches,newConstraintSet,newUnique,ioMatch) = 
-                        match1 @infoTuple @expressions.uniqueSecondRound 
-                           match_Expression_List 
-                           @lhs.tryPatterns @lhs.allPatterns 
-                           [@expressions.matches]       
+  | List             
+       (expressions.tryPatterns, lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch) = 
+          let infoTuple = metaVarInfo @constraints @expressions.assumptions @localInfo
+          in match1 infoTuple @expressions.uniqueSecondRound
+                    match_Expression_List 
+                    @lhs.tryPatterns @lhs.allPatterns 
+                    [@expressions.matches]       
        
-   | Tuple      
-       expressions . tryPatterns       = @t1
-       lhs         . matchIO           = @expressions.matchIO >> @ioMatch    
-                   . constraints       = @newConstraintSet
-                   . uniqueSecondRound = @newUnique        
-       loc         . infoTuple         = (@constraints, @localInfo)
-                   . ((t1),matches,newConstraintSet,newUnique,ioMatch) = 
-                        match1 @infoTuple @expressions.uniqueSecondRound 
-                               match_Expression_Tuple 
-                               @lhs.tryPatterns @lhs.allPatterns 
-                               [@expressions.matches]     
+  | Tuple                   
+       (expressions.tryPatterns, lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch) = 
+          let infoTuple = metaVarInfo @constraints @expressions.assumptions @localInfo
+          in match1 infoTuple @expressions.uniqueSecondRound
+                    match_Expression_Tuple 
+                    @lhs.tryPatterns @lhs.allPatterns 
+                    [@expressions.matches]     
 
-   | Enum
-       from . tryPatterns       = @t1
-       then . tryPatterns       = @t2
-       to   . tryPatterns       = @t3
-       lhs  . matchIO           = @to.matchIO >> @ioMatch
-            . constraints       = @newConstraintSet
-            . uniqueSecondRound = @newUnique
-       loc  . infoTuple         = (@constraints, @localInfo)
-            . ((t1,t2,t3),matches,newConstraintSet,newUnique,ioMatch) = 
-                 match3 @infoTuple @to.uniqueSecondRound 
-                        match_Expression_Enum 
-                        @lhs.tryPatterns @lhs.allPatterns 
-                        [@from.matches, @then.matches, @to.matches]
+  | Enum
+       ( (from.tryPatterns, then.tryPatterns, to.tryPatterns)
+       , lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch
+       ) = let infoTuple = metaVarInfo @constraints @assumptions @localInfo
+           in match3 infoTuple @to.uniqueSecondRound
+                     match_Expression_Enum 
+                     @lhs.tryPatterns @lhs.allPatterns 
+                     [@from.matches, @then.matches, @to.matches]
                   
        
-   | Negate
-       expression . tryPatterns       = @t1
-       lhs        . matchIO           = @expression.matchIO >> @ioMatch
-                  . constraints       = @newConstraintSet
-                  . uniqueSecondRound = @newUnique
-       loc        . infoTuple         = (@constraints, @localInfo)
-                  . ((t1),matches,newConstraintSet,newUnique,ioMatch) = 
-                       match1 @infoTuple @expression.uniqueSecondRound 
-                              match_Expression_Negate 
-                              @lhs.tryPatterns @lhs.allPatterns 
-                              [@expression.matches]
+  | Negate
+       (expression.tryPatterns, lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch) =
+          let infoTuple = metaVarInfo @constraints @expression.assumptions @localInfo
+          in match1 infoTuple @expression.uniqueSecondRound
+                    match_Expression_Negate 
+                    @lhs.tryPatterns @lhs.allPatterns 
+                    [@expression.matches]
            
-   | NegateFloat       
-       expression . tryPatterns       = @t1       
-       lhs        . matchIO           = @expression.matchIO >> @ioMatch
-                  . constraints       = @newConstraintSet
-                  . uniqueSecondRound = @newUnique              
-       loc        . infoTuple         = (@constraints, @localInfo)
-                  . ((t1),matches,newConstraintSet,newUnique,ioMatch) = 
-                       match1 @infoTuple @expression.uniqueSecondRound 
-                              match_Expression_NegateFloat 
-                              @lhs.tryPatterns @lhs.allPatterns 
-                              [@expression.matches]       
+  | NegateFloat                      
+       (expression.tryPatterns, lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch) =
+          let infoTuple = metaVarInfo @constraints @expression.assumptions @localInfo
+          in match1 infoTuple @expression.uniqueSecondRound
+                    match_Expression_NegateFloat 
+                    @lhs.tryPatterns @lhs.allPatterns 
+                    [@expression.matches]
                    
 SEM Expressions
   | Cons 
-       loc . ((t1,t2),matches,_,_,_) = match2' match_Expressions_Cons @lhs.tryPatterns [] [@hd.matches, @tl.matches]
-       hd  . tryPatterns  = @t1
-       tl  . tryPatterns  = @t2
+       ((hd.tryPatterns,tl.tryPatterns), lhs.matches, _, _, _, _) = 
+          match2' match_Expressions_Cons @lhs.tryPatterns [] [@hd.matches, @tl.matches]
         
   | Nil
-       loc . ((),matches,_,_,_) = match0' match_Expressions_Nil @lhs.tryPatterns [] []
+       ((), lhs.matches, _, _, _, _) = 
+          match0' match_Expressions_Nil @lhs.tryPatterns [] []
 
 SEM MaybeExpression
   | Just
-       loc . ((t1),matches,_,_,_) = match1' match_MaybeExpression_Just @lhs.tryPatterns [] [@expression.matches] 
-       expression . tryPatterns  = @t1
-       
+       (expression.tryPatterns, lhs.matches, _, _ , _, _) = 
+          match1' match_MaybeExpression_Just @lhs.tryPatterns [] [@expression.matches] 
+        
   | Nothing
-       loc . ((),matches,_,_,_) = match0' match_MaybeExpression_Nothing @lhs.tryPatterns [] []  
+       ((), lhs.matches, _, _, _, _) = 
+          match0' match_MaybeExpression_Nothing @lhs.tryPatterns [] []  
 
 ---------------------------------------------------------------
--- No matching 
+-- Expressions that can only match with a meta variable.
 
 SEM Expression
-  | Lambda             lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
-                       expression . tryPatterns = []
-                       loc . infoTuple   = (@constraints, @localInfo)
+  | Lambda             
+       lhs.matches = 
+          let infoTuple = metaVarInfo @constraints @assumptions @localInfo
+          in matchOnlyVariable infoTuple @lhs.tryPatterns
                        
-  | Case               lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
-                       expression . tryPatterns = []
-                       loc . infoTuple   = (@constraints, @localInfo)
+  | Case               
+       lhs.matches = 
+          let infoTuple = metaVarInfo @constraints @assumptions @localInfo
+          in matchOnlyVariable infoTuple @lhs.tryPatterns
                                               
-  | Let                lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
-                       expression . tryPatterns = []
-                       loc . infoTuple   = (@constraints, @localInfo)
+  | Let 
+       lhs.matches = 
+          let infoTuple = metaVarInfo @constraints @assumptions @localInfo
+          in matchOnlyVariable infoTuple @lhs.tryPatterns
                                               
-  | Do                 lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
-                       loc . infoTuple   = (@constraints, @localInfo)
+  | Do 
+       lhs.matches = 
+          let infoTuple = metaVarInfo @constraints @assumptions @localInfo
+          in matchOnlyVariable infoTuple @lhs.tryPatterns
                          
-  | Comprehension      lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
-                       expression . tryPatterns = []
-                       loc . infoTuple   = (@constraints, @localInfo)
+  | Comprehension 
+       lhs.matches = 
+          let infoTuple = metaVarInfo @constraints @assumptions @localInfo
+          in matchOnlyVariable infoTuple @lhs.tryPatterns
                                               
-  | Typed              lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
-                       expression . tryPatterns = []
-                       loc . infoTuple   = (@constraints, @localInfo)
-                       
+  | Typed 
+       lhs.matches = 
+          let infoTuple = metaVarInfo @constraints @assumptions @localInfo
+          in matchOnlyVariable infoTuple @lhs.tryPatterns
+
+SEM Expression
+  | Lambda              expression . tryPatterns = []                      
+  | Case                expression . tryPatterns = []                                             
+  | Let                 expression . tryPatterns = []                                                  
+  | Comprehension       expression . tryPatterns = []                                             
+  | Typed               expression . tryPatterns = []
+  
 SEM Statement
-  | Expression  expression . tryPatterns = []
-  | Generator   expression . tryPatterns = []
+  | Expression          expression . tryPatterns = []
+  | Generator           expression . tryPatterns = []
 
 SEM Qualifier
-  | Guard      guard      . tryPatterns = []
-  | Generator  expression . tryPatterns = []       
+  | Guard               guard      . tryPatterns = []
+  | Generator           expression . tryPatterns = []       
 
 SEM GuardedExpression
   | GuardedExpression   guard      . tryPatterns = []
                         expression . tryPatterns = [] 
+                        
 SEM RightHandSide
-  | Expression   expression . tryPatterns = []  
+  | Expression          expression . tryPatterns = []  
          
+---------------------------------------------------------------
+-- Debug IO: matches
+
+SEM Expression
+  | Literal            lhs.matchIO = @lhs.matchIO             >> @ioMatch                   
+  | Variable           lhs.matchIO = @lhs.matchIO             >> @ioMatch            
+  | Constructor        lhs.matchIO = @lhs.matchIO             >> @ioMatch  
+  | NormalApplication  lhs.matchIO = @arguments.matchIO       >> @ioMatch  
+  | InfixApplication   lhs.matchIO = @rightExpression.matchIO >> @ioMatch        
+  | If                 lhs.matchIO = @elseExpression.matchIO  >> @ioMatch  
+  | List               lhs.matchIO = @expressions.matchIO     >> @ioMatch                  
+  | Tuple              lhs.matchIO = @expressions.matchIO     >> @ioMatch                          
+  | Enum               lhs.matchIO = @to.matchIO              >> @ioMatch                        
+  | Negate             lhs.matchIO = @expression.matchIO      >> @ioMatch           
+  | NegateFloat        lhs.matchIO = @expression.matchIO      >> @ioMatch            
+                              
 ---------------------------------------------------------------------------------------------------------
 
 {
@@ -313,7 +302,7 @@ match1' = generalMatch noMatch matchConverter1 noMetaVariableInfo 0
 match2' = generalMatch noMatch matchConverter2 noMetaVariableInfo 0
 
 matchOnlyVariable infoTuple tryPats = 
-   let ((),matches,_,_,_) = match0 infoTuple 0 noMatch tryPats [] []
+       let ((),matches,_,_,_,_) = match0 infoTuple 0 noMatch tryPats [] []
    in matches
 
 noMatch :: a -> Maybe b
@@ -323,20 +312,21 @@ noMetaVariableInfo = internalError "PatternMatching.ag" "noMetaVariableInfo" ""
 
 generalMatch :: (nonTerminal -> Maybe String) 
              -> ([([String], childrenTuple)] -> childrenResult)
-             -> (ConstraintSet, LocalInfo)
-             -> Int             
+             -> MetaVariableInfo
+             -> Int
              -> (nonTerminal -> Maybe childrenTuple) 
              -> [(nonTerminal, [String])] 
              -> [((nonTerminal, [String]), Core_TypingStrategy)] 
-             -> [[Maybe (MetaVariableTable LocalInfo)]] 
+             -> [[Maybe MetaVariableTable]] 
              -> ( childrenResult
-                , [Maybe (MetaVariableTable LocalInfo)]
+                , [Maybe MetaVariableTable]
                 , ConstraintSet
+                , Assumptions
                 , Int
                 , IO ()
                 )
 
-generalMatch exprVarMatcher converter metaVariableInfo unique matcher tryPats allPats childrenResults =
+generalMatch exprVarMatcher converter metaInfo unique matcher tryPats allPats childrenResults =
    let match (expr,metas) = 
           case exprVarMatcher expr of
              Just s | s `elem` metas -> MetaVariableMatch s
@@ -361,30 +351,20 @@ generalMatch exprVarMatcher converter metaVariableInfo unique matcher tryPats al
           case m of
              NoMatch             -> (Nothing:res, nts)
              NonTerminalMatch _  -> (allMatch (head nts):res, tail nts)
-             MetaVariableMatch s -> (Just [(s,(constraintSet, snd metaVariableInfo))]:res, nts) --  !!!
+             MetaVariableMatch s -> (Just [(s, metaInfo)]:res, nts) --  !!!
        
        result   = fst (foldr inspectMatch ([],reverse $ transpose resultTry) matchListTry)       
        complete = let (list,_) = foldr inspectMatch ([],reverse $ transpose resultNew) matchListNew
                   in [ (x, y) | (Just x, y) <- zip list allStrategies ]
 
-       (constraintSet, debugIO, newUnique) = 
+       (assumptions, constraintSet, debugIO, newUnique) = 
           case complete of
           
-             [] -> (fst metaVariableInfo, return (), unique)
+             [] -> (getAssumptions metaInfo, getConstraintSet metaInfo, return (), unique)
              
              (childrenInfo, typingStrategy):_ 
-                -> applyTypingStrategy typingStrategy metaVariableInfo childrenInfo unique            
-   in (forChildren, result, constraintSet, newUnique, debugIO)
-   
-     {-  msg = unlines [ "try-in: " ++ show (length tryPats)
-              , "result: " ++ show (length result)
-              , "strategies: " ++ show (length allStrategies)
-              , "nt-match try: " ++ show (length matchNTTry)
-              , "nt-match new: " ++ show (length matchNTNew)
-              , "result try: " ++ if null childrenResults then "???" else show (length $ transpose resultTry)
-              , "result new: " ++ if null childrenResults then "???" else show (map (map (maybe "N" (const "J"))) (transpose resultNew))
-              , "complete matches: " ++ show (length complete)
-              ] -}
+                -> applyTypingStrategy typingStrategy metaInfo childrenInfo unique            
+   in (forChildren, result, constraintSet, assumptions, newUnique, debugIO)
 }
 
 -- prevent ag-warnings

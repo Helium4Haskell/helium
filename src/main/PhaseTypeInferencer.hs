@@ -10,7 +10,7 @@ module PhaseTypeInferencer (phaseTypeInferencer) where
 
 import CompileUtils
 import Warnings(Warning)
-import qualified TypeInferencing(sem_Module)
+import TypeInferencing(typeInferencing)
 import DictionaryEnvironment (DictionaryEnvironment)
 import Top.Types
 import Data.FiniteMap
@@ -35,11 +35,9 @@ phaseTypeInferencer fullName module_ doneModules localEnv completeEnv options = 
                         else id)
                    $ options
                    
-        (debugIO, dictionaryEnv, _, toplevelTypes, typeErrors, warnings) =
-            TypeInferencing.sem_Module module_
-                completeEnv
-                newOptions        
-        
+        (debugIO, dictionaryEnv, toplevelTypes, typeErrors, warnings) =
+           typeInferencing newOptions completeEnv module_
+
         -- add the top-level types (including the inferred types)
         finalEnv = addToTypeEnvironment toplevelTypes completeEnv
     

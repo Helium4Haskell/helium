@@ -13,8 +13,9 @@
 -----------------------------------------------------------------------------
 
 {
-typingStrategyToCore :: TypingStrategy -> Core_TypingStrategy
-typingStrategyToCore = fst . sem_TypingStrategy
+typingStrategyToCore :: ImportEnvironment -> TypingStrategy -> Core_TypingStrategy
+typingStrategyToCore importEnv strategy = 
+   fst (sem_TypingStrategy strategy importEnv)
 }
 
 INCLUDE "TS_Syntax.ag"
@@ -22,14 +23,14 @@ INCLUDE "TS_Collect.ag"
 INCLUDE "../../syntax/UHA_Syntax.ag"
 
 imports {
-
 import TS_Syntax
 import TS_CoreSyntax
+import ImportEnvironment
 import Messages
 import Top.Types
 import ConstraintInfo
 import UHA_Range (noRange)
-import UHA_Utils (getNameName)
+import UHA_Utils (getNameName, nameFromString)
 import qualified UHA_OneLine 
 import UHA_Source
 import TypeConversion
@@ -40,12 +41,13 @@ import OneLiner
 import TS_Attributes
 import TypeConstraints
 }
+ATTR TypingStrategies TypingStrategy [ importEnvironment : ImportEnvironment | | ]
 
 SEM TypingStrategy [ | | core : Core_TypingStrategy ]
   | Siblings
       lhs . core = Siblings (map getNameName @names.self)
   | TypingStrategy
-      lhs . core = TypingStrategy @typerule.core @statements.core    
+      lhs . core = TypingStrategy @typeEnv @typerule.core @statements.core    
       loc . nameMap = zip @uniqueTypevariables (map TVar [0..])
 
 SEM TypeRule [ | | core : Core_TypeRule ]
@@ -69,17 +71,41 @@ SEM UserStatements [ | | core : Core_UserStatements ]
   | Nil   lhs . core = []
 
 SEM UserStatement [ | | core : Core_UserStatement ]
-  | Constraint                lhs . core = Constraint 
+  | Equal                     lhs . core = Equal 
                                              (makeTpFromType @lhs.nameMap @leftType.self) 
                                              (makeTpFromType @lhs.nameMap @rightType.self) 
-                                             (concat (substituteAttributes (algebraFromNameMap @lhs.nameMap) @message))
+                                             (changeAttributes (useNameMap @lhs.nameMap) @message)
+  | Pred                      lhs . core = Pred
+                                             (show @predClass.self)
+                                             (makeTpFromType @lhs.nameMap @predType.self)
+                                             (changeAttributes (useNameMap @lhs.nameMap) @message)
   | MetaVariableConstraints   lhs . core = MetaVariableConstraints (show @name.self)
   | Phase                     lhs . core = CorePhase @phase
-       
+  
+-- collecting the fixed constant types
+SEM TypingStrategy
+  | TypingStrategy
+       loc . typeEnv = 
+          let newEnvironment = @lhs.importEnvironment
+                                  { typeEnvironment = listToFM [ (nameFromString s, toTpScheme tp) | (s, tp) <- ("_", @typerule.conclusionType) : @typerule.simpleJudgements ] }
+              (inferredType, freeVariables, _) = expressionTypeInferencer newEnvironment @typerule.conclusionExpression
+              monoType = unqualify (unquantify inferredType)
+              synonyms = getOrderedTypeSynonyms @lhs.importEnvironment
+              sub = case mguWithTypeSynonyms synonyms monoType (freezeVariablesInType @typerule.conclusionType) of
+                       Left _       -> internalError "TS_ToCore.ag" "n/a" "no unification possible" 
+                       Right (_, s) -> s
+          in [ (show name, unfreezeVariablesInType (sub |-> tp))
+             | (name, tp) <- concat (eltsFM freeVariables) 
+             ]
+             
 {
-algebraFromNameMap :: [(Name, Tp)] -> AttributeAlgebra String
-algebraFromNameMap table = ( id
-                           , [ ((show name, Nothing), showAttribute (show i, Nothing)) | (name, TVar i) <- table ]
-                           , showAttribute
-                           )
+useNameMap :: [(Name, Tp)] -> Attribute -> Attribute
+useNameMap nameMap attribute = 
+   case attribute of
+      LocalAttribute s ->
+         case lookup s [ (show n, i) | (n, TVar i) <- nameMap ] of
+            Just i  -> LocalAttribute (show i)
+            Nothing -> attribute
+      _             -> attribute
+   
 }

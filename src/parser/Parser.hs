@@ -7,7 +7,7 @@
 -}
 
 module Parser
-    ( module_, exp_, exp0, type_, contextAndType
+    ( module_, exp_, exp0, type_, atype, contextAndType
     , parseOnlyImports
     ) where
 

@@ -64,7 +64,7 @@ SEM TypingStrategy
        loc . name         = show (PP.sem_Expression @typerule.conclusionExpression)
            . nameMap      = zip @uniqueTypevariables (map TVar [0..])
            . errors       = @staticErrors ++ @soundnessErrors 
-           . staticErrors = [ InconsistentConstraint @name x | x <- @solveErrors ] ++
+           . staticErrors = [ InconsistentConstraint @name x | (x, label) <- @solveErrors ] ++
                             [ UndefinedTS @name name entity 
                             | (name, entity) <- @typerule.conclusionAllVariables 
                             , show name `notElem` (@allMetaVariables ++ map show @allImportedVariables)
@@ -88,8 +88,9 @@ SEM TypingStrategy
                               xs -> [ MetaVariableConstraintsNotExplicit @name xs ]  -}
 
            -- Solve the constraint set.           
-           . (SolveResult _ substitution _ solveErrors _) =    
-                solveGreedy
+           . (SolveResult _ substitution _ solveErrors _ ()) =    
+                runGreedy
+                   (classEnvironment @lhs.importEnvironment)
                    (getOrderedTypeSynonyms @lhs.importEnvironment)
                    (length @uniqueTypevariables) 
                    (reverse @statements.userConstraints)        
@@ -97,25 +98,26 @@ SEM TypingStrategy
            . soundnessErrors = 
                 if not (null @staticErrors)
                   then []
-                  else let premiseTypes = reverse (map snd @typerule.simpleJudgements) 
-                           constraintsTpScheme = makeScheme [] [] (@substitution |-> tupleType (premiseTypes ++ [@typerule.conclusionType]))
-                           extendedEnvironment = let op (s, i) = addType (nameFromString s) (toTpScheme (TVar i))
-                                                 in foldr op @lhs.importEnvironment (zip @allMetaVariables [0..])
-                           extendedExpression  = let premiseVars = reverse (map (Expression_Variable noRange . nameFromString . fst) @typerule.simpleJudgements)
-                                                 in Expression_Tuple noRange (premiseVars ++ [@typerule.conclusionExpression])
-                           (monoTpScheme,inferredTypeErrors) = expressionTypeInferencer 
-                                                                  extendedEnvironment
-                                                                  extendedExpression
-                           inferredTpScheme = generalizeAll (snd $ instantiate 123456789 monoTpScheme)                                                                   
+                  else let orderedMetaList = -- consistent ordering of meta variables for soundness check!
+                              reverse @typerule.simpleJudgements
+                           constraintsTpScheme =
+                              let premiseTypes = map snd orderedMetaList
+                                  skeletonType = foldr (.->.) @typerule.conclusionType premiseTypes
+                              in generalizeAll (@substitution |-> (@statements.userPredicates .=>. skeletonType))
+                           (inferredTpScheme, _, inferredTypeErrors) = 
+                              let expr = Expression_Lambda noRange pats @typerule.conclusionExpression
+                                  pats = map (Pattern_Variable noRange . nameFromString . fst) orderedMetaList
+                              in expressionTypeInferencer @lhs.importEnvironment expr                          
                            synonyms = getOrderedTypeSynonyms @lhs.importEnvironment
+                           classEnv = classEnvironment @lhs.importEnvironment
                        in if not (null inferredTypeErrors) 
                             then map (TypeErrorTS @name) inferredTypeErrors
-                            else if genericInstanceOf synonyms standardClasses inferredTpScheme constraintsTpScheme 
+                            else if genericInstanceOf synonyms classEnv inferredTpScheme constraintsTpScheme 
                                         &&
-                                    genericInstanceOf synonyms standardClasses constraintsTpScheme inferredTpScheme 
+                                    genericInstanceOf synonyms classEnv constraintsTpScheme inferredTpScheme 
                                       then []
                                       else [ Soundness @name inferredTpScheme constraintsTpScheme ]
-
+                                      
 -- cheching the names
 ATTR Judgement Expression Expressions MaybeExpression [ | | allVariables USE { ++ } { [] } : {[(Name,Entity)]} ]
 
@@ -128,16 +130,11 @@ SEM TypeRule | TypeRule lhs . conclusionAllVariables = @conclusion.allVariables
 
 SEM TypingStrategy 
   | TypingStrategy  
-       loc . allImportedVariables = keysFM (typeEnvironment   @lhs.importEnvironment) ++
-                                    keysFM (valueConstructors @lhs.importEnvironment)
+       loc.allImportedVariables = 
+          keysFM (typeEnvironment   @lhs.importEnvironment) ++
+          keysFM (valueConstructors @lhs.importEnvironment)
 
---
 
-ATTR TypeRule  [ | | conclusionExpression:Expression ]
-ATTR Judgement [ | | theExpression:Expression ]
-           
-SEM TypeRule  | TypeRule   lhs . conclusionExpression = @conclusion.theExpression           
-SEM Judgement | Judgement  lhs . theExpression = @expression.self
 
 -- prevent AG-warnings
 SEM TypingStrategies | Cons  loc . importEnvironment = error "TS_Analyse.ag"

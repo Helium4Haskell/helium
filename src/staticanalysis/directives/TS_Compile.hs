@@ -66,5 +66,9 @@ readTypingStrategiesFromFile options filename importEnvironment =
                                  then "1 strategy is included)"
                                  else show number ++ " strategies are included)")) 
 
-                        let coreTypingStrategies = map typingStrategyToCore typingStrategies
+                        let coreTypingStrategies = map (typingStrategyToCore importEnvironment) typingStrategies
+                        when (Args.DumpTypeDebug `elem` options) $
+                           do putStrLn "Core typing strategies:"
+                              mapM_ (putStrLn . show) coreTypingStrategies
+                        
                         return ( coreTypingStrategies, [ customStrategy (show coreTypingStrategies) ] )

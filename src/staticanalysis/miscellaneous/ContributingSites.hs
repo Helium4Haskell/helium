@@ -57,7 +57,7 @@ areaFromTypeVariable i =
       areas2 <- mapM areaFromTypeVariable (concat childrenList)
       return (plus (areas1 ++ areas2))
         
-areaFromEdge :: HasTypeGraph m ConstraintInfo => EdgeInfo ConstraintInfo -> m Area
+areaFromEdge :: HasTypeGraph m ConstraintInfo => PathStep ConstraintInfo -> m Area
 areaFromEdge edgeInfo =
    case edgeInfo of
       Initial _ info -> 

@@ -17,12 +17,11 @@ import PPrint
 qualifiedTypesToAlignedDocs :: [QType] -> [PPrint.Doc]
 qualifiedTypesToAlignedDocs qtps = 
    let (contexts, types) = unzip (map split qtps)
-       docContexts = map text . sameLength . map showQualifiers $ contexts
-       docArrows   = map (\xs -> if null xs then text "  " else text "=>") contexts
+       docContexts = map text . sameLengthRight . map showContext $ contexts
        docTypes    = typesToAlignedDocs types
    in if null (concat contexts)
          then docTypes
-         else zipWith3 (\x y z -> x <+> y <+> z) docContexts docArrows docTypes
+         else zipWith (<>) docContexts docTypes
 
 typesToAlignedDocs :: Tps -> [PPrint.Doc]
 typesToAlignedDocs []  = []
@@ -104,6 +103,10 @@ sameLength xs =
    let n = maximum (0 : map length xs)  
        f = take n . (++repeat ' ') 
    in map f xs
+
+sameLengthRight :: [String] -> [String]
+sameLengthRight = 
+   map reverse . sameLength . map reverse
 
 appDocs :: [Doc] -> Doc
 appDocs = foldl1 (\d1 d2 -> PPrint.group $ d1 <> line <> d2)

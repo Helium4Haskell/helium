@@ -100,17 +100,17 @@ SEM Module
 
 -- declared type too general / missing type signature
 SEM Body
-  | Body   loc . (errors, warnings) = checkAnnotations True @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
+  | Body   loc . (errors, warnings) = checkAnnotations True (classEnvironment @lhs.importEnvironment) @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
            lhs . collectErrors      = @errors ++ @declarations.collectErrors
                . collectWarnings    = @warnings ++ @declarations.collectWarnings
 
 SEM MaybeDeclarations
-  | Just   loc . (errors, warnings) = checkAnnotations False @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
+  | Just   loc . (errors, warnings) = checkAnnotations False (classEnvironment @lhs.importEnvironment) @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
            lhs . collectErrors      = @errors ++ @declarations.collectErrors
                . collectWarnings    = @warnings ++ @declarations.collectWarnings 
 
 SEM Expression
-  | Let    loc . (errors, warnings) = checkAnnotations False @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
+  | Let    loc . (errors, warnings) = checkAnnotations False (classEnvironment @lhs.importEnvironment) @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
            lhs . collectErrors      = @errors ++ @expression.collectErrors
                . collectWarnings    = @warnings ++ @expression.collectWarnings
 
@@ -118,23 +118,23 @@ SEM Expression
                                           monos' = ftv (@lhs.substitution |-> @lhs.monos)
                                           tp'    = @lhs.substitution |-> @expression.beta
                                           info   = (self . attribute) @expression.infoTree
-                                      in checkNotTooGeneral True (Right info) @lhs.orderedTypeSynonyms @typeScheme scheme
+                                      in checkNotTooGeneral True (Right info) (classEnvironment @lhs.importEnvironment) @lhs.orderedTypeSynonyms @typeScheme scheme
            lhs . collectErrors      = @errors ++ @expression.collectErrors
 
                                      
 SEM Statement                  
-  | Let    loc . (errors, warnings) = checkAnnotations False @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
+  | Let    loc . (errors, warnings) = checkAnnotations False (classEnvironment @lhs.importEnvironment) @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
            lhs . collectErrors      = @errors ++ @declarations.collectErrors
                . collectWarnings    = @warnings ++ @declarations.collectWarnings
 
 SEM Qualifier                    
-  | Let    loc . (errors, warnings) = checkAnnotations False @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
+  | Let    loc . (errors, warnings) = checkAnnotations False (classEnvironment @lhs.importEnvironment) @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
            lhs . collectErrors      = @errors ++ @declarations.collectErrors
                . collectWarnings    = @warnings ++ @declarations.collectWarnings
 
 {
-checkAnnotations :: Bool -> OrderedTypeSynonyms -> FiniteMap Name TpScheme -> [(NameWithRange, TpScheme)] -> (TypeErrors, Warnings)
-checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
+checkAnnotations :: Bool -> ClassEnvironment -> OrderedTypeSynonyms -> FiniteMap Name TpScheme -> [(NameWithRange, TpScheme)] -> (TypeErrors, Warnings)
+checkAnnotations topLevel classEnv synonyms typeSignatures = foldr op ([], [])
    where   
        op (nameWR, scheme) pair@(errors, warnings) =
           case lookupFM typeSignatures (nameWithRangeToName nameWR) of
@@ -143,7 +143,7 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
                 -- is the signature not too general?
                 let -- this name has a different range!
                     nameOfSignature = head [ n | n <- keysFM typeSignatures, n == nameWithRangeToName nameWR ]      
-                    newErrors = checkNotTooGeneral False (Left nameOfSignature) synonyms signature scheme             
+                    newErrors = checkNotTooGeneral False (Left nameOfSignature) classEnv synonyms signature scheme             
                 in (newErrors ++ errors, warnings)               
                        
              Nothing 
@@ -154,10 +154,10 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
                      
              _ -> pair      
 
-checkNotTooGeneral :: Bool -> Either Name UHA_Source -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
-checkNotTooGeneral isAnnotation mySource synonyms signature scheme
-   | genericInstanceOf synonyms standardClasses signature scheme = []
-   | genericInstanceOf synonyms standardClasses (removePredicates signature) (removePredicates scheme) = 
+checkNotTooGeneral :: Bool -> Either Name UHA_Source -> ClassEnvironment -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
+checkNotTooGeneral isAnnotation mySource classEnv synonyms signature scheme
+   | genericInstanceOf synonyms classEnv signature scheme = []
+   | genericInstanceOf synonyms classEnv (removePredicates signature) (removePredicates scheme) = 
         [makeMissingConstraintTypeError mySource scheme signature]
    | otherwise = 
         [makeNotGeneralEnoughTypeError isAnnotation source scheme signature]

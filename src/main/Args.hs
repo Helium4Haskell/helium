@@ -58,6 +58,7 @@ processArgs args =
             ,   Option ""  ["no-directives" ] (NoArg DisableDirectives)    "disable type inference directives"
             ,   Option "K" ["kind-inferencing"] (NoArg KindInferencing)    "do kind inferencing"
             ,   Option ""  ["overloading"] (NoArg Overloading)             "turn overloading on (experimental)"
+            ,   Option ""  ["signature-warnings"] (NoArg SignatureWarnings)  "warn for too specific signatures"  
 
             -- available solvers for type inferencing     
             ,   Option "" ["solver-simple"     ] (NoArg SolverSimple     ) "a straightforward implementation"
@@ -121,7 +122,7 @@ data Option
     -- other type inference options
     | RightToLeft | NoSpreading
     | NoRepairHeuristics | UnifierHeuristics | Highlighting | SelectConstraintNumber Int
-    | Overloading
+    | Overloading | SignatureWarnings
     
     deriving Eq
 

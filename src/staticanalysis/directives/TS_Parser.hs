@@ -23,7 +23,7 @@ import qualified TS_ToCore
 -- Parser/Lexer
 import Lexer (Token, Lexeme)
 import ParseLibrary hiding (satisfy)
-import Parser (exp0, type_)
+import Parser (exp0, type_, atype)
 import qualified ResolveOperators (expression)
 import Text.ParserCombinators.Parsec
 -- Rest
@@ -67,7 +67,7 @@ parseTypingStrategies operatorTable filename tokens =
          return (Judgement_Judgement resolvedExpression exprType)     
 
    parseConstraint :: HParser UserStatement
-   parseConstraint = 
+   parseConstraint =
       do -- enter a new phase
          lexPHASE
          phase <- fmap read lexInt
@@ -77,15 +77,31 @@ parseTypingStrategies operatorTable filename tokens =
          lexCONSTRAINTS         
          name <- varid
          return (UserStatement_MetaVariableConstraints name)
-      <|>
-      do -- user-constraint
-         leftType  <- type_
-         lexASGASG
-         rightType <- type_
-         lexCOL
-         msgLines  <- many1 lexString
-         let message = concat (intersperse "\n" msgLines)
-         return (UserStatement_Constraint leftType rightType message)
+      <|> 
+      parseUserConstraint
+      
+   parseUserConstraint :: HParser UserStatement
+   parseUserConstraint = try pPredicate <|> pEquality
+   
+    where
+     pPredicate =
+        do -- user predicate
+           predClass <- con
+           predType <- atype
+           lexCOL
+           msgLines  <- many1 lexString
+           let message = concat (intersperse "\n" msgLines)
+           return (UserStatement_Pred predClass predType message)
+           
+     pEquality =
+        do -- user equality constraint
+           leftType  <- type_
+           lexASGASG
+           rightType <- type_
+           lexCOL
+           msgLines  <- many1 lexString
+           let message = concat (intersperse "\n" msgLines)
+           return (UserStatement_Equal leftType rightType message)
 
 special ::  GenParser (SourcePos,Lexeme) SourcePos Name
 special =  do lexCOL    ; return (nameFromString ":")

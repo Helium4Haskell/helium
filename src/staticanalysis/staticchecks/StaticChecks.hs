@@ -7921,6 +7921,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 . setTypeSynonyms      (listToFM _bodyIcollectTypeSynonyms)
                 . setOperatorTable     (listToFM _bodyIoperatorFixities)
                 . addToTypeEnvironment (listToFM _derivedFunctions)
+                . setClassEnvironment  standardClasses
                 $ emptyEnvironment
             (_bodyOcollectTypeConstructors@_) =
                 []

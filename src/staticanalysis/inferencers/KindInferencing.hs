@@ -4,6 +4,7 @@ module KindInferencing where
 import Top.Types
 import Top.Solvers.GreedySolver
 import Top.Solvers.SolveConstraints
+import Top.Constraints.TypeConstraintInfo
 import Top.States.TIState
 import TypeConstraints
 import UHA_Syntax
@@ -83,8 +84,8 @@ unexpected :: String -> KindError
 unexpected msg = 
    internalError "KindInferencing.ag" "unexpected" ("unexpected kind error: "++msg)
 
-instance SetReduction KindError 
-instance OriginalTypeScheme KindError
+instance TypeConstraintInfo KindError
+instance PolyTypeConstraintInfo Predicates KindError
 -- Alternative -------------------------------------------------
 -- semantic domain
 type T_Alternative = (BindingGroups) ->
@@ -3347,14 +3348,14 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             (_kindEnvironment@_) =
                 let f _ kind = generalizeAll ([] .=>. defaultToStar (_substitution |-> kind))
                 in mapFM f _bodyIenvironment
-            ((SolveResult (_kappaUniqueAtTheEnd@_)(_substitution@_)(_)(_kindErrors@_)(_debugString@_))) =
-                solveGreedy noOrderedTypeSynonyms _bodyIkappaUnique _bodyIconstraints
+            ((SolveResult (_kappaUniqueAtTheEnd@_)(_substitution@_)(_)(_kindErrors@_)(_debugString@_)(()))) =
+                runGreedy emptyClassEnvironment noOrderedTypeSynonyms _bodyIkappaUnique _bodyIconstraints
             (_bodyOkappaUnique@_) =
                 0
             (_lhsOdebugIO@_) =
                 putStrLn _debugString
             (_lhsOkindErrors@_) =
-                _substitution |-> _kindErrors
+                _substitution |-> (map fst _kindErrors)
             (_self@_) =
                 Module_Module _rangeIself _nameIself _exportsIself _bodyIself
             (_lhsOself@_) =

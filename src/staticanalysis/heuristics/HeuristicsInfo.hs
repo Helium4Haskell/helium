@@ -55,15 +55,15 @@ instance MaybeLiteral ConstraintInfo where
    maybeLiteral cinfo = 
       let literalType x = 
              case x of 
-	        Literal_Int    _ _ -> "Int"
-		Literal_Char   _ _ -> "Char"
-		Literal_String _ _ -> "String"
-		Literal_Float  _ _ -> "Float"
+                Literal_Int    _ _ -> "Int"
+                Literal_Char   _ _ -> "Char"
+                Literal_String _ _ -> "String"
+                Literal_Float  _ _ -> "Float"
       in case (self . attribute . localInfo) cinfo of
             UHA_Expr (Expression_Literal _ literal ) -> Just (literalType literal)
             UHA_Pat  (Pattern_Literal    _ literal ) -> Just (literalType literal)
             _                                        -> Nothing
-	
+
 instance IsPattern ConstraintInfo where
    isPattern cinfo = 
       case (self . attribute . localInfo) cinfo of 
@@ -77,8 +77,8 @@ instance MaybeApplication ConstraintInfo where
    maybeApplicationEdge cinfo = 
       let list = [ (b, zip (map self infoTrees) (map fromJust tps))
                  | ApplicationEdge b infoTrees <- properties cinfo
-	         , let tps = map assignedType infoTrees
-	         , all isJust tps
+                 , let tps = map assignedType infoTrees
+                 , all isJust tps
                  ]
       in case list of 
             []      -> Nothing
@@ -88,25 +88,25 @@ instance MaybeUnaryMinus ConstraintInfo where
    maybeUnaryMinus cinfo = 
       case (self . attribute . localInfo) cinfo of
          UHA_Expr (Expression_InfixApplication _
-		      (MaybeExpression_Just _)
-		      (Expression_Variable _ name)
-		      (MaybeExpression_Just (Expression_Literal _ literal)))
-            | show name == "-"
-	         -> case literal of
-		       Literal_Int _ s -> Just (Left (read s))
-		       _               -> Nothing
-            | show name == "-."
-	         -> case literal of
-		       Literal_Float _ s -> Just (Right (read s))
-		       _                 -> Nothing
-	 _  -> Nothing
+              (MaybeExpression_Just _)
+              (Expression_Variable _ name)
+              (MaybeExpression_Just (Expression_Literal _ literal)))
+            | show name == "-" ->
+                 case literal of
+                    Literal_Int _ s -> Just (Left (read s))
+                    _               -> Nothing
+            | show name == "-." ->
+                 case literal of
+                    Literal_Float _ s -> Just (Right (read s))
+                    _                 -> Nothing
+         _  -> Nothing
    
 instance MaybeNegation ConstraintInfo where
    maybeNegation cinfo = 
       case (self . attribute . localInfo) cinfo of
          UHA_Expr (Expression_Negate      _ _) -> Just True
          UHA_Expr (Expression_NegateFloat _ _) -> Just False
-         _                                     -> Nothing	
+         _                                     -> Nothing
 
 instance IsExprVariable ConstraintInfo where
    isExprVariable cinfo =
@@ -114,9 +114,8 @@ instance IsExprVariable ConstraintInfo where
       
    isEmptyInfixApplication cinfo =
       case (self . attribute . localInfo) cinfo of
-         UHA_Expr (Expression_InfixApplication _ MaybeExpression_Nothing _ MaybeExpression_Nothing)
-	    -> True
-	 _  -> False
+         UHA_Expr (Expression_InfixApplication _ MaybeExpression_Nothing _ MaybeExpression_Nothing) -> True
+         _  -> False
 
 instance IsFunctionBinding ConstraintInfo where
    isExplicitlyTyped cinfo = 
@@ -143,14 +142,14 @@ instance IsUnifier ConstraintInfo where
    isUnifier cinfo = 
       case [ (u, t) | Unifier u t <- properties cinfo ] of
          []  -> Nothing
-	 t:_ -> Just t
+         t:_ -> Just t
 
 makeUnifier :: Name -> String -> FiniteMap Name Tp -> InfoTree -> Property
 makeUnifier name location environment infoTree = 
    let unifier = maybe (-1) (head . ftv) (lookupFM environment name)
        tuple   = ("variable of "++location, attribute (findVariableInPat name infoTree), "variable")
    in Unifier unifier tuple
-	 
+ 
 specialApplicationTypeError :: (Bool,Bool) -> Int -> OneLineTree -> (Tp,Tp) -> Range -> ConstraintInfo -> ConstraintInfo
 specialApplicationTypeError (isInfixApplication,isPatternApplication) argumentNumber termOneLiner (t1, t2) range cinfo =
    let typeError = TypeError [range] [oneLiner] table []
@@ -159,21 +158,21 @@ specialApplicationTypeError (isInfixApplication,isPatternApplication) argumentNu
                    , (description2    , MessageOneLineTree (oneLinerSource source2))
                    , ("type"          , MessageType functionType)
                    , (description3    , MessageOneLineTree termOneLiner)
-	           , ("type"          , MessageType (toTpScheme t1))
-	           , ("does not match", MessageType (toTpScheme t2))
-	           ]
+                   , ("type"          , MessageType (toTpScheme t1))
+                   , ("does not match", MessageType (toTpScheme t2))
+                   ]
        (description1, source1, source2) =
           case convertSources (sources cinfo) of
-	     [(d1,s1), (_, s2)] -> (d1, s1, s2)
-	     _ -> internalError "ConstraintInfo" "specialApplicationTypeError" "expected two elements in list"
+             [(d1,s1), (_, s2)] -> (d1, s1, s2)
+             _ -> internalError "ConstraintInfo" "specialApplicationTypeError" "expected two elements in list"
        description2 
           | isPatternApplication   = "constructor"
-	  | not isInfixApplication = "function"
+          | not isInfixApplication = "function"
           | otherwise =  
-	       case show (MessageOneLineTree (oneLinerSource source2)) of
-	          c:_ | isLower c -> "function"
-		      | isUpper c -> "constructor"
-	          _               -> "operator"
+               case show (MessageOneLineTree (oneLinerSource source2)) of
+                  c:_ | isLower c -> "function"
+                      | isUpper c -> "constructor"
+                  _               -> "operator"
        functionType = toTpScheme (fst (typepair cinfo))
        description3
           | isInfixApplication = if argumentNumber == 0 then "left operand" else "right operand"
@@ -188,16 +187,16 @@ specialUnifierTypeError (t1, t2) (info1, info2) =
        table     = [ (description, maybeAddLocation source)
                    , (descr1     , source1)
                    , ("type"     , MessageType (toTpScheme t1))
-		   , (descr2     , source2)
-	           , ("type"     , MessageType (toTpScheme t2))
-		   ]
+                   , (descr2     , source2)
+                   , ("type"     , MessageType (toTpScheme t2))
+                   ]
        description = descriptionOfSource source
        (loc1, localInfo, descr1) = snd (fromJust (isUnifier info1))
        (_   ,_         , descr2) = snd (fromJust (isUnifier info2))
        source = self localInfo
        (source1, source2) = 
           let f (src, msrc) = maybeAddLocation (maybe src id msrc)
-	  in (f (sources info1), f (sources info2))
+          in (f (sources info1), f (sources info2))
        hints = [] -- [("because", MessageString "these two types cannot be unified")]
    in setTypeError typeError (setTypePair (t1,t2 ) info1)
 
@@ -214,7 +213,7 @@ findVariableInPat name tree =
       [] -> tree
       cs -> let p x = case self (attribute x) of
                          UHA_Pat pat -> hasVariable name pat
-			 _ -> False
+                         _ -> False
             in case filter p cs of
                   [] -> tree
                   child:_ -> findVariableInPat name child
@@ -235,15 +234,15 @@ maybeAddLocation :: UHA_Source -> MessageBlock
 maybeAddLocation src
    | match = 
         MessageCompose 
-	   [ MessageOneLineTree (oneLinerSource src)
-	   , MessageString " at "
-	   , MessageRange (rangeOfSource src)
+           [ MessageOneLineTree (oneLinerSource src)
+           , MessageString " at "
+           , MessageRange (rangeOfSource src)
            ]
    | otherwise =  
         MessageOneLineTree (oneLinerSource src)
-	
+
  where match =
           case src of
-   	     UHA_Expr (Expression_Variable _ _) -> True
+             UHA_Expr (Expression_Variable _ _) -> True
              UHA_Pat  (Pattern_Variable _ _)    -> True
-	     _ -> False
+             _ -> False

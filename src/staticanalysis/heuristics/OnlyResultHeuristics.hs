@@ -31,11 +31,11 @@ applicationResult :: (HasTwoTypes info, MaybeApplication info) => Heuristic info
 applicationResult = 
    Heuristic (edgeFilter "Only the result of an application edge" f) where
    
-  f (edge, _, info) = 
+  f triple@(edge, _, info) = 
    case maybeNumberOfArguments info of
       Nothing -> return True
       Just nrArgs ->
-       doWithoutEdge (edge,info) $
+       doWithoutEdge triple $
 
           do synonyms <- getTypeSynonyms                 
              (maybeFunctionType, maybeExpectedType) <- getSubstitutedTypes info  
@@ -60,10 +60,10 @@ negationResult :: (HasTwoTypes info, MaybeNegation info) => Heuristic info
 negationResult = 
    Heuristic (edgeFilter "Only the result of a negation edge" f) where
   
-  f (edge, _, info) =
+  f triple@(edge, _, info) =
    case maybeNegation info of
       Nothing -> return True
-      Just isIntNegation -> doWithoutEdge (edge,info) $  
+      Just isIntNegation -> doWithoutEdge triple $  
             do synonyms <- getTypeSynonyms
                (_, mtp) <- getSubstitutedTypes info
                case mtp of                   

@@ -118,13 +118,19 @@ STATICANALYSIS = \
         $(TOPDIR)/Types.hs \
         $(TOPDIR)/../Graph.hs \
         $(TOPDIR)/Constraints/Constraints.hs \
-        $(TOPDIR)/Constraints/EqualityConstraint.hs \
-        $(TOPDIR)/Constraints/InstanceConstraint.hs \
-        $(TOPDIR)/Constraints/PredicateConstraint.hs \
-        $(TOPDIR)/States/BasicMonad.hs \
+        $(TOPDIR)/Constraints/ExtraConstraints.hs \
+        $(TOPDIR)/Constraints/TypeConstraintInfo.hs \
+        $(TOPDIR)/Constraints/Equality.hs \
+        $(TOPDIR)/Constraints/Polymorphism.hs \
+        $(TOPDIR)/States/States.hs \
         $(TOPDIR)/States/BasicState.hs \
         $(TOPDIR)/States/SubstState.hs \
         $(TOPDIR)/States/TIState.hs \
+        $(TOPDIR)/States/QualifierState.hs \
+        $(TOPDIR)/Qualifiers/Qualifiers.hs \
+        $(TOPDIR)/Qualifiers/QualifierMap.hs \
+        $(TOPDIR)/Qualifiers/TypeClasses.hs \
+        $(TOPDIR)/Solvers/BasicMonad.hs \
         $(TOPDIR)/Solvers/GreedySolver.hs \
         $(TOPDIR)/Solvers/GreedySubst.hs \
         $(TOPDIR)/Solvers/SimpleSolver.hs \

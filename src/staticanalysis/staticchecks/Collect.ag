@@ -23,7 +23,8 @@ SEM Module
                                         . setTypeConstructors  (listToFM @body.collectTypeConstructors)
                                         . setTypeSynonyms      (listToFM @body.collectTypeSynonyms)          
                                         . setOperatorTable     (listToFM @body.operatorFixities)
-					. addToTypeEnvironment (listToFM @derivedFunctions)
+                                        . addToTypeEnvironment (listToFM @derivedFunctions)
+                                        . setClassEnvironment  standardClasses
                                         $ emptyEnvironment 
                                         -- the type environment will be added after type inferencing.
                                         

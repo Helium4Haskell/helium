@@ -27,14 +27,15 @@ data Warning  = NoTypeDef Name TpScheme Bool
               | Shadow Name Name
               | Unused Entity Name
               | SimilarFunctionBindings Name {- without typesignature -} Name {- with type signature -}
-	      | SuspiciousTypeVariable Name {- the type variable -} Name {- the type constant -}
-	      | ReduceContext Range Predicates Predicates
+              | SuspiciousTypeVariable Name {- the type variable -} Name {- the type constant -}
+              | ReduceContext Range Predicates Predicates
               | MissingPatterns Range (Maybe Name) Tp [[Pattern]] String String
               | UnreachablePatternCase Range Pattern
               | UnreachablePatternLHS  LeftHandSide
               | UnreachableGuard Range Expression
               | FallThrough Range
-
+              | SignatureTooSpecific Name TpScheme TpScheme 
+              
 instance HasMessage Warning where
    getMessage x = let (oneliner, hints) = showWarning x
                       firstLine = MessageOneLiner (MessageCompose [MessageString "Warning: ", oneliner])
@@ -53,6 +54,7 @@ instance HasMessage Warning where
       UnreachablePatternLHS (LeftHandSide_Function      rng _ _  ) -> [rng]
       UnreachablePatternLHS (LeftHandSide_Infix         rng _ _ _) -> [rng]
       UnreachablePatternLHS (LeftHandSide_Parenthesized rng _ _  ) -> [rng]
+      SignatureTooSpecific name _ _ -> [getNameRange name]
       _                             -> internalError "Messages.hs" 
                                                      "instance IsMessage Warning" 
                                                      "unknown type of Warning"
@@ -87,9 +89,9 @@ showWarning warning = case warning of
       )
 
    ReduceContext range predicates reduced ->
-      ( MessageString ( "The context " ++ show (showQualifiers predicates) ++
+      ( MessageString ( "The context " ++ show (show predicates) ++
                         " has superfluous predicates. You may change it into " ++
-			show (showQualifiers reduced) ++ ".")
+			show (show reduced) ++ ".")
       , []
       )
 
@@ -130,6 +132,18 @@ showWarning warning = case warning of
 
    FallThrough _ -> 
       ( MessageString "Possible fallthrough"
+      , []
+      )
+
+   SignatureTooSpecific name signature scheme -> 
+      ( MessageCompose 
+           [ MessageString (
+                "Declared type signature for "++show (show name)++" could be more general\n"++
+                "   declared type : ")
+           , MessageType signature
+           , MessageString ("\n"++"   inferred type : ")
+           , MessageType scheme
+           ]
       , []
       )
 

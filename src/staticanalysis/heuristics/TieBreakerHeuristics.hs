@@ -44,8 +44,8 @@ isTopDownEdge =
 -- no "unification-around-a-corner-type-error"
 typeVariableInvolved :: HasTwoTypes info => Heuristic info
 typeVariableInvolved = 
-   let f (edgeID, cNR, info) = 
-          doWithoutEdge (edgeID, info) $
+   let f triple@(edgeID, cNR, info) = 
+          doWithoutEdge triple $
 	     do typeTuple <- getSubstitutedTypes info
 	        synonyms  <- getTypeSynonyms
 	        case typeTuple of

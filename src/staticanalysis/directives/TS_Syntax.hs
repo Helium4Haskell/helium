@@ -16,9 +16,10 @@ type TypingStrategies = [(TypingStrategy)]
 data TypingStrategy = TypingStrategy_Siblings (Names)
                     | TypingStrategy_TypingStrategy (TypeRule) (UserStatements)
 -- UserStatement -----------------------------------------------
-data UserStatement = UserStatement_Constraint (Type) (Type) (String)
+data UserStatement = UserStatement_Equal (Type) (Type) (String)
                    | UserStatement_MetaVariableConstraints (Name)
                    | UserStatement_Phase (Int)
+                   | UserStatement_Pred (Name) (Type) (String)
 -- UserStatements ----------------------------------------------
 type UserStatements = [(UserStatement)]
 

@@ -33,6 +33,7 @@ imports {
 import Top.Types
 import Top.Solvers.GreedySolver
 import Top.Solvers.SolveConstraints
+import Top.Constraints.TypeConstraintInfo
 import Top.States.TIState
 import TypeConstraints
 import UHA_Syntax
@@ -53,11 +54,11 @@ import BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, com
 -- Semantic functions
 
 SEM Module
-  | Module   lhs  . kindErrors      = @substitution |-> @kindErrors
+  | Module   lhs  . kindErrors      = @substitution |-> (map fst @kindErrors)
                   . debugIO         = putStrLn @debugString
              body . kappaUnique     = 0
-             loc  . (SolveResult kappaUniqueAtTheEnd substitution _ kindErrors debugString) = 
-                       solveGreedy noOrderedTypeSynonyms @body.kappaUnique @body.constraints
+             loc  . (SolveResult kappaUniqueAtTheEnd substitution _ kindErrors debugString ()) = 
+                       runGreedy emptyClassEnvironment noOrderedTypeSynonyms @body.kappaUnique @body.constraints
                   . kindEnvironment = let f _ kind = generalizeAll ([] .=>. defaultToStar (@substitution |-> kind))
                                       in mapFM f @body.environment                     
                                         
@@ -263,6 +264,6 @@ unexpected :: String -> KindError
 unexpected msg = 
    internalError "KindInferencing.ag" "unexpected" ("unexpected kind error: "++msg)
 
-instance SetReduction KindError 
-instance OriginalTypeScheme KindError
+instance TypeConstraintInfo KindError
+instance PolyTypeConstraintInfo Predicates KindError
 }

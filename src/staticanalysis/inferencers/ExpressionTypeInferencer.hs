@@ -10,8 +10,9 @@
 
 module ExpressionTypeInferencer (expressionTypeInferencer) where
 
-import TypeInferencing (sem_Module)
+import TypeInferencing (sem_Module, sem_Body)
 import ImportEnvironment
+import BindingGroupAnalysis (Assumptions)
 import TypeErrors
 import Top.Types
 import Data.FiniteMap
@@ -20,35 +21,21 @@ import UHA_Range (noRange)
 import Utils (internalError)
 import UHA_Syntax
 
-expressionTypeInferencer :: ImportEnvironment -> Expression -> (TpScheme, TypeErrors)
+expressionTypeInferencer :: ImportEnvironment -> Expression -> (TpScheme, Assumptions, TypeErrors)
 expressionTypeInferencer importEnvironment expression = 
    let 
        functionName = nameFromString "_"
 
-       module_  = Module_Module 
-                     noRange
-                     MaybeName_Nothing 
-                     MaybeExports_Nothing
-                     (Body_Body
-                         noRange
-                         []
-                         [ Declaration_PatternBinding
-                              noRange
-                              (Pattern_Variable
-                                  noRange
-                                  functionName)
-                              (RightHandSide_Expression 
-                                  noRange 
-                                  expression
-                                  MaybeDeclarations_Nothing)])
+       module_ = Module_Module noRange MaybeName_Nothing MaybeExports_Nothing body_
+       body_   = Body_Body noRange [] [decl_] 
+       decl_   = Declaration_PatternBinding noRange pat_ rhs_
+       pat_    = Pattern_Variable noRange functionName
+       rhs_    = RightHandSide_Expression noRange expression MaybeDeclarations_Nothing
                          
-       (_, _, _, typeEnvironment, errors, _) 
-                = sem_Module 
-                     module_
-                     importEnvironment                                        
-                     []
+       (assumptions, _, _, _, typeEnvironment, errors, _) =
+          sem_Module module_ importEnvironment []
                      
        inferredType = let err = internalError "ExpressionTypeInferencer.hs" "expressionTypeInferencer" "cannot find inferred type"
                       in maybe err id (lookupFM typeEnvironment functionName)
                                 
-   in (inferredType, errors)
+   in (inferredType, assumptions, errors)

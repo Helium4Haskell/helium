@@ -29,10 +29,24 @@ instance Show Core_Judgement where
   show (Judgement s tp) = "(Judgement "++show s++" ("++showTp tp++"))"
  
 instance Show Core_UserStatement where
-  show (Constraint t1 t2 s)        = "Constraint ("++showTp t1++") ("++showTp t2++") "++show s
+  show (Equal t1 t2 s)             = "Equal ("++showTp t1++") ("++showTp t2++") "++show s
+  show (Pred s tp msg)             = "Pred "++show s++" ("++showTp tp++") "++show msg
   show (MetaVariableConstraints s) = "MetaVariableConstraints "++show s
   show (CorePhase i)               = "CorePhase "++show i
-   
+
+instance Show Core_TypingStrategy where
+   show (Siblings fs)                   = "(Siblings "++show fs++")"
+   show (TypingStrategy env rule stats) =
+      let showEnv = "[" ++ concat (intersperse "," [ "("++show f++","++showTp tp++")" | (f,tp) <- env]) ++ "]" 
+      in "(TypingStrategy "++showEnv++" ("++show rule++") ("++show stats++"))"
+   {-
+   | Siblings
+         functions  : {[String]}
+   | TypingStrategy
+        typeEnv     : {[(String, Tp)]}   
+        typerule    : Core_TypeRule
+        statements  : Core_UserStatements -}
+        
 showTp :: Tp -> String
 showTp (TVar i)   = "TVar "++show i
 showTp (TCon c)   = "TCon "++show c
@@ -47,12 +61,13 @@ data Core_TypeRule = TypeRule (Core_Judgements) (Core_Judgement)
                    deriving ( Read,Show)
 -- Core_TypingStrategy -----------------------------------------
 data Core_TypingStrategy = Siblings ([String])
-                         | TypingStrategy (Core_TypeRule) (Core_UserStatements)
-                         deriving ( Read,Show)
+                         | TypingStrategy ([(String, Tp)]) (Core_TypeRule) (Core_UserStatements)
+                         deriving ( Read)
 -- Core_UserStatement ------------------------------------------
-data Core_UserStatement = Constraint (Tp) (Tp) (String)
-                        | CorePhase (Int)
+data Core_UserStatement = CorePhase (Int)
+                        | Equal (Tp) (Tp) (String)
                         | MetaVariableConstraints (String)
+                        | Pred (String) (Tp) (String)
                         deriving ( Read)
 -- Core_UserStatements -----------------------------------------
 type Core_UserStatements = [(Core_UserStatement)]

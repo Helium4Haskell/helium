@@ -77,7 +77,8 @@ SEM Expression
                                                                   (getOrderedTypeSynonyms @lhs.importEnvironment) 
                                                                   @usedAsType
                                                                   scheme
-                   . (newDEnv, overloadingErrors) = resolveOverloading @name.self 
+                   . (newDEnv, overloadingErrors) = resolveOverloading (classEnvironment @lhs.importEnvironment)
+                                                                       @name.self 
                                                                        @lhs.availablePredicates 
 								       @requiredDictionaries 
 								       @unresolvedMessage
@@ -96,9 +97,9 @@ SEM Expression
                                               @usedAsType
                                               @negateTypeScheme
                  . usedAsType      = @lhs.substitution |-> (@expression.beta .->. @beta)
-		 . unresolvedMessage = makeUnresolvedOverloadingError (nameToUHA_Expr (nameFromString "-")) "negation"
-		                          (@negateTypeScheme, toTpScheme @usedAsType)
-                 . (newDEnv, overloadingErrors) = resolveOverloading @localName 
+                 . unresolvedMessage = makeUnresolvedOverloadingError (nameToUHA_Expr (nameFromString "-")) "negation"
+                                          (@negateTypeScheme, toTpScheme @usedAsType)
+                 . (newDEnv, overloadingErrors) = resolveOverloading (classEnvironment @lhs.importEnvironment)  @localName 
 		                                                     @lhs.availablePredicates 
 								     @requiredDictionaries 
 								     @unresolvedMessage
@@ -115,10 +116,10 @@ getRequiredDictionaries synonyms useType defType =
          Right (_, sub) -> 
             expandPredicates synonyms (sub |-> instantiatedPreds)
             
-resolveOverloading :: Name -> Predicates -> Predicates -> TypeError -> DictionaryEnvironment 
+resolveOverloading :: ClassEnvironment -> Name -> Predicates -> Predicates -> TypeError -> DictionaryEnvironment 
                          -> (DictionaryEnvironment, [TypeError])
-resolveOverloading name availablePredicates predicates message dEnv = 
-   let maybeTrees = map (makeDictionaryTree availablePredicates) predicates
+resolveOverloading classEnv name availablePredicates predicates message dEnv = 
+   let maybeTrees = map (makeDictionaryTree classEnv availablePredicates) predicates
    in if all isJust maybeTrees
         then (addForVariable name (map fromJust maybeTrees) dEnv, [])
         else (dEnv, [message])

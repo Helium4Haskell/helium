@@ -46,7 +46,7 @@ unifierVertex =
 		 -- sort this list by the ordering in which the type variables were assigned
 		 -- to prevent undeterministic type error messages.
 		 unifiers = sortBy (\x y -> fst x `compare` fst y) unifiersUnsorted
-             doWithoutEdges [ (e,i) | (e,_,i) <- neighbours ] $ 
+             doWithoutEdges neighbours $ 
 	     
 	        do synonyms      <- getTypeSynonyms
 		   unifierMTypes <- mapM safeApplySubst (map (TVar . fst) unifiers) 

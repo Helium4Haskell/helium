@@ -25,6 +25,9 @@ import qualified UHA_Pretty as PP
 
 import UHA_Syntax
 
+import ExpressionTypeInferencer (expressionTypeInferencer)
+import Data.FiniteMap
+
 analyseTypingStrategies :: TypingStrategies -> ImportEnvironment -> (TS_Errors, TS_Warnings)
 analyseTypingStrategies list ie = 
    let (as, bs) = unzip (map (\ts -> analyseTypingStrategy ts ie) list)
@@ -38,7 +41,7 @@ findDuplicates :: Ord a => [a] -> [[a]]
 findDuplicates = filter (not . isSingleton) . group . sort
    where isSingleton [_] = True
          isSingleton _   = False        
-     
+
 standardConstraintInfo :: (Tp, Tp) -> ConstraintInfo
 standardConstraintInfo tppair =
    CInfo { location   = "Typing Strategy"
@@ -1791,10 +1794,10 @@ sem_Judgement_Judgement (expression_) (type_) =
                 (expression_ )
             ( _typeIself,_typeItypevariables) =
                 (type_ )
-            (_lhsOtheExpression@_) =
-                _expressionIself
             (_lhsOconclusionType@_) =
                 makeTpFromType _lhsInameMap _typeIself
+            (_lhsOtheExpression@_) =
+                _expressionIself
             (_lhsOallVariables@_) =
                 _expressionIallVariables
             (_lhsOtypevariables@_) =
@@ -3569,45 +3572,49 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
             _statementsIself :: (UserStatements)
             _statementsItypevariables :: (Names)
             _statementsIuserConstraints :: (TypeConstraints ConstraintInfo)
+            _statementsIuserPredicates :: (Predicates)
             _statementsOattributeTable :: ([((String, Maybe String), MessageBlock)])
             _statementsOmetaVariableConstraintNames :: (Names)
             _statementsOnameMap :: ([(Name,Tp)])
             _statementsOstandardConstraintInfo :: (((Tp, Tp) -> ConstraintInfo))
             _statementsOuserConstraints :: (TypeConstraints ConstraintInfo)
+            _statementsOuserPredicates :: (Predicates)
             ( _typeruleIconclusionAllVariables,_typeruleIconclusionExpression,_typeruleIconclusionType,_typeruleIself,_typeruleIsimpleJudgements,_typeruleItypevariables) =
                 (typerule_ (_typeruleOnameMap) (_typeruleOsimpleJudgements))
-            ( _statementsImetaVariableConstraintNames,_statementsIself,_statementsItypevariables,_statementsIuserConstraints) =
-                (statements_ (_statementsOattributeTable) (_statementsOmetaVariableConstraintNames) (_statementsOnameMap) (_statementsOstandardConstraintInfo) (_statementsOuserConstraints))
+            ( _statementsImetaVariableConstraintNames,_statementsIself,_statementsItypevariables,_statementsIuserConstraints,_statementsIuserPredicates) =
+                (statements_ (_statementsOattributeTable) (_statementsOmetaVariableConstraintNames) (_statementsOnameMap) (_statementsOstandardConstraintInfo) (_statementsOuserConstraints) (_statementsOuserPredicates))
             (_soundnessErrors@_) =
                 if not (null _staticErrors)
                   then []
-                  else let premiseTypes = reverse (map snd _typeruleIsimpleJudgements)
-                           constraintsTpScheme = makeScheme [] [] (_substitution |-> tupleType (premiseTypes ++ [_typeruleIconclusionType]))
-                           extendedEnvironment = let op (s, i) = addType (nameFromString s) (toTpScheme (TVar i))
-                                                 in foldr op _lhsIimportEnvironment (zip _allMetaVariables [0..])
-                           extendedExpression  = let premiseVars = reverse (map (Expression_Variable noRange . nameFromString . fst) _typeruleIsimpleJudgements)
-                                                 in Expression_Tuple noRange (premiseVars ++ [_typeruleIconclusionExpression])
-                           (monoTpScheme,inferredTypeErrors) = expressionTypeInferencer
-                                                                  extendedEnvironment
-                                                                  extendedExpression
-                           inferredTpScheme = generalizeAll (snd $ instantiate 123456789 monoTpScheme)
+                  else let orderedMetaList =
+                              reverse _typeruleIsimpleJudgements
+                           constraintsTpScheme =
+                              let premiseTypes = map snd orderedMetaList
+                                  skeletonType = foldr (.->.) _typeruleIconclusionType premiseTypes
+                              in generalizeAll (_substitution |-> (_statementsIuserPredicates .=>. skeletonType))
+                           (inferredTpScheme, _, inferredTypeErrors) =
+                              let expr = Expression_Lambda noRange pats _typeruleIconclusionExpression
+                                  pats = map (Pattern_Variable noRange . nameFromString . fst) orderedMetaList
+                              in expressionTypeInferencer _lhsIimportEnvironment expr
                            synonyms = getOrderedTypeSynonyms _lhsIimportEnvironment
+                           classEnv = classEnvironment _lhsIimportEnvironment
                        in if not (null inferredTypeErrors)
                             then map (TypeErrorTS _name) inferredTypeErrors
-                            else if genericInstanceOf synonyms standardClasses inferredTpScheme constraintsTpScheme
+                            else if genericInstanceOf synonyms classEnv inferredTpScheme constraintsTpScheme
                                         &&
-                                    genericInstanceOf synonyms standardClasses constraintsTpScheme inferredTpScheme
+                                    genericInstanceOf synonyms classEnv constraintsTpScheme inferredTpScheme
                                       then []
                                       else [ Soundness _name inferredTpScheme constraintsTpScheme ]
-            ((SolveResult (_)(_substitution@_)(_)(_solveErrors@_)(_))) =
-                solveGreedy
+            ((SolveResult (_)(_substitution@_)(_)(_solveErrors@_)(_)(()))) =
+                runGreedy
+                   (classEnvironment _lhsIimportEnvironment)
                    (getOrderedTypeSynonyms _lhsIimportEnvironment)
                    (length _uniqueTypevariables)
                    (reverse _statementsIuserConstraints)
             (_warnings@_) =
                 []
             (_staticErrors@_) =
-                [ InconsistentConstraint _name x | x <- _solveErrors ] ++
+                [ InconsistentConstraint _name x | (x, label) <- _solveErrors ] ++
                 [ UndefinedTS _name name entity
                 | (name, entity) <- _typeruleIconclusionAllVariables
                 , show name `notElem` (_allMetaVariables ++ map show _allImportedVariables)
@@ -3637,6 +3644,8 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
                 keysFM (valueConstructors _lhsIimportEnvironment)
             (_uniqueTypevariables@_) =
                 nub (_typeruleItypevariables ++ _statementsItypevariables)
+            (_statementsOuserPredicates@_) =
+                []
             (_statementsOuserConstraints@_) =
                 []
             (_typeruleOsimpleJudgements@_) =
@@ -3675,30 +3684,35 @@ type T_UserStatement = ([((String, Maybe String), MessageBlock)]) ->
                        ([(Name,Tp)]) ->
                        (((Tp, Tp) -> ConstraintInfo)) ->
                        (TypeConstraints ConstraintInfo) ->
-                       ( (Names),(UserStatement),(Names),(TypeConstraints ConstraintInfo))
+                       (Predicates) ->
+                       ( (Names),(UserStatement),(Names),(TypeConstraints ConstraintInfo),(Predicates))
 -- cata
 sem_UserStatement :: (UserStatement) ->
                      (T_UserStatement)
-sem_UserStatement ((UserStatement_Constraint (_leftType) (_rightType) (_message))) =
-    (sem_UserStatement_Constraint ((sem_Type (_leftType))) ((sem_Type (_rightType))) (_message))
+sem_UserStatement ((UserStatement_Equal (_leftType) (_rightType) (_message))) =
+    (sem_UserStatement_Equal ((sem_Type (_leftType))) ((sem_Type (_rightType))) (_message))
 sem_UserStatement ((UserStatement_MetaVariableConstraints (_name))) =
     (sem_UserStatement_MetaVariableConstraints ((sem_Name (_name))))
 sem_UserStatement ((UserStatement_Phase (_phase))) =
     (sem_UserStatement_Phase (_phase))
-sem_UserStatement_Constraint :: (T_Type) ->
-                                (T_Type) ->
-                                (String) ->
-                                (T_UserStatement)
-sem_UserStatement_Constraint (leftType_) (rightType_) (message_) =
+sem_UserStatement ((UserStatement_Pred (_predClass) (_predType) (_message))) =
+    (sem_UserStatement_Pred ((sem_Name (_predClass))) ((sem_Type (_predType))) (_message))
+sem_UserStatement_Equal :: (T_Type) ->
+                           (T_Type) ->
+                           (String) ->
+                           (T_UserStatement)
+sem_UserStatement_Equal (leftType_) (rightType_) (message_) =
     \ _lhsIattributeTable
       _lhsImetaVariableConstraintNames
       _lhsInameMap
       _lhsIstandardConstraintInfo
-      _lhsIuserConstraints ->
+      _lhsIuserConstraints
+      _lhsIuserPredicates ->
         let _lhsOmetaVariableConstraintNames :: (Names)
             _lhsOself :: (UserStatement)
             _lhsOtypevariables :: (Names)
             _lhsOuserConstraints :: (TypeConstraints ConstraintInfo)
+            _lhsOuserPredicates :: (Predicates)
             _leftTypeIself :: (Type)
             _leftTypeItypevariables :: (Names)
             _rightTypeIself :: (Type)
@@ -3714,12 +3728,14 @@ sem_UserStatement_Constraint (leftType_) (rightType_) (message_) =
             (_lhsOtypevariables@_) =
                 _leftTypeItypevariables  ++  _rightTypeItypevariables
             (_self@_) =
-                UserStatement_Constraint _leftTypeIself _rightTypeIself message_
+                UserStatement_Equal _leftTypeIself _rightTypeIself message_
             (_lhsOself@_) =
                 _self
             (_lhsOmetaVariableConstraintNames@_) =
                 _lhsImetaVariableConstraintNames
-        in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints)
+            (_lhsOuserPredicates@_) =
+                _lhsIuserPredicates
+        in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints,_lhsOuserPredicates)
 sem_UserStatement_MetaVariableConstraints :: (T_Name) ->
                                              (T_UserStatement)
 sem_UserStatement_MetaVariableConstraints (name_) =
@@ -3727,11 +3743,13 @@ sem_UserStatement_MetaVariableConstraints (name_) =
       _lhsImetaVariableConstraintNames
       _lhsInameMap
       _lhsIstandardConstraintInfo
-      _lhsIuserConstraints ->
+      _lhsIuserConstraints
+      _lhsIuserPredicates ->
         let _lhsOmetaVariableConstraintNames :: (Names)
             _lhsOself :: (UserStatement)
             _lhsOtypevariables :: (Names)
             _lhsOuserConstraints :: (TypeConstraints ConstraintInfo)
+            _lhsOuserPredicates :: (Predicates)
             _nameIself :: (Name)
             ( _nameIself) =
                 (name_ )
@@ -3745,7 +3763,9 @@ sem_UserStatement_MetaVariableConstraints (name_) =
                 _self
             (_lhsOuserConstraints@_) =
                 _lhsIuserConstraints
-        in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints)
+            (_lhsOuserPredicates@_) =
+                _lhsIuserPredicates
+        in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints,_lhsOuserPredicates)
 sem_UserStatement_Phase :: (Int) ->
                            (T_UserStatement)
 sem_UserStatement_Phase (phase_) =
@@ -3753,11 +3773,13 @@ sem_UserStatement_Phase (phase_) =
       _lhsImetaVariableConstraintNames
       _lhsInameMap
       _lhsIstandardConstraintInfo
-      _lhsIuserConstraints ->
+      _lhsIuserConstraints
+      _lhsIuserPredicates ->
         let _lhsOmetaVariableConstraintNames :: (Names)
             _lhsOself :: (UserStatement)
             _lhsOtypevariables :: (Names)
             _lhsOuserConstraints :: (TypeConstraints ConstraintInfo)
+            _lhsOuserPredicates :: (Predicates)
             (_lhsOtypevariables@_) =
                 []
             (_self@_) =
@@ -3768,7 +3790,47 @@ sem_UserStatement_Phase (phase_) =
                 _lhsImetaVariableConstraintNames
             (_lhsOuserConstraints@_) =
                 _lhsIuserConstraints
-        in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints)
+            (_lhsOuserPredicates@_) =
+                _lhsIuserPredicates
+        in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints,_lhsOuserPredicates)
+sem_UserStatement_Pred :: (T_Name) ->
+                          (T_Type) ->
+                          (String) ->
+                          (T_UserStatement)
+sem_UserStatement_Pred (predClass_) (predType_) (message_) =
+    \ _lhsIattributeTable
+      _lhsImetaVariableConstraintNames
+      _lhsInameMap
+      _lhsIstandardConstraintInfo
+      _lhsIuserConstraints
+      _lhsIuserPredicates ->
+        let _lhsOmetaVariableConstraintNames :: (Names)
+            _lhsOself :: (UserStatement)
+            _lhsOtypevariables :: (Names)
+            _lhsOuserConstraints :: (TypeConstraints ConstraintInfo)
+            _lhsOuserPredicates :: (Predicates)
+            _predClassIself :: (Name)
+            _predTypeIself :: (Type)
+            _predTypeItypevariables :: (Names)
+            ( _predClassIself) =
+                (predClass_ )
+            ( _predTypeIself,_predTypeItypevariables) =
+                (predType_ )
+            (_newPredicate@_) =
+                Predicate (show _predClassIself) (makeTpFromType _lhsInameMap _predTypeIself)
+            (_lhsOuserPredicates@_) =
+                _newPredicate : _lhsIuserPredicates
+            (_lhsOtypevariables@_) =
+                _predTypeItypevariables
+            (_self@_) =
+                UserStatement_Pred _predClassIself _predTypeIself message_
+            (_lhsOself@_) =
+                _self
+            (_lhsOmetaVariableConstraintNames@_) =
+                _lhsImetaVariableConstraintNames
+            (_lhsOuserConstraints@_) =
+                _lhsIuserConstraints
+        in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints,_lhsOuserPredicates)
 -- UserStatements ----------------------------------------------
 -- semantic domain
 type T_UserStatements = ([((String, Maybe String), MessageBlock)]) ->
@@ -3776,7 +3838,8 @@ type T_UserStatements = ([((String, Maybe String), MessageBlock)]) ->
                         ([(Name,Tp)]) ->
                         (((Tp, Tp) -> ConstraintInfo)) ->
                         (TypeConstraints ConstraintInfo) ->
-                        ( (Names),(UserStatements),(Names),(TypeConstraints ConstraintInfo))
+                        (Predicates) ->
+                        ( (Names),(UserStatements),(Names),(TypeConstraints ConstraintInfo),(Predicates))
 -- cata
 sem_UserStatements :: (UserStatements) ->
                       (T_UserStatements)
@@ -3790,33 +3853,39 @@ sem_UserStatements_Cons (hd_) (tl_) =
       _lhsImetaVariableConstraintNames
       _lhsInameMap
       _lhsIstandardConstraintInfo
-      _lhsIuserConstraints ->
+      _lhsIuserConstraints
+      _lhsIuserPredicates ->
         let _lhsOmetaVariableConstraintNames :: (Names)
             _lhsOself :: (UserStatements)
             _lhsOtypevariables :: (Names)
             _lhsOuserConstraints :: (TypeConstraints ConstraintInfo)
+            _lhsOuserPredicates :: (Predicates)
             _hdImetaVariableConstraintNames :: (Names)
             _hdIself :: (UserStatement)
             _hdItypevariables :: (Names)
             _hdIuserConstraints :: (TypeConstraints ConstraintInfo)
+            _hdIuserPredicates :: (Predicates)
             _hdOattributeTable :: ([((String, Maybe String), MessageBlock)])
             _hdOmetaVariableConstraintNames :: (Names)
             _hdOnameMap :: ([(Name,Tp)])
             _hdOstandardConstraintInfo :: (((Tp, Tp) -> ConstraintInfo))
             _hdOuserConstraints :: (TypeConstraints ConstraintInfo)
+            _hdOuserPredicates :: (Predicates)
             _tlImetaVariableConstraintNames :: (Names)
             _tlIself :: (UserStatements)
             _tlItypevariables :: (Names)
             _tlIuserConstraints :: (TypeConstraints ConstraintInfo)
+            _tlIuserPredicates :: (Predicates)
             _tlOattributeTable :: ([((String, Maybe String), MessageBlock)])
             _tlOmetaVariableConstraintNames :: (Names)
             _tlOnameMap :: ([(Name,Tp)])
             _tlOstandardConstraintInfo :: (((Tp, Tp) -> ConstraintInfo))
             _tlOuserConstraints :: (TypeConstraints ConstraintInfo)
-            ( _hdImetaVariableConstraintNames,_hdIself,_hdItypevariables,_hdIuserConstraints) =
-                (hd_ (_hdOattributeTable) (_hdOmetaVariableConstraintNames) (_hdOnameMap) (_hdOstandardConstraintInfo) (_hdOuserConstraints))
-            ( _tlImetaVariableConstraintNames,_tlIself,_tlItypevariables,_tlIuserConstraints) =
-                (tl_ (_tlOattributeTable) (_tlOmetaVariableConstraintNames) (_tlOnameMap) (_tlOstandardConstraintInfo) (_tlOuserConstraints))
+            _tlOuserPredicates :: (Predicates)
+            ( _hdImetaVariableConstraintNames,_hdIself,_hdItypevariables,_hdIuserConstraints,_hdIuserPredicates) =
+                (hd_ (_hdOattributeTable) (_hdOmetaVariableConstraintNames) (_hdOnameMap) (_hdOstandardConstraintInfo) (_hdOuserConstraints) (_hdOuserPredicates))
+            ( _tlImetaVariableConstraintNames,_tlIself,_tlItypevariables,_tlIuserConstraints,_tlIuserPredicates) =
+                (tl_ (_tlOattributeTable) (_tlOmetaVariableConstraintNames) (_tlOnameMap) (_tlOstandardConstraintInfo) (_tlOuserConstraints) (_tlOuserPredicates))
             (_lhsOtypevariables@_) =
                 _hdItypevariables  ++  _tlItypevariables
             (_self@_) =
@@ -3827,6 +3896,8 @@ sem_UserStatements_Cons (hd_) (tl_) =
                 _tlImetaVariableConstraintNames
             (_lhsOuserConstraints@_) =
                 _tlIuserConstraints
+            (_lhsOuserPredicates@_) =
+                _tlIuserPredicates
             (_hdOattributeTable@_) =
                 _lhsIattributeTable
             (_hdOmetaVariableConstraintNames@_) =
@@ -3837,6 +3908,8 @@ sem_UserStatements_Cons (hd_) (tl_) =
                 _lhsIstandardConstraintInfo
             (_hdOuserConstraints@_) =
                 _lhsIuserConstraints
+            (_hdOuserPredicates@_) =
+                _lhsIuserPredicates
             (_tlOattributeTable@_) =
                 _lhsIattributeTable
             (_tlOmetaVariableConstraintNames@_) =
@@ -3847,18 +3920,22 @@ sem_UserStatements_Cons (hd_) (tl_) =
                 _lhsIstandardConstraintInfo
             (_tlOuserConstraints@_) =
                 _hdIuserConstraints
-        in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints)
+            (_tlOuserPredicates@_) =
+                _hdIuserPredicates
+        in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints,_lhsOuserPredicates)
 sem_UserStatements_Nil :: (T_UserStatements)
 sem_UserStatements_Nil  =
     \ _lhsIattributeTable
       _lhsImetaVariableConstraintNames
       _lhsInameMap
       _lhsIstandardConstraintInfo
-      _lhsIuserConstraints ->
+      _lhsIuserConstraints
+      _lhsIuserPredicates ->
         let _lhsOmetaVariableConstraintNames :: (Names)
             _lhsOself :: (UserStatements)
             _lhsOtypevariables :: (Names)
             _lhsOuserConstraints :: (TypeConstraints ConstraintInfo)
+            _lhsOuserPredicates :: (Predicates)
             (_lhsOtypevariables@_) =
                 []
             (_self@_) =
@@ -3869,6 +3946,8 @@ sem_UserStatements_Nil  =
                 _lhsImetaVariableConstraintNames
             (_lhsOuserConstraints@_) =
                 _lhsIuserConstraints
-        in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints)
+            (_lhsOuserPredicates@_) =
+                _lhsIuserPredicates
+        in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints,_lhsOuserPredicates)
 
 

@@ -19,11 +19,13 @@ import ConstraintInfo
 import Top.Types
 import List
 import UHA_Range (noRange)
+import UHA_Utils (nameFromString)
 import Utils (internalError)
 import OneLiner
 import Messages
 import TypeErrors
 import ImportEnvironment
+import BindingGroupAnalysis (Assumptions, combine, noAssumptions)
 import OperatorTable (OperatorTable)
 import Parser (exp_)
 import Lexer (strategiesLexer)
@@ -38,18 +40,14 @@ import DoublyLinkedTree (root)
 }
 
 {
-type MetaVariableTable info = [(String, (ConstraintSet, info))]
-
-getTheType :: LocalInfo -> Tp
-getTheType = maybe (TCon "???") id . assignedType
-
-applyTypingStrategy :: Core_TypingStrategy -> (ConstraintSet, LocalInfo) -> MetaVariableTable LocalInfo -> Int -> (ConstraintSet, IO (), Int)
+applyTypingStrategy :: Core_TypingStrategy -> MetaVariableInfo -> MetaVariableTable -> Int 
+                          -> (Assumptions, ConstraintSet, IO (), Int)
 applyTypingStrategy = sem_Core_TypingStrategy
 
 matchInformation :: ImportEnvironment -> Core_TypingStrategy -> [(Expression, [String])]
 matchInformation importEnvironment typingStrategy = 
    case typingStrategy of 
-      TypingStrategy (TypeRule premises conclusion) _ -> 
+      TypingStrategy _ (TypeRule premises conclusion) _ -> 
          let Judgement exprstring _ = conclusion
              expression = expressionParser (operatorTable importEnvironment) exprstring
              metas      = [ s | Judgement s t <- premises ]
@@ -58,7 +56,7 @@ matchInformation importEnvironment typingStrategy =
       
 expressionParser :: OperatorTable -> String -> Expression
 expressionParser operatorTable string = 
-    case strategiesLexer "TS_Apply" string of 
+    case strategiesLexer "TS_Apply" string of
         Left lexErr -> intErr
         Right (tokens, _) ->
             case runHParser exp_ "TS_Apply" tokens True {- wait for EOF -} of
@@ -70,25 +68,28 @@ expressionParser operatorTable string =
 }
 
 ATTR Core_TypingStrategy 
-     [ infoTuple         : {(ConstraintSet, LocalInfo)}
-       metaVariableTable : {MetaVariableTable LocalInfo}  
+     [ infoTuple         : MetaVariableInfo
+       metaVariableTable : MetaVariableTable  
      | unique            : Int 
-     | constraintSet     : ConstraintSet
+     | assumptions       : Assumptions
+       constraintSet     : ConstraintSet
        debugIO           : {IO ()}
      ] 
           
 SEM Core_TypingStrategy 
   | Siblings     
-       lhs . constraintSet = emptyTree
+       lhs . assumptions   = noAssumptions
+           . constraintSet = emptyTree
            . debugIO       = return ()
   | TypingStrategy     
-       lhs . constraintSet = Node @allConstraintTrees
+       lhs . assumptions   = foldr combine noAssumptions (map (getAssumptions . snd) @lhs.metaVariableTable)
+           . constraintSet = Node @allConstraintTrees
            . unique        = length @normalTV + @lhs.unique
            . debugIO       = putStrLn "applying typing strategy"
        loc . substitution  = listToSubstitution (@standardSubst ++ @specialSubst)
-           . allTV         = @typerule.ftv `union` @statements.ftv
+           . allTV         = @typerule.ftv `union` @statements.ftv `union` ftv (map snd @typeEnv)
 
-{- type variables that occur exactly once in a judgement should not introduce a new constraint -}           
+{- judgement with only a type variable should not introduce a new constraint -}           
            . specialTV     = concat . exactlyOnce . map ftv . filter isTVar . map snd $ @typerule.judgements
            . normalTV      = @allTV \\ @specialTV
            
@@ -96,8 +97,8 @@ SEM Core_TypingStrategy
            . specialSubst  = let conclusionVar = case snd (last @typerule.judgements) of
                                                     TVar i -> Just i
                                                     _      -> Nothing
-                                 find i | Just i == conclusionVar = [ (i, getTheType (snd @lhs.infoTuple)) ]
-                                        | otherwise               = [ (i, getTheType (snd infoTuple))
+                                 find i | Just i == conclusionVar = [ (i, getType @lhs.infoTuple) ]
+                                        | otherwise               = [ (i, getType infoTuple)
                                                                     | (s1, TVar j) <- @typerule.judgements
                                                                     , i == j
                                                                     , (s2,infoTuple) <- @lhs.metaVariableTable
@@ -106,50 +107,78 @@ SEM Core_TypingStrategy
                              in concatMap find @specialTV
                              
 
-ATTR Core_TypeRule
-     Core_Judgements Core_Judgement
-     Core_UserStatements Core_UserStatement 
-     [ substitution      : FiniteMapSubstitution 
-       infoTuple         : {(ConstraintSet, LocalInfo)}
-       metaVariableTable : {MetaVariableTable LocalInfo} 
-     | 
-     | ftv USE {++} {[]} : {[Int]} 
-     ]
+ATTR Core_TypeRule Core_Judgements Core_Judgement Core_UserStatements Core_UserStatement 
+   [ substitution      : FiniteMapSubstitution 
+     infoTuple         : MetaVariableInfo
+     metaVariableTable : MetaVariableTable 
+   | 
+   | ftv USE {`union`} {[]} : {[Int]} 
+   ]
 
 SEM Core_UserStatement 
-  | Constraint  lhs . ftv = ftv [@leftType, @rightType]
+  | Equal  lhs . ftv = ftv [@leftType, @rightType]
 
 SEM Core_Judgement
   | Judgement   lhs . ftv = ftv @type
 
 ATTR Core_UserStatements Core_UserStatement 
-     [ attributeTable     : {[((String, Maybe String), MessageBlock)]}
-     | collectConstraints : {Trees (TypeConstraint ConstraintInfo)} 
-       currentPhase       : {Maybe Int} 
-       currentPosition    : {(Int, Int)}
-       metavarConstraints : {[(String,Tree (TypeConstraint ConstraintInfo))]}
-     | 
-     ]
+   [ fromAttribute      : {Attribute -> MessageBlock}
+   | collectConstraints : {Trees (TypeConstraint ConstraintInfo)} 
+     currentPhase       : {Maybe Int} 
+     currentPosition    : {(Int, Int)}
+     metavarConstraints : {[(String,Tree (TypeConstraint ConstraintInfo))]}
+   | 
+   ]
 
 SEM Core_TypingStrategy 
   | TypingStrategy
-       loc        . allConstraintTrees = listTree (reverse @typerule.constraints) :
-                                         (map snd @statements.metavarConstraints) ++
-                                         (reverse @statements.collectConstraints)
+       loc.allConstraintTrees = 
+          listTree (reverse @typerule.constraints) :
+          Phase 999 @patchConstraints :
+          (map snd @statements.metavarConstraints) ++
+          (reverse @statements.collectConstraints) 
+                                         
+       loc.patchConstraints = 
+          let parent     = concat (eltsFM (getAssumptions @lhs.infoTuple))
+              children   = concat (concatMap (eltsFM . getAssumptions . snd) @lhs.metaVariableTable) 
+              (ns, tps1) = unzip (parent \\ children)
+              (ss, tps2) = unzip @typeEnv
+              zipF t1 t2 = (t1 .==. @substitution |-> t2) infoF 
+              infoF      = \pair -> (emptyConstraintInfo pair)
+                                  { location   = "Typing Strategy (patch)" }
+              err = internalError "TS_Apply.ag" "n/a" "the type environments do not match"
+          in if (map show ns /= ss) then err else
+               zipWith zipF tps1 tps2
+          
        statements . collectConstraints = []
                   . currentPhase       = Nothing
                   . currentPosition    = (@lhs.unique, 0)
-                  . metavarConstraints = [ (s,cs) | (s,(cs,_)) <- @lhs.metaVariableTable ] 
-                  . attributeTable     = makeAttributeTable (snd @lhs.infoTuple) @lhs.metaVariableTable @substitution
+                  . metavarConstraints = [ (s, getConstraintSet info) | (s, info) <- @lhs.metaVariableTable ] 
+                  . fromAttribute      = let locals = map f (dom @substitution)
+                                             f i    = (show i, MessageType (toTpScheme (lookupInt i @substitution)))
+                                         in toMessageBlock locals @lhs.infoTuple @lhs.metaVariableTable 
 
 SEM Core_UserStatement
-  | Constraint
-       lhs . currentPosition    = (\(x, y) -> (x, y+1)) @lhs.currentPosition 
+  | Equal
+       lhs . currentPosition    = (\(x, y) -> (x, y+1)) @lhs.currentPosition
            . collectConstraints = case @lhs.currentPhase of
                                      Just phase | phase /= 5 
                                                 -> Phase phase [ @newConstraint ] : @lhs.collectConstraints
                                      _          -> unitTree @newConstraint : @lhs.collectConstraints
-       
+  
+  | Pred
+       lhs . collectConstraints = unitTree @newConstraint : @lhs.collectConstraints
+       loc . newConstraint = 
+                let cinfo = (emptyConstraintInfo (voidType, voidType))
+                               { properties = [ ReductionErrorInfo thePred 
+                                              , WithTypeError (TypeError [] message [] [])
+                                              ]
+                               } 
+                    thePred = Predicate @predClass (@lhs.substitution |-> @predType)
+                    message = let f = MessageOneLiner . substituteAttributes @lhs.fromAttribute
+                              in map f (lines @message)      
+                in predicate (thePred) cinfo
+  
   | MetaVariableConstraints        
        lhs . metavarConstraints = filter ((@name /=) . fst) @lhs.metavarConstraints
            . collectConstraints = case lookup @name @lhs.metavarConstraints of
@@ -160,7 +189,7 @@ SEM Core_UserStatement
        lhs . currentPhase = Just @phase                  
 
 SEM Core_UserStatement
-  | Constraint  
+  | Equal  
        loc . newConstraint = 
           let cinfo   = addProperty (WithTypeError (TypeError [] message [] []))
                       . addProperty (uncurry IsUserConstraint @lhs.currentPosition)
@@ -170,7 +199,7 @@ SEM Core_UserStatement
                            Just phase | phase /= 5
                               -> addProperty (ConstraintPhaseNumber phase)
                            _  -> id 
-              message = let f = MessageOneLiner . MessageCompose . substituteAttributes (makeMessageAlgebra @lhs.attributeTable)
+              message = let f = MessageOneLiner . substituteAttributes @lhs.fromAttribute
                         in map f (lines @message)                
           in (@lhs.substitution |-> @leftType .==. @lhs.substitution |-> @rightType) cinfo
 
@@ -189,19 +218,23 @@ ATTR Core_TypeRule [ | | constraints : {TypeConstraints ConstraintInfo} ]
 
 SEM Core_TypeRule             
   | TypeRule        
-       lhs .  constraints = let conclusionSource = self       (snd @lhs.infoTuple)
-                                conclusionType   = getTheType (snd @lhs.infoTuple)
-                            in [ (@lhs.substitution |-> tp1 .==. conclusionType) 
-                                    (addProperty FolkloreConstraint . defaultConstraintInfo (conclusionSource, Nothing))
-                               | (_, tp1) <- @conclusion.judgements
-                               ]
-                               ++
-                               [ (getTheType mvinfo .==. @lhs.substitution |-> tp1) 
-                                    (defaultConstraintInfo (conclusionSource, Just (self mvinfo)))
-                               | (s1, tp1)         <- @premises.judgements 
-                               , (s2, (_, mvinfo)) <- @lhs.metaVariableTable
-                               , s1 == s2
-                               ]
+       lhs.constraints = 
+          let conclusionSource = self       (getLocalInfo @lhs.infoTuple)
+              conclusionType   = getType @lhs.infoTuple
+          in [ (stp1 .==. conclusionType) 
+                  (addProperty FolkloreConstraint . defaultConstraintInfo (conclusionSource, Nothing))
+             | (_, tp1) <- @conclusion.judgements
+             , let stp1 = @lhs.substitution |-> tp1
+             , stp1 /= conclusionType -- don't generate trivial constraints
+             ] ++
+             [ (getType mvinfo .==. stp1) 
+                  (defaultConstraintInfo (conclusionSource, Just (self (getLocalInfo mvinfo))))
+             | (s1, tp1)    <- @premises.judgements 
+             , (s2, mvinfo) <- @lhs.metaVariableTable
+             , s1 == s2
+             , let stp1 = @lhs.substitution |-> tp1
+             , getType mvinfo /= stp1 -- don't generate trivial constraints
+             ]
 
 {
 defaultConstraintInfo :: (UHA_Source, Maybe UHA_Source) -> (Tp, Tp) -> ConstraintInfo
@@ -219,30 +252,10 @@ exactlyOnce :: Eq a => [a] -> [a]
 exactlyOnce []     = []
 exactlyOnce (x:xs) | x `elem` xs = exactlyOnce . filter (/= x) $ xs
                    | otherwise   = x : exactlyOnce xs
-
-makeMessageAlgebra :: AttributeTable MessageBlock -> AttributeAlgebra MessageBlock
-makeMessageAlgebra table = 
-   (MessageString, table, \a -> internalError "TS_Apply" "makeMessageAlgebra" ("unknown attribute " ++ showAttribute a))
-
-makeAttributeTable :: LocalInfo -> MetaVariableTable LocalInfo -> FiniteMapSubstitution -> [((String, Maybe String), MessageBlock)]
-makeAttributeTable local table substitution = 
-   let 
-       metaVariables :: [(String, LocalInfo)]
-       metaVariables = ("expr", local) : [ (s, li) | (s, (_, li)) <- table ]
-       
-       attributes :: [(String, LocalInfo -> MessageBlock)]
-       attributes = 
-          [ ("type" , MessageType . toTpScheme . getTheType)
-          , ("pp"   , MessageOneLineTree . oneLinerSource . self)
-          , ("range", MessageRange . rangeOfSource . self)
-          ]
-   in 
-      [ ((mv, Just attr), f li) | (mv, li) <- metaVariables, (attr, f) <- attributes ]
-   ++ [ ((show i, Nothing), MessageType (toTpScheme (substitution |-> TVar i))) | i <- dom substitution ]  
 }
 
 ATTR Core_Judgements Core_Judgement Core_TypeRule [ | | judgements USE {++} {[]} : {[(String, Tp)]} ]
 
 SEM Core_Judgement
   | Judgement
-       lhs . judgements = [(@expression, @type)]     
+       lhs . judgements = [(@expression, @type)]

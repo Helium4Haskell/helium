@@ -9,6 +9,15 @@
 --
 -----------------------------------------------------------------------------
 
+{
+typeInferencing :: [Option] -> ImportEnvironment -> Module
+                      -> (IO (), DictionaryEnvironment, TypeEnvironment, TypeErrors, Warnings)
+typeInferencing options importEnv module_ =
+   let (_, debugIO, dictionaryEnv, _, toplevelTypes, typeErrors, warnings) =
+            TypeInferencing.sem_Module module_ importEnv options
+   in (debugIO, dictionaryEnv, toplevelTypes, typeErrors, warnings)
+}
+  
 -------------------------------------------------------------------------------
 -- Attributes for type inferencing
 
@@ -16,7 +25,8 @@ ATTR Module
    [ importEnvironment     : ImportEnvironment
      options               : {[Option]}
    |
-   | debugIO               : {IO ()}
+   | assumptions           : Assumptions
+     debugIO               : {IO ()}
      dictionaryEnvironment : DictionaryEnvironment
      toplevelTypes         : TypeEnvironment
      typeErrors            : TypeErrors

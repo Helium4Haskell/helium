@@ -76,7 +76,7 @@ makeUnresolvedOverloadingError source description (functionType, usedAsType) =
    let message = [ MessageOneLiner (MessageString ("Don't know which instance to choose for " ++ description)) ]
        table   = [ ("function" , MessageOneLineTree (oneLinerSource source)) 
                  , ("type"     , MessageType functionType)
-		 , ("used as"  , MessageType usedAsType)
+                 , ("used as"  , MessageType usedAsType)
                  , ("hint"     , MessageString ( "write an explicit type for this function" ++ 
 		                                 "\n   e.g. (show :: [Int] -> String)")) 
                  ]

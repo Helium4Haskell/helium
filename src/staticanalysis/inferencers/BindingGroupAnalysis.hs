@@ -31,6 +31,10 @@ type Monos              = Tps
 noAssumptions :: FiniteMap Name a
 noAssumptions = emptyFM
 
+listToAssumptions :: [(Name, Tp)] -> Assumptions
+listToAssumptions list =
+   foldr combine noAssumptions [ listToFM [(n, [tuple])] | tuple@(n, _) <- list ]
+
 combine :: Assumptions -> Assumptions -> Assumptions
 combine = plusFM_C (++)
 
@@ -99,8 +103,8 @@ performBindingGroup (currentChunk, uniqueChunk, chunkNumberMap, monos, typeSigna
             initial = (noAssumptions, emptyTree, [])
           
             op (cnr,(e,a,c)) (aset,cset,mt) =
-               let (cset1,e'   )  = (typeSignatures !:::! e) cinfoBindingGroupExplicitTypedBinding                   
-                   (cset2,a'   )  = (typeSignatures .:::. a) cinfoBindingGroupExplicit
+               let (cset1,e'   )  = (typeSignatures !:::! e) (cinfoBindingGroupExplicitTypedBinding monos)                  
+                   (cset2,a'   )  = (typeSignatures .:::. a) (cinfoBindingGroupExplicit monos (keysFM e))
                    (cset3,a''  )  = (e' .===. a')            cinfoSameBindingGroup
                    (cset4,aset')  = (.<==.) monos e' aset    cinfoBindingGroupImplicit
                    

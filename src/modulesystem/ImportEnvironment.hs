@@ -33,18 +33,22 @@ data ImportEnvironment  =
                          -- values
                        , valueConstructors :: ValueConstructorEnvironment
                        , operatorTable     :: OperatorTable
+                         -- type classes
+                       , classEnvironment  :: ClassEnvironment
                          -- other
                        , typingStrategies  :: Core_TypingStrategies 
                        }
 
 emptyEnvironment :: ImportEnvironment
-emptyEnvironment = ImportEnvironment { typeConstructors  = emptyFM
-                                     , typeSynonyms      = emptyFM
-                                     , typeEnvironment   = emptyFM
-                                     , valueConstructors = emptyFM
-                                     , operatorTable     = emptyFM
-                                     , typingStrategies  = [] 
-                                     }
+emptyEnvironment = ImportEnvironment 
+   { typeConstructors  = emptyFM
+   , typeSynonyms      = emptyFM
+   , typeEnvironment   = emptyFM
+   , valueConstructors = emptyFM
+   , operatorTable     = emptyFM
+   , classEnvironment  = emptyClassEnvironment
+   , typingStrategies  = [] 
+   }
                                               
 addTypeConstructor :: Name -> Int -> ImportEnvironment -> ImportEnvironment                      
 addTypeConstructor name int importenv = 
@@ -95,6 +99,9 @@ getOrderedTypeSynonyms importEnvironment =
        ordering = fst (getTypeSynonymOrdering synonyms)
    in (ordering, synonyms)
 
+setClassEnvironment :: ClassEnvironment -> ImportEnvironment -> ImportEnvironment
+setClassEnvironment new importenv = importenv { classEnvironment = new }
+
 addTypingStrategies :: Core_TypingStrategies -> ImportEnvironment -> ImportEnvironment  
 addTypingStrategies new importenv = importenv {typingStrategies = new ++ typingStrategies importenv}
 
@@ -115,17 +122,18 @@ getSiblings importenv =
    in map (concatMap f) (getSiblingGroups importenv) 
 			
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
-combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 xs2) = 
+combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 ce2 xs2) = 
    ImportEnvironment 
       (tcs1 `plusFM` tcs2) 
       (tss1 `plusFM` tss2)
       (te1  `plusFM` te2 )
       (vcs1 `plusFM` vcs2)
       (ot1  `plusFM` ot2)
+      (ce1  `plusFM` ce2) 
       (xs1 ++ xs2)
       
 instance Show ImportEnvironment where
-   show (ImportEnvironment tcs tss te vcs ot _) = 
+   show (ImportEnvironment tcs tss te vcs ot ce _) = 
       unlines (concat [ fixities
                       , datatypes
                       , typesynonyms

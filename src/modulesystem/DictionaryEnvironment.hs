@@ -54,17 +54,17 @@ getDictionaryTrees name dEnv =
       Just dt -> dt
       Nothing -> []
 
-makeDictionaryTrees :: Predicates -> Predicates -> Maybe [DictionaryTree]
-makeDictionaryTrees ps = mapM (makeDictionaryTree ps)
+makeDictionaryTrees :: ClassEnvironment -> Predicates -> Predicates -> Maybe [DictionaryTree]
+makeDictionaryTrees classEnv ps = mapM (makeDictionaryTree classEnv ps)
 
-makeDictionaryTree :: Predicates -> Predicate -> Maybe DictionaryTree
-makeDictionaryTree availablePredicates p@(Predicate className tp) =      
+makeDictionaryTree :: ClassEnvironment -> Predicates -> Predicate -> Maybe DictionaryTree
+makeDictionaryTree classEnv availablePredicates p@(Predicate className tp) =      
    case tp of
       TVar i | p `elem` availablePredicates -> Just (ByPredicate p)
              | otherwise -> case [ (path, availablePredicate)
                                  | availablePredicate@(Predicate c t) <- availablePredicates
                                  , t == tp
-                                 , path <- superclassPaths c className standardClasses
+                                 , path <- superclassPaths c className classEnv
                                  ] of
                              []     -> Nothing
                              (path,fromPredicate):_ -> 
@@ -72,9 +72,9 @@ makeDictionaryTree availablePredicates p@(Predicate className tp) =
                                     tree = foldr (uncurry BySuperClass) (ByPredicate fromPredicate) list
                                 in Just tree 
                                 
-      _      -> case byInstance noOrderedTypeSynonyms standardClasses p of
+      _      -> case byInstance noOrderedTypeSynonyms classEnv p of
                    Nothing -> internalError "ToCoreExpr" "getDictionary" "reduction error"
                    Just predicates -> 
                       do let (TCon instanceName, _) = leftSpine tp
-                         trees <- makeDictionaryTrees availablePredicates predicates
+                         trees <- makeDictionaryTrees classEnv availablePredicates predicates
                          return (ByInstance className instanceName trees)

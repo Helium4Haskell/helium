@@ -22,6 +22,9 @@ import Messages
 import HeliumMessages -- for instance Show
 import DoublyLinkedTree
 import TypeConstraints
+import Top.Constraints.TypeConstraintInfo
+import Top.Qualifiers.TypeClasses (ambiguousLabel)
+import Top.States.BasicState (ErrorLabel)
 import HighLightArea
 import Utils (internalError)
 import Data.Maybe
@@ -93,19 +96,26 @@ variableConstraint theLocation theSource theProperties tppair =
         , properties = theProperties
         }               
         
-cinfoBindingGroupExplicitTypedBinding :: Name -> (Tp,Tp) -> ConstraintInfo
+cinfoBindingGroupExplicitTypedBinding :: Tps -> Name -> (Tp,Tp) -> ConstraintInfo
 cinfoSameBindingGroup                 :: Name -> (Tp,Tp) -> ConstraintInfo
 cinfoBindingGroupImplicit             :: Name -> (Tp,Tp) -> ConstraintInfo
-cinfoBindingGroupExplicit             :: Name -> (Tp,Tp) -> ConstraintInfo
+cinfoBindingGroupExplicit             :: Tps -> Names -> Name -> (Tp,Tp) -> ConstraintInfo
 
-cinfoBindingGroupExplicitTypedBinding name = 
-   variableConstraint "explicitly typed binding" (nameToUHA_Expr name) [ FromBindingGroup, ExplicitTypedBinding, HasTrustFactor 10.0 ]
+cinfoBindingGroupExplicitTypedBinding monos name = 
+   let props = [ FromBindingGroup, ExplicitTypedBinding, ExplicitTypedDefinition monos name, HasTrustFactor 10.0 ]
+   in variableConstraint "explicitly typed binding" (nameToUHA_Expr name) props
 cinfoSameBindingGroup name = 
-   variableConstraint "variable" (nameToUHA_Expr name) [ FromBindingGroup, FolkloreConstraint ]
+   let props = [ FromBindingGroup, FolkloreConstraint ]
+   in variableConstraint "variable" (nameToUHA_Expr name) props
 cinfoBindingGroupImplicit name = 
-   variableConstraint "variable" (nameToUHA_Expr name) [ FromBindingGroup, FolkloreConstraint, HasTrustFactor 10.0 ]
-cinfoBindingGroupExplicit name = 
-   variableConstraint "variable" (nameToUHA_Expr name) [ FromBindingGroup, FolkloreConstraint ] 
+   let props = [ FromBindingGroup, FolkloreConstraint, HasTrustFactor 10.0 ]
+   in variableConstraint "variable" (nameToUHA_Expr name) props
+cinfoBindingGroupExplicit monos defNames name = 
+   let props1 = [ FromBindingGroup, FolkloreConstraint ]
+       props2 = case filter (name==) defNames of
+                   [defName] -> [ExplicitTypedDefinition monos defName]
+                   _         -> []
+   in variableConstraint "variable" (nameToUHA_Expr name) (props1 ++ props2)
 
 type InfoTrees = [InfoTree]
 type InfoTree = DoublyLinkedTree LocalInfo
@@ -133,16 +143,18 @@ data Property   = FolkloreConstraint
                 | FromBindingGroup 
                 | IsImported Name 
                 | ApplicationEdge Bool{-is binary-} [LocalInfo]{-info about terms-}
-                | ExplicitTypedBinding
+                | ExplicitTypedBinding -- superfluous?
+                | ExplicitTypedDefinition Tps{- monos-} Name{- function name -}
                 | Unifier Int{-type variable-} (String{-location-}, LocalInfo, String{-description-})
                 | OriginalTypePair (Tp, Tp)
 		
-instance SetReduction ConstraintInfo where
-  setReduction p = addProperty (ReductionErrorInfo p)
+instance TypeConstraintInfo ConstraintInfo where
+   unresolvedPredicate = addProperty . ReductionErrorInfo
+   equalityTypePair pair info = info { typepair = pair }
 
-instance OriginalTypeScheme ConstraintInfo where
-   setTypeScheme = addProperty . OriginalTypeScheme
-
+instance PolyTypeConstraintInfo Predicates ConstraintInfo where
+   originalTypeScheme = addProperty . OriginalTypeScheme
+   
 maybeReductionErrorPredicate :: ConstraintInfo -> Maybe Predicate
 maybeReductionErrorPredicate cinfo = 
    case [ p | ReductionErrorInfo p <- properties cinfo ] of
@@ -184,6 +196,16 @@ phaseOfConstraint info =
       []  -> 5 -- default phase number
       i:_ -> i
 
+isExplicitTypedBinding :: ConstraintInfo -> Bool
+isExplicitTypedBinding info =
+   not (null [ () | ExplicitTypedBinding <- properties info ])
+
+maybeExplicitTypedDefinition :: ConstraintInfo -> Maybe (Tps, Name)
+maybeExplicitTypedDefinition info =
+   case [ (ms, n) | ExplicitTypedDefinition ms n <- properties info ] of
+      []              -> Nothing
+      (monos, name):_ -> Just (monos, name)
+
 highlyTrustedFactor :: Float
 highlyTrustedFactor = 10000.0
 
@@ -214,6 +236,7 @@ setTypeError typeError cinfo =
        p _                 = True
    in cinfo { properties = WithTypeError typeError : filter p (properties cinfo) } 
 
+{- alternative implementation
 makeTypeErrors :: Substitution sub => OrderedTypeSynonyms -> sub -> [ConstraintInfo] -> TypeErrors
 makeTypeErrors synonyms sub = 
    map (sub |->) . catMaybes . map (makeTypeError synonyms sub)
@@ -240,7 +263,40 @@ makeTypeError synonyms sub cinfo =
                   in Just (unificationTypeError (addProperty (WithHint hint) cinfo))
                Left _  -> 
 	          Just (unificationTypeError cinfo)
-               Right _ -> Nothing
+               Right _ -> Nothing -}
+               
+makeTypeErrors :: Substitution sub => ClassEnvironment -> OrderedTypeSynonyms -> sub -> [(ConstraintInfo, ErrorLabel)] -> TypeErrors
+makeTypeErrors classEnv synonyms sub infos =
+   let tuples = [ (maybeReductionErrorPredicate info, info) | (info, label) <- infos, label /= ambiguousLabel ] 
+       reductionErrors   = [ f1 p info | (Just p, info) <- tuples ] 
+       unificationErrors = catMaybes [ f2 info | (Nothing, info) <- tuples ]
+   in if null unificationErrors
+        then reductionErrors
+        else unificationErrors
+
+ where 
+  -- a reduction error
+  f1 predicate info =
+     case [t | WithTypeError t <- properties info] of
+        typeError : _ -> 
+           sub |-> typeError
+        [] ->  
+           let source = fst (sources info) 
+               tp     = snd (typepair info)
+               scheme = maybe err snd (maybeOriginalTypeScheme info)
+               err    = internalError "ConstraintInfo" "makeTypeErrors" "could not find the original type scheme"
+           in sub |-> (makeReductionError source (scheme, tp) classEnv predicate)
+     
+  -- an unification error: first test if the two types can really not be unified
+  f2 info = 
+     let (t1, t2) = typepair info
+     in case mguWithTypeSynonyms synonyms (sub |-> t1) (sub |-> t2) of
+           Left (InfiniteType _) -> 
+              let hint = ("because", MessageString "unification would give infinite type")
+              in Just (sub |-> unificationTypeError (addProperty (WithHint hint) info))
+           Left _  -> 
+              Just (sub |-> unificationTypeError info)
+           Right _ -> Nothing
 
 unificationTypeError :: ConstraintInfo -> TypeError
 unificationTypeError cinfo =
