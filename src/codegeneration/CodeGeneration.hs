@@ -65,20 +65,20 @@ insertedMain toplevelTypes =
         app_ unsafePIO $
             case maybeWrapMainAndType of 
                 Nothing -> 
-                    var "primPutStrLn" `app_` 
-                        (var "primPackedToString" `app_`
+                    var "$primPutStrLn" `app_` 
+                        (var "$primPackedToString" `app_`
                             packedString "No 'main' function defined in this module")
                 Just (name, tpScheme)
                     | isIOType tp -> 
                         var name
                     | otherwise ->
-                        var "primPutStrLn" `app_` 
+                        var "$primPutStrLn" `app_` 
                             (showFunctionOfType True (makeTypeFromTp tp) `app_` 
                                 var name)
                     where                        
                         tp = unqualify (snd (instantiate 123456789 tpScheme))
     where
-        unsafePIO = var "primUnsafePerformIO"    
+        unsafePIO = var "$primUnsafePerformIO"    
                 
 
 predicateToId :: Predicate -> Id
@@ -92,10 +92,10 @@ dictionaryTreeToCore tree =
          Core.Var (predicateToId predicate)
       ByInstance className instanceName trees ->
          foldl Core.Ap
-               (Core.Var (idFromString ("dict"++className++instanceName)))
+               (Core.Var (idFromString ("$dict"++className++instanceName)))
                (map dictionaryTreeToCore trees)
       BySuperClass subClass superClass tree -> 
-         Core.Ap (Core.Var (idFromString ("get" ++ superClass ++ "From" ++ subClass)))          
+         Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "From" ++ subClass)))          
                  (dictionaryTreeToCore tree)
 
 insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr
@@ -133,7 +133,7 @@ bind :: Core.Expr -> Core.Expr -> Core.Expr
 bind ma f = Core.Var primBindIOId `app_` ma `app_` f
 
 ( primBindIOId :  caseExprId :  okId :  parameterId : []) = map idFromString $
- "primBindIO"  : "caseExpr$" : "ok$" : "parameter$" : []
+ "$primBindIO"  : "caseExpr$" : "ok$" : "parameter$" : []
 
 -- Function "chainCode" is used in the translation of do-expressions
 chainCode :: [Maybe Core.Expr -> Core.Expr] -> Core.Expr
@@ -154,7 +154,7 @@ patternAlwaysSucceeds p =
 
 patternMatchFail :: String -> Range -> Core.Expr
 patternMatchFail nodeDescription range =
-    var "primPatternFailPacked"
+    var "$primPatternFailPacked"
         `app_` packedString (
                     nodeDescription ++ " ranging from " ++ 
                     showPosition start ++ " to " ++ 
@@ -1961,7 +1961,7 @@ sem_Expression_NegateFloat (range_) (expression_) =
             ( _expressionIcore,_expressionIself) =
                 (expression_ (_expressionOdictionaryEnv))
             (_lhsOcore@_) =
-                var "primNegFloat" `app_` _expressionIcore
+                var "$primNegFloat" `app_` _expressionIcore
             (_self@_) =
                 Expression_NegateFloat _rangeIself _expressionIself
             (_lhsOself@_) =
@@ -2939,7 +2939,7 @@ sem_Literal_String (range_) (value_) =
         ( _rangeIself) =
             (range_ )
         (_lhsOcore@_) =
-            var "primPackedToString" `app_`
+            var "$primPackedToString" `app_`
                 packedString (read ("\"" ++ value_ ++ "\""))
         (_self@_) =
             Literal_String _rangeIself value_
@@ -3882,7 +3882,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
                             (Core.Lam parameterId
                                 (patternToCore (parameterId, _patternIself) continue)
                             )
-                            (var "primConcatMap"
+                            (var "$primConcatMap"
                                 `app_` Core.Var okId
                                 `app_` _expressionIcore
                             )

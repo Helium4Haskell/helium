@@ -100,14 +100,14 @@ stringFromImportDeclaration importDecl =
         ImportDeclaration_Empty _ -> 
             internalError "UHA_Utils" "stringFromImportDeclaration" "empty import declaration"
 
-
+-- TODO: daan
 intUnaryMinusName, floatUnaryMinusName, enumFromName, enumFromToName, enumFromThenName, enumFromThenToName :: Name
-intUnaryMinusName   = nameFromString "negate"
-floatUnaryMinusName = nameFromString "floatUnaryMinus"
-enumFromName        = nameFromString "enumFrom"
-enumFromToName      = nameFromString "enumFromTo"
-enumFromThenName    = nameFromString "enumFromThen"
-enumFromThenToName  = nameFromString "enumFromThenTo"
+intUnaryMinusName   = nameFromString "$negate"
+floatUnaryMinusName = nameFromString "$floatUnaryMinus"
+enumFromName        = nameFromString "$enumFrom"
+enumFromToName      = nameFromString "$enumFromTo"
+enumFromThenName    = nameFromString "$enumFromThen"
+enumFromThenToName  = nameFromString "$enumFromThenTo"
 
 patternVars :: Pattern -> [Name]
 patternVars p = case p of

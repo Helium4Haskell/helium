@@ -246,10 +246,10 @@ dictionaryTreeToCore tree =
          Core.Var (predicateToId predicate)
       ByInstance className instanceName trees ->
          foldl Core.Ap
-               (Core.Var (idFromString ("dict"++className++instanceName)))
+               (Core.Var (idFromString ("$dict"++className++instanceName)))
                (map dictionaryTreeToCore trees)
       BySuperClass subClass superClass tree -> 
-         Core.Ap (Core.Var (idFromString ("get" ++ superClass ++ "From" ++ subClass)))          
+         Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "From" ++ subClass)))          
                  (dictionaryTreeToCore tree)
 
 insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr

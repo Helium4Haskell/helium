@@ -38,7 +38,7 @@ patternAlwaysSucceeds p =
 
 patternMatchFail :: String -> Range -> Core.Expr
 patternMatchFail nodeDescription range =
-    var "primPatternFailPacked"
+    var "$primPatternFailPacked"
         `app_` packedString (
                     nodeDescription ++ " ranging from " ++ 
                     showPosition start ++ " to " ++ 

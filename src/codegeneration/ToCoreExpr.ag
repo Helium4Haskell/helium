@@ -124,7 +124,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  expression               : Expression
 
     | NegateFloat        lhs.core = 
-            var "primNegFloat" `app_` @expression.core 
+            var "$primNegFloat" `app_` @expression.core 
     --  range                    : Range
     --  expression               : Expression
 
@@ -237,7 +237,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
                     (Core.Lam parameterId
                         (patternToCore (parameterId, @pattern.self) continue)
                     )
-                    (var "primConcatMap"
+                    (var "$primConcatMap"
                         `app_` Core.Var okId 
                         `app_` @expression.core
                     )
@@ -295,7 +295,7 @@ SEM Literal [ | | core : { Core.Expr } ]
     --  value                    : String
 
     | String                lhs.core = 
-        var "primPackedToString" `app_` 
+        var "$primPackedToString" `app_` 
             packedString (read ("\"" ++ @value ++ "\""))
     --  range                    : Range
     --  value                    : String -- without the quotes
@@ -307,7 +307,7 @@ bind :: Core.Expr -> Core.Expr -> Core.Expr
 bind ma f = Core.Var primBindIOId `app_` ma `app_` f
 
 ( primBindIOId :  caseExprId :  okId :  parameterId : []) = map idFromString $
- "primBindIO"  : "caseExpr$" : "ok$" : "parameter$" : []
+ "$primBindIO"  : "caseExpr$" : "ok$" : "parameter$" : []
 
 -- Function "chainCode" is used in the translation of do-expressions
 chainCode :: [Maybe Core.Expr -> Core.Expr] -> Core.Expr

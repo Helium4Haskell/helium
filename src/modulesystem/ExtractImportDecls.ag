@@ -1,4 +1,4 @@
-ATTR Module [ | | coreImportDecls : { [Core.CoreDecl] } ] 
+ATTR Module [ | | coreImportDecls : { [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] } ] 
 
 INCLUDE "../syntax/UHA_Syntax.ag"
 INCLUDE "../codegeneration/ToCoreName.ag"
@@ -12,48 +12,67 @@ import Utils (internalError)
 }
   
 ATTR Body ImportDeclarations ImportDeclaration
-   [ | | coreImportDecls USE { ++ } { [] } : { [Core.CoreDecl] } ]  
+   [ | | coreImportDecls USE { ++ } { [] } : { [(Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl])] } ]  
     
 SEM ImportDeclaration
-    | Import lhs.coreImportDecls =
-    
-        if @qualified || not @asname.isNothing then
-            internalError "ExtractImportDecls.ag" "ImportDeclaration.Import" "qualified and as-imports not supported yet"
-        else
-            maybe
-                [ Core.DeclImport
-                    { Core.declName = idFromName @name.self
-                    , Core.declAccess =
-                        Core.Imported
-                            { Core.accessPublic   = False -- private
-                            , Core.importModule   = idFromName @name.self
-                            , Core.importName     = dummyId
-                            , Core.importKind     = Core.DeclKindModule
-                            , Core.importMajorVer = 0
-                            , Core.importMinorVer = 0
-                            }
-                    , Core.declCustoms = []
-                    }
-                ]
-                (\imps -> 
-                    [ Core.DeclImport
-                        { Core.declName    = entityId
-                        , Core.declAccess  =
-                            Core.Imported
-                                { Core.accessPublic   = False -- private
-                                , Core.importModule   = idFromName @name.self
-                                , Core.importName     = entityId
-                                , Core.importKind     = entityKind
-                                , Core.importMajorVer = 0
-                                , Core.importMinorVer = 0
-                                }
-                        , Core.declCustoms = []
-                        }
-                    | (entityId, entityKind) <- imps
-                    ]
-                )
-                @importspecification.imps
-    
+    | Import 
+        lhs.coreImportDecls = [(@loc.importDecls,@loc.filterFun)]
+        loc.importDecls =
+            
+          if @qualified || not @asname.isNothing then
+              internalError "ExtractImportDecls.ag" "ImportDeclaration.Import" "qualified and as-imports not supported yet"
+          else
+              -- maybe
+                  Core.DeclImport
+                      { Core.declName = idFromName @name.self
+                      , Core.declAccess =
+                          Core.Imported
+                              { Core.accessPublic   = False -- private
+                              , Core.importModule   = idFromName @name.self
+                              , Core.importName     = dummyId
+                              , Core.importKind     = Core.DeclKindModule
+                              , Core.importMajorVer = 0
+                              , Core.importMinorVer = 0
+                              }
+                      , Core.declCustoms = []
+                      }
+                  
+                  {-
+                  (\imps -> 
+                      [ Core.DeclImport
+                          { Core.declName    = entityId
+                          , Core.declAccess  =
+                              Core.Imported
+                                  { Core.accessPublic   = False -- private
+                                  , Core.importModule   = idFromName @name.self
+                                  , Core.importName     = entityId
+                                  , Core.importKind     = entityKind
+                                  , Core.importMajorVer = 0
+                                  , Core.importMinorVer = 0
+                                  }
+                          , Core.declCustoms = []
+                          }
+                      | (entityId, entityKind) <- imps
+                      ]
+                  )
+                  @importspecification.imps
+                  -}
+        loc.filterFun = case @importspecification.imps of
+                          Nothing    -> id  -- everything
+                          Just imps  -> \decls -> [decl | decl <- decls, isImported imps decl]
+
+{
+
+isImported :: [(Id,Core.DeclKind)] -> Core.CoreDecl -> Bool
+isImported imps decl
+  = let name = stringFromId (Core.declName decl) in
+    if (not (null name) && head name == '$')  -- always import specials: negate, dictionaries etc.
+     then True
+     else case lookup (Core.declName decl) imps of
+            Nothing     -> False
+            Just dkind  -> (Core.declKindFromDecl decl == dkind)
+}
+
 SEM MaybeImportSpecification [ | | imps : {Maybe [(Id, Core.DeclKind)]}]
     | Nothing              lhs.imps     = Nothing
     | Just                 lhs.imps     = Just @importspecification.imps

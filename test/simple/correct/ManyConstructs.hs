@@ -4,7 +4,7 @@ module ManyConstructs where
 -- Check whether we can compile these constructs 
 -- without the Prelude
 
-import Prelude((>), (+), negate)
+import Prelude((>), (+), unsafePerformIO, putChar )
 
 data A = A Int String
 
@@ -17,6 +17,5 @@ main = -- primUnsafePerformIO, primPutStrLn, primShowTuple8 in inserted main
     ,   [ y | x <- [1..10], x > 5, let { y :: Int; y = x + 1 }] -- primConcatMap
     ,   A 3 "bla" -- primConcat
     ,   -3 -- primNegInt
-    ,   primUnsafePerformIO 
-            (do { primPutChar 'a'; primPutChar 'b' }) -- primBindIO
+    ,   unsafePerformIO (do { putChar 'a'; putChar 'b' }) -- primBindIO
     )

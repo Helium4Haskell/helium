@@ -90,7 +90,7 @@ nil = Con (ConId nilId)
 -- Function "stringToCore" converts a string to a Core expression
 stringToCore :: String -> Expr
 stringToCore [x] = cons (Lit (LitInt (ord x))) nil
-stringToCore xs = var "primPackedToString" `app_` packedString xs
+stringToCore xs = var "$primPackedToString" `app_` packedString xs
 
 var :: String -> Expr
 var x = Var (idFromString x)
@@ -99,7 +99,7 @@ var x = Var (idFromString x)
 float :: String -> Expr
 float f = 
     Core.Ap 
-        (Core.Var (idFromString "primStringToFloat")) 
+        (Core.Var (idFromString "$primStringToFloat")) 
         ( Core.Lit (Core.LitBytes (bytesFromString f)) )
 
 decl :: Bool -> String -> Expr -> CoreDecl

@@ -40,9 +40,15 @@ phaseImport fullName module_ lvmPath options = do
 
 chaseImports :: [String] -> Module -> IO [[CoreDecl]]
 chaseImports lvmPath mod = 
-    let (coreImportDecls, _) = ExtractImportDecls.sem_Module mod -- Expand imports
-        findModule      = searchPath lvmPath ".lvm" . stringFromId
-    in lvmImportDecls findModule coreImportDecls
+    let (coreImports,_)   = ExtractImportDecls.sem_Module mod -- Expand imports
+        findModule    = searchPath lvmPath ".lvm" . stringFromId
+        doImport :: (CoreDecl,[CoreDecl] -> [CoreDecl]) -> IO [CoreDecl]
+        doImport (importDecl,filterDecls)
+          = do decls <- lvmImportDecls findModule [importDecl]
+               return (filterDecls (concat decls))
+
+    in  mapM doImport coreImports
+        -- zipWith ($) filterImports (lvmImportDecls findModule coreImportDecls)
 
 -- Add "import Prelude" if
 --   the currently compiled module is not the Prelude and

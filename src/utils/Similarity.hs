@@ -19,6 +19,10 @@ import Char
 import Utils(internalError)
 
 similar :: String -> String -> Bool
+-- ignore primitives
+similar ('$':c:cs) _  | isAlpha c  = False
+similar _ ('$':c:cs)  | isAlpha c  = False
+-- normal test
 similar name1' name2' 
     | length name1 <= 1 || length name2 <= 1
         = False

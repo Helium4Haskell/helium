@@ -3,7 +3,7 @@ module ManyConstructs where
 -- Check whether we can compile these constructs 
 -- without (most of) the Prelude
 
-import Prelude((>), (+), dictNumInt, dictOrdInt)
+import Prelude((>), (+), unsafePerformIO, putChar) -- , dictNumInt, dictOrdInt)
 
 data A = A Int String
 
@@ -15,6 +15,5 @@ main = -- primUnsafePerformIO, primPutStrLn, primShowTuple8 in inserted main
     ,   case [3,5..] of (_:_:y:_) -> y
     ,   [ y | x <- [1..10], x > 5, let { y :: Int; y = x + 1 }] -- primConcatMap
     ,   A 3 "bla" -- primConcat
-    ,   primUnsafePerformIO 
-            (do { primPutChar 'a'; primPutChar 'b' }) -- primBindIO
+    ,   unsafePerformIO (do { putChar 'a'; putChar 'b' }) -- primBindIO
     )

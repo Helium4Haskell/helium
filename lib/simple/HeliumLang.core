@@ -9,16 +9,18 @@ module HeliumLang
     , showFunction, showIO, showPolymorphic
     , showChar, showString, showInt, showList, showBool, showUnit, showFloat  
     , showTuple2, showTuple3, showTuple4, showTuple5, showTuple6, showTuple7
-    , showTuple8, showTuple9, showTuple10
-    
-	, enumFrom, enumFromThen, enumFromTo, enumFromThenTo
+    , showTuple8, showTuple9, showTuple10   
 	
-    , primPutChar, primPutStr, primPutStrLn
-    , primBindIO, primUnsafePerformIO
-    , primErrorPacked, primPatternFailPacked
-    , primNegInt, primNegFloat, primStringToFloat, primEqFloat
-    , primConcat, primConcatMap
-    , primPackedToString
+    , ''$primPutChar'', ''$primPutStr'', ''$primPutStrLn''
+    , ''$primBindIO'', ''$primUnsafePerformIO''
+    , ''$primErrorPacked'', ''$primPatternFailPacked''
+    , ''$primNegInt'', ''$primNegFloat'', ''$primStringToFloat'', ''$primEqFloat''
+    , ''$primConcat'', ''$primConcatMap''
+    , ''$primPackedToString''
+
+    , ''$negate'', ''$floatUnaryMinus''
+    , ''$enumFrom'', ''$enumFromThen'', ''$enumFromTo'', ''$enumFromThenTo''
+    , ''$show''
     ) where
 
 import LvmLang 
@@ -27,25 +29,64 @@ import LvmLang
     , Bool(True, False)
     , '':[]''('':[]'', (:))
     , '':()''('':()'')
-    , primBindIO = bindIO, primReturnIO = returnIO
+    , ''$primBindIO'' = bindIO, ''$primReturnIO'' = returnIO
     , negInt 
-    , negFloat, primEqFloat = (==.)
+    , negFloat, ''$primEqFloat'' = (==.)
     , (+), (-), (>), (<), (>=), quot, rem, (==)
-    , primPackedToString = stringFromPacked
-    , primUnsafePerformIO = unsafePerformIO
+    , stringFromPacked
+    , unsafePerformIO
     )
 import LvmIO
     ( stdin, stdout, stderr, flush, outputChar, outputPacked
     )
 import LvmException
-    (   primErrorPacked = errorPacked
-    ,   primPatternFailPacked = patternFailPacked
+    (   errorPacked
+    ,   patternFailPacked
     )
 
 {----------------------------------------------------------
   Fixities
 ----------------------------------------------------------}
 custom infix (:) : public [5,"right"]
+
+{--------------------------------------------------------------------------
+  built into the language
+--------------------------------------------------------------------------}
+''$negate'' :: Int -> Int
+''$negate'' i = negInt i
+
+''$floatUnaryMinus'' :: Float -> Float
+''$floatUnaryMinus'' f = ''$primNegFloat'' f
+
+''$show'' :: "showDict -> a -> String"
+''$show'' dShow
+   = errorPacked "internal error: show called in the simple prelude!"
+
+-- the enumeration functions are used in the translation of the .. notation
+-- [1..10]   === enumFromTo 1 10
+-- [1..]     === enumFrom 1 
+-- [1,3..10] === enumFromThenTo 1 3 10
+-- [1,3..]   === enumFromThen 1 3
+
+''$enumFrom'' :: Int -> [Int]
+''$enumFrom'' n = (:) n (''$enumFrom'' ((+) n 1))
+
+''$enumFromTo'' :: Int -> Int -> [Int]
+''$enumFromTo'' n m =
+    case (>) n m of
+    {   True -> []
+    ;   _    -> (:) n (''$enumFromTo'' ((+) n 1) m)
+    }
+
+''$enumFromThen'' :: Int -> Int -> [Int]
+''$enumFromThen'' n a = (:) n (''$enumFromThen'' a ((+) a ((-) a n)))
+
+''$enumFromThenTo'' :: Int -> Int -> Int -> [Int]
+''$enumFromThenTo'' n a m =
+    case (>) a n of
+    {   True -> ''$primAscendToWithStep'' n m ((-) a n) 
+    ;   _    -> ''$primDescendToWithStep'' n m ((-) a n) 
+    }
 
 {----------------------------------------------------------
   Basic data types
@@ -54,135 +95,132 @@ data '':->'' x y
 -- Daan has type Char = Int
 data Char
 
-primPutChar :: Char -> IO ()
-primPutChar c = 
-    primBindIO 
+''$primPackedToString'' :: PackedString -> String
+''$primPackedToString'' p
+  = stringFromPacked p
+
+''$primUnsafePerformIO'' :: IO a -> a
+''$primUnsafePerformIO'' io
+  = unsafePerformIO io
+
+''$primPatternFailPacked'' :: PackedString -> a
+''$primPatternFailPacked'' p
+  = patternFailPacked p
+
+''$primErrorPacked'' :: PackedString -> a
+''$primErrorPacked'' p
+  = errorPacked p
+
+    
+''$primPutChar'' :: Char -> IO ()
+''$primPutChar'' c = 
+    ''$primBindIO'' 
         (outputChar stdout c) 
         (flush stdout)
         
-primPutChars :: String -> IO ()
-primPutChars xs = 
+''$primPutChars'' :: String -> IO ()
+''$primPutChars'' xs = 
     case xs of {
-        '':[]''  -> primReturnIO '':()'' ;
-        (:) y ys -> primBindIO 
-                        (primPutChar y) -- if you don't want to flush each character: (outputChar stdout y) 
-                        (primPutChars ys) }
+        '':[]''  -> ''$primReturnIO'' '':()'' ;
+        (:) y ys -> ''$primBindIO'' 
+                        (''$primPutChar'' y) -- if you don't want to flush each character: (outputChar stdout y) 
+                        (''$primPutChars'' ys) }
 
-primPutStr :: String -> IO ()
-primPutStr xs = 
-    primBindIO 
-        (primPutChars xs) 
+''$primPutStr'' :: String -> IO ()
+''$primPutStr'' xs = 
+    ''$primBindIO'' 
+        (''$primPutChars'' xs) 
         (flush stdout)
 
-primPutStrLn :: String -> IO ()
-primPutStrLn xs = 
-    primBindIO  
-        (primPutChars xs) 
-        (primPutChar '\n') -- does the flush
+''$primPutStrLn'' :: String -> IO ()
+''$primPutStrLn'' xs = 
+    ''$primBindIO''  
+        (''$primPutChars'' xs) 
+        (''$primPutChar'' '\n') -- does the flush
         
-primNegInt   :: Int -> Int!
-primNegInt   = negInt
+''$primNegInt''   :: Int -> Int!
+''$primNegInt''   = negInt
 
-primConcat :: [[a]] -> [a]
-primConcat xss =
+''$primConcat'' :: [[a]] -> [a]
+''$primConcat'' xss =
     case xss of 
     {   '':[]'' -> []
-    ;   (:) ys yss -> primAppend ys (primConcat yss)
+    ;   (:) ys yss -> ''$primAppend'' ys (''$primConcat'' yss)
     }
 
-primConcatMap :: (a -> [b]) -> [a] -> [b]
-primConcatMap f xs =
+''$primConcatMap'' :: (a -> [b]) -> [a] -> [b]
+''$primConcatMap'' f xs =
     case xs of 
     {   '':[]''  -> []
-    ;   (:) y ys -> primAppend (f y) (primConcatMap f ys)
+    ;   (:) y ys -> ''$primAppend'' (f y) (''$primConcatMap'' f ys)
     }
     
-primAppend :: [a] -> [a] -> [a] -- is '++'
-primAppend xs ys =
+''$primAppend'' :: [a] -> [a] -> [a] -- is '++'
+''$primAppend'' xs ys =
     case xs of 
     {   '':[]'' -> ys
-    ;   (:) z zs -> (:) z (primAppend zs ys)
+    ;   (:) z zs -> (:) z (''$primAppend'' zs ys)
     }
 
--- the enumeration functions are used in the translation of the .. notation
--- [1..10]   === enumFromTo 1 10
--- [1..]     === enumFrom 1 
--- [1,3..10] === enumFromThenTo 1 3 10
--- [1,3..]   === enumFromThen 1 3
-
-enumFrom :: Int -> [Int]
-enumFrom n = (:) n (enumFrom ((+) n 1))
-
-enumFromTo :: Int -> Int -> [Int]
-enumFromTo n m =
-    case (>) n m of
-    {   True -> []
-    ;   _    -> (:) n (enumFromTo ((+) n 1) m)
-    }
-
-enumFromThenTo :: Int -> Int -> Int -> [Int]
-enumFromThenTo n a m =
-    case (>) a n of
-    {   True -> primAscendToWithStep n m ((-) a n) 
-    ;   _    -> primDescendToWithStep n m ((-) a n) 
-    }
     
-primAscendToWithStep :: Int -> Int -> Int -> [Int]
-primAscendToWithStep n m step = 
+''$primAscendToWithStep'' :: Int -> Int -> Int -> [Int]
+''$primAscendToWithStep'' n m step = 
     case (>) n m of 
     {   True -> []
-    ;   _    -> (:) n (primAscendToWithStep ((+) n step) m step)
+    ;   _    -> (:) n (''$primAscendToWithStep'' ((+) n step) m step)
     }
     
 
-primDescendToWithStep :: Int -> Int -> Int -> [Int]
-primDescendToWithStep n m step = 
+''$primDescendToWithStep'' :: Int -> Int -> Int -> [Int]
+''$primDescendToWithStep'' n m step = 
     case (<) n m of 
     {   True -> []
-    ;   _    -> (:) n (primDescendToWithStep ((+) n step) m step)
+    ;   _    -> (:) n (''$primDescendToWithStep'' ((+) n step) m step)
     }
 
-enumFromThen :: Int -> Int -> [Int]
-enumFromThen n a = (:) n (enumFromThen a ((+) a ((-) a n)))
 
 -- Show
 
 showBool :: Bool -> String
 showBool b = 
     case b of
-    {   True -> primPackedToString "True"
-    ;   _    -> primPackedToString "False"
+    {   True -> stringFromPacked "True"
+    ;   _    -> stringFromPacked "False"
     }
 
 showUnit :: () -> String
 showUnit u = 
     case u of
-    {   '':()'' -> primPackedToString "()"
+    {   '':()'' -> stringFromPacked "()"
     }
 
 showFunction :: (a -> String) -> (b -> String) -> (a->b) -> String
-showFunction a b x = let! x = x in primPackedToString "<<function>>"
+showFunction a b x = let! x = x in stringFromPacked "<<function>>"
 
 showIO :: (a -> String) -> IO a -> String
-showIO a x = let! x = x in primPackedToString "<<IO action>>"
+showIO a x = let! x = x in stringFromPacked "<<IO action>>"
 
 showChar :: Char -> String
 showChar c = 
-    (:) '\'' (primAppend (safeShowChar c) 
+    (:) '\'' (''$primAppend'' (safeShowChar True c) 
                          [ '\'' ])
 
-safeShowChar :: Char -> String
-safeShowChar c = 
+safeShowChar :: Bool -> Char -> String
+safeShowChar inChar c = 
     case c of
-    { '\a' -> primPackedToString "\\a"
-    ; '\b' -> primPackedToString "\\b"
-    ; '\f' -> primPackedToString "\\f"
-    ; '\n' -> primPackedToString "\\n"
-    ; '\r' -> primPackedToString "\\r"
-    ; '\t' -> primPackedToString "\\t"
-    ; '\\' -> primPackedToString "\\\\"
-    ; '\'' -> primPackedToString "\\'"
-    ; '\"' -> primPackedToString "\\\""
+    { '\a' -> stringFromPacked "\\a"
+    ; '\b' -> stringFromPacked "\\b"
+    ; '\f' -> stringFromPacked "\\f"
+    ; '\n' -> stringFromPacked "\\n"
+    ; '\r' -> stringFromPacked "\\r"
+    ; '\t' -> stringFromPacked "\\t"
+    ; '\\' -> stringFromPacked "\\\\"
+    ; '\'' -> case inChar of { True -> stringFromPacked "\\'"
+                             ; _    -> [c]
+                             }
+    ; '\"' -> case inChar of { True -> [c]
+                             ; _    -> stringFromPacked "\\\""
+                             }
     ; _    -> 
         case logicalAnd ((>=) c 32) ((<) c 127) of
         {   True -> [c]
@@ -199,16 +237,16 @@ logicalAnd b1 b2 =
 
 showString :: String -> String
 showString s = 
-    (:) '\"' (primAppend (primConcatMap safeShowChar s) 
-                         (primPackedToString "\""))
+    (:) '\"' (''$primAppend'' (''$primConcatMap'' (safeShowChar False) s) 
+                         (stringFromPacked "\""))
 
 showInt :: Int -> String
 showInt n = 
     case (<) n 0 of
     {   True -> (:) '(' ((:) '-' 
-                    (primAppend 
-                        (showPositiveInt (primNegInt n)) 
-                        (primPackedToString ")")
+                    (''$primAppend'' 
+                        (showPositiveInt (''$primNegInt'' n)) 
+                        (stringFromPacked ")")
                     ))
     ;   _ -> showPositiveInt n
     } 
@@ -221,22 +259,22 @@ showPositiveInt i =
     in 
         case (==) rest 0 of
         {   True -> digit 
-        ;   _    -> primAppend (showPositiveInt rest) digit
+        ;   _    -> ''$primAppend'' (showPositiveInt rest) digit
         }
 
 showList :: (a -> String) -> [a] -> String
 showList showElem list =
-    primConcat [ ['['], commaList (primMap showElem list), [']'] ] 
+    ''$primConcat'' [ ['['], commaList (''$primMap'' showElem list), [']'] ] 
     
-primMap f xs =
+''$primMap'' f xs =
     case xs of
     {   '':[]'' -> []
-    ;   (:) y ys -> (:) (f y) (primMap f ys)
+    ;   (:) y ys -> (:) (f y) (''$primMap'' f ys)
     }
     
 showPolymorphic :: a -> String
 showPolymorphic x = 
-    let! x = x in primPackedToString "<<polymorphic value>>"
+    let! x = x in stringFromPacked "<<polymorphic value>>"
 
 showTuple2 s1 s2 t : public [custom "type" ["(a -> String) -> (b -> String) -> (a, b) -> String" ]] =
     case t of
@@ -285,7 +323,7 @@ showTuple10 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 t : public [custom "type" ["(a -> Str
 
 showTupleList :: [String] -> String
 showTupleList xs = 
-    primConcat [ ['('], commaList xs, [')'] ] 
+    ''$primConcat'' [ ['('], commaList xs, [')'] ] 
 
 commaList :: [String] -> String
 commaList list =
@@ -294,34 +332,34 @@ commaList list =
     ;   (:) x xs ->
         case xs of
         { '':[]'' -> x 
-        ; _ -> primAppend x (primConcatMap (primAppend [ ',' ]) xs)
+        ; _ -> ''$primAppend'' x (''$primConcatMap'' (''$primAppend'' [ ',' ]) xs)
         }
     }
 
 -- Float
 
-primNegFloat   :: Float -> Float!
-primNegFloat   = negFloat
+''$primNegFloat''   :: Float -> Float!
+''$primNegFloat''   = negFloat
 
-primStringToFloat :: String -> Float
-primStringToFloat = float_of_string_extern
+''$primStringToFloat'' :: String -> Float
+''$primStringToFloat'' = float_of_string_extern
 
 extern float_of_string_extern "float_of_string" :: "Fz"
 
-primShowFloat :: Float -> String
-primShowFloat x = let! x = x in primPackedToString (stringFromFloat x 6 0)
+''$primShowFloat'' :: Float -> String
+''$primShowFloat'' x = let! x = x in stringFromPacked (stringFromFloat x 6 0)
 
 extern stringFromFloat "string_of_float" :: "aFII"
 
 showFloat : public [custom "type"  ["Float -> String"]]
-  = \f -> safeMinus (addPointZero (primShowFloat f))
+  = \f -> safeMinus (addPointZero (''$primShowFloat'' f))
 
 safeMinus : private [custom "type"  ["String -> String"]]
   = \s  -> 
     case s of
     { (:) x xs -> 
         case x of 
-        { '-' -> primAppend (primPackedToString "(-.") (primAppend xs (primPackedToString ")"))
+        { '-' -> ''$primAppend'' (stringFromPacked "(-.") (''$primAppend'' xs (stringFromPacked ")"))
         ; _   -> s
         }
     ; _ -> s
@@ -331,7 +369,7 @@ addPointZero : private [custom "type"  ["String -> String"]]
     = \s ->
         case hasPointOrE s of
         { True -> s
-        ; _ -> primAppend s (primPackedToString ".0")
+        ; _ -> ''$primAppend'' s (stringFromPacked ".0")
         }
         
 hasPointOrE : private []

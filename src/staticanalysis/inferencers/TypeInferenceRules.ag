@@ -352,7 +352,7 @@ SEM Expression
                                   , @conTo   .<. @to.constraints
                                   ]
             . beta         = TVar @lhs.betaUnique
-            . overloaded   = case lookupFM (typeEnvironment @lhs.importEnvironment) (nameFromString "enumFrom") of
+            . overloaded   = case lookupFM (typeEnvironment @lhs.importEnvironment) enumFromName of
                                 Just scheme -> isOverloaded scheme
                                 Nothing     -> False
             . elementType  = if @overloaded then TVar (@lhs.betaUnique + 1) else intType

@@ -95,7 +95,7 @@ patternToCore' (name, pat) continue nr =
                         continue 
                     ]
                 Literal_Float _ f -> withNr nr $
-                    if_ (var "primEqFloat" `app_` float f `app_` Core.Var name)
+                    if_ (var "$primEqFloat" `app_` float f `app_` Core.Var name)
                         continue
                         (Core.Var nextClauseId)
 -- !!! if we would have MATCHFLOAT instruction it could be: 

@@ -594,20 +594,11 @@ undefined = error "undefined"
  -----------------------------------------------}
 
 (>>=) :: IO a -> (a -> IO b) -> IO b
-(>>=) = primBindIO
+(>>=) io f = do x <- io
+                f x
 
 {- imported from PreludePrim 
-
 return :: a -> IO a
--}
-
-sequence :: [IO a] -> IO [a]
-sequence [] = return []
-sequence (c:cs) = do { x <- c; xs <- sequence cs; return (x:xs) }
-
-sequence_ :: [IO a] -> IO ()
-sequence_ [] = return ()
-sequence_ (c:cs) = do { c; sequence_ cs; return () }
 
 putChar :: Char -> IO ()
 putChar c = primPutChar c
@@ -620,6 +611,15 @@ putStrLn s = primPutStrLn s
 
 unsafePerformIO :: IO a -> a 
 unsafePerformIO = primUnsafePerformIO
+-}
+
+sequence :: [IO a] -> IO [a]
+sequence [] = return []
+sequence (c:cs) = do { x <- c; xs <- sequence cs; return (x:xs) }
+
+sequence_ :: [IO a] -> IO ()
+sequence_ [] = return ()
+sequence_ (c:cs) = do { c; sequence_ cs; return () }
 
 print :: Show a => a -> IO ()
 print e = putStrLn (show e)

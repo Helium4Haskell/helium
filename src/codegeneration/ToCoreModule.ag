@@ -38,20 +38,20 @@ insertedMain toplevelTypes =
         app_ unsafePIO $
             case maybeWrapMainAndType of 
                 Nothing -> 
-                    var "primPutStrLn" `app_` 
-                        (var "primPackedToString" `app_`
+                    var "$primPutStrLn" `app_` 
+                        (var "$primPackedToString" `app_`
                             packedString "No 'main' function defined in this module")
                 Just (name, tpScheme)
                     | isIOType tp -> 
                         var name
                     | otherwise ->
-                        var "primPutStrLn" `app_` 
+                        var "$primPutStrLn" `app_` 
                             (showFunctionOfType True (makeTypeFromTp tp) `app_` 
                                 var name)
                     where                        
                         tp = unqualify (snd (instantiate 123456789 tpScheme))
     where
-        unsafePIO = var "primUnsafePerformIO"    
+        unsafePIO = var "$primUnsafePerformIO"    
                 
 }
 
@@ -65,7 +65,7 @@ SEM Module
                 MaybeExports_Nothing -> True
                 _                    -> False
             )
-            ( @exports.values   -- map, filter
+            ( @exports.values {- `unionSet` localValuePrims @body.decls -} -- NOTE: generated stuff is already public  -- map, filter
             , @exports.cons     -- True, False
             , @exports.types    -- Bool, Int
             , emptySet          -- Bool(..); put Bool in @exports.cons as well!
@@ -74,6 +74,21 @@ SEM Module
             (makeCoreModule (fmap idFromName @name.name)
                 ( @body.decls ++ @lhs.extraDecls
                 ))
+
+{-
+{
+-- Return all local value definitions that start with a '$' in the name
+localValuePrims :: [CoreDecl] -> IdSet
+localValuePrims cdecls
+  = setFromList [declName decl  | decl <- cdecls
+                                , isDeclValue decl
+                                , let name = stringFromId (declName decl)
+                                , not (null name)
+                                , head name == '$'
+                                ]
+                      
+}
+-}
     --  range                    : Range
     --  name                     : MaybeName
     --  exports                  : MaybeExports

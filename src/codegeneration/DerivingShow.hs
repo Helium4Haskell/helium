@@ -51,7 +51,7 @@ derivingShow (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) 
           }
        , -- derive the dictionary
          DeclValue 
-          { declName    = idFromString ("dictShow" ++ getNameName name)
+          { declName    = idFromString ("$dictShow" ++ getNameName name)
           , declAccess  = public
           , valueEnc    = Nothing
           , valueValue  = makeShowDictionary (length names) nameId
@@ -81,7 +81,7 @@ makeShowDictionary :: Int -> Id -> Expr
 makeShowDictionary nrOfArgs nameId =
    let ids  = take nrOfArgs [ idFromString ("d" ++ show i) | i <- [1..] ]
        con  = Con (ConTag (Lit (LitInt 0)) 1)
-       list = [ Ap (Var (idFromString "show")) (Var id) | id <- ids ]
+       list = [ Ap (Var (idFromString "$show")) (Var id) | id <- ids ]
        body = Ap con (foldl Ap (Var nameId) list)
    in foldr Lam body ids
 
@@ -96,7 +96,7 @@ makeAlt c =
 showConstructor :: Id -> [UHA.Type] -> Expr
 showConstructor c ts 
     | isConOp && length ts == 2 = 
-        Ap (Var (idFromString "primConcat")) $ coreList 
+        Ap (Var (idFromString "$primConcat")) $ coreList 
             [   stringToCore "("
             ,   Ap (showFunctionOfType False (ts!!0)) (Var (idFromNumber 1))
             ,   stringToCore name
@@ -104,7 +104,7 @@ showConstructor c ts
             ,   stringToCore ")"
             ]
     | otherwise =
-        Ap (Var (idFromString "primConcat")) $ coreList 
+        Ap (Var (idFromString "$primConcat")) $ coreList 
             (  (if null ts then [] else [stringToCore "("])
             ++ ((if isConOp then parens else id) [stringToCore name])
             ++ concat

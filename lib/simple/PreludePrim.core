@@ -12,8 +12,14 @@ module PreludePrim
     , (==.), (/=.), (<.), (>.), (<=.), (>=.)
     , sqrt, (**.), exp, log, sin, cos, tan
 	
+
+    -- Enum
+    , enumFrom, enumFromThen, enumFromTo, enumFromThenTo
+
     -- IO monad
-    , return -- primUnsafePerformIO, primBindIO in HeliumLang
+    , return 
+    , unsafePerformIO
+    , putChar, putStr, putStrLn
 
     -- IO files
     , getChar
@@ -53,6 +59,12 @@ import LvmException
     , Exception(System), SystemException(EndOfFile)
     )
 
+import HeliumLang
+    ( ''$negate'' 
+    , ''$enumFrom'', ''$enumFromThen'', ''$enumFromTo'', ''$enumFromThenTo''
+    , ''$primPutChar'', ''$primPutStr'', ''$primPutStrLn'', ''$primUnsafePerformIO''
+    )
+
 custom infix (+)  : public [6,"left"]
 custom infix (-)  : public [6,"left"]
 custom infix (*)  : public [7,"left"]
@@ -88,6 +100,23 @@ ord x = x
 
 chr :: Int -> Char
 chr x = x
+
+{--------------------------------------------------------------------------
+  IO
+--------------------------------------------------------------------------}
+putChar :: Char -> IO ()
+putChar c = ''$primPutChar''c
+
+putStr :: String -> IO ()
+putStr s = ''$primPutStr'' s 
+
+putStrLn :: String -> IO ()
+putStrLn s = ''$primPutStrLn'' s
+
+unsafePerformIO :: IO a -> a 
+unsafePerformIO io 
+  = ''$primUnsafePerformIO'' io
+
 
 -- Float
 
@@ -167,8 +196,24 @@ round x
            i = primFloatRoundInt z
       in i
 
+{--------------------------------------------------------------------------
+  Re-export Builtins
+--------------------------------------------------------------------------}
 negate :: Int -> Int
-negate x = negInt x
+negate x = ''$negate'' x
+
+enumFrom :: Int -> [Int]
+enumFrom n = ''$enumFrom'' n
+
+enumFromTo :: Int -> Int -> [Int]
+enumFromTo n m = ''$enumFromTo'' n m
+
+enumFromThen :: Int -> Int -> [Int]
+enumFromThen n a = ''$enumFromThen'' n a
+
+enumFromThenTo :: Int -> Int -> Int -> [Int]
+enumFromThenTo n a m =
+    ''$enumFromThenTo'' n a m 
 
 {--------------------------------------------------------------------------
   IO

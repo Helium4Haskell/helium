@@ -4763,7 +4763,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             (_elementType@_) =
                 if _overloaded then TVar (_lhsIbetaUnique + 1) else intType
             (_overloaded@_) =
-                case lookupFM (typeEnvironment _lhsIimportEnvironment) (nameFromString "enumFrom") of
+                case lookupFM (typeEnvironment _lhsIimportEnvironment) enumFromName of
                    Just scheme -> isOverloaded scheme
                    Nothing     -> False
             (_beta@_) =
