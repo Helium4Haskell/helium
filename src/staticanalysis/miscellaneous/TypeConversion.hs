@@ -39,12 +39,19 @@ namesInType uhaType = case uhaType of
 makeNameMap :: Names -> [(Name,Tp)]
 makeNameMap = flip zip (map TVar [0..])
 
+-- also return the name map
+makeTpSchemeFromType' :: Type -> (TpScheme, [(Int, Name)])
+makeTpSchemeFromType' uhaType =
+   let names   = namesInType uhaType
+       nameMap = makeNameMap names
+       intMap  = zip [0..] names
+       context = predicatesFromContext nameMap uhaType
+       tp      = makeTpFromType nameMap uhaType
+       scheme  = Quantification (ftv tp, [ (i,getNameName n) | (n,TVar i) <- nameMap], context .=>. tp)
+   in (scheme, intMap)
+
 makeTpSchemeFromType :: Type -> TpScheme
-makeTpSchemeFromType uhaType = 
-   let context = predicatesFromContext nameMap uhaType
-       nameMap = makeNameMap (namesInType uhaType)
-       tp = makeTpFromType nameMap uhaType
-   in Quantification (ftv tp, [ (i,getNameName n) | (n,TVar i) <- nameMap], context .=>. tp)
+makeTpSchemeFromType = fst . makeTpSchemeFromType'
 
 predicatesFromContext :: [(Name,Tp)] -> Type -> Predicates
 predicatesFromContext nameMap (Type_Qualified _ is _) =

@@ -133,6 +133,19 @@ findSimilarFunctionBindings environment candidates =
 xor :: Bool -> Bool -> Bool
 xor b1 b2 = not (b1 == b2)
 
+simplifyContext :: OrderedTypeSynonyms -> Range -> [(Int, Name)] -> TpScheme -> Warnings
+simplifyContext synonyms range intMap typescheme = 
+   let predicates = qualifiers (unquantify typescheme)
+       reduced    = f predicates []
+          where f [] as = reverse as -- reverse to original order
+                f (p:ps) as 
+                   | entail synonyms standardClasses (ps++as) p = f ps as
+                   | otherwise = f ps (p:as)
+       sub = listToSubstitution [ (i, TCon (show n)) | (i, n) <- intMap ]
+   in if length reduced == length predicates 
+        then []
+        else [ ReduceContext range (sub |-> predicates) (sub |-> reduced) ]
+
 mode :: Ord a => [a] -> Maybe a -- Just ... IF any of the elements is more common
 mode xs = 
     case filter ((== maxFreq) . snd) fs of
@@ -207,6 +220,7 @@ type T_Alternative = (Names) ->
                      ([Error]) ->
                      (Names) ->
                      ([Option]) ->
+                     (OrderedTypeSynonyms) ->
                      (FiniteMap Name Int) ->
                      (FiniteMap Name TpScheme) ->
                      ([Warning]) ->
@@ -230,6 +244,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -268,6 +283,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
             _righthandsideOmiscerrors :: ([Error])
             _righthandsideOnamesInScope :: (Names)
             _righthandsideOoptions :: ([Option])
+            _righthandsideOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _righthandsideOtypeConstructors :: (FiniteMap Name Int)
             _righthandsideOvalueConstructors :: (FiniteMap Name TpScheme)
             _righthandsideOwarnings :: ([Warning])
@@ -276,7 +292,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
             ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
                 (pattern_ (_patternOallTypeConstructors) (_patternOallValueConstructors) (_patternOcollectScopeInfos) (_patternOlhsPattern) (_patternOmiscerrors) (_patternOnamesInScope) (_patternOtypeConstructors) (_patternOvalueConstructors) (_patternOwarnings))
             ( _righthandsideIcollectScopeInfos,_righthandsideIkindErrors,_righthandsideImiscerrors,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIwarnings) =
-                (righthandside_ (_righthandsideOallTypeConstructors) (_righthandsideOallValueConstructors) (_righthandsideOcollectScopeInfos) (_righthandsideOkindErrors) (_righthandsideOmiscerrors) (_righthandsideOnamesInScope) (_righthandsideOoptions) (_righthandsideOtypeConstructors) (_righthandsideOvalueConstructors) (_righthandsideOwarnings))
+                (righthandside_ (_righthandsideOallTypeConstructors) (_righthandsideOallValueConstructors) (_righthandsideOcollectScopeInfos) (_righthandsideOkindErrors) (_righthandsideOmiscerrors) (_righthandsideOnamesInScope) (_righthandsideOoptions) (_righthandsideOorderedTypeSynonyms) (_righthandsideOtypeConstructors) (_righthandsideOvalueConstructors) (_righthandsideOwarnings))
             (_lhsOunboundNames@_) =
                 _unboundNames
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
@@ -325,6 +341,8 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
                 _namesInScope
             (_righthandsideOoptions@_) =
                 _lhsIoptions
+            (_righthandsideOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_righthandsideOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_righthandsideOvalueConstructors@_) =
@@ -342,6 +360,7 @@ sem_Alternative_Empty (range_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -378,6 +397,7 @@ type T_Alternatives = (Names) ->
                       ([Error]) ->
                       (Names) ->
                       ([Option]) ->
+                      (OrderedTypeSynonyms) ->
                       (FiniteMap Name Int) ->
                       (FiniteMap Name TpScheme) ->
                       ([Warning]) ->
@@ -398,6 +418,7 @@ sem_Alternatives_Cons (hd_) (tl_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -420,6 +441,7 @@ sem_Alternatives_Cons (hd_) (tl_) =
             _hdOmiscerrors :: ([Error])
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
+            _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _hdOtypeConstructors :: (FiniteMap Name Int)
             _hdOvalueConstructors :: (FiniteMap Name TpScheme)
             _hdOwarnings :: ([Warning])
@@ -436,13 +458,14 @@ sem_Alternatives_Cons (hd_) (tl_) =
             _tlOmiscerrors :: ([Error])
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
+            _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _tlOtypeConstructors :: (FiniteMap Name Int)
             _tlOvalueConstructors :: (FiniteMap Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOorderedTypeSynonyms) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOorderedTypeSynonyms) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -471,6 +494,8 @@ sem_Alternatives_Cons (hd_) (tl_) =
                 _lhsInamesInScope
             (_hdOoptions@_) =
                 _lhsIoptions
+            (_hdOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_hdOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_hdOvalueConstructors@_) =
@@ -491,6 +516,8 @@ sem_Alternatives_Cons (hd_) (tl_) =
                 _lhsInamesInScope
             (_tlOoptions@_) =
                 _lhsIoptions
+            (_tlOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_tlOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_tlOvalueConstructors@_) =
@@ -507,6 +534,7 @@ sem_Alternatives_Nil  =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -570,6 +598,7 @@ sem_AnnotatedType_AnnotatedType (range_) (strict_) (type_) =
             _lhsOunboundNames :: (Names)
             _lhsOwarnings :: ([Warning])
             _rangeIself :: (Range)
+            _typeIcontextRange :: (Range)
             _typeImiscerrors :: ([Error])
             _typeIself :: (Type)
             _typeItypevariables :: (Names)
@@ -581,7 +610,7 @@ sem_AnnotatedType_AnnotatedType (range_) (strict_) (type_) =
             _typeOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
-            ( _typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
+            ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
                 (type_ (_typeOallTypeConstructors) (_typeOmiscerrors) (_typeOoptions) (_typeOtypeConstructors) (_typeOwarnings))
             (_lhsOtype@_) =
                 _typeIself
@@ -786,6 +815,7 @@ type T_Body = (Names) ->
               (Names) ->
               ([(Name,(Int,Assoc))]) ->
               ([Option]) ->
+              (OrderedTypeSynonyms) ->
               (FiniteMap Name Int) ->
               (FiniteMap Name TpScheme) ->
               ([Warning]) ->
@@ -811,6 +841,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
       _lhsInamesInScope
       _lhsIoperatorFixities
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -856,6 +887,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             _declarationsOnamesInScope :: (Names)
             _declarationsOoperatorFixities :: ([(Name,(Int,Assoc))])
             _declarationsOoptions :: ([Option])
+            _declarationsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _declarationsOpreviousWasAlsoFB :: (Maybe Name)
             _declarationsOsuspiciousFBs :: ([(Name,Name)])
             _declarationsOtypeConstructors :: (FiniteMap Name Int)
@@ -878,6 +910,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                                (_declarationsOnamesInScope)
                                (_declarationsOoperatorFixities)
                                (_declarationsOoptions)
+                               (_declarationsOorderedTypeSynonyms)
                                (_declarationsOpreviousWasAlsoFB)
                                (_declarationsOsuspiciousFBs)
                                (_declarationsOtypeConstructors)
@@ -947,6 +980,8 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                 _lhsIoperatorFixities
             (_declarationsOoptions@_) =
                 _lhsIoptions
+            (_declarationsOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_declarationsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_declarationsOvalueConstructors@_) =
@@ -1432,7 +1467,7 @@ type T_ContextItem = (Names) ->
                      ([Option]) ->
                      (FiniteMap Name Int) ->
                      ([Warning]) ->
-                     ( ([Name]),([Error]),(ContextItem),([Warning]))
+                     ( ([Range]),([Name]),([Error]),(ContextItem),([Warning]))
 -- cata
 sem_ContextItem :: (ContextItem) ->
                    (T_ContextItem)
@@ -1448,7 +1483,8 @@ sem_ContextItem_ContextItem (range_) (name_) (types_) =
       _lhsIoptions
       _lhsItypeConstructors
       _lhsIwarnings ->
-        let _lhsOcontextVars :: ([Name])
+        let _lhsOcontextRanges :: ([Range])
+            _lhsOcontextVars :: ([Name])
             _lhsOmiscerrors :: ([Error])
             _lhsOself :: (ContextItem)
             _lhsOwarnings :: ([Warning])
@@ -1469,6 +1505,8 @@ sem_ContextItem_ContextItem (range_) (name_) (types_) =
                 (name_ )
             ( _typesImiscerrors,_typesIself,_typesItypevariables,_typesIwarnings) =
                 (types_ (_typesOallTypeConstructors) (_typesOmiscerrors) (_typesOoptions) (_typesOtypeConstructors) (_typesOwarnings))
+            (_lhsOcontextRanges@_) =
+                [range_]
             (_lhsOmiscerrors@_) =
                 if elem (getNameName name_) (keysFM standardClasses)
                    then _typesImiscerrors
@@ -1493,7 +1531,7 @@ sem_ContextItem_ContextItem (range_) (name_) (types_) =
                 _lhsItypeConstructors
             (_typesOwarnings@_) =
                 _lhsIwarnings
-        in  ( _lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOwarnings)
+        in  ( _lhsOcontextRanges,_lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOwarnings)
 -- ContextItems ------------------------------------------------
 -- semantic domain
 type T_ContextItems = (Names) ->
@@ -1501,7 +1539,7 @@ type T_ContextItems = (Names) ->
                       ([Option]) ->
                       (FiniteMap Name Int) ->
                       ([Warning]) ->
-                      ( ([Name]),([Error]),(ContextItems),([Warning]))
+                      ( ([Range]),([Name]),([Error]),(ContextItems),([Warning]))
 -- cata
 sem_ContextItems :: (ContextItems) ->
                     (T_ContextItems)
@@ -1516,10 +1554,12 @@ sem_ContextItems_Cons (hd_) (tl_) =
       _lhsIoptions
       _lhsItypeConstructors
       _lhsIwarnings ->
-        let _lhsOcontextVars :: ([Name])
+        let _lhsOcontextRanges :: ([Range])
+            _lhsOcontextVars :: ([Name])
             _lhsOmiscerrors :: ([Error])
             _lhsOself :: (ContextItems)
             _lhsOwarnings :: ([Warning])
+            _hdIcontextRanges :: ([Range])
             _hdIcontextVars :: ([Name])
             _hdImiscerrors :: ([Error])
             _hdIself :: (ContextItem)
@@ -1529,6 +1569,7 @@ sem_ContextItems_Cons (hd_) (tl_) =
             _hdOoptions :: ([Option])
             _hdOtypeConstructors :: (FiniteMap Name Int)
             _hdOwarnings :: ([Warning])
+            _tlIcontextRanges :: ([Range])
             _tlIcontextVars :: ([Name])
             _tlImiscerrors :: ([Error])
             _tlIself :: (ContextItems)
@@ -1538,10 +1579,12 @@ sem_ContextItems_Cons (hd_) (tl_) =
             _tlOoptions :: ([Option])
             _tlOtypeConstructors :: (FiniteMap Name Int)
             _tlOwarnings :: ([Warning])
-            ( _hdIcontextVars,_hdImiscerrors,_hdIself,_hdIwarnings) =
+            ( _hdIcontextRanges,_hdIcontextVars,_hdImiscerrors,_hdIself,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors) (_hdOmiscerrors) (_hdOoptions) (_hdOtypeConstructors) (_hdOwarnings))
-            ( _tlIcontextVars,_tlImiscerrors,_tlIself,_tlIwarnings) =
+            ( _tlIcontextRanges,_tlIcontextVars,_tlImiscerrors,_tlIself,_tlIwarnings) =
                 (tl_ (_tlOallTypeConstructors) (_tlOmiscerrors) (_tlOoptions) (_tlOtypeConstructors) (_tlOwarnings))
+            (_lhsOcontextRanges@_) =
+                _hdIcontextRanges ++ _tlIcontextRanges
             (_lhsOcontextVars@_) =
                 _hdIcontextVars  ++  _tlIcontextVars
             (_self@_) =
@@ -1572,7 +1615,7 @@ sem_ContextItems_Cons (hd_) (tl_) =
                 _lhsItypeConstructors
             (_tlOwarnings@_) =
                 _hdIwarnings
-        in  ( _lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOwarnings)
+        in  ( _lhsOcontextRanges,_lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOwarnings)
 sem_ContextItems_Nil :: (T_ContextItems)
 sem_ContextItems_Nil  =
     \ _lhsIallTypeConstructors
@@ -1580,10 +1623,13 @@ sem_ContextItems_Nil  =
       _lhsIoptions
       _lhsItypeConstructors
       _lhsIwarnings ->
-        let _lhsOcontextVars :: ([Name])
+        let _lhsOcontextRanges :: ([Range])
+            _lhsOcontextVars :: ([Name])
             _lhsOmiscerrors :: ([Error])
             _lhsOself :: (ContextItems)
             _lhsOwarnings :: ([Warning])
+            (_lhsOcontextRanges@_) =
+                []
             (_lhsOcontextVars@_) =
                 []
             (_self@_) =
@@ -1594,7 +1640,7 @@ sem_ContextItems_Nil  =
                 _lhsImiscerrors
             (_lhsOwarnings@_) =
                 _lhsIwarnings
-        in  ( _lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOwarnings)
+        in  ( _lhsOcontextRanges,_lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOwarnings)
 -- Declaration -------------------------------------------------
 -- semantic domain
 type T_Declaration = (Names) ->
@@ -1608,6 +1654,7 @@ type T_Declaration = (Names) ->
                      (Names) ->
                      ([(Name,(Int,Assoc))]) ->
                      ([Option]) ->
+                     (OrderedTypeSynonyms) ->
                      (Maybe Name) ->
                      ([(Name,Name)]) ->
                      (FiniteMap Name Int) ->
@@ -1657,6 +1704,7 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
       _lhsInamesInScope
       _lhsIoperatorFixities
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
@@ -1678,6 +1726,7 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
             _lhsOunboundNames :: (Names)
             _lhsOwarnings :: ([Warning])
             _rangeIself :: (Range)
+            _contextIcontextRanges :: ([Range])
             _contextIcontextVars :: ([Name])
             _contextImiscerrors :: ([Error])
             _contextIself :: (ContextItems)
@@ -1704,18 +1753,19 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
             _whereOmiscerrors :: ([Error])
             _whereOnamesInScope :: (Names)
             _whereOoptions :: ([Option])
+            _whereOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _whereOtypeConstructors :: (FiniteMap Name Int)
             _whereOunboundNames :: (Names)
             _whereOvalueConstructors :: (FiniteMap Name TpScheme)
             _whereOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
-            ( _contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
+            ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
                 (context_ (_contextOallTypeConstructors) (_contextOmiscerrors) (_contextOoptions) (_contextOtypeConstructors) (_contextOwarnings))
             ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                 (simpletype_ )
             ( _whereIcollectScopeInfos,_whereIkindErrors,_whereImiscerrors,_whereInamesInScope,_whereIself,_whereIunboundNames,_whereIwarnings) =
-                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOoptions) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
+                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOoptions) (_whereOorderedTypeSynonyms) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
             (_lhsOpreviousWasAlsoFB@_) =
                 Nothing
             ((_assumptions@_,_constraints@_,_unboundNames@_)) =
@@ -1772,6 +1822,8 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
                 _lhsInamesInScope
             (_whereOoptions@_) =
                 _lhsIoptions
+            (_whereOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_whereOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_whereOunboundNames@_) =
@@ -1799,6 +1851,7 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
       _lhsInamesInScope
       _lhsIoperatorFixities
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
@@ -1820,6 +1873,7 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
             _lhsOunboundNames :: (Names)
             _lhsOwarnings :: ([Warning])
             _rangeIself :: (Range)
+            _contextIcontextRanges :: ([Range])
             _contextIcontextVars :: ([Name])
             _contextImiscerrors :: ([Error])
             _contextIself :: (ContextItems)
@@ -1853,7 +1907,7 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
             _derivingsIself :: (Names)
             ( _rangeIself) =
                 (range_ )
-            ( _contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
+            ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
                 (context_ (_contextOallTypeConstructors) (_contextOmiscerrors) (_contextOoptions) (_contextOtypeConstructors) (_contextOwarnings))
             ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                 (simpletype_ )
@@ -1948,6 +2002,7 @@ sem_Declaration_Default (range_) (types_) =
       _lhsInamesInScope
       _lhsIoperatorFixities
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
@@ -2037,6 +2092,7 @@ sem_Declaration_Empty (range_) =
       _lhsInamesInScope
       _lhsIoperatorFixities
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
@@ -2108,6 +2164,7 @@ sem_Declaration_Fixity (range_) (fixity_) (priority_) (operators_) =
       _lhsInamesInScope
       _lhsIoperatorFixities
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
@@ -2193,6 +2250,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
       _lhsInamesInScope
       _lhsIoperatorFixities
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
@@ -2229,13 +2287,14 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
             _bindingsOmiscerrors :: ([Error])
             _bindingsOnamesInScope :: (Names)
             _bindingsOoptions :: ([Option])
+            _bindingsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _bindingsOtypeConstructors :: (FiniteMap Name Int)
             _bindingsOvalueConstructors :: (FiniteMap Name TpScheme)
             _bindingsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
             ( _bindingsIarities,_bindingsIcollectScopeInfos,_bindingsIkindErrors,_bindingsImiscerrors,_bindingsIname,_bindingsIself,_bindingsIunboundNames,_bindingsIwarnings) =
-                (bindings_ (_bindingsOallTypeConstructors) (_bindingsOallValueConstructors) (_bindingsOcollectScopeInfos) (_bindingsOkindErrors) (_bindingsOmiscerrors) (_bindingsOnamesInScope) (_bindingsOoptions) (_bindingsOtypeConstructors) (_bindingsOvalueConstructors) (_bindingsOwarnings))
+                (bindings_ (_bindingsOallTypeConstructors) (_bindingsOallValueConstructors) (_bindingsOcollectScopeInfos) (_bindingsOkindErrors) (_bindingsOmiscerrors) (_bindingsOnamesInScope) (_bindingsOoptions) (_bindingsOorderedTypeSynonyms) (_bindingsOtypeConstructors) (_bindingsOvalueConstructors) (_bindingsOwarnings))
             (_lhsOdeclVarNames@_) =
                 [_bindingsIname]
             (_lhsOsuspiciousFBs@_) =
@@ -2287,6 +2346,8 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
                 _lhsInamesInScope
             (_bindingsOoptions@_) =
                 _lhsIoptions
+            (_bindingsOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_bindingsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_bindingsOvalueConstructors@_) =
@@ -2312,6 +2373,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
       _lhsInamesInScope
       _lhsIoperatorFixities
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
@@ -2333,6 +2395,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
             _lhsOunboundNames :: (Names)
             _lhsOwarnings :: ([Warning])
             _rangeIself :: (Range)
+            _contextIcontextRanges :: ([Range])
             _contextIcontextVars :: ([Name])
             _contextImiscerrors :: ([Error])
             _contextIself :: (ContextItems)
@@ -2366,20 +2429,21 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
             _whereOmiscerrors :: ([Error])
             _whereOnamesInScope :: (Names)
             _whereOoptions :: ([Option])
+            _whereOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _whereOtypeConstructors :: (FiniteMap Name Int)
             _whereOunboundNames :: (Names)
             _whereOvalueConstructors :: (FiniteMap Name TpScheme)
             _whereOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
-            ( _contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
+            ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
                 (context_ (_contextOallTypeConstructors) (_contextOmiscerrors) (_contextOoptions) (_contextOtypeConstructors) (_contextOwarnings))
             ( _nameIself) =
                 (name_ )
             ( _typesImiscerrors,_typesIself,_typesItypevariables,_typesIwarnings) =
                 (types_ (_typesOallTypeConstructors) (_typesOmiscerrors) (_typesOoptions) (_typesOtypeConstructors) (_typesOwarnings))
             ( _whereIcollectScopeInfos,_whereIkindErrors,_whereImiscerrors,_whereInamesInScope,_whereIself,_whereIunboundNames,_whereIwarnings) =
-                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOoptions) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
+                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOoptions) (_whereOorderedTypeSynonyms) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
             (_lhsOpreviousWasAlsoFB@_) =
                 Nothing
             ((_assumptions@_,_constraints@_,_unboundNames@_)) =
@@ -2446,6 +2510,8 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
                 _lhsInamesInScope
             (_whereOoptions@_) =
                 _lhsIoptions
+            (_whereOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_whereOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_whereOunboundNames@_) =
@@ -2473,6 +2539,7 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
       _lhsInamesInScope
       _lhsIoperatorFixities
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
@@ -2494,6 +2561,7 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
             _lhsOunboundNames :: (Names)
             _lhsOwarnings :: ([Warning])
             _rangeIself :: (Range)
+            _contextIcontextRanges :: ([Range])
             _contextIcontextVars :: ([Name])
             _contextImiscerrors :: ([Error])
             _contextIself :: (ContextItems)
@@ -2527,7 +2595,7 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
             _derivingsIself :: (Names)
             ( _rangeIself) =
                 (range_ )
-            ( _contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
+            ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
                 (context_ (_contextOallTypeConstructors) (_contextOmiscerrors) (_contextOoptions) (_contextOtypeConstructors) (_contextOwarnings))
             ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                 (simpletype_ )
@@ -2614,6 +2682,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
       _lhsInamesInScope
       _lhsIoperatorFixities
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
@@ -2663,6 +2732,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             _righthandsideOmiscerrors :: ([Error])
             _righthandsideOnamesInScope :: (Names)
             _righthandsideOoptions :: ([Option])
+            _righthandsideOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _righthandsideOtypeConstructors :: (FiniteMap Name Int)
             _righthandsideOvalueConstructors :: (FiniteMap Name TpScheme)
             _righthandsideOwarnings :: ([Warning])
@@ -2671,7 +2741,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
                 (pattern_ (_patternOallTypeConstructors) (_patternOallValueConstructors) (_patternOcollectScopeInfos) (_patternOlhsPattern) (_patternOmiscerrors) (_patternOnamesInScope) (_patternOtypeConstructors) (_patternOvalueConstructors) (_patternOwarnings))
             ( _righthandsideIcollectScopeInfos,_righthandsideIkindErrors,_righthandsideImiscerrors,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIwarnings) =
-                (righthandside_ (_righthandsideOallTypeConstructors) (_righthandsideOallValueConstructors) (_righthandsideOcollectScopeInfos) (_righthandsideOkindErrors) (_righthandsideOmiscerrors) (_righthandsideOnamesInScope) (_righthandsideOoptions) (_righthandsideOtypeConstructors) (_righthandsideOvalueConstructors) (_righthandsideOwarnings))
+                (righthandside_ (_righthandsideOallTypeConstructors) (_righthandsideOallValueConstructors) (_righthandsideOcollectScopeInfos) (_righthandsideOkindErrors) (_righthandsideOmiscerrors) (_righthandsideOnamesInScope) (_righthandsideOoptions) (_righthandsideOorderedTypeSynonyms) (_righthandsideOtypeConstructors) (_righthandsideOvalueConstructors) (_righthandsideOwarnings))
             (_lhsOdeclVarNames@_) =
                 _patternIpatVarNames
             (_lhsOpreviousWasAlsoFB@_) =
@@ -2738,6 +2808,8 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
                 _lhsInamesInScope
             (_righthandsideOoptions@_) =
                 _lhsIoptions
+            (_righthandsideOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_righthandsideOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_righthandsideOvalueConstructors@_) =
@@ -2761,6 +2833,7 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
       _lhsInamesInScope
       _lhsIoperatorFixities
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
@@ -2785,6 +2858,7 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
             _simpletypeIname :: (Name)
             _simpletypeIself :: (SimpleType)
             _simpletypeItypevariables :: (Names)
+            _typeIcontextRange :: (Range)
             _typeImiscerrors :: ([Error])
             _typeIself :: (Type)
             _typeItypevariables :: (Names)
@@ -2798,7 +2872,7 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
                 (range_ )
             ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                 (simpletype_ )
-            ( _typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
+            ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
                 (type_ (_typeOallTypeConstructors) (_typeOmiscerrors) (_typeOoptions) (_typeOtypeConstructors) (_typeOwarnings))
             (_typeSynonymInfo@_) =
                 (length _simpletypeItypevariables,\tps -> makeTpFromType (zip _simpletypeItypevariables tps) _typeIself)
@@ -2870,6 +2944,7 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
       _lhsInamesInScope
       _lhsIoperatorFixities
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
@@ -2892,6 +2967,7 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
             _lhsOwarnings :: ([Warning])
             _rangeIself :: (Range)
             _namesIself :: (Names)
+            _typeIcontextRange :: (Range)
             _typeImiscerrors :: ([Error])
             _typeIself :: (Type)
             _typeItypevariables :: (Names)
@@ -2905,10 +2981,10 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
                 (range_ )
             ( _namesIself) =
                 (names_ )
-            ( _typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
+            ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
                 (type_ (_typeOallTypeConstructors) (_typeOmiscerrors) (_typeOoptions) (_typeOtypeConstructors) (_typeOwarnings))
-            (_typeScheme@_) =
-                makeTpSchemeFromType _typeIself
+            ((_typeScheme@_,_intMap@_)) =
+                makeTpSchemeFromType' _typeIself
             (_lhsOtypeSignatures@_) =
                 [ (name, _typeScheme) | name <- _namesIself ] ++ _lhsItypeSignatures
             (_newErrors@_) =
@@ -2917,6 +2993,8 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
                 _newErrors ++ _lhsIkindErrors
             (_lhsOpreviousWasAlsoFB@_) =
                 Nothing
+            (_lhsOwarnings@_) =
+                simplifyContext _lhsIorderedTypeSynonyms _typeIcontextRange _intMap _typeScheme ++ _typeIwarnings
             (_lhsOdeclVarNames@_) =
                 []
             (_lhsOunboundNames@_) =
@@ -2939,8 +3017,6 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
                 _lhsIoperatorFixities
             (_lhsOsuspiciousFBs@_) =
                 _lhsIsuspiciousFBs
-            (_lhsOwarnings@_) =
-                _typeIwarnings
             (_typeOallTypeConstructors@_) =
                 _lhsIallTypeConstructors
             (_typeOmiscerrors@_) =
@@ -2965,6 +3041,7 @@ type T_Declarations = (Names) ->
                       (Names) ->
                       ([(Name,(Int,Assoc))]) ->
                       ([Option]) ->
+                      (OrderedTypeSynonyms) ->
                       (Maybe Name) ->
                       ([(Name,Name)]) ->
                       (FiniteMap Name Int) ->
@@ -2992,6 +3069,7 @@ sem_Declarations_Cons (hd_) (tl_) =
       _lhsInamesInScope
       _lhsIoperatorFixities
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
@@ -3037,6 +3115,7 @@ sem_Declarations_Cons (hd_) (tl_) =
             _hdOnamesInScope :: (Names)
             _hdOoperatorFixities :: ([(Name,(Int,Assoc))])
             _hdOoptions :: ([Option])
+            _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _hdOpreviousWasAlsoFB :: (Maybe Name)
             _hdOsuspiciousFBs :: ([(Name,Name)])
             _hdOtypeConstructors :: (FiniteMap Name Int)
@@ -3068,6 +3147,7 @@ sem_Declarations_Cons (hd_) (tl_) =
             _tlOnamesInScope :: (Names)
             _tlOoperatorFixities :: ([(Name,(Int,Assoc))])
             _tlOoptions :: ([Option])
+            _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _tlOpreviousWasAlsoFB :: (Maybe Name)
             _tlOsuspiciousFBs :: ([(Name,Name)])
             _tlOtypeConstructors :: (FiniteMap Name Int)
@@ -3075,9 +3155,9 @@ sem_Declarations_Cons (hd_) (tl_) =
             _tlOvalueConstructors :: (FiniteMap Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIcollectScopeInfos,_hdIcollectTypeConstructors,_hdIcollectTypeSynonyms,_hdIcollectValueConstructors,_hdIdeclVarNames,_hdIkindErrors,_hdImiscerrors,_hdIoperatorFixities,_hdIpreviousWasAlsoFB,_hdIself,_hdIsuspiciousFBs,_hdItypeSignatures,_hdIunboundNames,_hdIwarnings) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOcollectTypeConstructors) (_hdOcollectTypeSynonyms) (_hdOcollectValueConstructors) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoperatorFixities) (_hdOoptions) (_hdOpreviousWasAlsoFB) (_hdOsuspiciousFBs) (_hdOtypeConstructors) (_hdOtypeSignatures) (_hdOvalueConstructors) (_hdOwarnings))
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOcollectTypeConstructors) (_hdOcollectTypeSynonyms) (_hdOcollectValueConstructors) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoperatorFixities) (_hdOoptions) (_hdOorderedTypeSynonyms) (_hdOpreviousWasAlsoFB) (_hdOsuspiciousFBs) (_hdOtypeConstructors) (_hdOtypeSignatures) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIcollectScopeInfos,_tlIcollectTypeConstructors,_tlIcollectTypeSynonyms,_tlIcollectValueConstructors,_tlIdeclVarNames,_tlIkindErrors,_tlImiscerrors,_tlIoperatorFixities,_tlIpreviousWasAlsoFB,_tlIself,_tlIsuspiciousFBs,_tlItypeSignatures,_tlIunboundNames,_tlIwarnings) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOcollectTypeConstructors) (_tlOcollectTypeSynonyms) (_tlOcollectValueConstructors) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoperatorFixities) (_tlOoptions) (_tlOpreviousWasAlsoFB) (_tlOsuspiciousFBs) (_tlOtypeConstructors) (_tlOtypeSignatures) (_tlOvalueConstructors) (_tlOwarnings))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOcollectTypeConstructors) (_tlOcollectTypeSynonyms) (_tlOcollectValueConstructors) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoperatorFixities) (_tlOoptions) (_tlOorderedTypeSynonyms) (_tlOpreviousWasAlsoFB) (_tlOsuspiciousFBs) (_tlOtypeConstructors) (_tlOtypeSignatures) (_tlOvalueConstructors) (_tlOwarnings))
             (_lhsOdeclVarNames@_) =
                 _hdIdeclVarNames ++ _tlIdeclVarNames
             (_lhsOunboundNames@_) =
@@ -3130,6 +3210,8 @@ sem_Declarations_Cons (hd_) (tl_) =
                 _lhsIoperatorFixities
             (_hdOoptions@_) =
                 _lhsIoptions
+            (_hdOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_hdOpreviousWasAlsoFB@_) =
                 _lhsIpreviousWasAlsoFB
             (_hdOsuspiciousFBs@_) =
@@ -3164,6 +3246,8 @@ sem_Declarations_Cons (hd_) (tl_) =
                 _hdIoperatorFixities
             (_tlOoptions@_) =
                 _lhsIoptions
+            (_tlOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_tlOpreviousWasAlsoFB@_) =
                 _hdIpreviousWasAlsoFB
             (_tlOsuspiciousFBs@_) =
@@ -3190,6 +3274,7 @@ sem_Declarations_Nil  =
       _lhsInamesInScope
       _lhsIoperatorFixities
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsIpreviousWasAlsoFB
       _lhsIsuspiciousFBs
       _lhsItypeConstructors
@@ -3442,6 +3527,7 @@ type T_Expression = (Names) ->
                     ([Error]) ->
                     (Names) ->
                     ([Option]) ->
+                    (OrderedTypeSynonyms) ->
                     (FiniteMap Name Int) ->
                     (FiniteMap Name TpScheme) ->
                     ([Warning]) ->
@@ -3501,6 +3587,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -3524,6 +3611,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
@@ -3540,15 +3628,16 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _alternativesOmiscerrors :: ([Error])
             _alternativesOnamesInScope :: (Names)
             _alternativesOoptions :: ([Option])
+            _alternativesOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _alternativesOtypeConstructors :: (FiniteMap Name Int)
             _alternativesOvalueConstructors :: (FiniteMap Name TpScheme)
             _alternativesOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ( _alternativesIcollectScopeInfos,_alternativesIkindErrors,_alternativesImiscerrors,_alternativesIself,_alternativesIunboundNames,_alternativesIwarnings) =
-                (alternatives_ (_alternativesOallTypeConstructors) (_alternativesOallValueConstructors) (_alternativesOcollectScopeInfos) (_alternativesOkindErrors) (_alternativesOmiscerrors) (_alternativesOnamesInScope) (_alternativesOoptions) (_alternativesOtypeConstructors) (_alternativesOvalueConstructors) (_alternativesOwarnings))
+                (alternatives_ (_alternativesOallTypeConstructors) (_alternativesOallValueConstructors) (_alternativesOcollectScopeInfos) (_alternativesOkindErrors) (_alternativesOmiscerrors) (_alternativesOnamesInScope) (_alternativesOoptions) (_alternativesOorderedTypeSynonyms) (_alternativesOtypeConstructors) (_alternativesOvalueConstructors) (_alternativesOwarnings))
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames ++ _alternativesIunboundNames
             (_self@_) =
@@ -3577,6 +3666,8 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
                 _lhsInamesInScope
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -3597,6 +3688,8 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
                 _lhsInamesInScope
             (_alternativesOoptions@_) =
                 _lhsIoptions
+            (_alternativesOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_alternativesOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_alternativesOvalueConstructors@_) =
@@ -3616,6 +3709,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -3639,6 +3733,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
@@ -3656,6 +3751,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _qualifiersOmiscerrors :: ([Error])
             _qualifiersOnamesInScope :: (Names)
             _qualifiersOoptions :: ([Option])
+            _qualifiersOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _qualifiersOtypeConstructors :: (FiniteMap Name Int)
             _qualifiersOunboundNames :: (Names)
             _qualifiersOvalueConstructors :: (FiniteMap Name TpScheme)
@@ -3663,9 +3759,9 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ( _qualifiersIcollectScopeInfos,_qualifiersIkindErrors,_qualifiersImiscerrors,_qualifiersInamesInScope,_qualifiersIself,_qualifiersIunboundNames,_qualifiersIwarnings) =
-                (qualifiers_ (_qualifiersOallTypeConstructors) (_qualifiersOallValueConstructors) (_qualifiersOcollectScopeInfos) (_qualifiersOkindErrors) (_qualifiersOmiscerrors) (_qualifiersOnamesInScope) (_qualifiersOoptions) (_qualifiersOtypeConstructors) (_qualifiersOunboundNames) (_qualifiersOvalueConstructors) (_qualifiersOwarnings))
+                (qualifiers_ (_qualifiersOallTypeConstructors) (_qualifiersOallValueConstructors) (_qualifiersOcollectScopeInfos) (_qualifiersOkindErrors) (_qualifiersOmiscerrors) (_qualifiersOnamesInScope) (_qualifiersOoptions) (_qualifiersOorderedTypeSynonyms) (_qualifiersOtypeConstructors) (_qualifiersOunboundNames) (_qualifiersOvalueConstructors) (_qualifiersOwarnings))
             (_qualifiersOunboundNames@_) =
                 _expressionIunboundNames
             (_qualifiersOnamesInScope@_) =
@@ -3698,6 +3794,8 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
                 _lhsImiscerrors
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -3716,6 +3814,8 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
                 _expressionImiscerrors
             (_qualifiersOoptions@_) =
                 _lhsIoptions
+            (_qualifiersOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_qualifiersOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_qualifiersOvalueConstructors@_) =
@@ -3734,6 +3834,7 @@ sem_Expression_Constructor (range_) (name_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -3779,6 +3880,7 @@ sem_Expression_Do (range_) (statements_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -3805,6 +3907,7 @@ sem_Expression_Do (range_) (statements_) =
             _statementsOmiscerrors :: ([Error])
             _statementsOnamesInScope :: (Names)
             _statementsOoptions :: ([Option])
+            _statementsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _statementsOtypeConstructors :: (FiniteMap Name Int)
             _statementsOunboundNames :: (Names)
             _statementsOvalueConstructors :: (FiniteMap Name TpScheme)
@@ -3812,7 +3915,7 @@ sem_Expression_Do (range_) (statements_) =
             ( _rangeIself) =
                 (range_ )
             ( _statementsIcollectScopeInfos,_statementsIkindErrors,_statementsIlastStatementIsExpr,_statementsImiscerrors,_statementsInamesInScope,_statementsIself,_statementsIunboundNames,_statementsIwarnings) =
-                (statements_ (_statementsOallTypeConstructors) (_statementsOallValueConstructors) (_statementsOcollectScopeInfos) (_statementsOkindErrors) (_statementsOlastStatementIsExpr) (_statementsOmiscerrors) (_statementsOnamesInScope) (_statementsOoptions) (_statementsOtypeConstructors) (_statementsOunboundNames) (_statementsOvalueConstructors) (_statementsOwarnings))
+                (statements_ (_statementsOallTypeConstructors) (_statementsOallValueConstructors) (_statementsOcollectScopeInfos) (_statementsOkindErrors) (_statementsOlastStatementIsExpr) (_statementsOmiscerrors) (_statementsOnamesInScope) (_statementsOoptions) (_statementsOorderedTypeSynonyms) (_statementsOtypeConstructors) (_statementsOunboundNames) (_statementsOvalueConstructors) (_statementsOwarnings))
             (_statementsOunboundNames@_) =
                 []
             (_statementsOlastStatementIsExpr@_) =
@@ -3850,6 +3953,8 @@ sem_Expression_Do (range_) (statements_) =
                 _lhsInamesInScope
             (_statementsOoptions@_) =
                 _lhsIoptions
+            (_statementsOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_statementsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_statementsOvalueConstructors@_) =
@@ -3870,6 +3975,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -3893,6 +3999,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _fromOmiscerrors :: ([Error])
             _fromOnamesInScope :: (Names)
             _fromOoptions :: ([Option])
+            _fromOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _fromOtypeConstructors :: (FiniteMap Name Int)
             _fromOvalueConstructors :: (FiniteMap Name TpScheme)
             _fromOwarnings :: ([Warning])
@@ -3909,6 +4016,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _thenOmiscerrors :: ([Error])
             _thenOnamesInScope :: (Names)
             _thenOoptions :: ([Option])
+            _thenOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _thenOtypeConstructors :: (FiniteMap Name Int)
             _thenOvalueConstructors :: (FiniteMap Name TpScheme)
             _thenOwarnings :: ([Warning])
@@ -3925,17 +4033,18 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _toOmiscerrors :: ([Error])
             _toOnamesInScope :: (Names)
             _toOoptions :: ([Option])
+            _toOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _toOtypeConstructors :: (FiniteMap Name Int)
             _toOvalueConstructors :: (FiniteMap Name TpScheme)
             _toOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
             ( _fromIcollectScopeInfos,_fromIkindErrors,_fromImiscerrors,_fromIself,_fromIunboundNames,_fromIwarnings) =
-                (from_ (_fromOallTypeConstructors) (_fromOallValueConstructors) (_fromOcollectScopeInfos) (_fromOkindErrors) (_fromOmiscerrors) (_fromOnamesInScope) (_fromOoptions) (_fromOtypeConstructors) (_fromOvalueConstructors) (_fromOwarnings))
+                (from_ (_fromOallTypeConstructors) (_fromOallValueConstructors) (_fromOcollectScopeInfos) (_fromOkindErrors) (_fromOmiscerrors) (_fromOnamesInScope) (_fromOoptions) (_fromOorderedTypeSynonyms) (_fromOtypeConstructors) (_fromOvalueConstructors) (_fromOwarnings))
             ( _thenIcollectScopeInfos,_thenIkindErrors,_thenImiscerrors,_thenIself,_thenIunboundNames,_thenIwarnings) =
-                (then_ (_thenOallTypeConstructors) (_thenOallValueConstructors) (_thenOcollectScopeInfos) (_thenOkindErrors) (_thenOmiscerrors) (_thenOnamesInScope) (_thenOoptions) (_thenOtypeConstructors) (_thenOvalueConstructors) (_thenOwarnings))
+                (then_ (_thenOallTypeConstructors) (_thenOallValueConstructors) (_thenOcollectScopeInfos) (_thenOkindErrors) (_thenOmiscerrors) (_thenOnamesInScope) (_thenOoptions) (_thenOorderedTypeSynonyms) (_thenOtypeConstructors) (_thenOvalueConstructors) (_thenOwarnings))
             ( _toIcollectScopeInfos,_toIkindErrors,_toImiscerrors,_toIself,_toIunboundNames,_toIwarnings) =
-                (to_ (_toOallTypeConstructors) (_toOallValueConstructors) (_toOcollectScopeInfos) (_toOkindErrors) (_toOmiscerrors) (_toOnamesInScope) (_toOoptions) (_toOtypeConstructors) (_toOvalueConstructors) (_toOwarnings))
+                (to_ (_toOallTypeConstructors) (_toOallValueConstructors) (_toOcollectScopeInfos) (_toOkindErrors) (_toOmiscerrors) (_toOnamesInScope) (_toOoptions) (_toOorderedTypeSynonyms) (_toOtypeConstructors) (_toOvalueConstructors) (_toOwarnings))
             (_lhsOunboundNames@_) =
                 _fromIunboundNames ++ _thenIunboundNames ++ _toIunboundNames
             (_self@_) =
@@ -3964,6 +4073,8 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                 _lhsInamesInScope
             (_fromOoptions@_) =
                 _lhsIoptions
+            (_fromOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_fromOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_fromOvalueConstructors@_) =
@@ -3984,6 +4095,8 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                 _lhsInamesInScope
             (_thenOoptions@_) =
                 _lhsIoptions
+            (_thenOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_thenOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_thenOvalueConstructors@_) =
@@ -4004,6 +4117,8 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                 _lhsInamesInScope
             (_toOoptions@_) =
                 _lhsIoptions
+            (_toOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_toOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_toOvalueConstructors@_) =
@@ -4024,6 +4139,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -4047,6 +4163,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _guardExpressionOmiscerrors :: ([Error])
             _guardExpressionOnamesInScope :: (Names)
             _guardExpressionOoptions :: ([Option])
+            _guardExpressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _guardExpressionOtypeConstructors :: (FiniteMap Name Int)
             _guardExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _guardExpressionOwarnings :: ([Warning])
@@ -4063,6 +4180,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _thenExpressionOmiscerrors :: ([Error])
             _thenExpressionOnamesInScope :: (Names)
             _thenExpressionOoptions :: ([Option])
+            _thenExpressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _thenExpressionOtypeConstructors :: (FiniteMap Name Int)
             _thenExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _thenExpressionOwarnings :: ([Warning])
@@ -4079,17 +4197,18 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _elseExpressionOmiscerrors :: ([Error])
             _elseExpressionOnamesInScope :: (Names)
             _elseExpressionOoptions :: ([Option])
+            _elseExpressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _elseExpressionOtypeConstructors :: (FiniteMap Name Int)
             _elseExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _elseExpressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
             ( _guardExpressionIcollectScopeInfos,_guardExpressionIkindErrors,_guardExpressionImiscerrors,_guardExpressionIself,_guardExpressionIunboundNames,_guardExpressionIwarnings) =
-                (guardExpression_ (_guardExpressionOallTypeConstructors) (_guardExpressionOallValueConstructors) (_guardExpressionOcollectScopeInfos) (_guardExpressionOkindErrors) (_guardExpressionOmiscerrors) (_guardExpressionOnamesInScope) (_guardExpressionOoptions) (_guardExpressionOtypeConstructors) (_guardExpressionOvalueConstructors) (_guardExpressionOwarnings))
+                (guardExpression_ (_guardExpressionOallTypeConstructors) (_guardExpressionOallValueConstructors) (_guardExpressionOcollectScopeInfos) (_guardExpressionOkindErrors) (_guardExpressionOmiscerrors) (_guardExpressionOnamesInScope) (_guardExpressionOoptions) (_guardExpressionOorderedTypeSynonyms) (_guardExpressionOtypeConstructors) (_guardExpressionOvalueConstructors) (_guardExpressionOwarnings))
             ( _thenExpressionIcollectScopeInfos,_thenExpressionIkindErrors,_thenExpressionImiscerrors,_thenExpressionIself,_thenExpressionIunboundNames,_thenExpressionIwarnings) =
-                (thenExpression_ (_thenExpressionOallTypeConstructors) (_thenExpressionOallValueConstructors) (_thenExpressionOcollectScopeInfos) (_thenExpressionOkindErrors) (_thenExpressionOmiscerrors) (_thenExpressionOnamesInScope) (_thenExpressionOoptions) (_thenExpressionOtypeConstructors) (_thenExpressionOvalueConstructors) (_thenExpressionOwarnings))
+                (thenExpression_ (_thenExpressionOallTypeConstructors) (_thenExpressionOallValueConstructors) (_thenExpressionOcollectScopeInfos) (_thenExpressionOkindErrors) (_thenExpressionOmiscerrors) (_thenExpressionOnamesInScope) (_thenExpressionOoptions) (_thenExpressionOorderedTypeSynonyms) (_thenExpressionOtypeConstructors) (_thenExpressionOvalueConstructors) (_thenExpressionOwarnings))
             ( _elseExpressionIcollectScopeInfos,_elseExpressionIkindErrors,_elseExpressionImiscerrors,_elseExpressionIself,_elseExpressionIunboundNames,_elseExpressionIwarnings) =
-                (elseExpression_ (_elseExpressionOallTypeConstructors) (_elseExpressionOallValueConstructors) (_elseExpressionOcollectScopeInfos) (_elseExpressionOkindErrors) (_elseExpressionOmiscerrors) (_elseExpressionOnamesInScope) (_elseExpressionOoptions) (_elseExpressionOtypeConstructors) (_elseExpressionOvalueConstructors) (_elseExpressionOwarnings))
+                (elseExpression_ (_elseExpressionOallTypeConstructors) (_elseExpressionOallValueConstructors) (_elseExpressionOcollectScopeInfos) (_elseExpressionOkindErrors) (_elseExpressionOmiscerrors) (_elseExpressionOnamesInScope) (_elseExpressionOoptions) (_elseExpressionOorderedTypeSynonyms) (_elseExpressionOtypeConstructors) (_elseExpressionOvalueConstructors) (_elseExpressionOwarnings))
             (_lhsOunboundNames@_) =
                 _guardExpressionIunboundNames ++ _thenExpressionIunboundNames ++ _elseExpressionIunboundNames
             (_self@_) =
@@ -4118,6 +4237,8 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                 _lhsInamesInScope
             (_guardExpressionOoptions@_) =
                 _lhsIoptions
+            (_guardExpressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_guardExpressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_guardExpressionOvalueConstructors@_) =
@@ -4138,6 +4259,8 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                 _lhsInamesInScope
             (_thenExpressionOoptions@_) =
                 _lhsIoptions
+            (_thenExpressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_thenExpressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_thenExpressionOvalueConstructors@_) =
@@ -4158,6 +4281,8 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
                 _lhsInamesInScope
             (_elseExpressionOoptions@_) =
                 _lhsIoptions
+            (_elseExpressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_elseExpressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_elseExpressionOvalueConstructors@_) =
@@ -4178,6 +4303,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -4201,6 +4327,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _leftExpressionOmiscerrors :: ([Error])
             _leftExpressionOnamesInScope :: (Names)
             _leftExpressionOoptions :: ([Option])
+            _leftExpressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _leftExpressionOtypeConstructors :: (FiniteMap Name Int)
             _leftExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _leftExpressionOwarnings :: ([Warning])
@@ -4217,6 +4344,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _operatorOmiscerrors :: ([Error])
             _operatorOnamesInScope :: (Names)
             _operatorOoptions :: ([Option])
+            _operatorOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _operatorOtypeConstructors :: (FiniteMap Name Int)
             _operatorOvalueConstructors :: (FiniteMap Name TpScheme)
             _operatorOwarnings :: ([Warning])
@@ -4233,17 +4361,18 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _rightExpressionOmiscerrors :: ([Error])
             _rightExpressionOnamesInScope :: (Names)
             _rightExpressionOoptions :: ([Option])
+            _rightExpressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _rightExpressionOtypeConstructors :: (FiniteMap Name Int)
             _rightExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _rightExpressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
             ( _leftExpressionIcollectScopeInfos,_leftExpressionIkindErrors,_leftExpressionImiscerrors,_leftExpressionIself,_leftExpressionIunboundNames,_leftExpressionIwarnings) =
-                (leftExpression_ (_leftExpressionOallTypeConstructors) (_leftExpressionOallValueConstructors) (_leftExpressionOcollectScopeInfos) (_leftExpressionOkindErrors) (_leftExpressionOmiscerrors) (_leftExpressionOnamesInScope) (_leftExpressionOoptions) (_leftExpressionOtypeConstructors) (_leftExpressionOvalueConstructors) (_leftExpressionOwarnings))
+                (leftExpression_ (_leftExpressionOallTypeConstructors) (_leftExpressionOallValueConstructors) (_leftExpressionOcollectScopeInfos) (_leftExpressionOkindErrors) (_leftExpressionOmiscerrors) (_leftExpressionOnamesInScope) (_leftExpressionOoptions) (_leftExpressionOorderedTypeSynonyms) (_leftExpressionOtypeConstructors) (_leftExpressionOvalueConstructors) (_leftExpressionOwarnings))
             ( _operatorIcollectScopeInfos,_operatorIkindErrors,_operatorImiscerrors,_operatorIself,_operatorIunboundNames,_operatorIwarnings) =
-                (operator_ (_operatorOallTypeConstructors) (_operatorOallValueConstructors) (_operatorOcollectScopeInfos) (_operatorOkindErrors) (_operatorOmiscerrors) (_operatorOnamesInScope) (_operatorOoptions) (_operatorOtypeConstructors) (_operatorOvalueConstructors) (_operatorOwarnings))
+                (operator_ (_operatorOallTypeConstructors) (_operatorOallValueConstructors) (_operatorOcollectScopeInfos) (_operatorOkindErrors) (_operatorOmiscerrors) (_operatorOnamesInScope) (_operatorOoptions) (_operatorOorderedTypeSynonyms) (_operatorOtypeConstructors) (_operatorOvalueConstructors) (_operatorOwarnings))
             ( _rightExpressionIcollectScopeInfos,_rightExpressionIkindErrors,_rightExpressionImiscerrors,_rightExpressionIself,_rightExpressionIunboundNames,_rightExpressionIwarnings) =
-                (rightExpression_ (_rightExpressionOallTypeConstructors) (_rightExpressionOallValueConstructors) (_rightExpressionOcollectScopeInfos) (_rightExpressionOkindErrors) (_rightExpressionOmiscerrors) (_rightExpressionOnamesInScope) (_rightExpressionOoptions) (_rightExpressionOtypeConstructors) (_rightExpressionOvalueConstructors) (_rightExpressionOwarnings))
+                (rightExpression_ (_rightExpressionOallTypeConstructors) (_rightExpressionOallValueConstructors) (_rightExpressionOcollectScopeInfos) (_rightExpressionOkindErrors) (_rightExpressionOmiscerrors) (_rightExpressionOnamesInScope) (_rightExpressionOoptions) (_rightExpressionOorderedTypeSynonyms) (_rightExpressionOtypeConstructors) (_rightExpressionOvalueConstructors) (_rightExpressionOwarnings))
             (_lhsOunboundNames@_) =
                 _leftExpressionIunboundNames ++ _operatorIunboundNames ++ _rightExpressionIunboundNames
             (_self@_) =
@@ -4272,6 +4401,8 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                 _lhsInamesInScope
             (_leftExpressionOoptions@_) =
                 _lhsIoptions
+            (_leftExpressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_leftExpressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_leftExpressionOvalueConstructors@_) =
@@ -4292,6 +4423,8 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                 _lhsInamesInScope
             (_operatorOoptions@_) =
                 _lhsIoptions
+            (_operatorOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_operatorOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_operatorOvalueConstructors@_) =
@@ -4312,6 +4445,8 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
                 _lhsInamesInScope
             (_rightExpressionOoptions@_) =
                 _lhsIoptions
+            (_rightExpressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_rightExpressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_rightExpressionOvalueConstructors@_) =
@@ -4331,6 +4466,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -4370,6 +4506,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
@@ -4378,7 +4515,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
             ( _patternsIcollectScopeInfos,_patternsImiscerrors,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIself,_patternsIunboundNames,_patternsIwarnings) =
                 (patterns_ (_patternsOallTypeConstructors) (_patternsOallValueConstructors) (_patternsOcollectScopeInfos) (_patternsOlhsPattern) (_patternsOmiscerrors) (_patternsOnamesInScope) (_patternsOtypeConstructors) (_patternsOvalueConstructors) (_patternsOwarnings))
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_lhsOunboundNames@_) =
                 _unboundNames
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
@@ -4427,6 +4564,8 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
                 _namesInScope
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -4446,6 +4585,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -4481,6 +4621,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _declarationsOnamesInScope :: (Names)
             _declarationsOoperatorFixities :: ([(Name,(Int,Assoc))])
             _declarationsOoptions :: ([Option])
+            _declarationsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _declarationsOpreviousWasAlsoFB :: (Maybe Name)
             _declarationsOsuspiciousFBs :: ([(Name,Name)])
             _declarationsOtypeConstructors :: (FiniteMap Name Int)
@@ -4500,6 +4641,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
@@ -4517,6 +4659,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                                (_declarationsOnamesInScope)
                                (_declarationsOoperatorFixities)
                                (_declarationsOoptions)
+                               (_declarationsOorderedTypeSynonyms)
                                (_declarationsOpreviousWasAlsoFB)
                                (_declarationsOsuspiciousFBs)
                                (_declarationsOtypeConstructors)
@@ -4524,7 +4667,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                                (_declarationsOvalueConstructors)
                                (_declarationsOwarnings))
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_declarationsOtypeSignatures@_) =
                 []
             (_lhsOunboundNames@_) =
@@ -4578,6 +4721,8 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                 _operatorFixities
             (_declarationsOoptions@_) =
                 _lhsIoptions
+            (_declarationsOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_declarationsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_declarationsOvalueConstructors@_) =
@@ -4598,6 +4743,8 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
                 _namesInScope
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -4616,6 +4763,7 @@ sem_Expression_List (range_) (expressions_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -4639,13 +4787,14 @@ sem_Expression_List (range_) (expressions_) =
             _expressionsOmiscerrors :: ([Error])
             _expressionsOnamesInScope :: (Names)
             _expressionsOoptions :: ([Option])
+            _expressionsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionsOtypeConstructors :: (FiniteMap Name Int)
             _expressionsOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
             ( _expressionsIcollectScopeInfos,_expressionsIkindErrors,_expressionsImiscerrors,_expressionsIself,_expressionsIunboundNames,_expressionsIwarnings) =
-                (expressions_ (_expressionsOallTypeConstructors) (_expressionsOallValueConstructors) (_expressionsOcollectScopeInfos) (_expressionsOkindErrors) (_expressionsOmiscerrors) (_expressionsOnamesInScope) (_expressionsOoptions) (_expressionsOtypeConstructors) (_expressionsOvalueConstructors) (_expressionsOwarnings))
+                (expressions_ (_expressionsOallTypeConstructors) (_expressionsOallValueConstructors) (_expressionsOcollectScopeInfos) (_expressionsOkindErrors) (_expressionsOmiscerrors) (_expressionsOnamesInScope) (_expressionsOoptions) (_expressionsOorderedTypeSynonyms) (_expressionsOtypeConstructors) (_expressionsOvalueConstructors) (_expressionsOwarnings))
             (_lhsOunboundNames@_) =
                 _expressionsIunboundNames
             (_self@_) =
@@ -4674,6 +4823,8 @@ sem_Expression_List (range_) (expressions_) =
                 _lhsInamesInScope
             (_expressionsOoptions@_) =
                 _lhsIoptions
+            (_expressionsOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionsOvalueConstructors@_) =
@@ -4692,6 +4843,7 @@ sem_Expression_Literal (range_) (literal_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -4741,6 +4893,7 @@ sem_Expression_Negate (range_) (expression_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -4764,13 +4917,14 @@ sem_Expression_Negate (range_) (expression_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_lhsOmiscerrors@_) =
                 ( if nameFromString "negate" `elem` _lhsInamesInScope
                   then []
@@ -4803,6 +4957,8 @@ sem_Expression_Negate (range_) (expression_) =
                 _lhsInamesInScope
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -4821,6 +4977,7 @@ sem_Expression_NegateFloat (range_) (expression_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -4844,13 +5001,14 @@ sem_Expression_NegateFloat (range_) (expression_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -4879,6 +5037,8 @@ sem_Expression_NegateFloat (range_) (expression_) =
                 _lhsInamesInScope
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -4898,6 +5058,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -4921,6 +5082,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _functionOmiscerrors :: ([Error])
             _functionOnamesInScope :: (Names)
             _functionOoptions :: ([Option])
+            _functionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _functionOtypeConstructors :: (FiniteMap Name Int)
             _functionOvalueConstructors :: (FiniteMap Name TpScheme)
             _functionOwarnings :: ([Warning])
@@ -4937,15 +5099,16 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _argumentsOmiscerrors :: ([Error])
             _argumentsOnamesInScope :: (Names)
             _argumentsOoptions :: ([Option])
+            _argumentsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _argumentsOtypeConstructors :: (FiniteMap Name Int)
             _argumentsOvalueConstructors :: (FiniteMap Name TpScheme)
             _argumentsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
             ( _functionIcollectScopeInfos,_functionIkindErrors,_functionImiscerrors,_functionIself,_functionIunboundNames,_functionIwarnings) =
-                (function_ (_functionOallTypeConstructors) (_functionOallValueConstructors) (_functionOcollectScopeInfos) (_functionOkindErrors) (_functionOmiscerrors) (_functionOnamesInScope) (_functionOoptions) (_functionOtypeConstructors) (_functionOvalueConstructors) (_functionOwarnings))
+                (function_ (_functionOallTypeConstructors) (_functionOallValueConstructors) (_functionOcollectScopeInfos) (_functionOkindErrors) (_functionOmiscerrors) (_functionOnamesInScope) (_functionOoptions) (_functionOorderedTypeSynonyms) (_functionOtypeConstructors) (_functionOvalueConstructors) (_functionOwarnings))
             ( _argumentsIcollectScopeInfos,_argumentsIkindErrors,_argumentsImiscerrors,_argumentsIself,_argumentsIunboundNames,_argumentsIwarnings) =
-                (arguments_ (_argumentsOallTypeConstructors) (_argumentsOallValueConstructors) (_argumentsOcollectScopeInfos) (_argumentsOkindErrors) (_argumentsOmiscerrors) (_argumentsOnamesInScope) (_argumentsOoptions) (_argumentsOtypeConstructors) (_argumentsOvalueConstructors) (_argumentsOwarnings))
+                (arguments_ (_argumentsOallTypeConstructors) (_argumentsOallValueConstructors) (_argumentsOcollectScopeInfos) (_argumentsOkindErrors) (_argumentsOmiscerrors) (_argumentsOnamesInScope) (_argumentsOoptions) (_argumentsOorderedTypeSynonyms) (_argumentsOtypeConstructors) (_argumentsOvalueConstructors) (_argumentsOwarnings))
             (_lhsOunboundNames@_) =
                 _functionIunboundNames ++ _argumentsIunboundNames
             (_self@_) =
@@ -4974,6 +5137,8 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
                 _lhsInamesInScope
             (_functionOoptions@_) =
                 _lhsIoptions
+            (_functionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_functionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_functionOvalueConstructors@_) =
@@ -4994,6 +5159,8 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
                 _lhsInamesInScope
             (_argumentsOoptions@_) =
                 _lhsIoptions
+            (_argumentsOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_argumentsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_argumentsOvalueConstructors@_) =
@@ -5012,6 +5179,7 @@ sem_Expression_Parenthesized (range_) (expression_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -5035,13 +5203,14 @@ sem_Expression_Parenthesized (range_) (expression_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -5070,6 +5239,8 @@ sem_Expression_Parenthesized (range_) (expression_) =
                 _lhsInamesInScope
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -5089,6 +5260,7 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -5106,12 +5278,13 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
             _recordExpressionBindingsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
             _recordExpressionBindingsOnamesInScope :: (Names)
             _recordExpressionBindingsOoptions :: ([Option])
+            _recordExpressionBindingsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
             ( _recordExpressionBindingsIcollectScopeInfos,_recordExpressionBindingsIself,_recordExpressionBindingsIunboundNames) =
-                (recordExpressionBindings_ (_recordExpressionBindingsOcollectScopeInfos) (_recordExpressionBindingsOnamesInScope) (_recordExpressionBindingsOoptions))
+                (recordExpressionBindings_ (_recordExpressionBindingsOcollectScopeInfos) (_recordExpressionBindingsOnamesInScope) (_recordExpressionBindingsOoptions) (_recordExpressionBindingsOorderedTypeSynonyms))
             ((_assumptions@_,_constraints@_,_beta@_)) =
                 internalError "PartialSyntax.ag" "n/a" "Expression.RecordConstruction"
             (_lhsOunboundNames@_) =
@@ -5134,6 +5307,8 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
                 _lhsInamesInScope
             (_recordExpressionBindingsOoptions@_) =
                 _lhsIoptions
+            (_recordExpressionBindingsOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
         in  ( _lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)
 sem_Expression_RecordUpdate :: (T_Range) ->
                                (T_Expression) ->
@@ -5147,6 +5322,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -5170,6 +5346,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
@@ -5179,12 +5356,13 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _recordExpressionBindingsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
             _recordExpressionBindingsOnamesInScope :: (Names)
             _recordExpressionBindingsOoptions :: ([Option])
+            _recordExpressionBindingsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ( _recordExpressionBindingsIcollectScopeInfos,_recordExpressionBindingsIself,_recordExpressionBindingsIunboundNames) =
-                (recordExpressionBindings_ (_recordExpressionBindingsOcollectScopeInfos) (_recordExpressionBindingsOnamesInScope) (_recordExpressionBindingsOoptions))
+                (recordExpressionBindings_ (_recordExpressionBindingsOcollectScopeInfos) (_recordExpressionBindingsOnamesInScope) (_recordExpressionBindingsOoptions) (_recordExpressionBindingsOorderedTypeSynonyms))
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames ++ _recordExpressionBindingsIunboundNames
             (_self@_) =
@@ -5213,6 +5391,8 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
                 _lhsInamesInScope
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -5225,6 +5405,8 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
                 _lhsInamesInScope
             (_recordExpressionBindingsOoptions@_) =
                 _lhsIoptions
+            (_recordExpressionBindingsOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
         in  ( _lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)
 sem_Expression_Tuple :: (T_Range) ->
                         (T_Expressions) ->
@@ -5237,6 +5419,7 @@ sem_Expression_Tuple (range_) (expressions_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -5260,13 +5443,14 @@ sem_Expression_Tuple (range_) (expressions_) =
             _expressionsOmiscerrors :: ([Error])
             _expressionsOnamesInScope :: (Names)
             _expressionsOoptions :: ([Option])
+            _expressionsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionsOtypeConstructors :: (FiniteMap Name Int)
             _expressionsOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
             ( _expressionsIcollectScopeInfos,_expressionsIkindErrors,_expressionsImiscerrors,_expressionsIself,_expressionsIunboundNames,_expressionsIwarnings) =
-                (expressions_ (_expressionsOallTypeConstructors) (_expressionsOallValueConstructors) (_expressionsOcollectScopeInfos) (_expressionsOkindErrors) (_expressionsOmiscerrors) (_expressionsOnamesInScope) (_expressionsOoptions) (_expressionsOtypeConstructors) (_expressionsOvalueConstructors) (_expressionsOwarnings))
+                (expressions_ (_expressionsOallTypeConstructors) (_expressionsOallValueConstructors) (_expressionsOcollectScopeInfos) (_expressionsOkindErrors) (_expressionsOmiscerrors) (_expressionsOnamesInScope) (_expressionsOoptions) (_expressionsOorderedTypeSynonyms) (_expressionsOtypeConstructors) (_expressionsOvalueConstructors) (_expressionsOwarnings))
             (_lhsOunboundNames@_) =
                 _expressionsIunboundNames
             (_self@_) =
@@ -5295,6 +5479,8 @@ sem_Expression_Tuple (range_) (expressions_) =
                 _lhsInamesInScope
             (_expressionsOoptions@_) =
                 _lhsIoptions
+            (_expressionsOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionsOvalueConstructors@_) =
@@ -5314,6 +5500,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -5337,9 +5524,11 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
+            _typeIcontextRange :: (Range)
             _typeImiscerrors :: ([Error])
             _typeIself :: (Type)
             _typeItypevariables :: (Names)
@@ -5352,8 +5541,8 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
-            ( _typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+            ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
                 (type_ (_typeOallTypeConstructors) (_typeOmiscerrors) (_typeOoptions) (_typeOtypeConstructors) (_typeOwarnings))
             (_newErrors@_) =
                 checkType _lhsItypeConstructors (_lhsInamesInScope ++ _lhsIallValueConstructors) _typeIself
@@ -5385,6 +5574,8 @@ sem_Expression_Typed (range_) (expression_) (type_) =
                 _lhsInamesInScope
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -5413,6 +5604,7 @@ sem_Expression_Variable (range_) (name_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -5456,6 +5648,7 @@ type T_Expressions = (Names) ->
                      ([Error]) ->
                      (Names) ->
                      ([Option]) ->
+                     (OrderedTypeSynonyms) ->
                      (FiniteMap Name Int) ->
                      (FiniteMap Name TpScheme) ->
                      ([Warning]) ->
@@ -5476,6 +5669,7 @@ sem_Expressions_Cons (hd_) (tl_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -5498,6 +5692,7 @@ sem_Expressions_Cons (hd_) (tl_) =
             _hdOmiscerrors :: ([Error])
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
+            _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _hdOtypeConstructors :: (FiniteMap Name Int)
             _hdOvalueConstructors :: (FiniteMap Name TpScheme)
             _hdOwarnings :: ([Warning])
@@ -5514,13 +5709,14 @@ sem_Expressions_Cons (hd_) (tl_) =
             _tlOmiscerrors :: ([Error])
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
+            _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _tlOtypeConstructors :: (FiniteMap Name Int)
             _tlOvalueConstructors :: (FiniteMap Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOorderedTypeSynonyms) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOorderedTypeSynonyms) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -5549,6 +5745,8 @@ sem_Expressions_Cons (hd_) (tl_) =
                 _lhsInamesInScope
             (_hdOoptions@_) =
                 _lhsIoptions
+            (_hdOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_hdOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_hdOvalueConstructors@_) =
@@ -5569,6 +5767,8 @@ sem_Expressions_Cons (hd_) (tl_) =
                 _lhsInamesInScope
             (_tlOoptions@_) =
                 _lhsIoptions
+            (_tlOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_tlOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_tlOvalueConstructors@_) =
@@ -5585,6 +5785,7 @@ sem_Expressions_Nil  =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -5816,6 +6017,7 @@ type T_FunctionBinding = (Names) ->
                          ([Error]) ->
                          (Names) ->
                          ([Option]) ->
+                         (OrderedTypeSynonyms) ->
                          (FiniteMap Name Int) ->
                          (FiniteMap Name TpScheme) ->
                          ([Warning]) ->
@@ -5837,6 +6039,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -5878,6 +6081,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
             _righthandsideOmiscerrors :: ([Error])
             _righthandsideOnamesInScope :: (Names)
             _righthandsideOoptions :: ([Option])
+            _righthandsideOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _righthandsideOtypeConstructors :: (FiniteMap Name Int)
             _righthandsideOvalueConstructors :: (FiniteMap Name TpScheme)
             _righthandsideOwarnings :: ([Warning])
@@ -5886,7 +6090,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
             ( _lefthandsideIcollectScopeInfos,_lefthandsideImiscerrors,_lefthandsideIname,_lefthandsideInumberOfPatterns,_lefthandsideIpatVarNames,_lefthandsideIself,_lefthandsideIunboundNames,_lefthandsideIwarnings) =
                 (lefthandside_ (_lefthandsideOallTypeConstructors) (_lefthandsideOallValueConstructors) (_lefthandsideOcollectScopeInfos) (_lefthandsideOmiscerrors) (_lefthandsideOnamesInScope) (_lefthandsideOtypeConstructors) (_lefthandsideOvalueConstructors) (_lefthandsideOwarnings))
             ( _righthandsideIcollectScopeInfos,_righthandsideIkindErrors,_righthandsideImiscerrors,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIwarnings) =
-                (righthandside_ (_righthandsideOallTypeConstructors) (_righthandsideOallValueConstructors) (_righthandsideOcollectScopeInfos) (_righthandsideOkindErrors) (_righthandsideOmiscerrors) (_righthandsideOnamesInScope) (_righthandsideOoptions) (_righthandsideOtypeConstructors) (_righthandsideOvalueConstructors) (_righthandsideOwarnings))
+                (righthandside_ (_righthandsideOallTypeConstructors) (_righthandsideOallValueConstructors) (_righthandsideOcollectScopeInfos) (_righthandsideOkindErrors) (_righthandsideOmiscerrors) (_righthandsideOnamesInScope) (_righthandsideOoptions) (_righthandsideOorderedTypeSynonyms) (_righthandsideOtypeConstructors) (_righthandsideOvalueConstructors) (_righthandsideOwarnings))
             (_lhsOunboundNames@_) =
                 _unboundNames
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
@@ -5937,6 +6141,8 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
                 _namesInScope
             (_righthandsideOoptions@_) =
                 _lhsIoptions
+            (_righthandsideOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_righthandsideOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_righthandsideOvalueConstructors@_) =
@@ -5953,6 +6159,7 @@ type T_FunctionBindings = (Names) ->
                           ([Error]) ->
                           (Names) ->
                           ([Option]) ->
+                          (OrderedTypeSynonyms) ->
                           (FiniteMap Name Int) ->
                           (FiniteMap Name TpScheme) ->
                           ([Warning]) ->
@@ -5973,6 +6180,7 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -5999,6 +6207,7 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _hdOmiscerrors :: ([Error])
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
+            _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _hdOtypeConstructors :: (FiniteMap Name Int)
             _hdOvalueConstructors :: (FiniteMap Name TpScheme)
             _hdOwarnings :: ([Warning])
@@ -6017,13 +6226,14 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _tlOmiscerrors :: ([Error])
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
+            _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _tlOtypeConstructors :: (FiniteMap Name Int)
             _tlOvalueConstructors :: (FiniteMap Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIarity,_hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIname,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOorderedTypeSynonyms) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIarities,_tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlIname,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOorderedTypeSynonyms) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
             (_lhsOname@_) =
                 _hdIname
             (_lhsOarities@_) =
@@ -6056,6 +6266,8 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
                 _lhsInamesInScope
             (_hdOoptions@_) =
                 _lhsIoptions
+            (_hdOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_hdOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_hdOvalueConstructors@_) =
@@ -6076,6 +6288,8 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
                 _lhsInamesInScope
             (_tlOoptions@_) =
                 _lhsIoptions
+            (_tlOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_tlOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_tlOvalueConstructors@_) =
@@ -6092,6 +6306,7 @@ sem_FunctionBindings_Nil  =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -6131,6 +6346,7 @@ type T_GuardedExpression = (Names) ->
                            ([Error]) ->
                            (Names) ->
                            ([Option]) ->
+                           (OrderedTypeSynonyms) ->
                            (FiniteMap Name Int) ->
                            (FiniteMap Name TpScheme) ->
                            ([Warning]) ->
@@ -6152,6 +6368,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -6175,6 +6392,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _guardOmiscerrors :: ([Error])
             _guardOnamesInScope :: (Names)
             _guardOoptions :: ([Option])
+            _guardOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _guardOtypeConstructors :: (FiniteMap Name Int)
             _guardOvalueConstructors :: (FiniteMap Name TpScheme)
             _guardOwarnings :: ([Warning])
@@ -6191,15 +6409,16 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
             ( _guardIcollectScopeInfos,_guardIkindErrors,_guardImiscerrors,_guardIself,_guardIunboundNames,_guardIwarnings) =
-                (guard_ (_guardOallTypeConstructors) (_guardOallValueConstructors) (_guardOcollectScopeInfos) (_guardOkindErrors) (_guardOmiscerrors) (_guardOnamesInScope) (_guardOoptions) (_guardOtypeConstructors) (_guardOvalueConstructors) (_guardOwarnings))
+                (guard_ (_guardOallTypeConstructors) (_guardOallValueConstructors) (_guardOcollectScopeInfos) (_guardOkindErrors) (_guardOmiscerrors) (_guardOnamesInScope) (_guardOoptions) (_guardOorderedTypeSynonyms) (_guardOtypeConstructors) (_guardOvalueConstructors) (_guardOwarnings))
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_lhsOunboundNames@_) =
                 _guardIunboundNames ++ _expressionIunboundNames
             (_self@_) =
@@ -6228,6 +6447,8 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
                 _lhsInamesInScope
             (_guardOoptions@_) =
                 _lhsIoptions
+            (_guardOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_guardOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_guardOvalueConstructors@_) =
@@ -6248,6 +6469,8 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
                 _lhsInamesInScope
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -6264,6 +6487,7 @@ type T_GuardedExpressions = (Names) ->
                             ([Error]) ->
                             (Names) ->
                             ([Option]) ->
+                            (OrderedTypeSynonyms) ->
                             (FiniteMap Name Int) ->
                             (FiniteMap Name TpScheme) ->
                             ([Warning]) ->
@@ -6284,6 +6508,7 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -6306,6 +6531,7 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
             _hdOmiscerrors :: ([Error])
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
+            _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _hdOtypeConstructors :: (FiniteMap Name Int)
             _hdOvalueConstructors :: (FiniteMap Name TpScheme)
             _hdOwarnings :: ([Warning])
@@ -6322,13 +6548,14 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
             _tlOmiscerrors :: ([Error])
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
+            _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _tlOtypeConstructors :: (FiniteMap Name Int)
             _tlOvalueConstructors :: (FiniteMap Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOorderedTypeSynonyms) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOorderedTypeSynonyms) (_tlOtypeConstructors) (_tlOvalueConstructors) (_tlOwarnings))
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -6357,6 +6584,8 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
                 _lhsInamesInScope
             (_hdOoptions@_) =
                 _lhsIoptions
+            (_hdOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_hdOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_hdOvalueConstructors@_) =
@@ -6377,6 +6606,8 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
                 _lhsInamesInScope
             (_tlOoptions@_) =
                 _lhsIoptions
+            (_tlOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_tlOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_tlOvalueConstructors@_) =
@@ -6393,6 +6624,7 @@ sem_GuardedExpressions_Nil  =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -7090,6 +7322,7 @@ type T_MaybeDeclarations = (Names) ->
                            ([Error]) ->
                            (Names) ->
                            ([Option]) ->
+                           (OrderedTypeSynonyms) ->
                            (FiniteMap Name Int) ->
                            (Names) ->
                            (FiniteMap Name TpScheme) ->
@@ -7112,6 +7345,7 @@ sem_MaybeDeclarations_Just (declarations_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
@@ -7148,6 +7382,7 @@ sem_MaybeDeclarations_Just (declarations_) =
             _declarationsOnamesInScope :: (Names)
             _declarationsOoperatorFixities :: ([(Name,(Int,Assoc))])
             _declarationsOoptions :: ([Option])
+            _declarationsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _declarationsOpreviousWasAlsoFB :: (Maybe Name)
             _declarationsOsuspiciousFBs :: ([(Name,Name)])
             _declarationsOtypeConstructors :: (FiniteMap Name Int)
@@ -7166,6 +7401,7 @@ sem_MaybeDeclarations_Just (declarations_) =
                                (_declarationsOnamesInScope)
                                (_declarationsOoperatorFixities)
                                (_declarationsOoptions)
+                               (_declarationsOorderedTypeSynonyms)
                                (_declarationsOpreviousWasAlsoFB)
                                (_declarationsOsuspiciousFBs)
                                (_declarationsOtypeConstructors)
@@ -7227,6 +7463,8 @@ sem_MaybeDeclarations_Just (declarations_) =
                 _operatorFixities
             (_declarationsOoptions@_) =
                 _lhsIoptions
+            (_declarationsOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_declarationsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_declarationsOvalueConstructors@_) =
@@ -7243,6 +7481,7 @@ sem_MaybeDeclarations_Nothing  =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
@@ -7341,6 +7580,7 @@ type T_MaybeExpression = (Names) ->
                          ([Error]) ->
                          (Names) ->
                          ([Option]) ->
+                         (OrderedTypeSynonyms) ->
                          (FiniteMap Name Int) ->
                          (FiniteMap Name TpScheme) ->
                          ([Warning]) ->
@@ -7362,6 +7602,7 @@ sem_MaybeExpression_Just (expression_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -7384,11 +7625,12 @@ sem_MaybeExpression_Just (expression_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -7417,6 +7659,8 @@ sem_MaybeExpression_Just (expression_) =
                 _lhsInamesInScope
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -7433,6 +7677,7 @@ sem_MaybeExpression_Nothing  =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -7631,6 +7876,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             _bodyOnamesInScope :: (Names)
             _bodyOoperatorFixities :: ([(Name,(Int,Assoc))])
             _bodyOoptions :: ([Option])
+            _bodyOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _bodyOtypeConstructors :: (FiniteMap Name Int)
             _bodyOvalueConstructors :: (FiniteMap Name TpScheme)
             _bodyOwarnings :: ([Warning])
@@ -7641,7 +7887,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             ( _exportsIexportErrors,_exportsIself) =
                 (exports_ (_exportsOconsInScope) (_exportsOmodulesInScope) (_exportsOnamesInScop) (_exportsOtyconsInScope))
             ( _bodyIcollectScopeInfos,_bodyIcollectTypeConstructors,_bodyIcollectTypeSynonyms,_bodyIcollectValueConstructors,_bodyIdeclVarNames,_bodyIimportedModules,_bodyIkindErrors,_bodyImiscerrors,_bodyIoperatorFixities,_bodyIself,_bodyItypeSignatures,_bodyIunboundNames,_bodyIwarnings) =
-                (body_ (_bodyOallTypeConstructors) (_bodyOallValueConstructors) (_bodyOcollectScopeInfos) (_bodyOcollectTypeConstructors) (_bodyOcollectTypeSynonyms) (_bodyOcollectValueConstructors) (_bodyOkindErrors) (_bodyOmiscerrors) (_bodyOnamesInScope) (_bodyOoperatorFixities) (_bodyOoptions) (_bodyOtypeConstructors) (_bodyOvalueConstructors) (_bodyOwarnings))
+                (body_ (_bodyOallTypeConstructors) (_bodyOallValueConstructors) (_bodyOcollectScopeInfos) (_bodyOcollectTypeConstructors) (_bodyOcollectTypeSynonyms) (_bodyOcollectValueConstructors) (_bodyOkindErrors) (_bodyOmiscerrors) (_bodyOnamesInScope) (_bodyOoperatorFixities) (_bodyOoptions) (_bodyOorderedTypeSynonyms) (_bodyOtypeConstructors) (_bodyOvalueConstructors) (_bodyOwarnings))
             (_initialScope@_) =
                 map fst _derivedFunctions ++
                 concatMap (keysFM . typeEnvironment) _lhsIimportEnvironments
@@ -7700,6 +7946,12 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                            ++ concatMap (fmToList . typeConstructors) _lhsIimportEnvironments
                            ++ [ (n,i) | (n,(i,f)) <- _bodyIcollectTypeSynonyms ]
                            )
+            (_bodyOorderedTypeSynonyms@_) =
+                let list     = concatMap (fmToList . typeSynonyms) _lhsIimportEnvironments ++
+                               _bodyIcollectTypeSynonyms
+                    fmlist   = listToFM [ (show name, t) | (name, t) <- list ]
+                    ordering = fst (getTypeSynonymOrdering fmlist)
+                in (ordering, fmlist)
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
                 changeOfScope (_initialScope ++ _bodyIdeclVarNames) _bodyIunboundNames []
             (_kindErrors@_) =
@@ -9025,6 +9277,7 @@ type T_Qualifier = (Names) ->
                    ([Error]) ->
                    (Names) ->
                    ([Option]) ->
+                   (OrderedTypeSynonyms) ->
                    (FiniteMap Name Int) ->
                    (Names) ->
                    (FiniteMap Name TpScheme) ->
@@ -9051,6 +9304,7 @@ sem_Qualifier_Empty (range_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
@@ -9094,6 +9348,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
@@ -9134,6 +9389,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
@@ -9142,7 +9398,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
             ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
                 (pattern_ (_patternOallTypeConstructors) (_patternOallValueConstructors) (_patternOcollectScopeInfos) (_patternOlhsPattern) (_patternOmiscerrors) (_patternOnamesInScope) (_patternOtypeConstructors) (_patternOvalueConstructors) (_patternOwarnings))
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
                 changeOfScope _patternIpatVarNames (_expressionIunboundNames  ++ _lhsIunboundNames)  _lhsInamesInScope
             (_expressionOnamesInScope@_) =
@@ -9193,6 +9449,8 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
                 _patternImiscerrors
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -9211,6 +9469,7 @@ sem_Qualifier_Guard (range_) (guard_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
@@ -9236,13 +9495,14 @@ sem_Qualifier_Guard (range_) (guard_) =
             _guardOmiscerrors :: ([Error])
             _guardOnamesInScope :: (Names)
             _guardOoptions :: ([Option])
+            _guardOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _guardOtypeConstructors :: (FiniteMap Name Int)
             _guardOvalueConstructors :: (FiniteMap Name TpScheme)
             _guardOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
             ( _guardIcollectScopeInfos,_guardIkindErrors,_guardImiscerrors,_guardIself,_guardIunboundNames,_guardIwarnings) =
-                (guard_ (_guardOallTypeConstructors) (_guardOallValueConstructors) (_guardOcollectScopeInfos) (_guardOkindErrors) (_guardOmiscerrors) (_guardOnamesInScope) (_guardOoptions) (_guardOtypeConstructors) (_guardOvalueConstructors) (_guardOwarnings))
+                (guard_ (_guardOallTypeConstructors) (_guardOallValueConstructors) (_guardOcollectScopeInfos) (_guardOkindErrors) (_guardOmiscerrors) (_guardOnamesInScope) (_guardOoptions) (_guardOorderedTypeSynonyms) (_guardOtypeConstructors) (_guardOvalueConstructors) (_guardOwarnings))
             (_lhsOunboundNames@_) =
                 _guardIunboundNames ++ _lhsIunboundNames
             (_self@_) =
@@ -9273,6 +9533,8 @@ sem_Qualifier_Guard (range_) (guard_) =
                 _lhsInamesInScope
             (_guardOoptions@_) =
                 _lhsIoptions
+            (_guardOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_guardOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_guardOvalueConstructors@_) =
@@ -9291,6 +9553,7 @@ sem_Qualifier_Let (range_) (declarations_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
@@ -9328,6 +9591,7 @@ sem_Qualifier_Let (range_) (declarations_) =
             _declarationsOnamesInScope :: (Names)
             _declarationsOoperatorFixities :: ([(Name,(Int,Assoc))])
             _declarationsOoptions :: ([Option])
+            _declarationsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _declarationsOpreviousWasAlsoFB :: (Maybe Name)
             _declarationsOsuspiciousFBs :: ([(Name,Name)])
             _declarationsOtypeConstructors :: (FiniteMap Name Int)
@@ -9348,6 +9612,7 @@ sem_Qualifier_Let (range_) (declarations_) =
                                (_declarationsOnamesInScope)
                                (_declarationsOoperatorFixities)
                                (_declarationsOoptions)
+                               (_declarationsOorderedTypeSynonyms)
                                (_declarationsOpreviousWasAlsoFB)
                                (_declarationsOsuspiciousFBs)
                                (_declarationsOtypeConstructors)
@@ -9409,6 +9674,8 @@ sem_Qualifier_Let (range_) (declarations_) =
                 _operatorFixities
             (_declarationsOoptions@_) =
                 _lhsIoptions
+            (_declarationsOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_declarationsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_declarationsOvalueConstructors@_) =
@@ -9425,6 +9692,7 @@ type T_Qualifiers = (Names) ->
                     ([Error]) ->
                     (Names) ->
                     ([Option]) ->
+                    (OrderedTypeSynonyms) ->
                     (FiniteMap Name Int) ->
                     (Names) ->
                     (FiniteMap Name TpScheme) ->
@@ -9446,6 +9714,7 @@ sem_Qualifiers_Cons (hd_) (tl_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
@@ -9471,6 +9740,7 @@ sem_Qualifiers_Cons (hd_) (tl_) =
             _hdOmiscerrors :: ([Error])
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
+            _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _hdOtypeConstructors :: (FiniteMap Name Int)
             _hdOunboundNames :: (Names)
             _hdOvalueConstructors :: (FiniteMap Name TpScheme)
@@ -9489,14 +9759,15 @@ sem_Qualifiers_Cons (hd_) (tl_) =
             _tlOmiscerrors :: ([Error])
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
+            _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _tlOtypeConstructors :: (FiniteMap Name Int)
             _tlOunboundNames :: (Names)
             _tlOvalueConstructors :: (FiniteMap Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdInamesInScope,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOtypeConstructors) (_hdOunboundNames) (_hdOvalueConstructors) (_hdOwarnings))
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOorderedTypeSynonyms) (_hdOtypeConstructors) (_hdOunboundNames) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlInamesInScope,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOtypeConstructors) (_tlOunboundNames) (_tlOvalueConstructors) (_tlOwarnings))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOorderedTypeSynonyms) (_tlOtypeConstructors) (_tlOunboundNames) (_tlOvalueConstructors) (_tlOwarnings))
             (_hdOunboundNames@_) =
                 _tlIunboundNames
             (_tlOunboundNames@_) =
@@ -9531,6 +9802,8 @@ sem_Qualifiers_Cons (hd_) (tl_) =
                 _lhsInamesInScope
             (_hdOoptions@_) =
                 _lhsIoptions
+            (_hdOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_hdOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_hdOvalueConstructors@_) =
@@ -9551,6 +9824,8 @@ sem_Qualifiers_Cons (hd_) (tl_) =
                 _hdInamesInScope
             (_tlOoptions@_) =
                 _lhsIoptions
+            (_tlOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_tlOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_tlOvalueConstructors@_) =
@@ -9567,6 +9842,7 @@ sem_Qualifiers_Nil  =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
@@ -9624,6 +9900,7 @@ sem_Range_Range (start_) (stop_) =
 type T_RecordExpressionBinding = ([(ScopeInfo, Entity)]) ->
                                  (Names) ->
                                  ([Option]) ->
+                                 (OrderedTypeSynonyms) ->
                                  ( ([(ScopeInfo, Entity)]),(RecordExpressionBinding),(Names))
 -- cata
 sem_RecordExpressionBinding :: (RecordExpressionBinding) ->
@@ -9637,7 +9914,8 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
 sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression_) =
     \ _lhsIcollectScopeInfos
       _lhsInamesInScope
-      _lhsIoptions ->
+      _lhsIoptions
+      _lhsIorderedTypeSynonyms ->
         let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
             _lhsOself :: (RecordExpressionBinding)
             _lhsOunboundNames :: (Names)
@@ -9656,6 +9934,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
@@ -9664,7 +9943,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
             ( _nameIself) =
                 (name_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ((_monos@_,_constructorenv@_,_betaUnique@_,_miscerrors@_,_warnings@_,_kindErrors@_,_valueConstructors@_,_allValueConstructors@_,_typeConstructors@_,_allTypeConstructors@_,_importEnvironment@_)) =
                 internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
             (_lhsOunboundNames@_) =
@@ -9689,6 +9968,8 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
                 _lhsInamesInScope
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _typeConstructors
             (_expressionOvalueConstructors@_) =
@@ -9701,6 +9982,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
 type T_RecordExpressionBindings = ([(ScopeInfo, Entity)]) ->
                                   (Names) ->
                                   ([Option]) ->
+                                  (OrderedTypeSynonyms) ->
                                   ( ([(ScopeInfo, Entity)]),(RecordExpressionBindings),(Names))
 -- cata
 sem_RecordExpressionBindings :: (RecordExpressionBindings) ->
@@ -9713,7 +9995,8 @@ sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
 sem_RecordExpressionBindings_Cons (hd_) (tl_) =
     \ _lhsIcollectScopeInfos
       _lhsInamesInScope
-      _lhsIoptions ->
+      _lhsIoptions
+      _lhsIorderedTypeSynonyms ->
         let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
             _lhsOself :: (RecordExpressionBindings)
             _lhsOunboundNames :: (Names)
@@ -9723,16 +10006,18 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
             _hdOcollectScopeInfos :: ([(ScopeInfo, Entity)])
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
+            _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
             _tlIself :: (RecordExpressionBindings)
             _tlIunboundNames :: (Names)
             _tlOcollectScopeInfos :: ([(ScopeInfo, Entity)])
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
+            _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             ( _hdIcollectScopeInfos,_hdIself,_hdIunboundNames) =
-                (hd_ (_hdOcollectScopeInfos) (_hdOnamesInScope) (_hdOoptions))
+                (hd_ (_hdOcollectScopeInfos) (_hdOnamesInScope) (_hdOoptions) (_hdOorderedTypeSynonyms))
             ( _tlIcollectScopeInfos,_tlIself,_tlIunboundNames) =
-                (tl_ (_tlOcollectScopeInfos) (_tlOnamesInScope) (_tlOoptions))
+                (tl_ (_tlOcollectScopeInfos) (_tlOnamesInScope) (_tlOoptions) (_tlOorderedTypeSynonyms))
             (_lhsOunboundNames@_) =
                 _hdIunboundNames ++ _tlIunboundNames
             (_self@_) =
@@ -9747,18 +10032,23 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
                 _lhsInamesInScope
             (_hdOoptions@_) =
                 _lhsIoptions
+            (_hdOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_tlOcollectScopeInfos@_) =
                 _hdIcollectScopeInfos
             (_tlOnamesInScope@_) =
                 _lhsInamesInScope
             (_tlOoptions@_) =
                 _lhsIoptions
+            (_tlOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
         in  ( _lhsOcollectScopeInfos,_lhsOself,_lhsOunboundNames)
 sem_RecordExpressionBindings_Nil :: (T_RecordExpressionBindings)
 sem_RecordExpressionBindings_Nil  =
     \ _lhsIcollectScopeInfos
       _lhsInamesInScope
-      _lhsIoptions ->
+      _lhsIoptions
+      _lhsIorderedTypeSynonyms ->
         let _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
             _lhsOself :: (RecordExpressionBindings)
             _lhsOunboundNames :: (Names)
@@ -9918,6 +10208,7 @@ type T_RightHandSide = (Names) ->
                        ([Error]) ->
                        (Names) ->
                        ([Option]) ->
+                       (OrderedTypeSynonyms) ->
                        (FiniteMap Name Int) ->
                        (FiniteMap Name TpScheme) ->
                        ([Warning]) ->
@@ -9941,6 +10232,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -9964,6 +10256,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
@@ -9981,6 +10274,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _whereOmiscerrors :: ([Error])
             _whereOnamesInScope :: (Names)
             _whereOoptions :: ([Option])
+            _whereOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _whereOtypeConstructors :: (FiniteMap Name Int)
             _whereOunboundNames :: (Names)
             _whereOvalueConstructors :: (FiniteMap Name TpScheme)
@@ -9988,9 +10282,9 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ( _whereIcollectScopeInfos,_whereIkindErrors,_whereImiscerrors,_whereInamesInScope,_whereIself,_whereIunboundNames,_whereIwarnings) =
-                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOoptions) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
+                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOoptions) (_whereOorderedTypeSynonyms) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
             (_whereOunboundNames@_) =
                 _expressionIunboundNames
             (_expressionOnamesInScope@_) =
@@ -10021,6 +10315,8 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
                 _lhsImiscerrors
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -10041,6 +10337,8 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
                 _lhsInamesInScope
             (_whereOoptions@_) =
                 _lhsIoptions
+            (_whereOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_whereOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_whereOvalueConstructors@_) =
@@ -10060,6 +10358,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIvalueConstructors
       _lhsIwarnings ->
@@ -10083,6 +10382,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _guardedexpressionsOmiscerrors :: ([Error])
             _guardedexpressionsOnamesInScope :: (Names)
             _guardedexpressionsOoptions :: ([Option])
+            _guardedexpressionsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _guardedexpressionsOtypeConstructors :: (FiniteMap Name Int)
             _guardedexpressionsOvalueConstructors :: (FiniteMap Name TpScheme)
             _guardedexpressionsOwarnings :: ([Warning])
@@ -10100,6 +10400,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _whereOmiscerrors :: ([Error])
             _whereOnamesInScope :: (Names)
             _whereOoptions :: ([Option])
+            _whereOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _whereOtypeConstructors :: (FiniteMap Name Int)
             _whereOunboundNames :: (Names)
             _whereOvalueConstructors :: (FiniteMap Name TpScheme)
@@ -10107,9 +10408,9 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             ( _rangeIself) =
                 (range_ )
             ( _guardedexpressionsIcollectScopeInfos,_guardedexpressionsIkindErrors,_guardedexpressionsImiscerrors,_guardedexpressionsIself,_guardedexpressionsIunboundNames,_guardedexpressionsIwarnings) =
-                (guardedexpressions_ (_guardedexpressionsOallTypeConstructors) (_guardedexpressionsOallValueConstructors) (_guardedexpressionsOcollectScopeInfos) (_guardedexpressionsOkindErrors) (_guardedexpressionsOmiscerrors) (_guardedexpressionsOnamesInScope) (_guardedexpressionsOoptions) (_guardedexpressionsOtypeConstructors) (_guardedexpressionsOvalueConstructors) (_guardedexpressionsOwarnings))
+                (guardedexpressions_ (_guardedexpressionsOallTypeConstructors) (_guardedexpressionsOallValueConstructors) (_guardedexpressionsOcollectScopeInfos) (_guardedexpressionsOkindErrors) (_guardedexpressionsOmiscerrors) (_guardedexpressionsOnamesInScope) (_guardedexpressionsOoptions) (_guardedexpressionsOorderedTypeSynonyms) (_guardedexpressionsOtypeConstructors) (_guardedexpressionsOvalueConstructors) (_guardedexpressionsOwarnings))
             ( _whereIcollectScopeInfos,_whereIkindErrors,_whereImiscerrors,_whereInamesInScope,_whereIself,_whereIunboundNames,_whereIwarnings) =
-                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOoptions) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
+                (where_ (_whereOallTypeConstructors) (_whereOallValueConstructors) (_whereOcollectScopeInfos) (_whereOkindErrors) (_whereOmiscerrors) (_whereOnamesInScope) (_whereOoptions) (_whereOorderedTypeSynonyms) (_whereOtypeConstructors) (_whereOunboundNames) (_whereOvalueConstructors) (_whereOwarnings))
             (_whereOunboundNames@_) =
                 _guardedexpressionsIunboundNames
             (_guardedexpressionsOnamesInScope@_) =
@@ -10140,6 +10441,8 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
                 _lhsImiscerrors
             (_guardedexpressionsOoptions@_) =
                 _lhsIoptions
+            (_guardedexpressionsOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_guardedexpressionsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_guardedexpressionsOvalueConstructors@_) =
@@ -10160,6 +10463,8 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
                 _lhsInamesInScope
             (_whereOoptions@_) =
                 _lhsIoptions
+            (_whereOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_whereOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_whereOvalueConstructors@_) =
@@ -10211,6 +10516,7 @@ type T_Statement = (Names) ->
                    ([Error]) ->
                    (Names) ->
                    ([Option]) ->
+                   (OrderedTypeSynonyms) ->
                    (FiniteMap Name Int) ->
                    (Names) ->
                    (FiniteMap Name TpScheme) ->
@@ -10238,6 +10544,7 @@ sem_Statement_Empty (range_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
@@ -10284,6 +10591,7 @@ sem_Statement_Expression (range_) (expression_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
@@ -10310,13 +10618,14 @@ sem_Statement_Expression (range_) (expression_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames ++ _lhsIunboundNames
             (_lhsOlastStatementIsExpr@_) =
@@ -10349,6 +10658,8 @@ sem_Statement_Expression (range_) (expression_) =
                 _lhsInamesInScope
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -10369,6 +10680,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
@@ -10410,6 +10722,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
             _expressionOmiscerrors :: ([Error])
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
+            _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _expressionOtypeConstructors :: (FiniteMap Name Int)
             _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
             _expressionOwarnings :: ([Warning])
@@ -10418,7 +10731,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
             ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
                 (pattern_ (_patternOallTypeConstructors) (_patternOallValueConstructors) (_patternOcollectScopeInfos) (_patternOlhsPattern) (_patternOmiscerrors) (_patternOnamesInScope) (_patternOtypeConstructors) (_patternOvalueConstructors) (_patternOwarnings))
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
+                (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
             ((_namesInScope@_,_unboundNames@_,_scopeInfo@_)) =
                 changeOfScope _patternIpatVarNames (_expressionIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
             (_expressionOnamesInScope@_) =
@@ -10471,6 +10784,8 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
                 _patternImiscerrors
             (_expressionOoptions@_) =
                 _lhsIoptions
+            (_expressionOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_expressionOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_expressionOvalueConstructors@_) =
@@ -10490,6 +10805,7 @@ sem_Statement_Let (range_) (declarations_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
@@ -10528,6 +10844,7 @@ sem_Statement_Let (range_) (declarations_) =
             _declarationsOnamesInScope :: (Names)
             _declarationsOoperatorFixities :: ([(Name,(Int,Assoc))])
             _declarationsOoptions :: ([Option])
+            _declarationsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _declarationsOpreviousWasAlsoFB :: (Maybe Name)
             _declarationsOsuspiciousFBs :: ([(Name,Name)])
             _declarationsOtypeConstructors :: (FiniteMap Name Int)
@@ -10548,6 +10865,7 @@ sem_Statement_Let (range_) (declarations_) =
                                (_declarationsOnamesInScope)
                                (_declarationsOoperatorFixities)
                                (_declarationsOoptions)
+                               (_declarationsOorderedTypeSynonyms)
                                (_declarationsOpreviousWasAlsoFB)
                                (_declarationsOsuspiciousFBs)
                                (_declarationsOtypeConstructors)
@@ -10611,6 +10929,8 @@ sem_Statement_Let (range_) (declarations_) =
                 _operatorFixities
             (_declarationsOoptions@_) =
                 _lhsIoptions
+            (_declarationsOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_declarationsOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_declarationsOvalueConstructors@_) =
@@ -10628,6 +10948,7 @@ type T_Statements = (Names) ->
                     ([Error]) ->
                     (Names) ->
                     ([Option]) ->
+                    (OrderedTypeSynonyms) ->
                     (FiniteMap Name Int) ->
                     (Names) ->
                     (FiniteMap Name TpScheme) ->
@@ -10650,6 +10971,7 @@ sem_Statements_Cons (hd_) (tl_) =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
@@ -10678,6 +11000,7 @@ sem_Statements_Cons (hd_) (tl_) =
             _hdOmiscerrors :: ([Error])
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
+            _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _hdOtypeConstructors :: (FiniteMap Name Int)
             _hdOunboundNames :: (Names)
             _hdOvalueConstructors :: (FiniteMap Name TpScheme)
@@ -10698,14 +11021,15 @@ sem_Statements_Cons (hd_) (tl_) =
             _tlOmiscerrors :: ([Error])
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
+            _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _tlOtypeConstructors :: (FiniteMap Name Int)
             _tlOunboundNames :: (Names)
             _tlOvalueConstructors :: (FiniteMap Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIcollectScopeInfos,_hdIkindErrors,_hdIlastStatementIsExpr,_hdImiscerrors,_hdInamesInScope,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOlastStatementIsExpr) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOtypeConstructors) (_hdOunboundNames) (_hdOvalueConstructors) (_hdOwarnings))
+                (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOlastStatementIsExpr) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOorderedTypeSynonyms) (_hdOtypeConstructors) (_hdOunboundNames) (_hdOvalueConstructors) (_hdOwarnings))
             ( _tlIcollectScopeInfos,_tlIkindErrors,_tlIlastStatementIsExpr,_tlImiscerrors,_tlInamesInScope,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOlastStatementIsExpr) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOtypeConstructors) (_tlOunboundNames) (_tlOvalueConstructors) (_tlOwarnings))
+                (tl_ (_tlOallTypeConstructors) (_tlOallValueConstructors) (_tlOcollectScopeInfos) (_tlOkindErrors) (_tlOlastStatementIsExpr) (_tlOmiscerrors) (_tlOnamesInScope) (_tlOoptions) (_tlOorderedTypeSynonyms) (_tlOtypeConstructors) (_tlOunboundNames) (_tlOvalueConstructors) (_tlOwarnings))
             (_hdOunboundNames@_) =
                 _tlIunboundNames
             (_tlOunboundNames@_) =
@@ -10744,6 +11068,8 @@ sem_Statements_Cons (hd_) (tl_) =
                 _lhsInamesInScope
             (_hdOoptions@_) =
                 _lhsIoptions
+            (_hdOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_hdOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_hdOvalueConstructors@_) =
@@ -10766,6 +11092,8 @@ sem_Statements_Cons (hd_) (tl_) =
                 _hdInamesInScope
             (_tlOoptions@_) =
                 _lhsIoptions
+            (_tlOorderedTypeSynonyms@_) =
+                _lhsIorderedTypeSynonyms
             (_tlOtypeConstructors@_) =
                 _lhsItypeConstructors
             (_tlOvalueConstructors@_) =
@@ -10783,6 +11111,7 @@ sem_Statements_Nil  =
       _lhsImiscerrors
       _lhsInamesInScope
       _lhsIoptions
+      _lhsIorderedTypeSynonyms
       _lhsItypeConstructors
       _lhsIunboundNames
       _lhsIvalueConstructors
@@ -10850,7 +11179,7 @@ type T_Type = (Names) ->
               ([Option]) ->
               (FiniteMap Name Int) ->
               ([Warning]) ->
-              ( ([Error]),(Type),(Names),([Warning]))
+              ( (Range),([Error]),(Type),(Names),([Warning]))
 -- cata
 sem_Type :: (Type) ->
             (T_Type)
@@ -10879,11 +11208,13 @@ sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
       _lhsIoptions
       _lhsItypeConstructors
       _lhsIwarnings ->
-        let _lhsOmiscerrors :: ([Error])
+        let _lhsOcontextRange :: (Range)
+            _lhsOmiscerrors :: ([Error])
             _lhsOself :: (Type)
             _lhsOtypevariables :: (Names)
             _lhsOwarnings :: ([Warning])
             _rangeIself :: (Range)
+            _functionIcontextRange :: (Range)
             _functionImiscerrors :: ([Error])
             _functionIself :: (Type)
             _functionItypevariables :: (Names)
@@ -10904,7 +11235,7 @@ sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
             _argumentsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
-            ( _functionImiscerrors,_functionIself,_functionItypevariables,_functionIwarnings) =
+            ( _functionIcontextRange,_functionImiscerrors,_functionIself,_functionItypevariables,_functionIwarnings) =
                 (function_ (_functionOallTypeConstructors) (_functionOmiscerrors) (_functionOoptions) (_functionOtypeConstructors) (_functionOwarnings))
             ( _argumentsImiscerrors,_argumentsIself,_argumentsItypevariables,_argumentsIwarnings) =
                 (arguments_ (_argumentsOallTypeConstructors) (_argumentsOmiscerrors) (_argumentsOoptions) (_argumentsOtypeConstructors) (_argumentsOwarnings))
@@ -10914,6 +11245,8 @@ sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
                 Type_Application _rangeIself prefix_ _functionIself _argumentsIself
             (_lhsOself@_) =
                 _self
+            (_lhsOcontextRange@_) =
+                _functionIcontextRange
             (_lhsOmiscerrors@_) =
                 _argumentsImiscerrors
             (_lhsOwarnings@_) =
@@ -10938,7 +11271,7 @@ sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
                 _lhsItypeConstructors
             (_argumentsOwarnings@_) =
                 _functionIwarnings
-        in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)
+        in  ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)
 sem_Type_Constructor :: (T_Range) ->
                         (T_Name) ->
                         (T_Type)
@@ -10948,7 +11281,8 @@ sem_Type_Constructor (range_) (name_) =
       _lhsIoptions
       _lhsItypeConstructors
       _lhsIwarnings ->
-        let _lhsOmiscerrors :: ([Error])
+        let _lhsOcontextRange :: (Range)
+            _lhsOmiscerrors :: ([Error])
             _lhsOself :: (Type)
             _lhsOtypevariables :: (Names)
             _lhsOwarnings :: ([Warning])
@@ -10958,6 +11292,8 @@ sem_Type_Constructor (range_) (name_) =
                 (range_ )
             ( _nameIself) =
                 (name_ )
+            (_lhsOcontextRange@_) =
+                noRange
             (_lhsOtypevariables@_) =
                 []
             (_self@_) =
@@ -10968,7 +11304,7 @@ sem_Type_Constructor (range_) (name_) =
                 _lhsImiscerrors
             (_lhsOwarnings@_) =
                 _lhsIwarnings
-        in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)
+        in  ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)
 sem_Type_Exists :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
@@ -10979,12 +11315,14 @@ sem_Type_Exists (range_) (typevariables_) (type_) =
       _lhsIoptions
       _lhsItypeConstructors
       _lhsIwarnings ->
-        let _lhsOmiscerrors :: ([Error])
+        let _lhsOcontextRange :: (Range)
+            _lhsOmiscerrors :: ([Error])
             _lhsOself :: (Type)
             _lhsOtypevariables :: (Names)
             _lhsOwarnings :: ([Warning])
             _rangeIself :: (Range)
             _typevariablesIself :: (Names)
+            _typeIcontextRange :: (Range)
             _typeImiscerrors :: ([Error])
             _typeIself :: (Type)
             _typeItypevariables :: (Names)
@@ -10998,7 +11336,7 @@ sem_Type_Exists (range_) (typevariables_) (type_) =
                 (range_ )
             ( _typevariablesIself) =
                 (typevariables_ )
-            ( _typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
+            ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
                 (type_ (_typeOallTypeConstructors) (_typeOmiscerrors) (_typeOoptions) (_typeOtypeConstructors) (_typeOwarnings))
             (_lhsOtypevariables@_) =
                 _typeItypevariables
@@ -11006,6 +11344,8 @@ sem_Type_Exists (range_) (typevariables_) (type_) =
                 Type_Exists _rangeIself _typevariablesIself _typeIself
             (_lhsOself@_) =
                 _self
+            (_lhsOcontextRange@_) =
+                _typeIcontextRange
             (_lhsOmiscerrors@_) =
                 _typeImiscerrors
             (_lhsOwarnings@_) =
@@ -11020,7 +11360,7 @@ sem_Type_Exists (range_) (typevariables_) (type_) =
                 _lhsItypeConstructors
             (_typeOwarnings@_) =
                 _lhsIwarnings
-        in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)
+        in  ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)
 sem_Type_Forall :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
@@ -11031,12 +11371,14 @@ sem_Type_Forall (range_) (typevariables_) (type_) =
       _lhsIoptions
       _lhsItypeConstructors
       _lhsIwarnings ->
-        let _lhsOmiscerrors :: ([Error])
+        let _lhsOcontextRange :: (Range)
+            _lhsOmiscerrors :: ([Error])
             _lhsOself :: (Type)
             _lhsOtypevariables :: (Names)
             _lhsOwarnings :: ([Warning])
             _rangeIself :: (Range)
             _typevariablesIself :: (Names)
+            _typeIcontextRange :: (Range)
             _typeImiscerrors :: ([Error])
             _typeIself :: (Type)
             _typeItypevariables :: (Names)
@@ -11050,7 +11392,7 @@ sem_Type_Forall (range_) (typevariables_) (type_) =
                 (range_ )
             ( _typevariablesIself) =
                 (typevariables_ )
-            ( _typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
+            ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
                 (type_ (_typeOallTypeConstructors) (_typeOmiscerrors) (_typeOoptions) (_typeOtypeConstructors) (_typeOwarnings))
             (_lhsOtypevariables@_) =
                 _typeItypevariables
@@ -11058,6 +11400,8 @@ sem_Type_Forall (range_) (typevariables_) (type_) =
                 Type_Forall _rangeIself _typevariablesIself _typeIself
             (_lhsOself@_) =
                 _self
+            (_lhsOcontextRange@_) =
+                _typeIcontextRange
             (_lhsOmiscerrors@_) =
                 _typeImiscerrors
             (_lhsOwarnings@_) =
@@ -11072,7 +11416,7 @@ sem_Type_Forall (range_) (typevariables_) (type_) =
                 _lhsItypeConstructors
             (_typeOwarnings@_) =
                 _lhsIwarnings
-        in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)
+        in  ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)
 sem_Type_Parenthesized :: (T_Range) ->
                           (T_Type) ->
                           (T_Type)
@@ -11082,11 +11426,13 @@ sem_Type_Parenthesized (range_) (type_) =
       _lhsIoptions
       _lhsItypeConstructors
       _lhsIwarnings ->
-        let _lhsOmiscerrors :: ([Error])
+        let _lhsOcontextRange :: (Range)
+            _lhsOmiscerrors :: ([Error])
             _lhsOself :: (Type)
             _lhsOtypevariables :: (Names)
             _lhsOwarnings :: ([Warning])
             _rangeIself :: (Range)
+            _typeIcontextRange :: (Range)
             _typeImiscerrors :: ([Error])
             _typeIself :: (Type)
             _typeItypevariables :: (Names)
@@ -11098,7 +11444,7 @@ sem_Type_Parenthesized (range_) (type_) =
             _typeOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
-            ( _typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
+            ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
                 (type_ (_typeOallTypeConstructors) (_typeOmiscerrors) (_typeOoptions) (_typeOtypeConstructors) (_typeOwarnings))
             (_lhsOtypevariables@_) =
                 _typeItypevariables
@@ -11106,6 +11452,8 @@ sem_Type_Parenthesized (range_) (type_) =
                 Type_Parenthesized _rangeIself _typeIself
             (_lhsOself@_) =
                 _self
+            (_lhsOcontextRange@_) =
+                _typeIcontextRange
             (_lhsOmiscerrors@_) =
                 _typeImiscerrors
             (_lhsOwarnings@_) =
@@ -11120,7 +11468,7 @@ sem_Type_Parenthesized (range_) (type_) =
                 _lhsItypeConstructors
             (_typeOwarnings@_) =
                 _lhsIwarnings
-        in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)
+        in  ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)
 sem_Type_Qualified :: (T_Range) ->
                       (T_ContextItems) ->
                       (T_Type) ->
@@ -11131,11 +11479,13 @@ sem_Type_Qualified (range_) (context_) (type_) =
       _lhsIoptions
       _lhsItypeConstructors
       _lhsIwarnings ->
-        let _lhsOmiscerrors :: ([Error])
+        let _lhsOcontextRange :: (Range)
+            _lhsOmiscerrors :: ([Error])
             _lhsOself :: (Type)
             _lhsOtypevariables :: (Names)
             _lhsOwarnings :: ([Warning])
             _rangeIself :: (Range)
+            _contextIcontextRanges :: ([Range])
             _contextIcontextVars :: ([Name])
             _contextImiscerrors :: ([Error])
             _contextIself :: (ContextItems)
@@ -11145,6 +11495,7 @@ sem_Type_Qualified (range_) (context_) (type_) =
             _contextOoptions :: ([Option])
             _contextOtypeConstructors :: (FiniteMap Name Int)
             _contextOwarnings :: ([Warning])
+            _typeIcontextRange :: (Range)
             _typeImiscerrors :: ([Error])
             _typeIself :: (Type)
             _typeItypevariables :: (Names)
@@ -11156,10 +11507,14 @@ sem_Type_Qualified (range_) (context_) (type_) =
             _typeOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
-            ( _contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
+            ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
                 (context_ (_contextOallTypeConstructors) (_contextOmiscerrors) (_contextOoptions) (_contextOtypeConstructors) (_contextOwarnings))
-            ( _typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
+            ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
                 (type_ (_typeOallTypeConstructors) (_typeOmiscerrors) (_typeOoptions) (_typeOtypeConstructors) (_typeOwarnings))
+            (_lhsOcontextRange@_) =
+                if null _contextIcontextRanges
+                  then noRange
+                  else foldr1 mergeRanges _contextIcontextRanges
             (_lhsOmiscerrors@_) =
                 ( if Overloading `elem` _lhsIoptions then
                     [ AmbiguousContext v | v <-  _contextIcontextVars, v `notElem` _typeItypevariables ]
@@ -11196,7 +11551,7 @@ sem_Type_Qualified (range_) (context_) (type_) =
                 _lhsItypeConstructors
             (_typeOwarnings@_) =
                 _contextIwarnings
-        in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)
+        in  ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)
 sem_Type_Variable :: (T_Range) ->
                      (T_Name) ->
                      (T_Type)
@@ -11206,7 +11561,8 @@ sem_Type_Variable (range_) (name_) =
       _lhsIoptions
       _lhsItypeConstructors
       _lhsIwarnings ->
-        let _lhsOmiscerrors :: ([Error])
+        let _lhsOcontextRange :: (Range)
+            _lhsOmiscerrors :: ([Error])
             _lhsOself :: (Type)
             _lhsOtypevariables :: (Names)
             _lhsOwarnings :: ([Warning])
@@ -11225,13 +11581,15 @@ sem_Type_Variable (range_) (name_) =
                          , capitalize (show _nameIself) == (show tc)
                          ]
                 in xs ++ _lhsIwarnings
+            (_lhsOcontextRange@_) =
+                noRange
             (_self@_) =
                 Type_Variable _rangeIself _nameIself
             (_lhsOself@_) =
                 _self
             (_lhsOmiscerrors@_) =
                 _lhsImiscerrors
-        in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)
+        in  ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)
 -- Types -------------------------------------------------------
 -- semantic domain
 type T_Types = (Names) ->
@@ -11258,6 +11616,7 @@ sem_Types_Cons (hd_) (tl_) =
             _lhsOself :: (Types)
             _lhsOtypevariables :: (Names)
             _lhsOwarnings :: ([Warning])
+            _hdIcontextRange :: (Range)
             _hdImiscerrors :: ([Error])
             _hdIself :: (Type)
             _hdItypevariables :: (Names)
@@ -11276,7 +11635,7 @@ sem_Types_Cons (hd_) (tl_) =
             _tlOoptions :: ([Option])
             _tlOtypeConstructors :: (FiniteMap Name Int)
             _tlOwarnings :: ([Warning])
-            ( _hdImiscerrors,_hdIself,_hdItypevariables,_hdIwarnings) =
+            ( _hdIcontextRange,_hdImiscerrors,_hdIself,_hdItypevariables,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors) (_hdOmiscerrors) (_hdOoptions) (_hdOtypeConstructors) (_hdOwarnings))
             ( _tlImiscerrors,_tlIself,_tlItypevariables,_tlIwarnings) =
                 (tl_ (_tlOallTypeConstructors) (_tlOmiscerrors) (_tlOoptions) (_tlOtypeConstructors) (_tlOwarnings))

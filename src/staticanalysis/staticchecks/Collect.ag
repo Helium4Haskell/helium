@@ -15,7 +15,7 @@
 -- Distribute the collected environments 
 --    5) value constructors
 --    6) type constructors
---
+--    7) type synonyms
 -------------------------------------------------------------------------------
 
 SEM Module
@@ -126,7 +126,20 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression 
      Type Types AnnotatedType AnnotatedTypes ContextItem ContextItems
      [ typeConstructors : {FiniteMap Name Int} allTypeConstructors : Names | | ]
-                                             
+
+-------------------------------------------
+-- 7) Distributing Type Synonyms
+
+ATTR Module -> Declaration [ orderedTypeSynonyms:OrderedTypeSynonyms | | ]
+
+SEM Module
+  | Module body . orderedTypeSynonyms =
+                      let list     = concatMap (fmToList . typeSynonyms) @lhs.importEnvironments ++
+                                     @body.collectTypeSynonyms
+                          fmlist   = listToFM [ (show name, t) | (name, t) <- list ]
+                          ordering = fst (getTypeSynonymOrdering fmlist)
+                      in (ordering, fmlist)
+
 -------------------------------------------------------
 -- utility attributes for types and constructors
 
@@ -183,4 +196,4 @@ SEM MaybeDeclarations | Just    declarations . typeSignatures = []
 SEM Declaration
   | TypeSignature
       lhs . typeSignatures = [ (name, @typeScheme) | name <- @names.self ] ++ @lhs.typeSignatures
-      loc . typeScheme     = makeTpSchemeFromType @type.self
+      loc . (typeScheme, intMap) = makeTpSchemeFromType' @type.self

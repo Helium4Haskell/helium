@@ -252,12 +252,15 @@ libraries:
 	@echo "****************************************************"
 	cd ../lib/simple; $(MAKE) 
 
-texthint: texthint/Main.hs utils/OSSpecific.hs
+texthint: texthint/Main.o utils/OSSpecific.o
 	@echo "****************************************************"
 	@echo "  TextHint: the textual Helium interpreter"
 	@echo "****************************************************"
-	$(HC) $(HC_OPTS) --make -iutils -o $(HELIUMBINDIR)/texthint$(EXE) texthint/Main.hs 
+	$(HC) $(HC_OPTS) -o $(HELIUMBINDIR)/texthint$(EXE) texthint/Main.o \
+                      utils/OSSpecific.o
 	$(STRIP) $(HELIUMBINDIR)/texthint$(EXE)
+
+texthint/Main.o: utils/OSSpecific.hi texthint/Main.hs
 
 # AG sources
 

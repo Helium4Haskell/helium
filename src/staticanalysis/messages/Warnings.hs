@@ -29,6 +29,7 @@ data Warning  = NoTypeDef Name TpScheme Bool
               | Unused Entity Name
               | SimilarFunctionBindings Name {- without typesignature -} Name {- with type signature -}
 	      | SuspiciousTypeVariable Name {- the type variable -} Name {- the type constant -}
+	      | ReduceContext Range Predicates Predicates
               | MissingPatterns Range (Maybe Name) Tp [[Pattern]] String String
               | UnreachablePatternCase Range Pattern
               | UnreachablePatternLHS  LeftHandSide
@@ -45,6 +46,7 @@ instance HasMessage Warning where
       Unused _ name                 -> [getNameRange name]
       SimilarFunctionBindings n1 n2 -> sortRanges [getNameRange n1, getNameRange n2]
       SuspiciousTypeVariable name _ -> [getNameRange name]
+      ReduceContext rng _ _         -> [rng]
       MissingPatterns rng _ _ _ _ _ -> [rng]
       UnreachablePatternCase rng _  -> [rng]
       UnreachableGuard  rng _       -> [rng]
@@ -84,7 +86,15 @@ showWarning warning = case warning of
       ( MessageString ("Suspicious type variable " ++ (show.show) varName)
       , [ MessageString ("Did you mean the type constructor " ++ (show.show) conName ++ " ?") ]
       )
-      
+
+   ReduceContext range predicates reduced ->
+      ( MessageString ( "The context " ++ show (showQualifiers predicates) ++
+                        " has superfluous predicates. You may change it into " ++
+			show (showQualifiers reduced) ++ ".")
+      , []
+      )
+
+   
    MissingPatterns _ Nothing tp pss place sym ->
       let text = "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
                  ++ concatMap (("\n  " ++).(++ (sym ++ " ...")).concatMap ((++ " ").show.PP.sem_Pattern)) pss

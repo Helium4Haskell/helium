@@ -136,7 +136,8 @@ data Property   = FolkloreConstraint
                 | ApplicationEdge Bool{-is binary-} [LocalInfo]{-info about terms-}
                 | ExplicitTypedBinding
 		| Unifier Int{-type variable-} (String{-location-}, LocalInfo, String{-description-})
-
+                | OriginalTypePair (Tp, Tp)
+		
 instance SetReduction ConstraintInfo where
   setReduction p = addProperty (ReductionErrorInfo p)
 
@@ -183,6 +184,20 @@ phaseOfConstraint info =
    case [ i | ConstraintPhaseNumber i <- properties info ] of  
       []  -> 5 -- default phase number
       i:_ -> i
+
+setTypePair :: (Tp, Tp) -> ConstraintInfo -> ConstraintInfo
+setTypePair pair info =
+   let p (OriginalTypePair _) = False
+       p _                    = True
+   in info { typepair   = pair 
+           , properties = OriginalTypePair (typepair info) : filter p (properties info)
+           }
+      
+originalTypePair :: ConstraintInfo -> (Tp, Tp)
+originalTypePair info = 
+   case [ pair | OriginalTypePair pair <- properties info ] of
+      [p] -> p
+      _   -> typepair info
       
 setTypeError :: TypeError -> ConstraintInfo -> ConstraintInfo
 setTypeError typeError cinfo =

@@ -179,7 +179,7 @@ specialApplicationTypeError (isInfixApplication,isPatternApplication) argumentNu
        description3
           | isInfixApplication = if argumentNumber == 0 then "left operand" else "right operand"
           | otherwise          = ordinal False (argumentNumber + 1) ++ " argument"
-   in setTypeError typeError (cinfo {typepair = (t1, t2)})
+   in setTypeError typeError (setTypePair (t1, t2) cinfo)
    
 specialUnifierTypeError ::  (Tp, Tp) -> (ConstraintInfo, ConstraintInfo) -> ConstraintInfo
 specialUnifierTypeError (t1, t2) (info1, info2) =
@@ -200,7 +200,7 @@ specialUnifierTypeError (t1, t2) (info1, info2) =
           let f (src, msrc) = maybeAddLocation (maybe src id msrc)
 	  in (f (sources info1), f (sources info2))
        hints = [] -- [("because", MessageString "these two types cannot be unified")]
-   in setTypeError typeError (info1 {typepair = (t1, t2)})
+   in setTypeError typeError (setTypePair (t1,t2 ) info1)
 
 skip_UHA_FB_RHS :: InfoTree -> InfoTree
 skip_UHA_FB_RHS tree = 

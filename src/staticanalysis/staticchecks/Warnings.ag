@@ -126,3 +126,39 @@ SEM Type
                                          ]
                                 in xs ++ @lhs.warnings
 
+                                
+----------------------------------------------
+-- Context in type signature can be simplified
+
+SEM ContextItem [ | | contextRanges:{[Range]} ]
+  | ContextItem lhs.contextRanges = [@range]
+  
+SEM ContextItems [ | | contextRanges:{[Range]} ]
+  | Cons  lhs.contextRanges = @hd.contextRanges ++ @tl.contextRanges
+  | Nil   lhs.contextRanges = []
+  
+SEM Type [ | | contextRange:Range ]
+  | Qualified    lhs.contextRange = if null @context.contextRanges 
+                                      then noRange
+                                      else foldr1 mergeRanges @context.contextRanges
+  | Constructor  lhs.contextRange = noRange
+  | Variable     lhs.contextRange = noRange
+
+SEM Declaration
+  | TypeSignature   
+       lhs . warnings = simplifyContext @lhs.orderedTypeSynonyms @type.contextRange @intMap @typeScheme ++ @type.warnings
+  
+{
+simplifyContext :: OrderedTypeSynonyms -> Range -> [(Int, Name)] -> TpScheme -> Warnings
+simplifyContext synonyms range intMap typescheme = 
+   let predicates = qualifiers (unquantify typescheme)
+       reduced    = f predicates []
+          where f [] as = reverse as -- reverse to original order
+                f (p:ps) as 
+                   | entail synonyms standardClasses (ps++as) p = f ps as
+                   | otherwise = f ps (p:as)
+       sub = listToSubstitution [ (i, TCon (show n)) | (i, n) <- intMap ]
+   in if length reduced == length predicates 
+        then []
+        else [ ReduceContext range (sub |-> predicates) (sub |-> reduced) ]
+}

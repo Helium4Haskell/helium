@@ -109,7 +109,7 @@ processCommand cmd rest state =
         'r' -> cmdReloadModule      state
         'b' -> cmdBrowse            state
         '?' -> cmdHelp              state
-        'q' -> do   putStrLn "[Leaving Hint]"
+        'q' -> do   putStrLn "[Leaving texthint]"
                     exitWith ExitSuccess
         _   -> do   putStrLn "Command not recognised.  Type :? for help"
                     return state
