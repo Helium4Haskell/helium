@@ -27,7 +27,7 @@ class IsUnifier a where
    isUnifier :: a -> Maybe (Int, (String, LocalInfo, String))
 
 unifierVertex :: (HasTypeGraph m info, WithHints info, IsUnifier info) => Selector m info
-unifierVertex =
+unifierVertex = error "unifierVertex: to be implemented" {-
    Selector ("Unification vertex", f) where
 
  f (_, _, info) =
@@ -36,7 +36,7 @@ unifierVertex =
        Just (unifier, _) -> 
           do neighbours <- edgesFrom (VertexId unifier)
 	     let (unifiersUnsorted, contexts) = partition p (map f neighbours)
-	         f (EdgeId (VertexId v1) (VertexId v2), _, info)
+	         f (EdgeId (VertexId v1) (VertexId v2) _, _, info)
 		    | v1 == unifier = (v2, info)
 		    | otherwise     = (v1, info)
 	         p (_, info) = 
@@ -66,6 +66,6 @@ unifierVertex =
 			           edges   = [EdgeId (VertexId unifier) (VertexId v1), EdgeId (VertexId unifier) (VertexId v2)]
 				   newInfo = typeErrorForUnifier (TVar v1, TVar v2) (info1, info2) 
 			       in return $ Just 
-			             (7, "two inconsistent branches", edges, [newInfo])
+			             (7, "two inconsistent branches", edges, newInfo)
 			       
-			    _ -> return Nothing
+			    _ -> return Nothing -}

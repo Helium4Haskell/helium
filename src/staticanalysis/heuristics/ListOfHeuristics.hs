@@ -5,7 +5,7 @@
     Stability   :  experimental
     Portability :  portable
     
-    A list of all type graph heuristics that will be used.
+    A list of all type graph heuristics that is used.
 -}
 
 module ListOfHeuristics (listOfHeuristics) where
@@ -64,14 +64,14 @@ listOfHeuristics options siblings =
 -- This should be the first heuristic that is applied 
 highlyTrustedFilter :: Heuristic ConstraintInfo
 highlyTrustedFilter = Heuristic (
-   let f (_, _, info) = return (not (isHighlyTrusted info))
+   let f (_, info) = return (not (isHighlyTrusted info))
    in edgeFilter "Not highly trusted" f)
 
 -- two more heuristics for the Type Inference Directives
 -- (move to another module?)
 phaseFilter :: Heuristic ConstraintInfo
 phaseFilter = Heuristic (
-   let f (_, _, info) = return (phaseOfConstraint info)
+   let f (_, info) = return (phaseOfConstraint info)
    in maximalEdgeFilter "Highest phase number" f)
 
 constraintFromUser :: HasTypeGraph m ConstraintInfo => Selector m ConstraintInfo
@@ -83,13 +83,13 @@ constraintFromUser =
    helper path edges = 
       let
           bestEdge = rec path
-	  edgeNrs  = [ i | (_, i, _) <- edges ]
+          edgeNrs  = [ i | (EdgeId _ _ i, _) <- edges ]
  
           rec path =
              case path of
                 x :|: y -> f min (rec x) (rec y)
                 x :+: y -> f max (rec x) (rec y)
-                Step (_, cNR, info) |  isJust (maybeUserConstraint info) && cNR `elem` edgeNrs 
+                Step (EdgeId _ _ cNR, info) |  isJust (maybeUserConstraint info) && cNR `elem` edgeNrs 
                         -> Just cNR
                 _       -> Nothing
 	 
@@ -100,14 +100,14 @@ constraintFromUser =
                 (Nothing, _    ) -> mb
                 _                -> ma
       in 
-         case [ tuple | tuple@(_, cNR, _) <- edges, Just cNR == bestEdge ] of
+         case [ tuple | tuple@(EdgeId _ _ cNR, _) <- edges, Just cNR == bestEdge ] of
             [] -> return Nothing
-            (edgeID, cNR, info):_ -> 
+            (edgeID, info):_ -> 
 	       let (groupID, number) = maybe (0, 0) id (maybeUserConstraint info)
 	           otherEdges = let p info =
 		                       case maybeUserConstraint info of
 				          Just (a, b) -> a == groupID && b > number
 					  Nothing     -> False
-		                in [ e | (e, _, i) <- edges, p i ] -- perhaps over all edges!
+		                in [ e | (e, i) <- edges, p i ] -- perhaps over all edges!
 	       in return . Just $
-	             (8, "constraints from .type file", edgeID:otherEdges, [info])
+	             (8, "constraints from .type file", edgeID:otherEdges, info)

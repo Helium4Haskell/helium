@@ -5014,12 +5014,6 @@ sem_Expression_Negate (range_) (expression_) =
                 (range_ )
             ( _expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
                 (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
-            (_lhsOmiscerrors@_) =
-                ( if nameFromString "negate" `elem` _lhsInamesInScope
-                  then []
-                  else [ NegateNeeded _rangeIself ]
-                )
-                ++ _expressionImiscerrors
             (_lhsOunboundNames@_) =
                 _expressionIunboundNames
             (_self@_) =
@@ -5030,6 +5024,8 @@ sem_Expression_Negate (range_) (expression_) =
                 _expressionIcollectScopeInfos
             (_lhsOkindErrors@_) =
                 _expressionIkindErrors
+            (_lhsOmiscerrors@_) =
+                _expressionImiscerrors
             (_lhsOwarnings@_) =
                 _expressionIwarnings
             (_expressionOallTypeConstructors@_) =

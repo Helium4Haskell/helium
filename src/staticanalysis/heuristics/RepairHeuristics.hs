@@ -40,13 +40,13 @@ siblingFunctions :: (MaybeImported info, HasTwoTypes info, WithHints info, HasTy
 siblingFunctions siblings = 
    Selector ("Sibling functions", f) where
   
- f triple@(edge, cnr, info) =
+ f pair@(edge, info) =
    case maybeImportedName info of 
       Nothing   -> return Nothing
       Just name
          | null candidates -> return Nothing
          | otherwise -> 
-              doWithoutEdge triple $ 
+              doWithoutEdge pair $ 
               do (_, mtp) <- getSubstitutedTypes info
                  subPreds <- allSubstPredicates     
                  case mtp of 
@@ -59,7 +59,7 @@ siblingFunctions siblings =
                                   sibling : _ -> 
                                      let hint = fixHint ("use "++sibling++" instead")
                                       in return $ Just
-                                            (10,"Sibling "++show sibling++" instead of "++show name, [edge], [hint info])
+                                            (10,"Sibling "++show sibling++" instead of "++show name, [edge], hint info)
                                   
 	   where
         candidates = 
@@ -84,12 +84,12 @@ similarLiterals :: (HasTypeGraph m info, MaybeLiteral info, HasTwoTypes info, Wi
 similarLiterals = 
    Selector ("Similar literal", f) where
 
- f triple@(edge, cnr, info) =
+ f pair@(edge, info) =
    case maybeLiteral info of 
       Nothing      -> return Nothing
       Just literal ->
 
-         doWithoutEdge triple $
+         doWithoutEdge pair $
 
             do synonyms <- getTypeSynonyms
                (_, mtp) <- getSubstitutedTypes info
@@ -99,22 +99,22 @@ similarLiterals =
                   ("Int", Just (TCon "Float"))
                        -> let hint = fixHint "use a float literal instead"
                           in return $ Just
-                                (5, "Int literal should be a Float", [edge], [hint info])
+                                (5, "Int literal should be a Float", [edge], hint info)
 
                   ("Float", Just (TCon "Int" ))
                        -> let hint = fixHint "use an int literal instead"
                           in return $ Just
-                                (5, "Float literal should be an Int", [edge], [hint info])
+                                (5, "Float literal should be an Int", [edge], hint info)
 
                   ("Char", Just (TApp (TCon "[]") (TCon "Char"))) 
                        -> let hint = fixHint "use a string literal instead"
                           in return $ Just
-                                (5, "Char literal should be a String", [edge], [hint info])
+                                (5, "Char literal should be a String", [edge], hint info)
 
                   ("String", Just (TCon "Char"))   
                        -> let hint = fixHint "use a char literal instead"
                           in return $ Just
-                                (5, "String literal should be a Char", [edge], [hint info])
+                                (5, "String literal should be a Char", [edge], hint info)
 
                   _ -> return Nothing 
 
@@ -124,12 +124,12 @@ similarNegation :: (HasTypeGraph m info, MaybeNegation info, HasTwoTypes info, W
 similarNegation  =
    Selector ("Similar negation", f) where
 
- f triple@(edge, cnr, info) =   
+ f pair@(edge, info) =   
    case maybeNegation info of
       Nothing            -> return Nothing
       Just isIntNegation ->
 
-         doWithoutEdge triple $
+         doWithoutEdge pair $
 
             do synonyms <- getTypeSynonyms
                (_, mtp) <- getSubstitutedTypes info
@@ -139,12 +139,12 @@ similarNegation  =
                      | floatNegationEdge && intNegation && not floatNegation
                         -> let hint = fixHint "use int negation (-) instead"
                            in return $ Just
-                                 (6, "Int negation instead of float negation", [edge], [hint info])
+                                 (6, "Int negation instead of float negation", [edge], hint info)
 
                      | intNegationEdge && not intNegation && floatNegation 
                         -> let hint = fixHint "use float negation (-.) instead"
                            in return $ Just
-                                 (6, "Float negation instead of int negation", [edge], [hint info])
+                                 (6, "Float negation instead of int negation", [edge], hint info)
                        
                     where intNegation       = unifiable synonyms tp (intType .->. intType)
                           floatNegation     = unifiable synonyms tp (floatType .->. floatType)
@@ -157,48 +157,21 @@ similarNegation  =
 
 applicationEdge :: (HasTypeGraph m info, MaybeApplication info, IsPattern info, HasTwoTypes info, WithHints info) => Selector m info
 applicationEdge =
-   SelectorAction ("Application heuristics", f) where
+   Selector ("Application heuristics", f) where
 
- f triple@(edge, cnr, info) =
+ f pair@(edge, info) =
    case maybeApplicationEdge info of
       Nothing -> return Nothing
       Just (isBinary,tuplesForArguments) ->
 
-       doWithoutEdge triple $
+       doWithoutEdge pair $
 
           do classEnv <- getClassEnvironment
              synonyms <- getTypeSynonyms                 
              (maybeFunctionType, maybeExpectedType) <- getSubstitutedTypes info
              subPreds <- allSubstPredicates     
              case (maybeFunctionType, maybeExpectedType) of
-               (Just functionType, _)
-                        
-                  -- the expression to which arguments are given does not have a function type
-                  | maybe False (<= 0) maximumForFunction && not isBinary && not isPatternApplication ->                       
-                       let hint = becauseHint "it is not a function"
-                       in return $ Just
-                             (noAction, 6, "not a function", [edge], [hint info])
-
-                  -- function used as infix that expects < 2 arguments
-                  | maybe False (<= 1) maximumForFunction && isBinary && not isPatternApplication ->
-                       let hint = becauseHint "it is not a binary function"
-                       in return $ Just
-                             (noAction, 6, "no binary function", [edge], [hint info])
-
-                  -- too many arguments are given
-                  | maybe False (< numberOfArguments) maximumForFunction && not isPatternApplication && isNothing maybeExpectedType ->
-                       let hint = becauseHint "too many arguments are given"
-                       in return $ Just
-                             (noAction, 2, "too many arguments are given", [edge], [hint info])
-                                       
-                where -- copy/paste :-(
-                      isPatternApplication = isPattern info
-                      numberOfArguments    = length tuplesForArguments
-                      noAction             = return ()
-                      maximumForFunction   = case functionSpine (expandType (snd synonyms) functionType) of
-                                                (_, TVar _) -> Nothing
-                                                (tps, _   ) -> Just (length tps)
-                
+                                  
                (Just functionType, Just expectedType) 
 
                   -- can a permutation of the arguments resolve the type inconsistency
@@ -209,11 +182,11 @@ applicationEdge =
                             then 
                                  let hint = fixHint "swap the two arguments"
                                  in return $ Just
-                                       (noAction, 3, "swap the two arguments", [edge], [hint info])
+                                       (3, "swap the two arguments", [edge], hint info)
                             else                                       
                                   let hint = fixHint "re-order arguments"
                                   in return $ Just
-                                        (noAction, 1, "application: permute with "++show p, [edge], [hint info])
+                                        (1, "application: permute with "++show p, [edge], hint info)
                            
                   -- is there one particular argument that is inconsistent
                   | length incorrectArguments == 1  ->
@@ -228,7 +201,7 @@ applicationEdge =
                              infoFun     = typeErrorForTerm (isBinary,isPatternApplication) i oneLiner (tp,expargtp) range
                              expargtp    = fst (functionSpine expandedTp) !! i
                          return $ Just 
-                            (noAction {- fixArgument i -}, 3, "incorrect argument of application="++show i, [edge], [infoFun info])
+                            (3, "incorrect argument of application="++show i, [edge], infoFun info)
                   
                   -- too many arguments are given
                   | maybe False (< numberOfArguments) maximumForFunction && not isPatternApplication ->
@@ -238,12 +211,12 @@ applicationEdge =
                           [is] | not isBinary
                               -> let hint = fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" argument")
                                  in return $ Just
-                                       (noAction, 4, "too many arguments are given: "++show is, [edge], [hint info])
+                                       (4, "too many arguments are given: "++show is, [edge], hint info)
 
                           -- more than one or no possible set of arguments to be removed
                           _   -> let hint = becauseHint "too many arguments are given"
                                  in return $ Just
-                                       (noAction, 2, "too many arguments are given", [edge], [hint info])
+                                       (2, "too many arguments are given", [edge], hint info)
                                          
                   -- not enough arguments are given
                   | minimumForContext > numberOfArguments && not isPatternApplication && contextIsUnifiable ->
@@ -252,15 +225,13 @@ applicationEdge =
                           [is] | not isBinary 
                               -> let hint = fixHint ("insert a "++prettyAndList (map (ordinal True . (+1)) is)++" argument")
                                  in return $ Just
-                                       (noAction, 4, "not enough arguments are given"++show is, [edge], [hint info])
+                                       (4, "not enough arguments are given"++show is, [edge], hint info)
 
                           _   -> let hint = becauseHint "not enough arguments are given"
                                  in return $ Just
-                                       (noAction, 2, "not enough arguments are given", [edge], [hint info])
-
-                where noAction = return ()
-                
-                      unifiableTypes :: Tp -> Tp -> Bool
+                                       (2, "not enough arguments are given", [edge], hint info)
+                       
+                where unifiableTypes :: Tp -> Tp -> Bool
                       unifiableTypes = 
                          unifiableInContext classEnv synonyms subPreds
                 
@@ -300,14 +271,6 @@ applicationEdge =
                                            , unifiableTypeLists (functionResult : deleteIndex i functionArguments) 
                                                                 (expectedResult : deleteIndex i expectedArguments)
                                            ]
-                      fixArgument i = 
-                         let t1 = tupleType (functionResult : deleteIndex i functionArguments)  
-                             t2 = tupleType (expectedResult : deleteIndex i expectedArguments)
-                             f (i, tp) = unifyTerms info (TVar i) tp
-                         in case mguWithTypeSynonyms synonyms t1 t2 of
-                               Left _ -> return () -- internal error
-                               Right (_, sub) ->
-                                  mapM_ f (fmToList sub)
                          
                       -- is there a permutation of the arguments that resolves the type inconsistency?
                       argumentPermutations = [ p 
@@ -326,7 +289,31 @@ applicationEdge =
                                               ]                     
                       
                       isPatternApplication = isPattern info
-                      
+
+               (Just functionType, _)
+               
+                  -- the expression to which arguments are given does not have a function type
+                  | maybe False (<= 0) maximumForFunction && not isBinary && not (isPattern info) ->                       
+                       let hint = becauseHint "it is not a function"
+                       in return $ Just
+                             (6, "not a function", [edge], hint info)
+
+                  -- function used as infix that expects < 2 arguments
+                  | maybe False (<= 1) maximumForFunction && isBinary && not (isPattern info) ->
+                       let hint = becauseHint "it is not a binary function"
+                       in return $ Just
+                             (6, "no binary function", [edge], hint info)
+
+                  -- too many arguments are given
+                  | maybe False (< length tuplesForArguments) maximumForFunction && not (isPattern info) ->
+                       let hint = becauseHint "too many arguments are given"
+                       in return $ Just
+                             (2, "too many arguments are given", [edge], hint info)
+                                       
+                where -- copy/paste :-(
+                      maximumForFunction   = case functionSpine (expandType (snd synonyms) functionType) of
+                                                (_, TVar _) -> Nothing
+                                                (tps, _   ) -> Just (length tps)                       
                _ -> return Nothing
          
 -----------------------------------------------------------------------------
@@ -338,11 +325,11 @@ tupleEdge :: (HasTypeGraph m info, IsTupleEdge info, HasTwoTypes info, WithHints
 tupleEdge =
    Selector ("Tuple heuristics", f) where
 
- f triple@(edge, cnr, info)    
+ f pair@(edge, info)    
    | not (isTupleEdge info) = return Nothing
    | otherwise              =
    
-   doWithoutEdge triple $ 
+   doWithoutEdge pair $ 
    
       do classEnv <- getClassEnvironment
          synonyms <- getTypeSynonyms                         
@@ -364,7 +351,7 @@ tupleEdge =
                         p:_ -> -- a permutation is possible!
                            let hint = fixHint "re-order elements of tuple"
                            in return $ Just 
-                                   (4, "tuple: permute with "++show p, [edge], [hint info])
+                                   (4, "tuple: permute with "++show p, [edge], hint info)
                                  
                compare -> case [ is 
                                | (is,zl) <- take heuristics_MAX (zipWithHoles tupleTps expectedTps)
@@ -373,13 +360,13 @@ tupleEdge =
                        [is] -> case compare of
                                  LT -> let hint = fixHint ("insert a "++prettyAndList (map (ordinal True. (+1)) is)++" element to the tuple")
                                        in return $ Just 
-                                             (4, "tuple:insert "++show is, [edge], [hint info])
+                                             (4, "tuple:insert "++show is, [edge], hint info)
                                  GT -> let hint = fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" element of tuple")
                                        in return $ Just 
-                                             (4, "tuple:remove "++show is, [edge], [hint info])
+                                             (4, "tuple:remove "++show is, [edge], hint info)
                        _    -> let hint = becauseHint ("a "++show (length tupleTps)++"-tuple does not match a "++show (length expectedTps)++"-tuple")
                                in return $ Just 
-                                     (2, "different sizes of tuple", [edge], [hint info])
+                                     (2, "different sizes of tuple", [edge], hint info)
           _ -> return Nothing  
 
 -----------------------------------------------------------------------------
@@ -392,7 +379,7 @@ fbHasTooManyArguments :: (HasTypeGraph m info, IsFunctionBinding info, HasTwoTyp
 fbHasTooManyArguments =
    Selector ("Function Binding heuristics", f) where
 
- f (edge, cnr, info)   
+ f (edge, info)   
    | not (isExplicitlyTyped info) = return Nothing
    | otherwise                    =
 
@@ -403,7 +390,7 @@ fbHasTooManyArguments =
    
          edgeList <- edgesFrom (VertexId tvar)      
          let maybeNumberOfPatterns = 
-                case [ i | Just i <- map (\(_,_,info) -> maybeFunctionBinding info) edgeList ] of 
+                case [ i | Just i <- map (\(_, info) -> maybeFunctionBinding info) edgeList ] of 
                    [i] -> Just i
                    _   -> Nothing
                                       
@@ -415,7 +402,7 @@ fbHasTooManyArguments =
                    prettyArg n = "allows at most "++show n
                    hint = becauseHint msg
                in return $ Just 
-                     (8, "function binding has too many arguments", [edge], [hint info])
+                     (8, "function binding has too many arguments", [edge], hint info)
             _ -> return Nothing
 
 -----------------------------------------------------------------------------
@@ -428,24 +415,24 @@ variableFunction :: (HasTypeGraph m info, IsExprVariable info, MaybeApplication 
 variableFunction =
    Selector ("Variable function", f) where
 
- f triple@(edge, cnr, info)      
+ f pair@(edge, info)      
    | not (isExprVariable info)
         = return Nothing
    | otherwise 
-        = doWithoutEdge triple $ 
+        = doWithoutEdge pair $ 
             
            do synonyms   <- getTypeSynonyms
               (mt1, mt2) <- getSubstitutedTypes info
               
               -- is this variable involved in an application?
-              let EdgeId v1 v2 = edge
+              let EdgeId v1 v2 _ = edge
               edges1 <- edgesFrom v1
               edges2 <- edgesFrom v2
-              let f ((EdgeId v1 v2),_,_) = [v1,v2]
-              let special = concatMap f (filter (isEmptyInfixApplication . (\(_,_,info) -> info)) (edges1 ++ edges2)) \\ [v1,v2]
+              let f ((EdgeId v1 v2 _), _) = [v1,v2]
+              let special = concatMap f (filter (isEmptyInfixApplication . (\(_, info) -> info)) (edges1 ++ edges2)) \\ [v1,v2]
               edges3 <- mapM edgesFrom special
               let isApplicationEdge = isJust . maybeApplicationEdge
-                  application = any (\(_,_,info) -> isApplicationEdge info) (edges1 ++ edges2 ++ concat edges3)                                                               
+                  application = any (\(_, info) -> isApplicationEdge info) (edges1 ++ edges2 ++ concat edges3)                                                               
              
               case (mt1, mt2) of
                  (Just functionType, Just expectedType) | not application -> 
@@ -459,7 +446,7 @@ variableFunction =
                          else let hint = fixHint ("insert "++showNumber minArgumentsForContext++" argument"++
                                               if minArgumentsForContext <= 1 then "" else "s")
                               in return $ Just 
-                                    (4, "insert arguments to function variable", [edge], [hint info])
+                                    (4, "insert arguments to function variable", [edge], hint info)
                  _ -> return Nothing
 
 -----------------------------------------------------------------------------
@@ -471,12 +458,12 @@ unaryMinus :: (HasTypeGraph m info, MaybeApplication info, MaybeUnaryMinus info,
 unaryMinus = 
    Selector ("Unary minus", f) where
 
- f triple@(edge, cnr, info) =
+ f pair@(edge, info) =
    case maybeApplicationEdge info of
       Just (isInfix, tuplesForArguments) | isInfix && length tuplesForArguments == 2 -> 
          case maybeUnaryMinus info of
             Just someLiteral ->
-               doWithoutEdge triple $ 
+               doWithoutEdge pair $ 
                do synonyms <- getTypeSynonyms 
                   let leftBeta = snd (head tuplesForArguments)
                   leftType <- substituteTypeSafe leftBeta
@@ -487,12 +474,12 @@ unaryMinus =
                         | unifiable synonyms leftTp (intType .->. contextTp) -> 
                              let hint = possibleHint ("Insert parentheses to negate the int literal: (-"++show int++")")
                              in return $ Just 
-                                   (5, "Unary minus for int", [edge], [hint info])
+                                   (5, "Unary minus for int", [edge], hint info)
                      (Right float, Just leftTp, Just contextTp) 
                         | unifiable synonyms leftTp (floatType .->. contextTp) -> 
                              let hint = possibleHint ("Insert parentheses to negate the float literal: (-."++show float++")")
                              in return $ Just 
-                                   (5, "Unary minus for float", [edge], [hint info])
+                                   (5, "Unary minus for float", [edge], hint info)
                      _ -> return Nothing
             _ -> return Nothing
       _ -> return Nothing

@@ -34,11 +34,9 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | RecursiveTypeSynonyms Names
             | PatternDefinesNoVars Range
             | IntLiteralTooBig Range String
-            | NegateNeeded Range
             | OverloadingDisabled Range
             | OverloadedRestrPat Name
             | WrongOverloadingFlag Bool{- flag? -}
-            
             | AmbiguousContext Name
             | UnknownClass Name
 
@@ -58,7 +56,6 @@ instance HasMessage Error where
       RecursiveTypeSynonyms names -> sortRanges (map getNameRange names)
       PatternDefinesNoVars range  -> [range]
       IntLiteralTooBig range _    -> [range]
-      NegateNeeded range          -> [range]
       OverloadingDisabled range   -> [range]
       OverloadedRestrPat name     -> [getNameRange name]
       WrongOverloadingFlag flag   -> [emptyRange]
@@ -167,11 +164,6 @@ showError anError = case anError of
       ( MessageString ("Integer literal (" ++ value ++ ") too big")
       , [ MessageString $ "Maximum is " ++ show maxInt ]
       )
-    
-   NegateNeeded range ->
-      ( MessageString ("\"negate\" from the Prelude is needed for unary minus")
-      , []
-      )
    
    OverloadedRestrPat name ->
       ( MessageString ("Illegal overloaded type signature for " ++ show (show name))
@@ -250,8 +242,12 @@ errorLogCode anError = case anError of
           DefArityMismatch _ _ _  -> "da"
           RecursiveTypeSynonyms _ -> "ts"
           PatternDefinesNoVars _  -> "nv"
-          OverloadedRestrPat _    -> "od"
+          IntLiteralTooBig _ _    -> "il"
+          OverloadingDisabled _   -> "od"
+          OverloadedRestrPat _    -> "or"
           WrongOverloadingFlag _  -> "of"
+          AmbiguousContext _      -> "ac"
+          UnknownClass _          -> "uc"
           _                       -> "??"
    where code entity = maybe "??" id
                      . lookup entity 
@@ -259,4 +255,4 @@ errorLogCode anError = case anError of
                        , (Definition       ,"de"), (Constructor          ,"co"), (Variable       ,"va") 
                        , (Import           ,"im"), (ExportVariable       ,"ev"), (ExportModule   ,"em")
                        , (ExportConstructor,"ec"), (ExportTypeConstructor,"et"), (Fixity         ,"fx")
-                       ]
+                       ]                    

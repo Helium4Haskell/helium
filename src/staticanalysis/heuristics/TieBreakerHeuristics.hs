@@ -23,7 +23,7 @@ class HasTrustFactor a where
 trustFactorOfConstraint :: HasTrustFactor info => Heuristic info
 trustFactorOfConstraint = 
    Heuristic (
-      let f (_, _, info) = return (trustFactor info)
+      let f (_, info) = return (trustFactor info)
       in minimalEdgeFilter "Trust factor of edge" f)
 
 -----------------------------------------------------------------------------
@@ -36,7 +36,7 @@ class HasDirection a where
 isTopDownEdge :: HasDirection info => Heuristic info
 isTopDownEdge = 
    Heuristic (
-      let f (_, _, info) = return (isTopDown info)
+      let f (_, info) = return (isTopDown info)
       in minimalEdgeFilter "Is a top down edge" f)
 
 -----------------------------------------------------------------------------
@@ -44,8 +44,8 @@ isTopDownEdge =
 -- no "unification-around-a-corner-type-error"
 typeVariableInvolved :: HasTwoTypes info => Heuristic info
 typeVariableInvolved = 
-   let f triple@(edgeID, cNR, info) = 
-          doWithoutEdge triple $
+   let f pair@(edgeID, info) = 
+          doWithoutEdge pair $
 	     do typeTuple <- getSubstitutedTypes info
 	        synonyms  <- getTypeSynonyms
 	        case typeTuple of

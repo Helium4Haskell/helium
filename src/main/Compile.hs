@@ -35,18 +35,15 @@ compile fullName options lvmPath doneModules =
         contents <- safeReadFile fullName
 
         -- Phase 1: Lexing
-        (lexerBeforeWarnings, lexerAfterWarnings, tokens) <- 
+        (lexerWarnings, tokens) <- 
             phaseLexer fullName doneModules contents options
         
         unless (NoWarnings `elem` options) $
-            showMessages lexerBeforeWarnings
+            showMessages lexerWarnings
 
         -- Phase 2: Parsing
         parsedModule <- 
             phaseParser fullName doneModules tokens options
-
-        unless (NoWarnings `elem` options) $
-            showMessages lexerAfterWarnings
 
         -- Phase 3: Importing
         (indirectionDecls, importEnvs) <-
@@ -103,7 +100,7 @@ compile fullName options lvmPath doneModules =
         unless (NoLogging `elem` options) $ 
             sendLog "C" fullName doneModules options
 
-        let number = length staticWarnings + length typeWarnings + length lexerBeforeWarnings + length lexerAfterWarnings
+        let number = length staticWarnings + length typeWarnings + length lexerWarnings
         putStrLn $ "Compilation successful" ++
                       if number == 0 || (NoWarnings `elem` options)
                         then ""

@@ -242,16 +242,7 @@ SEM ContextItem
   | ContextItem lhs.contextVars = @types.typevariables
                 lhs.miscerrors = if elem (getNameName @name) (keysFM standardClasses) 
                                     then @types.miscerrors  
-                                    else UnknownClass @name : @types.miscerrors  
-
--- "negate" function is needed if unary negation appears in program
-SEM Expression
-    | Negate lhs.miscerrors = 
-        ( if nameFromString "negate" `elem` @lhs.namesInScope 
-          then []
-          else [ NegateNeeded @range.self ]
-        )
-        ++ @expression.miscerrors
+                                    else UnknownClass @name : @types.miscerrors
 
 -- context for restricted pattern error
 ATTR Declaration Declarations [ | | restrictedNames USE { ++ } { [] } : Names ]

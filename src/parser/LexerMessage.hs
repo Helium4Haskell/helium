@@ -12,7 +12,7 @@ module LexerMessage
     , LexerWarning(..)
     , LexerWarningInfo(..)
     , keepOneTabWarning
-    , splitWarnings
+    , isLooksLikeFloatWarningInfo
     ) where
 
 import Text.ParserCombinators.Parsec.Pos
@@ -157,14 +157,6 @@ showLexerWarningInfo info =
             [ "Syntax colouring usually can not handle names containing --" 
             , "If you wanted to start a comment, write spaces around --"
             ]
-
--- warnings shown before and after parsing.
-splitWarnings :: [LexerWarning] -> ([LexerWarning], [LexerWarning])
-splitWarnings = partition p
-  where
-    p (LexerWarning _ (LooksLikeFloatNoFraction _)) = False
-    p (LexerWarning _ (LooksLikeFloatNoDigits   _)) = False
-    p _                                             = True
       
 keepOneTabWarning :: [LexerWarning] -> [LexerWarning]
 keepOneTabWarning = keepOneTab True
@@ -175,3 +167,10 @@ keepOneTabWarning = keepOneTab True
     keepOneTab isFirst (warning:rest) = 
         warning : keepOneTab isFirst rest
     keepOneTab _ [] = []
+
+isLooksLikeFloatWarningInfo :: LexerWarningInfo -> Bool
+isLooksLikeFloatWarningInfo warningInfo =
+   case warningInfo of
+      LooksLikeFloatNoFraction _ -> True
+      LooksLikeFloatNoDigits _   -> True
+      _                          -> False
