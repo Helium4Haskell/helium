@@ -43,14 +43,14 @@ heuristics = do conflicts <- getConflicts
                   then heuristicsConstantClash clashes
                   else heuristicsInfiniteType infinites
 
+{- question: why are there empty lists in xs???? -}
 heuristicsInfiniteType :: (TypeGraph EquivalenceGroups info, TypeGraphConstraintInfo info, Show info) =>  [Int] -> SolveState EquivalenceGroups info [(Float,[EdgeID],[info])]
-heuristicsInfiniteType is = 
+heuristicsInfiniteType is =
    do addDebug (putStrLn "Infinite Type") 
       pathsList <- mapM infinitePaths is
       let selectTheBest path =  
              do let f (v1,v2) = getPathsFrom v1 [v2]                               
                 xs <- mapM f (shift path)
-                
                 let tupleWithPosition as = [(maybe 0 id (getPosition info),(edge,info)) | (edge,Initial info) <- as ]
                     compareFirst x y = compare (fst x) (fst y)
                     maximumBy' f xs = if null xs then (minBound,err "maximumBy'") else maximumBy f xs -- not safe
@@ -62,7 +62,7 @@ heuristicsInfiniteType is =
                                                         . tupleWithPosition
                                                         )
                                                   )
-                                            $ xs
+                                            $ filter (not . null) xs
                 
                 return ( 1.0 - (fromInt position / 1000) 
                        , [edge]
@@ -216,7 +216,7 @@ edgeheuristics = [ orderOfUnification
                  , tupleEdge
                  , similarFunctions                 
                  , applicationEdge
-                 ] 
+                 ]
 
 orderOfUnification :: TypeGraphConstraintInfo info => EdgeHeuristic info
 orderOfUnification edge info =

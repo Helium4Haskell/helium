@@ -15,13 +15,11 @@ module SolveTypeGraph where
 import Types
 import SolveConstraints
 import SolverOptions           ( getTypeSynonyms )
-import List                    ( partition, groupBy, sortBy, transpose, nub, nubBy, maximumBy )
+import List                    ( partition, groupBy, sortBy, transpose, nub, nubBy, maximumBy, sort )
 import Utils                   ( internalError )
 import Monad                   ( unless, filterM )
 import ConstraintInfo          ( ConstraintInfo(..) )
 import TypeGraphConstraintInfo ( TypeGraphConstraintInfo(..) ) 
-
-import IOExts
 
 type VertexID      = Int
 type VertexInfo    = ( Maybe String               -- in case it represents a type constant
@@ -129,7 +127,7 @@ instance (TypeGraphConstraintInfo info,TypeGraph typegraph info) => ConstraintSo
                 addDebug (putStrLn $ "> removed edges "++show edges)
                 makeConsistent
 
-   newVariables is =
+   newVariables is = 
       mapM_ (\i -> addVertexWithChildren i (Nothing,[],Nothing)) is
 
    findSubstForVar i =
@@ -168,15 +166,20 @@ makeTermGraph tp = case leftSpine tp of
                                                               return unique                                                                                                                                                                    
                      _           -> internalError "SolveTypeGraph.hs" "makeTermGraph" "error in leftSpine(1)"
 
+{- history necessary to avoid non-termination? -}                          
 propagateEquality :: TypeGraph typegraph info => [Int] -> SolveState typegraph info ()
-propagateEquality is 
-   | length is < 2 = return ()
-   | otherwise 
-                     = do cliques <- lookForCliques (nub is)                                      
-                          let addClique c = do propagateEquality (map (fst . head) (snd c))
-                                               addImpliedClique c
-                          mapM_ addClique cliques
+propagateEquality = rec [] where
 
+   rec history is
+     | length list < 2     = return ()
+     | list `elem` history = return ()
+     | otherwise           = do cliques <- lookForCliques (nub is)
+                                let addClique c = do rec (list : history) (map (fst . head) (snd c))
+                                                     addImpliedClique c
+                                mapM_ addClique cliques
+    
+    where list = sort (nub is)
+                          
 {- rewrite this function as soon as possible! -}
 lookForCliques :: TypeGraph typegraph info => [Int] -> SolveState typegraph info [Cliques]
 lookForCliques is = do let f i = do children <- getChildrenInGroup i
@@ -223,7 +226,7 @@ infinitePaths i = do xs <- rec [] i
                               b:_ ->  return $ reverse (as++[b])
 
 checkErrors :: (TypeGraphConstraintInfo info, TypeGraph typegraph info) => SolveState typegraph info ()
-checkErrors = 
+checkErrors =
    do errors  <- getErrors
       options <- getSolverOptions
       let isValidError info = 
