@@ -1,0 +1,12 @@
+Compiling typeerrors/Examples/SlaPlatBug.hs
+(2,36): Type error in guarded expression
+ expression       : lijst
+   type           : [[Int]]
+   does not match : [Int  ]
+
+(3,38): Type error in guarded expression
+ expression       : take 1 lijst ++ take 2 lijst
+   type           : [[Int]]
+   does not match : [Int  ]
+
+Compilation failed with 2 errors
