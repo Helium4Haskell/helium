@@ -158,7 +158,7 @@ ifdef STRIP
 	$(STRIP) $(HELIUMBINDIR)/$(MAIN)$(EXE)
 endif
 
-all: ag depend compiler coreasm lvmrun libraries hi status
+all: ag compiler coreasm lvmrun libraries hi status
 
 coreasm:
 	# make core assembler
