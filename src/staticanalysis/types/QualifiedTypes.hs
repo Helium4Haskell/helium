@@ -1,3 +1,14 @@
+----------------------------------------------------------------------------
+-- The Helium Compiler : Static Analysis : a library for types
+-- |
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- A qualified type is a plain type together with a list of predicates.
+--
+-----------------------------------------------------------------------------
+
 module QualifiedTypes where
 
 import TypeBasics

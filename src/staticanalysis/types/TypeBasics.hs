@@ -1,8 +1,8 @@
 -----------------------------------------------------------------------------
 -- The Helium Compiler : Static Analysis : a library for types
 -- |
--- Maintainer  :  Bastiaan Heeren (bastiaan@cs.uu.nl)
--- Stability   :  unknown
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
 -- Portability :  unknown
 --
 -- This module contains a data type to represent (plain) types, some basic 

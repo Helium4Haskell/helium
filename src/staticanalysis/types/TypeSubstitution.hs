@@ -1,24 +1,14 @@
 -----------------------------------------------------------------------------
 -- The Helium Compiler : Static Analysis : a library for types
 -- |
--- Maintainer  :  Bastiaan Heeren (bastiaan@cs.uu.nl)
--- Stability   :  unknown
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
 -- Portability :  unknown
 --
 -- This module contains a data type to represent (plain) types, some basic 
 -- functionality for types, and an instance for Show.
 --
 -----------------------------------------------------------------------------
-
--------------------------------------------------------------------------------
---
---   *** The Helium Compiler : Static Analysis ***
---               ( Bastiaan Heeren )
---
--- TypeSubstitution.hs : A class and some instances for substitutions and 
---    substitutables on types.
---
--------------------------------------------------------------------------------
 
 module TypeSubstitution where
 

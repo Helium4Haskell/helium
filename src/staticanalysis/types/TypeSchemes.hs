@@ -1,3 +1,16 @@
+-----------------------------------------------------------------------------
+-- The Helium Compiler : Static Analysis : a library for types
+-- |
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- A representation of type schemes. A type scheme is a (qualified) type
+-- with a number of quantifiers (foralls) in front of it. A partial mapping 
+-- from type variable (Int) to their name (String) is preserved.
+--
+-----------------------------------------------------------------------------
+
 module TypeSchemes where
 
 import TypeBasics

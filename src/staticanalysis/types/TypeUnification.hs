@@ -1,12 +1,14 @@
--------------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+-- The Helium Compiler : Static Analysis : a library for types
+-- |
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
 --
---   *** The Helium Compiler : Static Analysis ***
---               ( Bastiaan Heeren )
+-- A unification algorithm for types, which can take a list of (ordered) 
+-- type synonyms into account.
 --
--- TypeUnification.hs : A unification algorithm for types, which can take a
---    list of (ordered) type synonyms into account.
---
--------------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 
 module TypeUnification where
 

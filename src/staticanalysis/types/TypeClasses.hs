@@ -1,5 +1,14 @@
--- code from the paper
---   "Typing Haskell in Haskell"
+-----------------------------------------------------------------------------
+-- The Helium Compiler : Static Analysis : a library for types
+-- |
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- Type classes and the standard reduction instances. A part of the code
+-- was taken from the paper "Typing Haskell in Haskell".
+--
+-----------------------------------------------------------------------------
 
 module TypeClasses where
 

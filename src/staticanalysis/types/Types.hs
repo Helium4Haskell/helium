@@ -1,11 +1,14 @@
--------------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+-- The Helium Compiler : Static Analysis : a library for types
+-- |
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
 --
---   *** The Helium Compiler : Static Analysis ***
---               ( Bastiaan Heeren )
+-- A collection of type utilities.
 --
--- Types.hs : A collection of type utilities.
---
--------------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+
 
 module Types 
    ( module TypeBasics
