@@ -91,7 +91,7 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
                 -- is the signature not too general?
                 let -- this name has a different range!
                     nameOfSignature = head [ n | n <- keysFM typeSignatures, n == nameWithRangeToName nameWR ]      
-                    newErrors = checkNotTooGeneral (Left nameOfSignature) synonyms signature scheme             
+                    newErrors = checkNotTooGeneral False (Left nameOfSignature) synonyms signature scheme             
                 in (newErrors ++ errors, warnings)               
                        
              Nothing 
@@ -102,13 +102,13 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
                      
              _ -> pair      
 
-checkNotTooGeneral :: Either Name UHA_Source -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
-checkNotTooGeneral mySource synonyms signature scheme
+checkNotTooGeneral :: Bool -> Either Name UHA_Source -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
+checkNotTooGeneral isAnnotation mySource synonyms signature scheme
    | genericInstanceOf synonyms standardClasses signature scheme = []
    | genericInstanceOf synonyms standardClasses (removePredicates signature) (removePredicates scheme) = 
         [makeMissingConstraintTypeError mySource scheme signature]
    | otherwise = 
-        [makeNotGeneralEnoughTypeError source scheme signature]
+        [makeNotGeneralEnoughTypeError isAnnotation source scheme signature]
 
  where 
    source = either nameToUHA_Expr id mySource
@@ -9258,7 +9258,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
                     monos' = ftv (_lhsIsubstitution |-> _lhsImonos)
                     tp'    = _lhsIsubstitution |-> _expressionIbeta
                     info   = (self . attribute) _expressionIinfoTree
-                in checkNotTooGeneral (Right info) _lhsIorderedTypeSynonyms _typeScheme scheme
+                in checkNotTooGeneral True (Right info) _lhsIorderedTypeSynonyms _typeScheme scheme
             (_cinfoExpr@_) =
                 childConstraint 0 "type annotation" _parentTree
                    []

@@ -41,13 +41,14 @@ instance Substitutable TypeError where
    ftv (TypeError ranges oneliner table hints) =
       ftv oneliner `union` ftv (map snd table) `union` ftv (map snd hints)
 	
-makeNotGeneralEnoughTypeError :: UHA_Source -> TpScheme -> TpScheme -> TypeError
-makeNotGeneralEnoughTypeError source tpscheme1 tpscheme2 =
+makeNotGeneralEnoughTypeError :: Bool -> UHA_Source -> TpScheme -> TpScheme -> TypeError
+makeNotGeneralEnoughTypeError isAnnotation source tpscheme1 tpscheme2 =
    let sub      = listToSubstitution (zip (ftv [tpscheme1, tpscheme2]) [ TVar i | i <- [1..] ])
        ts1      = skolemizeFTV (sub |-> tpscheme1)
        ts2      = skolemizeFTV (sub |-> tpscheme2)
        oneliner = MessageOneLiner (MessageString "Declared type is too general")
-       table    = [ ("function"     , MessageOneLineTree (oneLinerSource source))
+       descr    = if isAnnotation then "expression" else "function"
+       table    = [ (descr          , MessageOneLineTree (oneLinerSource source))
                   , ("declared type", MessageType ts2)
 		  , ("inferred type", MessageType ts1)
                   ]
