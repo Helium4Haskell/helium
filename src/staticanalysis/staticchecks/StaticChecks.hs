@@ -2121,7 +2121,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
             in (xs,map head ys)
         (_fixityButNoFunDefErrors) =
             let list = nub (_body_declVarNames ++ _allValueConstructors)
-            in makeNoFunDef Fixity (filter (`notElem` list) _correctFixities) list
+            in []
         (_recursiveTypeSynonymErrors) =
             map RecursiveTypeSynonyms _recursiveTypeSynonyms
         (_wrongFileNameErrors) =
