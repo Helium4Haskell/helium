@@ -1,0 +1,62 @@
+INCLUDE "../../../syntax/UHA_Syntax.ag"
+INCLUDE "TS_Syntax.ag"
+INCLUDE "TS_Collect.ag"
+INCLUDE "../../../syntax/UHA_Self.ag"
+
+imports {
+import TS_Syntax
+import ConstraintTree
+import Constraints
+import HeliumConstraintInfo
+import TypeGraphConstraintInfo
+import Types
+import List
+import TypeConversion
+import UHA_Utils (noRange)
+import Messages (Hint(..) )
+import OneLiner
+}
+
+{
+type MetaVariableTable info = [(String, (ConstraintSet, info))]
+type MetaVariableInfo = (Tp, Tree, Range)
+
+applyTypingStrategy :: TypingStrategy -> (ConstraintSet, MetaVariableInfo) -> MetaVariableTable MetaVariableInfo -> Int -> (ConstraintSet, IO (), Int)
+applyTypingStrategy = sem_TypingStrategy
+}
+
+ATTR TypingStrategy [ localInfo         : {(ConstraintSet, MetaVariableInfo)}
+                      metaVariableTable : {MetaVariableTable MetaVariableInfo}  
+                    | unique            : Int 
+                    | constraintSet     : ConstraintSet
+                      debugIO           : {IO ()}
+                    ] 
+            
+SEM TypingStrategy 
+  | TypingStrategy     
+       lhs . constraintSet = reverse @constraints.userConstraints .>. @typeruleConstraints .>. ctNode @metaVariableConstraints
+           . unique        = length @uniqueTypevariables + @lhs.unique
+           . debugIO       = putStrLn ("applying typing strategy " ++ @name)
+       loc . metaVariableConstraints = [ cs | (s,(cs,_)) <- @lhs.metaVariableTable, s /= "?toplevel?" ]  
+           . nameMap = zip @uniqueTypevariables (map TVar [@lhs.unique..])
+
+-- Construct type constraints from the typing rule
+
+SEM TypingStrategy 
+  | TypingStrategy
+       loc . typeruleConstraints = [ (tp1 .==. tp2) (@cinfo s1 mvinfo)
+                                   | (s1,(_,mvinfo@(tp1,_,_))) <- ("?toplevel?", @lhs.localInfo) : @lhs.metaVariableTable 
+                                   , (s2,tp2)                  <- ("?toplevel?", @typerule.conclusionType) : @typerule.simpleJudgements
+                                   , s1 == s2
+                                   ]
+           . cinfo = \string (tp1,tree,range) tppair ->
+                     CInfo { info       = (NTBody, AltBody, "Typing Strategy, meta-typevariable " ++ string)
+                           , location   = "Typing Strategy"
+                           , errorrange = noRange
+                           , sources    = [ ]
+                           , typepair   = tppair
+                           , properties = [ HighlyTrusted ] 
+                           }
+            
+-- prevent AG-Warnings
+SEM TypingStrategies | Cons  loc . (unique,metaVariableTable,localInfo) = undefined

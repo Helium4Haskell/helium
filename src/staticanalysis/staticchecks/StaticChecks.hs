@@ -2061,6 +2061,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
             setValueConstructors  _valueConstructors
             . setTypeConstructors _typeConstructors
             . setTypeSynonyms     (listToFM _orderedTypeSynonyms)
+            . setTypeEnvironment  (listToFM _body_typeSignatures)
             $ emptyEnvironment
         (_derivedFunctions) =
             let f (n,i) = ( nameOfShowFunction n

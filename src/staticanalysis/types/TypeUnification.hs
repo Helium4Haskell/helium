@@ -102,6 +102,7 @@ genericInstanceOf typesynonyms scheme1@(Scheme qs1 nm1 t1) scheme2@(Scheme qs2 n
 freezeMonosInTypeSchemes :: [TpScheme] -> [TpScheme]
 freezeMonosInTypeSchemes xs = let sub = listToSubstitution (zip (ftv xs) [ TCon ('_':show i) | i <- [1..]] )
                               in sub |-> xs
+                              
 unifiable :: OrderedTypeSynonyms -> Tp -> Tp -> Bool
 unifiable typesynonyms t1 t2 =
    case mguWithTypeSynonyms typesynonyms t1 t2 of

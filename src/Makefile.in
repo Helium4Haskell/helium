@@ -97,7 +97,14 @@ STATICANALYSIS = \
 	staticanalysis/types/TypeRepresentation.hs \
 	staticanalysis/types/TypesToAlignedDocs.hs \
 	staticanalysis/staticchecks/StaticChecks.hs \
-	staticanalysis/inferencers/TypeInferencing.hs
+	staticanalysis/inferencers/TypeInferencing.hs \
+        staticanalysis/inferencers/ExpressionTypeInferencer.hs \
+        staticanalysis/inferencers/typingstrategies/TS_Parser.hs \
+        staticanalysis/inferencers/typingstrategies/TS_Syntax.hs \
+        staticanalysis/inferencers/typingstrategies/Matchers.hs \
+        staticanalysis/inferencers/typingstrategies/TS_Apply.hs \
+        staticanalysis/inferencers/typingstrategies/TS_Messages.hs \
+        staticanalysis/inferencers/typingstrategies/TS_Analyse.hs
 
 UHA = \
 	syntax/UHA_Syntax.hs syntax/UHA_Utils.hs
@@ -143,7 +150,7 @@ CORE	= $(LVMLIBDIR)/core/Core.hs $(LVMLIBDIR)/core/CorePretty.hs $(LVMLIBDIR)/co
 	  $(LVMLIBDIR)/core/CoreNoShadow.hs $(LVMLIBDIR)/core/CoreFreeVar.hs $(LVMLIBDIR)/core/CoreLetSort.hs \
 	  $(LVMLIBDIR)/core/CoreLift.hs $(LVMLIBDIR)/core/CoreSaturate.hs
 
-IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:$(PARSECDIR):./parser:./staticanalysis:./staticanalysis/solvers:./staticanalysis/inferencers:./staticanalysis/staticchecks:./staticanalysis/solvers/typegraph:./staticanalysis/solvers/typegraphheuristics:./staticanalysis/constraints:./staticanalysis/types:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem
+IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:$(PARSECDIR):./parser:./staticanalysis:./staticanalysis/solvers:./staticanalysis/inferencers:./staticanalysis/inferencers/typingstrategies:./staticanalysis/staticchecks:./staticanalysis/solvers/typegraph:./staticanalysis/solvers/typegraphheuristics:./staticanalysis/constraints:./staticanalysis/types:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem
 
 
 #Sources and object files
@@ -187,7 +194,8 @@ hi: interpreter/Main.hs utils/OSSpecific.hs
 # AG sources
 
 ag : utils/PrettyPrinting.hs staticanalysis/staticchecks/StaticChecks.hs staticanalysis/inferencers/TypeInferencing.hs codegeneration/CodeGeneration.hs \
-     syntax/UHA_Syntax.hs modulesystem/ExtractImportDecls.hs
+     syntax/UHA_Syntax.hs modulesystem/ExtractImportDecls.hs staticanalysis/inferencers/typingstrategies/TS_Syntax.hs \
+     staticanalysis/inferencers/typingstrategies/TS_Apply.hs staticanalysis/inferencers/typingstrategies/TS_Analyse.hs
 
 ifdef AG
 utils/PrettyPrinting.hs : \
@@ -220,6 +228,7 @@ staticanalysis/inferencers/TypeInferencing.hs : \
                 syntax/UHA_Self.ag \
                 syntax/UHA_Size.ag \
                 syntax/UHA_OneLine.ag \
+                staticanalysis/inferencers/typingstrategies/TS_PatternMatching.ag
                 
 	# AG StaticAnalysis
 	cd staticanalysis/inferencers;$(AG) $(AG_OPTS) TypeInferencing.ag;cd ../..
@@ -234,12 +243,36 @@ codegeneration/CodeGeneration.hs : \
 
 syntax/UHA_Syntax.hs : syntax/UHA_Syntax.ag
 	# AG UHA_Syntax
-	cd syntax;ag -dmr UHA_Syntax.ag;cd ..
+	cd syntax;$(AG) -dmr UHA_Syntax.ag;cd ..
 
 modulesystem/ExtractImportDecls.hs : \
 		modulesystem/ExtractImportDecls.ag codegeneration/ToCoreName.ag syntax/UHA_Syntax.ag
 	# AG ExtractImportDecls
 	cd modulesystem;$(AG) $(AG_OPTS) ExtractImportDecls.ag;cd ..
+        
+staticanalysis/inferencers/typingstrategies/TS_Syntax.hs : \
+	staticanalysis/inferencers/typingstrategies/TS_Syntax.ag
+	# AG TS_Syntax
+	cd staticanalysis/inferencers/typingstrategies;$(AG) -dmr TS_Syntax.ag;cd ../../..
+
+staticanalysis/inferencers/typingstrategies/TS_Apply.hs : \
+        staticanalysis/inferencers/typingstrategies/TS_Syntax.ag \
+        staticanalysis/inferencers/typingstrategies/TS_Collect.ag \
+        staticanalysis/inferencers/typingstrategies/TS_Apply.ag \
+        syntax/UHA_Syntax.ag \
+        syntax/UHA_Self.ag \
+	# AG TS_Syntax
+	cd staticanalysis/inferencers/typingstrategies;$(AG) $(AG_OPTS) TS_Apply.ag;cd ../../..
+
+staticanalysis/inferencers/typingstrategies/TS_Analyse.hs : \
+        staticanalysis/inferencers/typingstrategies/TS_Syntax.ag \
+        staticanalysis/inferencers/typingstrategies/TS_Collect.ag \
+        staticanalysis/inferencers/typingstrategies/TS_Analyse.ag \
+        syntax/UHA_Syntax.ag \
+        syntax/UHA_Self.ag \
+	# AG TS_Syntax
+	cd staticanalysis/inferencers/typingstrategies;$(AG) $(AG_OPTS) TS_Analyse.ag;cd ../../..
+                        
 endif
 
 # Standard suffix rules

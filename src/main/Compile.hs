@@ -43,6 +43,11 @@ import Monad(when, unless)
 import IOExts(unsafePerformIO, writeIORef)
 import FiniteMap
 
+-- Typing Strategies
+import TS_Analyse (analyseTypingStrategies)
+import TS_Messages
+import TS_Parser
+
 ------------------------------------------------------------------------------------
 -- Compiling a single Helium file consists of the following phases:
 --   1) Parsing
@@ -123,6 +128,25 @@ compile fullName options doneModules =
                  putStrLn ("Compilation failed with " ++ show number ++ " error" ++ if number == 1 then "" else "s")
 
         stopCompilingIf (StopAfterStaticAnalysis `elem` options || not (null errors)) 
+
+        -- Special Phase: Typing Strategies
+        {- let typingStrategiesFile = "special.ti"
+        input <- readFile typingStrategiesFile -}      
+        
+        typingStrategies <- return [] {-
+           case parseTypingStrategies importOperatorTable typingStrategiesFile input of
+              Left parseError -> do putStrLn ("Parse error in Typing Strategy: \n" ++ show parseError)
+                                    exitWith (ExitFailure 1)
+              Right ts -> return ts
+
+        let (tsErrors, tsWarnings) = analyseTypingStrategies typingStrategies (foldr combineImportEnvironments collectEnvironment importEnvironments)
+
+        unless (null tsErrors) $ 
+           do putStr . unlines . sortAndShow $ tsErrors
+              exitWith (ExitFailure 1)
+
+        unless (NoWarnings `elem` options) $
+           do putStr . unlines . sortAndShow $ tsWarnings -}
       
         -- Phase 3: Type inferencing
         enterNewPhase "Type inferencing" options
@@ -139,6 +163,7 @@ compile fullName options doneModules =
                 TypeInferencing.sem_Module module_ 
                     completeEnvironment
                     strategy 
+                    typingStrategies
                     useTypeGraph
         
             -- add the top-level types (including the inferred types)

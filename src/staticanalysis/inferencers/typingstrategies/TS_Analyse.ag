@@ -1,0 +1,104 @@
+{
+analyseTypingStrategies :: TypingStrategies -> ImportEnvironment -> (TS_Errors, TS_Warnings)
+analyseTypingStrategies list ie = 
+   let (as, bs) = unzip (map (\ts -> analyseTypingStrategy ts ie) list)
+   in (concat as, concat bs)
+
+analyseTypingStrategy :: TypingStrategy -> ImportEnvironment -> (TS_Errors, TS_Warnings)
+analyseTypingStrategy = sem_TypingStrategy
+}
+
+INCLUDE "../../../syntax/UHA_Syntax.ag"
+INCLUDE "TS_Syntax.ag"
+INCLUDE "TS_Collect.ag"
+INCLUDE "../../../syntax/UHA_Self.ag"
+
+imports {
+import Types
+import Constraints
+import HeliumConstraintInfo
+import TypeGraphConstraintInfo
+import TS_Syntax
+import TypeConversion
+import List
+import UHA_Utils (noRange, nameFromString)
+import Messages
+import TS_Messages
+import ImportEnvironment
+import SolveGreedy
+import ExpressionTypeInferencer (expressionTypeInferencer)
+import FiniteMap
+}
+
+ATTR TypingStrategy  [ importEnvironment : ImportEnvironment
+                     |
+                     | errors            : TS_Errors
+                       warnings          : TS_Warnings  
+                     ]
+
+SEM TypingStrategy
+  | TypingStrategy 
+       loc . nameMap      = zip @uniqueTypevariables (map TVar [0..])
+           . errors       = @staticErrors ++ @soundnessErrors 
+           . staticErrors = [ InconsistentConstraint @name x | x <- @solveErrors ] ++
+                            [ UndefinedTS @name name entity 
+                            | (name, entity) <- @typerule.conclusionAllVariables 
+                            , show name `notElem` (@allMetaVariables ++ map show @allImportedVariables)
+                            ] ++
+                            [ UnusedMetaVariable @name s 
+                            | s <- @allMetaVariables
+                            , s `notElem` (map (show . fst) @typerule.conclusionAllVariables)
+                            ]
+           . warnings     = []
+
+           -- Solve the constraint set.           
+           . (_, substitution, solveErrors, _) = solveGreedy (length @uniqueTypevariables) [] (reverse @constraints.userConstraints)
+                                   
+           . soundnessErrors = 
+                if not (null @staticErrors)
+                  then []
+                  else let premiseTypes = reverse (map snd @typerule.simpleJudgements) 
+                           constraintsTpScheme = generalizeAll (@substitution |-> tupleType (premiseTypes ++ [@typerule.conclusionType]))
+                           extendedEnvironment = let op (s, i) = addType (nameFromString s) (generalize [i] (TVar i))
+                                                 in foldr op @lhs.importEnvironment (zip @allMetaVariables [0..])
+                           extendedExpression  = let premiseVars = reverse (map (Expression_Variable noRange . nameFromString . fst) @typerule.simpleJudgements)
+                                                 in Expression_Tuple noRange (premiseVars ++ [@typerule.conclusionExpression])
+                           (monoTpScheme,inferredTypeErrors) = expressionTypeInferencer 
+                                                                  extendedEnvironment
+                                                                  extendedExpression
+                           inferredTpScheme = generalizeAll (unsafeInstantiate monoTpScheme)                                                                   
+                           synonyms = [ (show n,i,f) | (n,(i,f)) <- fmToList (typeSynonyms @lhs.importEnvironment) ]
+                       in if not (null inferredTypeErrors) 
+                            then map (TypeErrorTS @name) inferredTypeErrors
+                            else if genericInstanceOf synonyms inferredTpScheme constraintsTpScheme 
+                                        &&
+                                    genericInstanceOf synonyms constraintsTpScheme inferredTpScheme 
+                                      then []
+                                      else [ Soundness @name inferredTpScheme constraintsTpScheme ]
+
+-- cheching the names
+ATTR Judgement Expression Expressions MaybeExpression [ | | allVariables USE { ++ } { [] } : {[(Name,Entity)]} ]
+
+SEM Expression 
+  | Variable      lhs . allVariables = [(@name.self, Variable)] 
+  | Constructor   lhs . allVariables = [(@name.self, Constructor)]
+
+ATTR TypeRule  [ | | conclusionAllVariables : {[(Name,Entity)]} ]
+SEM TypeRule | TypeRule lhs . conclusionAllVariables = @conclusion.allVariables
+
+--
+
+ATTR TypeRule  [ | | conclusionExpression:Expression ]
+ATTR Judgement [ | | theExpression:Expression ]
+           
+SEM TypeRule  | TypeRule   lhs . conclusionExpression = @conclusion.theExpression           
+SEM Judgement | Judgement  lhs . theExpression = @expression.self
+
+SEM TypingStrategy 
+  | TypingStrategy  
+       loc . allMetaVariables     = map fst @typerule.simpleJudgements 
+           . allImportedVariables = keysFM (typeEnvironment   @lhs.importEnvironment) ++
+                                    keysFM (valueConstructors @lhs.importEnvironment)
+
+-- prevent AG-warnings
+SEM TypingStrategies | Cons  loc . importEnvironment = undefined

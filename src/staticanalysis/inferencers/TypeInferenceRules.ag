@@ -18,7 +18,7 @@ ATTR Body Statement Qualifier Statements Qualifiers Expression RightHandSide May
 SEM Module
 
   | Module
-      body . betaUnique  = 0
+      body . betaUnique  = maximum (0 : @monomorphics) + 1
       loc  . debugIO     = do putStrLn "--- Debug Info ---"
                               putStrLn $ unlines $ map show @constraints
                               putStrLn $ "type variables in constraint set: "++show @body.betaUnique
@@ -39,8 +39,11 @@ SEM Module
                                              )
                                         ]
                                         @constraints
-
-           . inferredgamma = map (\(name,tp) -> (name,generalizeAll (@substitution |-> tp))) @body.namesWithoutTypeDef
+           . monomorphics  = ftv (  (eltsFM $ valueConstructors @lhs.importEnvironment) 
+                                 ++ (eltsFM $ typeEnvironment @lhs.importEnvironment)
+                                 )
+           . monos = map TVar @monomorphics
+           . inferredgamma = map (\(name,tp) -> (name,generalize (ftv (@substitution |-> @monos)) (@substitution |-> tp))) @body.namesWithoutTypeDef
            . (typeErrors,filteredBool)    
                   = let notGeneralEnoughErrors = 
                            let f ((m,t),s2,info) = let m' = @substitution |-> m
@@ -68,6 +71,7 @@ SEM Module
 
 ATTR Body
     [ 
+      monos                 : Tps
     | betaUnique            : Int
     | assumptions           : Assumptions
       constraints           : ConstraintSet
@@ -80,7 +84,6 @@ SEM Body
                    . assumptions         = @aset'
                    . namesWithoutTypeDef = [ (n,tp) | (n,_,tp,_) <- @notypedefs ]
       declarations . bindingGroups       = []
-                   . monos               = []
                    
       loc . (aset,cset,monoTable) = 
                performBindingGroup [] @declarations.typeSignatures @declarations.bindingGroups
@@ -229,14 +232,14 @@ SEM Expression
   | Literal
       lhs . betaUnique  = @lhs.betaUnique + 1
           . assumptions = noAssumptions
-          . constraints = ctSingle [ (@literal.literalType .==. @beta) @cinfo ]
-      loc . beta        = TVar @lhs.betaUnique
+      loc . constraints = ctSingle [ (@literal.literalType .==. @beta) @cinfo ]
+          . beta        = TVar @lhs.betaUnique
 
   | Constructor
       lhs . betaUnique   = @lhs.betaUnique + 1
           . assumptions  = noAssumptions
-          . constraints  = ctSingle @newcon
-      loc . beta         = TVar @lhs.betaUnique
+      loc . constraints  = ctSingle @newcon
+          . beta         = TVar @lhs.betaUnique
           . newcon       = case lookupFM (valueConstructors @lhs.importEnvironment) @name.self of
                               Nothing  -> []
                               Just ctp -> [ (@beta .::. ctp) @cinfo ]
@@ -244,28 +247,28 @@ SEM Expression
   | Variable
       lhs . betaUnique  = @lhs.betaUnique + 1
           . assumptions = @name.self `single` @beta
-          . constraints = ctNode [ ctVariable @lhs.betaUnique ]
-      loc . beta        = TVar @lhs.betaUnique
+      loc . constraints = ctNode [ ctVariable @lhs.betaUnique ]
+          . beta        = TVar @lhs.betaUnique
 
   | NormalApplication
       lhs      . assumptions = @function.assumptions `combine` @arguments.assumptions
-               . constraints = @newcon .>.
+      function . betaUnique  = @lhs.betaUnique + 1
+      loc      . constraints = @newcon .>.
                                ctNode [ @function.constraints
                                       , ctNode @arguments.constraintslist
-                                      ]
-      function . betaUnique  = @lhs.betaUnique + 1
-      loc      . beta        = TVar @lhs.betaUnique
+                                      ]      
+               . beta        = TVar @lhs.betaUnique
                . newcon      = [ (@function.beta .==. foldr (.->.) @beta @arguments.betas) @cinfo ]
 
   | InfixApplication
       lhs            . assumptions = @leftExpression.assumptions `combine` @operator.assumptions `combine` @rightExpression.assumptions
-                     . constraints = @conTotal .>.
+      leftExpression . betaUnique  = @lhs.betaUnique + 2
+      loc            . constraints = @conTotal .>.
                                      ctNode [ @operator.constraints
                                             , @leftExpression.constraints
                                             , @rightExpression.constraints
                                             ]
-      leftExpression . betaUnique  = @lhs.betaUnique + 2
-      loc            . beta        = TVar @lhs.betaUnique
+                     . beta        = TVar @lhs.betaUnique
                      . betaResOp   = TVar (@lhs.betaUnique + 1)
                      . conOperator = (@operator.beta .==. @leftExpression.beta .->. @rightExpression.beta .->. @betaResOp) @cinfoOperator
                      . conTotal    = case (@leftExpression.section,@rightExpression.section) of
@@ -276,46 +279,46 @@ SEM Expression
 
   | If
       lhs             . assumptions = @guardExpression.assumptions `combine` @thenExpression.assumptions `combine` @elseExpression.assumptions
-                      . constraints = ctNode [ @conGuard .<. @guardExpression.constraints
+      guardExpression . betaUnique  = @lhs.betaUnique + 1
+      loc             . constraints = ctNode [ @conGuard .<. @guardExpression.constraints
                                              , @conThen  .<. @thenExpression.constraints
                                              , @conElse  .<. @elseExpression.constraints
                                              ]
-      guardExpression . betaUnique  = @lhs.betaUnique + 1
-      loc             . beta        = TVar @lhs.betaUnique
+                      . beta        = TVar @lhs.betaUnique
                       . conGuard    = [ (@guardExpression.beta .==. boolType) @cinfoGuard ]
                       . conThen     = [ (@thenExpression.beta  .==. @beta   ) @cinfoThen  ]
                       . conElse     = [ (@elseExpression.beta  .==. @beta   ) @cinfoElse  ]
 
   | Lambda
       lhs        . assumptions = @assumptions'
-                 . constraints = @newcon .>. @csetBinds .>>.
-                                 ctNode [ ctNode @patterns.constraintslist
-                                        , @expression.constraints
-                                        ]
       patterns   . betaUnique  = @lhs.betaUnique + 1
       expression . monos       = eltsFM @patterns.environment ++ @lhs.monos
-      loc        . beta        = TVar @lhs.betaUnique
+      loc        . constraints = @newcon .>. @csetBinds .>>.
+                                 ctNode [ ctNode @patterns.constraintslist
+                                        , @expression.constraints
+                                        ]      
+                 . beta        = TVar @lhs.betaUnique
                  . (csetBinds,assumptions') = (@patterns.environment .===. @expression.assumptions) @cinfoBind
                  . newcon      = [ (foldr (.->.) @expression.beta @patterns.betas .==. @beta) @cinfoType ]
 
   | Case
       lhs          . assumptions = @expression.assumptions `combine` @alternatives.assumptions
-                   . constraints = ctNode [ @newcon .<. @expression.constraints
-                                          , ctNode @alternatives.constraintslist
-                                          ]
       expression   . betaUnique  = @lhs.betaUnique + 2
       alternatives . betaLeft    = @beta'
                    . betaRight   = @beta
-      loc          . beta        = TVar @lhs.betaUnique
+      loc          . constraints = ctNode [ @newcon .<. @expression.constraints
+                                          , ctNode @alternatives.constraintslist
+                                          ]                   
+                   . beta        = TVar @lhs.betaUnique
                    . beta'       = TVar (@lhs.betaUnique + 1)
                    . newcon      = [ (@expression.beta .==. @beta') @cinfo ]
 
   | Let
       lhs          . assumptions    = @aset
-                   . constraints    = [ (@expression.beta .==. @beta) @cinfoType ] .>. @cset
       declarations . betaUnique     = @lhs.betaUnique + 1
                    . bindingGroups  = []
-      loc          . beta           = TVar @lhs.betaUnique
+      loc          . constraints    = [ (@expression.beta .==. @beta) @cinfoType ] .>. @cset                   
+                   . beta           = TVar @lhs.betaUnique
                    . mybdggroup     = (noAssumptions,@expression.assumptions,[@expression.constraints])
                    
                    . (aset,cset,monoTable) = 
@@ -326,71 +329,71 @@ SEM Expression
       statements . betaUnique    = @lhs.betaUnique + 1
                  . generatorBeta = Nothing
                  . assumptions   = noAssumptions
-                 . constraints   = ctEmpty
-      loc        . beta          = TVar @lhs.betaUnique
+      loc        . constraints   = ctEmpty
+                 . beta          = TVar @lhs.betaUnique
                  . newcon        = case @statements.generatorBeta of
                                       Nothing -> []
                                       Just b  -> [ (b .==. @beta) @cinfo ]
 
   | List
-      lhs         . constraints = @newcon .>.
-                                  ctNode (zipWith3 @zipf @expressions.betas @expressions.oneLineTree @expressions.constraintslist)
       expressions . betaUnique  = @lhs.betaUnique + 2
-      loc         . beta        = TVar @lhs.betaUnique
+      loc         . constraints = @newcon .>.
+                                  ctNode (zipWith3 @zipf @expressions.betas @expressions.oneLineTree @expressions.constraintslist)
+                  . beta        = TVar @lhs.betaUnique
                   . beta'       = TVar (@lhs.betaUnique + 1)
                   . newcon      = [ (listType @beta' .==. @beta) @cinfoResult ]
                   . zipf        = \tp txt ctree -> [ (tp .==. @beta') (@cinfoElem txt) ] .<. ctree
 
-  | Tuple
-      lhs         . constraints = @newcon .>. ctNode @expressions.constraintslist
+  | Tuple      
       expressions . betaUnique  = @lhs.betaUnique + 1
-      loc         . beta        = TVar @lhs.betaUnique
+      loc         . constraints = @newcon .>. ctNode @expressions.constraintslist
+                  . beta        = TVar @lhs.betaUnique
                   . newcon      = [ (tupleType @expressions.betas .==. @beta) @cinfo ]
 
-  | Typed
-      lhs        . constraints = @conResult .>.
-                                 ctNode [ @conExpr .<. @expression.constraints ]
+  | Typed     
       expression . betaUnique  = @lhs.betaUnique + 1
-      loc        . beta        = TVar @lhs.betaUnique
+      loc        . constraints = @conResult .>.
+                                 ctNode [ @conExpr .<. @expression.constraints ]
+                 . beta        = TVar @lhs.betaUnique
                  . typeScheme  = makeTpSchemeFromType @type.self 
                  . conResult   = [ (@beta            .::. @typeScheme) @cinfoResult ]
                  . conExpr     = [ (@expression.beta .::. @typeScheme) @cinfoExpr   ]
 
   | Comprehension
-      lhs        . assumptions = @qualifiers.assumptions
-                 . constraints = @newcon .>. ctNode [ @qualifiers.constraints ]
+      lhs        . assumptions = @qualifiers.assumptions                 
       expression . betaUnique  = @lhs.betaUnique + 1
                  . monos       = @qualifiers.monos
       qualifiers . assumptions = @expression.assumptions
                  . constraints = @expression.constraints
                  . monos       = @lhs.monos
-      loc        . beta        = TVar @lhs.betaUnique
+      loc        . constraints = @newcon .>. ctNode [ @qualifiers.constraints ]
+                 . beta        = TVar @lhs.betaUnique
                  . newcon      = [ (listType @expression.beta .==. @beta) @cinfo ]
 
   | Enum
-       lhs  . constraints = [ (listType intType .==. @beta) @cinfoResult ] .>.
+       lhs  . assumptions = @from.assumptions `combine` @then.assumptions `combine` @to.assumptions
+       from . betaUnique  = @lhs.betaUnique + 1
+       loc  . constraints = [ (listType intType .==. @beta) @cinfoResult ] .>.
                             ctNode [ @conFrom .<. @from.constraints
                                    , @conThen .<. @then.constraints
                                    , @conTo   .<. @to.constraints
                                    ]
-            . assumptions = @from.assumptions `combine` @then.assumptions `combine` @to.assumptions
-       from . betaUnique  = @lhs.betaUnique + 1
-       loc  . beta        = TVar @lhs.betaUnique
+            . beta        = TVar @lhs.betaUnique
             . conFrom     = [ (@from.beta .==. intType) @cinfoFrom ]
             . conThen     = [ (@then.beta .==. intType) @cinfoThen ]
             . conTo       = [ (@to.beta   .==. intType) @cinfoTo   ]
 
-  | Negate
-       lhs        . constraints = @conResult .>. ctNode [ @conExpr .<. @expression.constraints ]
+  | Negate     
        expression . betaUnique  = @lhs.betaUnique + 1
-       loc        . beta        = TVar @lhs.betaUnique
+       loc        . constraints = @conResult .>. ctNode [ @conExpr .<. @expression.constraints ]
+                  . beta        = TVar @lhs.betaUnique
                   . conResult   = [ (intType .==. @beta) @cinfoResult ]
                   . conExpr     = [ (@expression.beta .==. intType) @cinfoExpr]
 
-  | NegateFloat
-       lhs        . constraints = @conResult .>. ctNode [ @conExpr .<. @expression.constraints ]
+  | NegateFloat     
        expression . betaUnique  = @lhs.betaUnique + 1
-       loc        . beta        = TVar @lhs.betaUnique
+       loc        . constraints = @conResult .>. ctNode [ @conExpr .<. @expression.constraints ]
+                  . beta        = TVar @lhs.betaUnique
                   . conResult   = [ (floatType .==. @beta) @cinfoResult ]
                   . conExpr     = [ (@expression.beta .==. floatType) @cinfoExpr]
 

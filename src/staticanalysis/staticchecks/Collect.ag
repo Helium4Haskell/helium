@@ -20,6 +20,7 @@ SEM Module
   | Module   loc . collectEnvironment = setValueConstructors  @valueConstructors
                                         . setTypeConstructors @typeConstructors
                                         . setTypeSynonyms     (listToFM @orderedTypeSynonyms)
+                                        . setTypeEnvironment  (listToFM @body.typeSignatures)
                                         $ emptyEnvironment 
                                         
                  . derivedFunctions = let f (n,i) = ( nameOfShowFunction n

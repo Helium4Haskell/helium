@@ -58,3 +58,11 @@ import UHA_Syntax
 import ImportEnvironment
 import FiniteMap
 }
+
+--- The following lines enable Type Strategies. 
+--     (you may put them in comment)
+
+INCLUDE "typingstrategies/TS_PatternMatching.ag"
+ATTR Module [ typingStrategies : TypingStrategies | | ] 
+SEM Module
+  | Module  lhs . debugIO = @debugIO >> putStrLn "Inference Strategies:" >> @body.matchIO

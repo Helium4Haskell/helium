@@ -1,4 +1,4 @@
-module ParseDeclExp(decl, decls {- temp -}) where
+module ParseDeclExp(decl, decls, exp_) where
 
 import HaskellLexer hiding (conid, varid)
 import UHA_Syntax(Expression(..), Name(..), Range, Statements, Statement(..), 

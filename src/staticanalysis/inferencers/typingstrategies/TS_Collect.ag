@@ -1,0 +1,53 @@
+-- Collect all type variables 
+
+ATTR UserConstraint UserConstraints TypeRule Judgement SimpleJudgement SimpleJudgements 
+     Type Types [ | | typevariables USE { ++ } { [] } : Names ]
+
+SEM Type
+  | Variable  lhs . typevariables = [ @name.self ]
+
+SEM TypingStrategy
+  | TypingStrategy
+       loc . uniqueTypevariables = nub (@typerule.typevariables ++ @constraints.typevariables)
+  
+ATTR UserConstraint UserConstraints TypeRule Judgement SimpleJudgement SimpleJudgements 
+     [ nameMap : {[(Name,Tp)]} | | ]
+     
+-- Construct type constraints from the constraint-set     
+
+ATTR UserConstraint UserConstraints [ | userConstraints : {Constraints HeliumConstraintInfo} | ]
+
+SEM TypingStrategy 
+  | TypingStrategy
+       constraints . userConstraints = []
+       
+SEM UserConstraint
+  | UserConstraint 
+       lhs . userConstraints = @newConstraint : @lhs.userConstraints
+       loc . newConstraint   = (makeTpFromType @lhs.nameMap @leftType.self .==. makeTpFromType @lhs.nameMap @rightType.self) @cinfo
+           . cinfo = \tppair ->
+                     CInfo { info       = (NTBody, AltBody, "Typing Strategy, user constraint")
+                           , location   = "Typing Strategy"
+                           , errorrange = noRange
+                           , sources    = [ ]
+                           , typepair   = tppair
+                           , properties = [ WithHint (Because @message)] 
+                           }
+
+-- Collect judgements in typerule
+
+ATTR SimpleJudgement SimpleJudgements TypeRule [ | simpleJudgements:{[(String,Tp)]} | ]
+
+SEM TypingStrategy
+  | TypingStrategy
+       typerule . simpleJudgements = []
+
+SEM SimpleJudgement
+  | SimpleJudgement   
+       lhs . simpleJudgements = @newJudgement : @lhs.simpleJudgements       
+       loc . newJudgement  = (show @name.self, makeTpFromType @lhs.nameMap @type.self)
+                
+ATTR Judgement TypeRule [ | | conclusionType : Tp ]
+
+SEM Judgement
+  | Judgement   lhs . conclusionType = makeTpFromType @lhs.nameMap @type.self

@@ -1,4 +1,4 @@
-module ResolveOperators(operatorsFromModule, resolveOperators) where
+module ResolveOperators(operatorsFromModule, resolveOperators, expression) where
 
 import UHA_Syntax
 import UHA_Utils

@@ -44,7 +44,7 @@ data Property   = FolkloreConstraint
                 | WithTypeError TypeError    
                 | WithHint Hint            
    
-instance Eq   Literal where _ == _ = True
+instance Eq   Literal where _ == _ = True -- NEE!
 instance Show Literal where show _ = "<literal>"
 
 instance Show HeliumConstraintInfo where
