@@ -3,7 +3,7 @@ Compiling typeerrors/Heuristics/FBHasTooMany1.hs
  expression       : f
    type           : Int       
    does not match : Int -> Int
- because          : the function binding has 1 pattern, but its type
-                    signature does not allow patterns
+ because          : the function binding has 1 pattern, but its type signature
+                    does not allow patterns
 
 Compilation failed with 1 error

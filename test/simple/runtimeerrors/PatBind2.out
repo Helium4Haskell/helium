@@ -1,5 +1,8 @@
 Compiling runtimeerrors/PatBind2.hs
-Compilation successful
+(7,1): Warning: Missing patterns in pattern binding: 
+  _ : (_ : _) = ...
+  [] = ...
+Compilation successful with 1 warning
 exception: pattern match failed at pattern binding ranging from (7,1) to (7,19) in module runtimeerrors/PatBind2.hs.
 
 trace:
