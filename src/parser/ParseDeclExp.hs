@@ -223,30 +223,38 @@ test p s = runHParser p "" s
 exp0 :: HParser Expression
 exp0 = addRange (
     do  
-        u <- unaryMinus
+        u <- maybeUnaryMinus
+        es <- exprChain
+        return $ \r -> Expression_List noRange (u ++ es)
+    <?> "expression"        
+  )
+
+exprChain :: HParser [Expression]
+exprChain = 
+    do
         e <- exp10
         es <- fmap concat $ many $
             do
                 o <- try (do { n <- varop; return (Expression_Variable noRange n) } )
                      <|>
                      do { n <- conop; return (Expression_Constructor noRange n) }
-                u <- unaryMinus
+                u <- maybeUnaryMinus
                 e <- exp10
                 return ([o] ++ u ++ [e])
-        return $ \r -> Expression_List noRange (u ++ [e] ++ es)
-    <?> "expression"        
-  )
-  
-unaryMinus :: HParser [Expression]
-unaryMinus = option [] $
+        return (e:es)
+
+maybeUnaryMinus = option [] (fmap (:[]) unaryMinus)  
+
+unaryMinus :: HParser Expression
+unaryMinus = 
     try (do 
         (_, r) <- withRange (special "-.") 
-        return [Expression_Variable noRange (Name_Identifier r [] floatUnaryMinusName)]
+        return (Expression_Variable noRange (Name_Identifier r [] floatUnaryMinusName))
     ) 
     <|>
     do 
         (_, r) <- withRange (special "-") 
-        return [Expression_Variable noRange (Name_Identifier r [] intUnaryMinusName)]
+        return (Expression_Variable noRange (Name_Identifier r [] intUnaryMinusName))
 
 {-       
 exp10   ->  "\" apat1 ... apatn "->" exp  (lambda abstraction, n>=1)  
@@ -333,25 +341,30 @@ aexp = addRange (
     do 
         special "("
         ( -- dit haakje is nodig (snap niet waarom). Arjan
-            do
+            do 
+                u <- unaryMinus
+                es <- exprChain
+                special ")"
+                return $ \r -> Expression_List noRange (u:es)
+            <|>                
+            do      -- operator followed by optional expression
+                    -- either full section (if there is no expression) or 
+                    -- a left section (if there is)
                 opExpr <- try (fmap (\(n, r) -> Expression_Variable r n) (withRange varop))
                           <|>
                           fmap ((\(n, r) -> Expression_Constructor r n)) (withRange conop)
                 me <- option Nothing (fmap Just fexp)
                 special ")"
-                return $ \r -> case me of
-                    Nothing -> 
-                        Expression_InfixApplication r
-                            MaybeExpression_Nothing
-                            opExpr
-                            MaybeExpression_Nothing
-                    Just e -> 
-                        Expression_InfixApplication r
-                            MaybeExpression_Nothing
-                            opExpr
-                            (MaybeExpression_Just e)
+                return $ \r -> 
+                    Expression_InfixApplication r
+                        MaybeExpression_Nothing
+                        opExpr
+                        (case me of 
+                            Nothing -> MaybeExpression_Nothing
+                            Just e  -> MaybeExpression_Just e) 
             <|>
-            try (do
+            try (do -- right section, expression followed by operator
+                    -- must 'try' because there may be no operator "(3)"
                 e <- fexp
                 o <- op
                 special ")"
@@ -360,18 +373,15 @@ aexp = addRange (
                         (MaybeExpression_Just e)
                         (Expression_Variable r o)
                         MaybeExpression_Nothing
-                )
+            )
             <|>
-            do
-                es <- commas1 exp_
+            do -- unit "()", expression between parenthesis or a tuple
+                es <- commas exp_
                 special ")"
                 return $ \r -> case es of
+                    [] -> Expression_Constructor r (Name_Special r [] "()")
                     [e] -> Expression_Parenthesized r e
                     _ -> Expression_Tuple r es
-            <|>
-            do
-                special ")"
-                return (\r -> Expression_Constructor r (Name_Special r [] "()"))
          )
     <|>
     do

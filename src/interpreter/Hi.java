@@ -88,7 +88,7 @@ class Hi extends JFrame
 								System.out.println("file     = " + file);
 								Runtime runtime = Runtime.getRuntime();
 								try {
-									runtime.exec("C:\\Program Files\\TextPad 4\\TextPad.exe " + file + position);
+									runtime.exec("C:\\apps\\TextPad\\TextPad.exe " + file + position);
 								} catch (Exception e) {}
 							}
 
