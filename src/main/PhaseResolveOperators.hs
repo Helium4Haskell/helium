@@ -3,14 +3,17 @@ module PhaseResolveOperators(phaseResolveOperators) where
 import CompileUtils
 import ResolveOperators(resolveOperators, operatorsFromModule)
 import qualified PrettyPrinting(sem_Module)
+import FiniteMap
 
 phaseResolveOperators :: String -> [String] -> Module -> [ImportEnvironment] -> 
                             [Option] -> IO Module
 phaseResolveOperators fullName doneModules moduleBeforeResolve importEnvs options = do
     enterNewPhase "Resolving operators" options
 
-    let importOperatorTable = operatorsFromModule moduleBeforeResolve
-                           ++ concatMap operatorTable importEnvs
+    let importOperatorTable = 
+            foldr1 plusFM ( operatorsFromModule moduleBeforeResolve
+                          : map operatorTable importEnvs
+                          )
         (module_, resolveErrors) = 
                   resolveOperators importOperatorTable moduleBeforeResolve
 

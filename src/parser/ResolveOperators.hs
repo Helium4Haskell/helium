@@ -9,6 +9,7 @@ import Char
 import ParseLibrary(intUnaryMinusName, floatUnaryMinusName)
 import Utils
 import Messages
+import FiniteMap
 
 
 data ResolveError = 
@@ -30,13 +31,11 @@ instance HasMessage ResolveError where
                 ++  " operator "
                 ++  show op1
             secondLine = 
-                    "with "
+                    " with "
                 ++  assocString (assoc2)
                 ++  " operator "
                 ++  show op2
-        in [ MessageOneLiner ( MessageString firstLine) 
-           , MessageOneLiner ( MessageString ("    " ++ secondLine ))
-           ]
+        in [ MessageOneLiner ( MessageString $ firstLine ++ secondLine ) ]
         
 resolveOperators :: OperatorTable -> Module -> (Module, [ResolveError])
 resolveOperators opTable m = 
@@ -49,7 +48,7 @@ expression opTable e = -- !!! errors ignored
 
 operatorsFromModule :: Module -> OperatorTable
 operatorsFromModule m =
-    concatMap declToOps (collectInfixdecls m)
+    listToFM (concatMap declToOps (collectInfixdecls m))
   where
     declToOps (Declaration_Fixity _ f (MaybeInt_Just p) os) = 
         [ (o, (p, fixityToAssoc f)) | o <- os ]
@@ -946,7 +945,7 @@ sem_Expression_List (_range) (_expressions) (_lhs_opTable) (_lhs_resolveErrors) 
             (_range )
         ( _expressions_resolveErrors,_expressions_self) =
             (_expressions (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _errs ++ _lhs_resolveErrors,_self)
+    in  ( _errs ++ _expressions_resolveErrors,_self)
 sem_Expression_Literal :: (T_Range) ->
                           (T_Literal) ->
                           (T_Expression)
@@ -1906,7 +1905,7 @@ sem_Pattern_List (_range) (_patterns) (_lhs_opTable) (_lhs_resolveErrors) =
             (_range )
         ( _patterns_resolveErrors,_patterns_self) =
             (_patterns (_lhs_opTable) (_lhs_resolveErrors))
-    in  ( _errs ++ _lhs_resolveErrors,_self)
+    in  ( _errs ++ _patterns_resolveErrors,_self)
 sem_Pattern_Literal :: (T_Range) ->
                        (T_Literal) ->
                        (T_Pattern)

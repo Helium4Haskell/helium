@@ -32,7 +32,7 @@ emptyEnvironment = ImportEnvironment { typeConstructors  = emptyFM
                                      , typeSynonyms      = emptyFM
                                      , typeEnvironment   = emptyFM
                                      , valueConstructors = emptyFM
-                                     , operatorTable     = []
+                                     , operatorTable     = emptyFM
                                      , typingStrategies  = [] 
                                      }
                                               
@@ -61,7 +61,7 @@ addValueConstructor name tpscheme importenv =
 
 addOperator :: Name -> (Int,Assoc) -> ImportEnvironment -> ImportEnvironment  
 addOperator name pair importenv = 
-   importenv {operatorTable = (name,pair) : operatorTable importenv } 
+   importenv {operatorTable = addToFM (operatorTable importenv) name pair  } 
    
 setValueConstructors :: FiniteMap Name TpScheme -> ImportEnvironment -> ImportEnvironment  
 setValueConstructors new importenv = importenv {valueConstructors = new} 
@@ -98,7 +98,7 @@ combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 xs1) (Import
       (tss1 `plusFM` tss2)
       (te1  `plusFM` te2 )
       (vcs1 `plusFM` vcs2)
-      (ot1 ++ ot2)
+      (ot1  `plusFM` ot2)
       (xs1 ++ xs2)
       
 instance Show ImportEnvironment where
@@ -113,7 +113,7 @@ instance Show ImportEnvironment where
     
        fixities =    
           let sorted  = let cmp (name, (prio, assoc)) = (10 - prio, assoc, not (isOperatorName name), name)
-                        in sortBy (\x y -> cmp x `compare` cmp y) ot
+                        in sortBy (\x y -> cmp x `compare` cmp y) (fmToList ot)
               grouped = groupBy (\x y -> snd x == snd y) sorted
               list = let f ((name, (prio, assoc)) : rest) =
                             let names  = name : map fst rest 

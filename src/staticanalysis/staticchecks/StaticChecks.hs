@@ -2091,7 +2091,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
             . setTypeConstructors (listToFM _body_collectTypeConstructors)
             . setTypeSynonyms     (listToFM _body_collectTypeSynonyms)
             . setTypeEnvironment  (listToFM _body_typeSignatures)
-            . setOperatorTable              _body_operatorFixities
+            . setOperatorTable    (listToFM _body_operatorFixities)
             $ emptyEnvironment
         (_derivedFunctions) =
             let f (n,i) = ( nameOfShowFunction n

@@ -61,7 +61,7 @@ arityFromCustoms n ( CustomDecl (DeclKindCustom id) [CustomBytes bytes] : cs )
         -- the number of stars minus 1 is the arity
 arityFromCustoms n (_:cs) = arityFromCustoms n cs
 
-makeOperatorTable :: Name -> [Custom] -> OperatorTable
+makeOperatorTable :: Name -> [Custom] -> [(Name, (Int, Assoc))]
 makeOperatorTable op (Core.CustomInt i : Core.CustomBytes bs : cs) =
     let
         assoc =

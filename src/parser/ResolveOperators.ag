@@ -7,6 +7,7 @@ import Char
 import ParseLibrary(intUnaryMinusName, floatUnaryMinusName)
 import Utils
 import Messages
+import FiniteMap
 }
 
 INCLUDE "../syntax/UHA_Syntax.ag"
@@ -32,13 +33,11 @@ instance HasMessage ResolveError where
                 ++  " operator "
                 ++  show op1
             secondLine = 
-                    "with "
+                    " with "
                 ++  assocString (assoc2)
                 ++  " operator "
                 ++  show op2
-        in [ MessageOneLiner ( MessageString firstLine) 
-           , MessageOneLiner ( MessageString ("    " ++ secondLine ))
-           ]
+        in [ MessageOneLiner ( MessageString $ firstLine ++ secondLine ) ]
         
 resolveOperators :: OperatorTable -> Module -> (Module, [ResolveError])
 resolveOperators opTable m = 
@@ -51,7 +50,7 @@ expression opTable e = -- !!! errors ignored
 
 operatorsFromModule :: Module -> OperatorTable
 operatorsFromModule m =
-    concatMap declToOps (collectInfixdecls m)
+    listToFM (concatMap declToOps (collectInfixdecls m))
   where
     declToOps (Declaration_Fixity _ f (MaybeInt_Just p) os) = 
         [ (o, (p, fixityToAssoc f)) | o <- os ]
@@ -80,7 +79,7 @@ ATTR Module Body Declarations Declaration FunctionBindings RightHandSide
     ]                
 
 SEM Pattern 
-    | List lhs.resolveErrors = @errs ++ @lhs.resolveErrors
+    | List lhs.resolveErrors = @errs ++ @patterns.resolveErrors
            loc . (self, errs) = 
                     case @range of
                         Range_Range Position_Unknown Position_Unknown -> 
@@ -89,7 +88,7 @@ SEM Pattern
                             (Pattern_List @range.self @patterns.self, [])
            
 SEM Expression
-    | List lhs . resolveErrors = @errs ++ @lhs.resolveErrors
+    | List lhs . resolveErrors = @errs ++ @expressions.resolveErrors
            loc . (self, errs) = 
                     case @range of
                         Range_Range Position_Unknown Position_Unknown -> 
