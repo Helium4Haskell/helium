@@ -1,7 +1,7 @@
 module Main where
 
-import Parser(parseOnlyImports)
 import Compile(compile)
+import Parser(parseOnlyImports)
 
 import Monad(when, unless)
 import List(nub, elemIndex, isSuffixOf, intersperse)
@@ -11,7 +11,7 @@ import Standard(searchPathMaybe,getLvmPath)
 import Directory(doesFileExist, getModificationTime)
 import IOExts(writeIORef, newIORef, readIORef, IORef)
 import Args
-import Utils(splitFilePath)
+import Utils
 
 main :: IO ()
 main = do
@@ -31,7 +31,7 @@ main = do
             filePlusHSExists <- doesFileExist filePlusHS
             when (not filePlusHSExists) $ do
                 putStrLn $ "Can't find file " ++ show fullName ++ " or " ++ show filePlusHS
-                System.exitWith (ExitFailure 1)
+                exitWith (ExitFailure 1)
             return filePlusHS
 
     -- Libraries must exist somewhere in the search path
@@ -65,13 +65,13 @@ make fullName searchPath chain options doneRef =
             case circularityCheck imports chain of
                 Just cycle -> do
                     putStrLn $ "Circular import chain: \n\t" ++ showImportChain cycle ++ "\n"
-                    System.exitWith (ExitFailure 1)
+                    exitWith (ExitFailure 1)
                 Nothing -> 
                     return ()
 
             -- Find all imports in the search path
             resolvedImports <- mapM (resolve searchPath) imports
-
+            
             -- For each of the imports...
             compileResults <- foreach (zip imports resolvedImports) 
               $ \(importModuleName, maybeImportFullName) -> do
@@ -83,7 +83,7 @@ make fullName searchPath chain options doneRef =
                             "Can't find module '" ++ importModuleName ++ "'\n" ++ 
                             "Import chain: \n\t" ++ showImportChain (chain ++ [importModuleName]) ++
                             "\nSearch path:\n" ++ showSearchPath searchPath
-                        System.exitWith (ExitFailure 1)
+                        exitWith (ExitFailure 1)
                     Just _ -> return ()
 
                 let importFullName = fromJust maybeImportFullName
@@ -96,18 +96,24 @@ make fullName searchPath chain options doneRef =
 
             -- Recompile the current module if:
             -- * any of the children was recompiled
-            -- * the build option (-b) was on the command line
+            -- * the build all option (-B) was on the command line
+            -- * the build one option (-b) was there and we are 
+            --      compiling the top-most module (head of chain)
             -- * the module is not up to date (.hs newer than .lvm)
             let (filePath, moduleName, _) = splitFilePath fullName
-            upToDate <- upToDateCheck (filePath ++ "/" ++ moduleName)
+            upToDate <- upToDateCheck (combinePathAndFile filePath moduleName)
             newDone <- readIORef doneRef
             isRecompiled <- 
-                if  any (==True) compileResults || Build `elem` options || not upToDate then do
-                    compile fullName options (map fst newDone)
-                    return True
-                  else do
-                    putStrLn (moduleName ++ " is up to date")
-                    return False
+                if  any (==True) compileResults || 
+                    BuildAll `elem` options || 
+                    (BuildOne `elem` options && moduleName == head chain) ||
+                    not upToDate 
+                    then do
+                        compile fullName options (map fst newDone)
+                        return True
+                      else do
+                        putStrLn (moduleName ++ " is up to date")
+                        return False
             
             -- Remember the fact that we have already been at this module
             writeIORef doneRef ((fullName, isRecompiled):newDone)

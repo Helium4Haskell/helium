@@ -1,10 +1,9 @@
 Compiling typeerrors/Examples/InfiniteType2.hs
-
 (17,18): Type error in application
-*** Expression     : xs insertionSort xss
-*** Term           : xs
-*** Type           : a                             
-*** Does not match : ([Int] -> [Int]) -> [a] -> [b]
-*** Because        : unification would give infinite type
+ expression       : xs insertionSort xss
+ term             : xs
+   type           : a                             
+   does not match : ([Int] -> [Int]) -> [a] -> [b]
+ because          : unification would give infinite type
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

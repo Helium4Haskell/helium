@@ -1,5 +1,3 @@
 Compiling parser/LayoutBad3.hs
-(5,1): Syntax error: 
-    unexpected '}'
-    expecting declaration or end of block (based on layout)
-Compilation failed with a syntax error
+(5,1): Close bracket '}' but no open bracket
+Compilation failed with 1 error

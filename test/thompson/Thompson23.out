@@ -1,9 +1,8 @@
 Compiling thompson/Thompson23.hs
-
 (2,16): Type error in variable
-*** Expression     : ==
-*** Type           : Int -> Int -> Bool
-*** Expected type  : [a] -> [b] -> Bool
-*** Probable fix   : use eqString instead
+ expression       : ==
+   type           : Int -> Int -> Bool
+   expected type  : [a] -> [b] -> Bool
+ probable fix     : use eqString instead
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

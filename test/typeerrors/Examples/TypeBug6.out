@@ -1,15 +1,14 @@
 Compiling typeerrors/Examples/TypeBug6.hs
-
 (5,48): Type error in application
-*** Expression     : concat x y
-*** Term           : concat
-*** Type           : [[a]   ] -> [a]                 
-*** Does not match : [String] -> [String] -> [String]
+ expression       : concat x y
+ term             : concat
+   type           : [[a]   ] -> [a]                 
+   does not match : [String] -> [String] -> [String]
 
-(6,16): Type error in infix application
-*** Expression     : x : y
-*** Term           : :
-*** Type           : a        -> [a     ] -> [a       ]
-*** Does not match : [String] -> [String] -> [[String]]
+(6,17): Type error in infix application
+ expression       : x : y
+ operator         : :
+   type           : a        -> [a     ] -> [a       ]
+   does not match : [String] -> [String] -> [[String]]
 
-Compilation failed with 2 type errors
+Compilation failed with 2 errors

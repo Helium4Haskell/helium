@@ -1,5 +1,3 @@
 Compiling thompson/Thompson07.hs
-(3,0): Syntax error: 
-    unexpected end of block (based on layout)
-    expecting ',' or ')'
-Compilation failed with a syntax error
+(1,5): Bracket '(' is never closed
+Compilation failed with 1 error

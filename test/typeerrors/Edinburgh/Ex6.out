@@ -1,10 +1,9 @@
 Compiling typeerrors/Edinburgh/Ex6.hs
-
 (4,17): Type error in application
-*** Expression     : (f (\z -> z)) (f (\u -> \v -> u))
-*** Term           : (f (\z -> z))
-*** Type           : a            
-*** Does not match : (b -> a) -> c
-*** Because        : unification would give infinite type
+ expression       : (f (\z -> z)) (f (\u -> \v -> u))
+ term             : (f (\z -> z))
+   type           : a            
+   does not match : (b -> a) -> c
+ because          : unification would give infinite type
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

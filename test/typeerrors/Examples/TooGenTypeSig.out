@@ -1,9 +1,8 @@
 Compiling typeerrors/Examples/TooGenTypeSig.hs
+(3,14): declared type is too general
+ expression       : f
+   declared type  : a  -> [a ]
+   inferred type  : _1 -> [_1]
+ hint             : try removing the type signature
 
-(3,14): Declared type is too general
-*** Expression     : f
-*** Declared type  : a  -> [a ]
-*** Inferred type  : _1 -> [_1]
-*** Hint           : Try removing the type signature
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

@@ -17,7 +17,8 @@ processArgs args =
     where
         optionDescription =
             [   Option "w" ["no-warnings"] (NoArg NoWarnings) "do not show warnings"
-            ,   Option "b" ["build"] (NoArg Build) "recompile even if files are up to date"
+            ,   Option "b" ["build"] (NoArg BuildOne) "recompile module even if up to date"
+            ,   Option "B" ["build"] (NoArg BuildAll) "recompile all modules even if up to date"
             ,   Option "l" ["no-logging"] (NoArg NoLogging) "do not send log information"
             ,   Option "i" ["dump-information"]     (NoArg DumpInformationForThisModule) "show information about this module"
             ,   Option "I" ["dump-all-information"] (NoArg DumpInformationForAllModules) "show information about all imported modules"
@@ -67,5 +68,6 @@ data Option
     | TypingStrategy
         
     | Verbose --
-    | Build --
+    | BuildOne --
+    | BuildAll
     deriving Eq

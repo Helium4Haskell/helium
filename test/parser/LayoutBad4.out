@@ -2,4 +2,4 @@ Compiling parser/LayoutBad4.hs
 (4,13): Syntax error: 
     unexpected '='
     expecting expression, operator, constructor operator, '::', keyword 'where', ';' or '}'
-Compilation failed with a syntax error
+Compilation failed with 1 error

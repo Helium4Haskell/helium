@@ -137,7 +137,7 @@ checkTypeError synonyms typeError = Just typeError
 makeNotGeneralEnoughTypeError :: Range -> Tree -> TpScheme -> TpScheme -> TypeError
 makeNotGeneralEnoughTypeError range tree tpscheme1 tpscheme2 =
    let [ts1, ts2] = freezeMonosInTypeSchemes [tpscheme1, tpscheme2]
-       oneliner = MessageString "declared type is too general"
+       oneliner = MessageString "Declared type is too general"
        table    = NotGeneralEnoughTable tree ts2 ts1
        hints    = if null (ftv tpscheme1)
                     then []

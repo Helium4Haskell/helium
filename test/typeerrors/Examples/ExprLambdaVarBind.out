@@ -1,9 +1,8 @@
 Compiling typeerrors/Examples/ExprLambdaVarBind.hs
+(3,28): Type error in else branch of conditional
+ expression       : if x then 1 else x
+ term             : x
+   type           : Bool
+   does not match : Int 
 
-(3,11): Type error in else branch of conditional
-*** Expression     : if x then 1 else x
-*** Term           : x
-*** Type           : Bool
-*** Does not match : Int 
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

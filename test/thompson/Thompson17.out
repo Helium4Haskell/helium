@@ -2,4 +2,4 @@ Compiling thompson/Thompson17.hs
 (2,11): Syntax error: 
     unexpected variable 'b'
     expecting ',' or ')'
-Compilation failed with a syntax error
+Compilation failed with 1 error

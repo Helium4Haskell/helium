@@ -124,7 +124,7 @@ showError anError = case anError of
 
    RecursiveTypeSynonyms [string] ->
       ( MessageString ("Recursive type synonym " ++ show (show string))
-      , [ MessageString "use \"data\" to write a recursive data type" ]
+      , [ MessageString "Use \"data\" to write a recursive data type" ]
       )
    RecursiveTypeSynonyms strings ->
       ( MessageString ("Recursive type synonyms " ++
@@ -140,7 +140,7 @@ showError anError = case anError of
       )
 
    PatternDefinesNoVars range ->
-      ( MessageString "left hand side pattern defines no variables", [])
+      ( MessageString "Left hand side pattern defines no variables", [])
 
    WrongFileName fileName moduleName range ->
       ( MessageString ("The file name " ++ show fileName ++ " doesn't match the module name " ++ show moduleName), [])

@@ -2,4 +2,4 @@ Compiling parser/LayoutBad1.hs
 (5,1): Syntax error: 
     unexpected variable 'y'
     expecting end of file
-Compilation failed with a syntax error
+Compilation failed with 1 error

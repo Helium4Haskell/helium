@@ -7,15 +7,13 @@ import UHA_Syntax(Name(..), Range(..), Position(..))
 
 type HParser a = GenParser Token SourcePos a
 
-runHParser :: HParser a -> FilePath -> String -> Bool -> Bool -> Either ParseError a
-runHParser p fname input withEOF withLayout
-  = let tokens = lexer (Pos 1 1) input
-        tokensAfterPossibleLayout = if withLayout then layout tokens else tokens
-    in runParser 
+runHParser :: HParser a -> FilePath -> [Token] -> Bool -> Either ParseError a
+runHParser p fname tokens withEOF =
+    runParser 
         (if withEOF then waitForEOF p else p) 
         (newPos fname 0 0) 
         fname 
-        tokensAfterPossibleLayout
+        tokens
 
 waitForEOF p
   = do{ x <- p
@@ -97,9 +95,9 @@ intUnaryMinusName, floatUnaryMinusName :: String
 intUnaryMinusName = "intUnaryMinus"
 floatUnaryMinusName = "floatUnaryMinus"
 
-lexINSERTED_SEMI     = lexeme LexINSERTED_SEMI
-lexINSERTED_LBRACE   = lexeme LexINSERTED_LBRACE
-lexINSERTED_RBRACE   = lexeme LexINSERTED_RBRACE
+lexINSERTED_SEMI     = lexeme LexInsertedSemicolon
+lexINSERTED_LBRACE   = lexeme LexInsertedOpenBrace
+lexINSERTED_RBRACE   = lexeme LexInsertedCloseBrace
 
 lexLBRACE   = lexeme (LexSpecial '{')
 lexRBRACE   = lexeme (LexSpecial '}')
@@ -186,16 +184,16 @@ withBraces p1 p2 =
         return x
     <|>
     do 
-        lexeme LexINSERTED_LBRACE
+        lexINSERTED_LBRACE
         x <- p2
-        lexeme LexINSERTED_RBRACE
+        lexINSERTED_RBRACE
         return x
     
 semiSepTerm1 p = p `sepEndBy1` lexSEMI
 semiSepTerm  p = p `sepEndBy`  lexSEMI
 
-semiOrInsertedSemiSepTerm1 p = p `sepEndBy1` (lexeme LexINSERTED_SEMI <|> lexSEMI)
-semiOrInsertedSemiSepTerm  p = p `sepEndBy`  (lexeme LexINSERTED_SEMI <|> lexSEMI)
+semiOrInsertedSemiSepTerm1 p = p `sepEndBy1` (lexINSERTED_SEMI <|> lexSEMI)
+semiOrInsertedSemiSepTerm  p = p `sepEndBy`  (lexINSERTED_SEMI <|> lexSEMI)
 
 parens  p     = between lexLPAREN lexRPAREN p
 braces  p     = between lexLBRACE lexRBRACE p
@@ -246,14 +244,12 @@ satisfy pred
   = superTokenPrim 
         showtok 
         nextpos 
-        (\((Pos line col),lex) old -> 
-            setSourceColumn (setSourceLine old line) (col+lexemeLength lex)
-        ) 
+        (\(pos,lex) old -> incSourceColumn pos (lexemeLength lex)) 
         (\(pos,lex) -> pred lex)
   where
     showtok (pos,lex)   = show lex
-    nextpos pos _ (((Pos line col),lex):_)
-       = setSourceColumn (setSourceLine pos line) col
+    nextpos _ _ ((pos,lex):_)
+       = pos
     nextpos pos _ []
        = pos
 

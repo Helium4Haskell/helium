@@ -1,0 +1,3 @@
+Compiling parser/ForgetOpen2.hs
+(1,12): Close bracket ']' but no open bracket
+Compilation failed with 1 error

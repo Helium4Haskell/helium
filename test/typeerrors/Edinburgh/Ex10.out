@@ -1,9 +1,8 @@
 Compiling typeerrors/Edinburgh/Ex10.hs
-
 (3,29): Type error in literal
-*** Expression     : 1.1
-*** Type           : Float
-*** Expected type  : Int  
-*** Probable fix   : use an int literal instead
+ expression       : 1.1
+   type           : Float
+   expected type  : Int  
+ probable fix     : use an int literal instead
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

@@ -1,4 +1,4 @@
 Compiling staticerrors/DirectRecTypeSyn.hs
 (3,6): Recursive type synonym "MyList"
-  HINT - use "data" to write a recursive data type
+  Hint: Use "data" to write a recursive data type
 Compilation failed with 1 error

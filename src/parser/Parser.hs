@@ -1,7 +1,6 @@
 module Parser
-    ( parseModule
+    ( module_, exp_, type_
     , parseOnlyImports
-    , exp_, type_
     ) where
 
 {-
@@ -26,6 +25,8 @@ Verschillen:
 import ParseLibrary hiding (satisfy)
 import Parsec
 import ParsecPos
+import Lexer
+import LayoutRule
 
 import UHA_Syntax
 import UHA_Utils
@@ -34,32 +35,21 @@ import UHA_Range
 import qualified CollectFunctionBindings
 import Utils
 
-parseModule :: String -> IO (Either ParseError Module)
-parseModule fullName = parseFile module_ fullName True
-
 parseOnlyImports :: String -> IO [String]
-parseOnlyImports fullName = do 
-    result <- parseFile onlyImports fullName False
-    case result of
-        Left err -> return []
-        Right imports ->  
-            return ( map stringFromImportDeclaration imports )
-
--- Parse file
-parseFile :: HParser a -> String -> Bool -> IO (Either ParseError a)
-parseFile parser fullName withEOF =
-    do
-        contents <- catch (readFile fullName)
-            (\ioError -> 
-                let message = "Cannot read file " ++ show fullName 
-                           ++ " (" ++ show ioError ++ ")"
-                in throw message)
-
-        case runHParser parser fullName contents withEOF True {- layout -} of
-            Left parseError -> do
-                return (Left parseError)
-            Right module_ ->
-                return (Right module_)
+parseOnlyImports fullName = do
+    contents <- catch (readFile fullName)
+        (\ioError -> 
+            let message = "Unable to read file " ++ show fullName 
+                       ++ " (" ++ show ioError ++ ")"
+            in throw message)
+    
+    return $ case lexer fullName contents of
+        Left _ -> []
+        Right (tokens, _) ->
+            case runHParser onlyImports fullName (layout tokens) False {- no EOF -} of
+                Left _ -> []
+                Right imports -> 
+                    map stringFromImportDeclaration imports
 
 {-
 module  

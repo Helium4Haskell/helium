@@ -1,8 +1,7 @@
 Compiling typeerrors/Examples/PatNegateResult.hs
-
 (4,1): Type error in pattern of function binding
-*** Pattern        : (-3)
-*** Type           : Int 
-*** Does not match : Bool
+ pattern          : (-3)
+   type           : Int 
+   does not match : Bool
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

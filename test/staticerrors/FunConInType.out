@@ -1,4 +1,4 @@
 Compiling staticerrors/FunConInType.hs
 (3,9): Undefined type constructor "Just"
-  HINT - Constructor "Just" cannot be used in a type
+  Hint: Constructor "Just" cannot be used in a type
 Compilation failed with 1 error

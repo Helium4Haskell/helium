@@ -1,221 +1,281 @@
 module Lexer
-    ( Token, Lexeme(..), Pos(..)
-    , lexer
-    , layout
+    ( lexer
+    , Token, Lexeme(..)
     , lexemeLength
-    , charErrors, stringErrors, floatErrors, commentErrors
+    , LexerWarning(..), LexerError(..)
     ) where
 
-import Char
+import LexerMonad
+import LexerMessage
+import LexerToken
+import ParsecPos
 
------------------------------------------------------------
--- The layout rule
------------------------------------------------------------
+import Monad(when)
+import Char(ord)
 
-layout :: [Token] -> [Token]
-layout input@((pos@(Pos _ col), lexeme):_) = optimise $
-    case lexeme of 
-        LexKeyword "module" -> 
-            lay (Pos 0 0) [] input
-        LexSpecial '{' ->
-            lay (Pos 0 0) [] input
-        _ ->
-            (pos, LexINSERTED_LBRACE) : lay (Pos 0 0) [CtxLay col False] input
-layout [] = []
+lexer :: String -> [Char] -> Either LexerError ([Token], [LexerWarning])
+lexer fileName input = runLexerMonad fileName (mainLexer input)
 
-optimise :: [Token] -> [Token]
-optimise (token1@(_, LexINSERTED_LBRACE) : (_, LexINSERTED_SEMI) : ts) =
-    optimise (token1 : ts)
-optimise (t:ts) = 
-    t : optimise ts
-optimise [] = []
+type Lexer = [Char] -> LexerMonad [Token]
 
-data Context 
-    = CtxLay Int Bool {- let? -}
-    | CtxBrace
-    deriving (Eq,Show)
-    
---  position previous token
---            enclosing contexts
-lay :: Pos -> [Context] -> [Token] -> [Token]
+mainLexer :: Lexer
+mainLexer [] = do
+    checkBracketsAtEOF
+    pos <- getPos
+    return [(incSourceLine (setSourceColumn pos 0) 1, LexEOF)]
 
--- If we're in a CtxBrace and we see a '}', we leave that context.
--- If we see another token, we check to see if we need to add a
--- new context.
-lay     prev 
-        cc@(CtxBrace:cs) 
-        input@(t@(pos, lexeme):ts)
-    | lexeme == LexSpecial '}' =
-        t : lay pos cs ts
-    | otherwise = 
-        t : addContext pos cc input 
-
--- If we're in a let layout context, an 'in' can end
--- the context, too.
-lay     _ 
-        (CtxLay _ True:cs) 
-        (t@(pos, LexKeyword "in"):ts) 
-    = (pos, LexINSERTED_RBRACE) : t : lay pos cs ts
-
--- If we're in a layout context and the new token is not on the 
--- same line as the previous, we check the column against the
--- context. If the new token is on the same line, we only need
--- to check whether a context has to be added.
-lay     prev@(Pos prevLine prevCol) 
-        cc@(CtxLay ctxCol _:cs) 
-        input@(t@(pos@(Pos line col), _):ts) 
-    | line > prevLine = -- token on next line?
-        if col > ctxCol then -- indent more => nothing
-            t : addContext pos cc input
-        else if col == ctxCol then -- indent same => insert ';' 
-            (pos, LexINSERTED_SEMI) : t : addContext pos cc input
-        else -- indent less => insert brace, remove context and try again
-            (pos, LexINSERTED_RBRACE) : lay prev cs input
-    | otherwise = -- token on same line
-        t : addContext pos cc input
-
-lay _ _ [] = []
-
-lay     prev 
-        [] 
-        input@(t@(pos, _):_) = 
-    t : addContext pos [] input
-
-addContext :: Pos -> [Context] -> [Token] -> [Token]
-
--- If we see a '{' we add a CtxBrace context
-addContext prev cs (t@(pos, LexSpecial '{'):ts) = 
-    lay prev (CtxBrace : cs) ts
-
--- If we see a 'do', 'where', 'of' or 'let' we add a context
--- and a '{' only if the next token is not a '{'
-addContext prev cs 
-        (t@(pos, LexKeyword keyword):t2@(pos2@(Pos line2 col2), lexeme2):ts) 
-    | keyword `elem` ["do", "where", "of","let"] =
-        if lexeme2 == LexSpecial '{' then
-            lay prev cs (t2:ts)
-        else
-            (pos2, LexINSERTED_LBRACE) :
-            lay prev (CtxLay col2 (keyword == "let") : cs) (t2:ts)
-    | otherwise = 
-        lay prev cs (t2:ts)
-
-addContext prev cs (_:ts) =
-    lay prev cs ts
-
-addContext _ _ [] = []
-
------------------------------------------------------------
--- Lexer
------------------------------------------------------------
-
-data Pos        = Pos !Int !Int
-instance Show Pos where
-   show (Pos l c) = show (l, c)
-   
-type Token      = (Pos,Lexeme)
-
-data Lexeme     = LexUnknown         Char
-                | LexError           String
-                | LexChar            String
-                | LexString          String
-                | LexInt             String
-                | LexFloat           String
-                | LexVar             String
-                | LexVarSym          String
-                | LexCon             String
-                | LexConSym          String
-                
-                | LexKeyword         String
-                | LexResVarSym       String
-                | LexResConSym       String
-                | LexSpecial         Char
-
-                | LexINSERTED_LBRACE -- { inserted because of layout
-                | LexINSERTED_RBRACE -- }
-                | LexINSERTED_SEMI   -- ;
-                
-                | LexEOF
-                deriving Eq
-
-instance Show Lexeme where
-    show x = case x of
-        LexUnknown t        -> "unknown token"          ++ " '" ++ t       : "'"
+mainLexer ('-':'-':cs) 
+    | not (nextCharSatisfy isSymbol rest) = do
+        incPos (2 + length minuses)
+        lexOneLineComment rest
+    where
+        (minuses, rest) = span (== '-') cs
         
-        LexError   e        -> e
-        LexChar    c        -> "character literal"      ++ " '" ++ c      ++ "'"
-        LexString  s        -> "string literal"         ++ " \""++ s      ++ "\""
-        LexInt     i        -> "integer literal"        ++ " '" ++ i      ++ "'"
-        LexFloat   f        -> "floating-point literal" ++ " '" ++ f      ++ "'"
-        LexVar     n        -> "variable"               ++ " '" ++ n      ++ "'"
-        LexVarSym  o        -> "operator"               ++ " '" ++ o      ++ "'"
-        LexCon     c        -> "constructor"            ++ " '" ++ c      ++ "'"
-        LexConSym  o        -> "constructor operator"   ++ " '" ++ o      ++ "'"
+mainLexer ('{':'-':cs) = do 
+    pos <- getPos 
+    incPos 2
+    lexMultiLineComment [pos] 0 cs 
         
-        LexKeyword kwd      -> "keyword '" ++ kwd ++ "'"
-        LexResVarSym s      -> "'" ++ s ++ "'"
-        LexResConSym s      -> "'" ++ s ++ "'"
-        LexSpecial c        -> "'" ++ [c] ++ "'"
+mainLexer input@('\'':_) = 
+    lexChar input
+
+mainLexer input@('"':_) = 
+    lexString input
+
+-- warn if we see something like ".2"
+mainLexer ('.':c:cs) 
+    | myIsDigit c = do
+        pos <- getPos
+        lexerWarning (LooksLikeFloatNoDigits (takeWhile myIsDigit (c:cs))) pos
+        returnToken (LexVarSym ".") 1 mainLexer (c:cs)
         
-        LexINSERTED_LBRACE  -> "inserted '{'"
-        LexINSERTED_RBRACE  -> "end of block (based on layout)"
-        LexINSERTED_SEMI    -> "next in block (based on layout)"
-                        
-        LexEOF              -> "end of file"
-        
-        _                   -> "unknown"
-
-lexemeLength :: Lexeme -> Int
-lexemeLength l = case l of
-    LexUnknown         _     -> 1
-    LexSpecial         _     -> 1
-    LexChar            s     -> length s + 2 -- count the quotes, too
-    LexString          s     -> length s + 2
-    LexInt             s     -> length s
-    LexFloat           s     -> length s
-    LexVar             s     -> length s
-    LexVarSym          s     -> length s
-    LexCon             s     -> length s
-    LexConSym          s     -> length s
-    LexKeyword         s     -> length s
-    LexResVarSym       s     -> length s
-    LexResConSym       s     -> length s
-    _                        -> 0
-    
-lexer :: Pos -> [Char] -> [Token]
-lexer (Pos ln col) []           = [((Pos (ln+1) 0), LexEOF)]
-
-lexer pos ('-':'-':cs)          = nextinc lexeol pos 2 cs
-lexer pos ('{':'-':cs)          = nextinc (lexComment [pos] 0) pos 2 cs
-
-lexer pos input@('\'':cs)       = lexChar   pos input
-lexer pos input@('"':cs)        = lexString pos input
-
-lexer pos input@(c:cs) 
-    | isLower c || c == '_' = -- variable or keyword
-        lexALot pos input isLetter LexVar LexKeyword keywords
-    | isSpace c =
-        next lexer pos c cs        
-    | isUpper c = -- constructor
-        lexCon          pos input
+mainLexer input@(c:cs) 
+    | myIsLower c || c == '_' = -- variable or keyword
+        lexName isLetter LexVar LexKeyword keywords input
+    | myIsSpace c = do
+        when (c == '\t') $ do
+            pos <- getPos
+            lexerWarning TabCharacter pos
+        nextPos c 
+        mainLexer cs        
+    | myIsUpper c = -- constructor
+        lexName isLetter LexCon undefined ["Piep"] input
     | c == ':' = -- constructor operator
-        lexALot pos input isSymbol LexConSym LexResConSym reservedConSyms
+        lexName isSymbol LexConSym LexResConSym reservedConSyms input
     | isSymbol c = -- variable operator
-        lexALot pos input isSymbol LexVarSym LexResVarSym reservedVarSyms
-    | c `elem` specials = 
-        (pos, LexSpecial c) : nextinc lexer pos 1 cs
-    | isDigit c = -- number
-        lexIntFloat pos input
-    | otherwise =
-        (pos, LexUnknown c) : nextinc lexer pos 1 cs
-    
-lexALot pos cs predicate normal reserved reserveds =
-    let (name, rest) = span predicate cs
-        token = if name `elem` reserveds
-                then reserved name 
-                else normal   name
-    in (pos, token) : nextinc lexer pos (length name) rest
+        lexName isSymbol LexVarSym LexResVarSym reservedVarSyms input
+    | c `elem` "([{" = do
+        openBracket c
+        returnToken (LexSpecial c) 1 mainLexer cs
+    | c `elem` ")]}" = do
+        closeBracket c
+        returnToken (LexSpecial c) 1 mainLexer cs
+    | c `elem` specialsWithoutBrackets = 
+        returnToken (LexSpecial c) 1 mainLexer cs
+    | myIsDigit c = -- number
+        lexIntFloat input
+    | otherwise = do
+        pos <- getPos
+        lexerError (UnexpectedChar c) pos
 
+lexName :: (Char -> Bool) -> (String -> Lexeme) -> 
+                (String -> Lexeme) -> [String] -> Lexer
+lexName predicate normal reserved reserveds cs = do
+    let (name, rest) = span predicate cs
+        lexeme = if name `elem` reserveds
+                 then reserved name 
+                 else normal   name
+    returnToken lexeme (length name) mainLexer rest
+
+-----------------------------------------------------------
+-- Numbers
+-----------------------------------------------------------
+
+lexIntFloat :: Lexer
+lexIntFloat input = do
+    startPos <- getPos
+    let (digits, rest) = span myIsDigit input
+    case rest of
+        ('.':rest2@(next:_)) 
+            | myIsDigit next -> do
+                let (fraction, rest3) = span myIsDigit rest2
+                    prefix = digits ++ "." ++ fraction
+                lexMaybeExponent prefix LexFloat rest3
+            | next /= '.' -> do
+                pos <- getPos
+                lexerWarning (LooksLikeFloatNoFraction digits) pos
+                lexMaybeExponent digits LexInt rest
+        _ ->
+            lexMaybeExponent digits LexInt rest
+
+lexMaybeExponent :: String -> (String -> Lexeme) -> Lexer
+lexMaybeExponent prefix lexemeFun input = 
+    case input of
+        ('e':'+':rest) ->
+            lexExponent (prefix ++ "e+") rest
+        ('E':'+':rest) ->
+            lexExponent (prefix ++ "E+") rest
+        ('e':'-':rest) ->
+            lexExponent (prefix ++ "e-") rest
+        ('E':'-':rest) ->
+            lexExponent (prefix ++ "E-") rest
+        ('e':rest) ->
+            lexExponent (prefix ++ "e") rest
+        ('E':rest) ->
+            lexExponent (prefix ++ "E") rest
+        _ -> do
+            returnToken (lexemeFun prefix) (length prefix) mainLexer input
+
+lexExponent :: String -> Lexer
+lexExponent prefix input = do
+    startPos <- getPos
+    let posAtExponent = addPos (length prefix) startPos
+        (exponent, rest) = span myIsDigit input
+    if null exponent then
+        lexerError MissingExponentDigits posAtExponent
+     else do
+        let text = prefix ++ exponent
+        returnToken (LexFloat text) (length text) mainLexer rest
+
+-----------------------------------------------------------
+-- Characters
+-----------------------------------------------------------
+
+lexChar :: Lexer
+lexChar input = do 
+    pos <- getPos
+    case input of
+        '\'':'\\':c:'\'':cs -> 
+            if c `elem` escapeChars then    
+                returnToken (LexChar ['\\',c]) 4 mainLexer cs
+            else
+                lexerError IllegalEscapeInChar pos
+        '\'':'\'':cs ->
+            lexerError EmptyChar pos
+        '\'':c:'\'':cs ->
+            if ord c >= 32 && ord c <= 126 then 
+                returnToken (LexChar [c]) 3 mainLexer cs
+            else
+                lexerError IllegalCharInChar pos
+        ('\'':c:cs) ->
+            lexerError NonTerminatedChar pos
+        ['\''] ->
+            lexerError EOFInChar pos
+
+lexString :: Lexer
+lexString ('"':cs) = 
+    lexStringChar "" cs
+
+lexStringChar :: String -> Lexer
+lexStringChar revSoFar input = do
+    startPos <- getPos
+    let curPos = addPos (length revSoFar + 1) startPos
+    case input of
+        [] -> 
+            lexerError EOFInString startPos
+        '\\':c:cs ->
+            if c `elem` escapeChars then do
+                lexStringChar (c:'\\':revSoFar) cs
+            else
+                lexerError IllegalEscapeInString curPos
+        '"':cs ->
+            returnToken (LexString (reverse revSoFar)) 
+                        (length revSoFar + 2) mainLexer cs
+        '\n':cs ->
+            lexerError NewLineInString startPos
+        c:cs ->
+            if ord c >= 32 && ord c <= 126 then
+                lexStringChar (c:revSoFar) cs
+            else
+                lexerError IllegalCharInString curPos
+                
+nextCharSatisfy :: (Char -> Bool) -> String -> Bool
+nextCharSatisfy p [] = False
+nextCharSatisfy p (c:cs) = p c
+
+returnToken :: Lexeme -> Int -> Lexer -> Lexer
+returnToken lexeme width continue input = do
+    pos <- getPos
+    incPos width
+    let token = (pos, lexeme) 
+    tokens <- continue input
+    return (token:tokens)
+       
+-----------------------------------------------------------
+-- Comment
+-----------------------------------------------------------
+
+lexOneLineComment :: Lexer
+lexOneLineComment input =
+    case input of
+        [] -> mainLexer []
+        ('\n':cs) -> do
+            nextPos '\n'
+            mainLexer cs
+        (c:cs) -> do
+            nextPos c
+            lexOneLineComment cs
+
+lexMultiLineComment :: [SourcePos] -> Int -> Lexer
+lexMultiLineComment starts level input =
+    case input of 
+        '-':'}':cs 
+            | level == 0 -> do
+                incPos 2
+                mainLexer cs
+            | otherwise ->  do
+                incPos 2
+                lexMultiLineComment (tail starts) (level - 1) cs
+        '{':'-':cs -> do
+            pos <- getPos
+            incPos 2
+            lexMultiLineComment (pos:starts) (level+1) cs
+        c:cs -> do
+            nextPos c
+            lexMultiLineComment starts level cs
+        [] -> 
+            lexerError UnterminatedComment (head starts)
+            -- at end-of-file show the most recently opened comment
+
+-----------------------------------------------------------
+-- Utility functions
+-----------------------------------------------------------
+
+isSymbol :: Char -> Bool
+isSymbol c = elem c symbols
+                                  
+isLetter :: Char -> Bool
+isLetter '\'' = True
+isLetter '_'  = True
+isLetter c    = myIsAlphaNum c
+
+-- write our own isLower.. so that we don't accept funny symbols
+myIsLower :: Char -> Bool
+myIsLower c = c >= 'a' && c <= 'z'
+
+myIsUpper :: Char -> Bool
+myIsUpper c = c >= 'A' && c <= 'Z'
+
+myIsDigit :: Char -> Bool
+myIsDigit c = c >= '0' && c <= '9'
+
+myIsAlphaNum :: Char -> Bool
+myIsAlphaNum c = myIsLower c || myIsUpper c || myIsDigit c
+
+myIsSpace :: Char -> Bool
+myIsSpace c = c == ' ' || c == '\n' || c == '\t' || c == '\r'
+
+-----------------------------------------------------------
+-- Constants
+-----------------------------------------------------------
+
+escapeChars :: String
+escapeChars = "\\nabfnrtv\"'"
+
+symbols :: String
+symbols = "!#$%&*+./<=>?@^|-~:\\"
+
+keywords :: [String]
 keywords = 
     [ "let", "in", "do", "where", "case", "of", "if"
     , "then", "else", "data", "type", "module", "import"
@@ -224,179 +284,18 @@ keywords =
     , "phase", "constraints" -- Bastiaan
     ]
 
+reservedConSyms :: [String]
 reservedConSyms =
     [ "::"
     , ":" -- Bastiaan
     ]
 
+reservedVarSyms :: [String]
 reservedVarSyms =
     [ "=>", "->", "<-", "..", "-", "-.", "@", "=", "\\", "|"
     , "==" -- Bastiaan
     ]
 
-specials = 
-    ",`;{}()[]" 
-    
-lexCon pos cs = 
-    let (name, rest) = span isLetter cs
-    in (pos, LexCon name) : nextinc lexer pos (length name) rest
-
-next f pos c cs                 = let pos' = newpos pos c  in seq pos' (f pos' cs)
-nextinc f pos i cs              = let pos' = incpos pos i  in seq pos' (f pos' cs)
-
-foldl' f x []                   = x
-foldl' f x (y:ys)               = let z = f x y  in seq z (foldl' f z ys)
-
------------------------------------------------------------
--- Numbers
------------------------------------------------------------
-
-lexIntFloat pos input = 
-    let (digits, rest) = span isDigit input
-        posBehindDigits = incpos pos (length digits)
-    in case rest of
-        ('.':rest2@(next:_)) | isDigit next ->
-            let (fraction, rest3) = span isDigit rest2
-                posBehindFraction = incpos posBehindDigits (length fraction + 1)
-                prefix = digits ++ "." ++ fraction
-            in lexMaybeExponent pos prefix LexFloat rest3
-        _ ->
-            lexMaybeExponent pos digits LexInt rest
-
-lexMaybeExponent pos prefix token input = 
-    case input of
-        ('e':'+':rest) ->
-            lexExponent pos (prefix ++ "e+") rest
-        ('E':'+':rest) ->
-            lexExponent pos (prefix ++ "E+") rest
-        ('e':'-':rest) ->
-            lexExponent pos (prefix ++ "e-") rest
-        ('E':'-':rest) ->
-            lexExponent pos (prefix ++ "E-") rest
-        ('e':rest) ->
-            lexExponent pos (prefix ++ "e") rest
-        ('E':rest) ->
-            lexExponent pos (prefix ++ "E") rest
-        _ ->
-            (pos, token prefix) :
-            lexer posBehindPrefix input
-    where
-        posBehindPrefix = incpos pos (length prefix)
-
-lexExponent startPos prefix input =
-    let (exponent, rest) = span isDigit input
-        posAtExponent = incpos startPos (length prefix)
-        posBehindExponent = incpos posAtExponent (length exponent)
-    in if null exponent then
-            (posAtExponent, LexError missingExponentDigits) : 
-            lexer posAtExponent input
-       else
-            (startPos, LexFloat (prefix ++ exponent)) :
-            lexer posBehindExponent rest
-
------------------------------------------------------------
--- Characters
------------------------------------------------------------
-
-lexChar pos ('\'':'\\':c:'\'':cs) = 
-    if c `elem` escapeChars then    
-        (pos, LexChar ['\\',c]) : lexer (incpos pos 4) cs
-    else
-        (pos, LexError illegalEscapeInChar) : lexer (incpos pos 4) cs
-lexChar pos ('\'':'\'':cs) = 
-    (pos, LexError emptyChar) : 
-    lexer (incpos pos 2) cs
-lexChar pos ('\'':c:'\'':cs) =
-    if ord c >= 32 && ord c <= 126 then 
-        (pos, LexChar [c]) : lexer (incpos pos 3) cs
-    else
-        (pos, LexError illegalCharInChar) : lexer (incpos pos 3) cs
-lexChar pos ('\'':c:cs) =
-    (pos, LexError nonTerminatedChar) : lexer (incpos pos 2) cs
-lexChar pos ['\''] = 
-    (pos, LexError eofInChar) : lexer pos []
-
-lexString startPos ('"':cs) = lexStringChar (incpos startPos 1) cs ""
-  where
-    lexStringChar pos [] s = 
-        (pos, LexError eofInString) : lexer pos []
-    lexStringChar pos ('\\':c:cs) s =
-        if c `elem` escapeChars then
-            lexStringChar (incpos pos 2) cs (c:'\\':s)
-        else
-            (pos, LexError illegalEscapeInString) : 
-            lexStringChar (incpos pos 2) cs s
-    lexStringChar pos ('"':cs) s =
-        (startPos, LexString (reverse s)) : lexer (incpos pos 1) cs
-    lexStringChar pos ('\n':cs) s =
-        (pos, LexError newlineInString) : 
-        lexer (newpos pos '\n') cs
-    lexStringChar pos (c:cs) s =
-        if ord c >= 32 && ord c <= 126 then
-            lexStringChar (incpos pos 1) cs (c:s)
-        else
-            (pos, LexError illegalCharInString) : 
-            lexStringChar (incpos pos 1) cs s
-        
------------------------------------------------------------
--- Symbols
------------------------------------------------------------
-
-isSymbol c                      = elem c "!#$%&*+./<=>?@^|-~:\\"
-                                  
-isLetter '\''                   = True
-isLetter '_'                    = True
-isLetter c                      = isAlphaNum c
-
-escapeChars = "\\nabfnrtv\"'"
-                                  
------------------------------------------------------------
--- Comment
------------------------------------------------------------
-
-lexeol :: Pos -> String -> [Token]
-lexeol pos ('\n':cs)    = next lexer pos '\n' cs
-lexeol pos (c:cs)       = next lexeol pos c cs
-lexeol pos []           = lexer pos []
-
-lexComment :: [Pos] -> Int -> Pos -> String -> [Token]
-lexComment starts level pos ('-':'}':cs)   
-    | level == 0    = nextinc lexer pos 2 cs
-    | otherwise     = nextinc (lexComment (tail starts) (level - 1)) pos 2 cs
-lexComment starts level pos ('{':'-':cs) = 
-    nextinc (lexComment (pos:starts) (level+1)) pos 2 cs
-lexComment starts level pos (c:cs) = 
-    next (lexComment starts level) pos c cs
-lexComment starts level pos [] 
-    = (head starts, LexError unterminatedComment) : lexer pos []
--- at end-of-file show the most recently opened comment
-
------------------------------------------------------------
--- Positions
------------------------------------------------------------
-
-incpos (Pos line col) i     = Pos line (col+i)
-
-newpos (Pos line col) '\n'  = Pos (line + 1) 1
-newpos (Pos line col) '\t'  = Pos line (((((col-1) `div` 8)+1)*8)+1)
-newpos (Pos line col) c     = Pos line (col+1)
-
-nonTerminatedChar     = "non-terminated character literal"
-illegalCharInChar     = "illegal character in character literal"
-emptyChar             = "empty character literal"
-eofInChar             = "end-of-file in character literal"
-illegalEscapeInChar   = "illegal escape sequence in character literal"
-
-newlineInString       = "newline in string literal (expecting \")"
-illegalCharInString   = "illegal character in string literal"
-eofInString           = "end-of-file in string literal"
-illegalEscapeInString = "illegal escape sequence in string literal"
-
-missingExponentDigits = "missing digits in exponent"
-
-unterminatedComment   = "unterminated comment"
-
-charErrors    = [ nonTerminatedChar, illegalCharInChar, emptyChar, eofInChar ]
-stringErrors  = [ newlineInString, illegalCharInString, eofInString ]
-floatErrors   = [ missingExponentDigits ]
-commentErrors = [ unterminatedComment ]
+specialsWithoutBrackets :: String
+specialsWithoutBrackets = 
+    ",`;" 

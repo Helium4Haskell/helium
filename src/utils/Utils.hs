@@ -65,32 +65,22 @@ lastIndexOf x xs =
         Nothing     ->  Nothing
         Just idx    ->  Just (length xs - idx - 1)
    
--- extractPath "dir\dir2\test" -> ("dir\dir2", "test")
--- extractPath "test" -> (".", "test")
--- supports both windows and unix (and even mixed!) paths
-extractPath filePath =
-    case (lastIndexOf '\\' filePath, lastIndexOf '/' filePath) of 
-        (Nothing, Nothing) -> (".", filePath)
-        (Nothing, Just i ) -> (take i filePath, drop (i+1) filePath)
-        (Just i , Nothing) -> (take i filePath, drop (i+1) filePath)
-        (Just i , Just j )
-            | i >= j       -> (take i filePath, drop (i+1) filePath)
-            | otherwise    -> (take j filePath, drop (j+1) filePath)
-
-splitFileName :: String -> (String, String)
-splitFileName filename =
-    case lastIndexOf '.' filename of
-        Nothing     ->  (filename, "")
-        Just idx    ->  let (name, _:ext) = splitAt idx filename in (name, ext)
-
+combinePathAndFile :: String -> String -> String
+combinePathAndFile path file =
+    case path of 
+        "" -> file
+        _  -> path ++ "/" ++ file
+        
+-- Split file name
+-- e.g. /docs/haskell/Hello.hs =>
+--   filePath = /docs/haskell  baseName = Hello  ext = hs
 splitFilePath :: String -> (String, String, String)
-splitFilePath filePath =
-    let
-        (path    , fileName) = extractPath filePath
-        (baseName, ext     ) = splitFileName fileName
-    in
-        (path, baseName, ext)
-
+splitFilePath filePath = 
+    let slashes = "\\/"
+        (revFileName, revPath) = span (`notElem` slashes) (reverse filePath)
+        (revExt, revBaseName)  = span (/= '.') revFileName
+    in (reverse revPath, reverse (dropWhile (== '.') revBaseName), reverse revExt)
+    
 -- unsafePerformIO only to be able to make an error report 
 -- in case of an internal error
 refToCurrentFileName :: IORef String

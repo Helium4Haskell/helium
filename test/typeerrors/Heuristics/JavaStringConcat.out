@@ -1,9 +1,8 @@
 Compiling typeerrors/Heuristics/JavaStringConcat.hs
-
 (3,14): Type error in variable
-*** Expression     : +
-*** Type           : Int    -> Int    -> Int
-*** Expected type  : String -> String -> a  
-*** Probable fix   : use ++ instead
+ expression       : +
+   type           : Int    -> Int    -> Int
+   expected type  : String -> String -> a  
+ probable fix     : use ++ instead
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

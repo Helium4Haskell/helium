@@ -1,9 +1,8 @@
 Compiling typeerrors/Examples/TypeBug1.hs
+(4,5): Type error in right hand side
+ term             : f
+   type           : a -> a        -> [(a, b)] -> Bool
+   does not match : c -> [(c, d)] -> Bool            
+ because          : unification would give infinite type
 
-(4,1): Type error in right hand side
-*** Term           : f
-*** Type           : a -> a        -> [(a, b)] -> Bool
-*** Does not match : c -> [(c, d)] -> Bool            
-*** Because        : unification would give infinite type
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

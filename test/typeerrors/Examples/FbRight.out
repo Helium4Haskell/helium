@@ -1,8 +1,7 @@
 Compiling typeerrors/Examples/FbRight.hs
+(4,5): Type error in right hand side
+ term             : True
+   type           : Bool  
+   does not match : String
 
-(4,1): Type error in right hand side
-*** Term           : True
-*** Type           : Bool  
-*** Does not match : String
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

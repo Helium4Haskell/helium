@@ -1,9 +1,10 @@
 Compiling thompson/Thompson36.hs
+(1,15): Type error in application
+ expression       : concat [1, 2, 3]
+ function         : concat
+   type           : [[a]] -> [a]
+ 1st argument     : [1, 2, 3]
+   type           : [Int]
+   does not match : [[a]]
 
-(1,8): Type error in application
-*** Expression     : concat [1,2,3]
-*** Term           : [1,2,3]
-*** Type           : [Int]
-*** Does not match : [[a]]
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

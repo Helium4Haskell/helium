@@ -1,24 +1,23 @@
 Compiling typeerrors/Examples/LotsOfTypeErrors.hs
+(3,14): Type error in element of list
+ expression       : [True, 1, 2, 3, 4, "hello world!"]
+ term             : True
+   type           : Bool
+   does not match : Int 
 
-(3,13): Type error in element of list
-*** Expression     : [True,1,2,3,4,"hello world!"]
-*** Term           : "hello world!"
-*** Type           : String
-*** Does not match : Int   
-
-(3,13): Type error in element of list
-*** Expression     : [True,1,2,3,4,"hello world!"]
-*** Term           : True
-*** Type           : Bool
-*** Does not match : Int 
+(3,27): Type error in element of list
+ expression       : [True, 1, 2, 3, 4, "hello world!"]
+ term             : "hello world!"
+   type           : String
+   does not match : Int   
 
 (11,20): Type error in application
-*** Expression     : "hello" "world"
-*** Term           : "hello"
-*** Type           : String     
-*** Does not match : String -> a
-*** Because        : it is not a function
+ expression       : "hello" "world"
+ term             : "hello"
+   type           : String     
+   does not match : String -> a
+ because          : it is not a function
 
 (...)
 
-Compilation failed with 5 type errors
+Compilation failed with 5 errors

@@ -36,7 +36,7 @@ logger logcode maybeSources | not loggerENABLED = return ()
             Nothing               -> return (loggerNOPROGRAMS)
             Just (imports,hsFile) -> 
                let f name = do program <- readFile name                                                        
-                               return (  snd (extractPath name) 
+                               return (  baseNameOf name
                                       ++ "\n" 
                                       ++ program                
                                       ++ loggerSPLITSTRING 
@@ -72,28 +72,16 @@ sendLogString message = withSocketsDo (rec 0)
 
 {- from Utils.hs.....because of the import-dependencies, it is not possible to import 
    this function directly -}
-   
--- extractPath "dir\dir2\test" -> ("dir\dir2", "test")
--- extractPath "test" -> (".", "test")
--- supports both windows and unix (and even mixed!) paths
-extractPath :: String -> (String,String)
-extractPath filePath =
-    case (lastIndexOf '\\' filePath, lastIndexOf '/' filePath) of 
-        (Nothing, Nothing) -> (".", filePath)
-        (Nothing, Just i ) -> (take i filePath, drop (i+1) filePath)
-        (Just i , Nothing) -> (take i filePath, drop (i+1) filePath)
-        (Just i , Just j )
-            | i >= j       -> (take i filePath, drop (i+1) filePath)
-            | otherwise    -> (take j filePath, drop (j+1) filePath)
-            
-   where {--- Returns the index of the last occurrence of the given element in the given list -}
-     lastIndexOf :: Eq a => a -> [a] -> Maybe Int
-     lastIndexOf x xs =
-        case elemIndex x (reverse xs) of       
-            Nothing     ->  Nothing
-            Just idx    ->  Just (length xs - idx - 1)            
 
+splitFilePath :: String -> (String, String, String)
+splitFilePath filePath = 
+    let slashes = "\\/"
+        (revFileName, revPath) = span (`notElem` slashes) (reverse filePath)
+        (revExt, revBaseName)  = span (/= '.') revFileName
+    in (reverse revPath, reverse (dropWhile (== '.') revBaseName), reverse revExt)
 
+baseNameOf :: String -> String
+baseNameOf fullName = let (_, baseName, _) = splitFilePath fullName in baseName
 
 {-
 sendToAndFlush :: Hostname      -- Hostname

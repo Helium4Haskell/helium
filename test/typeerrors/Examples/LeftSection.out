@@ -1,8 +1,8 @@
 Compiling typeerrors/Examples/LeftSection.hs
+(4,8): Type error in application
+ expression       : map (+ 3)
+ term             : map
+   type           : (a   -> b  ) -> [a   ] -> [b  ]
+   does not match : (Int -> Int) -> [Bool] -> [Int]
 
-(4,12): Type error in left section
-*** Expression     : (+ 3)
-*** Type           : Int  -> Int
-*** Does not match : Bool -> Int
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

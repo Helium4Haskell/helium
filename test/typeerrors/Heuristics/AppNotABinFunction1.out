@@ -1,10 +1,9 @@
 Compiling typeerrors/Heuristics/AppNotABinFunction1.hs
+(6,11): Type error in infix application
+ expression       : 3 `plusEen` 5
+ operator         : `plusEen`
+   type           : Int -> Int     
+   does not match : Int -> Int -> a
+ because          : it is not a binary function
 
-(6,8): Type error in infix application
-*** Expression     : 3 `plusEen` 5
-*** Term           : plusEen
-*** Type           : Int -> Int     
-*** Does not match : Int -> Int -> a
-*** Because        : it is not a binary function
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

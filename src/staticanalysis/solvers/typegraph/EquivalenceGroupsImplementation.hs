@@ -108,7 +108,7 @@ instance TypeGraphConstraintInfo info => TypeGraph EquivalenceGroups info where
                                                  let f path = [(EdgeID p1 v1,Child cnr)] 
                                                            ++ path 
                                                            ++ [(EdgeID p2 v2,Child cnr)]
-                                                 return (take i [ path ++ path' | path <- list, path' <- map f parentspaths ],ceiling (fromInt i / fromInt (length parentspaths)) :: Int)
+                                                 return (take i [ path ++ path' | path <- list, path' <- map f parentspaths ],ceiling (fromIntegral i / fromIntegral (length parentspaths)) :: Int)
                          _                 -> return ([ path ++ [tuple] | path <- list ],i)
    
    -- check all the signaled errors whether they are still inconsistent.       

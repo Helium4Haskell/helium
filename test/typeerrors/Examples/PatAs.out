@@ -1,9 +1,8 @@
 Compiling typeerrors/Examples/PatAs.hs
-
 (4,2): Type error in as pattern
-*** Expression     : a@[y]
-*** Term           : a
-*** Type           : Int
-*** Does not match : [a]
+ expression       : a@[y]
+ term             : a
+   type           : Int
+   does not match : [a]
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

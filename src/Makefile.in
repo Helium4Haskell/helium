@@ -62,7 +62,9 @@ AG_OPTS = -mscfr
 PARSER	= \
 	parser/CollectFunctionBindings.hs parser/OperatorTable.hs \
 	parser/Parser.hs parser/ResolveOperators.hs parser/Lexer.hs \
-	parser/ParseLibrary.hs parser/ParseMessage.hs
+	parser/ParseLibrary.hs parser/ParseMessage.hs \
+	parser/LexerMonad.hs parser/LexerMessage.hs parser/LayoutRule.hs \
+	parser/LexerToken.hs
 
 MODULESYSTEM = \
 	modulesystem/ImportEnvironment.hs \
@@ -129,7 +131,10 @@ UTILS = \
 	utils/Similarity.hs 
 
 MAINFILES = \
-	main/Main.hs main/Version.hs main/Args.hs main/Compile.hs
+	main/Main.hs main/Version.hs main/Args.hs main/Compile.hs \
+	main/PhaseLexer.hs main/PhaseParser.hs main/PhaseImport.hs main/PhaseResolveOperators.hs \
+	main/PhaseStaticChecks.hs main/PhaseTypingStrategies.hs main/PhaseTypeInferencer.hs \
+	main/PhaseDesugarer.hs main/PhaseCodeGenerator.hs main/CompileUtils.hs
 
 # Parsec sources
 

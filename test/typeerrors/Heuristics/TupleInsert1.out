@@ -1,9 +1,8 @@
 Compiling typeerrors/Heuristics/TupleInsert1.hs
-
 (7,19): Type error in tuple
-*** Expression     : (5,3)
-*** Type           : (Int, Int)      
-*** Expected type  : (Bool, Int, Int)
-*** Probable fix   : insert a first element to the tuple
+ expression       : (5, 3)
+   type           : (Int, Int)      
+   expected type  : (Bool, Int, Int)
+ probable fix     : insert a first element to the tuple
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

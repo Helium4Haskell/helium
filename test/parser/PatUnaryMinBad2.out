@@ -2,4 +2,4 @@ Compiling parser/PatUnaryMinBad2.hs
 (1,6): Syntax error: 
     unexpected constructor 'Nil'
     expecting floating-point literal
-Compilation failed with a syntax error
+Compilation failed with 1 error

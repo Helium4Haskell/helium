@@ -1,14 +1,13 @@
 Compiling typeerrors/Examples/StatVarBind.hs
-
-(3,10): Type error in generator
-*** Expression     : x<-m
-*** Term           : m
-*** Type           : Bool   
-*** Does not match : IO Bool
+(3,15): Type error in generator
+ expression       : x <- m
+ term             : m
+   type           : Bool   
+   does not match : IO Bool
 
 (4,10): Type error in generator
-*** Expression     : if x then m else x
-*** Type           : Bool
-*** Does not match : IO a
+ expression       : if x then m else x
+   type           : Bool
+   does not match : IO a
 
-Compilation failed with 2 type errors
+Compilation failed with 2 errors

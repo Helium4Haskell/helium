@@ -2,4 +2,4 @@ Compiling parser/PatUnaryMinBad.hs
 (1,5): Syntax error: 
     unexpected variable 'x'
     expecting integer literal
-Compilation failed with a syntax error
+Compilation failed with 1 error

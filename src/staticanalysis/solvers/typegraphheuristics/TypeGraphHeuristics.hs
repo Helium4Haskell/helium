@@ -27,7 +27,6 @@ import SimilarFunctionTable ( similarFunctionTable )
 import UHA_Utils            ( nameFromString )
 import UHA_Syntax           ( Literal(..), Range(..), Position(..) )
 import Monad                ( unless, when, filterM )
-import Int                  ( fromInt )
 import Maybe                ( catMaybes, isJust )
 import InfiniteTypeHeuristic  -- (infiniteTypeHeuristic, safeMaximumBy, safeMinimumBy)
  
@@ -152,14 +151,14 @@ orderOfUnification :: TypeGraphConstraintInfo info => EdgeHeuristic info
 orderOfUnification edge info =
    case getPosition info of
       Nothing       -> return NotApplicableHeuristic
-      Just position -> let modifier = 1 + fromInt position / 10000
+      Just position -> let modifier = 1 + fromIntegral position / 10000
                        in return (ModifierHeuristic modifier ("position="++show position))
 
 trustFactorOfConstraint :: TypeGraphConstraintInfo info => EdgeHeuristic info
 trustFactorOfConstraint edge info =
    case getTrustFactor info of
       Nothing    -> return NotApplicableHeuristic
-      Just trust -> let modifier = 1 / fromInt trust
+      Just trust -> let modifier = 1 / fromIntegral trust
                     in return (ModifierHeuristic modifier ("trustfactor="++show trust))
 
 isFolkloreEdge :: TypeGraphConstraintInfo info => EdgeHeuristic info

@@ -1,9 +1,10 @@
 Compiling typeerrors/Heuristics/TupleSize3.hs
+(3,12): Type error in application
+ expression       : fst (1, 2, "hello", "world")
+ function         : fst
+   type           : (a, b) -> a
+ 1st argument     : (1, 2, "hello", "world")
+   type           : (Int, Int, String, String)
+   does not match : (a, b)                    
 
-(3,8): Type error in application
-*** Expression     : fst (1,2,"hello","world")
-*** Term           : (1,2,"hello","world")
-*** Type           : (Int, Int, String, String)
-*** Does not match : (a, b)                    
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

@@ -9,10 +9,11 @@
 
 module Warnings where
 
+import UHA_Range    (getNameRange, showRange)
 import UHA_Syntax
+import UHA_Utils    (showNameAsVariable)
 import Types
 import Messages
-import UHA_Range    (getNameRange, showRange)
 import Utils        (internalError)
 
 -------------------------------------------------------------
@@ -39,7 +40,7 @@ showWarning :: Warning -> MessageBlock
 showWarning warning = case warning of
 
    NoTypeDef name tpscheme topLevel ->
-      MessageString ("Missing type signature: " ++ show name ++ " :: "++show tpscheme)
+      MessageString ("Missing type signature: " ++ showNameAsVariable name ++ " :: "++show tpscheme)
 
    Shadow shadowee shadower ->
       MessageString ("Variable " ++ show (show shadower) ++

@@ -13,6 +13,7 @@ import qualified ResolveOperators
 import Parser
 import Parsec
 import ParseLibrary
+import Lexer
 import OperatorTable
 
 {-
@@ -31,9 +32,9 @@ tmp = unsafePerformIO
          let Right ts = parseTypingStrategies [] "" input 
          return ts)-}
 
-parseTypingStrategies :: OperatorTable -> String -> String -> Either ParseError TypingStrategies
-parseTypingStrategies operatorTable filename input = 
-   runHParser (many parseTypingStrategy) filename input True {- wait for EOF -} False {- no layout rule -}
+parseTypingStrategies :: OperatorTable -> String -> [Token] -> Either ParseError TypingStrategies
+parseTypingStrategies operatorTable filename tokens = 
+   runHParser (many parseTypingStrategy) filename tokens True {- wait for EOF -}
   
   where
 

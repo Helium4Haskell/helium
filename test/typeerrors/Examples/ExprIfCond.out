@@ -1,9 +1,8 @@
 Compiling typeerrors/Examples/ExprIfCond.hs
+(3,8): Type error in conditional
+ expression       : if 3 then 4 else 5
+ term             : 3
+   type           : Int 
+   does not match : Bool
 
-(3,5): Type error in conditional
-*** Expression     : if 3 then 4 else 5
-*** Term           : 3
-*** Type           : Int 
-*** Does not match : Bool
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

@@ -1,4 +1,4 @@
 Compiling staticerrors/UndefinedShow.hs
 (6,8): Undefined variable "showTreee"
-  HINT - Did you mean "showTree" ?
+  Hint: Did you mean "showTree" ?
 Compilation failed with 1 error

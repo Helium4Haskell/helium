@@ -1,9 +1,7 @@
 Compiling typeerrors/Examples/PatConstructor.hs
+(4,1): Type error in pattern of function binding
+ pattern          : ((:) x xs)
+   type           : [a] 
+   does not match : Bool
 
-(4,4): Type error in pattern application
-*** Pattern        : (:) x xs
-*** Term           : :
-*** Type           : a -> [a] -> [a] 
-*** Does not match : b -> c   -> Bool
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

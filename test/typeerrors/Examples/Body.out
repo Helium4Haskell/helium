@@ -1,8 +1,7 @@
 Compiling typeerrors/Examples/Body.hs
-
 (4,3): Type error in right hand side
-*** Expression     : (+)
-*** Type           : Int -> Int -> Int
-*** Does not match : Int              
+ expression       : (+)
+   type           : Int -> Int -> Int
+   does not match : Int              
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

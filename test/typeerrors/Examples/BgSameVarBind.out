@@ -1,9 +1,8 @@
 Compiling typeerrors/Examples/BgSameVarBind.hs
+(4,15): Type error in then branch of conditional
+ expression       : if f then 3 else f
+ term             : 3
+   type           : Int 
+   does not match : Bool
 
-(4,5): Type error in then branch of conditional
-*** Expression     : if f then 3 else f
-*** Term           : 3
-*** Type           : Int 
-*** Does not match : Bool
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

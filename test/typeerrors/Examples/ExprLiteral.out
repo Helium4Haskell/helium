@@ -1,8 +1,7 @@
 Compiling typeerrors/Examples/ExprLiteral.hs
-
 (4,3): Type error in right hand side
-*** Expression     : 1
-*** Type           : Int 
-*** Does not match : Bool
+ expression       : 1
+   type           : Int 
+   does not match : Bool
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

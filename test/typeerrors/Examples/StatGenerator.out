@@ -1,9 +1,8 @@
 Compiling typeerrors/Examples/StatGenerator.hs
+(4,17): Type error in generator
+ expression       : a <- x
+ term             : x
+   type           : Bool
+   does not match : IO a
 
-(4,12): Type error in generator
-*** Expression     : a<-x
-*** Term           : x
-*** Type           : Bool
-*** Does not match : IO a
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

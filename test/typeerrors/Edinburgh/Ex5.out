@@ -1,9 +1,10 @@
 Compiling typeerrors/Edinburgh/Ex5.hs
+(5,25): Type error in application
+ expression       : y True
+ function         : y
+   type           : Int -> a -> a
+ 1st argument     : True
+   type           : Bool
+   does not match : Int 
 
-(5,23): Type error in application
-*** Expression     : y True
-*** Term           : True
-*** Type           : Bool
-*** Does not match : Int 
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

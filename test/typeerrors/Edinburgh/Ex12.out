@@ -1,9 +1,8 @@
 Compiling typeerrors/Edinburgh/Ex12.hs
+(3,19): Type error in infix application
+ expression       : p + p
+ operator         : +
+   type           : Int            -> Int            -> Int
+   does not match : (Bool -> Bool) -> (Bool -> Bool) -> [a]
 
-(3,17): Type error in infix application
-*** Expression     : p + p
-*** Term           : +
-*** Type           : Int            -> Int            -> Int
-*** Does not match : (Bool -> Bool) -> (Bool -> Bool) -> [a]
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

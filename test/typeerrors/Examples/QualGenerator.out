@@ -1,9 +1,8 @@
 Compiling typeerrors/Examples/QualGenerator.hs
+(4,18): Type error in generator
+ expression       : a <- x
+ term             : x
+   type           : Int  
+   does not match : [Int]
 
-(4,13): Type error in generator
-*** Expression     : a<-x
-*** Term           : x
-*** Type           : Int  
-*** Does not match : [Int]
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

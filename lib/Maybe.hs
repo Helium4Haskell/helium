@@ -3,6 +3,7 @@
 --
 -- Suitable for use with Helium
 -----------------------------------------------------------------------------
+
 module Maybe(
     isJust, isNothing,
     fromJust, fromMaybe, listToMaybe, maybeToList,

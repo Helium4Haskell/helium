@@ -1,9 +1,8 @@
 Compiling typeerrors/Examples/ExprNegateExpr.hs
-
 (3,5): Type error in negation
-*** Expression     : -"schaap"
-*** Term           : "schaap"
-*** Type           : String
-*** Does not match : Int   
+ expression       : -"schaap"
+ operator         : -
+   type           : Int    -> Int
+   does not match : String -> a  
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

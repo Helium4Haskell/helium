@@ -1,4 +1,7 @@
 Compiling parser/NotAFloat.hs
+(1,14): This is interpreted as an integer followed by function composition
+  Hint: If a Float was meant, write "20.0"
+        Otherwise, insert a space for readability
 (1,1): Missing type signature: main :: [Int]
-Compilation successful with 1 warning
+Compilation successful with 2 warnings
 [2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40]

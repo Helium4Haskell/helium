@@ -1,9 +1,8 @@
 Compiling thompson/Thompson26.hs
+(1,15): Type error in element of list
+ expression       : [('2', 2), ('1', '1'), ('a', 3)]
+ term             : ('1', '1')
+   type           : (Char , Char)
+   does not match : (Char , Int )
 
-(1,6): Type error in element of list
-*** Expression     : [('2',2),('1','1'),('a',3)]
-*** Term           : ('1','1')
-*** Type           : (Char , Char)
-*** Does not match : (Char , Int )
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

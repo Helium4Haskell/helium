@@ -1,9 +1,8 @@
 Compiling typeerrors/Heuristics/TupleSize2.hs
-
 (4,15): Type error in pattern tuple
-*** Pattern        : (x,y,z)
-*** Type           : (a, b, c)
-*** Expected type  : (d, e)   
-*** Because        : a 3-tuple does not match a 2-tuple
+ pattern          : (x, y, z)
+   type           : (a, b, c)
+   expected type  : (d, e)   
+ because          : a 3-tuple does not match a 2-tuple
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

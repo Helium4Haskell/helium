@@ -1,22 +1,25 @@
 Compiling typeerrors/Examples/TypeBug5.hs
+(4,24): Type error in application
+ expression       : filter (not (eqString unwords (concat x xs))) xs
+ function         : filter
+   type           : (a -> Bool) -> [a] -> [a]
+ 1st argument     : (not (eqString unwords (concat x xs)))
+   type           : Bool     
+   does not match : a -> Bool
 
-(4,17): Type error in application
-*** Expression     : filter (not (eqString unwords (concat x xs))) xs
-*** Term           : (not (eqString unwords (concat x xs)))
-*** Type           : Bool     
-*** Does not match : a -> Bool
-
-(4,29): Type error in application
-*** Expression     : eqString unwords (concat x xs)
-*** Term           : unwords
-*** Type           : [String] -> String
-*** Does not match : String            
+(4,38): Type error in application
+ expression       : eqString unwords (concat x xs)
+ function         : eqString
+   type           : String -> String -> Bool
+ 1st argument     : unwords
+   type           : [String] -> String
+   does not match : String            
 
 (4,46): Type error in application
-*** Expression     : concat x xs
-*** Term           : concat
-*** Type           : [[a]   ] -> [a]            
-*** Does not match : [String] -> [[String]] -> b
-*** Probable fix   : remove second argument
+ expression       : concat x xs
+ term             : concat
+   type           : [[a]   ] -> [a]            
+   does not match : [String] -> [[String]] -> b
+ probable fix     : remove second argument
 
-Compilation failed with 3 type errors
+Compilation failed with 3 errors

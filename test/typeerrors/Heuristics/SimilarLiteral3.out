@@ -1,9 +1,8 @@
 Compiling typeerrors/Heuristics/SimilarLiteral3.hs
-
 (6,19): Type error in literal pattern
-*** Pattern        : "A"
-*** Type           : String
-*** Expected type  : Char  
-*** Probable fix   : use a char literal instead
+ pattern          : "A"
+   type           : String
+   expected type  : Char  
+ probable fix     : use a char literal instead
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

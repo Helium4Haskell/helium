@@ -1,0 +1,79 @@
+module PhaseImport(phaseImport) where
+
+import CompileUtils
+import Core(CoreDecl)
+import UHA_Syntax
+import UHA_Utils
+import UHA_Range(noRange)
+import Standard(getLvmPath, searchPath)
+import LvmImport(lvmImportDecls)
+import Id(stringFromId)
+import CoreToImportEnv(getImportEnvironment)
+import qualified ExtractImportDecls(sem_Module)
+
+phaseImport :: String -> Module -> [Option] -> 
+                    IO ([CoreDecl], [ImportEnvironment])
+phaseImport fullName module_ options = do
+    enterNewPhase "Importing" options
+
+    let (filePath, baseName, _) = splitFilePath fullName
+
+    -- Add HeliumLang and Prelude import
+    let moduleWithExtraImports = addImplicitImports module_
+
+    -- Chase imports
+    chasedImpsList <- chaseImports filePath moduleWithExtraImports
+
+    let indirectionDecls   = concat chasedImpsList
+        importEnvs = 
+            map (getImportEnvironment baseName) chasedImpsList
+    
+    return (indirectionDecls, importEnvs)
+
+chaseImports :: String -> Module -> IO [[CoreDecl]]
+chaseImports filePath mod =
+   do
+      lvmPath <- getLvmPath
+
+      let paths           = ".":filePath:lvmPath
+          coreImportDecls = ExtractImportDecls.sem_Module mod -- Expand imports
+          findModule      = searchPath paths ".lvm" . stringFromId
+
+      lvmImportDecls findModule coreImportDecls
+
+
+-- Add "import Prelude" if
+--   the currently compiled module is not the Prelude and
+--   the Prelude is not explicitly imported
+-- Always add "import HeliumLang
+addImplicitImports :: Module -> Module
+addImplicitImports m@(Module_Module moduleRange maybeName exports
+                    (Body_Body bodyRange explicitImportDecls decls)) =
+    Module_Module
+        moduleRange
+        maybeName
+        exports
+        (Body_Body
+            bodyRange
+            ( case maybeName of
+                MaybeName_Just n
+                    | getNameName n == "Prelude" -> []
+                _ -> if "Prelude" `elem` map stringFromImportDeclaration explicitImportDecls
+                     then []
+                     else [ implicitImportDecl "Prelude" ]
+            ++ [ implicitImportDecl "HeliumLang" ]
+            ++ explicitImportDecls
+            ) decls
+        )
+  where
+
+    -- Artificial import declaration for implicit Prelude import
+    implicitImportDecl :: String -> ImportDeclaration
+    implicitImportDecl moduleName =
+        ImportDeclaration_Import
+            noRange
+            False
+            (Name_Identifier noRange [] moduleName)
+            MaybeName_Nothing
+            MaybeImportSpecification_Nothing
+

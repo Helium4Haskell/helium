@@ -1,8 +1,7 @@
 Compiling typeerrors/Examples/TooGenFun.hs
+(3,1): declared type is too general
+ expression       : test
+   declared type  : a    -> a   
+   inferred type  : Bool -> Bool
 
-(3,1): Declared type is too general
-*** Expression     : test
-*** Declared type  : a    -> a   
-*** Inferred type  : Bool -> Bool
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

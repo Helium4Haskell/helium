@@ -355,10 +355,12 @@ safeTail [] = []
 trim :: String -> String
 trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
 
+-- Split file name
+-- e.g. /docs/haskell/Hello.hs =>
+--   filePath = /docs/haskell  baseName = Hello  ext = hs
 splitFilePath :: String -> (String, String, String)
 splitFilePath filePath = 
     let slashes = "\\/"
         (revFileName, revPath) = span (`notElem` slashes) (reverse filePath)
         (revExt, revBaseName)  = span (/= '.') revFileName
     in (reverse revPath, reverse (dropWhile (== '.') revBaseName), reverse revExt)
-    

@@ -1,5 +1,5 @@
 Compiling staticerrors/ExprUndefCon.hs
 (3,8): Undefined constructor "Int"
-  HINT - Type constructor "Int" cannot be used in an expression or pattern
-       - Did you mean "init" ?
+  Hint: Type constructor "Int" cannot be used in an expression
+        Did you mean "init" ?
 Compilation failed with 1 error

@@ -1,7 +1,6 @@
 module ParseMessage() where
 
 import Messages hiding (Message)
-import Lexer(floatErrors, stringErrors, charErrors, commentErrors)
 import UHA_Syntax(Range(..), Position(..))
 
 import ParsecError
@@ -12,15 +11,11 @@ instance HasMessage ParseError where
         let msgs = errorMessages pe in
         MessageOneLiner (MessageString "Syntax error: ") :
         map (MessageOneLiner . MessageString . ("    "++)) (
-            case specialCase msgs of
-                Nothing ->
-                    ( filter (not . null)
-                    . lines
-                    . showErrorMessages "or" "unknown parse error" 
-                                "expecting" "unexpected" "end of input" 
-                    ) msgs
-                Just lines ->
-                    lines
+            ( filter (not . null)
+            . lines
+            . showErrorMessages "or" "unknown parse error" 
+                        "expecting" "unexpected" "end of input" 
+            ) msgs
         )
     getRanges parseError =
         let pos = errorPos parseError
@@ -28,6 +23,7 @@ instance HasMessage ParseError where
             position = Position_Position name line col
         in [ Range_Range position position ]
 
+{-
 sms msgs = show (map sm msgs)
   where
      sm (SysUnExpect s) = "SysUnExpect" ++ s
@@ -60,3 +56,4 @@ specialCase msgs
         floatTexts   = [ t | t <- floatErrors, t `elem` strings ]
         commentTexts = [ t | t <- commentErrors, t `elem` strings ]
 specialCase _ = Nothing
+-}

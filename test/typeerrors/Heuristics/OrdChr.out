@@ -1,15 +1,14 @@
 Compiling typeerrors/Heuristics/OrdChr.hs
-
 (2,9): Type error in variable
-*** Expression     : ord
-*** Type           : Char -> Int
-*** Expected type  : Int  -> a  
-*** Probable fix   : use chr instead
+ expression       : ord
+   type           : Char -> Int
+   expected type  : Int  -> a  
+ probable fix     : use chr instead
 
 (2,17): Type error in variable
-*** Expression     : chr
-*** Type           : Int  -> Char
-*** Expected type  : Char -> a   
-*** Probable fix   : use ord instead
+ expression       : chr
+   type           : Int  -> Char
+   expected type  : Char -> a   
+ probable fix     : use ord instead
 
-Compilation failed with 2 type errors
+Compilation failed with 2 errors

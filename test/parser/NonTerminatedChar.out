@@ -1,5 +1,4 @@
 Compiling parser/NonTerminatedChar.hs
-(1,8): Syntax error: 
-    non-terminated character literal
-    correct examples of character literals: 'a', '\n', '%', ' ', '\''
-Compilation failed with a syntax error
+(1,8): Non-terminated character literal
+  Hint: Correct examples of Chars: 'a' '\n' '&'
+Compilation failed with 1 error

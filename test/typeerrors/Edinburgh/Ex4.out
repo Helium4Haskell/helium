@@ -1,9 +1,10 @@
 Compiling typeerrors/Edinburgh/Ex4.hs
+(5,13): Type error in application
+ expression       : f 3
+ function         : f
+   type           : (Int -> a) -> a
+ 1st argument     : 3
+   type           : Int     
+   does not match : Int -> a
 
-(5,11): Type error in application
-*** Expression     : f 3
-*** Term           : 3
-*** Type           : Int     
-*** Does not match : Int -> a
-
-Compilation failed with 1 type error
+Compilation failed with 1 error

@@ -1,10 +1,9 @@
 Compiling typeerrors/Examples/BgExplicitTypedBinding.hs
-
 (4,1): Type error in explicitly typed binding
-*** Term           : f
-*** Type           : Bool      
-*** Does not match : Int -> Int
-*** Because        : the function binding has 1 pattern, but its type signature
-                     does not allow patterns
+ term             : f
+   type           : Bool      
+   does not match : Int -> Int
+ because          : the function binding has 1 pattern, but its type
+                    signature does not allow patterns
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

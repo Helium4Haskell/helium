@@ -1,9 +1,8 @@
 Compiling thompson/Thompson29.hs
-
 (1,12): Type error in constructor
-*** Expression     : :
-*** Type           : a     -> [a  ] -> [a]
-*** Expected type  : [Int] -> [Int] -> b  
-*** Probable fix   : use ++ instead
+ expression       : :
+   type           : a     -> [a  ] -> [a]
+   expected type  : [Int] -> [Int] -> b  
+ probable fix     : use ++ instead
 
-Compilation failed with 1 type error
+Compilation failed with 1 error

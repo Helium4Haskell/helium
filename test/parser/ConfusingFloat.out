@@ -1,0 +1,14 @@
+Compiling parser/ConfusingFloat.hs
+(1,12): This is interpreted as an integer followed by function composition
+  Hint: If a Float was meant, write "2.0"
+        Otherwise, insert a space for readability
+(3,12): This is interpreted as function composition followed by a number
+  Hint: If a Float was meant, write "0.2"
+        Otherwise, insert a space for readability
+(5,11): This is interpreted as an integer followed by function composition
+  Hint: If a Float was meant, write "20.0"
+        Otherwise, insert a space for readability
+(3,1): Syntax error: 
+    unexpected next in block (based on layout)
+    expecting expression
+Compilation failed with 1 error

@@ -1,8 +1,7 @@
 Compiling typeerrors/Examples/GuardedGuard.hs
-
 (3,5): Type error in guard
-*** Expression     : 3
-*** Type           : Int 
-*** Does not match : Bool
+ expression       : 3
+   type           : Int 
+   does not match : Bool
 
-Compilation failed with 1 type error
+Compilation failed with 1 error
