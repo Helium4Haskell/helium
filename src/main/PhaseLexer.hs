@@ -14,7 +14,7 @@ phaseLexer fullName doneModules contents options = do
     case lexer fullName contents of 
         Left lexError -> do
             unless (NoLogging `elem` options) $ 
-                logger "L" (Just (doneModules,fullName))
+                sendLog "L" fullName doneModules options
             showErrorsAndExit [lexError] 1 options
         Right (tokens, lexerWarnings) -> do
             let tokensWithLayout = layout tokens

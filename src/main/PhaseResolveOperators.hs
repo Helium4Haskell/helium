@@ -16,7 +16,7 @@ phaseResolveOperators fullName doneModules moduleBeforeResolve importEnvs option
 
     when (not (null resolveErrors)) $ do
         unless (NoLogging `elem` options) $ 
-            logger "R" (Just (doneModules,fullName))
+            sendLog "R" fullName doneModules options
         showErrorsAndExit resolveErrors 20 options
 
     when (DumpUHA `elem` options) $

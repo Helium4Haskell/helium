@@ -20,15 +20,17 @@ loggerDELAY       = 10000    -- in micro-seconds
 loggerTRIES       = 2
 loggerSPLITSTRING = "\n\NUL\n"
 loggerNOPROGRAMS  = "\n\SOH\n"
-loggerDEBUGMODE   = False
 loggerENABLED     = True
 loggerUSERNAME    = "USERNAME"
+
+debug :: String -> Bool -> IO ()
+debug s loggerDEBUGMODE = when loggerDEBUGMODE (putStrLn s)
 
 ------------------------------------------------------
 -- The function to send a message to a socket
 
-logger :: String -> Maybe ([String],String) -> IO ()
-logger logcode maybeSources 
+logger :: String -> Maybe ([String],String) -> Bool -> IO ()
+logger logcode maybeSources loggerDEBUGMODE
     | not loggerENABLED || isInterpreterModule maybeSources = return ()
     | otherwise      = do
         username <- (getEnv loggerUSERNAME) `catch` (\exception -> return "unknown")
@@ -36,7 +38,7 @@ logger logcode maybeSources
             Nothing -> 
                 return (loggerNOPROGRAMS)
             Just (imports,hsFile) -> 
-               let f name = do debug ("Logging file " ++ name)
+               let f name = do debug ("Logging file " ++ name) loggerDEBUGMODE
                                program <- readFile name                                                        
                                return (  fileNameWithoutPath name
                                       ++ "\n" 
@@ -50,31 +52,28 @@ logger logcode maybeSources
                     return (concat (loggerSPLITSTRING:x:xs)) 
                    ) `catch` (\exception -> return (loggerNOPROGRAMS) )
 
-        sendLogString (username++":"++logcode++":"++version++sources)
+        sendLogString (username++":"++logcode++":"++version++sources) loggerDEBUGMODE
 
 isInterpreterModule :: Maybe ([String],String) -> Bool
 isInterpreterModule Nothing = False
 isInterpreterModule (Just (_, hsFile)) = fileNameWithoutPath hsFile == "Interpreter.hs"
 
-sendLogString :: String -> IO ()
-sendLogString message = withSocketsDo (rec 0)
+sendLogString :: String -> Bool -> IO ()
+sendLogString message loggerDEBUGMODE = withSocketsDo (rec 0)
  
  where
-  rec i = do --installHandler sigPIPE Ignore Nothing
+    rec i = do --installHandler sigPIPE Ignore Nothing
              handle <- connectTo loggerHOSTNAME (PortNumber loggerPORTNUMBER)
              hSetBuffering handle (BlockBuffering (Just 1024))
-             sendToAndFlush handle message
+             sendToAndFlush handle message loggerDEBUGMODE
           `catch`       
               \exception -> 
                  if i+1 >= loggerTRIES 
-                   then debug ( "Could not make a connection: no send (" ++ show exception ++ ")" )
-                   else do debug ( "Could not make a connection: sleeping (" ++ show exception ++ ")" )
+                   then debug ( "Could not make a connection: no send (" ++ show exception ++ ")" ) loggerDEBUGMODE
+                   else do debug ( "Could not make a connection: sleeping (" ++ show exception ++ ")" ) loggerDEBUGMODE
                            threadDelay loggerDELAY
                            rec (i+1)
                 
-debug :: String -> IO ()
-debug s = when loggerDEBUGMODE (putStrLn s)
-
 {- from Utils.hs.....because of the import-dependencies, it is not possible to import 
    this function directly -}
 
@@ -90,7 +89,7 @@ sendToAndFlush :: Hostname      -- Hostname
                -> String        -- Message to send
                -> IO ()
 -}               
-sendToAndFlush handle msg = do  
+sendToAndFlush handle msg loggerDEBUGMODE = do  
   hPutStr handle msg
   hPutStr handle loggerSPLITSTRING
   hFlush handle
@@ -98,9 +97,9 @@ sendToAndFlush handle msg = do
 --  b2 <- hIsReadable s
 --  putStrLn ((if b1 then "writable" else "not writable") ++ " and " ++ 
 --      (if b2 then "readable" else "not readable"))
-  debug "Waiting for a handshake"  
+  debug "Waiting for a handshake"  loggerDEBUGMODE
   handshake <- getRetriedLine 0
-  debug ("Received a handshake: " ++ show handshake)
+  debug ("Received a handshake: " ++ show handshake) loggerDEBUGMODE
 --  hClose handle
   where
     getRetriedLine i = 
@@ -111,12 +110,9 @@ sendToAndFlush handle msg = do
         \exception -> 
           if i+1 >= loggerTRIES 
             then do
-                   debug "Did not receive anything back"
+                   debug "Did not receive anything back" loggerDEBUGMODE
                    return ""
             else do 
-                   debug "Waiting to try again"
+                   debug "Waiting to try again" loggerDEBUGMODE
                    threadDelay loggerDELAY
                    getRetriedLine (i+1)    
-    debug :: String -> IO ()
-    debug s = when loggerDEBUGMODE (putStrLn s)
-

@@ -41,8 +41,6 @@ status :
 	@echo "  Demos will go into     $(demodir)"
 	@echo "*******************************************************************"
 
-EXTRA_HC_OPTS = @extraHCopts@
-
 HC	= @WithHc@
 ifdef LOGGER
 PACKAGENET = -package net
@@ -184,7 +182,7 @@ all: ag compiler coreasm lvmrun libraries texthint status
 
 coreasm:
 	# make core assembler
-	cd $(LVMLIBDIR); $(MAKE) 
+	cd $(LVMLIBDIR); $(MAKE) EXTRA_HC_OPTS=$(EXTRA_HC_OPTS)
 
 lvmrun:
 	# make lvmrun
@@ -345,7 +343,7 @@ depend :
 # UTRECHT ONLY
 
 newVersion: 
-	echo "module Version where version=\"`date`\"" >main/Version.hs
+	echo "module Version where version=\"1.1 (`date`)\"" >main/Version.hs
 
 smaller:
 	# *** UPX helium, texthint & lvmrun

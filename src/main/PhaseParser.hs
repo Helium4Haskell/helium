@@ -13,7 +13,7 @@ phaseParser fullName doneModules tokens options = do
     case runHParser Parser.module_ fullName tokens True of
         Left parseError -> do
             unless (NoLogging `elem` options) $ 
-                logger "P" (Just (doneModules,fullName))
+                sendLog "P" fullName doneModules options
             showErrorsAndExit [parseError] 1 options
         Right m ->
             return m

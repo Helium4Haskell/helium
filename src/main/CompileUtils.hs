@@ -4,7 +4,7 @@ module CompileUtils
     , splitFilePath, combinePathAndFile
     , when, unless
     , exitWith, ExitCode(..)
-    , logger
+    , sendLog
     , module ImportEnvironment
     , Module(..)
     ) where
@@ -19,6 +19,10 @@ import Logger
 import ImportEnvironment
 import UHA_Syntax(Module(..))
 
+sendLog :: String -> String -> [String] -> [Option] -> IO ()
+sendLog code fullName modules options =
+    logger code (Just (modules,fullName)) (DebugLogger `elem` options)
+    
 enterNewPhase :: String -> [Option] -> IO ()
 enterNewPhase phase options =
    when (Verbose `elem` options) $

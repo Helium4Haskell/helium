@@ -31,7 +31,7 @@ phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv
         when (DumpInformationForAllModules `elem` options) $
             putStr (show (foldr combineImportEnvironments emptyEnvironment importEnvs)) 
         unless (NoLogging `elem` options) $ 
-            logger "T" (Just (doneModules,fullName))
+            sendLog "T" fullName doneModules options
         showErrorsAndExit (reverse typeErrors) maximumNumberOfTypeErrors options
 
     -- Dump information

@@ -20,7 +20,7 @@ phaseStaticChecks fullName doneModules module_ importEnvs options = do
             putStrLn (show (foldr combineImportEnvironments 
                 emptyEnvironment importEnvs))
         unless (NoLogging `elem` options) $ 
-            logger ("S"++errorsLogCode errors) (Just (doneModules,fullName))
+            sendLog ("S"++errorsLogCode errors) fullName doneModules options
         showErrorsAndExit errors 20 options
     
     return (localEnv, warnings)

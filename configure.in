@@ -114,22 +114,6 @@ fi
 AC_SUBST(logger)
 AC_MSG_WARN([Logger set to $logger])
 
-# GHC optimisation on or off?
-AC_ARG_ENABLE(optimisation,
-[  --enable-optimisation
-       Enable GHC optimisation.
-],
-[optimisation="$enableval"],
-[optimisation="no"]
-)
-if test "$optimisation" = "no"; then
-  extraHCopts="";
-else
-  extraHCopts="-O";
-fi
-AC_SUBST(extraHCopts)
-AC_MSG_WARN([Extra GHC flags set to $extraHCopts])
-
 PWD=`pwd`
 HELIUM=${PWD}/bin/helium${EXEEXT}
 COREASM=${PWD}/../lvm/src/lib/coreasm

@@ -9,7 +9,7 @@ processArgs :: [String] -> IO ([Option], String)
 processArgs args =
     let (options, arguments, errors) = getOpt Permute optionDescription args
     in if not (null errors) || length arguments /= 1 then do
-        putStrLn $ "Helium compiler (" ++ version ++ ")"
+        putStrLn $ "Helium compiler " ++ version
         putStrLn (usageInfo "Usage: helium [options] file" optionDescription)
         exitWith (ExitFailure 1)
     else
@@ -28,7 +28,8 @@ processArgs args =
             ,   Option "u" ["dump-uha"] (NoArg DumpUHA) "pretty print abstract syntax tree"
             ,   Option "c" ["dump-core"] (NoArg DumpCore) "pretty print Core program"
             ,   Option "C" ["save-core"] (NoArg DumpCoreToFile) "write Core program to file"
-            ,   Option "d" ["dump-type-debug"] (NoArg DumpTypeDebug) "show type checker debugging information"
+            ,   Option "d" ["dump-type-debug"] (NoArg DumpTypeDebug) "show type checker debug information"
+            ,   Option "L" ["debug-logger"] (NoArg DebugLogger) "show logger debug information"
             
 --            ,   Option "s" ["no-static-analysis"] (NoArg NoStaticAnalysis) "do not perform static analysis (dangerous!)"
             
@@ -53,6 +54,7 @@ data Option
     | DumpInformationForThisModule
     | DumpInformationForAllModules
     | DumpTypeDebug
+    | DebugLogger
     
     | NoStaticAnalysis --
     | NoWarnings -- 

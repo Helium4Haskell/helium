@@ -81,7 +81,7 @@ compile fullName options doneModules =
         phaseCodeGenerator fullName coreModule options
         
         unless (NoLogging `elem` options) $ 
-            logger "C" (Just (doneModules,fullName))
+            sendLog "C" fullName doneModules options
 
         let number = length staticWarnings + length typeWarnings + length lexerWarnings
         putStrLn $ "Compilation successful" ++

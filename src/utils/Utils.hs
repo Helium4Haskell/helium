@@ -98,7 +98,7 @@ internalError moduleName functionName message
    $ do (do -- internal errors are automatically logged
             curFileName <- readIORef refToCurrentFileName
             curImports  <- readIORef refToCurrentImported       
-            logger "I" (Just (curImports,curFileName))
+            logger "I" (Just (curImports,curFileName)) False {- no debugging, we can't get to the command-line option DebugLogger here -}
             `catch`
                \exception -> return () )
     

@@ -1,1 +1,1 @@
-module Version where version="Tue Mar  4 13:53:51  2003"
+module Version where version="1.1 (Fri Mar  7 12:23:11  2003)"
