@@ -16,7 +16,7 @@ SEM Module
 
   | Module
       loc  -- Solve the type constraints.
-           . (SolveResult betaUniqueAtTheEnd substitution predicates solveErrors debugString tooSpecificWarnings) =
+           . (SolveResult betaUniqueAtTheEnd substitution typeschemeMap solveErrors debugString tooSpecificWarnings) =
                 (selectConstraintSolver @lhs.options @lhs.importEnvironment) 
                    @classEnv
                    @orderedTypeSynonyms 
@@ -25,25 +25,20 @@ SEM Module
                    
            . orderedTypeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment   
            . classEnv            = classEnvironment @lhs.importEnvironment           
-           . checkedSolveErrors = makeTypeErrors @classEnv @orderedTypeSynonyms @substitution @solveErrors
-           . typeErrors         = if null @checkedSolveErrors 
-                                    then if null @body.collectErrors 
-                                           then @unresolvedErrors
-                                           else @body.collectErrors 
-                                    else @checkedSolveErrors
-           . warnings           = @body.collectWarnings ++ @tooSpecificWarnings
-           . debugIO            = putStrLn @debugString
-           . assumptions        = let f _ xs = [ (n, @substitution |-> tp) | (n, tp) <- xs ] 
-                                  in mapFM f @body.assumptions
-           . initialScope       = keysFM (typeEnvironment @lhs.importEnvironment)           
-           . monos              = map TVar @monomorphics
-           . monomorphics       = ftv (  (eltsFM $ valueConstructors @lhs.importEnvironment) 
-                                      ++ (eltsFM $ typeEnvironment   @lhs.importEnvironment)
-                                      )
-                                 
-      body . betaUnique         = if null @monomorphics 
-                                    then 0 
-                                    else maximum @monomorphics + 1 
+           . typeErrors          = makeTypeErrors @classEnv @orderedTypeSynonyms @substitution @solveErrors
+           . warnings            = @body.collectWarnings ++ @tooSpecificWarnings
+           . debugIO             = putStrLn @debugString
+           . assumptions         = let f _ xs = [ (n, @substitution |-> tp) | (n, tp) <- xs ] 
+                                   in mapFM f @body.assumptions
+           . initialScope        = keysFM (typeEnvironment @lhs.importEnvironment)           
+           . monos               = map TVar @monomorphics
+           . monomorphics        = ftv (  (eltsFM $ valueConstructors @lhs.importEnvironment) 
+                                       ++ (eltsFM $ typeEnvironment   @lhs.importEnvironment)
+                                       )
+                                  
+      body . betaUnique          = if null @monomorphics 
+                                     then 0 
+                                     else maximum @monomorphics + 1 
                                  
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Body
@@ -58,13 +53,13 @@ ATTR Body
 
 SEM Body
   | Body  
-      declarations . bindingGroups    = []
+      declarations . bindingGroups    = []       
       (loc.csetBinds,lhs.assumptions) = (typeEnvironment @lhs.importEnvironment .:::. @aset) @cinfo      
-      loc . constraints               = Chunk @lhs.currentChunk @cset [] (dependencyBinds @lhs.chunkNumberMap @csetBinds) emptyTree
-      
-          . (aset,cset,inheritedBDG,chunkNr) = 
-               let inputBDG = (@lhs.currentChunk, @declarations.uniqueChunk, @lhs.chunkNumberMap, @lhs.monos, @declarations.typeSignatures, Nothing)
-               in performBindingGroup inputBDG @declarations.bindingGroups  
+      loc . constraints               = @csetBinds .>>. @cset
+                                           
+      (loc.aset, loc.cset, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) = 
+         let inputBDG = (@lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, @declarations.typeSignatures, Nothing, @declarations.betaUnique)
+         in performBindingGroup inputBDG @declarations.bindingGroups  
                         
       
 ---------------------------------------------------------------------------------------
@@ -111,8 +106,8 @@ SEM Declaration
 SEM MaybeDeclarations
   | Just
       declarations . bindingGroups  = []
-      (lhs.assumptions, lhs.constraints, loc.inheritedBDG, loc.chunkNr) = 
-         let inputBDG   = (@lhs.currentChunk, @declarations.uniqueChunk, @lhs.chunkNumberMap, @lhs.monos, @declarations.typeSignatures, mybdggroup)
+      (lhs.assumptions, lhs.constraints, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) = 
+         let inputBDG   = (@lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, @declarations.typeSignatures, mybdggroup, @declarations.betaUnique)
              mybdggroup = Just (@lhs.assumptions, [@lhs.constraints])
          in performBindingGroup inputBDG @declarations.bindingGroups
                                                                    
@@ -293,8 +288,8 @@ SEM Expression
       loc          . constraints    = [ (@expression.beta .==. @beta) @cinfoType ] .>. @cset                   
                    . beta           = TVar @lhs.betaUnique                   
                    
-      (loc.assumptions, loc.cset, loc.inheritedBDG, loc.chunkNr) =
-         let inputBDG   = (@lhs.currentChunk, @expression.uniqueChunk, @lhs.chunkNumberMap, @lhs.monos, @declarations.typeSignatures, mybdggroup)
+      (loc.assumptions, loc.cset, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) =
+         let inputBDG   = (@lhs.currentChunk, @expression.uniqueChunk, @lhs.monos, @declarations.typeSignatures, mybdggroup, @expression.betaUnique)
              mybdggroup = Just (@expression.assumptions, [@expression.constraints])
          in performBindingGroup inputBDG @declarations.bindingGroups
 
@@ -332,8 +327,8 @@ SEM Expression
                                  Node [ @conExpr .<. @expression.constraints ]
                  . beta        = TVar @lhs.betaUnique
                  . typeScheme  = makeTpSchemeFromType @type.self 
-                 . conResult   = [ (@beta            .::. @typeScheme) @cinfoResult ]
-                 . conExpr     = [ (@expression.beta .::. @typeScheme) @cinfoExpr   ]
+                 . conResult   = [ (@beta            .::. @typeScheme) @cinfoResult          ]
+                 . conExpr     = [ (@expression.beta !::! @typeScheme) @lhs.monos @cinfoExpr ]
 
   | Comprehension                      
       expression . betaUnique  = @lhs.betaUnique + 1
@@ -347,17 +342,23 @@ SEM Expression
                  . newcon      = [ (listType @expression.beta .==. @beta) @cinfo ]
 
   | Enum
-       from . betaUnique  = @lhs.betaUnique + 1
-       loc  . assumptions = @from.assumptions `combine` @then.assumptions `combine` @to.assumptions
-            . constraints = [ (listType intType .==. @beta) @cinfoResult ] .>.
-                            Node [ @conFrom .<. @from.constraints
-                                 , @conThen .<. @then.constraints
-                                 , @conTo   .<. @to.constraints
-                                 ]
-            . beta        = TVar @lhs.betaUnique
-            . conFrom     = [ (@from.beta .==. intType) @cinfoFrom ]
-            . conThen     = [ (@then.beta .==. intType) @cinfoThen ]
-            . conTo       = [ (@to.beta   .==. intType) @cinfoTo   ]
+       from . betaUnique   = @lhs.betaUnique + (if @overloaded then 2 else 1)
+       loc  . assumptions  = @from.assumptions `combine` @then.assumptions `combine` @to.assumptions
+            . constraints  = (@conList ++ @conPredicate) .>.
+                             Node [ @conFrom .<. @from.constraints
+                                  , @conThen .<. @then.constraints
+                                  , @conTo   .<. @to.constraints
+                                  ]
+            . beta         = TVar @lhs.betaUnique
+            . overloaded   = case lookupFM (typeEnvironment @lhs.importEnvironment) (nameFromString "enumFrom") of
+                                Just scheme -> isOverloaded scheme
+                                Nothing     -> False
+            . elementType  = if @overloaded then TVar (@lhs.betaUnique + 1) else intType
+            . conPredicate = if @overloaded then [predicate (Predicate "Enum" @elementType) @cinfoPred] else []
+            . conList      = [ (listType @elementType .==. @beta) @cinfoResult ]
+            . conFrom      = [ (@from.beta .==. @elementType) @cinfoFrom ]
+            . conThen      = [ (@then.beta .==. @elementType) @cinfoThen ]
+            . conTo        = [ (@to.beta   .==. @elementType) @cinfoTo   ]
 
   | Negate
        expression . betaUnique  = @lhs.betaUnique + 1
@@ -598,8 +599,8 @@ SEM Statement
   | Let
       lhs          . generatorBeta  = Nothing
       declarations . bindingGroups  = []      
-      (lhs.assumptions, lhs.constraints, loc.inheritedBDG, loc.chunkNr) = 
-         let inputBDG    = (@lhs.currentChunk, @declarations.uniqueChunk, @lhs.chunkNumberMap, @lhs.monos, @declarations.typeSignatures, mybdggroup)
+      (lhs.assumptions, lhs.constraints, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) = 
+         let inputBDG    = (@lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, @declarations.typeSignatures, mybdggroup, @declarations.betaUnique)
              mybdggroup = Just (@lhs.assumptions, [@lhs.constraints])
          in performBindingGroup inputBDG @declarations.bindingGroups
                         
@@ -639,8 +640,8 @@ SEM Qualifier
           . newcon      = [ (@guard.beta .==. boolType) @cinfo ]
 
   | Let   declarations . bindingGroups  = []
-          (lhs.assumptions, lhs.constraints, loc.inheritedBDG, loc.chunkNr) = 
-             let inputBDG   = (@lhs.currentChunk, @declarations.uniqueChunk, @lhs.chunkNumberMap, @lhs.monos, @declarations.typeSignatures, mybdggroup)
+          (lhs.assumptions, lhs.constraints, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) = 
+             let inputBDG   = (@lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, @declarations.typeSignatures, mybdggroup, @declarations.betaUnique)
                  mybdggroup = Just (@lhs.assumptions, [@lhs.constraints])
              in performBindingGroup inputBDG @declarations.bindingGroups
 

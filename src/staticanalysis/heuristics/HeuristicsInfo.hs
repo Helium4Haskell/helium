@@ -22,6 +22,7 @@ import OneLiner
 import UHA_Source
 import UHA_Syntax
 import Messages
+import HeliumMessages ()
 import TypeErrors
 import Utils (internalError)
 import Top.Types
@@ -108,9 +109,13 @@ instance MaybeNegation ConstraintInfo where
          UHA_Expr (Expression_NegateFloat _ _) -> Just False
          _                                     -> Nothing
 
-instance IsExprVariable ConstraintInfo where
+instance IsExprVariable ConstraintInfo where -- misleading name?
    isExprVariable cinfo =
-      or (isJust (maybeImportedName cinfo) : [ True | FromBindingGroup <- properties cinfo ])
+      case (self . attribute . localInfo) cinfo of
+         UHA_Expr (Expression_Variable _ _) -> 
+            isJust (maybeInstantiatedTypeScheme cinfo)
+         _ -> False
+      -- or (isJust (maybeImportedName cinfo) : [ True | FromBindingGroup <- properties cinfo ])
       
    isEmptyInfixApplication cinfo =
       case (self . attribute . localInfo) cinfo of
@@ -154,12 +159,12 @@ specialApplicationTypeError :: (Bool,Bool) -> Int -> OneLineTree -> (Tp,Tp) -> R
 specialApplicationTypeError (isInfixApplication,isPatternApplication) argumentNumber termOneLiner (t1, t2) range cinfo =
    let typeError = TypeError [range] [oneLiner] table []
        oneLiner  = MessageOneLiner (MessageString ("Type error in " ++ location cinfo))
-       table     = [ (description1    , MessageOneLineTree (oneLinerSource source1))
-                   , (description2    , MessageOneLineTree (oneLinerSource source2))
-                   , ("type"          , MessageType functionType)
-                   , (description3    , MessageOneLineTree termOneLiner)
-                   , ("type"          , MessageType (toTpScheme t1))
-                   , ("does not match", MessageType (toTpScheme t2))
+       table     = [ description1     <:> MessageOneLineTree (oneLinerSource source1)
+                   , description2     <:> MessageOneLineTree (oneLinerSource source2)
+                   , "type"           >:> MessageType functionType
+                   , description3     <:> MessageOneLineTree termOneLiner
+                   , "type"           >:> MessageType (toTpScheme t1)
+                   , "does not match" >:> MessageType (toTpScheme t2)
                    ]
        (description1, source1, source2) =
           case convertSources (sources cinfo) of
@@ -184,11 +189,11 @@ specialUnifierTypeError (t1, t2) (info1, info2) =
    let typeError = TypeError [range] [oneLiner] table hints
        range     = rangeOfSource source 
        oneLiner  = MessageOneLiner (MessageString ("Type error in " ++ loc1))
-       table     = [ (description, maybeAddLocation source)
-                   , (descr1     , source1)
-                   , ("type"     , MessageType (toTpScheme t1))
-                   , (descr2     , source2)
-                   , ("type"     , MessageType (toTpScheme t2))
+       table     = [ description <:> maybeAddLocation source
+                   , descr1      <:> source1
+                   , "type"      >:> MessageType (toTpScheme t1)
+                   , descr2      <:> source2
+                   , "type"      >:> MessageType (toTpScheme t2)
                    ]
        description = descriptionOfSource source
        (loc1, localInfo, descr1) = snd (fromJust (isUnifier info1))

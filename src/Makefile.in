@@ -102,10 +102,10 @@ STATICANALYSIS = \
         staticanalysis/miscellaneous/DoublyLinkedTree.hs \
         staticanalysis/miscellaneous/TypeConstraints.hs \
         staticanalysis/miscellaneous/TypesToAlignedDocs.hs \
-        staticanalysis/miscellaneous/ContributingSites.hs \
-        staticanalysis/miscellaneous/HighLightArea.hs \
         staticanalysis/miscellaneous/TypeConversion.hs \
         staticanalysis/miscellaneous/UHA_Source.hs \
+        staticanalysis/miscellaneous/TypeDebugInfo.hs \
+        staticanalysis/miscellaneous/TypeDebugInfoWriter.hs \
         $(TOPDIR)/Types/Basics.hs \
         $(TOPDIR)/Types/Quantification.hs \
         $(TOPDIR)/Types/Qualification.hs \

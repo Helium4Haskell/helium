@@ -8,7 +8,6 @@
 -- Distributition of 
 --   * import environment
 --   * substitution   (result of solving the type constraints)
---   * predicates     (already substituted)
 --   * inferred types
 --   * ordered type synonyms
 --
@@ -20,16 +19,64 @@ ATTR Expression Expressions MaybeExpression Alternative Alternatives
      GuardedExpression GuardedExpressions  FunctionBinding FunctionBindings          
      RecordExpressionBinding RecordExpressionBindings      
         [ importEnvironment   : ImportEnvironment 
-          substitution        : FixpointSubstitution  
-          predicates          : Predicates 
-          inferredTypes       : {FiniteMap NameWithRange TpScheme}
+          substitution        : FixpointSubstitution
+          typeschemeMap       : {FiniteMap Int (Scheme Predicates)}
+          allTypeSchemes      : {FiniteMap NameWithRange TpScheme}
           orderedTypeSynonyms : OrderedTypeSynonyms
-        | collectErrors       : TypeErrors
-          collectWarnings     : Warnings
+        | collectWarnings     : Warnings
         | 
         ]
 
 ATTR LeftHandSide Pattern Patterns [ importEnvironment : ImportEnvironment | | ]
+
+----------------------------------------------------------------------------------------
+-- Collecting missing type signature warnings
+
+SEM Module
+  | Module  body . collectWarnings = []
+
+SEM Body
+  | Body   loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
+               . warnings           = missingTypeSignature True @inferredTypes
+           lhs . collectWarnings    = @warnings ++ @declarations.collectWarnings
+
+SEM MaybeDeclarations
+  | Just   loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
+               . warnings           = missingTypeSignature False @inferredTypes
+           lhs . collectWarnings    = @warnings ++ @declarations.collectWarnings 
+
+SEM Expression
+  | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
+               . warnings           = missingTypeSignature False @inferredTypes
+           lhs . collectWarnings    = @warnings ++ @expression.collectWarnings
+                                     
+SEM Statement                  
+  | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
+               . warnings           = missingTypeSignature False @inferredTypes
+           lhs . collectWarnings    = @warnings ++ @declarations.collectWarnings
+
+SEM Qualifier                    
+  | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
+               . warnings           = missingTypeSignature False @inferredTypes
+           lhs . collectWarnings    = @warnings ++ @declarations.collectWarnings
+
+{
+findInferredTypes :: FiniteMap Int (Scheme Predicates) -> FiniteMap Name (Sigma Predicates) -> TypeEnvironment
+findInferredTypes typeschemeMap =
+   let err = internalError "TypeInferenceCollect.ag" "findInferredTypes" "could not find type scheme variable"
+       f :: a -> Sigma Predicates -> TpScheme
+       f _ (SigmaVar i)     = lookupWithDefaultFM typeschemeMap err i
+       f _ (SigmaScheme ts) = ts
+   in mapFM f
+   
+missingTypeSignature :: Bool -> TypeEnvironment -> Warnings
+missingTypeSignature topLevel = 
+   let -- for the moment, only missing type signature for top-level functions are reported (unless monomorphic).
+      makeWarning (name, scheme)
+         | null (ftv scheme) && topLevel = [ NoTypeDef name scheme topLevel ]
+         | otherwise                     = []
+   in concatMap makeWarning . fmToList
+}
 
 ----------------------------------------------------------------------------------------
 -- Collecting inferred top level types
@@ -37,143 +84,58 @@ ATTR LeftHandSide Pattern Patterns [ importEnvironment : ImportEnvironment | | ]
 ATTR Body [ |  | toplevelTypes : TypeEnvironment ]   
   
 SEM Body
-  | Body   lhs . toplevelTypes = let (environment, _, _) = concatBindingGroups @declarations.bindingGroups
-                                     monos' = ftv (@lhs.substitution |-> @lhs.monos)
-                                     make _ = makeScheme monos' @lhs.predicates . (@lhs.substitution |->)
-                                 in mapFM make environment
+  | Body   lhs . toplevelTypes = @declarations.typeSignatures `plusFM` @inferredTypes
  
 ---------------------------------------------------------
--- Collecting (polymorphic) inferred types (that are in scope)
+-- Collecting all the type schemes that are in scope
 
-{- bug fix 10 september: the inferred types for where-declarations are also "visible" in the expression of the 
+{- bug fix 10 september 2003: the inferred types for where-declarations are also "visible" in the expression of the 
    right-hand side. Therefore, MaybeDeclarations should return a (synthesized) list of localTypes, and then 
    RightHandSide should distribute it down -}
 
-ATTR MaybeDeclarations [ | | localTypes : {[(NameWithRange, TpScheme)]} ]
+ATTR MaybeDeclarations [ | | localTypes : {FiniteMap NameWithRange TpScheme} ]
 
 SEM Module 
-  | Module  body . inferredTypes = listToFM [ (NameWithRange name, scheme)
-                                            | (name, scheme) <- fmToList (typeEnvironment @lhs.importEnvironment)
-                                            ]
+  | Module  body . allTypeSchemes = listToFM [ (NameWithRange name, scheme) | (name, scheme) <- fmToList (typeEnvironment @lhs.importEnvironment) ]
 
 SEM Body
-  | Body   loc . inferredTypes = addListToFM @lhs.inferredTypes @localTypes
-               . localTypes    = getInferredTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups 
+  | Body   loc . allTypeSchemes = @localTypes `plusFM` @lhs.allTypeSchemes
+               . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `plusFM` @inferredTypes) @declarations.bindingGroups
 
 SEM MaybeDeclarations
-  | Just     loc . localTypes  = getInferredTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups 
-  | Nothing  loc . localTypes  = []
+  | Just     lhs . localTypes  = makeLocalTypeEnv (@declarations.typeSignatures `plusFM` @inferredTypes) @declarations.bindingGroups
+  | Nothing  lhs . localTypes  = emptyFM
 
 SEM RightHandSide
-  | Expression  loc . inferredTypes = addListToFM @lhs.inferredTypes @where.localTypes
-  | Guarded     loc . inferredTypes = addListToFM @lhs.inferredTypes @where.localTypes
+  | Expression  loc . allTypeSchemes = @where.localTypes `plusFM` @lhs.allTypeSchemes 
+  | Guarded     loc . allTypeSchemes = @where.localTypes `plusFM` @lhs.allTypeSchemes 
 
 SEM Expression                    
-  | Let    loc . inferredTypes = addListToFM @lhs.inferredTypes @localTypes
-               . localTypes    = getInferredTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups 
+  | Let    loc . allTypeSchemes = @localTypes `plusFM` @lhs.allTypeSchemes
+               . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `plusFM` @inferredTypes) @declarations.bindingGroups
                                      
 SEM Statement                  
-  | Let    loc . inferredTypes = addListToFM @lhs.inferredTypes @localTypes
-               . localTypes    = getInferredTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups 
+  | Let    loc . allTypeSchemes = @localTypes `plusFM` @lhs.allTypeSchemes
+               . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `plusFM` @inferredTypes) @declarations.bindingGroups
 
 SEM Qualifier                    
-  | Let    loc . inferredTypes = addListToFM @lhs.inferredTypes @localTypes
-               . localTypes    = getInferredTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups 
+  | Let    loc . allTypeSchemes = @localTypes `plusFM` @lhs.allTypeSchemes
+               . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `plusFM` @inferredTypes) @declarations.bindingGroups
 
 {
-getInferredTypes :: Substitution substitution => Monos -> substitution -> Predicates -> BindingGroups -> [(NameWithRange, TpScheme)]
-getInferredTypes monos substitution predicates groups = 
+makeLocalTypeEnv :: TypeEnvironment -> BindingGroups -> FiniteMap NameWithRange TpScheme
+makeLocalTypeEnv local groups =
    let (environment, _, _) = concatBindingGroups groups
-       monos' = ftv (substitution |-> monos)
-   in [ (NameWithRange name, makeScheme monos' predicates tp')
-      | (name, tp) <- fmToList environment 
-      , let  tp' = substitution |-> tp
-      ]
-}
-
-----------------------------------------------------------------------------------------
--- Collecting additional type errors and warnings
-
-SEM Module
-  | Module  body . collectErrors   = []
-                 . collectWarnings = []
-
--- declared type too general / missing type signature
-SEM Body
-  | Body   loc . (errors, warnings) = checkAnnotations True (classEnvironment @lhs.importEnvironment) @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
-           lhs . collectErrors      = @errors ++ @declarations.collectErrors
-               . collectWarnings    = @warnings ++ @declarations.collectWarnings
-
-SEM MaybeDeclarations
-  | Just   loc . (errors, warnings) = checkAnnotations False (classEnvironment @lhs.importEnvironment) @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
-           lhs . collectErrors      = @errors ++ @declarations.collectErrors
-               . collectWarnings    = @warnings ++ @declarations.collectWarnings 
-
-SEM Expression
-  | Let    loc . (errors, warnings) = checkAnnotations False (classEnvironment @lhs.importEnvironment) @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
-           lhs . collectErrors      = @errors ++ @expression.collectErrors
-               . collectWarnings    = @warnings ++ @expression.collectWarnings
-
-  | Typed  loc . errors             = let scheme = makeScheme monos' @lhs.predicates tp'
-                                          monos' = ftv (@lhs.substitution |-> @lhs.monos)
-                                          tp'    = @lhs.substitution |-> @expression.beta
-                                          info   = (self . attribute) @expression.infoTree
-                                      in checkNotTooGeneral True (Right info) (classEnvironment @lhs.importEnvironment) @lhs.orderedTypeSynonyms @typeScheme scheme
-           lhs . collectErrors      = @errors ++ @expression.collectErrors
-
-                                     
-SEM Statement                  
-  | Let    loc . (errors, warnings) = checkAnnotations False (classEnvironment @lhs.importEnvironment) @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
-           lhs . collectErrors      = @errors ++ @declarations.collectErrors
-               . collectWarnings    = @warnings ++ @declarations.collectWarnings
-
-SEM Qualifier                    
-  | Let    loc . (errors, warnings) = checkAnnotations False (classEnvironment @lhs.importEnvironment) @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
-           lhs . collectErrors      = @errors ++ @declarations.collectErrors
-               . collectWarnings    = @warnings ++ @declarations.collectWarnings
-
-{
-checkAnnotations :: Bool -> ClassEnvironment -> OrderedTypeSynonyms -> FiniteMap Name TpScheme -> [(NameWithRange, TpScheme)] -> (TypeErrors, Warnings)
-checkAnnotations topLevel classEnv synonyms typeSignatures = foldr op ([], [])
-   where   
-       op (nameWR, scheme) pair@(errors, warnings) =
-          case lookupFM typeSignatures (nameWithRangeToName nameWR) of
-          
-             Just signature ->
-                -- is the signature not too general?
-                let -- this name has a different range!
-                    nameOfSignature = head [ n | n <- keysFM typeSignatures, n == nameWithRangeToName nameWR ]      
-                    newErrors = checkNotTooGeneral False (Left nameOfSignature) classEnv synonyms signature scheme             
-                in (newErrors ++ errors, warnings)               
-                       
-             Nothing 
-                -- issue a warning for missing type signature (unless monomorphic)
-                | null (ftv scheme) && topLevel ->
-                     let warning = NoTypeDef (nameWithRangeToName nameWR) scheme topLevel
-                     in (errors, warning : warnings)
-                     
-             _ -> pair      
-
-checkNotTooGeneral :: Bool -> Either Name UHA_Source -> ClassEnvironment -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
-checkNotTooGeneral isAnnotation mySource classEnv synonyms signature scheme
-   | genericInstanceOf synonyms classEnv signature scheme = []
-   | genericInstanceOf synonyms classEnv (removePredicates signature) (removePredicates scheme) = 
-        [makeMissingConstraintTypeError mySource scheme signature]
-   | otherwise = 
-        [makeNotGeneralEnoughTypeError isAnnotation source scheme signature]
-
- where 
-   source = either nameToUHA_Expr id mySource
-   removePredicates :: TpScheme ->  TpScheme
-   removePredicates (Quantification (is, qm, a)) = 
-      Quantification (is, qm, [] .=>. unqualify a)
-      
+       names = keysFM environment
+       f x   = maybe err id (find (==x) names) 
+       err   = internalError "TypeInferenceCollect.ag" "makeLocalTypeEnv" "could not find name"
+   in listToFM [ (NameWithRange (f name), scheme) | (name, scheme) <- fmToList local ]
 }
 
 -------------------------------------------
 -- Collecting Type Signatures
 
-ATTR Declaration Declarations [ | typeSignatures:{FiniteMap Name TpScheme} | ]
+ATTR Declaration Declarations [ | typeSignatures:TypeEnvironment | ]
 
 SEM Body              | Body    declarations . typeSignatures = emptyFM
 SEM Expression        | Let     declarations . typeSignatures = emptyFM
@@ -195,18 +157,11 @@ ATTR Expression Expressions MaybeExpression
      RightHandSide GuardedExpression GuardedExpressions
      FunctionBinding FunctionBindings  
      RecordExpressionBinding RecordExpressionBindings        
-        [ currentChunk        : Int  
-          chunkNumberMap      : ChunkNumberMap
-        | uniqueChunk         : Int  
-          collectChunkNumbers : ChunkNumberMap
-        |
-        ]         
+        [ currentChunk:Int | uniqueChunk:Int | ]        
 
 SEM Module
   | Module   body . currentChunk        = 0
                   . uniqueChunk         = 1
-                  . collectChunkNumbers = emptyFM 
-                  . chunkNumberMap      = @body.collectChunkNumbers 
 
 SEM Body              | Body   lhs . uniqueChunk = @chunkNr -- from binding groups                                   
 SEM MaybeDeclarations | Just   lhs . uniqueChunk = @chunkNr  
@@ -216,7 +171,4 @@ SEM Qualifier         | Let    lhs . uniqueChunk = @chunkNr
 
 SEM Declaration 
   | FunctionBindings   bindings      . currentChunk = findCurrentChunk @bindings.name @lhs.inheritedBDG -- from binding groups
-  | PatternBinding     righthandside . currentChunk = findCurrentChunk (head (keysFM @pattern.environment)) @lhs.inheritedBDG  
-  
-SEM Expression 
-  | Variable   lhs . collectChunkNumbers = addToFM @lhs.collectChunkNumbers @lhs.betaUnique @lhs.currentChunk
+  | PatternBinding     righthandside . currentChunk = findCurrentChunk (head (keysFM @pattern.environment)) @lhs.inheritedBDG

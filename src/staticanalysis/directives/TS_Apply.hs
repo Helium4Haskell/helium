@@ -51,26 +51,6 @@ expressionParser operatorTable string =
                     ResolveOperators.expression operatorTable expression
   where
     intErr = internalError "TS_Apply.ag" "n/a" ("unparsable expression: "++show string)
-
-emptyConstraintInfo :: (Tp, Tp) -> ConstraintInfo
-emptyConstraintInfo tppair =
-   CInfo { location   = "Typing Strategy"
-         , sources    = (UHA_Decls [], Nothing)
-         , typepair   = tppair
-         , localInfo  = root (LocalInfo (UHA_Decls []) Nothing []) []
-         , properties = []
-         }
-
-defaultConstraintInfo :: (UHA_Source, Maybe UHA_Source) -> (Tp, Tp) -> ConstraintInfo
-defaultConstraintInfo sourceTuple@(s1, s2) tppair =
-   CInfo { location   = descriptionOfSource theSource -- not very precise: expression, pattern, etc.
-         , sources    = sourceTuple
-         , localInfo  = root myLocal []
-         , typepair   = tppair
-         , properties = []
-         }
- where myLocal   = LocalInfo {self = theSource, assignedType = Nothing, monos = []}
-       theSource = maybe s1 id s2
        
 exactlyOnce :: Eq a => [a] -> [a]
 exactlyOnce []     = []
@@ -203,7 +183,7 @@ sem_Core_TypeRule_TypeRule (premises_) (conclusion_) =
                 let conclusionSource = self       (getLocalInfo _lhsIinfoTuple)
                     conclusionType   = getType _lhsIinfoTuple
                 in [ (stp1 .==. conclusionType)
-                        (addProperty FolkloreConstraint . defaultConstraintInfo (conclusionSource, Nothing))
+                        (addProperty FolkloreConstraint $ defaultConstraintInfo (conclusionSource, Nothing))
                    | (_, tp1) <- _conclusionIjudgements
                    , let stp1 = _lhsIsubstitution |-> tp1
                    , stp1 /= conclusionType
@@ -348,7 +328,7 @@ sem_Core_TypingStrategy_TypingStrategy (typeEnv_) (typerule_) (statements_) =
                     (ns, tps1) = unzip (parent \\ children)
                     (ss, tps2) = unzip typeEnv_
                     zipF t1 t2 = (t1 .==. _substitution |-> t2) infoF
-                    infoF      = \pair -> (emptyConstraintInfo pair)
+                    infoF      = emptyConstraintInfo
                                         { location   = "Typing Strategy (patch)" }
                     err = internalError "TS_Apply.ag" "n/a" "the type environments do not match"
                 in if (map show ns /= ss) then err else
@@ -448,10 +428,9 @@ sem_Core_UserStatement_Equal (leftType_) (rightType_) (message_) =
             (_lhsOcurrentPosition@_) =
                 (\(x, y) -> (x, y+1)) _lhsIcurrentPosition
             (_newConstraint@_) =
-                let cinfo   = addProperty (WithTypeError (TypeError [] message [] []))
-                            . addProperty (uncurry IsUserConstraint _lhsIcurrentPosition)
-                            . inPhase
-                            . emptyConstraintInfo
+                let cinfo   = setTypeError (TypeError [] message [] [])
+                            $ addProperty (uncurry IsUserConstraint _lhsIcurrentPosition)
+                            $ inPhase emptyConstraintInfo
                     inPhase = case _lhsIcurrentPhase of
                                  Just phase | phase /= 5
                                     -> addProperty (ConstraintPhaseNumber phase)
@@ -512,15 +491,13 @@ sem_Core_UserStatement_Pred (predClass_) (predType_) (message_) =
             _lhsOftv :: ([Int])
             _lhsOmetavarConstraints :: ([(String,Tree (TypeConstraint ConstraintInfo))])
             (_newConstraint@_) =
-                let cinfo = (emptyConstraintInfo (voidType, voidType))
-                               { properties = [ ReductionErrorInfo thePred
-                                              , WithTypeError (TypeError [] message [] [])
-                                              ]
-                               }
+                let cinfo = setTypeError (TypeError [] message [] [])
+                          $ addProperty (ReductionErrorInfo thePred)
+                          $ emptyConstraintInfo
                     thePred = Predicate predClass_ (_lhsIsubstitution |-> predType_)
                     message = let f = MessageOneLiner . substituteAttributes _lhsIfromAttribute
                               in map f (lines message_)
-                in predicate (thePred) cinfo
+                in predicate thePred cinfo
             (_lhsOcollectConstraints@_) =
                 unitTree _newConstraint : _lhsIcollectConstraints
             (_lhsOftv@_) =

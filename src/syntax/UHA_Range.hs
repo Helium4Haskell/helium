@@ -222,6 +222,16 @@ getDeclarationRange decl = case decl of
 getBodyRange :: Body -> Range
 getBodyRange body = case body of
    Body_Body r _ _ -> r
+
+getTypeRange :: Type -> Range
+getTypeRange tp = case tp of
+   Type_Application r _ _ _ -> r
+   Type_Variable r _        -> r
+   Type_Constructor r _     -> r
+   Type_Qualified r _ _     -> r
+   Type_Forall r _ _        -> r
+   Type_Exists r _ _        -> r 
+   Type_Parenthesized r _   -> r
    
 getGuardedExprRange :: GuardedExpression -> Range
 getGuardedExprRange gexpr = case gexpr of

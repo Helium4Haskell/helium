@@ -82,23 +82,14 @@ SEM TypingStrategy
        loc . allMetaVariables     = map fst @typerule.simpleJudgements 
            . constraintsNotExplicit = filter (`notElem` (map show @statements.metaVariableConstraintNames)) @allMetaVariables       
 
-ATTR UserStatements UserStatement [ standardConstraintInfo : {((Tp, Tp) -> ConstraintInfo)} 
+ATTR UserStatements UserStatement [ standardConstraintInfo : ConstraintInfo
                                     attributeTable : {[((String, Maybe String), MessageBlock)]} | | ]
 
 SEM TypingStrategy
   | TypingStrategy
        loc . standardConstraintInfo = standardConstraintInfo
            . attributeTable         = [] 
-{
-standardConstraintInfo :: (Tp, Tp) -> ConstraintInfo
-standardConstraintInfo tppair =
-   CInfo { location   = "Typing Strategy"
-         , sources    = (UHA_Decls [], Nothing)
-         , typepair   = tppair
-         , properties = [ ]
-         }      
-}                                                                       
-          
+   
 --
 
 ATTR TypeRule  [ | | conclusionExpression:Expression ]

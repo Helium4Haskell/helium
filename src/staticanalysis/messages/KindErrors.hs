@@ -46,19 +46,19 @@ instance HasMessage KindError where
          MustBeStar _ s d k ->
             [ MessageOneLiner (MessageString $ "Illegal type in "++s)
             , MessageTable
-                 [ (MessageString "type"         , MessageString (show d)) 
-                 , (MessageString "kind"         , MessageType (toTpScheme k))
-                 , (MessageString "expected kind", MessageType (toTpScheme star))
+                 [ "type"          <:> MessageString (show d)
+                 , "kind"          >:> MessageType (toTpScheme k)
+                 , "expected kind" >:> MessageType (toTpScheme star)
                  ]
             ] 
             
          KindApplication r d1 d2 k1 k2 -> 
             [ MessageOneLiner (MessageString $ "Illegal type in type application")
             , MessageTable
-                 [ (MessageString "type"            , MessageString (show d1)) 
-                 , (MessageString "type constructor", MessageString (show d2)) 
-                 , (MessageString "kind"            , MessageType (toTpScheme k1))
-                 , (MessageString "does not match"  , MessageType (toTpScheme k2))
+                 [ "type"             <:> MessageString (show d1)
+                 , "type constructor" <:> MessageString (show d2)
+                 , "kind"             >:> MessageType (toTpScheme k1)
+                 , "does not match"   >:> MessageType (toTpScheme k2)
                  ]
             ]          
          

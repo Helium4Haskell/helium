@@ -27,7 +27,13 @@ data DictionaryEnvironment =
 data DictionaryTree = ByPredicate Predicate
                     | ByInstance String {- class name -} String {- instance name -} [DictionaryTree]
                     | BySuperClass String {- sub -} String {- super -} DictionaryTree
-          
+   deriving Show
+   
+instance Show DictionaryEnvironment where
+   show denv = 
+      "{ declMap = " ++ show (fmToList $ declMap denv) ++
+      ", varMap = "  ++ show (fmToList $ varMap denv) ++ "}"
+       
 emptyDictionaryEnvironment :: DictionaryEnvironment
 emptyDictionaryEnvironment = 
    DEnv { declMap = emptyFM, varMap = emptyFM }

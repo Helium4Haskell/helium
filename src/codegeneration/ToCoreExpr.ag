@@ -118,9 +118,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  type                     : Type
 
     -- negate is overloaded and we need to insert a dictionary argument
-    | Negate             lhs.core = insertDictionaries (setNameRange intUnaryMinusName @range.self) @lhs.dictionaryEnv
-                                                       
-                                                       
+    | Negate             lhs.core = insertDictionaries (setNameRange intUnaryMinusName @range.self) @lhs.dictionaryEnv                  
                                     `app_` @expression.core 
     --  range                    : Range
     --  expression               : Expression
@@ -130,16 +128,21 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  expression               : Expression
 
+    -- enumerations are overloaded and we need to insert a dictionary argument
     | Enum               lhs.core = 
             case (@then.core, @to.core) of
                 (Just then_, Just to) -> 
-                    var "primEnumFromThenTo" `app_` @from.core `app_` then_ `app_` to
+                    insertDictionaries (setNameRange enumFromThenToName @range.self) @lhs.dictionaryEnv
+                       `app_` @from.core `app_` then_ `app_` to
                 (Just then_, Nothing) -> 
-                    var "primEnumFromThen" `app_` @from.core `app_` then_
+                    insertDictionaries (setNameRange enumFromThenName @range.self) @lhs.dictionaryEnv
+                       `app_` @from.core `app_` then_
                 (Nothing, Just to) ->
-                    var "primEnumFromTo" `app_` @from.core `app_` to
+                    insertDictionaries (setNameRange enumFromToName @range.self) @lhs.dictionaryEnv 
+                       `app_` @from.core `app_` to
                 (Nothing, Nothing) ->
-                    var "primEnumFrom" `app_` @from.core
+                    insertDictionaries (setNameRange enumFromName @range.self) @lhs.dictionaryEnv
+                       `app_` @from.core
                     
     --  range                    : Range
     --  from                     : Expression

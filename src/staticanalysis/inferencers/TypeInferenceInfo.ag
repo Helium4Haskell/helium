@@ -83,7 +83,7 @@ SEM Expression | InfixApplication loc . cinfoComplete =
 SEM Expression | InfixApplication loc . cinfoLeftSection =
   specialConstraint "left section" @parentTree
      (self @localInfo, Nothing)
-     [ ]
+     [  ]
 
 SEM Expression | InfixApplication loc . cinfoRightSection =
   specialConstraint "right section" @parentTree        
@@ -158,7 +158,7 @@ SEM Expression | Comprehension loc . cinfo =
 -- Expression.Typed
 SEM Expression | Typed loc . cinfoExpr =
   childConstraint 0 "type annotation" @parentTree 
-     []
+     [ TypeSignatureLocation (getTypeRange @type.self) ]
 
 SEM Expression | Typed loc . cinfoResult =
   resultConstraint "type annotation" @parentTree 
@@ -181,6 +181,13 @@ SEM Expression | Enum loc . toChildNr = 1 + length @then.infoTrees
 SEM Expression | Enum loc . cinfoResult =
   resultConstraint "enumeration" @parentTree
      [ FolkloreConstraint ]       
+
+SEM Expression | Enum loc . cinfoPred =
+  resultConstraint "enumeration" @parentTree 
+     [ PredicateArisingFrom (Predicate "Enum" @elementType, @cinfoResult)
+     , InstantiatedTypeScheme (makeScheme [] [] voidType)
+     , TypePair (voidType, voidType) 
+     ] -- ??
 
 -- Expression.Negate
 SEM Expression | Negate loc . cinfo =

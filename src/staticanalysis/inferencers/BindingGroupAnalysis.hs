@@ -13,16 +13,13 @@
 module BindingGroupAnalysis where
 
 import UHA_Syntax
-import UHA_Utils
 import TypeConstraints
 import ConstraintInfo
 import TopSort (topSort)
 import Top.Types
 import Top.ComposedSolvers.Tree
-import Top.ComposedSolvers.ChunkySolver
 import Data.FiniteMap
 import Data.List
-import Utils (internalError)
 
 type Assumptions        = FiniteMap Name [(Name,Tp)]
 type PatternAssumptions = FiniteMap Name Tp
@@ -57,10 +54,11 @@ concatBindingGroups :: BindingGroups -> BindingGroup
 concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
 
 -- |Input for binding group analysis
-type InputBDG = (Int, Int, ChunkNumberMap, Monos, FiniteMap Name TpScheme, Maybe (Assumptions, ConstraintSets))
-                   
-performBindingGroup :: InputBDG -> BindingGroups -> (Assumptions,ConstraintSet,InheritedBDG,Int)
-performBindingGroup (currentChunk, uniqueChunk, chunkNumberMap, monos, typeSignatures, chunkContext) groups = 
+type InputBDG     = (Int, Int, Monos, FiniteMap Name TpScheme, Maybe (Assumptions, ConstraintSets), Int)
+type OutputBDG    = (Assumptions, ConstraintSet, InheritedBDG, Int, Int, FiniteMap Name (Sigma Predicates))
+
+performBindingGroup :: InputBDG -> BindingGroups -> OutputBDG
+performBindingGroup (currentChunk, uniqueChunk, monos, typeSignatures, chunkContext, unique) groups = 
    variableDependencies 
 
    where   
@@ -76,7 +74,7 @@ performBindingGroup (currentChunk, uniqueChunk, chunkNumberMap, monos, typeSigna
 
         chunkedBindingGroups  :: [(Int, BindingGroup)]
         chunkedBindingGroups = 
-	   zip [uniqueChunk..] (bindingGroupAnalysis groups) ++ 
+           zip [uniqueChunk..] (bindingGroupAnalysis groups) ++ 
            case chunkContext of 
               Nothing     -> []
               Just (a, c) -> [(currentChunk, (emptyFM, a, c))]
@@ -94,36 +92,40 @@ performBindingGroup (currentChunk, uniqueChunk, chunkNumberMap, monos, typeSigna
                                    in n : expand (concatMap f xs ++ ns) ys
            in expand initial groups
                           
-        variableDependencies :: (Assumptions, ConstraintSet, InheritedBDG, Int)
+        variableDependencies :: OutputBDG
         variableDependencies = 
-           let (aset, cset, mt) = foldr op initial chunkedBindingGroups
-           in (aset, cset, mt, uniqueChunk + length groups)
+           let (aset, cset, mt, newUnique, fm) = foldr op initial chunkedBindingGroups
+           in (aset, cset, mt, uniqueChunk + length groups, newUnique, fm)
 
           where        
-            initial = (noAssumptions, emptyTree, [])
+            initial = (noAssumptions, emptyTree, [], unique, emptyFM)
           
-            op (cnr,(e,a,c)) (aset,cset,mt) =
-               let (cset1,e'   )  = (typeSignatures !:::! e) (cinfoBindingGroupExplicitTypedBinding monos)                  
+            op (cnr, (e, a, c)) (aset, cset, mt, un, fm) =
+               let (cset1,e'   )  = (typeSignatures !:::! e) monos cinfoBindingGroupExplicitTypedBinding                
                    (cset2,a'   )  = (typeSignatures .:::. a) (cinfoBindingGroupExplicit monos (keysFM e))
                    (cset3,a''  )  = (e' .===. a')            cinfoSameBindingGroup
-                   (cset4,aset')  = (.<==.) monos e' aset    cinfoBindingGroupImplicit
                    
+                   implicits      = zip [un..] (fmToList e')
+                   implicitsFM    = listToFM [ (name, SigmaVar sv) | (sv, (name, _)) <- implicits ]
+                   cset4          = genConstraints monos cinfoGeneralize implicits                   
+                   (cset5, aset') = (implicitsFM .<==. aset) cinfoBindingGroupImplicit
+                                    
                    monomorphic    = any (`elem` monomorphicNames) (keysFM e) || cnr == currentChunk
 
-                   constraintTree 
-                    | monomorphic = StrictOrder 
-                                       ( (cset1 ++ cset2 ++ cset3) .>>. Node (reverse c) )
-                                       ( cset4 .>>. cset )
-                    | otherwise   = Chunk cnr
-                                          (cset3 .>>. Node (reverse c))
-                                          (dependencyBinds chunkNumberMap cset4)
-                                          ([(cnr, c) | c <- cset1] ++ dependencyBinds chunkNumberMap cset2)
-                                          cset
+                   constraintTree =
+                      StrictOrder 
+                         ( (if monomorphic then id else Chunk cnr)
+                         $ StrictOrder
+                              ( (cset1 ++ cset2 ++ cset3) .>>. Node (reverse c) )
+                              (listTree cset4))
+                         (cset5 .>>. cset)
                in
                   ( a'' `combine` aset'
                   , constraintTree
-                  , (keysFM e, (eltsFM e', if monomorphic then currentChunk else cnr)) : mt                   
-                  )
+                  , (keysFM e, (eltsFM e', if monomorphic then currentChunk else cnr)) : mt
+                  , un + sizeFM e'
+                  , implicitsFM `plusFM` fm
+                  ) 
 
 findMono :: Name -> InheritedBDG -> Monos
 findMono n = let p = elem n . fst
@@ -135,15 +137,3 @@ getMonos tcs = [ TVar i | tc <- tcs, i <- ftv tc ]
 findCurrentChunk :: Name -> InheritedBDG -> Int
 findCurrentChunk n = let p = elem n . fst
                      in snd . snd . head . filter p
-
--- chunks
-type ChunkNumberMap = FiniteMap Int Int
-
-dependencyBinds :: ChunkNumberMap -> TypeConstraints ConstraintInfo -> [(Int, TypeConstraint ConstraintInfo)]
-dependencyBinds fm cs = 
-   let err  = internalError "BindingGroupAnalysis.hs" "dependencyBinds" "error in lookup"
-   in [ (j, c) 
-      | c <- cs
-      , let i = maybe err id (spreadFunction c)
-            j = lookupWithDefaultFM fm err i
-      ]

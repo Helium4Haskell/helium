@@ -170,22 +170,37 @@ applicationEdge =
              synonyms <- getTypeSynonyms                 
              (maybeFunctionType, maybeExpectedType) <- getSubstitutedTypes info
              subPreds <- allSubstPredicates     
-             case (maybeFunctionType,maybeExpectedType) of
-               
-               (Just functionType,Just expectedType) 
-
+             case (maybeFunctionType, maybeExpectedType) of
+               (Just functionType, _)
+                        
                   -- the expression to which arguments are given does not have a function type
                   | maybe False (<= 0) maximumForFunction && not isBinary && not isPatternApplication ->                       
                        let hint = becauseHint "it is not a function"
                        in return $ Just
                              (noAction, 6, "not a function", [edge], [hint info])
-                 
+
                   -- function used as infix that expects < 2 arguments
                   | maybe False (<= 1) maximumForFunction && isBinary && not isPatternApplication ->
                        let hint = becauseHint "it is not a binary function"
                        in return $ Just
                              (noAction, 6, "no binary function", [edge], [hint info])
- 
+
+                  -- too many arguments are given
+                  | maybe False (< numberOfArguments) maximumForFunction && not isPatternApplication && isNothing maybeExpectedType ->
+                       let hint = becauseHint "too many arguments are given"
+                       in return $ Just
+                             (noAction, 2, "too many arguments are given", [edge], [hint info])
+                                       
+                where -- copy/paste :-(
+                      isPatternApplication = isPattern info
+                      numberOfArguments    = length tuplesForArguments
+                      noAction             = return ()
+                      maximumForFunction   = case functionSpine (expandType (snd synonyms) functionType) of
+                                                (_, TVar _) -> Nothing
+                                                (tps, _   ) -> Just (length tps)
+                
+               (Just functionType, Just expectedType) 
+
                   -- can a permutation of the arguments resolve the type inconsistency
                   | length argumentPermutations == 1 -> 
                        let p = head argumentPermutations
@@ -257,8 +272,8 @@ applicationEdge =
                       numberOfArguments = length tuplesForArguments         
                                 
                       -- (->) spines for function type and expected type for the given number of arguments
-                      (functionArguments, functionResult) = functionSpineOfLength numberOfArguments functionType
-                      (expectedArguments, expectedResult) = functionSpineOfLength numberOfArguments expectedType
+                      (functionArguments, functionResult) = functionSpineOfLength numberOfArguments (expandType (snd synonyms) functionType)
+                      (expectedArguments, expectedResult) = functionSpineOfLength numberOfArguments (expandType (snd synonyms) expectedType)
 
                       -- (->) spines for function type and expected type ignoring the given number of arguments                      
                       (allFunctionArgs, allFunctionRes) = functionSpine functionType
@@ -267,7 +282,7 @@ applicationEdge =
                       -- maximum number of arguments for the function type (result type should not be polymorphic!)
                       --   e.g.: (a -> b) -> [a] -> [b]             yields (Just 2)
                       --         (a -> b -> b) -> b -> [a] -> b     yields Nothing
-                      maximumForFunction = case functionSpine functionType of
+                      maximumForFunction = case functionSpine (expandType (snd synonyms) functionType) of
                                               (_, TVar _) -> Nothing
                                               (tps, _   ) -> Just (length tps)
                       
@@ -382,7 +397,7 @@ fbHasTooManyArguments =
    | otherwise                    =
 
       do synonyms <- getTypeSynonyms
-         let (t1,t2)         = getTwoTypes info
+         let (t2,t1)         = getTwoTypes info
              maximumExplicit = arityOfTp (expandType (snd synonyms) t1)
              tvar            = if null (ftv t2) then (-1) else head (ftv t2) -- !!!!!!!!!!!!!!!!!!!
    
@@ -460,34 +475,26 @@ unaryMinus =
    case maybeApplicationEdge info of
       Just (isInfix, tuplesForArguments) | isInfix && length tuplesForArguments == 2 -> 
          case maybeUnaryMinus info of
-	    Just someLiteral ->
-	       doWithoutEdge triple $ 
-	          do synonyms <- getTypeSynonyms 
-		     let leftBeta = snd (head tuplesForArguments)
-		     leftType <- safeApplySubst leftBeta
-		     (_, mt2) <- getSubstitutedTypes info
-		     let contextType = fmap (snd . functionSpineOfLength 2 . expandType (snd synonyms)) mt2
-		     case (someLiteral, leftType, contextType) of
-		        (Left int, Just leftTp, Just contextTp) 
-			   | unifiable synonyms leftTp (intType .->. contextTp) -> 
-			        let hint = possibleHint ("Insert parentheses to negate the int literal: (-"++show int++")")
-                                in return $ Just 
-                                     (5, "Unary minus for int", [edge], [hint info])
-	                (Right float, Just leftTp, Just contextTp) 
-			   | unifiable synonyms leftTp (floatType .->. contextTp) -> 
-			        let hint = possibleHint ("Insert parentheses to negate the float literal: (-."++show float++")")
-                                in return $ Just 
-                                     (5, "Unary minus for float", [edge], [hint info])
-			_ -> return Nothing
-	    _ -> return Nothing
-      
-      {- waarom staat dit nog in commentaar, vraagt Arjan; haddock zeurde er over vanwege
-         commentaar en dan een verticale streep
-         | isBinary && isInfixMinus info ->
-        $
-       
-          do undefined-}
-	  
+            Just someLiteral ->
+               doWithoutEdge triple $ 
+               do synonyms <- getTypeSynonyms 
+                  let leftBeta = snd (head tuplesForArguments)
+                  leftType <- substituteTypeSafe leftBeta
+                  (_, mt2) <- getSubstitutedTypes info
+                  let contextType = fmap (snd . functionSpineOfLength 2 . expandType (snd synonyms)) mt2
+                  case (someLiteral, leftType, contextType) of
+                     (Left int, Just leftTp, Just contextTp) 
+                        | unifiable synonyms leftTp (intType .->. contextTp) -> 
+                             let hint = possibleHint ("Insert parentheses to negate the int literal: (-"++show int++")")
+                             in return $ Just 
+                                   (5, "Unary minus for int", [edge], [hint info])
+                     (Right float, Just leftTp, Just contextTp) 
+                        | unifiable synonyms leftTp (floatType .->. contextTp) -> 
+                             let hint = possibleHint ("Insert parentheses to negate the float literal: (-."++show float++")")
+                             in return $ Just 
+                                   (5, "Unary minus for float", [edge], [hint info])
+                     _ -> return Nothing
+            _ -> return Nothing
       _ -> return Nothing
                        
 -----------------------------------------------------------------------------
@@ -551,7 +558,7 @@ allSubstPredicates =
    do synonyms <- getTypeSynonyms
       allPreds <- getPredicates
       let f (Predicate s tp) = 
-             do mtp <- safeApplySubst tp
+             do mtp <- substituteTypeSafe tp
                 return (fmap (Predicate s) mtp)
       mapM f allPreds
       
@@ -564,7 +571,7 @@ predicateFits :: HasTypeGraph m info => Predicate -> m Bool
 predicateFits (Predicate s tp) =
    do synonyms <- getTypeSynonyms
       classEnv <- getClassEnvironment
-      mtp      <- safeApplySubst tp
+      mtp      <- substituteTypeSafe tp
       case mtp of
          Nothing  -> return False
          Just tp' -> 

@@ -19,14 +19,14 @@ import Top.Types
 import OneLiner
 import Similarity (similar)
 import Utils      (internalError)
-import List       (sortBy, sort, partition)
+import List       (sortBy, sort, partition, union, nub)
 import Maybe      (fromJust, isNothing)
 import Char       (toUpper)
 
 type Message       = [MessageLine] 
 
 data MessageLine   = MessageOneLiner  MessageBlock
-                   | MessageTable     [(MessageBlock, MessageBlock)]
+                   | MessageTable     [(Bool, MessageBlock, MessageBlock)]  -- Bool: indented or not
                    | MessageHints     String MessageBlocks
 
 type MessageBlocks = [MessageBlock]               
@@ -48,12 +48,12 @@ instance Substitutable MessageLine where
 
    sub |-> ml = case ml of   
                    MessageOneLiner mb -> MessageOneLiner (sub |-> mb)
-                   MessageTable table -> MessageTable (sub |-> table)
+                   MessageTable table -> MessageTable [ (b, sub |-> mb1, sub |-> mb2) | (b, mb1, mb2) <- table ]
                    MessageHints s mbs -> MessageHints s (sub |-> mbs)
 
    ftv ml = case ml of
                MessageOneLiner mb -> ftv mb
-               MessageTable table -> ftv table
+               MessageTable table -> ftv [ [mb1, mb2] | (_, mb1, mb2) <- table ]
                MessageHints s mbs -> ftv mbs
                                        
 instance Substitutable MessageBlock where
@@ -69,6 +69,19 @@ instance Substitutable MessageBlock where
                MessagePredicate p   -> ftv p           
                MessageCompose mbs   -> ftv mbs
                _                    -> []       
+
+-------------------------------------------------------------
+-- Smart row constructors for tables
+
+infixl 1 <:>, >:>    -- very low priority
+
+-- do not indent
+(<:>) :: String -> MessageBlock -> (Bool, MessageBlock, MessageBlock)
+s <:> mb = (False, MessageString s, mb)
+
+-- indented row
+(>:>) :: String -> MessageBlock -> (Bool, MessageBlock, MessageBlock)
+s >:> mb = (True, MessageString s, mb)
 
 -------------------------------------------------------------
 -- Misc

@@ -34,15 +34,12 @@ import Top.Types
 import Top.Solvers.GreedySolver
 import Top.Solvers.SolveConstraints
 import Top.Constraints.TypeConstraintInfo
-import Top.States.TIState
 import TypeConstraints
 import UHA_Syntax
 import Args
 import Data.FiniteMap
 import TypeConstraints
 import Utils (internalError)
-import UHA_Utils (nameFromString) -- instance Ord Name
-import UHA_Range (noRange)
 import TopSort (topSort)
 import ImportEnvironment hiding (setTypeSynonyms)
 import KindErrors
@@ -70,7 +67,7 @@ SEM Body
        declarations . bindingGroups  = []
        lhs . constraints             = @newConstraints ++ @cs
        loc . (environment, aset, cs) = performBindingGroup @declarations.bindingGroups
-           . newConstraints          = fst $ (@kindEnvironment .:::. @aset) (\n _ -> unexpected $ "Body.Body " ++ show n)
+           . newConstraints          = fst $ (@kindEnvironment .:::. @aset) (\n -> unexpected $ "Body.Body " ++ show n)
            . kindEnvironment         = getKindsFromImportEnvironment @lhs.importEnvironment
 
 ATTR Body Declarations Declaration Expressions Expression Alternatives Alternative
@@ -92,23 +89,23 @@ SEM Declaration
        simpletype . constraints = []
                   . kappaOfRHS  = @type.kappa
        lhs  . bindingGroups  = @newGroup : @lhs.bindingGroups
-       loc  . newConstraints = fst $ (@simpletype.environment .===. @type.assumptions) (\n _ -> unexpected $ "Declaration.Type " ++ show n)
+       loc  . newConstraints = fst $ (@simpletype.environment .===. @type.assumptions) (\n -> unexpected $ "Declaration.Type " ++ show n)
             . newGroup       = (@simpletype.declared, @type.assumptions, @newConstraints ++ @type.constraints)
             
   | Data
        simpletype . constraints = [] 
                   . kappaOfRHS  = star
        lhs . bindingGroups  = @newGroup : @lhs.bindingGroups
-       loc . newConstraints = fst $ (@simpletype.environment .===. @constructors.assumptions) (\n _ -> unexpected $ "Declaration.Data " ++ show n)
+       loc . newConstraints = fst $ (@simpletype.environment .===. @constructors.assumptions) (\n -> unexpected $ "Declaration.Data " ++ show n)
            . newGroup       = (@simpletype.declared, @constructors.assumptions, @newConstraints ++ @constructors.constraints)
            
   | TypeSignature
        type . constraints  = [] 
        lhs  . bindingGroups = @newGroup : @lhs.bindingGroups
             . kappaUnique   = @type.kappaUnique + length @tvEnv
-       loc  . newConstraint = (@type.kappa .==. star) (mustBeStar @range.self "type signature" @type.self)
+       loc  . newConstraint = (@type.kappa <==> star) (mustBeStar @range.self "type signature" @type.self)
             . tvEnv         = zip (getTypeVariables @type.assumptions) (map TVar [@type.kappaUnique..])
-            . (cset, aset)  = (listToFM @tvEnv .===. @type.assumptions) (\n _ -> unexpected $ "Declaration.TypeSignature " ++ show n) 
+            . (cset, aset)  = (listToFM @tvEnv .===. @type.assumptions) (\n -> unexpected $ "Declaration.TypeSignature " ++ show n) 
             . newGroup      = (emptyFM, @aset, @cset ++ @type.constraints ++ [@newConstraint])
 
 
@@ -117,9 +114,9 @@ SEM Expression
        type . constraints   = []   
        lhs  . bindingGroups = @newGroup : @expression.bindingGroups
             . kappaUnique   = @type.kappaUnique + length @tvEnv
-       loc  . newConstraint = (@type.kappa .==. star) (mustBeStar @range.self "type annotation" @type.self)
+       loc  . newConstraint = (@type.kappa <==> star) (mustBeStar @range.self "type annotation" @type.self)
             . tvEnv         = zip (getTypeVariables @type.assumptions) (map TVar [@type.kappaUnique..])
-            . (cset, aset)  = (listToFM @tvEnv .===. @type.assumptions) (\n _ -> unexpected $ "Expression.Typed " ++ show n) 
+            . (cset, aset)  = (listToFM @tvEnv .===. @type.assumptions) (\n -> unexpected $ "Expression.Typed " ++ show n) 
             . newGroup      = (emptyFM, @aset, @cset ++ @type.constraints ++ [@newConstraint])
 
 ATTR SimpleType [ kappaOfRHS:Kind | constraints:KindConstraints | environment:PatternAssumptions declared:PatternAssumptions ]
@@ -132,7 +129,7 @@ SEM SimpleType
            . kappaUnique   = 1 + length @typevariables.self + @lhs.kappaUnique
        loc . kappaCon      = TVar @lhs.kappaUnique
            . kappasVars    = take (length @typevariables.self) [ TVar i | i <- [ @lhs.kappaUnique+1 .. ]]
-           . newConstraint = (@kappaCon .==. foldr (.->.) @lhs.kappaOfRHS @kappasVars) (const $ unexpected "SimpleType.SimpleType")
+           . newConstraint = (@kappaCon .==. foldr (.->.) @lhs.kappaOfRHS @kappasVars) (unexpected "SimpleType.SimpleType")
 
 ATTR AnnotatedTypes Types [ | constraints:KindConstraints | assumptions:Assumptions kappas:Kinds]
 ATTR AnnotatedType  Type  [ | constraints:KindConstraints | assumptions:Assumptions kappa:Kind ]
@@ -143,7 +140,7 @@ SEM Type
            . constraints   = @arguments.constraints ++ [@newConstraint]
        lhs . kappaUnique   = @arguments.kappaUnique + 1
        loc . kappa         = TVar @arguments.kappaUnique
-           . newConstraint = (@function.kappa .==. foldr (.->.) @kappa @arguments.kappas) (kindApplication @range.self @self @function.self)
+           . newConstraint = (@function.kappa <==> foldr (.->.) @kappa @arguments.kappas) (kindApplication @range.self @self @function.self)
            
            
   | Variable 
@@ -165,7 +162,7 @@ SEM Types
 SEM AnnotatedType 
   | AnnotatedType
        lhs . constraints   = @type.constraints ++ [@newConstraint]
-       loc . newConstraint = (@type.kappa .==. star) (mustBeStar @range.self "data type declaration" @type.self)
+       loc . newConstraint = (@type.kappa <==> star) (mustBeStar @range.self "data type declaration" @type.self)
 
 SEM AnnotatedTypes
   | Cons   lhs . assumptions = @hd.assumptions `combine` @tl.assumptions
@@ -201,20 +198,9 @@ SEM Constructor
 
 {
 type KindEnvironment = FiniteMap Name TpScheme
+type KindConstraint  = TypeConstraint  KindError
 type KindConstraints = TypeConstraints KindError
-{-
-type Assumptions        = FiniteMap Name [(Name,Tp)]
-type PatternAssumptions = FiniteMap Name Tp
 
-noAssumptions :: FiniteMap Name a
-noAssumptions = emptyFM
-
-combine :: Assumptions -> Assumptions -> Assumptions
-combine = plusFM_C (++)
-
-single :: Name -> Tp -> Assumptions
-single n t = unitFM n [(n,t)]     
--}
 type BindingGroups = [BindingGroup]
 type BindingGroup  = (PatternAssumptions,Assumptions,KindConstraints)
 
@@ -243,8 +229,8 @@ performBindingGroup = glueGroups . bindingGroupAnalysis
       glueGroups = foldr op (noAssumptions, noAssumptions, []) 
          where
             op (env, aset, cset) (environment, assumptions, constraints) = 
-               let (cset1,aset')        = (env .===. aset)            (\n _ -> unexpected $ "BindingGroup.same "++show n)
-                   (cset2,assumptions') = (.<==.) [] env assumptions  (\n _ -> unexpected $ "BindingGroup.instance "++show n)
+               let (cset1,aset')        = (env .===. aset)            (\n -> unexpected $ "BindingGroup.same "++show n)
+                   (cset2,assumptions') = (!<==!) [] env assumptions  (\n -> unexpected $ "BindingGroup.instance "++show n)
                in ( env `plusFM` environment
                   , aset' `combine` assumptions'
                   , cset1 ++ cset ++ cset2 ++ constraints
@@ -266,4 +252,7 @@ unexpected msg =
 
 instance TypeConstraintInfo KindError
 instance PolyTypeConstraintInfo Predicates KindError
+
+(<==>) :: Kind -> Kind -> ((Kind, Kind) -> KindError) -> KindConstraint
+(k1 <==> k2) info = (k1 .==. k2) (info (k1, k2))
 }

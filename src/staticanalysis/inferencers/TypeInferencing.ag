@@ -11,11 +11,11 @@
 
 {
 typeInferencing :: [Option] -> ImportEnvironment -> Module
-                      -> (IO (), DictionaryEnvironment, TypeEnvironment, TypeErrors, Warnings)
+                      -> (IO (), DictionaryEnvironment, String -> String -> IO (), TypeEnvironment, TypeErrors, Warnings)
 typeInferencing options importEnv module_ =
-   let (_, debugIO, dictionaryEnv, _, toplevelTypes, typeErrors, warnings) =
+   let (_, debugIO, dictionaryEnv, inspectorIO, _, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_ importEnv options
-   in (debugIO, dictionaryEnv, toplevelTypes, typeErrors, warnings)
+   in (debugIO, dictionaryEnv, inspectorIO, toplevelTypes, typeErrors, warnings)
 }
   
 -------------------------------------------------------------------------------
@@ -28,6 +28,7 @@ ATTR Module
    | assumptions           : Assumptions
      debugIO               : {IO ()}
      dictionaryEnvironment : DictionaryEnvironment
+     inspectorIO           : {String -> String -> IO ()}
      toplevelTypes         : TypeEnvironment
      typeErrors            : TypeErrors
      warnings              : Warnings
@@ -48,10 +49,8 @@ INCLUDE "../../syntax/UHA_Syntax.ag"
 
 --- Type Inference Directives (may be turned off)
 INCLUDE "../directives/TS_PatternMatching.ag"
-SEM Module | Module   lhs . debugIO = @debugIO
-                                      >> putStrLn "Inference Strategies:" 
-                                      >> @body.matchIO
-                                      -- browseInfoTree @substitution @body.root
+SEM Module | Module   lhs . inspectorIO = writeDebugInfoTree @substitution @typeschemeMap @typeErrors @body.constraints @body.root
+                          . debugIO     = @debugIO >> putStrLn "Inference Strategies:" >> @body.matchIO
 
 -- Pattern Match Warnings (may be turned off)
 INCLUDE "PatternMatchWarnings.ag"
@@ -91,7 +90,8 @@ import UHA_Utils                 (showNameAsOperator, intUnaryMinusName, NameWit
          
 -- other
 import Utils                     (internalError)
-import DerivingShow              (typeOfShowFunction, nameOfShowFunction) 
+import DerivingShow              (typeOfShowFunction, nameOfShowFunction)
+import TypeDebugInfoWriter       (writeDebugInfoTree)
 import ImportEnvironment  hiding (setTypeSynonyms)
 import DictionaryEnvironment
 import Args

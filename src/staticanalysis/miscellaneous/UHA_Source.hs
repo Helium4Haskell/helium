@@ -26,6 +26,7 @@ data UHA_Source =
    | UHA_RHS    RightHandSide
    | UHA_Decl   Declaration
    | UHA_Decls  Declarations
+   | UHA_Def    Name
          
 instance Show UHA_Source where
    show = showOneLine 80 . oneLinerSource
@@ -41,6 +42,7 @@ rangeOfSource source =
       UHA_RHS   rhs   -> getRHSRange rhs
       UHA_Decl  decl  -> getDeclarationRange decl
       UHA_Decls decls -> if null decls then noRange else foldr1 mergeRanges (map getDeclarationRange decls)
+      UHA_Def   name  -> getNameRange name
 
 oneLinerSource :: UHA_Source -> OneLineTree
 oneLinerSource source = 
@@ -53,24 +55,29 @@ oneLinerSource source =
       UHA_RHS   rhs   -> fst (PP.sem_RightHandSide rhs) ""
       UHA_Decl  decl  -> fst (PP.sem_Declaration decl)
       UHA_Decls decls -> PP.encloseSep "{" "; " "}" (fst (PP.sem_Declarations decls))
+      UHA_Def   name  -> OneLineText (show name)
 
 descriptionOfSource :: UHA_Source -> String
 descriptionOfSource source = 
    case source of
-      UHA_Expr  expr  -> "expression"
-      UHA_Pat   pat   -> "pattern"
-      UHA_Stat  stat  -> "statement"
-      UHA_Qual  qual  -> "qualifier"
-      UHA_FB    fb    -> "function binding"
-      UHA_RHS   rhs   -> "right-hand side"
-      UHA_Decl  decl  -> "declaration"
-      UHA_Decls decls -> "declarations"
+      UHA_Expr  _ -> "expression"
+      UHA_Pat   _ -> "pattern"
+      UHA_Stat  _ -> "statement"
+      UHA_Qual  _ -> "qualifier"
+      UHA_FB    _ -> "function binding"
+      UHA_RHS   _ -> "right-hand side"
+      UHA_Decl  _ -> "declaration"
+      UHA_Decls _ -> "declarations"
+      UHA_Def   _ -> "definition"
 
 nameToUHA_Expr :: Name -> UHA_Source
 nameToUHA_Expr name = UHA_Expr (Expression_Variable (getNameRange name) name)
 
 nameToUHA_Pat :: Name -> UHA_Source
 nameToUHA_Pat name = UHA_Pat (Pattern_Variable (getNameRange name) name)
+
+nameToUHA_Def :: Name -> UHA_Source
+nameToUHA_Def = UHA_Def
 
 convertSources :: (UHA_Source, Maybe UHA_Source) -> [(String, UHA_Source)]
 convertSources (source, maybeSource) = 

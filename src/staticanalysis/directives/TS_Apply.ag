@@ -144,7 +144,7 @@ SEM Core_TypingStrategy
               (ns, tps1) = unzip (parent \\ children)
               (ss, tps2) = unzip @typeEnv
               zipF t1 t2 = (t1 .==. @substitution |-> t2) infoF 
-              infoF      = \pair -> (emptyConstraintInfo pair)
+              infoF      = emptyConstraintInfo
                                   { location   = "Typing Strategy (patch)" }
               err = internalError "TS_Apply.ag" "n/a" "the type environments do not match"
           in if (map show ns /= ss) then err else
@@ -169,15 +169,13 @@ SEM Core_UserStatement
   | Pred
        lhs . collectConstraints = unitTree @newConstraint : @lhs.collectConstraints
        loc . newConstraint = 
-                let cinfo = (emptyConstraintInfo (voidType, voidType))
-                               { properties = [ ReductionErrorInfo thePred 
-                                              , WithTypeError (TypeError [] message [] [])
-                                              ]
-                               } 
+                let cinfo = setTypeError (TypeError [] message [] [])
+                          $ addProperty (ReductionErrorInfo thePred)
+                          $ emptyConstraintInfo
                     thePred = Predicate @predClass (@lhs.substitution |-> @predType)
                     message = let f = MessageOneLiner . substituteAttributes @lhs.fromAttribute
                               in map f (lines @message)      
-                in predicate (thePred) cinfo
+                in predicate thePred cinfo
   
   | MetaVariableConstraints        
        lhs . metavarConstraints = filter ((@name /=) . fst) @lhs.metavarConstraints
@@ -191,10 +189,9 @@ SEM Core_UserStatement
 SEM Core_UserStatement
   | Equal  
        loc . newConstraint = 
-          let cinfo   = addProperty (WithTypeError (TypeError [] message [] []))
-                      . addProperty (uncurry IsUserConstraint @lhs.currentPosition)
-                      . inPhase
-                      . emptyConstraintInfo
+          let cinfo   = setTypeError (TypeError [] message [] [])
+                      $ addProperty (uncurry IsUserConstraint @lhs.currentPosition)
+                      $ inPhase emptyConstraintInfo
               inPhase = case @lhs.currentPhase of
                            Just phase | phase /= 5
                               -> addProperty (ConstraintPhaseNumber phase)
@@ -202,17 +199,6 @@ SEM Core_UserStatement
               message = let f = MessageOneLiner . substituteAttributes @lhs.fromAttribute
                         in map f (lines @message)                
           in (@lhs.substitution |-> @leftType .==. @lhs.substitution |-> @rightType) cinfo
-
-{
-emptyConstraintInfo :: (Tp, Tp) -> ConstraintInfo
-emptyConstraintInfo tppair =
-   CInfo { location   = "Typing Strategy"
-         , sources    = (UHA_Decls [], Nothing)
-         , typepair   = tppair
-         , localInfo  = root (LocalInfo (UHA_Decls []) Nothing []) []
-         , properties = []
-         }
-}
 
 ATTR Core_TypeRule [ | | constraints : {TypeConstraints ConstraintInfo} ]
 
@@ -222,7 +208,7 @@ SEM Core_TypeRule
           let conclusionSource = self       (getLocalInfo @lhs.infoTuple)
               conclusionType   = getType @lhs.infoTuple
           in [ (stp1 .==. conclusionType) 
-                  (addProperty FolkloreConstraint . defaultConstraintInfo (conclusionSource, Nothing))
+                  (addProperty FolkloreConstraint $ defaultConstraintInfo (conclusionSource, Nothing))
              | (_, tp1) <- @conclusion.judgements
              , let stp1 = @lhs.substitution |-> tp1
              , stp1 /= conclusionType -- don't generate trivial constraints
@@ -236,18 +222,7 @@ SEM Core_TypeRule
              , getType mvinfo /= stp1 -- don't generate trivial constraints
              ]
 
-{
-defaultConstraintInfo :: (UHA_Source, Maybe UHA_Source) -> (Tp, Tp) -> ConstraintInfo
-defaultConstraintInfo sourceTuple@(s1, s2) tppair =
-   CInfo { location   = descriptionOfSource theSource -- not very precise: expression, pattern, etc.
-         , sources    = sourceTuple
-         , localInfo  = root myLocal []
-         , typepair   = tppair
-         , properties = []
-         }
- where myLocal   = LocalInfo {self = theSource, assignedType = Nothing, monos = []}
-       theSource = maybe s1 id s2
-       
+{       
 exactlyOnce :: Eq a => [a] -> [a]
 exactlyOnce []     = []
 exactlyOnce (x:xs) | x `elem` xs = exactlyOnce . filter (/= x) $ xs

@@ -180,7 +180,7 @@ showError anError = case anError of
       )
       
    UnknownClass name ->
-      ( MessageString ("Unknown class " ++ show (show name) ++ " (Helium only supports Eq, Ord, Num, Show)")
+      ( MessageString ("Unknown class " ++ show (show name) ++ " (Helium only supports Eq, Ord, Num, Show, Enum)")
       , []
       )
       

@@ -41,14 +41,6 @@ findDuplicates :: Ord a => [a] -> [[a]]
 findDuplicates = filter (not . isSingleton) . group . sort
    where isSingleton [_] = True
          isSingleton _   = False        
-
-standardConstraintInfo :: (Tp, Tp) -> ConstraintInfo
-standardConstraintInfo tppair =
-   CInfo { location   = "Typing Strategy"
-         , sources    = (UHA_Decls [], Nothing)
-         , typepair   = tppair
-         , properties = [ ]
-         }      
 -- Alternative -------------------------------------------------
 -- semantic domain
 type T_Alternative = ( (Alternative))
@@ -3576,7 +3568,7 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
             _statementsOattributeTable :: ([((String, Maybe String), MessageBlock)])
             _statementsOmetaVariableConstraintNames :: (Names)
             _statementsOnameMap :: ([(Name,Tp)])
-            _statementsOstandardConstraintInfo :: (((Tp, Tp) -> ConstraintInfo))
+            _statementsOstandardConstraintInfo :: (ConstraintInfo)
             _statementsOuserConstraints :: (TypeConstraints ConstraintInfo)
             _statementsOuserPredicates :: (Predicates)
             ( _typeruleIconclusionAllVariables,_typeruleIconclusionExpression,_typeruleIconclusionType,_typeruleIself,_typeruleIsimpleJudgements,_typeruleItypevariables) =
@@ -3682,7 +3674,7 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
 type T_UserStatement = ([((String, Maybe String), MessageBlock)]) ->
                        (Names) ->
                        ([(Name,Tp)]) ->
-                       (((Tp, Tp) -> ConstraintInfo)) ->
+                       (ConstraintInfo) ->
                        (TypeConstraints ConstraintInfo) ->
                        (Predicates) ->
                        ( (Names),(UserStatement),(Names),(TypeConstraints ConstraintInfo),(Predicates))
@@ -3836,7 +3828,7 @@ sem_UserStatement_Pred (predClass_) (predType_) (message_) =
 type T_UserStatements = ([((String, Maybe String), MessageBlock)]) ->
                         (Names) ->
                         ([(Name,Tp)]) ->
-                        (((Tp, Tp) -> ConstraintInfo)) ->
+                        (ConstraintInfo) ->
                         (TypeConstraints ConstraintInfo) ->
                         (Predicates) ->
                         ( (Names),(UserStatements),(Names),(TypeConstraints ConstraintInfo),(Predicates))
@@ -3868,7 +3860,7 @@ sem_UserStatements_Cons (hd_) (tl_) =
             _hdOattributeTable :: ([((String, Maybe String), MessageBlock)])
             _hdOmetaVariableConstraintNames :: (Names)
             _hdOnameMap :: ([(Name,Tp)])
-            _hdOstandardConstraintInfo :: (((Tp, Tp) -> ConstraintInfo))
+            _hdOstandardConstraintInfo :: (ConstraintInfo)
             _hdOuserConstraints :: (TypeConstraints ConstraintInfo)
             _hdOuserPredicates :: (Predicates)
             _tlImetaVariableConstraintNames :: (Names)
@@ -3879,7 +3871,7 @@ sem_UserStatements_Cons (hd_) (tl_) =
             _tlOattributeTable :: ([((String, Maybe String), MessageBlock)])
             _tlOmetaVariableConstraintNames :: (Names)
             _tlOnameMap :: ([(Name,Tp)])
-            _tlOstandardConstraintInfo :: (((Tp, Tp) -> ConstraintInfo))
+            _tlOstandardConstraintInfo :: (ConstraintInfo)
             _tlOuserConstraints :: (TypeConstraints ConstraintInfo)
             _tlOuserPredicates :: (Predicates)
             ( _hdImetaVariableConstraintNames,_hdIself,_hdItypevariables,_hdIuserConstraints,_hdIuserPredicates) =

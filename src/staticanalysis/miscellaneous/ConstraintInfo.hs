@@ -15,107 +15,208 @@ import Top.Types
 import Top.ComposedSolvers.Tree
 import UHA_Syntax
 import UHA_Source
-import UHA_Range (showFullRange)
-import OneLiner
+import UHA_Range
 import TypeErrors
 import Messages
-import HeliumMessages -- for instance Show
 import DoublyLinkedTree
 import TypeConstraints
 import Top.Constraints.TypeConstraintInfo
-import Top.Qualifiers.TypeClasses (ambiguousLabel)
+import Top.Qualifiers.TypeClasses
 import Top.States.BasicState (ErrorLabel)
-import HighLightArea
+import Top.States.SubstState (unificationErrorLabel)
+import Top.States.TIState
 import Utils (internalError)
 import Data.Maybe
 import Data.Char
-import Data.FiniteMap
+import Data.List
 
 data ConstraintInfo =
-   CInfo { location      :: String
-         , sources       :: (UHA_Source, Maybe UHA_Source{- term -})
-         , typepair      :: (Tp,Tp)        
-         , localInfo     :: InfoTree
-         , properties    :: Properties          
-         }
+   CInfo_ { location      :: String
+          , sources       :: (UHA_Source, Maybe UHA_Source{- term -})
+          , localInfo     :: InfoTree
+          , properties    :: Properties
+          , errorMessage  :: Maybe TypeError
+          }
      
 instance Show ConstraintInfo where
    show = location
 
+-------------------------------------------------------------------------
+-- Properties
+
+type Properties = [Property]
+data Property   
+   = FolkloreConstraint
+   | ConstraintPhaseNumber Int
+   | HasTrustFactor Float
+   | FuntionBindingEdge Int{-number of patterns-}
+   | InstantiatedTypeScheme TpScheme
+   | SkolemizedTypeScheme (Tps, TpScheme)
+   | IsUserConstraint Int{-user-constraint-group unique number-} Int{-constraint number within group-}
+   | WithHint (String, MessageBlock)
+   | ReductionErrorInfo Predicate
+   | FromBindingGroup 
+   | IsImported Name 
+   | ApplicationEdge Bool{-is binary-} [LocalInfo]{-info about terms-}
+   | ExplicitTypedBinding -- superfluous?
+   | ExplicitTypedDefinition Tps{- monos-} Name{- function name -}
+   | Unifier Int{-type variable-} (String{-location-}, LocalInfo, String{-description-})
+   | EscapedSkolems [Int]
+   | PredicateArisingFrom (Predicate, ConstraintInfo)
+   | TypeSignatureLocation Range
+   | TypePair (Tp, Tp)
+                
+class HasProperties a where
+   getProperties :: a -> Properties
+   addProperty   :: Property   -> a -> a
+   addProperties :: Properties -> a -> a 
+
+   -- default definitions
+   addProperty    = addProperties . (:[])
+   addProperties  = flip (foldr addProperty)
+
+instance HasProperties Properties where
+   getProperties = id
+   addProperty   = (:)
+   addProperties = (++)
+
+instance HasProperties ConstraintInfo where
+   getProperties = properties
+   addProperties ps info = 
+      info { properties = ps ++ properties info }
+
+-------------------------------------------------------------------------
+-- Property functions
+
+maybeHead :: [a] -> Maybe a
+maybeHead []    = Nothing
+maybeHead (a:_) = Just a
+
+headWithDefault :: a -> [a] -> a
+headWithDefault a = maybe a id . maybeHead
+
+maybeReductionErrorPredicate :: HasProperties a => a -> Maybe Predicate
+maybeReductionErrorPredicate a = 
+   maybeHead [ p | ReductionErrorInfo p <- getProperties a ]
+
+isFolkloreConstraint :: HasProperties a => a -> Bool
+isFolkloreConstraint a = 
+   not $ null [ () | FolkloreConstraint <- getProperties a ]
+
+maybeInstantiatedTypeScheme :: HasProperties a => a -> Maybe TpScheme
+maybeInstantiatedTypeScheme a =
+   maybeHead [ s | InstantiatedTypeScheme s <- getProperties a ]
+   
+maybeSkolemizedTypeScheme :: HasProperties a => a -> Maybe (Tps, TpScheme)
+maybeSkolemizedTypeScheme info =
+   maybeHead [ s | SkolemizedTypeScheme s <- getProperties info ]
+
+maybeUserConstraint :: HasProperties a => a -> Maybe (Int, Int)
+maybeUserConstraint a =
+   maybeHead [ (x, y) | IsUserConstraint x y <- getProperties a ]
+      
+phaseOfConstraint :: HasProperties a => a -> Int
+phaseOfConstraint a =
+   headWithDefault 5 [ i | ConstraintPhaseNumber i <- getProperties a ]
+
+isExplicitTypedBinding :: HasProperties a => a -> Bool
+isExplicitTypedBinding a =
+   not $ null [ () | ExplicitTypedBinding <- getProperties a ]
+
+maybeExplicitTypedDefinition :: HasProperties a => a -> Maybe (Tps, Name)
+maybeExplicitTypedDefinition a =
+   maybeHead [ (ms, n) | ExplicitTypedDefinition ms n <- getProperties a ]
+
+maybeTypeSignatureLocation :: HasProperties a => a -> Maybe Range
+maybeTypeSignatureLocation a =
+   maybeHead [ r | TypeSignatureLocation r <- getProperties a ]
+
+maybePredicateArisingFrom :: HasProperties a => a -> Maybe (Predicate, ConstraintInfo)
+maybePredicateArisingFrom a =
+   maybeHead [ t | PredicateArisingFrom t <- getProperties a ]
+      
+getEscapedSkolems :: HasProperties a => a -> [Int]
+getEscapedSkolems a =
+   concat [ is | EscapedSkolems is <- getProperties a ]
+         
 -----------------------------------------------------------------
 -- Smart constructors
 
-childConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
-childConstraint childNr theLocation infoTree theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = ( (self . attribute) infoTree
-                       , Just $ (self . attribute . selectChild childNr) infoTree
-                       )
-        , typepair   = tppair
-        , localInfo  = infoTree        
-        , properties = theProperties
-        }
+childConstraint :: Int -> String -> InfoTree -> Properties -> ConstraintInfo
+childConstraint childNr theLocation infoTree theProperties =
+  CInfo_ { location   = theLocation
+         , sources    = ( (self . attribute) infoTree
+                        , Just $ (self . attribute . selectChild childNr) infoTree
+                        )
+         , localInfo  = infoTree        
+         , properties = theProperties
+         , errorMessage = Nothing
+         }
 
-specialConstraint :: String -> InfoTree -> (UHA_Source, Maybe UHA_Source) -> Properties -> (Tp, Tp) -> ConstraintInfo
-specialConstraint theLocation infoTree theSources theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = theSources
-        , typepair   = tppair
-        , localInfo  = infoTree        
-        , properties = theProperties
-        }
+specialConstraint :: String -> InfoTree -> (UHA_Source, Maybe UHA_Source) -> Properties -> ConstraintInfo
+specialConstraint theLocation infoTree theSources theProperties =
+  CInfo_ { location   = theLocation
+         , sources    = theSources
+         , localInfo  = infoTree        
+         , properties = theProperties
+         , errorMessage = Nothing
+         }
         
-orphanConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
-orphanConstraint childNr theLocation infoTree theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = ( (self . attribute . selectChild childNr) infoTree
-                       , Nothing
-                       )
-        , typepair   = tppair
-        , localInfo  = infoTree        
-        , properties = theProperties
-        }        
+orphanConstraint :: Int -> String -> InfoTree -> Properties -> ConstraintInfo
+orphanConstraint childNr theLocation infoTree theProperties =
+  CInfo_ { location   = theLocation
+         , sources    = ( (self . attribute . selectChild childNr) infoTree
+                        , Nothing
+                        )
+         , localInfo  = infoTree        
+         , properties = theProperties
+         , errorMessage = Nothing
+         }        
         
-resultConstraint :: String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
-resultConstraint theLocation infoTree theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = ( (self . attribute) infoTree 
-                       , Nothing
-                       )
-        , typepair   = tppair
-        , localInfo  = infoTree    
-        , properties = theProperties
-        }        
+resultConstraint :: String -> InfoTree -> Properties -> ConstraintInfo
+resultConstraint theLocation infoTree theProperties =
+  CInfo_ { location   = theLocation
+         , sources    = ( (self . attribute) infoTree 
+                        , Nothing
+                        )
+         , localInfo  = infoTree    
+         , properties = theProperties
+         , errorMessage = Nothing
+         }        
 
-variableConstraint :: String -> UHA_Source -> Properties -> (Tp, Tp) -> ConstraintInfo
-variableConstraint theLocation theSource theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = (theSource, Nothing)
-        , typepair   = tppair
-        , localInfo  = root (LocalInfo { self = theSource, assignedType = Just (snd tppair) }) []
-        , properties = theProperties
-        }               
+variableConstraint :: String -> UHA_Source -> Properties -> ConstraintInfo
+variableConstraint theLocation theSource theProperties =
+  CInfo_ { location   = theLocation
+         , sources    = (theSource, Nothing)
+         , localInfo  = root (LocalInfo { self = theSource, assignedType = Nothing {- ?? -}, monos = [] }) []
+         , properties = theProperties
+         , errorMessage = Nothing
+         }               
         
-cinfoBindingGroupExplicitTypedBinding :: Tps -> Name -> (Tp,Tp) -> ConstraintInfo
-cinfoSameBindingGroup                 :: Name -> (Tp,Tp) -> ConstraintInfo
-cinfoBindingGroupImplicit             :: Name -> (Tp,Tp) -> ConstraintInfo
-cinfoBindingGroupExplicit             :: Tps -> Names -> Name -> (Tp,Tp) -> ConstraintInfo
+cinfoBindingGroupExplicitTypedBinding :: Tps -> Name -> Name ->  ConstraintInfo
+cinfoSameBindingGroup                 :: Name ->                 ConstraintInfo
+cinfoBindingGroupImplicit             :: Name ->                 ConstraintInfo
+cinfoBindingGroupExplicit             :: Tps -> Names -> Name -> ConstraintInfo
+cinfoGeneralize                       :: Name ->                 ConstraintInfo
 
-cinfoBindingGroupExplicitTypedBinding monos name = 
-   let props = [ FromBindingGroup, ExplicitTypedBinding, ExplicitTypedDefinition monos name, HasTrustFactor 10.0 ]
-   in variableConstraint "explicitly typed binding" (nameToUHA_Expr name) props
+cinfoBindingGroupExplicitTypedBinding ms name nameTS = 
+   let props = [ FromBindingGroup, ExplicitTypedBinding, ExplicitTypedDefinition ms name, 
+                 HasTrustFactor 10.0, TypeSignatureLocation (getNameRange nameTS) ]
+   in variableConstraint "explicitly typed binding" (nameToUHA_Def name) props
 cinfoSameBindingGroup name = 
    let props = [ FromBindingGroup, FolkloreConstraint ]
    in variableConstraint "variable" (nameToUHA_Expr name) props
 cinfoBindingGroupImplicit name = 
    let props = [ FromBindingGroup, FolkloreConstraint, HasTrustFactor 10.0 ]
    in variableConstraint "variable" (nameToUHA_Expr name) props
-cinfoBindingGroupExplicit monos defNames name = 
+cinfoBindingGroupExplicit ms defNames name = 
    let props1 = [ FromBindingGroup, FolkloreConstraint ]
        props2 = case filter (name==) defNames of
-                   [defName] -> [ExplicitTypedDefinition monos defName]
+                   [defName] -> [ExplicitTypedDefinition ms defName]
                    _         -> []
    in variableConstraint "variable" (nameToUHA_Expr name) (props1 ++ props2)
+cinfoGeneralize name =
+   variableConstraint ("Generalize " ++ show name) (nameToUHA_Expr name) []
 
 type InfoTrees = [InfoTree]
 type InfoTree = DoublyLinkedTree LocalInfo
@@ -128,84 +229,21 @@ data LocalInfo =
             
 type ConstraintSet  = Tree  (TypeConstraint ConstraintInfo)
 type ConstraintSets = Trees (TypeConstraint ConstraintInfo)
-	    
-type Properties = [Property]
-data Property   = FolkloreConstraint
-                | ConstraintPhaseNumber Int
-                | HasTrustFactor Float
-                | FuntionBindingEdge Int{-number of patterns-}
-                | OriginalTypeScheme TpScheme
-                | IsUserConstraint Int{-user-constraint-group unique number-} Int{-constraint number within group-}
-                | WithTypeError TypeError
-                | WithHint TypeErrorHint
-                | HighlightAreas (Area, Area) 
-                | ReductionErrorInfo Predicate
-                | FromBindingGroup 
-                | IsImported Name 
-                | ApplicationEdge Bool{-is binary-} [LocalInfo]{-info about terms-}
-                | ExplicitTypedBinding -- superfluous?
-                | ExplicitTypedDefinition Tps{- monos-} Name{- function name -}
-                | Unifier Int{-type variable-} (String{-location-}, LocalInfo, String{-description-})
-                | OriginalTypePair (Tp, Tp)
-		
+	   
 instance TypeConstraintInfo ConstraintInfo where
-   unresolvedPredicate = addProperty . ReductionErrorInfo
-   equalityTypePair pair info = info { typepair = pair }
+   unresolvedPredicate  = addProperty . ReductionErrorInfo
+   ambiguousPredicate   = addProperty . ReductionErrorInfo
+   escapedSkolems       = addProperty . EscapedSkolems
+   predicateArisingFrom = addProperty . PredicateArisingFrom
+   equalityTypePair     = setTypePair
+   
 
 instance PolyTypeConstraintInfo Predicates ConstraintInfo where
-   originalTypeScheme = addProperty . OriginalTypeScheme
+   instantiatedTypeScheme = addProperty . InstantiatedTypeScheme
+   skolemizedTypeScheme   = addProperty . SkolemizedTypeScheme
    
-maybeReductionErrorPredicate :: ConstraintInfo -> Maybe Predicate
-maybeReductionErrorPredicate cinfo = 
-   case [ p | ReductionErrorInfo p <- properties cinfo ] of
-      [x] -> Just x
-      _   -> Nothing
 
-maybeHighlightAreas :: ConstraintInfo -> Maybe (Area, Area)
-maybeHighlightAreas cinfo =
-   case [ tuple | HighlightAreas tuple <- properties cinfo ] of
-      [t] -> Just t
-      _   -> Nothing
       
-isFolkloreConstraint :: ConstraintInfo -> Bool
-isFolkloreConstraint cinfo = 
-   or [ True | FolkloreConstraint <- properties cinfo ]
-
-addProperty :: Property -> ConstraintInfo -> ConstraintInfo
-addProperty property cinfo = 
-   cinfo { properties = property : properties cinfo }
-
-maybeOriginalTypeScheme :: ConstraintInfo -> Maybe (Bool,TpScheme)
-maybeOriginalTypeScheme cinfo = 
-   let flipped = case (self . attribute . localInfo) cinfo of
-                    UHA_Expr (Expression_Typed _ _ _) -> False
-                    _                                 -> True
-   in case [ s | OriginalTypeScheme s <- properties cinfo ] of
-         []  -> Nothing
-         t:_ -> Just (flipped, t)
-
-maybeUserConstraint :: ConstraintInfo -> Maybe (Int, Int)
-maybeUserConstraint info =
-   case [ (x, y) | IsUserConstraint x y <- properties info ] of
-      tuple:_ -> Just tuple
-      _       -> Nothing
-      
-phaseOfConstraint :: ConstraintInfo -> Int
-phaseOfConstraint info =
-   case [ i | ConstraintPhaseNumber i <- properties info ] of  
-      []  -> 5 -- default phase number
-      i:_ -> i
-
-isExplicitTypedBinding :: ConstraintInfo -> Bool
-isExplicitTypedBinding info =
-   not (null [ () | ExplicitTypedBinding <- properties info ])
-
-maybeExplicitTypedDefinition :: ConstraintInfo -> Maybe (Tps, Name)
-maybeExplicitTypedDefinition info =
-   case [ (ms, n) | ExplicitTypedDefinition ms n <- properties info ] of
-      []              -> Nothing
-      (monos, name):_ -> Just (monos, name)
-
 highlyTrustedFactor :: Float
 highlyTrustedFactor = 10000.0
 
@@ -217,174 +255,173 @@ isHighlyTrusted info =
    product [ i | HasTrustFactor i <- properties info ] >= highlyTrustedFactor
 
 setTypePair :: (Tp, Tp) -> ConstraintInfo -> ConstraintInfo
-setTypePair pair info =
-   let p (OriginalTypePair _) = False
-       p _                    = True
-   in info { typepair   = pair 
-           , properties = OriginalTypePair (typepair info) : filter p (properties info)
-           }
-      
-originalTypePair :: ConstraintInfo -> (Tp, Tp)
-originalTypePair info = 
-   case [ pair | OriginalTypePair pair <- properties info ] of
-      [p] -> p
-      _   -> typepair info
-      
-setTypeError :: TypeError -> ConstraintInfo -> ConstraintInfo
-setTypeError typeError cinfo =
-   let p (WithTypeError _) = False
-       p _                 = True
-   in cinfo { properties = WithTypeError typeError : filter p (properties cinfo) } 
+setTypePair pair = addProperty (TypePair pair)
 
-{- alternative implementation
-makeTypeErrors :: Substitution sub => OrderedTypeSynonyms -> sub -> [ConstraintInfo] -> TypeErrors
-makeTypeErrors synonyms sub = 
-   map (sub |->) . catMaybes . map (makeTypeError synonyms sub)
+typepair :: ConstraintInfo -> (Tp, Tp)
+typepair info = fromJust (maybeHead [ pair | TypePair pair <- getProperties info ])
 
-makeTypeError :: Substitution sub => OrderedTypeSynonyms -> sub -> ConstraintInfo -> Maybe TypeError 
-makeTypeError synonyms sub cinfo = 
-   case maybeReductionErrorPredicate cinfo of
+isExprTyped :: ConstraintInfo -> Bool
+isExprTyped info = 
+   case fst (sources info) of
+      UHA_Expr (Expression_Typed _ _ _) -> True
+      _                                 -> False     
+    
+tooGeneralLabels :: [ErrorLabel]
+tooGeneralLabels = [skolemVersusConstantLabel, skolemVersusSkolemLabel, escapingSkolemLabel]
+
+-- TODO: get rid of the TypeError and TypeErrorHint data types, and move the following two functions
+-- to the module TypeErrors
+    
+makeTypeErrors :: Substitution sub => ClassEnvironment -> OrderedTypeSynonyms -> sub -> [(ConstraintInfo, ErrorLabel)] -> TypeErrors
+makeTypeErrors classEnv synonyms sub errors =
+   let --comp l1 l2
+       --   | l1 `elem` tooGeneralLabels && l2 `elem` tooGeneralLabels = EQ
+       --   | otherwise = l1 `compare` l2
    
-      -- a reduction error
-      Just predicate -> 
-         let source = fst (sources cinfo) 
-	     tp     = snd (typepair cinfo)
-	     scheme = case maybeOriginalTypeScheme cinfo of
-	                 Just (_, ts) -> ts
-		  	 Nothing      -> internalError "ConstraintInfo" "makeTypeError'" "could not find the original type scheme"
-	 in Just (makeReductionError source (scheme, tp) standardClasses predicate)
+       list  = groupBy (\x y -> snd x == snd y) 
+             $ sortBy  (\x y -> snd x `compare` snd y)
+             $ errors
+       final = groupBy (\x y -> fst x == fst y) 
+             $ sortBy  (\x y -> fst x `compare` fst y) 
+             $ filter (not . null . snd)
+             $ [ make label (info : map fst rest) | (info, label):rest <- list ]
+   in case final of
+         []   -> []
+         hd:_ -> concatMap snd hd
+
+ where
+   special :: ConstraintInfo -> TypeError -> TypeError
+   special info defaultMessage =
+      maybe defaultMessage (sub |->) (maybeSpecialTypeError info)
+ 
+   make :: ErrorLabel -> [ConstraintInfo] -> (Int, TypeErrors)
+   make label infos
       
       -- an unification error: first test if the two types can really not be unified
-      Nothing -> 
-         let (t1, t2) = typepair cinfo
-	 in case mguWithTypeSynonyms synonyms (sub |-> t1) (sub |-> t2) of
-               Left (InfiniteType _) -> 
-	          let hint = ("because", MessageString "unification would give infinite type")
-                  in Just (unificationTypeError (addProperty (WithHint hint) cinfo))
-               Left _  -> 
-	          Just (unificationTypeError cinfo)
-               Right _ -> Nothing -}
-               
-makeTypeErrors :: Substitution sub => ClassEnvironment -> OrderedTypeSynonyms -> sub -> [(ConstraintInfo, ErrorLabel)] -> TypeErrors
-makeTypeErrors classEnv synonyms sub infos =
-   let tuples = [ (maybeReductionErrorPredicate info, info) | (info, label) <- infos, label /= ambiguousLabel ] 
-       reductionErrors   = [ f1 p info | (Just p, info) <- tuples ] 
-       unificationErrors = catMaybes [ f2 info | (Nothing, info) <- tuples ]
-   in if null unificationErrors
-        then reductionErrors
-        else unificationErrors
+      | label == unificationErrorLabel =
+           let f info = 
+                  case mguWithTypeSynonyms synonyms (sub |-> fst (typepair info)) (sub |-> snd (typepair info)) of
+                     Left (InfiniteType _) -> 
+                        let hint = ("because", MessageString "unification would give infinite type")
+                        in [ sub |-> special info (makeUnificationTypeError (addProperty (WithHint hint) info)) ]
+                     Left _  -> 
+                        [ sub |-> special info (makeUnificationTypeError info) ]
+                     Right _ -> []
+           in (1, concatMap f infos)
+      
+      -- missing class predicate in declared type (hence, declared type is too general)
+      | label == missingInSignatureLabel =
+           let f info =
+                  let (p, infoArising) = maybe err id (maybePredicateArisingFrom info)
+                      range   = maybe err id (maybeTypeSignatureLocation info)
+                      mSource = if isExprTyped info then Nothing else Just (fst $ sources info)
+                      scheme  = maybe err snd (maybeSkolemizedTypeScheme info)
+                      t1      = freezeVariablesInType (unqualify (unquantify scheme))
+                      t2      = sub |-> fst (typepair info)
+                      tuple   = case mguWithTypeSynonyms synonyms t1 t2 of
+                                   Left _ -> (False, p)
+                                   Right (_, sub) ->
+                                      let Predicate className tp = sub |-> p
+                                          sub' = listToSubstitution [ (i, TCon s) | (i, s) <- getQuantorMap scheme ]
+                                      in (True, Predicate className (sub' |-> unfreezeVariablesInType tp))
+                      err    = internalError "ConstraintInfo" "makeTypeErrors" "unknown class predicate"
+                  in special info (makeMissingConstraintTypeError range mSource scheme tuple (fst $ sources infoArising))
+           in (2, map f infos)
+      
+      -- declared type is too general
+      | label `elem` tooGeneralLabels =
+           let f info = 
+                  let monoset = sub |-> ms
+                      range   = maybe err id (maybeTypeSignatureLocation info)
+                      scheme1 = generalize monoset ([] .=>. sub |->  snd (typepair info))
+                      (ms, scheme2) = maybe err id (maybeSkolemizedTypeScheme info)
+                      source  = maybe (fst $ sources info) id (snd $ sources info)
+                      err     = internalError "ConstraintInfo" "makeTypeErrors" "unknown original type scheme"
+                  in special info (makeNotGeneralEnoughTypeError (isExprTyped info) range source scheme1 scheme2)
+           in (if label == escapingSkolemLabel then 3 else 2, map f infos)
 
- where 
-  -- a reduction error
-  f1 predicate info =
-     case [t | WithTypeError t <- properties info] of
-        typeError : _ -> 
-           sub |-> typeError
-        [] ->  
-           let source = fst (sources info) 
-               tp     = snd (typepair info)
-               scheme = maybe err snd (maybeOriginalTypeScheme info)
-               err    = internalError "ConstraintInfo" "makeTypeErrors" "could not find the original type scheme"
-           in sub |-> (makeReductionError source (scheme, tp) classEnv predicate)
-     
-  -- an unification error: first test if the two types can really not be unified
-  f2 info = 
-     let (t1, t2) = typepair info
-     in case mguWithTypeSynonyms synonyms (sub |-> t1) (sub |-> t2) of
-           Left (InfiniteType _) -> 
-              let hint = ("because", MessageString "unification would give infinite type")
-              in Just (sub |-> unificationTypeError (addProperty (WithHint hint) info))
-           Left _  -> 
-              Just (sub |-> unificationTypeError info)
-           Right _ -> Nothing
+      -- a reduction error
+      | label == unresolvedLabel =
+           let f info = 
+                  let source = fst (sources info) 
+                      tp     = snd (typepair info)
+                      scheme = maybe err id (maybeInstantiatedTypeScheme info)
+                      err    = internalError "ConstraintInfo" "makeTypeErrors" "unknown predicate for reduction error"
+                  in case maybeReductionErrorPredicate info of
+                        Just predicate ->
+                           special info (sub |-> (makeReductionError source (scheme, tp) classEnv predicate))
+                        Nothing -> err
+           in (4, map f infos)     
+  
+      -- ambiguous class predicates
+      | label == ambiguousLabel =
+           let f info = 
+                  let scheme1   = maybe err id (maybeInstantiatedTypeScheme info)
+                      scheme2   = generalizeAll ([] .=>. sub |->  fst (typepair info))
+                      className = maybe err (\(Predicate x _) -> x) (maybeReductionErrorPredicate info)
+                      err       = internalError "ConstraintInfo" "makeTypeErrors" "unknown original type scheme"
+                  in special info (makeUnresolvedOverloadingError (fst $ sources info) className (scheme1, scheme2))
+           in (5, map f infos)
+  
+      | otherwise = 
+           internalError "ConstraintInfo" "makeTypeErrors" ("unknown label "++show label)
 
-unificationTypeError :: ConstraintInfo -> TypeError
-unificationTypeError cinfo =
-   let (source, term) = sources cinfo
+makeUnificationTypeError :: ConstraintInfo -> TypeError
+makeUnificationTypeError info =
+   let (source, term) = sources info
        range    = maybe (rangeOfSource source) rangeOfSource term
-       oneliner = MessageOneLiner (MessageString ("Type error in " ++ location cinfo))
-       (t1, t2) = typepair cinfo 
-       (msgtp1, msgtp2) = 
-          case maybeOriginalTypeScheme cinfo of
-             Nothing     -> (toTpScheme t1, toTpScheme t2)
-             Just (flipped, ts)
-                | flipped   -> (ts, toTpScheme t2)
-                | otherwise -> (toTpScheme t2, ts)
-       reason | isFolkloreConstraint cinfo = "expected type"
-              | otherwise                  = "does not match"
-       table = [ (s, MessageOneLineTree (oneLinerSource source)) | (s, source) <- convertSources (sources cinfo)] 
+       oneliner = MessageOneLiner (MessageString ("Type error in " ++ location info))
+       (t1, t2) = typepair info 
+       msgtp1   = maybe (toTpScheme t1) id  (maybeInstantiatedTypeScheme info)
+       msgtp2   = maybe (toTpScheme t2) snd (maybeSkolemizedTypeScheme info)
+       (reason1, reason2)   
+          | isJust (maybeSkolemizedTypeScheme info) = ("inferred type", "declared type")
+          | isFolkloreConstraint info               = ("type"         , "expected type")
+          | otherwise                                = ("type"         , "does not match")
+       table = [ s <:> MessageOneLineTree (oneLinerSource source) | (s, source) <- convertSources (sources info)] 
                ++
-               [ ("type", MessageType msgtp1)
-               , (reason, MessageType msgtp2)
+               [ reason1 >:> MessageType msgtp1
+               , reason2 >:> MessageType msgtp2
                ]
-       hints      = [ hint | WithHint hint <- properties cinfo ]
-       highlights = 
-          case maybeHighlightAreas cinfo of
-             Nothing -> []
-             Just (area1, area2) ->
-	        [ ("highlight 1", MessageString $ show area1)
-	       , ("highlight 2", MessageString $ show area2)
-	       ]
-  in case [t | WithTypeError t <- properties cinfo] of
-	[] -> TypeError [range] [oneliner] table (hints++highlights)   
-	TypeError ranges oneliners table hints : _ -> 
-	   TypeError ranges oneliners table (hints++highlights)
-	   
-	       
-{-                
-browseInfoTree :: Substitution substitution => substitution -> InfoTree -> IO ()
-browseInfoTree substitution infoTree = 
-   do putStrLn . unlines $       
-         [ bgCyan $ fgBlack $ descriptionOfSource source ++ " at " ++ show (rangeOfSource source)
-         , showOneLine 60 (oneLinerSource source) 
-         , "type : " ++ theType ++ "\n" ++ unlines monoContext
-         , commands
-         ]
-      waitForCommand  
+       hints      = [ hint | WithHint hint <- properties info ]
+  in TypeError [range] [oneliner] table hints
+  
+-------------------------------------
+-- from the type inference directives
 
-  where 
-     source  = (self . attribute) infoTree
-     theType = case (assignedType . attribute) infoTree of
-                  Just tp -> show (sub |-> (substitution |-> tp))
-                  Nothing -> "none"
-     usedContext = let ftvType = ftv (substitution |-> assignedType (attribute infoTree))
-                       split is tuples = 
-                          case partition (any (`elem` is). ftv . snd) tuples of
-                             ([], _) -> []
-                             (_, []) -> tuples
-                             (as,bs) -> as ++ split (ftv (map snd as)) bs
-                   in split ftvType [ (s, substitution |-> tp) 
-                                    | (name, tp) <- fmToList (monos (attribute infoTree)), let s = show name, s /= "_" 
-                                    ]
-     sub = let ftvList = ftv (substitution |-> ((assignedType . attribute) infoTree)) `union`
-                         ftv (map snd usedContext)
-           in listToSubstitution $ zip ftvList (map TCon variableList)
-     hasParent = isJust (parent infoTree) 
-     nrOfChildren = length (children infoTree) 
-     monoContext = let pre = "   with " : repeat "        "
-                   in zipWith (++) pre [ s ++ " :: " ++ show (sub |-> tp) | (s, tp) <- usedContext ]
-     commands = (if hasParent then fgCyan "U" ++ " Up   " else "") ++
-                (case nrOfChildren of
-                    0 -> ""
-                    1 -> fgCyan "1" ++ " Select child   "
-                    n -> fgCyan ("1-"++show n)++" Select child   ") ++
-                (fgCyan "Q" ++ " Quit")
-     waitForCommand =
-        do command <- getLine
-           case map toLower command of 
-              ""  -> waitForCommand
-              "q" -> putStrLn "[Leaving type-view]"
-              "u" | hasParent -> browseInfoTree substitution (fromJust (parent infoTree))
-              number | all isDigit number -> 
-                 let i = (read number) :: Int
-                 in if i > 0 && i <= nrOfChildren 
-                      then browseInfoTree substitution (selectChild (i-1) infoTree)
-                      else waitForCommand
-              _ -> waitForCommand
+emptyConstraintInfo :: ConstraintInfo
+emptyConstraintInfo =
+   CInfo_ { location   = "Typing Strategy"
+          , sources    = (UHA_Decls [], Nothing)
+          , localInfo  = root (LocalInfo (UHA_Decls []) Nothing []) []
+          , properties = []
+          , errorMessage = Nothing
+          }
+         
+defaultConstraintInfo :: (UHA_Source, Maybe UHA_Source) -> ConstraintInfo
+defaultConstraintInfo sourceTuple@(s1, s2) =
+   CInfo_ { location   = descriptionOfSource theSource -- not very precise: expression, pattern, etc.
+          , sources    = sourceTuple
+          , localInfo  = root myLocal []
+          , properties = []
+          , errorMessage = Nothing
+          }
+ where myLocal   = LocalInfo {self = theSource, assignedType = Nothing, monos = []}
+       theSource = maybe s1 id s2
 
-bgCyan s  = "\ESC[46m" ++ s ++ bgDefault
-bgBlue s  = "\ESC[44m" ++ s ++ bgDefault
-fgBlack s = "\ESC[30m" ++ s ++ fgDefault
-fgCyan s  = "\ESC[36m" ++ s ++ fgDefault
-bgDefault = "\ESC[49m"
-fgDefault = "\ESC[39m" -}
+standardConstraintInfo :: ConstraintInfo
+standardConstraintInfo =
+   CInfo_ { location   = "Typing Strategy"
+          , sources    = (UHA_Decls [], Nothing)
+          , localInfo  = root myLocal []
+          , properties = [ ]
+          , errorMessage = Nothing
+          }
+ where myLocal = LocalInfo {self = UHA_Decls [], assignedType = Nothing, monos = []}
+ 
+maybeSpecialTypeError :: ConstraintInfo -> Maybe TypeError
+maybeSpecialTypeError = errorMessage 
+
+setTypeError :: TypeError -> ConstraintInfo -> ConstraintInfo
+setTypeError typeError info = 
+   info { errorMessage = Just typeError }

@@ -5,15 +5,12 @@ import Top.Types
 import Top.Solvers.GreedySolver
 import Top.Solvers.SolveConstraints
 import Top.Constraints.TypeConstraintInfo
-import Top.States.TIState
 import TypeConstraints
 import UHA_Syntax
 import Args
 import Data.FiniteMap
 import TypeConstraints
 import Utils (internalError)
-import UHA_Utils (nameFromString) -- instance Ord Name
-import UHA_Range (noRange)
 import TopSort (topSort)
 import ImportEnvironment hiding (setTypeSynonyms)
 import KindErrors
@@ -21,20 +18,9 @@ import Char (isLower)
 import BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, combine, single) 
 
 type KindEnvironment = FiniteMap Name TpScheme
+type KindConstraint  = TypeConstraint  KindError
 type KindConstraints = TypeConstraints KindError
-{-
-type Assumptions        = FiniteMap Name [(Name,Tp)]
-type PatternAssumptions = FiniteMap Name Tp
 
-noAssumptions :: FiniteMap Name a
-noAssumptions = emptyFM
-
-combine :: Assumptions -> Assumptions -> Assumptions
-combine = plusFM_C (++)
-
-single :: Name -> Tp -> Assumptions
-single n t = unitFM n [(n,t)]     
--}
 type BindingGroups = [BindingGroup]
 type BindingGroup  = (PatternAssumptions,Assumptions,KindConstraints)
 
@@ -63,8 +49,8 @@ performBindingGroup = glueGroups . bindingGroupAnalysis
       glueGroups = foldr op (noAssumptions, noAssumptions, []) 
          where
             op (env, aset, cset) (environment, assumptions, constraints) = 
-               let (cset1,aset')        = (env .===. aset)            (\n _ -> unexpected $ "BindingGroup.same "++show n)
-                   (cset2,assumptions') = (.<==.) [] env assumptions  (\n _ -> unexpected $ "BindingGroup.instance "++show n)
+               let (cset1,aset')        = (env .===. aset)            (\n -> unexpected $ "BindingGroup.same "++show n)
+                   (cset2,assumptions') = (!<==!) [] env assumptions  (\n -> unexpected $ "BindingGroup.instance "++show n)
                in ( env `plusFM` environment
                   , aset' `combine` assumptions'
                   , cset1 ++ cset ++ cset2 ++ constraints
@@ -86,6 +72,9 @@ unexpected msg =
 
 instance TypeConstraintInfo KindError
 instance PolyTypeConstraintInfo Predicates KindError
+
+(<==>) :: Kind -> Kind -> ((Kind, Kind) -> KindError) -> KindConstraint
+(k1 <==> k2) info = (k1 .==. k2) (info (k1, k2))
 -- Alternative -------------------------------------------------
 -- semantic domain
 type T_Alternative = (BindingGroups) ->
@@ -255,7 +244,7 @@ sem_AnnotatedType_AnnotatedType (range_) (strict_) (type_) =
             ( _typeIassumptions,_typeIconstraints,_typeIkappa,_typeIkappaUnique,_typeIself) =
                 (type_ (_typeOconstraints) (_typeOkappaUnique))
             (_newConstraint@_) =
-                (_typeIkappa .==. star) (mustBeStar _rangeIself "data type declaration" _typeIself)
+                (_typeIkappa <==> star) (mustBeStar _rangeIself "data type declaration" _typeIself)
             (_lhsOconstraints@_) =
                 _typeIconstraints ++ [_newConstraint]
             (_self@_) =
@@ -392,7 +381,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             (_kindEnvironment@_) =
                 getKindsFromImportEnvironment _lhsIimportEnvironment
             (_newConstraints@_) =
-                fst $ (_kindEnvironment .:::. _aset) (\n _ -> unexpected $ "Body.Body " ++ show n)
+                fst $ (_kindEnvironment .:::. _aset) (\n -> unexpected $ "Body.Body " ++ show n)
             ((_environment@_,_aset@_,_cs@_)) =
                 performBindingGroup _declarationsIbindingGroups
             (_lhsOconstraints@_) =
@@ -856,7 +845,7 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
             (_newGroup@_) =
                 (_simpletypeIdeclared, _constructorsIassumptions, _newConstraints ++ _constructorsIconstraints)
             (_newConstraints@_) =
-                fst $ (_simpletypeIenvironment .===. _constructorsIassumptions) (\n _ -> unexpected $ "Declaration.Data " ++ show n)
+                fst $ (_simpletypeIenvironment .===. _constructorsIassumptions) (\n -> unexpected $ "Declaration.Data " ++ show n)
             (_lhsObindingGroups@_) =
                 _newGroup : _lhsIbindingGroups
             (_simpletypeOkappaOfRHS@_) =
@@ -1193,7 +1182,7 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
             (_newGroup@_) =
                 (_simpletypeIdeclared, _typeIassumptions, _newConstraints ++ _typeIconstraints)
             (_newConstraints@_) =
-                fst $ (_simpletypeIenvironment .===. _typeIassumptions) (\n _ -> unexpected $ "Declaration.Type " ++ show n)
+                fst $ (_simpletypeIenvironment .===. _typeIassumptions) (\n -> unexpected $ "Declaration.Type " ++ show n)
             (_lhsObindingGroups@_) =
                 _newGroup : _lhsIbindingGroups
             (_simpletypeOkappaOfRHS@_) =
@@ -1241,11 +1230,11 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
             (_newGroup@_) =
                 (emptyFM, _aset, _cset ++ _typeIconstraints ++ [_newConstraint])
             ((_cset@_,_aset@_)) =
-                (listToFM _tvEnv .===. _typeIassumptions) (\n _ -> unexpected $ "Declaration.TypeSignature " ++ show n)
+                (listToFM _tvEnv .===. _typeIassumptions) (\n -> unexpected $ "Declaration.TypeSignature " ++ show n)
             (_tvEnv@_) =
                 zip (getTypeVariables _typeIassumptions) (map TVar [_typeIkappaUnique..])
             (_newConstraint@_) =
-                (_typeIkappa .==. star) (mustBeStar _rangeIself "type signature" _typeIself)
+                (_typeIkappa <==> star) (mustBeStar _rangeIself "type signature" _typeIself)
             (_lhsOkappaUnique@_) =
                 _typeIkappaUnique + length _tvEnv
             (_lhsObindingGroups@_) =
@@ -2219,11 +2208,11 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             (_newGroup@_) =
                 (emptyFM, _aset, _cset ++ _typeIconstraints ++ [_newConstraint])
             ((_cset@_,_aset@_)) =
-                (listToFM _tvEnv .===. _typeIassumptions) (\n _ -> unexpected $ "Expression.Typed " ++ show n)
+                (listToFM _tvEnv .===. _typeIassumptions) (\n -> unexpected $ "Expression.Typed " ++ show n)
             (_tvEnv@_) =
                 zip (getTypeVariables _typeIassumptions) (map TVar [_typeIkappaUnique..])
             (_newConstraint@_) =
-                (_typeIkappa .==. star) (mustBeStar _rangeIself "type annotation" _typeIself)
+                (_typeIkappa <==> star) (mustBeStar _rangeIself "type annotation" _typeIself)
             (_lhsOkappaUnique@_) =
                 _typeIkappaUnique + length _tvEnv
             (_lhsObindingGroups@_) =
@@ -4331,7 +4320,7 @@ sem_SimpleType_SimpleType (range_) (name_) (typevariables_) =
             ( _typevariablesIself) =
                 (typevariables_ )
             (_newConstraint@_) =
-                (_kappaCon .==. foldr (.->.) _lhsIkappaOfRHS _kappasVars) (const $ unexpected "SimpleType.SimpleType")
+                (_kappaCon .==. foldr (.->.) _lhsIkappaOfRHS _kappasVars) (unexpected "SimpleType.SimpleType")
             (_kappasVars@_) =
                 take (length _typevariablesIself) [ TVar i | i <- [ _lhsIkappaUnique+1 .. ]]
             (_kappaCon@_) =
@@ -4637,7 +4626,7 @@ sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
             ( _argumentsIassumptions,_argumentsIconstraints,_argumentsIkappaUnique,_argumentsIkappas,_argumentsIself) =
                 (arguments_ (_argumentsOconstraints) (_argumentsOkappaUnique))
             (_newConstraint@_) =
-                (_functionIkappa .==. foldr (.->.) _kappa _argumentsIkappas) (kindApplication _rangeIself _self _functionIself)
+                (_functionIkappa <==> foldr (.->.) _kappa _argumentsIkappas) (kindApplication _rangeIself _self _functionIself)
             (_kappa@_) =
                 TVar _argumentsIkappaUnique
             (_lhsOkappaUnique@_) =

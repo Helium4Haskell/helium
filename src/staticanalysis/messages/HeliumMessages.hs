@@ -84,11 +84,11 @@ showHints pre ms =
        combine     = concat . intersperse ("\n" ++ restPrefix)
    in unlines . zipWith (++) prefixes . map (combine . splitString width . show) $ ms
 
-showTable :: [(MessageBlock, MessageBlock)] -> String
+showTable :: [(Bool, MessageBlock, MessageBlock)] -> String
 showTable = 
-   let showTuple (leftBlock, rightBlock) =
+   let showTuple (indentBlock, leftBlock, rightBlock) =
           let -- some helper functions
-	      leftWidth = tableWidthLeft - (if indentBlock rightBlock then 2 else 0)
+	      leftWidth = tableWidthLeft - (if indentBlock then 2 else 0)
               concatFour a b c d = a ++ b ++ c ++ d
 	      makeOfLength i s   = take i (s ++ repeat ' ')
 	      linesOfLength i    = repeat (replicate i ' ')
@@ -97,7 +97,7 @@ showTable =
               rightLines = splitString tableWidthRight (show rightBlock)
               nrOfLines  = length leftLines `max` length rightLines
 	      -- the four columns
-              indentColumn    = if indentBlock rightBlock
+              indentColumn    = if indentBlock
 	                          then               linesOfLength (length tablePrefix + 2)
                                   else tablePrefix : linesOfLength (length tablePrefix)
               leftColumn      = map (makeOfLength leftWidth) leftLines ++ linesOfLength leftWidth 
@@ -105,26 +105,19 @@ showTable =
               rightColumn     = rightLines ++ linesOfLength tableWidthRight
           in unlines (take nrOfLines (zipWith4 concatFour indentColumn leftColumn seperatorColumn rightColumn))
    in concatMap showTuple . renderTypesInRight
-   
-indentBlock :: MessageBlock -> Bool
-indentBlock mb =
-   case mb of
-      MessageType _       -> True
-      MessagePredicate _  -> True
-      _                   -> False
-
+  
 -- if two types or type schemes follow each other in a table (on the right-hand side)
 -- then the two types are rendered in a special way.
-renderTypesInRight :: [(MessageBlock, MessageBlock)] -> [(MessageBlock, MessageBlock)]
+renderTypesInRight :: [(Bool, MessageBlock, MessageBlock)] -> [(Bool, MessageBlock, MessageBlock)]
 renderTypesInRight table =
    case table of
-      hd@(l1, r1) : tl@((l2, r2) : rest)
+      hd@(q1, l1, r1) : tl@((q2, l2, r2) : rest)
         -> case (maybeQType r1, maybeQType r2) of
               (Just tp1, Just tp2) -> 
 	         let [doc1, doc2] = qualifiedTypesToAlignedDocs [tp1, tp2]
                      render = flip PPrint.displayS [] . PPrint.renderPretty 1.0 tableWidthRight
-                 in (l1, MessageType (toTpScheme (TCon (render doc1))))
-                  : (l2, MessageType (toTpScheme (TCon (render doc2))))
+                 in (q1, l1, MessageType (toTpScheme (TCon (render doc1))))
+                  : (q2, l2, MessageType (toTpScheme (TCon (render doc2))))
                   : renderTypesInRight rest
               _ -> hd : renderTypesInRight tl
       _ -> table
@@ -183,12 +176,12 @@ prepareTypesAndTypeSchemes messageLine = newMessageLine
        let sub = listToSubstitution (zip (ftv ml) [ TCon s | s <- variableList, s `notElem` names])
        in sub |-> ml
    
-    f_Table :: Int -> [(MessageBlock, MessageBlock)] -> ([(MessageBlock, MessageBlock)], Int, [String])
+    f_Table :: Int -> [(Bool, MessageBlock, MessageBlock)] -> ([(Bool, MessageBlock, MessageBlock)], Int, [String])
     f_Table i [] = ([], i, [])
-    f_Table i ((a, b):xs) = let (r1, i1, ns1) = f_MessageBlock i  a
-                                (r2, i2, ns2) = f_MessageBlock i1 b
-                                (r3, i3, ns3) = f_Table        i2 xs
-                            in ((r1, r2):r3, i3, ns1++ns2++ns3)    
+    f_Table i ((q, a, b):xs) = let (r1, i1, ns1) = f_MessageBlock i  a
+                                   (r2, i2, ns2) = f_MessageBlock i1 b
+                                   (r3, i3, ns3) = f_Table        i2 xs
+                               in ((q, r1, r2):r3, i3, ns1++ns2++ns3)    
     
     f_MessageBlocks :: Int -> [MessageBlock] -> ([MessageBlock], Int, [String])
     f_MessageBlocks i []     = ([], i, [])

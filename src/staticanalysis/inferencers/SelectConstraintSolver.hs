@@ -13,7 +13,6 @@ module SelectConstraintSolver (selectConstraintSolver) where
 import Args (Option(..))
 import ConstraintInfo
 import TypeConstraints
-import ContributingSites (contributingSites)
 import ListOfHeuristics (listOfHeuristics)
 import ImportEnvironment (ImportEnvironment, getSiblings)
 import Top.Types
@@ -63,11 +62,11 @@ selectConstraintSolver options importenv classEnv synonyms unique constraintTree
           | RightToLeft `elem` options = reverseTreeWalk simpleTreeWalk
           | otherwise                  = simpleTreeWalk
        
-       phases      = phaseTree (TCOper "MakeConsistent" makeSubstConsistent)	
-       flattening  = flattenTree selectedTreeWalk . phases . spreadingOrNot
+       phases       = phaseTree (TCOper "MakeConsistent" makeSubstConsistent)	
+       flattening   = flattenTree selectedTreeWalk . phases . spreadingOrNot
        
        constraints      = flattening constraintTree
-       chunkConstraints = chunkTree dependencyTypeConstraint . phases . spreadTree spreadFunction $ constraintTree
+       chunkConstraints = chunkTree . phases . spreadTree spreadFunction $ constraintTree
        siblings         = getSiblings importenv
        
        selectedSolver
@@ -76,13 +75,11 @@ selectConstraintSolver options importenv classEnv synonyms unique constraintTree
           | SolverTypeGraph   `elem` options = typegraphSolver
           | SolverCombination `elem` options = combinedSolver             
           | otherwise = \classEnv synonyms unique _ ->  
-               solveChunkConstraints combinedSolver (flattenTree selectedTreeWalk) classEnv synonyms unique chunkConstraints
+              solveChunkConstraints polySubst combinedSolver (flattenTree selectedTreeWalk) classEnv synonyms unique chunkConstraints
       
        typegraphSolver =
-          let atEnd | Highlighting `elem` options = updateErrorInfo contributingSites
-                    | otherwise                   = return ()
-              heuristics = listOfHeuristics options siblings
-          in runTypeGraphPlusDoAtEnd heuristics atEnd
+          let heuristics = listOfHeuristics options siblings
+          in runTypeGraphPlusDoAtEnd heuristics (return ())
 
        combinedSolver =
           (if SignatureWarnings `elem` options then warnForTooSpecificSignatures runGreedy else runGreedy)   
@@ -108,16 +105,16 @@ warnForTooSpecificSignatures solver classEnv synonyms unique constraints =
        result2 = solver classEnv synonyms (uniqueFromResult result1) (substitutionFromResult result1 |-> explicits)
        
        -- make the warnings
-       warnings = 
+       warnings = [] {- -- disabled for the moment -- 
           let f (monos, name, tp, signature) =
                  let ms  = substitutionFromResult result1 |-> monos
                      ps  = predictesFromResult result1 
                      ts  = makeScheme (ftv ms) ps (substitutionFromResult result1 |-> tp)
                      b1  = genericInstanceOf synonyms classEnv signature ts
                      b2  = genericInstanceOf synonyms classEnv ts signature
-                 in [ SignatureTooSpecific name signature ts | b1 && not b2 ]
+                 in [ SignatureTooSpecific name signature ts | b1 && not b2 ] 
 
-          in [ warning | Just x <- map splitExplicit explicits, warning <- f x ]        
+          in [ warning | Just x <- map splitExplicit explicits, warning <- f x ]    -}     
        
    in (result1 { extensionFromResult = warnings ++ extensionFromResult result1 }) `plus` result2
 

@@ -79,8 +79,6 @@ showTS_Error tsError = case tsError of
               , "  whereas the standard type rules infer the type"
               , "    " ++ show inferred
               ]
-              
-   _   -> "<TS_Error>"
    
 showTS_Warning :: TS_Warning -> String
 showTS_Warning tsWarning = case tsWarning of
@@ -91,5 +89,3 @@ showTS_Warning tsWarning = case tsWarning of
       ++ commaList metavariables      
       ++ " in the type strategy rule "++show rule
       ++" are not inserted explicitly. By default, they are inserted in the beginning."   
-
-   _   -> "<TS_Warning>"   

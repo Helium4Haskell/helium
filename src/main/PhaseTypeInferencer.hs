@@ -35,7 +35,7 @@ phaseTypeInferencer fullName module_ doneModules localEnv completeEnv options = 
                         else id)
                    $ options
                    
-        (debugIO, dictionaryEnv, toplevelTypes, typeErrors, warnings) =
+        (debugIO, dictionaryEnv, inspectorIO, toplevelTypes, typeErrors, warnings) =
            typeInferencing newOptions completeEnv module_
 
         -- add the top-level types (including the inferred types)
@@ -43,11 +43,9 @@ phaseTypeInferencer fullName module_ doneModules localEnv completeEnv options = 
     
     when (DumpTypeDebug `elem` options) debugIO      
     
-{-
-    putStrLn (unlines ("" : "toplevelTypes: " : map (\(n,ts) -> show (NameWithRange n) ++ " :: "++show (getQualifiedType ts)) (fmToList toplevelTypes)))
-    putStrLn (unlines ("" : "localTypes:" : map show (fmToList localTypes)))
-    putStrLn (unlines ("" : "overloadedVars:"   : map (\(n,(m,t)) -> show n ++ " in scope of " ++ show m ++" has type " ++ show t) (fmToList overloadedVars)))        
--}
+    -- dump information for the TypeInspector
+    when (DumpTypeInspector `elem` options) $
+       inspectorIO "typedebuginfo" fullName
 
     when (not (null typeErrors)) $ do
         when (DumpInformationForAllModules `elem` options) $

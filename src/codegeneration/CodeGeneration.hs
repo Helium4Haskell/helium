@@ -1685,13 +1685,17 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             (_lhsOcore@_) =
                 case (_thenIcore, _toIcore) of
                     (Just then_, Just to) ->
-                        var "primEnumFromThenTo" `app_` _fromIcore `app_` then_ `app_` to
+                        insertDictionaries (setNameRange enumFromThenToName _rangeIself) _lhsIdictionaryEnv
+                           `app_` _fromIcore `app_` then_ `app_` to
                     (Just then_, Nothing) ->
-                        var "primEnumFromThen" `app_` _fromIcore `app_` then_
+                        insertDictionaries (setNameRange enumFromThenName _rangeIself) _lhsIdictionaryEnv
+                           `app_` _fromIcore `app_` then_
                     (Nothing, Just to) ->
-                        var "primEnumFromTo" `app_` _fromIcore `app_` to
+                        insertDictionaries (setNameRange enumFromToName _rangeIself) _lhsIdictionaryEnv
+                           `app_` _fromIcore `app_` to
                     (Nothing, Nothing) ->
-                        var "primEnumFrom" `app_` _fromIcore
+                        insertDictionaries (setNameRange enumFromName _rangeIself) _lhsIdictionaryEnv
+                           `app_` _fromIcore
             (_self@_) =
                 Expression_Enum _rangeIself _fromIself _thenIself _toIself
             (_lhsOself@_) =

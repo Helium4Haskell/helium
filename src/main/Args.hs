@@ -79,11 +79,11 @@ processArgs args =
             ,   Option "" ["right-to-left"] (NoArg RightToLeft) "right-to-left treewalk"
             ,   Option "" ["no-spreading" ] (NoArg NoSpreading) "do not spread type constraints"
 	    
-	    -- options for type graph heuristics
-	    ,   Option "" ["no-repair-heuristics"]     (NoArg NoRepairHeuristics) "don't suggest program fixes"
-	    ,   Option "" ["unifier-heuristics"]       (NoArg UnifierHeuristics)  "use unifier heuristics (experimental)"
-	    ,   Option "" ["highlighting"]             (NoArg Highlighting)       "highlighting with type errors (experimental)"
-	    ,   Option "" ["select-constraint-number"] (ReqArg selectCNR "CNR")   "select constraint number to be reported"
+            -- options for type graph heuristics
+            ,   Option "" ["no-repair-heuristics"]     (NoArg NoRepairHeuristics) "don't suggest program fixes"
+            ,   Option "" ["unifier-heuristics"]       (NoArg UnifierHeuristics)  "use unifier heuristics (experimental)"
+            ,   Option "" ["select-constraint-number"] (ReqArg selectCNR "CNR")   "select constraint number to be reported"
+            ,   Option "" ["dump-type-inspector"]      (NoArg DumpTypeInspector)  "dump information for TypeInspector"
             ]
 
 data Option
@@ -94,6 +94,7 @@ data Option
     | DumpInformationForThisModule
     | DumpInformationForAllModules
     | DumpTypeDebug
+    | DumpTypeInspector
     | DebugLogger
     | AllOptions
     | Verbose --
@@ -121,7 +122,7 @@ data Option
     | KindInferencing    
     -- other type inference options
     | RightToLeft | NoSpreading
-    | NoRepairHeuristics | UnifierHeuristics | Highlighting | SelectConstraintNumber Int
+    | NoRepairHeuristics | UnifierHeuristics | SelectConstraintNumber Int
     | Overloading | SignatureWarnings
     
     deriving Eq

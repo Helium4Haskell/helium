@@ -49,8 +49,8 @@ unifierVertex =
              doWithoutEdges neighbours $ 
 	     
 	        do synonyms      <- getTypeSynonyms
-		   unifierMTypes <- mapM safeApplySubst (map (TVar . fst) unifiers) 
-		   contextMTypes <- mapM safeApplySubst (map (TVar . fst) contexts)
+		   unifierMTypes <- mapM substituteTypeSafe (map (TVar . fst) unifiers) 
+		   contextMTypes <- mapM substituteTypeSafe (map (TVar . fst) contexts)
 		   if any isNothing (unifierMTypes ++ contextMTypes) then return Nothing else 
 		      do let unifierTypes = map fromJust unifierMTypes 
 		             contextTypes = map fromJust contextMTypes

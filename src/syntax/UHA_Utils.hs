@@ -101,9 +101,13 @@ stringFromImportDeclaration importDecl =
             internalError "UHA_Utils" "stringFromImportDeclaration" "empty import declaration"
 
 
-intUnaryMinusName, floatUnaryMinusName :: Name
+intUnaryMinusName, floatUnaryMinusName, enumFromName, enumFromToName, enumFromThenName, enumFromThenToName :: Name
 intUnaryMinusName   = nameFromString "negate"
 floatUnaryMinusName = nameFromString "floatUnaryMinus"
+enumFromName        = nameFromString "enumFrom"
+enumFromToName      = nameFromString "enumFromTo"
+enumFromThenName    = nameFromString "enumFromThen"
+enumFromThenToName  = nameFromString "enumFromThenTo"
 
 patternVars :: Pattern -> [Name]
 patternVars p = case p of

@@ -18,30 +18,20 @@ ATTR Declarations Declaration Expressions Expression Statements Statement
         | dictionaryEnvironment : DictionaryEnvironment          
         | 
         ]
-ATTR Module -> Expression [ | unresolvedErrors:TypeErrors | ]
 	
 SEM Module
   | Module
        -- return an empty dictionary environment for the non-overloading setting
        lhs  . dictionaryEnvironment = if Overloading `elem` @lhs.options 
                                         then @body.dictionaryEnvironment
-					else emptyDictionaryEnvironment
-       loc  . unresolvedErrors      = if Overloading `elem` @lhs.options 
-                                        then @body.unresolvedErrors
-					else []
+                                        else emptyDictionaryEnvironment
        body . dictionaryEnvironment = emptyDictionaryEnvironment
-	    . availablePredicates   = []
-	    . unresolvedErrors      = []
-
--- collecting the unresolved overloading errors 
-SEM Expression
-  | Variable   lhs . unresolvedErrors = @overloadingErrors ++ @lhs.unresolvedErrors
-  | Negate     lhs . unresolvedErrors = @overloadingErrors ++ @expression.unresolvedErrors
+            . availablePredicates   = []
 	    
 SEM Declaration   
  
   | FunctionBindings
-       loc      . declPredicates        = let scheme     = lookupWithDefaultFM @lhs.inferredTypes err (NameWithRange @bindings.name)
+       loc      . declPredicates        = let scheme     = lookupWithDefaultFM @lhs.allTypeSchemes err (NameWithRange @bindings.name)
                                               predicates = qualifiers (unquantify scheme)
                                               err = internalError "TypeInferenceOverloading.ag" "n/a" "could not find type for function binding"
                                           in expandPredicates @lhs.orderedTypeSynonyms predicates      
@@ -51,9 +41,9 @@ SEM Declaration
   | PatternBinding 
        loc           . declPredicates = case @pattern.self of
                                           Pattern_Variable _ name -> 
-                                             let scheme     = lookupWithDefaultFM @lhs.inferredTypes err (NameWithRange name)
+                                             let scheme     = lookupWithDefaultFM @lhs.allTypeSchemes err (NameWithRange name)
                                                  predicates = qualifiers (unquantify scheme)
-                                                 err = internalError "TypeInferenceOverloading.ag" "n/a" "could not find type for pattern binding"
+                                                 err = internalError "TypeInferenceOverloading.ag" "n/a" ("could not find type for pattern binding "++show name)
                                              in Just (name, expandPredicates @lhs.orderedTypeSynonyms predicates)
                                           _                  -> Nothing
        righthandside . availablePredicates = case @declPredicates of
@@ -69,7 +59,7 @@ SEM Expression
                loc . nameInScope           = case filter (@name.self==) @lhs.namesInScope of 
                                                 [name] -> NameWithRange name
                                                 _      -> internalError "TypeInferenceOverloading.ag" "n/a" "name not in scope"
-		   . maybeInferredType     = lookupFM @lhs.inferredTypes @nameInScope
+                   . maybeInferredType     = lookupFM @lhs.allTypeSchemes @nameInScope
                    . requiredDictionaries  = -- if not in finitemap then this is bound by a monomorphic pattern variable
                                              case @maybeInferredType of
                                                 Nothing     -> [] 
@@ -77,16 +67,27 @@ SEM Expression
                                                                   (getOrderedTypeSynonyms @lhs.importEnvironment) 
                                                                   @usedAsType
                                                                   scheme
-                   . (newDEnv, overloadingErrors) = resolveOverloading (classEnvironment @lhs.importEnvironment)
-                                                                       @name.self 
-                                                                       @lhs.availablePredicates 
-								       @requiredDictionaries 
-								       @unresolvedMessage
-								       @lhs.dictionaryEnvironment 
-                   . usedAsType        = @lhs.substitution |-> @beta
-		   . unresolvedMessage = makeUnresolvedOverloadingError (self @localInfo) "overloaded function" 
-		                            (maybe (internalError "TypeInferenceOverloading.ag" "n/a" "inferred type is unknown") id @maybeInferredType, toTpScheme @usedAsType)
-		   
+                   . newDEnv               = resolveOverloading (classEnvironment @lhs.importEnvironment)
+                                                                @name.self 
+                                                                @lhs.availablePredicates 
+                                                                @requiredDictionaries 
+                                                                @lhs.dictionaryEnvironment 
+                   . usedAsType            = @lhs.substitution |-> @beta
+
+  | Enum     lhs . dictionaryEnvironment = @newDEnv
+             loc . localName             = flip setNameRange @range.self $ 
+                                           case (@then.section, @to.section) of
+                                              (False, False) -> enumFromThenToName 
+                                              (False, True ) -> enumFromThenName 
+                                              (True , False) -> enumFromToName 
+                                              (True , True ) -> enumFromName 
+                 . requiredDictionaries  = if @overloaded then @lhs.substitution |-> [Predicate "Enum" @elementType] else []
+                 . newDEnv               = resolveOverloading (classEnvironment @lhs.importEnvironment)  @localName 
+                                                              @lhs.availablePredicates 
+                                                              @requiredDictionaries 
+                                                              @to.dictionaryEnvironment 
+
+  
   | Negate   lhs . dictionaryEnvironment = @newDEnv
              loc . localName             = setNameRange intUnaryMinusName @range.self
                  . negateTypeScheme      = case lookupFM (typeEnvironment @lhs.importEnvironment) @localName of 
@@ -96,14 +97,11 @@ SEM Expression
                                               (getOrderedTypeSynonyms @lhs.importEnvironment) 
                                               @usedAsType
                                               @negateTypeScheme
-                 . usedAsType      = @lhs.substitution |-> (@expression.beta .->. @beta)
-                 . unresolvedMessage = makeUnresolvedOverloadingError (nameToUHA_Expr (nameFromString "-")) "negation"
-                                          (@negateTypeScheme, toTpScheme @usedAsType)
-                 . (newDEnv, overloadingErrors) = resolveOverloading (classEnvironment @lhs.importEnvironment)  @localName 
-		                                                     @lhs.availablePredicates 
-								     @requiredDictionaries 
-								     @unresolvedMessage
-								     @expression.dictionaryEnvironment                                              
+                 . usedAsType            = @lhs.substitution |-> (@expression.beta .->. @beta)
+                 . newDEnv               = resolveOverloading (classEnvironment @lhs.importEnvironment)  @localName 
+                                                              @lhs.availablePredicates 
+                                                              @requiredDictionaries 
+                                                              @expression.dictionaryEnvironment                                              
              
 {         
 getRequiredDictionaries :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
@@ -116,13 +114,13 @@ getRequiredDictionaries synonyms useType defType =
          Right (_, sub) -> 
             expandPredicates synonyms (sub |-> instantiatedPreds)
             
-resolveOverloading :: ClassEnvironment -> Name -> Predicates -> Predicates -> TypeError -> DictionaryEnvironment 
-                         -> (DictionaryEnvironment, [TypeError])
-resolveOverloading classEnv name availablePredicates predicates message dEnv = 
+resolveOverloading :: ClassEnvironment -> Name -> Predicates -> Predicates ->
+                         DictionaryEnvironment -> DictionaryEnvironment
+resolveOverloading classEnv name availablePredicates predicates dEnv = 
    let maybeTrees = map (makeDictionaryTree classEnv availablePredicates) predicates
    in if all isJust maybeTrees
-        then (addForVariable name (map fromJust maybeTrees) dEnv, [])
-        else (dEnv, [message])
+        then addForVariable name (map fromJust maybeTrees) dEnv
+        else dEnv -- error?
 
 expandPredicates :: OrderedTypeSynonyms -> Predicates -> Predicates
 expandPredicates synonyms = map (expandPredicate synonyms)
