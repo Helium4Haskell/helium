@@ -91,12 +91,14 @@ toplevelType name ie isTopLevel
             show
             (lookupFM (typeEnvironment ie) name)
 
-constructorTypeAndArity :: Name -> ValueConstructorEnvironment -> [Core.Custom]
-constructorTypeAndArity name env =
+constructorCustoms :: Name -> Name -> ValueConstructorEnvironment -> [Core.Custom]
+constructorCustoms dataTypeName name env =
     maybe 
         (internalError "UHA_ToCore" "Constructor" ("no type found for " ++ show name))
         (\tpScheme -> 
-            [ custom "type" (show tpScheme)]
+            [ custom "type" (show tpScheme)
+            , custom "data" (getNameName dataTypeName)
+            ]
         )
         (lookupFM env name)
 
@@ -275,7 +277,8 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_importEnv) =
     in  ( _declarations_decls,_self)
 -- Constructor -------------------------------------------------
 -- semantic domain
-type T_Constructor = (ImportEnvironment) ->
+type T_Constructor = (Name) ->
+                     (ImportEnvironment) ->
                      (Int) ->
                      ( ( [(Id, CoreDecl)] ),(Constructor))
 -- cata
@@ -291,7 +294,7 @@ sem_Constructor_Constructor :: (T_Range) ->
                                (T_Name) ->
                                (T_AnnotatedTypes) ->
                                (T_Constructor)
-sem_Constructor_Constructor (_range) (_constructor) (_types) (_lhs_importEnv) (_lhs_tag) =
+sem_Constructor_Constructor (_range) (_constructor) (_types) (_lhs_dataTypeName) (_lhs_importEnv) (_lhs_tag) =
     let (_self) =
             Constructor_Constructor _range_self _constructor_self _types_self
         ( _range_self) =
@@ -305,7 +308,9 @@ sem_Constructor_Constructor (_range) (_constructor) (_types) (_lhs_importEnv) (_
               , Core.declAccess  = Core.private
               , Core.declArity   = _types_length
               , Core.conTag      = _lhs_tag
-              , Core.declCustoms = constructorTypeAndArity _constructor_self
+              , Core.declCustoms = constructorCustoms
+                                      _lhs_dataTypeName
+                                      _constructor_self
                                       (valueConstructors _lhs_importEnv)
               }
             )
@@ -317,7 +322,7 @@ sem_Constructor_Infix :: (T_Range) ->
                          (T_Name) ->
                          (T_AnnotatedType) ->
                          (T_Constructor)
-sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) (_lhs_importEnv) (_lhs_tag) =
+sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) (_lhs_dataTypeName) (_lhs_importEnv) (_lhs_tag) =
     let (_self) =
             Constructor_Infix _range_self _leftType_self _constructorOperator_self _rightType_self
         ( _range_self) =
@@ -333,7 +338,9 @@ sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) (
               , Core.declAccess  = Core.private
               , Core.declArity   = 2
               , Core.conTag      = _lhs_tag
-              , Core.declCustoms = constructorTypeAndArity _constructorOperator_self
+              , Core.declCustoms = constructorCustoms
+                                      _lhs_dataTypeName
+                                      _constructorOperator_self
                                       (valueConstructors _lhs_importEnv)
               }
             )
@@ -344,7 +351,7 @@ sem_Constructor_Record :: (T_Range) ->
                           (T_Name) ->
                           (T_FieldDeclarations) ->
                           (T_Constructor)
-sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) (_lhs_importEnv) (_lhs_tag) =
+sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) (_lhs_dataTypeName) (_lhs_importEnv) (_lhs_tag) =
     let (_self) =
             Constructor_Record _range_self _constructor_self _fieldDeclarations_self
         ( _range_self) =
@@ -356,7 +363,8 @@ sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) (_lhs_import
     in  ( intErr "Constructor" "records not supported",_self)
 -- Constructors ------------------------------------------------
 -- semantic domain
-type T_Constructors = (ImportEnvironment) ->
+type T_Constructors = (Name) ->
+                      (ImportEnvironment) ->
                       (Int) ->
                       ( ( [(Id, CoreDecl)] ),(Constructors))
 -- cata
@@ -367,16 +375,16 @@ sem_Constructors (list) =
 sem_Constructors_Cons :: (T_Constructor) ->
                          (T_Constructors) ->
                          (T_Constructors)
-sem_Constructors_Cons (_hd) (_tl) (_lhs_importEnv) (_lhs_tag) =
+sem_Constructors_Cons (_hd) (_tl) (_lhs_dataTypeName) (_lhs_importEnv) (_lhs_tag) =
     let (_self) =
             (:) _hd_self _tl_self
         ( _hd_cons,_hd_self) =
-            (_hd (_lhs_importEnv) (_lhs_tag))
+            (_hd (_lhs_dataTypeName) (_lhs_importEnv) (_lhs_tag))
         ( _tl_cons,_tl_self) =
-            (_tl (_lhs_importEnv) (_lhs_tag + 1))
+            (_tl (_lhs_dataTypeName) (_lhs_importEnv) (_lhs_tag + 1))
     in  ( _hd_cons  ++  _tl_cons,_self)
 sem_Constructors_Nil :: (T_Constructors)
-sem_Constructors_Nil (_lhs_importEnv) (_lhs_tag) =
+sem_Constructors_Nil (_lhs_dataTypeName) (_lhs_importEnv) (_lhs_tag) =
     let (_self) =
             []
     in  ( [],_self)
@@ -490,7 +498,7 @@ sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivin
         ( _simpletype_name,_simpletype_self,_simpletype_typevariables) =
             (_simpletype )
         ( _constructors_cons,_constructors_self) =
-            (_constructors (_lhs_importEnv) (0))
+            (_constructors (_simpletype_name) (_lhs_importEnv) (0))
         ( _derivings_ids,_derivings_self) =
             (_derivings )
     in  ( map snd _constructors_cons
@@ -632,7 +640,7 @@ sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_deriv
         ( _simpletype_name,_simpletype_self,_simpletype_typevariables) =
             (_simpletype )
         ( _constructor_cons,_constructor_self) =
-            (_constructor (_lhs_importEnv) (0))
+            (_constructor (_simpletype_name) (_lhs_importEnv) (0))
         ( _derivings_ids,_derivings_self) =
             (_derivings )
     in  ( intErr "Declaration" "'newType' not supported",_lhs_patBindNr,_self)

@@ -39,6 +39,7 @@ SEM Declaration
         [derivingShow @self]
     
     | Data    constructors.tag = 0
+              constructors.dataTypeName = @simpletype.name
               lhs.decls  =
         map snd @constructors.cons
         ++
@@ -157,6 +158,7 @@ SEM Declaration
     
     | Newtype           lhs.decls    = intErr "Declaration" "'newType' not supported"
                         constructor.tag = 0
+                        constructor.dataTypeName = @simpletype.name
     --  range                    : Range
     --  context                  : ContextItems
     --  simpletype               : SimpleType
@@ -282,18 +284,20 @@ ATTR Constructors Constructor
     |   cons USE { ++ } { [] } : { [(Id, CoreDecl)] } 
     ]
 
-SEM Constructors
+SEM Constructors [ dataTypeName : Name | | ]
     | Cons  hd.tag = @lhs.tag
             tl.tag = @lhs.tag + 1
 
-SEM Constructor
+SEM Constructor [ dataTypeName : Name | | ]
     | Constructor       lhs.cons = 
         [ (@constructor.id, Core.DeclCon
             { Core.declName    = @constructor.id
             , Core.declAccess  = Core.private
             , Core.declArity   = @types.length
             , Core.conTag      = @lhs.tag
-            , Core.declCustoms = constructorTypeAndArity @constructor.self 
+            , Core.declCustoms = constructorCustoms 
+                                    @lhs.dataTypeName
+                                    @constructor.self 
                                     (valueConstructors @lhs.importEnv)
             }
           )
@@ -308,7 +312,9 @@ SEM Constructor
             , Core.declAccess  = Core.private
             , Core.declArity   = 2
             , Core.conTag      = @lhs.tag
-            , Core.declCustoms = constructorTypeAndArity @constructorOperator.self 
+            , Core.declCustoms = constructorCustoms
+                                    @lhs.dataTypeName
+                                    @constructorOperator.self 
                                     (valueConstructors @lhs.importEnv)
             }
           )
@@ -340,12 +346,14 @@ toplevelType name ie isTopLevel
             show
             (lookupFM (typeEnvironment ie) name)
 
-constructorTypeAndArity :: Name -> ValueConstructorEnvironment -> [Core.Custom]
-constructorTypeAndArity name env =
+constructorCustoms :: Name -> Name -> ValueConstructorEnvironment -> [Core.Custom]
+constructorCustoms dataTypeName name env =
     maybe 
         (internalError "UHA_ToCore" "Constructor" ("no type found for " ++ show name))
         (\tpScheme -> 
-            [ custom "type" (show tpScheme)]
+            [ custom "type" (show tpScheme)
+            , custom "data" (getNameName dataTypeName)
+            ]
         )
         (lookupFM env name)
 }
