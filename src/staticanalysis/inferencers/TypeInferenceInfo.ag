@@ -180,12 +180,12 @@ SEM Expression | Enum loc . cinfoResult =
 -- Expression.Negate
 SEM Expression | Negate loc . cinfo =
   specialConstraint "negation" @parentTree 
-     (self @localInfo, Just $ nameToSelfExpr (Name_Identifier @range [] "-")) 
+     (self @localInfo, Just $ nameToSelfExpr (Name_Operator @range [] "-")) 
      [ Negation True ]
 
 SEM Expression | NegateFloat loc . cinfo =
   specialConstraint "negation" @parentTree 
-     (self @localInfo, Just $ nameToSelfExpr (Name_Identifier @range [] "-.")) 
+     (self @localInfo, Just $ nameToSelfExpr (Name_Operator @range [] "-."))
      [ Negation False ]        
 
 ---------------------------------------------------------------------------------------

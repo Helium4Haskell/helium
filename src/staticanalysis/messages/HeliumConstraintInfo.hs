@@ -8,12 +8,13 @@ import TypeErrors
 import Messages
 import List
 import Top.ComposedSolvers.Tree
+import HeliumMessages
 import Maybe
 import UHA_Range
 import Utils (internalError)
 import DoublyLinkedTree
 import UHA_Source
-import Char (toLower, isDigit)
+import Char (toLower, isDigit, isLower,isUpper)
 import Data.FiniteMap
 import LiftedConstraints
 import RepairHeuristics
@@ -207,8 +208,14 @@ makeTypeErrorForTerm (isInfixApplication,isPatternApplication) argumentNumber te
                                                            , (subterm, MessageOneLineTree termOneLiner)
                                                            ]
              onlyExpression = (\x -> x=="expression" || x=="pattern") . fst
-             function | isPatternApplication = "constructor"
-                      | otherwise            = if isInfixApplication then "operator" else "function"
+	     -- this is a real hack :-(  Bastiaan
+             function | isPatternApplication   = "constructor"
+	              | not isInfixApplication = "function"
+		      | otherwise = 
+		           case show functionPretty of
+			      c:_ | isLower c -> "function"
+			          | isUpper c -> "constructor"
+			      _               -> "operator"
              functionPretty = case filter (\(x, _) -> x=="term" || x=="operator" || x=="constructor") sources of
                                  (_, x):_ -> x
                                  _        -> internalError "TypeGraphConstraintInfo.hs"

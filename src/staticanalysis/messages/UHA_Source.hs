@@ -7,7 +7,7 @@ import UHA_Utils
 import qualified UHA_OneLine as PP
 
 data UHA_Source =
-     UHA_Expr   Expression                 
+     UHA_Expr   Expression              
    | UHA_Pat    Pattern
    | UHA_Stat   Statement
    | UHA_Qual   Qualifier
@@ -55,4 +55,8 @@ convertSources (source, maybeSource) =
     f (UHA_Expr (Expression_Variable _ name))
        | isConstructor  name = "constructor"
        | isOperatorName name = "operator"
+    f (UHA_Expr (Expression_Constructor _ name)) 
+       | isConstructor name  =  "constructor"
+    f (UHA_Pat (Pattern_Variable _ name))
+       | isConstructor name  = "constructor"
     f _                      = "term"      
