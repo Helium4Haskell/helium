@@ -138,7 +138,8 @@ SEM TypingStrategy
 
 
 -- prevent AG-warnings
-SEM TypingStrategies | Cons  loc . importEnvironment = error "TS_Analyse.ag"
+SEM TypingStrategies | Cons  loc . importEnvironment = 
+   internalError "TS_Analyse.ag" "n/a" "TS_Analyse.ag"
 
 {
 findDuplicates :: Ord a => [a] -> [[a]]

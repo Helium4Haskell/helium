@@ -21,13 +21,14 @@ import RepairHeuristics
 import ConstraintInfo
 import Data.List (partition, sortBy)
 import Data.Maybe (isNothing, fromJust)
+import Utils (internalError)
 
 class IsUnifier a where
    typeErrorForUnifier :: (Tp, Tp) -> (a, a) -> a
    isUnifier :: a -> Maybe (Int, (String, LocalInfo, String))
 
 unifierVertex :: (HasTypeGraph m info, WithHints info, IsUnifier info) => Selector m info
-unifierVertex = error "unifierVertex: to be implemented" {-
+unifierVertex = internalError "UnifierHeuristics" "unifierVertex" "unifierVertex: to be implemented" {-
    Selector ("Unification vertex", f) where
 
  f (_, _, info) =

@@ -3,6 +3,7 @@ module TS_CoreSyntax where
 
 import Top.Types
 import Data.List
+import Utils (internalError)
 
 type Core_TypingStrategies = [Core_TypingStrategy]
 
@@ -22,7 +23,7 @@ instance Read Tp where
                                    | (tp, ')':rest') <- readsPrec i (tail string) :: [(Tp, String)] 
                                    ]  
       | " " `isPrefixOf` string = readsPrec i (tail string)                                   
-      | otherwise = error ("instance Read Tp: "++show string)
+      | otherwise = internalError "TS_CoreSyntax.ag" "instance Read Tp" ("instance Read Tp: "++show string)
 
 -- for Tp special show
 instance Show Core_Judgement where

@@ -31,6 +31,7 @@ import Data.List (intersperse)
 import Data.IORef
 import Data.Char
 import OperatorTable
+import Utils (internalError)
 
 parseTypingStrategies :: OperatorTable -> String -> [Token] -> Either ParseError TypingStrategies
 parseTypingStrategies operatorTable filename tokens = 
@@ -113,7 +114,8 @@ judgementToSimpleJudgement judgement =
       Judgement_Judgement (Expression_Variable _ name) tp 
          -> SimpleJudgement_SimpleJudgement name tp
       Judgement_Judgement expression                   tp 
-         -> error ("the following expression should have been a meta-variable: "++showExpression expression)
+         -> internalError "TS_Parser.hs" "judgementToSimpleJudgement" 
+               ("the following expression should have been a meta-variable: "++showExpression expression)
       
 showExpression :: Expression -> String
 showExpression = show . PP.sem_Expression

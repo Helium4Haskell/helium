@@ -152,7 +152,7 @@ checkForPrimitive name =
             let arity = length commasAndClose
             in 
                 if arity > 10 then
-                    error "No show functions for tuples with more than 10 elements"
+                    internalError "DerivingShow" "checkForPrimitive" "No show functions for tuples with more than 10 elements"
                 else
                     "Tuple" ++ show arity
         _ -> name 

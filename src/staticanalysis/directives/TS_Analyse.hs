@@ -3498,7 +3498,7 @@ sem_TypingStrategies_Cons (hd_) (tl_) =
         ( _tlIself) =
             (tl_ )
         (_importEnvironment@_) =
-            error "TS_Analyse.ag"
+            internalError "TS_Analyse.ag" "n/a" "TS_Analyse.ag"
         (_self@_) =
             (:) _hdIself _tlIself
         (_lhsOself@_) =
