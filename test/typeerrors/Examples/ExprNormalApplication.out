@@ -1,0 +1,10 @@
+Compiling typeerrors/Examples/ExprNormalApplication.hs
+
+(3,5): Type error in application
+*** Expression     : "geit" "gans"
+*** Term           : "geit"
+*** Type           : String     
+*** Does not match : String -> a
+*** Because        : it is not a function
+
+Compilation failed with 1 type error

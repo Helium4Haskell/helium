@@ -1,0 +1,9 @@
+Compiling typeerrors/Examples/ExprInfixApplication.hs
+
+(5,5): Type error in infix application
+*** Expression     : 3 `A` True
+*** Term           : True
+*** Type           : Bool
+*** Does not match : Int 
+
+Compilation failed with 1 type error

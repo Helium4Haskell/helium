@@ -1,0 +1,11 @@
+Compiling correct/Lambda4.hs
+(4,15): Variable "xs" is not used
+Compilation successful with 1 warning
+exception: pattern match failed at correct/Lambda4.hs(4,9).
+
+trace:
+  demanded from "LvmLang.<"
+  demanded from "HeliumLang.showInt"
+  demanded from "HeliumLang.primPutChars"
+  demanded from "LvmLang.bindIO"
+  demanded from "LvmLang.unsafePerformIO"

@@ -1,0 +1,570 @@
+[H[2J---------------------------------------------
+module Ex1 where
+
+test = \x -> \a -> (x a, x 2, [x,3])
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex1.hs
+(3,31): Type error in element of list
+*** Expression     : [x,3]
+*** Term           : 3
+*** Type           : Int
+*** Does not match : Int -> a
+
+--- Algorithm M:
+Compiling ./Ex1.hs
+(3,34): Type error in literal
+*** Expression     : 3
+*** Type           : Int
+*** Expected type  : Int -> a
+
+--- TypeGraphs:
+Compiling ./Ex1.hs
+(3,34): Type error in literal
+*** Expression     : 3
+*** Type           : Int
+*** Expected type  : Int -> a
+
+---------------------------------------------
+module Ex10 where
+
+f5 x = if x > 3 then x else 1.1
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex10.hs
+(3,8): Type error in else branch of conditional
+*** Expression     : if x>3 then x else 1.1
+*** Term           : 1.1
+*** Type           : Float
+*** Does not match : Int
+
+--- Algorithm M:
+Compiling ./Ex10.hs
+(3,29): Type error in literal
+*** Expression     : 1.1
+*** Type           : Float
+*** Expected type  : Int
+
+--- TypeGraphs:
+Compiling ./Ex10.hs
+(3,29): Type error in literal
+*** Expression     : 1.1
+*** Type           : Float
+*** Expected type  : Int
+*** Probable fix   : use an int literal instead
+
+---------------------------------------------
+module Ex11 where
+
+f4 []    = []
+f4 (0:t) = f4 t
+f4 (h:t) = h / 2.0 : f4 t
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex11.hs
+(5,12): Type error in infix application
+*** Expression     : h/2.0
+*** Term           : /
+*** Type           : Int -> Int   -> Int
+*** Does not match : Int -> Float -> a
+
+--- Algorithm M:
+Compiling ./Ex11.hs
+(5,16): Type error in literal
+*** Expression     : 2.0
+*** Type           : Float
+*** Expected type  : Int
+
+--- TypeGraphs:
+Compiling ./Ex11.hs
+(5,16): Type error in literal
+*** Expression     : 2.0
+*** Type           : Float
+*** Expected type  : Int
+*** Probable fix   : use an int literal instead
+
+---------------------------------------------
+module Ex12 where
+
+fail3 p []    = p + p
+fail3 p (h:t) = if p True then [h] else t
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex12.hs
+(4,1): Type error in function binding
+*** Term           : if p True then [h] else t
+*** Type           : [a]
+*** Does not match : Int
+
+(4,20): Type error in application
+*** Expression     : p True
+*** Term           : p
+*** Type           : Int
+*** Does not match : Bool -> Bool
+
+--- Algorithm M:
+Compiling ./Ex12.hs
+(4,41): Type error in variable
+*** Expression     : t
+*** Type           : [a]
+*** Expected type  : Int
+
+(4,32): Type error in list
+*** Expression     : [h]
+*** Type           : [a]
+*** Expected type  : Int
+
+(4,20): Type error in variable
+*** Expression     : p
+*** Type           : Int
+*** Expected type  : Bool -> Bool
+
+--- TypeGraphs:
+Compiling ./Ex12.hs
+(3,17): Type error in infix application
+*** Expression     : p+p
+*** Term           : +
+*** Type           : Int            -> Int            -> Int
+*** Does not match : (Bool -> Bool) -> (Bool -> Bool) -> [a]
+
+---------------------------------------------
+module Ex13 where
+
+f 1 x = 0.0
+f n x = (n*x) + f (n-1) x
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex13.hs
+(4,9): Type error in infix application
+*** Expression     : (n*x)+f (n-1) x
+*** Term           : +
+*** Type           : Int -> Int   -> Int
+*** Does not match : Int -> Float -> Float
+
+--- Algorithm M:
+Compiling ./Ex13.hs
+(4,15): Type error in variable
+*** Expression     : +
+*** Type           : Int -> Int   -> Int
+*** Expected type  : Int -> Float -> Float
+
+--- TypeGraphs:
+Compiling ./Ex13.hs
+(3,9): Type error in literal
+*** Expression     : 0.0
+*** Type           : Float
+*** Expected type  : Int
+*** Probable fix   : use an int literal instead
+
+---------------------------------------------
+module Ex14 where
+
+fac n = if n == 0 then 1 else n * ( fac (n==1))
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex14.hs
+(3,37): Type error in application
+*** Expression     : fac (n==1)
+*** Term           : fac
+*** Type           : Int  -> Int
+*** Does not match : Bool -> Int
+
+--- Algorithm M:
+Compiling ./Ex14.hs
+(3,43): Type error in variable
+*** Expression     : ==
+*** Type           : Int -> Int -> Bool
+*** Expected type  : Int -> Int -> Int
+
+--- TypeGraphs:
+Compiling ./Ex14.hs
+(3,37): Type error in application
+*** Expression     : fac (n==1)
+*** Term           : (n==1)
+*** Type           : Bool
+*** Expected type  : Int
+
+---------------------------------------------
+module Ex15 where
+
+test = \x -> if x then x+1 else x-2.2
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex15.hs
+(3,33): Type error in infix application
+*** Expression     : x-2.2
+*** Term           : -
+*** Type           : Int  -> Int   -> Int
+*** Does not match : Bool -> Float -> a
+
+(3,24): Type error in infix application
+*** Expression     : x+1
+*** Term           : +
+*** Type           : Int  -> Int -> Int
+*** Does not match : Bool -> Int -> a
+
+--- Algorithm M:
+Compiling ./Ex15.hs
+(3,35): Type error in literal
+*** Expression     : 2.2
+*** Type           : Float
+*** Expected type  : Int
+
+(3,33): Type error in variable
+*** Expression     : x
+*** Type           : Bool
+*** Expected type  : Int
+
+(3,24): Type error in variable
+*** Expression     : x
+*** Type           : Bool
+*** Expected type  : Int
+
+--- TypeGraphs:
+Compiling ./Ex15.hs
+(3,24): Type error in infix application
+*** Expression     : x+1
+*** Term           : x
+*** Type           : Bool
+*** Expected type  : Int
+
+(3,33): Type error in infix application
+*** Expression     : x-2.2
+*** Term           : -
+*** Type           : Int  -> Int   -> Int
+*** Does not match : Bool -> Float -> a
+
+---------------------------------------------
+module Ex16 where
+
+test = \x -> (x+1) (if x then x+1 else x-2.2)
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex16.hs
+(3,14): Type error in application
+*** Expression     : (x+1) (if x then x+1 else x-2.2)
+*** Term           : (x+1)
+*** Type           : Int
+*** Does not match : Int -> a
+
+(3,40): Type error in infix application
+*** Expression     : x-2.2
+*** Term           : -
+*** Type           : Int -> Int   -> Int
+*** Does not match : Int -> Float -> Int
+
+(3,21): Type error in conditional
+*** Expression     : if x then x+1 else x-2.2
+*** Term           : x
+*** Type           : Int
+*** Does not match : Bool
+
+--- Algorithm M:
+Compiling ./Ex16.hs
+(3,42): Type error in literal
+*** Expression     : 2.2
+*** Type           : Float
+*** Expected type  : Int
+
+(3,40): Type error in variable
+*** Expression     : x
+*** Type           : Bool
+*** Expected type  : Int
+
+(3,31): Type error in variable
+*** Expression     : x
+*** Type           : Bool
+*** Expected type  : Int
+
+(3,16): Type error in variable
+*** Expression     : +
+*** Type           : Int  -> Int -> Int
+*** Expected type  : Bool -> Int -> Int -> a
+
+--- TypeGraphs:
+Compiling ./Ex16.hs
+(3,31): Type error in infix application
+*** Expression     : x+1
+*** Term           : x
+*** Type           : Bool
+*** Expected type  : Int
+
+(3,15): Type error in infix application
+*** Expression     : x+1
+*** Term           : +
+*** Type           : Int  -> Int -> Int
+*** Does not match : Bool -> Int -> a -> b
+
+(3,40): Type error in infix application
+*** Expression     : x-2.2
+*** Term           : -
+*** Type           : Int  -> Int   -> Int
+*** Does not match : Bool -> Float -> a
+
+---------------------------------------------
+module Ex2 where
+
+f (c:cs) (i:is) = if i > 0 
+                    then f cs is 
+                    else (c:[2.2]) ++ f is cs
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex2.hs
+(5,39): Type error in application
+*** Expression     : f is cs
+*** Term           : f
+*** Type           : [Float] -> [Int  ] -> [Float]
+*** Does not match : [Int  ] -> [Float] -> [Float]
+
+--- Algorithm M:
+Compiling ./Ex2.hs
+(5,44): Type error in variable
+*** Expression     : cs
+*** Type           : [Float]
+*** Expected type  : [Int  ]
+
+(5,41): Type error in variable
+*** Expression     : is
+*** Type           : [Int  ]
+*** Expected type  : [Float]
+
+--- TypeGraphs:
+Compiling ./Ex2.hs
+(5,30): Type error in literal
+*** Expression     : 2.2
+*** Type           : Float
+*** Expected type  : Int
+*** Probable fix   : use an int literal instead
+
+---------------------------------------------
+module Ex3 where
+
+m f (h:t) = f h : f t
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex3.hs
+(3,19): Type error in application
+*** Expression     : f t
+*** Term           : f
+*** Type           : a   -> b
+*** Does not match : [a] -> [b]
+*** Because        : unification would give infinite type
+
+--- Algorithm M:
+Compiling ./Ex3.hs
+(3,19): Type error in variable
+*** Expression     : f
+*** Type           : a   -> b
+*** Does not match : [a] -> [b]
+*** Because        : unification would give infinite type
+
+--- TypeGraphs:
+Compiling ./Ex3.hs
+(3,19): Type error in application
+*** Expression     : f t
+*** Term           : f
+*** Type           : a   -> b
+*** Does not match : [a] -> [b]
+*** Because        : unification would give infinite type
+
+---------------------------------------------
+module Ex4 where
+
+test = let f = \x -> let y = x 
+                     in y 5 
+       in f 3
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex4.hs
+(5,11): Type error in application
+*** Expression     : f 3
+*** Term           : f
+*** Type           : (Int -> a) -> a
+*** Does not match : Int        -> b
+
+--- Algorithm M:
+Compiling ./Ex4.hs
+(5,13): Type error in literal
+*** Expression     : 3
+*** Type           : Int
+*** Expected type  : Int -> a
+
+--- TypeGraphs:
+Compiling ./Ex4.hs
+(5,11): Type error in application
+*** Expression     : f 3
+*** Term           : 3
+*** Type           : Int
+*** Expected type  : Int -> a
+
+---------------------------------------------
+module Ex5 where
+
+test = \x -> let y = \z -> let wildcard = x z 
+                           in (\w -> w)
+             in (y 5, y True)
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex5.hs
+(5,23): Type error in application
+*** Expression     : y True
+*** Term           : y
+*** Type           : Int  -> a -> a
+*** Does not match : Bool -> b
+
+--- Algorithm M:
+Compiling ./Ex5.hs
+(5,25): Type error in constructor
+*** Expression     : True
+*** Type           : Bool
+*** Expected type  : Int
+
+--- TypeGraphs:
+Compiling ./Ex5.hs
+(5,23): Type error in application
+*** Expression     : y True
+*** Term           : True
+*** Type           : Bool
+*** Expected type  : Int
+
+---------------------------------------------
+module Ex6 where
+
+test = \x -> let f = \y -> y x
+             in (f (\z -> z)) (f (\u -> \v -> u))
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex6.hs
+(4,17): Type error in application
+*** Expression     : (f (\z -> z)) (f (\u -> \v -> u))
+*** Term           : (f (\z -> z))
+*** Type           : a
+*** Does not match : (b -> a) -> c
+*** Because        : unification would give infinite type
+
+--- Algorithm M:
+Compiling ./Ex6.hs
+(4,47): Type error in variable
+*** Expression     : u
+*** Type           : (a -> b) -> c
+*** Does not match : b
+*** Because        : unification would give infinite type
+
+--- TypeGraphs:
+Compiling ./Ex6.hs
+(4,17): Type error in application
+*** Expression     : (f (\z -> z)) (f (\u -> \v -> u))
+*** Term           : (f (\z -> z))
+*** Type           : a
+*** Does not match : (b -> a) -> c
+*** Because        : unification would give infinite type
+
+---------------------------------------------
+module Ex7 where
+
+test = \z -> let x = z
+             in let y = z 1 
+                in x True
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex7.hs
+(5,20): Type error in application
+*** Expression     : x True
+*** Term           : x
+*** Type           : Int  -> a
+*** Does not match : Bool -> b
+
+--- Algorithm M:
+Compiling ./Ex7.hs
+(5,22): Type error in constructor
+*** Expression     : True
+*** Type           : Bool
+*** Expected type  : Int
+
+--- TypeGraphs:
+Compiling ./Ex7.hs
+(5,20): Type error in application
+*** Expression     : x True
+*** Term           : True
+*** Type           : Bool
+*** Expected type  : Int
+
+---------------------------------------------
+module Ex8 where
+
+f y (h:t) = t y
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex8.hs
+(3,13): Type error in application
+*** Expression     : t y
+*** Term           : t
+*** Type           : [a]
+*** Does not match : b -> c
+
+--- Algorithm M:
+Compiling ./Ex8.hs
+(3,13): Type error in variable
+*** Expression     : t
+*** Type           : [a]
+*** Expected type  : b -> c
+
+--- TypeGraphs:
+Compiling ./Ex8.hs
+(3,13): Type error in application
+*** Expression     : t y
+*** Term           : t
+*** Type           : [a]
+*** Does not match : b -> c
+*** Because        : it is not a function
+
+---------------------------------------------
+module Ex9 where
+
+f5 0 n = []
+f5 m n = (m ^^^ n) : f5 (m-1)
+
+-- string concatenation in ML (symbol '^')
+(^^^) :: [Char] -> [Char] -> [Char]
+x ^^^ y = x ++ y
+---------------------------------------------
+--- Algorithm W:
+Compiling ./Ex9.hs
+(4,10): Type error in infix application
+*** Expression     : (m^^^n):f5 (m-1)
+*** Term           : :
+*** Type           : a -> [a]        -> [a]
+*** Does not match : b -> (c -> [d]) -> [d]
+
+(4,11): Type error in infix application
+*** Expression     : m^^^n
+*** Term           : ^^^
+*** Type           : [Char] -> [Char] -> [Char]
+*** Does not match : Int    -> a      -> b
+
+--- Algorithm M:
+Compiling ./Ex9.hs
+(4,22): Type error in variable
+*** Expression     : f5
+*** Type           : Int -> [Char] -> [[Char]]
+*** Expected type  : Int -> [[Char]]
+
+(4,11): Type error in variable
+*** Expression     : m
+*** Type           : Int
+*** Expected type  : [Char]
+
+--- TypeGraphs:
+Compiling ./Ex9.hs
+(4,11): Type error in infix application
+*** Expression     : m^^^n
+*** Term           : m
+*** Type           : Int
+*** Expected type  : [Char]
+
+(4,22): Type error in application
+*** Expression     : f5 (m-1)
+*** Term           : f5
+*** Type           : Int -> a -> [b]
+*** Does not match : Int -> [b]
+

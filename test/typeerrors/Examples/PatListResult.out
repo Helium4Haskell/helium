@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/PatListResult.hs
+
+(4,1): Type error in pattern of function binding
+*** Pattern        : [a]
+*** Type           : [a] 
+*** Does not match : Bool
+
+Compilation failed with 1 type error

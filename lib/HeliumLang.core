@@ -1,0 +1,346 @@
+{- The (type) constructors and functions in this module are
+   used in the translation of language constructs.
+-}
+
+module HeliumLang
+    ( Bool(True, False), '':[]''('':[]'', (:)), '':()''('':()''), '':->''
+    , String, Int, Float, IO, Char
+    
+    , showFunction, showIO, showPolymorphic
+    , showChar, showString, showInt, showList, showBool, showUnit, showFloat  
+    , showTuple2, showTuple3, showTuple4, showTuple5, showTuple6, showTuple7
+    , showTuple8, showTuple9, showTuple10
+    
+    , primPutChar, primPutStr, primPutStrLn
+    , primBindIO, primUnsafePerformIO
+    , primErrorPacked, primPatternFailPacked
+    , primEnumFrom, primEnumFromThen, primEnumFromTo, primEnumFromThenTo
+    , primNegInt, primNegFloat, primStringToFloat, primEqFloat
+    , primConcat, primConcatMap
+    , primPackedToString
+    ) where
+
+import LvmLang 
+    ( Int(), Float(), IO()
+    , custom "typedecl" String
+    , Bool(True, False)
+    , '':[]''('':[]'', (:))
+    , '':()''('':()'')
+    , primBindIO = bindIO, primReturnIO = returnIO
+    , negInt 
+    , negFloat, primEqFloat = (==.)
+    , (+), (-), (>), (<), (>=), quot, rem, (==)
+    , primPackedToString = stringFromPacked
+    , primUnsafePerformIO = unsafePerformIO
+    )
+import LvmIO
+    ( stdin, stdout, stderr, flush, outputChar, outputPacked
+    )
+import LvmException
+    (   primErrorPacked = errorPacked
+    ,   primPatternFailPacked = patternFailPacked
+    )
+
+{----------------------------------------------------------
+  Fixities
+----------------------------------------------------------}
+custom infix (:) : public [5,"right"]
+
+{----------------------------------------------------------
+  Basic data types
+----------------------------------------------------------}
+data '':->'' x y
+-- Daan has type Char = Int
+data Char
+
+primPutChar :: Char -> IO ()
+primPutChar c = 
+    primBindIO 
+        (outputChar stdout c) 
+        (flush stdout)
+        
+primPutChars :: String -> IO ()
+primPutChars xs = 
+    case xs of {
+        '':[]''  -> primReturnIO '':()'' ;
+        (:) y ys -> primBindIO 
+                        (primPutChar y) -- if you don't want to flush each character: (outputChar stdout y) 
+                        (primPutChars ys) }
+
+primPutStr :: String -> IO ()
+primPutStr xs = 
+    primBindIO 
+        (primPutChars xs) 
+        (flush stdout)
+
+primPutStrLn :: String -> IO ()
+primPutStrLn xs = 
+    primBindIO  
+        (primPutChars xs) 
+        (primPutChar '\n') -- does the flush
+        
+primNegInt   :: Int -> Int!
+primNegInt   = negInt
+
+primConcat :: [[a]] -> [a]
+primConcat xss =
+    case xss of 
+    {   '':[]'' -> []
+    ;   (:) ys yss -> primAppend ys (primConcat yss)
+    }
+
+primConcatMap :: (a -> [b]) -> [a] -> [b]
+primConcatMap f xs =
+    case xs of 
+    {   '':[]''  -> []
+    ;   (:) y ys -> primAppend (f y) (primConcatMap f ys)
+    }
+    
+primAppend :: [a] -> [a] -> [a] -- is '++'
+primAppend xs ys =
+    case xs of 
+    {   '':[]'' -> ys
+    ;   (:) z zs -> (:) z (primAppend zs ys)
+    }
+
+-- the primEnum functions are used in the translation of the .. notation
+-- [1..10]   === primEnumFromTo 1 10
+-- [1..]     === primEnumFrom 1 
+-- [1,3..10] === primEnumFromThenTo 1 3 10
+-- [1,3..]   === primEnumFromThen 1 3
+
+primEnumFrom :: Int -> [Int]
+primEnumFrom n = (:) n (primEnumFrom ((+) n 1))
+
+primEnumFromTo :: Int -> Int -> [Int]
+primEnumFromTo n m =
+    case (>) n m of
+    {   True -> []
+    ;   _    -> (:) n (primEnumFromTo ((+) n 1) m)
+    }
+
+primEnumFromThenTo :: Int -> Int -> Int -> [Int]
+primEnumFromThenTo n a m =
+    case (>) a n of
+    {   True -> primAscendToWithStep n m ((-) a n) 
+    ;   _    -> primDescendToWithStep n m ((-) a n) 
+    }
+    
+primAscendToWithStep :: Int -> Int -> Int -> [Int]
+primAscendToWithStep n m step = 
+    case (>) n m of 
+    {   True -> []
+    ;   _    -> (:) n (primAscendToWithStep ((+) n step) m step)
+    }
+    
+
+primDescendToWithStep :: Int -> Int -> Int -> [Int]
+primDescendToWithStep n m step = 
+    case (<) n m of 
+    {   True -> []
+    ;   _    -> (:) n (primDescendToWithStep ((+) n step) m step)
+    }
+
+primEnumFromThen :: Int -> Int -> [Int]
+primEnumFromThen n a = (:) n (primEnumFromThen a ((+) a ((-) a n)))
+
+-- Show
+
+showBool :: Bool -> String
+showBool b = 
+    case b of
+    {   True -> primPackedToString "True"
+    ;   _    -> primPackedToString "False"
+    }
+
+showUnit :: () -> String
+showUnit u = 
+    case u of
+    {   '':()'' -> primPackedToString "()"
+    }
+
+showFunction :: (a -> String) -> (b -> String) -> (a->b) -> String
+showFunction a b x = let! x = x in primPackedToString "<<function>>"
+
+showIO :: (a -> String) -> IO a -> String
+showIO a x = let! x = x in primPackedToString "<<IO action>>"
+
+showChar :: Char -> String
+showChar c = 
+    (:) '\'' (primAppend (safeShowChar c) 
+                         [ '\'' ])
+
+safeShowChar :: Char -> String
+safeShowChar c = 
+    case c of
+    { '\a' -> primPackedToString "\\a"
+    ; '\b' -> primPackedToString "\\b"
+    ; '\f' -> primPackedToString "\\f"
+    ; '\n' -> primPackedToString "\\n"
+    ; '\r' -> primPackedToString "\\r"
+    ; '\t' -> primPackedToString "\\t"
+    ; '\\' -> primPackedToString "\\\\"
+    ; '\'' -> primPackedToString "\\'"
+    ; '\"' -> primPackedToString "\\\""
+    ; _    -> 
+        case logicalAnd ((>=) c 32) ((<) c 127) of
+        {   True -> [c]
+        ;   _    -> (:) '\\' (showInt c)
+        }
+    }
+            
+logicalAnd :: Bool -> Bool -> Bool
+logicalAnd b1 b2 =
+    case b1 of
+    {   True -> b2
+    ;   _    -> False
+    }
+
+showString :: String -> String
+showString s = 
+    (:) '\"' (primAppend (primConcatMap safeShowChar s) 
+                         (primPackedToString "\""))
+
+showInt :: Int -> String
+showInt n = 
+    case (<) n 0 of
+    {   True -> (:) '(' ((:) '-' 
+                    (primAppend 
+                        (showPositiveInt (primNegInt n)) 
+                        (primPackedToString ")")
+                    ))
+    ;   _ -> showPositiveInt n
+    } 
+
+showPositiveInt :: Int -> String
+showPositiveInt i =
+    let 
+        rest = quot i 10
+        digit = [ (+) '0' (rem i 10) ]
+    in 
+        case (==) rest 0 of
+        {   True -> digit 
+        ;   _    -> primAppend (showPositiveInt rest) digit
+        }
+
+showList :: (a -> String) -> [a] -> String
+showList showElem list =
+    primConcat [ ['['], commaList (primMap showElem list), [']'] ] 
+    
+primMap f xs =
+    case xs of
+    {   '':[]'' -> []
+    ;   (:) y ys -> (:) (f y) (primMap f ys)
+    }
+    
+showPolymorphic :: a -> String
+showPolymorphic x = 
+    let! x = x in primPackedToString "<<polymorphic value>>"
+
+showTuple2 s1 s2 t : public [custom "type" ["(a -> String) -> (b -> String) -> (a, b) -> String" ]] =
+    case t of
+        (@0, 2) x1 x2 -> 
+            showTupleList [ s1 x1, s2 x2 ]
+
+showTuple3 s1 s2 s3 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (a, b, c) -> String" ]] =
+    case t of
+        (@0, 3) x1 x2 x3 ->
+            showTupleList [ s1 x1, s2 x2, s3 x3 ]
+
+showTuple4 s1 s2 s3 s4 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (d -> String) -> (a, b, c, d) -> String" ]] =
+    case t of
+        (@0, 4) x1 x2 x3 x4 ->
+            showTupleList [ s1 x1, s2 x2, s3 x3, s4 x4 ]
+
+showTuple5 s1 s2 s3 s4 s5 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (d -> String) -> (e -> String) -> (a, b, c, d, e) -> String" ]] =
+    case t of
+        (@0, 5) x1 x2 x3 x4 x5 ->
+            showTupleList [ s1 x1, s2 x2, s3 x3, s4 x4, s5 x5 ]
+
+showTuple6 s1 s2 s3 s4 s5 s6 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (d -> String) -> (e -> String) -> (f -> String) -> (a, b, c, d, e, f) -> String" ]] =
+    case t of
+        (@0, 6) x1 x2 x3 x4 x5 x6 ->
+            showTupleList [ s1 x1, s2 x2, s3 x3, s4 x4, s5 x5, s6 x6 ]
+
+showTuple7 s1 s2 s3 s4 s5 s6 s7 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (d -> String) -> (e -> String) -> (f -> String) -> (g -> String) -> (a, b, c, d, e, f, g) -> String" ]] =
+    case t of
+        (@0, 7) x1 x2 x3 x4 x5 x6 x7 ->
+            showTupleList [ s1 x1, s2 x2, s3 x3, s4 x4, s5 x5, s6 x6, s7 x7 ]
+
+showTuple8 s1 s2 s3 s4 s5 s6 s7 s8 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (d -> String) -> (e -> String) -> (f -> String) -> (g -> String) -> (h -> String) -> (a, b, c, d, e, f, g, h) -> String" ]] =
+    case t of
+        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 ->
+            showTupleList [ s1 x1, s2 x2, s3 x3, s4 x4, s5 x5, s6 x6, s7 x7, s8 x8 ]
+
+showTuple9 s1 s2 s3 s4 s5 s6 s7 s8 s9 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (d -> String) -> (e -> String) -> (f -> String) -> (g -> String) -> (h -> String) -> (i -> String) -> (a, b, c, d, e, f, g, h, i) -> String" ]] =
+    case t of
+        (@0, 9) x1 x2 x3 x4 x5 x6 x7 x8 x9 ->
+            showTupleList [ s1 x1, s2 x2, s3 x3, s4 x4, s5 x5, s6 x6, s7 x7, s8 x8, s9 x9 ]
+
+showTuple10 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (d -> String) -> (e -> String) -> (f -> String) -> (g -> String) -> (h -> String) -> (i -> String) -> (j -> String) -> (a, b, c, d, e, f, g, h, i, j) -> String" ]]=
+    case t of
+        (@0, 10) x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 ->
+            showTupleList [ s1 x1, s2 x2, s3 x3, s4 x4, s5 x5, s6 x6, s7 x7, s8 x8, s9 x9, s10 x10 ]
+
+showTupleList :: [String] -> String
+showTupleList xs = 
+    primConcat [ ['('], commaList xs, [')'] ] 
+
+commaList :: [String] -> String
+commaList list =
+    case list of
+    {   '':[]''  -> []
+    ;   (:) x xs ->
+        case xs of
+        { '':[]'' -> x 
+        ; _ -> primAppend x (primConcatMap (primAppend [ ',' ]) xs)
+        }
+    }
+
+-- Float
+
+primNegFloat   :: Float -> Float!
+primNegFloat   = negFloat
+
+primStringToFloat :: String -> Float
+primStringToFloat = float_of_string_extern
+
+extern float_of_string_extern "float_of_string" :: "Fz"
+
+primShowFloat :: Float -> String
+primShowFloat x = let! x = x in primPackedToString (stringFromFloat x 6 0)
+
+extern stringFromFloat "string_of_float" :: "aFII"
+
+showFloat : public [custom "type"  ["Float -> String"]]
+  = \f -> safeMinus (addPointZero (primShowFloat f))
+
+safeMinus : private [custom "type"  ["String -> String"]]
+  = \s  -> 
+    case s of
+    { (:) x xs -> 
+        case x of 
+        { '-' -> primAppend (primPackedToString "(-.") (primAppend xs (primPackedToString ")"))
+        ; _   -> s
+        }
+    ; _ -> s
+    }
+
+addPointZero : private [custom "type"  ["String -> String"]]
+    = \s ->
+        case hasPointOrE s of
+        { True -> s
+        ; _ -> primAppend s (primPackedToString ".0")
+        }
+        
+hasPointOrE : private []
+    = \xs ->
+    case xs of
+    { [] -> False
+    ; (:) y ys ->
+        case y of 
+        { '.' -> True
+        ; 'e' -> True
+        ; _   -> hasPointOrE ys
+        }
+    }

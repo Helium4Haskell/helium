@@ -1,0 +1,9 @@
+Compiling typeerrors/Examples/PatListElem.hs
+
+(3,3): Type error in element of pattern list
+*** Pattern        : ["vis",49]
+*** Term           : 49
+*** Type           : Int   
+*** Does not match : String
+
+Compilation failed with 1 type error

@@ -1,0 +1,100 @@
+-------------------------------------------------------------------------------
+--
+--   *** The Helium Compiler : Static Analysis ***
+--               ( Bastiaan Heeren )
+--
+-- TopLevelErrors.ag : Collect static errors that are detected at top-level. 
+--
+------------------------------------------------------------------------------
+
+imports {
+import List       ( sort, group, nubBy )
+import UHA_Utils  ( getNameName, getPatRange, getStatementRange )
+import Utils      ( fst3 )
+import Similarity ( similar )
+}
+
+------------------------------------------------------------------------------
+-- All Top-Level Errors
+
+SEM Module
+  | Module   loc . topLevelErrors = concat [ @typeConstructorErrors  
+                                           , @valueConstructorErrors
+                                           , @toplevelDefinitionErrors
+                                           , @fixityErrors
+                                           , @fixityButNoFunDefErrors
+                                           , @recursiveTypeSynonymErrors
+                                           , @wrongFileNameErrors
+                                           ]
+                 . removedEntities = [ (name,TypeConstructor) | name:_ <- @duplicatedTypeConstructors  ] ++
+                                     [ (name,Constructor    ) | name:_ <- @duplicatedValueConstructors ]
+                 
+------------------------------------------------------------------------------
+-- duplicated type constructors
+
+SEM Module 
+  | Module   loc . typeConstructorErrors = makeDuplicated TypeConstructor @duplicatedTypeConstructors
+
+------------------------------------------------------------------------------
+-- duplicated value constructors
+SEM Module
+  | Module   loc . valueConstructorErrors = makeDuplicated Constructor @duplicatedValueConstructors
+  
+------------------------------------------------------------------------------
+-- clashing top-level function definitions, imported functions, and derived show functions
+-- note: filter out the duplicated errors for derived functions 
+--          (this is done by comparing the ranges of the names)
+SEM Module
+  | Module   loc . toplevelDefinitionErrors = makeDuplicated Definition @duplicatedDefinitions
+                 . duplicatedDefinitions = let list = concat [ @body.toplevelNames
+                                                             , keys @body.derivedFunctions
+                                                             , keys @lhs.importTypeEnv
+                                                             ]
+                                               derivedRanges = map getNameRange (keys @body.derivedFunctions)
+                                           in filter (\ns -> length ns > 1 && any (`notElem` derivedRanges) (map getNameRange ns)) 
+                                              (group (sort list))
+
+------------------------------------------------------------------------------
+-- duplicated fixity declarations
+SEM Module
+  | Module   loc . fixityErrors = makeDuplicated Fixity @duplicatedFixities
+                 . (duplicatedFixities,correctFixities) = let (xs,ys) = partition ((>1) . length) . group . sort $ @body.fixOps
+                                                          in (xs,map head ys)
+
+------------------------------------------------------------------------------
+-- fixity declarations without a definition
+SEM Module
+  | Module   loc . fixityButNoFunDefErrors = let list = concat [ @body.toplevelNames
+                                                               , keys @lhs.importTypeEnv 
+                                                               , keys (valueConstructors @body.collectEnvironment)
+                                                               , keys @lhs.importConstructorEnv
+                                                               ]
+                                             in makeNoFunDef Fixity (filter (`notElem` list) @correctFixities) (nub list)
+                                                                                                         
+------------------------------------------------------------------------------
+-- recursive type synonyms
+
+SEM Module
+  | Module   loc . recursiveTypeSynonymErrors = map RecursiveTypeSynonyms @recursiveTypeSynonyms
+
+------------------------------------------------------------------------------
+-- wrong file name (does not match the module name)
+
+SEM Module
+  | Module  loc . wrongFileNameErrors = let moduleString = getNameName  @moduleName
+                                            moduleRange  = getNameRange @moduleName
+                                        in if moduleString == "" || @lhs.baseName == moduleString
+                                          then []
+                                          else [ WrongFileName @lhs.baseName moduleString moduleRange ]
+                . moduleName     = case @name.self of 
+                                      MaybeName_Just name -> name 
+                                      MaybeName_Nothing   -> Name_Identifier noRange [] ""                                    
+                . fileName       = Name_Identifier noRange [] @lhs.baseName 
+
+---------------------------------------------------------------
+-- utility attribute: collect the names of top-level functions
+
+ATTR Body [ | | toplevelNames : Names ]
+
+SEM Body 
+  | Body  lhs . toplevelNames = concatMap ( keys . fst3 ) @declarations.bindingGroups

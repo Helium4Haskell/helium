@@ -1,0 +1,6 @@
+module OSSpecific where
+
+slash :: String
+slash =  "@SLASH@"
+
+

@@ -1,0 +1,3 @@
+Compiling staticerrors/FunDup.hs
+(5,1), (6,1): Duplicated definition "a"
+Compilation failed with 1 error

@@ -1,0 +1,10 @@
+Compiling typeerrors/Heuristics/AppSwap1.hs
+
+(4,12): Type error in infix application
+*** Expression     : [ 0, 2 ..  ] `elemInt` i
+*** Term           : elemInt
+*** Type           : Int   -> [Int] -> Bool
+*** Does not match : [Int] -> Int   -> Bool
+*** Probable fix   : swap the two arguments
+
+Compilation failed with 1 type error

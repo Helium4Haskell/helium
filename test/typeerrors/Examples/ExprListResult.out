@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/ExprListResult.hs
+
+(4,5): Type error in list
+*** Expression     : [5]
+*** Type           : [Int]
+*** Expected type  : Int  
+
+Compilation failed with 1 type error

@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/Guardedexpression.hs
+
+(4,5): Type error in guarded expression
+*** Expression     : "aap"
+*** Type           : String
+*** Does not match : Int   
+
+Compilation failed with 1 type error

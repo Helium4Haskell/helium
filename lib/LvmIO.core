@@ -1,0 +1,101 @@
+----------------------------------------------------------------
+-- Daan Leijen (c) 2001
+--
+-- $Revision$
+-- $Author$
+-- $Date$
+----------------------------------------------------------------
+module LvmIO( Input, Output, Channel, Descriptor
+            , stdin, stdout, stderr
+            , flush, close
+            , outputChar, outputPacked, outputString
+            , inputChar
+            ) where
+
+import LvmLang( primIO, packedLength, packedFromString, bindIO, unsafePerformStrictIO, False, True )
+
+{----------------------------------------------------------
+  Primitive I/O operations
+----------------------------------------------------------}
+extern prim_open            :: "azI"
+extern prim_close           :: "vI"
+extern prim_flag_mask       :: "II"
+
+extern prim_open_descriptor :: "aIb"
+extern prim_close_channel   :: "va"
+extern prim_set_binary_mode :: "vab"
+extern prim_flush_partial   :: "ba"
+extern prim_flush           :: "va"
+extern prim_output_char     :: "vac"
+extern prim_output          :: "vazll"
+extern prim_input_char      :: "Ia"
+
+{----------------------------------------------------------
+  Channels
+----------------------------------------------------------}
+data Input
+data Output
+data Channel a
+type Descriptor   = Int
+
+{----------------------------------------------------------
+  Private helpers
+----------------------------------------------------------}
+primOpenInputDescriptor :: Descriptor -> Channel Input
+primOpenInputDescriptor fd
+  = case fd of fd -> prim_open_descriptor fd False
+
+primOpenOutputDescriptor :: Descriptor -> Channel Output
+primOpenOutputDescriptor fd
+  = case fd of fd -> prim_open_descriptor fd True
+
+{----------------------------------------------------------
+  Channel I/O, based on the OCaml interface
+----------------------------------------------------------}
+stdin :: Channel Input
+stdin
+  = primOpenInputDescriptor 0
+
+stdout :: Channel Output
+stdout
+  = primOpenOutputDescriptor 1
+
+stderr :: Channel Output
+stderr
+  = primOpenOutputDescriptor 2
+
+flush :: Channel Output -> IO ()
+flush out
+  = let action _ = (let! out = out in prim_flush out) 
+    in primIO action
+
+close :: Channel a -> IO ()
+close chan
+  = let action _ = (let! chan = chan in prim_close chan) 
+    in primIO action
+
+outputChar :: Channel Output -> Char -> IO ()
+outputChar out c
+  = let action _ = let! out = out
+                        c   = c
+                   in prim_output_char out c 
+    in primIO action
+
+inputChar :: Channel Input -> IO Char
+inputChar inp
+  = let action _ = let! inp = inp in prim_input_char inp 
+    in primIO action
+
+
+outputPacked :: Channel Output -> PackedString -> IO ()
+outputPacked chan s
+  = let action _ = let! chan = chan
+                        s    = s
+                        len  = packedLength s 
+                   in prim_output chan s 0 len 
+    in primIO action
+
+-- TODO: use direct I/O primitive for strings
+outputString :: Channel Output -> String -> IO ()
+outputString chan s
+  = outputPacked chan (packedFromString s)

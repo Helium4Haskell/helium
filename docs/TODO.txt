@@ -1,0 +1,70 @@
+Helium to do lijst
+------------------
+* Directory structuur
+helium +- src   +- main (Main.hs, Args.hs, Version.hs, Compile.hs)
+       |- lib   |- hi
+       |- bin   |- staticanalysis
+       |- test  |- codegeneration
+       |- demo  |- uha
+                |- utils
+                |- parser
+
+* interpreter gooit temp files weg a/h begin
+* infix constructoren infix tonen
+* hi opties doorspelen naar Helium
+* cpp
+* read functies voor andere types dan Int
+* parse error tests
+* deriving Eq
+* 'deriving' wel echt opschrijven
+* file IO exceptions
+* foutmeldingen over Interpreter.hs afvangen
+* internalErrors langslopen en 'error's bekijken
+* interpreter kan module die Main heet niet inlezen?! "module imports itself"
+* EOF in getChar. How?
+* hi met .hs file
+* catchen van exception van writeFile/openFileEx etc.
+* hi parameter mag ook .hs bevatten, maar geen pad (of wel?) 
+  :l ook; pad van meegegeven file vooraan LVMPATH
+* unexpected '\n' als je een string niet beeindigd. kan dat newline worden?
+* AG geeft geen ExitFailure bij een fout (en make gaat vrolijk verder).
+* lvm van 0 bytes wordt gegenereerd als compiler crasht tijdens backend. (strict maken)
+* Ctrl-C stopt niet alleen lvmrun maar ook hi
+* pattern-match failure beter presenteren (niet alleen begin)
+* fatal errors throwen en catchen
+* clashes with HeliumLang ==> clash with built-in
+* Tour of Haskell syntax controleren
+* JCreator: Rijk-Jan
+
+Documentatie todo's
+-------------------
+
+User manual hi
+User manual helium
+User manual lvmrun
+
+---- ONBELANGRIJK ----
+
+                
+* installer voor Windows
+* lvmrun compileren met -O
+* HeliumCompatibility module voor Hugs/GHC
+* pretty printer voor foutmeldingen
+* module zonder naam toestaan
+* domein kopen
+* Als -O compileren dan moet ook coreasm met optimalisatie gecompileerd worden
+
+---- DONE ----
+
+* tellers op WWW
+* Logger uit in web-versie
+* systeemverschillen (bijv. dir sep) in modules (UNIX, Windows)
+* MacOS X version
+* Linux version
+* Sun Solaris version
+* eqInt
+* Tour of the Helium Prelude
+* systeemverschillen vangen met configure
+* Sockets werken niet op MacOS X (als logger uit dan geen -package net etcetera)
+* parse errors loggen
+* showFloat moet altijd .0 printen bij geheel getal en haakjes bij negatief getal en - moet -. worden

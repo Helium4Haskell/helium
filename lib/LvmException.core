@@ -1,0 +1,123 @@
+----------------------------------------------------------------
+-- Daan Leijen (c) 2001
+--
+-- $Revision$
+-- $Author$
+-- $Date$
+----------------------------------------------------------------
+module LvmException( Exception(..), RuntimeException(..), SystemException(..)
+                   , ArithmeticException(..), SignalException(..)
+                   , catch, raise, error, errorPacked, patternFail, patternFailPacked
+                   ) where
+
+import LvmLang( packedFromString )
+
+instruction primCatch "catch" :: (Exception -> a) -> a -> a
+instruction primRaise "raise" :: Exception! -> a
+
+
+{----------------------------------------------------------
+  Exception and Signals
+----------------------------------------------------------}
+data Exception
+  = HeapOverflow                            -- heap overflow
+  | StackOverflow     Int                   -- stack overflow
+  | Signal            SignalException       -- interrupt occurred
+  | Runtime           RuntimeException      -- runtime system exception
+  | Arithmetic        ArithmeticException   -- arithmetic exception
+  | System            SystemException       -- operating system exceptions
+  | InvalidArgument   PackedString          -- invalid argument passed
+  | Assert            PackedString          -- assertion failed
+  | NotFound                                -- no object is found
+  | UserError         PackedString          -- general failure (raised by "error")
+
+data RuntimeException
+  = PatternFailure    PackedString          -- pattern match failure
+  | NonTermination    PackedString          -- non terminating program
+  | OutOfBounds       PackedString          -- field access out of bounds
+  | Exit              Int                   -- exiting program
+  | InvalidOpcode     Int                   -- invalid opcode
+  | LoadError         PackedString PackedString -- runtime loader exception
+  | RuntimeError      PackedString          -- general failure
+
+data SystemException
+  = EndOfFile                               -- end of input reached
+  | BlockedOnIO                             -- blocked I/O channel
+  | SystemError       Int PackedString      -- general system error
+
+data ArithmeticException
+  = FloatInvalid                      -- float invalid operation
+  | FloatDivideByZero                 -- float division by zero
+  | FloatOverflow                     -- float has overflowed
+  | FloatUnderflow                    -- float has underflowed
+  | FloatInexact                      -- float result is inexact
+  | FloatDenormal                     -- denormalized float value
+  | DivideByZero                      -- integer division by zero
+  | Overflow                          -- integer overflow
+  | Underflow                         -- integer underflow
+  | InvalidOperation                  -- general arithmetic error
+  | UnEmulated                        -- cannot emulate float instruction
+  | NegativeSquareRoot                -- square root of negative number
+  | FloatStackOverflow                -- float hardware stack has overflowed
+  | FloatStackUnderflow               -- float hardware stack has underflowed
+
+data SignalException
+  = SignalNone                        -- runtime: no signal
+  | SignalGarbageCollect              -- runtime: GC needed
+  | SignalYield                       -- runtime: thread should yield
+  | SignalLost                        -- runtime: lost signal
+  | SignalKeyboard                    -- interactive interrupt (ctrl-c)
+  | SignalKeyboardStop                -- interactive stop (ctrl-break)
+  | SignalFloatException              -- floating point exception
+  | SignalSegmentationViolation       -- invalid memory reference
+  | SignalIllegalInstruction          -- illegal hardware instruction
+  | SignalAbort                       -- abnormal termination
+  | SignalTerminate                   -- termination
+  | SignalKill                        -- termination (can not be ignored)
+  | SignalKeyboardTerminate           -- interactive termination
+  | SignalAlarm                       -- timeout
+  | SignalVirtualAlarm                -- timeout in virtual time
+  | SignalBackgroundRead              -- terminal read from background process
+  | SignalBackgroundWrite             -- terminal write from background process
+  | SignalContinue                    -- continue process
+  | SignalLostConnection              -- connection lost
+  | SignalBrokenPipe                  -- open ended pipe
+  | SignalProcessStatusChanged        -- child process terminated
+  | SignalStop                        -- stop process
+  | SignalProfiler                    -- profiling interrupt
+  | SignalUser1                       -- application defined signal 1
+  | SignalUser2                       -- application defined signal 2
+
+
+{----------------------------------------------------------
+  raise and catch
+----------------------------------------------------------}
+raise :: Exception -> a
+raise exn
+  = let! exn = exn in primRaise exn
+
+catch :: IO a -> (Exception -> IO a) -> IO a
+catch action handler
+  = \_ -> primCatch (\exn -> handler exn ()) (action ())
+
+{----------------------------------------------------------
+  user errors
+----------------------------------------------------------}
+error :: String -> a
+error msg
+  = let! s = (packedFromString msg) in raise (UserError s)
+
+errorPacked :: PackedString -> a
+errorPacked msg
+  = raise (UserError msg)
+
+patternFail :: String -> a
+patternFail msg
+  = let! s   = packedFromString msg
+         exn = PatternFailure s
+    in raise (Runtime exn)
+
+patternFailPacked :: PackedString -> a
+patternFailPacked msg
+  = let! exn = PatternFailure msg
+    in raise (Runtime exn)

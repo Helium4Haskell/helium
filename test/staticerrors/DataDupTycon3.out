@@ -1,0 +1,4 @@
+Compiling staticerrors/DataDupTycon3.hs
+(5,6): Type constructor "Int" clashes with definition in imported module HeliumLang
+(5,6): Definition "showInt" clashes with definition in imported module HeliumLang
+Compilation failed with 2 errors

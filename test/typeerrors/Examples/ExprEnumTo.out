@@ -1,0 +1,9 @@
+Compiling typeerrors/Examples/ExprEnumTo.hs
+
+(3,5): Type error in enumeration
+*** Expression     : [ 13, 15 .. "aap" ]
+*** Term           : "aap"
+*** Type           : String
+*** Does not match : Int   
+
+Compilation failed with 1 type error

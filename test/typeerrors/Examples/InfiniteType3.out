@@ -1,0 +1,10 @@
+Compiling typeerrors/Examples/InfiniteType3.hs
+
+(6,37): Type error in application
+*** Expression     : insert a xs
+*** Term           : insert
+*** Type           : (a -> a -> Bool) -> a   -> [a] -> [a]
+*** Does not match : b                -> [b] -> [b]       
+*** Because        : unification would give infinite type
+
+Compilation failed with 1 type error

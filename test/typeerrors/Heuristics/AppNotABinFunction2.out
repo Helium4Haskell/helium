@@ -1,0 +1,10 @@
+Compiling typeerrors/Heuristics/AppNotABinFunction2.hs
+
+(4,12): Type error in infix application
+*** Expression     : (x&&y) `not` (x||y)
+*** Term           : not
+*** Type           : Bool -> Bool        
+*** Does not match : Bool -> Bool -> Bool
+*** Because        : it is not a binary function
+
+Compilation failed with 1 type error

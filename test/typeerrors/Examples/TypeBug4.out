@@ -1,0 +1,22 @@
+Compiling typeerrors/Examples/TypeBug4.hs
+
+(4,21): Type error in application
+*** Expression     : max length k (max.map (length l))
+*** Term           : max
+*** Type           : Int          -> Int    -> Int                     
+*** Does not match : ([a] -> Int) -> [Char] -> (b -> Int -> Int) -> Int
+
+(4,56): Type error in variable
+*** Expression     : k
+*** Type           : [Char]
+*** Expected type  : Char  
+
+(4,60): Type error in application
+*** Expression     : sp k
+*** Term           : sp
+*** Type           : ([a] -> Int -> String) -> [a] -> String
+*** Does not match : [Char]                 -> Char         
+
+(...)
+
+Compilation failed with 5 type errors

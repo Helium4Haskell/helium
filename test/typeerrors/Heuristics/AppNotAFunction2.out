@@ -1,0 +1,10 @@
+Compiling typeerrors/Heuristics/AppNotAFunction2.hs
+
+(5,17): Type error in application
+*** Expression     : x 3
+*** Term           : x
+*** Type           : Int         
+*** Does not match : Int -> [Int]
+*** Because        : it is not a function
+
+Compilation failed with 1 type error

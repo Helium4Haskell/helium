@@ -1,0 +1,4 @@
+Compiling correct/Case3.hs
+(9,9): Variable "x" is not used
+Compilation successful with 1 warning
+42

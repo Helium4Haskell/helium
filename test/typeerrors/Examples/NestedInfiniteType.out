@@ -1,0 +1,14 @@
+Compiling typeerrors/Examples/NestedInfiniteType.hs
+
+(5,1): Type error in explicitly typed binding
+*** Term           : f
+*** Type           : [a] -> [a  ] -> [a]
+*** Does not match : Int -> [Int] -> b  
+
+(8,23): Type error in application
+*** Expression     : f a xs
+*** Term           : f
+*** Type           : [a] -> [a  ] -> [a  ]
+*** Does not match : Int -> [Int] -> [Int]
+
+Compilation failed with 2 type errors

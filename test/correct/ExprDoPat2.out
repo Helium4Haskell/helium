@@ -1,0 +1,11 @@
+Compiling correct/ExprDoPat2.hs
+Compilation successful
+exception: pattern match failed at correct/ExprDoPat2.hs(6,9).
+
+trace:
+  demanded from "LvmLang.unsafePerformIO"
+  demanded from "LvmLang.<"
+  demanded from "HeliumLang.showInt"
+  demanded from "HeliumLang.primPutChars"
+  demanded from "LvmLang.bindIO"
+  demanded from "LvmLang.unsafePerformIO"

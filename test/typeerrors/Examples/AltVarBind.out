@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/AltVarBind.hs
+
+(5,7): Type error in right-hand side of case alternative
+*** Expression     : x
+*** Type           : Bool
+*** Does not match : Int 
+
+Compilation failed with 1 type error

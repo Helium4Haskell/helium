@@ -1,0 +1,89 @@
+-------------------------------------------------------------------------------
+--
+--   *** The Helium Compiler : Static Analysis ***
+--               ( Bastiaan Heeren )
+--
+-- KindChecking.ag : A kind checker for Helium
+--
+-- Note: Kind Inferencing for the Helium language is pretty straightforward: check
+--    if each type constructor has the right number of arguments, and whether 
+--    no types are applied to a type variable.
+--
+-------------------------------------------------------------------------------
+
+ATTR Declarations MaybeDeclarations Declaration 
+     Expression Expressions MaybeExpression GuardedExpression GuardedExpressions
+     Statement Statements Qualifier Qualifiers
+     Alternative Alternatives 
+     Body RightHandSide FunctionBinding FunctionBindings 
+     Constructor Constructors AnnotatedTypes AnnotatedType 
+     [ | kindErrors : {[Error]} | ]
+
+SEM Module
+  | Module         body . kindErrors   = []
+                    loc . kindErrors   = @body.kindErrors
+  
+SEM Expression
+  | Typed           lhs . kindErrors   = checkType @lhs.tyconEnv @lhs.namesInScope @type.self ++ @expression.kindErrors
+
+SEM Declaration
+  | Type            lhs . kindErrors   =  checkType @lhs.tyconEnv @lhs.namesInScope @type.self ++ @lhs.kindErrors
+  | TypeSignature   lhs . kindErrors   =  checkType @lhs.tyconEnv @lhs.namesInScope @type.self ++ @lhs.kindErrors
+
+SEM AnnotatedType
+  | AnnotatedType   lhs . kindErrors   =  checkType @lhs.tyconEnv @lhs.namesInScope @type.self ++ @lhs.kindErrors
+  
+{
+checkType :: TypeConstructorEnvironment -> Names -> Type -> [Error]
+checkType tyconEnv namesInScope t =
+    let (f, xs) = walkSpine t
+        xsErrors = concatMap (checkType tyconEnv namesInScope) xs
+    in
+        xsErrors
+        ++
+        case f of
+            Type_Constructor _ c ->
+                checkKind c tyconEnv (length xs) namesInScope
+            Type_Variable _ v ->
+                if length xs /= 0 then
+                    [ TypeVarApplication v ]
+                else
+                    []
+            _ ->
+                internalError "StaticAnalysis" "checkType" "unexpected type"
+
+walkSpine :: Type -> (Type, [Type])
+walkSpine t =
+    case t of
+        Type_Variable _ _ -> (t, [])
+        Type_Constructor _ _ -> (t, [])
+        Type_Application _ _ f xs ->
+            let (t, ys) = walkSpine f
+            in (t, ys ++ xs)
+        Type_Parenthesized _ t -> walkSpine t
+
+checkKind :: Name -> TypeConstructorEnvironment -> Int -> Names -> [Error]
+checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity namesInScope =
+    if expected == useArity then
+        []
+    else
+        [ ArityMismatch TypeConstructor tycon expected useArity]
+    where
+        expected =
+            case length (takeWhile (== ',') commas) of
+                 0 -> 0  -- ()
+                 n -> n + 1 -- (,) (,,) ...
+
+checkKind tycon tyconEnv useArity namesInScope =
+    case lookupAL tycon tyconEnv of
+        Nothing ->
+            let hint = if tycon `elem` namesInScope 
+                         then Just ("Constructor "++show (show tycon)++" cannot be used in a type") 
+                         else Nothing 
+            in [ Undefined TypeConstructor tycon (keys tyconEnv) hint ]
+        Just defArity ->
+            if useArity /= defArity then
+                [ ArityMismatch TypeConstructor tycon defArity useArity ]
+            else
+                [ ]
+}

@@ -1,0 +1,52 @@
+ATTR Patterns 
+    [   
+    | 
+    |   length : Int
+    ]
+
+ATTR Pattern Patterns
+    [   
+    | 
+    |   vars USE { ++ } { [] } : { [Id] }
+    ]
+    
+SEM Patterns
+    | Cons lhs.length = 1 + @tl.length
+    | Nil  lhs.length = 0
+    
+
+SEM Pattern
+    | Variable              lhs.vars    = [ @name.id ]
+    --  range                    : Range
+    --  name                     : Name
+
+    | As                    lhs.vars    = @name.id : @pattern.vars
+    --  range                    : Range
+    --  name                     : Name
+    --  pattern                  : Pattern
+
+{
+
+patternAlwaysSucceeds :: Pattern -> Bool
+patternAlwaysSucceeds p = 
+    case p of
+        Pattern_Variable _ _ -> True
+        Pattern_Wildcard _ -> True
+        Pattern_As _ _ p -> patternAlwaysSucceeds p
+        Pattern_Parenthesized _ p -> patternAlwaysSucceeds p
+        _ -> False
+
+throwException :: String -> Core.Expr
+throwException message = 
+    var "primErrorPacked"
+        `app_` packedString message
+
+patternMatchFail :: Range -> Core.Expr
+patternMatchFail range =
+    var "primPatternFailPacked"
+        `app_` packedString (showRange range)
+
+showRange :: Range -> String
+showRange (Range_Range (Position_Position mod line column) _) = mod ++ show (line, column)
+showRange _ = internalError "ToCorePat.ag" "showRange" "unknown position"
+}

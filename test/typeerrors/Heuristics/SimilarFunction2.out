@@ -1,0 +1,9 @@
+Compiling typeerrors/Heuristics/SimilarFunction2.hs
+
+(4,15): Type error in variable
+*** Expression     : *
+*** Type           : Int   -> Int   -> Int  
+*** Expected type  : Float -> Float -> Float
+*** Probable fix   : use *. instead
+
+Compilation failed with 1 type error

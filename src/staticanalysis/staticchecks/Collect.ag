@@ -1,0 +1,179 @@
+-------------------------------------------------------------------------------
+--
+--   *** The Helium Compiler : Static Analysis ***
+--               ( Bastiaan Heeren )
+--
+-- Collect.ag : Collect the following information:
+-- 
+--    1) type constructors from a data type
+--    2) type synonyms
+--    3) (value) constructors from a data type
+--    4) fixity declarations
+--    5) names of imported modules
+--    6) the derived show functions for data types
+--
+-- Distribute the collected environments 
+--    7) value constructors
+--    8) type constructors
+--
+-------------------------------------------------------------------------------
+
+imports {
+import ImportEnvironment
+}
+
+-------------------------------------------
+-- 1,2,3) Collecting type constructors, value constructors, and type synonyms
+
+ATTR Body Declarations Declaration Constructors Constructor [ | collectEnvironment:ImportEnvironment | ]
+
+SEM Module 
+  | Module   body . collectEnvironment = emptyEnvironment
+             
+SEM Declaration
+  | Data   lhs . collectEnvironment = addTypeConstructor @simpletype.name (length @simpletype.typevariables) @constructors.collectEnvironment
+  | Type   lhs . collectEnvironment = addTypeSynonym     @simpletype.name @typeSynonymInfo @lhs.collectEnvironment
+           loc . typeSynonymInfo = (length @simpletype.typevariables,\tps -> makeTpFromType (zip @simpletype.typevariables tps) @type.self)
+
+SEM Constructor
+  | Constructor
+       lhs . collectEnvironment = addValueConstructor @constructor.self @typeScheme @lhs.collectEnvironment
+       loc . typeScheme = generalizeAll (foldr (.->.) @tp @tps)
+           . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype @types.types
+                  
+  | Infix
+       lhs . collectEnvironment = addValueConstructor @constructorOperator.self @typeScheme @lhs.collectEnvironment
+       loc . typeScheme = generalizeAll (foldr (.->.) @tp @tps)
+           . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype [@leftType.type,@rightType.type] 
+           
+-------------------------------------------
+-- 4) Collecting Fixity Declarations
+
+ATTR Declarations Declaration [ | fixOps : Names | ]
+ATTR Body                     [ | | fixOps : Names ]
+
+SEM Body
+  | Body   declarations . fixOps = [] 
+
+SEM Declaration
+    | Fixity lhs . fixOps = @operators.self ++ @lhs.fixOps
+
+-------------------------------------------
+-- 5) Collecting the imported modules
+
+ATTR ImportDeclarations ImportDeclaration  [ | importedModules : Names | ]
+ATTR Body                                  [ | | importedModules : Names ]  
+
+SEM Body
+  | Body    importdeclarations . importedModules = []
+    
+SEM ImportDeclaration
+  | Import   lhs . importedModules = @name.self : @lhs.importedModules
+
+-------------------------------------------
+-- 6) Collecting derived show functions
+
+ATTR Declarations Declaration [ | derivedFunctions : TypeEnvironment | ]
+ATTR Body                     [ | | derivedFunctions : TypeEnvironment ]
+
+SEM Body
+    | Body declarations.derivedFunctions = empty
+    
+SEM Declaration
+    | Data lhs.derivedFunctions = 
+            add 
+                (nameOfShowFunction @simpletype.name) 
+                (typeOfShowFunction @simpletype.name @simpletype.typevariables)
+                @lhs.derivedFunctions
+    | Type lhs.derivedFunctions = 
+            add 
+                (nameOfShowFunction @simpletype.name) 
+                (typeOfShowFunction @simpletype.name @simpletype.typevariables)
+                @lhs.derivedFunctions
+
+---------------------------------------------------------------
+-- Distribution of collected environments (uniqueness is guaranteed!) 
+
+-- 7) value constructors
+ATTR Expression Expressions Pattern Patterns MaybeExpression Alternative Alternatives Declaration Declarations
+     Constructors Constructor
+     Statement Statements FunctionBinding FunctionBindings LeftHandSide RightHandSide
+     MaybeDeclarations Qualifier Qualifiers GuardedExpression GuardedExpressions Body
+     [ constructorenv:ConstructorEnvironment | | ]
+
+SEM Module
+  | Module   loc . (constructorenv,duplicatedValueConstructors) = 
+                        onlyUniqueKeys ( valueConstructors @body.collectEnvironment `combine` @lhs.importConstructorEnv )
+
+-- 8) type constructors (!also from type synonyms!) and their arity
+ATTR Expression Expressions Alternative Alternatives Declaration Declarations MaybeExpression
+     Statement Statements FunctionBinding FunctionBindings RightHandSide
+     MaybeDeclarations Qualifier Qualifiers GuardedExpression GuardedExpressions
+     Type Types AnnotatedType AnnotatedTypes Constructor Constructors Body 
+     LeftHandSide Pattern Patterns
+     [ tyconEnv : TypeConstructorEnvironment | | ]
+
+SEM Module
+  | Module loc . (tyconEnv,duplicatedTypeConstructors) 
+                     = onlyUniqueKeys ( typeConstructors @body.collectEnvironment `combine`
+                                        @lhs.importTyConEnv           `combine` 
+                                        mapElt fst @lhs.importTypeSynEnv 
+                                      )
+
+------------------------------------------------------------------------------
+-- 9) Check and order type synonyms 
+
+SEM Module
+  | Module   loc . (orderedTypeSynonyms,recursiveTypeSynonyms) = 
+                       checkRecursionTypeSynonyms (typeSynonyms @body.collectEnvironment `combine` @lhs.importTypeSynEnv)
+                                              
+{
+checkRecursionTypeSynonyms :: TypeSynonymEnvironment -> (OrderedTypeSynonyms,[Names])
+checkRecursionTypeSynonyms assoclist = 
+    let synonyms  = toList assoclist
+        nameTable = zip (map fst synonyms) [0..]
+        synTable  = zip [0..] synonyms 
+        edges = concat [ let Just i1 = lookup n1 nameTable
+                         in maybe [] (\i2 -> [(i2,i1)]) (lookup n2 nameTable)
+                       | (n1,(_,f)) <- synonyms
+                       , s2         <- constantsInType (f (map TVar [0..]))
+               , let n2 = Name_Identifier noRange [] s2
+                       ]
+        list = topSort (length synonyms-1) edges  
+        op [i] (as,bs)
+           | (i,i) `elem` edges = (as,[ n | (n,i') <- nameTable, i==i' ] : bs)
+           | otherwise          = let Just (name,(arity,tf)) = lookup i synTable
+                                  in ((show name,arity,tf):as,bs)
+        op is  (as,bs) = (as,[ n | i <- is, (n,i') <- nameTable, i==i'] : bs)
+    in foldr op ([],[]) list
+}
+
+-------------------------------------------------------
+-- utility attributes for types and constructors
+
+ATTR SimpleType [ | | name:Name typevariables:Names ]
+
+SEM SimpleType
+  | SimpleType  lhs . name          = @name.self                   
+                    . typevariables = @typevariables.self
+
+ATTR Type Types AnnotatedTypes AnnotatedType Constructors Constructor [ | | typevariables USE { ++ } { [] } : Names ]
+
+SEM Type
+  | Variable  lhs . typevariables = [ @name.self ]
+
+ATTR Constructors Constructor [ simpletype:SimpleType | | ]
+
+SEM Declaration
+  | Data     constructors . simpletype = @simpletype.self
+  | Newtype  constructor  . simpletype = @simpletype.self
+
+ATTR AnnotatedTypes [ | | types : Types ]
+ATTR AnnotatedType  [ | | type  : Type  ]
+
+SEM AnnotatedTypes
+  | Cons   lhs . types = @hd.type : @tl.types
+  | Nil    lhs . types = []
+   
+SEM AnnotatedType
+  | AnnotatedType  lhs . type = @type.self 

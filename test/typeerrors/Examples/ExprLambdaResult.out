@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/ExprLambdaResult.hs
+
+(4,5): Type error in lambda abstraction
+*** Expression     : \x -> x
+*** Type           : a -> a
+*** Expected type  : Bool  
+
+Compilation failed with 1 type error

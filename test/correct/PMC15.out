@@ -1,0 +1,9 @@
+Compiling correct/PMC15.hs
+Compilation successful
+exception: pattern match failed at correct/PMC15.hs(7,1).
+
+trace:
+  demanded from "HeliumLang.showBool"
+  demanded from "HeliumLang.primPutChars"
+  demanded from "LvmLang.bindIO"
+  demanded from "LvmLang.unsafePerformIO"

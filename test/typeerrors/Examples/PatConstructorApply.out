@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/PatConstructorApply.hs
+
+(5,8): Type error in pattern constructor
+*** Pattern        : True 
+*** Type           : Bool
+*** Does not match : Int 
+
+Compilation failed with 1 type error

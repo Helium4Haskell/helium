@@ -1,0 +1,16 @@
+Compiling correct/NotANumber.hs
+Compilation successful
+[exception: Can't apply sqrt to negative floating-point number.
+
+trace:
+  demanded from "LvmLang.+."
+  demanded from "LvmLang./."
+  demanded from "HeliumLang.primShowFloat"
+  demanded from "HeliumLang.hasPointOrE"
+  demanded from "HeliumLang.addPointZero"
+  ...
+  demanded from "LvmLang.bindIO"
+  demanded from "LvmLang.bindIO"
+  demanded from "LvmLang.bindIO"
+  demanded from "LvmLang.bindIO"
+  demanded from "LvmLang.unsafePerformIO"

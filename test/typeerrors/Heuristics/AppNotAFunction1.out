@@ -1,0 +1,10 @@
+Compiling typeerrors/Heuristics/AppNotAFunction1.hs
+
+(3,22): Type error in application
+*** Expression     : "hello" "world"
+*** Term           : "hello"
+*** Type           : String          
+*** Does not match : String -> String
+*** Because        : it is not a function
+
+Compilation failed with 1 type error

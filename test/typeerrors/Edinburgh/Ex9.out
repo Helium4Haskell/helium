@@ -1,0 +1,15 @@
+Compiling typeerrors/Edinburgh/Ex9.hs
+
+(4,11): Type error in infix application
+*** Expression     : m^^^n
+*** Term           : m
+*** Type           : Int   
+*** Does not match : String
+
+(4,22): Type error in application
+*** Expression     : f5 (m-1)
+*** Term           : f5
+*** Type           : Int -> a -> [b]
+*** Does not match : Int -> [b]     
+
+Compilation failed with 2 type errors

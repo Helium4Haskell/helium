@@ -1,0 +1,73 @@
+ATTR Module [ | | coreImportDecls : { [Core.CoreDecl] } ] 
+
+INCLUDE "../syntax/UHA_Syntax.ag"
+INCLUDE "../codegeneration/ToCoreName.ag"
+
+imports{
+import UHA_Syntax
+import Id
+import qualified Core
+import Utils (internalError)
+}
+  
+ATTR Body ImportDeclarations ImportDeclaration
+   [ | | coreImportDecls USE { ++ } { [] } : { [Core.CoreDecl] } ]  
+    
+SEM ImportDeclaration
+    | Import lhs.coreImportDecls =
+    
+        if @qualified || not @asname.isNothing then
+            internalError "ExtractImportDecls.ag" "ImportDeclaration.Import" "qualified and as-imports not supported yet"
+        else
+            maybe
+                [ Core.DeclImport
+                    { Core.declName = @name.id
+                    , Core.declAccess =
+                        Core.Imported
+                            { Core.accessPublic   = False -- private
+                            , Core.importModule   = @name.id
+                            , Core.importName     = dummyId
+                            , Core.importKind     = Core.DeclKindModule
+                            , Core.importMajorVer = 0
+                            , Core.importMinorVer = 0
+                            }
+                    , Core.declCustoms = []
+                    }
+                ]
+                (\imps -> 
+                    [ Core.DeclImport
+                        { Core.declName    = entityId
+                        , Core.declAccess  =
+                            Core.Imported
+                                { Core.accessPublic   = False -- private
+                                , Core.importModule   = @name.id
+                                , Core.importName     = entityId
+                                , Core.importKind     = entityKind
+                                , Core.importMajorVer = 0
+                                , Core.importMinorVer = 0
+                                }
+                        , Core.declCustoms = []
+                        }
+                    | (entityId, entityKind) <- imps
+                    ]
+                )
+                @importspecification.imps
+    
+SEM MaybeImportSpecification [ | | imps : {Maybe [(Id, Core.DeclKind)]}]
+    | Nothing              lhs.imps     = Nothing
+    | Just                 lhs.imps     = Just @importspecification.imps
+
+SEM ImportSpecification
+    | Import               lhs.imps     =
+        if @hiding then
+            internalError "ExtractImportDecls.ag" "ImportSpecification.Import" "hiding is currently unsupported"
+        else
+            @imports.imps
+
+ATTR ImportSpecification Imports Import [ | | imps USE { ++ } { [] } : {[(Id, Core.DeclKind)]} ]
+
+SEM Import
+    | Variable                lhs.imps = [(@name.id, Core.DeclKindValue)]
+    | TypeOrClass             lhs.imps = (@name.id, Core.DeclKindCustom (idFromString "data")) :
+                                         zip (maybe [] id @names.ids) (repeat Core.DeclKindCon)
+    | TypeOrClassComplete     lhs.imps = internalError "ExtractImportDecls.ag" "Import.TypeOrClassComplete" "unsupported" 

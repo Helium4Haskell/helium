@@ -1,0 +1,24 @@
+Compiling typeerrors/Examples/LotsOfTypeErrors.hs
+
+(3,13): Type error in element of list
+*** Expression     : [True,1,2,3,4,"hello world!"]
+*** Term           : "hello world!"
+*** Type           : String
+*** Does not match : Int   
+
+(3,13): Type error in element of list
+*** Expression     : [True,1,2,3,4,"hello world!"]
+*** Term           : True
+*** Type           : Bool
+*** Does not match : Int 
+
+(11,20): Type error in application
+*** Expression     : "hello" "world"
+*** Term           : "hello"
+*** Type           : String     
+*** Does not match : String -> a
+*** Because        : it is not a function
+
+(...)
+
+Compilation failed with 5 type errors

@@ -1,0 +1,349 @@
+
+-- ------------------------------------------------------------------------
+-- -- Declarations                                                       --
+-- ------------------------------------------------------------------------
+
+ATTR Declaration Declarations [ | patBindNr : Int | ]
+        
+SEM MaybeDeclarations [ | |   core : { Core.Expr -> Core.Expr } ]
+    | Nothing     lhs.core = \continue -> continue
+    | Just        declarations.patBindNr = 0
+                  declarations.types = Nothing
+                  lhs.core = \continue -> letrec_ @declarations.decls continue  
+
+SEM Declaration          
+    | Type              lhs.decls  =
+        let -- if we would have the collected type synonym information here, things could have been
+            -- done much easier.
+            (t1,[t2])   = convertFromSimpleTypeAndTypes @simpletype.self [@type.self]
+            allTypeVars = ftv [t1,t2]
+            (ts1,ts2)   = (Scheme allTypeVars [] t1,Scheme allTypeVars [] t2) 
+        in
+        [ Core.DeclCustom
+            { Core.declName    = idFromString (getNameName @simpletype.name)
+            , Core.declAccess  = Core.private
+            , Core.declKind    = Core.DeclKindCustom (idFromString "typedecl")
+            , Core.declCustoms =
+                [ Core.CustomBytes
+                    (Byte.bytesFromString
+                        (  show ts1
+                        ++ " = "
+                        ++ show ts2
+                        )
+                    )
+                , Core.CustomInt
+                    (length @simpletype.typevariables)
+                ]
+            }
+        ]
+        ++
+        [derivingShow @self]
+    
+    | Data    constructors.tag = 0
+              lhs.decls  =
+        map snd @constructors.cons
+        ++
+        [ Core.DeclCustom
+            { Core.declName    = idFromString (getNameName @simpletype.name)
+            , Core.declAccess  = Core.private
+            , Core.declKind    = Core.DeclKindCustom (idFromString "data")
+            , Core.declCustoms = [Core.CustomInt (length @simpletype.typevariables)]
+            }
+        ]
+        ++
+        [derivingShow @self]
+    --  range                    : Range        
+    --  context                  : ContextItems
+    --  simpletype               : SimpleType
+    --  constructors             : Constructors
+    --  derivings                : Names
+    
+    | FunctionBindings  loc.ids      = freshIds "u$" @bindings.arity
+                        bindings.ids = @loc.ids
+                        bindings.range = @range.self
+                        lhs.decls    =
+        [ Core.DeclValue
+            { Core.declName    = @bindings.id
+            , Core.declAccess  = Core.private
+            , Core.valueEnc    = Nothing
+            , Core.valueValue  = foldr Core.Lam @bindings.core @ids
+            , Core.declCustoms = toplevelType (stringFromId @bindings.id) @lhs.types
+            }
+        ]
+    --  range                    : Range          
+    --  bindings                 : FunctionBindings -- should all be for the same function
+    
+    | PatternBinding    lhs.patBindNr = @lhs.patBindNr + 1
+                        lhs.decls     =
+        case @pattern.self of
+            Pattern_Variable _ n ->
+                [ Core.DeclValue
+                    { Core.declName    = idFromName n
+                    , Core.declAccess  = Core.private
+                    , Core.valueEnc    = Nothing
+                    , Core.valueValue  = 
+                        let_ 
+                            nextClauseId (patternMatchFail @range.self)
+                            @righthandside.core
+                    , Core.declCustoms = toplevelType (getNameName n) @lhs.types
+                    }
+               ]
+            _ ->
+                Core.DeclValue
+                    { Core.declName    = patBindId
+                    , Core.declAccess  = Core.private
+                    , Core.valueEnc    = Nothing
+                    , Core.valueValue  = @righthandside.core
+                    , Core.declCustoms = []
+                    }
+                :
+                [ Core.DeclValue
+                    { Core.declName    = v
+                    , Core.declAccess  = Core.private
+                    , Core.valueEnc    = Nothing
+                    , Core.valueValue  =
+                        (let_ nextClauseId (patternMatchFail @range.self)
+                            (patternToCore (patBindId, @pattern.self) (Core.Var v))
+                        )
+                    , Core.declCustoms = toplevelType (stringFromId v) @lhs.types
+                    }
+                | v <- @pattern.vars
+                ]
+                where 
+                    patBindId = idFromString ("patBind$" ++ show @lhs.patBindNr)
+    --  range                    : Range
+    --  pattern                  : Pattern
+    --  righthandside            : RightHandSide
+    
+    | TypeSignature     lhs.decls    = []
+    --  range                    : Range
+    --  names                    : Names
+    --  type                     : Type   -- may have context
+    
+    | Fixity            lhs.decls    =
+        map
+            ( ( \n ->
+                Core.DeclCustom
+                    { Core.declName    = idFromString n
+                    , Core.declAccess  = Core.private
+                    , Core.declKind    = (Core.DeclKindCustom . idFromString) "infix"
+                    , Core.declCustoms =
+                        [ Core.CustomInt 
+                             ( case @priority.self of
+                                  MaybeInt_Just i  -> i
+                                  MaybeInt_Nothing -> 9 )
+                        , (Core.CustomBytes . bytesFromString)
+                              ( case @fixity.self of
+                                   Fixity_Infixr _ -> "right"
+                                   Fixity_Infixl _ -> "left"
+                                   Fixity_Infix  _ -> "none"
+                                   _               -> internalError
+                                                        "ToCoreDecl.ag"
+                                                        "SEM Declaration.Fixity"
+                                                        "unknown fixity"
+                              )
+                        ]
+                    }
+              )
+              . 
+              getNameName
+            )
+            @operators.self
+    --  range                    : Range
+    --  fixity                   : Fixity
+    --  priority                 : MaybeInt
+    --  operators                : Names
+    
+    -- Not supported
+    
+    | Newtype           lhs.decls    = intErr "Declaration" "'newType' not supported"
+                        constructor.tag = 0
+    --  range                    : Range
+    --  context                  : ContextItems
+    --  simpletype               : SimpleType
+    --  constructor              : Constructor  -- has only one field, no strictness
+    --  derivings                : Names
+    
+    | Class             lhs.decls    = intErr "Declaration" "'class' not supported"
+    --  range                    : Range
+    --  context                  : ContextItems -- is a "simple" context
+    --  simpletype               : SimpleType   -- Haskell 98 allows only one variable
+    --  where                    : MaybeDeclarations -- cannot have everything
+    
+    | Instance          lhs.decls    = intErr "Declaration" "'instance' not supported"
+    --  range                    : Range
+    --  context                  : ContextItems -- is a "simple" context
+    --  name                     : Name
+    --  types                    : Types        -- Haskell 98 allows only one type
+                                                -- that is severely restricted
+    --  where                    : MaybeDeclarations -- cannot have everything
+    
+    | Default           lhs.decls    = intErr "Declaration" "'default' not supported"
+    --  range                    : Range
+    --  types                    : Types        -- should be instances of Num
+    
+    | Empty             lhs.decls    = intErr "Declaration" "empty declarations not supported"
+    --  range                    : Range
+
+ATTR FunctionBinding FunctionBindings 
+    [   ids : { [Id] }
+    | 
+    |   id : Id 
+        arity : Int
+    ]
+
+SEM FunctionBindings [ range : Range | | core : {Core.Expr} ]
+    | Cons             lhs.id    = @hd.id
+                          .core  = @hd.core @tl.core
+                          .arity = @hd.arity
+    | Nil              lhs.id    = intErr "FunctionBindings" "empty list of function bindings"
+                          .core  = patternMatchFail @lhs.range
+                          .arity = intErr "FunctionBindings" "empty list of function bindings"
+
+SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
+    | FunctionBinding  lhs.id = @lefthandside.id
+                       lhs.arity = @lefthandside.arity
+                       lhs.core = 
+        \nextClause ->
+            let thisClause = 
+                    patternsToCore 
+                        (zip @lhs.ids @lefthandside.patterns)
+                        @righthandside.core in
+            if all patternAlwaysSucceeds @lefthandside.patterns 
+               &&
+               not @righthandside.isGuarded
+            then
+                thisClause
+            else
+                let_ nextClauseId nextClause thisClause
+                                      
+    --  range                    : Range
+    --  lefthandside             : LeftHandSide
+    --  righthandside            : RightHandSide
+
+ATTR LeftHandSide 
+    [ 
+    | 
+    |   id : Id 
+        arity : Int
+        patterns : Patterns
+    ]
+
+SEM LeftHandSide
+    | Function         lhs.id    = @name.id
+                          .arity = @patterns.length
+                          .patterns = @patterns.self
+    --  range                    : Range
+    --  name                     : Name
+    --  patterns                 : Patterns
+
+    | Infix            lhs.id    = @operator.id
+                          .arity = 2
+                          .patterns = [@leftPattern.self, @rightPattern.self ]
+    --  range                    : Range
+    --  leftPattern              : Pattern
+    --  operator                 : Name
+    --  rightPattern             : Pattern
+
+    | Parenthesized    lhs.id    = @lefthandside.id  
+                          .arity = @lefthandside.arity + @patterns.length
+                          .patterns = @lefthandside.patterns ++ @patterns.self
+    --  range                    : Range
+    --  lefthandside             : LeftHandSide
+    --  patterns                 : Patterns
+
+SEM RightHandSide
+    [ 
+    | 
+    |   core : { Core.Expr } 
+        isGuarded : Bool
+    ]
+
+    | Expression      lhs.core = @where.core @expression.core
+                         .isGuarded = False
+    --  range                    : Range
+    --  expression               : Expression
+    --  where                    : MaybeDeclarations
+
+    | Guarded         lhs.isGuarded = True
+                         .core = 
+        @where.core (foldr ($) (Core.Var nextClauseId) @guardedexpressions.core)
+                         
+    --  range                    : Range
+    --  guardedexpressions       : GuardedExpressions
+    --  where                    : MaybeDeclarations
+
+-- ------------------------------------------------------------------------
+-- -- Types                                                              --
+-- ------------------------------------------------------------------------
+
+ATTR Constructors Constructor 
+    [   tag : Int 
+    | 
+    |   cons USE { ++ } { [] } : { [(Id, CoreDecl)] } 
+    ]
+
+SEM Constructors
+    | Cons  hd.tag = @lhs.tag
+            tl.tag = @lhs.tag + 1
+
+SEM Constructor
+    | Constructor       lhs.cons = 
+        [ (@constructor.id, Core.DeclCon
+            { Core.declName    = @constructor.id
+            , Core.declAccess  = Core.private
+            , Core.declArity   = @types.length
+            , Core.conTag      = @lhs.tag
+            , Core.declCustoms = constructorTypeAndArity @constructor.self @lhs.constructorenv
+            }
+          )
+        ]
+    --  range                    : Range
+    --  constructor              : Name
+    --  types                    : AnnotatedTypes
+    
+    | Infix             lhs.cons = 
+        [ (@constructorOperator.id, Core.DeclCon
+            { Core.declName    = @constructorOperator.id
+            , Core.declAccess  = Core.private
+            , Core.declArity   = 2
+            , Core.conTag      = @lhs.tag
+            , Core.declCustoms = constructorTypeAndArity @constructorOperator.self @lhs.constructorenv
+            }
+          )
+        ]
+    --  range                    : Range
+    --  leftType                 : AnnotatedType
+    --  constructorOperator      : Name
+    --  rightType                : AnnotatedType
+    
+-- Not supported
+
+    | Record            lhs.cons = intErr "Constructor" "records not supported"
+    --  range                    : Range
+    --  constructor              : Name
+    --  fieldDeclarations        : FieldDeclarations
+
+SEM AnnotatedTypes [ | | length : Int ]
+    | Cons lhs.length = 1 + @tl.length
+    | Nil  lhs.length = 0
+
+{
+toplevelType :: String -> Maybe (AssocList String TpScheme) -> [Core.Custom]
+toplevelType name Nothing    = []
+toplevelType name (Just tps) = [customType typeString]
+    where
+        typeString = maybe
+            (internalError "UHA_ToCore" "Declaration" ("no type found for " ++ name))
+            show
+            (lookupAL name tps)
+
+constructorTypeAndArity :: Name -> ConstructorEnvironment -> [Core.Custom]
+constructorTypeAndArity name env =
+    maybe 
+        (internalError "UHA_ToCore" "Constructor" ("no type found for " ++ show name))
+        (\tpScheme -> 
+            [ customType (show tpScheme)]
+        )
+        (lookupAL name env)
+}

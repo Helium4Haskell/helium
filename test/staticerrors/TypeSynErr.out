@@ -1,0 +1,6 @@
+Compiling staticerrors/TypeSynErr.hs
+(3,8), (3,10): Duplicated type variable "a"
+(3,34): Undefined type variable "c"
+(3,36): Undefined type variable "eenlangenam"
+  HINT - Did you mean "eenlangenaam" ?
+Compilation failed with 3 errors

@@ -1,0 +1,67 @@
+-------------------------------------------------------------------------------
+--
+--   *** The Helium Compiler : Static Analysis ***
+--               ( Bastiaan Heeren )
+--
+-- StaticAnalysis.ag : 
+--    - static checks    : e.g., undefined variables, duplicated definition, ...
+--    - type inferencing : e.g., type error, declared typed is too general, ...
+--    - warnings         : e.g., shadowing, missing type signature, ... 
+--
+-------------------------------------------------------------------------------
+
+
+-- All attributes for a module
+
+ATTR Module
+   [ baseName              : String
+     importConstructorEnv  : ConstructorEnvironment
+     importTyConEnv        : TypeConstructorEnvironment
+     importTypeEnv         : TypeEnvironment
+     importTypeSynEnv      : TypeSynonymEnvironment
+     strategy              : Strategy
+     useTypeGraph          : Bool
+   |
+   | constructorenv        : ConstructorEnvironment 
+     debugIO               : {IO ()}
+     errors                : Errors
+     toplevelTypes         : TypeEnvironment
+     typeErrors            : TypeErrors
+     warnings              : Warnings
+   ]
+
+imports {
+import UHA_Syntax
+}
+
+INCLUDE "../syntax/UHA_Syntax.ag"
+INCLUDE "../syntax/UHA_Self.ag" 
+
+INCLUDE "inferencers/TypeInferencing.ag"
+INCLUDE "staticchecks/Scope.ag"
+INCLUDE "staticchecks/KindChecking.ag"
+INCLUDE "staticchecks/Warnings.ag"
+INCLUDE "staticchecks/TopLevelErrors.ag"
+INCLUDE "staticchecks/MiscErrors.ag"
+INCLUDE "staticchecks/ExportErrors.ag"
+
+-- combine all the collected errors, then filter out the "entity is undefined" 
+-- errors that are caused by the removal of "duplicated entities"
+SEM Module
+  | Module   lhs . errors = filter 
+                               (filterRemovedNames @removedEntities)
+                               ( concat [ @exportErrors
+                                        , @miscerrors
+                                        , @kindErrors
+                                        , @topLevelErrors
+                                        ])
+
+{
+-- filter undefined errors that are caused by the removal of a duplicate definition
+filterRemovedNames :: [(Name,Entity)] -> Error -> Bool
+filterRemovedNames list err = 
+   case err of  
+      Undefined entity name _ _ -> (name,entity) `notElem` list
+      _                         -> True
+                                  
+}

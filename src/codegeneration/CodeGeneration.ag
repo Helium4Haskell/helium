@@ -1,0 +1,67 @@
+ATTR Module
+   [   constructorenv   : ConstructorEnvironment
+       indirectionDecls : { [Core.CoreDecl] }
+       toplevelTypes    : TypeEnvironment 
+   |
+   |   core             : { Core.CoreModule }
+   ]
+
+-- UHA
+INCLUDE "../syntax/UHA_Syntax.ag"
+INCLUDE "../syntax/UHA_Self.ag"
+
+-- Transformation into Core
+INCLUDE "ToCoreModule.ag"
+INCLUDE "ToCoreDecl.ag"
+INCLUDE "ToCoreExpr.ag"
+INCLUDE "ToCorePat.ag"
+INCLUDE "ToCoreName.ag"
+
+imports{
+import UHA_Syntax
+import UHA_Utils
+import List (union)
+import Messages () -- instance Show Name
+import EnvironmentSynonyms
+import TypeConversion
+import Char (ord)
+
+import Id
+import IdSet 
+import Utils(internalError)
+
+import Types
+import SortedAssocList
+import PatternMatch
+import DerivingShow
+
+-- Semi-Daan
+import CoreUtils
+
+-- Daan
+import qualified Core
+import qualified Module
+import qualified Byte
+import qualified CoreParse
+}
+
+{
+
+intErr = internalError "UHA_ToCore"
+
+type CoreDecl = Core.Decl Core.Expr
+}
+
+--Collect.ag
+ATTR Body 
+     Expression Expressions Pattern Patterns MaybeExpression Alternative Alternatives Declaration Declarations
+     Constructors Constructor
+     Statement Statements FunctionBinding FunctionBindings LeftHandSide RightHandSide
+     MaybeDeclarations Qualifier Qualifiers GuardedExpression GuardedExpressions RecordExpressionBinding
+     RecordPatternBinding RecordExpressionBindings RecordPatternBindings [ constructorenv:ConstructorEnvironment | | ]
+
+ATTR SimpleType [ | | name:Name typevariables:Names ]
+
+SEM SimpleType
+  | SimpleType  lhs . name          = @name.self                   
+                    . typevariables = @typevariables.self

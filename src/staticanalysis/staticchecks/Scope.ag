@@ -1,0 +1,125 @@
+-------------------------------------------------------------------------------
+--
+--   *** The Helium Compiler : Static Analysis ***
+--               ( Bastiaan Heeren )
+--
+-- Scope.ag : Here, all variables (of type Name) are determined that are in 
+--    scope (for each location in the abstract syntax tree)
+-- 
+-- Variables can be add to the scope by three ways: 
+--
+--   1) externally defefined, imported, or primitive
+--           Module.Module
+--
+--   2) introduced in a binding-group (nodes with "Declarations")
+--            Body.Body
+--            MaybeDeclarations.Just
+--            Expression.Let
+--            Statement.Let
+--            Qualifier.Let
+--
+--   3) introduced in a pattern that is not part of a binding-group; these
+--         variables are automatically monomorphic. (nodes with "Pattern"
+--         or "Patterns") 
+--            FunctionBinding.FunctionBinding
+--            Expression.Lambda
+--            Alternative.Alternative
+--            Statement.Generator
+--            Qualifier.Generator
+--
+-- The scope simply follows the shape of the abstract syntax tree, except for
+-- Statements, Qualifiers en RightHandSide (where).
+--
+-------------------------------------------------------------------------------
+
+ATTR Expression Statement RightHandSide
+     RecordExpressionBinding Qualifier Statements RecordExpressionBindings
+     Qualifiers MaybeExpression GuardedExpression FunctionBinding
+     Expressions Declaration Declarations Alternative FunctionBindings
+     MaybeDeclarations Alternatives GuardedExpressions RecordPatternBinding
+     Patterns Pattern LeftHandSide RecordPatternBindings AnnotatedType
+     AnnotatedTypes Constructor Constructors FieldDeclaration FieldDeclarations
+     [ namesInScope : Names | | ]
+
+ATTR Body
+     [ | namesInScope : Names | ]
+
+-- imported functions
+
+SEM Module
+  | Module   body . namesInScope = concat [ keys @lhs.importTypeEnv 
+                                          , keys @body.derivedFunctions
+                                          , keys @lhs.importConstructorEnv
+                                          , keys (valueConstructors @body.collectEnvironment)
+                                          ]
+-- binding-groups
+
+SEM Body
+  | Body   loc . (environment,assumptions,_)  = concatBindingGroups @declarations.bindingGroups
+               . (namesInScope,shadowing)     = addToScope (keys @environment) @lhs.namesInScope
+
+SEM MaybeDeclarations
+  | Just   loc . (environment,assumptions,_)  = concatBindingGroups @declarations.bindingGroups
+               . (namesInScope,shadowing)     = addToScope (keys @environment) @lhs.namesInScope
+
+SEM Expression
+  | Let    loc . (environment,assumptions,_)  = concatBindingGroups @declarations.bindingGroups
+               . (namesInScope,shadowing)     = addToScope (keys @environment) @lhs.namesInScope
+
+SEM Statement
+  | Let    loc . (environment,assumptions,_)  = concatBindingGroups @declarations.bindingGroups
+               . (namesInScope,shadowing)     = addToScope (keys @environment) @lhs.namesInScope
+
+SEM Qualifier
+  | Let    loc . (environment,assumptions,_)  = concatBindingGroups @declarations.bindingGroups
+               . (namesInScope,shadowing)     = addToScope (keys @environment) @lhs.namesInScope
+
+-- monomorphic binding constructions
+
+SEM FunctionBinding
+  | FunctionBinding   loc . (namesInScope,shadowing) = addToScope (keys @lefthandside.environment) @lhs.namesInScope
+
+SEM Expression
+  | Lambda            loc . (namesInScope,shadowing) = addToScope (keys @patterns.environment) @lhs.namesInScope
+
+SEM Alternative
+  | Alternative       loc . (namesInScope,shadowing) = addToScope (keys @pattern.environment) @lhs.namesInScope
+
+SEM Statement
+  | Generator         loc . (namesInScope,shadowing) = addToScope (keys @pattern.environment) @lhs.namesInScope
+
+SEM Qualifier
+  | Generator         loc . (namesInScope,shadowing) = addToScope (keys @pattern.environment) @lhs.namesInScope
+
+-- correcte scope voor RightHandSides (where)
+
+ATTR MaybeDeclarations [ | | namesInScope : Names ]
+
+SEM RightHandSide 
+  | Expression   expression         . namesInScope = @where.namesInScope
+  | Guarded      guardedexpressions . namesInScope = @where.namesInScope
+
+-- correcte scope voor Statements/Qualifiers
+
+ATTR Statement Qualifier Qualifiers [ | | namesInScope:Names ]
+
+SEM Statement
+  | Generator   lhs        . namesInScope = @namesInScope
+                expression . namesInScope = @lhs.namesInScope
+
+SEM Qualifier
+  | Generator   lhs        . namesInScope = @namesInScope
+                expression . namesInScope = @lhs.namesInScope
+
+SEM Expression
+  | Comprehension    expression . namesInScope = @qualifiers.namesInScope
+
+-- utility function
+{
+addToScope :: Names -> Names -> (Names,[Warning])
+addToScope as bs = foldr op (bs,[]) (nub as)
+   where op a (names,wars) = case partition (==a) names of
+                               ([name],rest) -> (a : rest,Shadow name a : wars)
+                               _             -> (a : names,wars)
+}
+

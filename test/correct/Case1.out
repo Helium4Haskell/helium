@@ -1,0 +1,6 @@
+Compiling correct/Case1.hs
+(6,14): Variable "ys" is not used
+(7,10): Variable "x" is not used
+(7,12): Variable "xs" is not used
+Compilation successful with 3 warnings
+32

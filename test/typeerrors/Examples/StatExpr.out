@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/StatExpr.hs
+
+(3,8): Type error in generator
+*** Expression     : "koe"
+*** Type           : String
+*** Does not match : IO a  
+
+Compilation failed with 1 type error

@@ -1,0 +1,161 @@
+-------------------------------------------------------------------------------
+--
+--   *** The Helium Compiler : Static Analysis ***
+--               ( Bastiaan Heeren )
+--
+-- MiscErrors.ag : Miscellaneous errors
+--
+-------------------------------------------------------------------------------
+
+ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alternatives
+     Statement Statements Declaration Declarations MaybeDeclarations LeftHandSide RightHandSide
+     FunctionBinding FunctionBindings Body Qualifier Qualifiers          
+     GuardedExpression GuardedExpressions
+     [ | miscerrors : {[Error]} | ]
+
+SEM Module
+  | Module  body . miscerrors = []
+            loc  . miscerrors = @body.miscerrors
+                            
+-----------------------------------------
+-- Body
+
+SEM Body 
+  | Body   lhs . miscerrors = @tiErrors ++ @declarations.miscerrors
+
+-----------------------------------------
+-- Declaration
+
+SEM Declaration
+    | FunctionBindings   lhs . miscerrors  = @arityErrors ++ @bindings.miscerrors
+                         loc . arityErrors = if all (== head @bindings.arities) @bindings.arities 
+                                               then []
+                                               else [ DefArityMismatch @bindings.name (mode @bindings.arities) @range.self ]
+                                               
+    | PatternBinding   lhs . miscerrors =  @patternDefinesNoVarsErrors ++ @righthandside.miscerrors
+                       loc . patternDefinesNoVarsErrors = if size @pattern.environment == 0
+                                                            then [ PatternDefinesNoVars (getPatRange @pattern.self) ]
+                                                            else []
+    
+    | Data   lhs . miscerrors = concat [ makeDuplicated TypeVariable @doubles
+                                       , makeUndefined TypeVariable @undef @simpletype.typevariables
+                                       , @lhs.miscerrors     
+                                       ]
+             loc . unused  = filter (`notElem` @constructors.typevariables) @simpletype.typevariables
+                 . doubles = filter ((>1) . length) . group . sort $        @simpletype.typevariables
+                 . undef   = filter (`notElem` @simpletype.typevariables)   @constructors.typevariables                 
+
+    | Type   lhs . miscerrors = concat [ makeDuplicated TypeVariable @doubles
+                                       , makeUndefined TypeVariable @undef @simpletype.typevariables
+                                       , @lhs.miscerrors
+                                       ] 
+             loc . unused  = filter (`notElem` @type.typevariables)       @simpletype.typevariables
+                 . doubles = filter ((>1) . length) . group . sort $      @simpletype.typevariables
+                 . undef   = filter (`notElem` @simpletype.typevariables) @type.typevariables 
+       
+SEM MaybeDeclarations
+  | Just   lhs . miscerrors = @tiErrors ++ @declarations.miscerrors
+
+
+{- utility attribte: collecting the arities of the function bindings -}
+ATTR FunctionBindings [ | | arities : { [Int] } ]
+ATTR FunctionBinding  [ | | arity   :    Int    ]
+
+SEM FunctionBindings
+  | Cons lhs.arities = @hd.arity : @tl.arities
+  | Nil  lhs.arities = []
+
+SEM FunctionBinding
+  | FunctionBinding lhs . arity = @lefthandside.numberOfPatterns
+  
+{
+listToAssocList :: Ord a => [a] -> AssocList a ()
+listToAssocList list = fromList (zip list (repeat ()))
+
+mode :: Ord a => [a] -> Maybe a -- Just ... IF any of the elements is more common
+mode xs = 
+    case filter ((== maxFreq) . snd) fs of
+        [(x, _)] -> Just x
+        _ -> Nothing        
+  where
+    maxFreq = maximum (map snd fs)
+    fs = frequencies xs
+
+frequencies :: Ord a => [a] -> [(a, Int)]
+frequencies = map (\ys -> (head ys, length ys)) . group . sort
+}
+    
+-----------------------------------------
+-- FunctionBinding
+
+SEM FunctionBinding
+  | FunctionBinding   lhs . miscerrors = makeDuplicated Variable @duplicated ++ @righthandside.miscerrors
+
+-----------------------------------------
+-- Expression
+
+SEM Expression
+  | Variable     lhs . miscerrors     = @undefinedErrors ++ @lhs.miscerrors 
+                 loc . undefinedErrors = if @name.self `elem` @lhs.namesInScope
+                                           then []
+                                           else [ Undefined Variable @name.self @lhs.namesInScope Nothing ]
+  | Do           lhs . miscerrors = @lastStatementErrors ++ @statements.miscerrors
+                 loc . lastStatementErrors = case @statements.generatorBeta of
+                                                Nothing | not (null @statements.self) -> 
+                                                   let range = getStatementRange (last @statements.self)
+                                                   in [ LastStatementNotExpr range ] 
+                                                _ -> []
+                                                
+  | Lambda       lhs . miscerrors = makeDuplicated Variable @duplicated ++ @expression.miscerrors
+  
+  | Constructor  lhs . miscerrors = @undefinedConstructorErrors ++ @lhs.miscerrors
+                 loc . undefinedConstructorErrors = case @maybetp of 
+                                                       Nothing -> [ undefinedConstructor @name.self @lhs.namesInScope (keys @lhs.tyconEnv) ]
+                                                       Just _  -> []
+                                                                          
+  | Let          lhs . miscerrors = @tiErrors ++ @expression.miscerrors
+               
+
+-----------------------------------------
+-- Pattern
+
+SEM Pattern
+    | Constructor        lhs . miscerrors = @patConstructorErrors ++ @patterns.miscerrors
+                         loc . patConstructorErrors = patternConstructorErrors @maybetp @name.self @lhs.namesInScope (length @patterns.self) (keys @lhs.tyconEnv) 
+                         
+    | InfixConstructor   lhs . miscerrors = @patConstructorErrors ++ @rightPattern.miscerrors
+                         loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self @lhs.namesInScope 2 (keys @lhs.tyconEnv)                                          
+
+       
+{
+patternConstructorErrors :: Maybe TpScheme -> Name -> Names -> Int -> Names -> [Error]
+patternConstructorErrors maybetparity name env useArity namesTyconEnv =
+    case maybetparity of
+        Nothing -> 
+            [ undefinedConstructor name env namesTyconEnv ]
+        Just tpScheme -> 
+            let arity = arityOfTpScheme tpScheme
+            in if arity /= useArity
+               then [ ArityMismatch Constructor name arity useArity ]
+               else []
+}
+
+-----------------------------------------
+-- Alternative
+                                           
+SEM Alternative
+  | Alternative    lhs . miscerrors = makeDuplicated Variable @duplicated ++ @righthandside.miscerrors
+  
+-----------------------------------------
+-- Statement  
+
+SEM Statement
+  | Generator  lhs . miscerrors = makeDuplicated Variable @duplicated ++ @expression.miscerrors    
+  | Let        lhs . miscerrors = @tiErrors ++ @declarations.miscerrors 
+    
+-----------------------------------------
+-- Qualifier    
+       
+SEM Qualifier
+  | Generator lhs . miscerrors = makeDuplicated Variable @duplicated ++ @expression.miscerrors
+  | Let       lhs . miscerrors = @tiErrors ++ @declarations.miscerrors

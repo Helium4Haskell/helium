@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/ExprNegateResult.hs
+
+(4,5): Type error in negation
+*** Expression     : -13
+*** Type           : Int 
+*** Expected type  : Bool
+
+Compilation failed with 1 type error

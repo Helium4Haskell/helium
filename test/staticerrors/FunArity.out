@@ -1,0 +1,3 @@
+Compiling staticerrors/FunArity.hs
+(5,1): arity mismatch in function bindings for "main"
+Compilation failed with 1 error

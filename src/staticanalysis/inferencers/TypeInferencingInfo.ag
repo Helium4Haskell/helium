@@ -1,0 +1,742 @@
+-------------------------------------------------------------------------------
+--
+--   *** The Helium Compiler : Static Analysis ***
+--               ( Bastiaan Heeren )
+--
+-- TypeInferencingInfo.ag : Additional information (a local attribute) is 
+--    provided for each type constraint.
+--
+-------------------------------------------------------------------------------
+
+INCLUDE "../syntax/UHA_Size.ag"
+INCLUDE "../syntax/UHA_OneLine.ag"
+
+---------------------------------------------------------------------------------------
+-- Constraint Information : Body
+
+SEM Body | Body loc . cinfo =
+  \var tppair ->
+  CInfo { info       = (NTBody,AltBody,show var)
+        , location   = "variable"
+        , errorrange = getNameRange var
+        , sources    = [ SD_Expr (Text (show var)) ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , HighlyTrusted
+                       , IsImported var
+                       , Size @declarations.size ]
+        }
+
+---------------------------------------------------------------------------------------
+-- Constraint Information : Declaration
+
+SEM Declaration | FunctionBindings loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTDeclaration,AltFunctionBindings,show @bindings.name)
+        , location   = "function bindings (INTERNAL ERROR)"
+        , errorrange = @range.self
+        , sources    = [ ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , SuperHighlyTrusted
+                       , FuntionBindingEdge @bindings.numberOfPatterns 
+                       , Size @bindings.size ]
+        }
+        
+SEM Declaration | PatternBinding loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTDeclaration,AltPatternBinding,"")
+        , location   = "right hand side"
+        , errorrange = getRHSRange @righthandside.self
+        , sources    = [ SD_Expr (@righthandside.oneLineTree "") ]
+        , typepair   = tppair
+        , properties = [ Size @size ]    
+        }        
+
+---------------------------------------------------------------------------------------
+-- Type Inferencing : FunctionBinding
+
+SEM FunctionBinding | FunctionBinding loc . cinfoBind = 
+   variableBindingCInfo (NTFunctionBinding,AltFunctionBinding)
+
+SEM FunctionBinding | FunctionBinding loc . cinfoRight =
+  \tppair ->
+  CInfo { info       = (NTFunctionBinding,AltFunctionBinding,"right")
+        , location   = "right hand side"
+        , errorrange = @range.self
+        , sources    = [ SD_Term (@righthandside.oneLineTree "") ]
+        , typepair   = tppair
+        , properties = [ UnifierTypeVariable (tpToInt @lhs.betaRight)
+                       , Size @size ]
+        }
+
+SEM FunctionBinding | FunctionBinding loc . cinfoLeft =
+  \num txt tppair ->
+  CInfo { info       = (NTFunctionBinding,AltFunctionBinding,"left "++show num)
+        , location   = "pattern of function binding"
+        , errorrange = @range.self
+        , sources    = [ SD_Pat txt ]
+        , typepair   = tppair
+        , properties = [ UnifierTypeVariable (tpToInt (snd tppair))
+                       , Size @size ] 
+        }
+        
+---------------------------------------------------------------------------------------
+-- Type Inferencing : Expression
+
+SEM Expression | Lambda loc . cinfoBind = 
+   variableBindingCInfo (NTExpression,AltLambda)
+
+SEM Expression | Constructor loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltConstructor,"")
+        , location   = "constructor"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @name.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , HighlyTrusted
+                       , IsImported @name.self 
+                       , Size @size ]
+        }
+
+SEM Expression | Literal loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltLiteral,"")
+        , location   = "literal"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , HighlyTrusted
+                       , IsLiteral @literal.self 
+                       , Size @size ]  
+        }
+
+
+SEM Expression | Let loc . cinfoType =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltLet,"")
+        , location   = "let expression (INTERNAL ERROR)"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term @expression.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , SuperHighlyTrusted 
+                       , Size @size ]  
+        }
+
+SEM Expression | InfixApplication loc . cinfoComplete =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltInfixApplication,"")
+        , location   = "infix application (INTERNAL ERROR)"
+        , errorrange = @range.self
+        , sources    = [ ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , SuperHighlyTrusted 
+                       , Size @size ]  
+        }
+
+SEM Expression | InfixApplication loc . cinfoEmpty =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltInfixApplication,"")
+        , location   = "infix application"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , HighlyTrusted 
+                       , Size @size ]  
+        }
+
+SEM Expression | Do loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltDo,"")
+        , location   = "do-expression (INTERNAL ERROR)"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , SuperHighlyTrusted 
+                       , Size @size ]
+        }
+
+SEM Expression | If loc . cinfoGuard =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltIf,"guard")
+        , location   = "conditional"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term @guardExpression.oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ Size @size ]    
+        }
+
+SEM Expression | Enum loc . cinfoFrom =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltEnum,"from")
+        , location   = "enumeration"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term @from.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size]    
+        }
+
+SEM Expression | Enum loc . cinfoThen =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltEnum,"then")
+        , location   = "enumeration"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term (convertMaybeOneLineTree @then.oneLineTree) ]
+        , typepair   = tppair
+        , properties = [ Size @size]    
+        }
+
+SEM Expression | Enum loc . cinfoTo =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltEnum,"to")
+        , location   = "enumeration"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term (convertMaybeOneLineTree @to.oneLineTree) ]
+        , typepair   = tppair
+        , properties = [ Size @size ]    
+        }
+
+SEM Expression | Typed loc . cinfoExpr =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltTyped,"expression")
+        , location   = "type annotation"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term @expression.oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ Size @size ]    
+        }
+
+SEM Expression | List loc . cinfoResult =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltList,"result")
+        , location   = "list"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ Size @size 
+                       , FolkloreConstraint ]   
+        }
+
+SEM Expression | Tuple loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltTuple,"")
+        , location   = "tuple"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ Size @size 
+                       , FolkloreConstraint
+                       , IsTupleEdge ]   
+        }
+
+SEM Expression | Comprehension loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltComprehension,"")
+        , location   = "list comprehension"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint 
+                       , Size @size ]    
+        }
+
+SEM Expression | Enum loc . cinfoResult =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltEnum,"result")
+        , location   = "enumeration"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , Size @size ]    
+        }
+
+SEM Expression | Negate loc . cinfoResult =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltNegate,"result")
+        , location   = "negation"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint 
+                       , Size @size
+                       , NegationResult ]    
+        }
+
+SEM Expression | Negate loc . cinfoExpr =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltNegate,"expression")
+        , location   = "negation"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term @expression.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size
+                       , Negation (tpToInt @beta) ]    
+        }
+        
+SEM Expression | NegateFloat loc . cinfoResult =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltNegateFloat,"result")
+        , location   = "negation"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint 
+                       , Size @size 
+                       , NegationResult ]    
+        }
+
+SEM Expression | NegateFloat loc . cinfoExpr =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltNegateFloat,"expression")
+        , location   = "negation"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term @expression.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size 
+                       , Negation (tpToInt @beta) ]    
+        }        
+        
+SEM Expression | Lambda loc . cinfoType =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltLambda,"type")
+        , location   = "lambda abstraction"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint 
+                       , Size @size ]    
+        }
+
+SEM Expression | Typed loc . cinfoResult =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltTyped,"result")
+        , location   = "type annotation"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint 
+                       , Size @size ]    
+        }
+
+SEM Expression | NormalApplication loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltNormalApplication,"")
+        , location   = "application"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term @function.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ ApplicationEdge False (zip @arguments.oneLineTree @arguments.betas)  
+                       , Size @size ]  
+        }
+
+SEM Expression | If loc . cinfoThen =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltIf,"then")
+        , location   = "then branch of conditional"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term @thenExpression.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size ]    
+        }
+
+SEM Expression | If loc . cinfoElse =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltIf,"else")
+        , location   = "else branch of conditional"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term @elseExpression.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size ]   
+        }
+
+SEM Expression | Case loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltCase,"")
+        , location   = "scrutinee of case expression"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term @expression.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size ]    
+        }
+
+SEM Expression | List loc . cinfoElem =
+  \elemtext tppair ->
+  CInfo { info       = (NTExpression,AltList,"element") 
+        , location   = "element of list"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term elemtext ]
+        , typepair   = tppair
+        , properties = [ UnifierTypeVariable (tpToInt @beta') 
+                       , Size @size ]
+        }
+
+SEM Expression | InfixApplication loc . cinfoOperator =
+  \tppair ->
+  CInfo { info       = (NTExpression,AltInfixApplication,"operator")
+        , location   = "infix application"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term (@operator.oneLineTree)]
+        , typepair   = tppair
+        , properties = (if @leftExpression.section || @rightExpression.section then [HighlyTrusted] else []) 
+                       ++
+                       [ ApplicationEdge True
+                                         [ (convertMaybeOneLineTree @leftExpression.oneLineTree ,@leftExpression.beta )
+                                         , (convertMaybeOneLineTree @rightExpression.oneLineTree,@rightExpression.beta)
+                                         ] 
+                       , Size @size ]    
+        }
+
+---------------------------------------------------------------------------------------
+-- Type Inferencing : GuardedExpression
+
+SEM GuardedExpression | GuardedExpression loc . cinfoGuard =
+  \tppair ->
+  CInfo { info       = (NTGuardedExpression,AltGuardedExpression,"guard")
+        , location   = "guard"
+        , errorrange = getExprRange @guard.self
+        , sources    = [ SD_Expr @guard.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size ]    
+        }
+
+SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
+  \tppair ->
+  CInfo { info       = (NTGuardedExpression,AltGuardedExpression,"expression")
+        , location   = "guarded expression"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @expression.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ UnifierTypeVariable (tpToInt @lhs.rightBeta)
+                       , Size @size ]   
+        }
+
+---------------------------------------------------------------------------------------
+-- Type Inferencing : Pattern
+
+SEM Pattern | Constructor loc . cinfoConstructor =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltConstructor,"") 
+        , location   = "pattern constructor"
+        , errorrange = getNameRange @name.self
+        , sources    = [ SD_Pat @oneLineTree ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint,HighlyTrusted 
+                        {- ,ApplicationEdge False (zip @patterns.oneLineTree @patterns.betas) -} 
+                       , Size @size ]  
+        }
+
+SEM Pattern | InfixConstructor loc . cinfoConstructor =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltInfixConstructor,"")
+        , location   = "pattern constructor"
+        , errorrange = getNameRange @constructorOperator.self
+        , sources    = [ SD_Pat @constructorOperator.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , HighlyTrusted
+                       , Size @size ]   
+        }
+        
+SEM Pattern | Literal loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltLiteral,"")
+        , location   = "literal pattern"
+        , errorrange = @range.self
+        , sources    = [ SD_Pat @oneLineTree ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , HighlyTrusted
+                       , IsLiteral @literal.self
+                       , Size @size ]   
+        }        
+       
+SEM Pattern | List loc . cinfoResult =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltList,"result")
+        , location   = "pattern list"
+        , errorrange = @range.self
+        , sources    = [ SD_Pat @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint 
+                       , Size @patterns.size ]   
+        }
+
+SEM Pattern | Tuple loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltTuple,"result")
+        , location   = "pattern tuple"
+        , errorrange = @range.self
+        , sources    = [ SD_Pat @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , IsTupleEdge
+                       , Size @patterns.size ]    
+        }
+
+SEM Pattern | Negate loc . cinfoResult =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltNegate,"result")
+        , location   = "pattern negation"
+        , errorrange = @range.self
+        , sources    = [ SD_Pat @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , Size @size
+                       , NegationResult ] 
+        } 
+        
+SEM Pattern | Negate loc . cinfoPat =
+  \tppair ->
+   CInfo { info       = (NTPattern,AltNegate,"pattern")
+        , location   = "pattern negation "
+        , errorrange = @range.self
+        , sources    = [ SD_Pat @oneLineTree, SD_Term @literal.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size 
+                       , Negation (tpToInt @beta) ]    
+        }
+
+SEM Pattern | NegateFloat loc . cinfoResult =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltNegateFloat,"result")
+        , location   = "pattern negation"
+        , errorrange = @range.self
+        , sources    = [ SD_Pat @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , Size @size 
+                       , NegationResult ] 
+        } 
+        
+SEM Pattern | NegateFloat loc . cinfoPat =
+  \tppair ->
+   CInfo { info       = (NTPattern,AltNegateFloat,"pattern")
+        , location   = "pattern negation "
+        , errorrange = @range.self
+        , sources    = [ SD_Pat @oneLineTree, SD_Term @literal.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size 
+                       , Negation (tpToInt @beta) ]    
+        }
+        
+SEM Pattern | Constructor loc . cinfoApply =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltConstructor,"apply")
+        , location   = if @patterns.numberOfPatterns == 0 
+                         then "pattern constructor"
+                         else "pattern application"
+        , errorrange = @range.self
+        , sources    = if @patterns.numberOfPatterns == 0 
+                         then [ SD_Pat @oneLineTree                            ]
+                         else [ SD_Pat @oneLineTree, SD_Term @name.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size ]    
+        }
+
+SEM Pattern | List loc . cinfoElem =
+  \elemtext tppair ->
+  CInfo { info       = (NTPattern,AltList,"element")
+        , location   = "element of pattern list"
+        , errorrange = @range.self
+        , sources    = [ SD_Pat @oneLineTree, SD_Term elemtext ]
+        , typepair   = tppair
+        , properties = [ UnifierTypeVariable (tpToInt @beta')
+                       , Size @patterns.size
+                       ]
+        }               
+
+SEM Pattern |  As loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltAs,"")
+        , location   = "as pattern"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term (Text (show @name.self)) ]
+        , typepair   = tppair
+        , properties = [ Size @size ] 
+        }
+
+SEM Pattern | InfixConstructor loc . cinfoApply =
+  \tppair ->
+  CInfo { info       = (NTPattern,AltInfixConstructor,"apply")
+        , location   = "infix pattern application"
+        , errorrange = @range.self
+        , sources    = [ SD_Pat @oneLineTree, SD_Term (Text (show @constructorOperator.self))]
+        , typepair   = tppair
+        , properties = [ Size @size ]   
+                          {- ApplicationEdge True
+                                 [ (@leftPattern.oneLineTree ,@leftPattern.beta )
+                                 , (@rightPattern.oneLineTree,@rightPattern.beta)
+                                 ] -}       
+        }
+
+---------------------------------------------------------------------------------------
+-- Type Inferencing : Alternative
+
+SEM Alternative | Alternative loc . cinfoBind = 
+   variableBindingCInfo (NTAlternative,AltAlternative)
+
+SEM Alternative | Alternative loc . cinfoLeft =
+  \tppair ->
+  CInfo { info       = (NTAlternative,AltAlternative,"left")
+        , location   = "case pattern"
+        , errorrange = @range.self
+        , sources    = [ SD_Pat @pattern.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ UnifierTypeVariable (tpToInt @lhs.betaLeft)
+                       , Size @size ]    
+        }
+
+SEM Alternative | Alternative loc . cinfoRight =
+  \tppair ->
+  CInfo { info       = (NTAlternative,AltAlternative,"right")
+        , location   = "right-hand side of case alternative"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr (@righthandside.oneLineTree "") ]
+        , typepair   = tppair
+        , properties = [ UnifierTypeVariable (tpToInt @lhs.betaRight) 
+                       , Size @size ]  
+        }
+
+---------------------------------------------------------------------------------------
+-- Type Inferencing : Statement
+
+SEM Statement | Expression loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTStatement,AltExpression,"") 
+        , location   = "generator"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @expression.size ] 
+        }
+
+SEM Statement | Generator loc . cinfoResult =
+  \tppair ->
+  CInfo { info       = (NTStatement,AltGenerator,"result")
+        , location   = "generator"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term @expression.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size ]    
+        }
+        
+SEM Statement | Generator loc . cinfoBind = 
+   variableBindingCInfo (NTStatement,AltGenerator)
+
+---------------------------------------------------------------------------------------
+-- Type Inferencing : Qualifier
+        
+SEM Qualifier | Guard loc . cinfo =
+  \tppair ->
+  CInfo { info       = (NTQualifier,AltGuard,"")
+        , location   = "boolean qualifier"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree  ]
+        , typepair   = tppair
+        , properties = [ Size @guard.size ]  
+        }
+
+SEM Qualifier | Generator loc . cinfoResult =
+  \tppair ->
+  CInfo { info       = (NTQualifier,AltGenerator,"result")
+        , location   = "generator"
+        , errorrange = @range.self
+        , sources    = [ SD_Expr @oneLineTree, SD_Term @expression.oneLineTree ]
+        , typepair   = tppair
+        , properties = [ Size @size ]    
+        }
+
+SEM Qualifier | Generator loc . cinfoBind = 
+   variableBindingCInfo (NTQualifier,AltGenerator)
+
+----------------------------------------------------------------------------------------------------------------------------------
+-- Constraint Info : Variable Binding
+
+{
+cinfoBindingGroupExplicitTypedBinding :: Name -> (Tp,Tp) -> HeliumConstraintInfo
+cinfoBindingGroupExplicitTypedBinding =
+  \name tppair ->
+  CInfo { info       = (NTBindingGroup,AltBindingGroup,"explicit typed binding, "++show name)
+        , location   = "explicitly typed binding"
+        , errorrange = getNameRange name
+        , sources    = [ SD_Term (Text (show name))]
+        , typepair   = tppair
+        , properties = [ {- FolkloreConstraint
+                       , -} HighlyTrusted
+                       , ExplicitTypedBinding
+                       , Size 1 ]  
+        }
+
+variableBindingCInfo :: (InfoNT,InfoAlt) -> Name -> (Tp,Tp) -> HeliumConstraintInfo
+variableBindingCInfo (infoNT,infoAlt) var tppair =
+  CInfo { info       = (infoNT,infoAlt,show var) 
+        , location   = "variable"
+        , errorrange = getNameRange var
+        , sources    = [ SD_Expr (Text (show var)) ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , UnifierTypeVariable (tpToInt (fst tppair))
+                       , Size 1 ]  
+        }
+        
+cinfoSameBindingGroup :: Name -> (Tp,Tp) -> HeliumConstraintInfo
+cinfoSameBindingGroup var = variableBindingCInfo (NTBindingGroup,AltBindingGroup) var
+
+cinfoBindingGroupImplicit :: Name -> (Tp,Tp) -> HeliumConstraintInfo
+cinfoBindingGroupImplicit =
+  \var tppair ->   
+  CInfo { info       = (NTBindingGroup,AltBindingGroup,"implicit, "++show var)
+        , location   = "variable"
+        , errorrange = getNameRange var
+        , sources    = [ SD_Expr (Text (show var)) ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , HighlyTrusted
+                       , Size 1 ]   
+        }
+
+cinfoBindingGroupExplicit :: Name -> (Tp,Tp) -> HeliumConstraintInfo
+cinfoBindingGroupExplicit =
+  \var tppair ->
+  CInfo { info       = (NTBindingGroup,AltBindingGroup,"explicit, "++show var)
+        , location   = "variable"
+        , errorrange = getNameRange var
+        , sources    = [ SD_Expr (Text (show var)) ]
+        , typepair   = tppair
+        , properties = [ FolkloreConstraint
+                       , UnifierTypeVariable (tpToInt (fst tppair))
+                       , Size 1 ]  
+        }
+}
+
+----------------------------------------------------------------------------------------------------------------------------------
+-- Several utility functions
+
+SEM LeftHandSide [ | | patternTrees:{[Tree]} ]
+    | Function      lhs . patternTrees = @patterns.oneLineTree
+    | Infix         lhs . patternTrees = [@leftPattern.oneLineTree, @rightPattern.oneLineTree]
+    | Parenthesized lhs . patternTrees = @lefthandside.patternTrees ++ @patterns.oneLineTree
+{
+convertMaybeOneLineTree :: Maybe Tree -> Tree
+convertMaybeOneLineTree = maybe (Text "") id
+    
+getRHSRange :: RightHandSide -> Range
+getRHSRange (RightHandSide_Expression r _ _) = r
+getRHSRange (RightHandSide_Guarded r _ _) = r
+
+getMaybeExprRange :: MaybeExpression -> Range
+getMaybeExprRange (MaybeExpression_Just expr) = getExprRange expr
+getMaybeExprRange (MaybeExpression_Nothing)   = noRange
+
+tpToInt :: Tp -> Int
+tpToInt tp = case ftv tp of 
+               [i] -> i
+               _   -> (-1)
+}

@@ -1,0 +1,9 @@
+ATTR Module [ | | text : Doc ] 
+
+INCLUDE "../syntax/UHA_Syntax.ag"
+INCLUDE "../syntax/UHA_Pretty.ag"
+
+imports {
+import UHA_Syntax
+import Utils (internalError)
+}

@@ -1,0 +1,4 @@
+Compiling correct/PMC12.hs
+(9,3): Variable "z" is not used
+Compilation successful with 1 warning
+0

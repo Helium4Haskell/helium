@@ -1,0 +1,185 @@
+-------------------------------------------------------------------------------
+--
+--   *** The Helium Compiler : Static Analysis ***
+--               ( Bastiaan Heeren )
+--
+-- Warnings.ag : The warnings that are collected are the following:
+--    1) No type definition given although there exists one 
+--          (...in other words, no monomorphic type variables are present in the generalized type)
+--    2) A variable shadows another variable
+--    3) An entity is not used (except top level entities, since these can be exported)
+--    4) Suspicious function bindings (two groups of functionbindings are next to each 
+--               other in the program; the names are similar, but only one has an
+--               explicit type signature. Perhaps only one group of functionbindings was intended?)
+--
+-------------------------------------------------------------------------------
+
+ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alternatives
+     Statement Statements Declaration Declarations MaybeDeclarations LeftHandSide RightHandSide
+     FunctionBinding FunctionBindings Body Qualifier Qualifiers          
+     GuardedExpression GuardedExpressions
+     [ | warnings : {[Warning]} | ]
+     
+SEM Module
+  | Module    body . warnings = []
+              loc  . warnings = let
+                                    nonToplevel (Unused Definition _ True) = False
+                                    nonToplevel _                          = True
+                                in
+                                    @notypedef ++ filter nonToplevel @body.warnings
+                   . notypedef  = 
+                             -- only a warning for type definitions without monomorphic type variables 
+                             let f (n,ms,t,b) = let ms'    = @substitution |-> ms
+                                                    t'     = @substitution |-> t
+                                                    scheme = generalize (ftv ms') t'
+                                                in if null (ftv scheme) 
+                                                     then [NoTypeDef n scheme b] 
+                                                     else []
+                             in concatMap f @body.collectednotypedef                                    
+
+SEM Body
+  | Body   
+        lhs . warnings =  @shadowing ++
+                          @tiWarnings ++ -- unused variables, definitions without signature
+                          @declarations.warnings ++
+                          @suspiciousErrors
+  
+SEM Expression
+  | Lambda     lhs . warnings = @shadowing ++
+                                makeUnused Variable @unused False ++
+                                @expression.warnings
+  | Let        lhs . warnings = @shadowing ++
+                                @tiWarnings ++ -- unused variables, definitions without signature
+                                @expression.warnings ++
+                                @suspiciousErrors                                
+
+SEM Alternative
+  | Alternative
+               lhs . warnings = @shadowing ++
+                                makeUnused Variable @unused False ++
+                                @righthandside.warnings                                
+                                
+SEM Statement
+  | Generator  lhs . warnings = @shadowing ++
+                                makeUnused Variable @unused False ++
+                                @expression.warnings                                  
+  | Let lhs . warnings =  @shadowing ++
+                          @tiWarnings ++ -- unused variables, definitions without signature
+                          @declarations.warnings ++
+                          @suspiciousErrors
+                          
+SEM Qualifier
+  | Generator  lhs . warnings = @shadowing ++
+                                makeUnused Variable @unused False ++
+                                @expression.warnings                                  
+  | Let lhs . warnings =  @shadowing ++
+                          @tiWarnings ++ -- unused variables, definitions without signature
+                          @declarations.warnings ++
+                          @suspiciousErrors
+                                                            
+SEM FunctionBinding
+  | FunctionBinding
+                   lhs . warnings = @shadowing ++
+                                    makeUnused Variable @unused False ++
+                                    @righthandside.warnings                                  
+                                    
+SEM MaybeDeclarations
+  | Just
+        lhs . warnings =  @shadowing ++
+                          @tiWarnings ++ -- unused variables, definitions without signature
+                          @declarations.warnings ++
+                          @suspiciousErrors                                     
+                          
+SEM Declaration
+  | Data
+        lhs . warnings =  makeUnused TypeVariable @unused False ++ @lhs.warnings                            
+  | Type                             
+        lhs . warnings = makeUnused TypeVariable @unused False ++ @lhs.warnings       
+                          
+-------------------------------------------
+-- Collecting NoTypeDefs
+
+ATTR Declarations Expression MaybeDeclarations RightHandSide Statement Statements
+     RecordExpressionBindings RecordExpressionBinding Qualifier Qualifiers MaybeExpression
+     GuardedExpression FunctionBinding FunctionBindings GuardedExpressions
+     Expressions Declaration Alternative Alternatives Body
+     [ | collectednotypedef : {[(Name,Tps,Tp,Bool)]} | ]
+
+SEM Module
+  | Module  body . collectednotypedef = [] 
+
+SEM Body
+  | Body  lhs . collectednotypedef = @tiNoTypeDefinition ++ @declarations.collectednotypedef
+
+SEM MaybeDeclarations
+  | Just  lhs . collectednotypedef = @tiNoTypeDefinition ++ @declarations.collectednotypedef
+
+SEM Expression 
+  | Let   lhs . collectednotypedef = @tiNoTypeDefinition ++ @declarations.collectednotypedef
+
+SEM Statement
+  | Let   lhs . collectednotypedef = @tiNoTypeDefinition ++ @declarations.collectednotypedef
+
+SEM Qualifier  
+  | Let   lhs . collectednotypedef = @tiNoTypeDefinition ++ @declarations.collectednotypedef
+                            
+-------------------------------------------
+-- Suspicious Function Bindings
+
+ATTR Declarations Declaration [ | previousWasAlsoFB:{Maybe Name} suspiciousFBs : {[(Name,Name)]} | ]
+
+SEM Body 
+  | Body   declarations . previousWasAlsoFB = Nothing
+                        . suspiciousFBs     = []
+                    loc . suspiciousErrors  = findSimilarFunctionBindings @declarations.typeSignatures @declarations.suspiciousFBs
+                        
+SEM MaybeDeclarations
+  | Just   declarations . previousWasAlsoFB = Nothing 
+                        . suspiciousFBs     = []     
+                    loc . suspiciousErrors  = findSimilarFunctionBindings @declarations.typeSignatures @declarations.suspiciousFBs                                              
+  
+SEM Expression
+  | Let    declarations . previousWasAlsoFB = Nothing
+                        . suspiciousFBs     = []  
+                    loc . suspiciousErrors  = findSimilarFunctionBindings @declarations.typeSignatures @declarations.suspiciousFBs                            
+  
+SEM Statement
+  | Let    declarations . previousWasAlsoFB = Nothing
+                        . suspiciousFBs     = []           
+                    loc . suspiciousErrors  = findSimilarFunctionBindings @declarations.typeSignatures @declarations.suspiciousFBs                                         
+                          
+SEM Qualifier    
+  | Let    declarations . previousWasAlsoFB = Nothing  
+                        . suspiciousFBs     = []
+                    loc . suspiciousErrors  = findSimilarFunctionBindings @declarations.typeSignatures @declarations.suspiciousFBs                            
+                        
+SEM Declaration                                  
+  | Type               lhs . previousWasAlsoFB = Nothing
+  | Data               lhs . previousWasAlsoFB = Nothing             
+  | Newtype            lhs . previousWasAlsoFB = Nothing
+  | Class              lhs . previousWasAlsoFB = Nothing
+  | Instance           lhs . previousWasAlsoFB = Nothing
+  | Default            lhs . previousWasAlsoFB = Nothing
+  | PatternBinding     lhs . previousWasAlsoFB = Nothing
+  | TypeSignature      lhs . previousWasAlsoFB = Nothing
+  | Fixity             lhs . previousWasAlsoFB = Nothing
+  | FunctionBindings   lhs . previousWasAlsoFB = Just @bindings.name
+                           . suspiciousFBs     = case @lhs.previousWasAlsoFB of
+                                                    Just name | show name `similar` show @bindings.name
+                                                       -> (name,@bindings.name) : @lhs.suspiciousFBs
+                                                    _  -> @lhs.suspiciousFBs
+
+{
+findSimilarFunctionBindings :: TypeEnvironment -> [(Name,Name)] -> [Warning]
+findSimilarFunctionBindings environment candidates = 
+   [ uncurry SimilarFunctionBindings pair
+   | (n1,n2) <- candidates
+   , let bool1 = n1 `elem` keys environment
+         bool2 = n2 `elem` keys environment
+         pair  = if bool1 then (n2,n1) else (n1,n2)
+   , bool1 `xor` bool2
+   ]
+
+xor :: Bool -> Bool -> Bool
+xor b1 b2 = not (b1 == b2)
+}                 

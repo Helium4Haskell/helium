@@ -1,0 +1,328 @@
+#-----------------------------------------------------------------------
+#  The Helium Compiler
+#-----------------------------------------------------------------------
+
+# make		 - build everything that is needed
+# make depend	 - build dependencies for hs files, ag dependencies are	written	by hand
+# make clean	 - remove .hi and .o files
+
+default: all
+
+.PHONY : default compiler all coreasm lvmrun libraries clean depend \
+         smaller newVersion install movetohome status
+
+#directories
+HELIUMBINDIR = ../bin
+PARSECDIR = ../../parsec
+LVMLIBDIR  = ../../lvm/src/lib
+LVMRUNTIMEDIR  = ../../lvm/src/runtime
+
+#the main program you want to generate
+MAIN	= helium
+UPX	= @UPX@
+STRIP   = @STRIP@
+EXE	= @EXEEXT@
+INSTALL = @INSTALL@
+MKDIR   = ./mkinstalldirs
+LOGGER  = @logger@
+
+prefix      = @prefix@
+exec_prefix = @exec_prefix@
+bindir      = @bindir@
+libdir      = @prefix@/helium/lib
+demodir     = @prefix@/helium/demo
+
+status :
+	@echo "*******************************************************************"
+	@echo "Build process complete."
+	@echo "Type \"make install\" to install."
+	@echo "  Binaries will go into  $(bindir)"
+	@echo "  Libraries will go into $(libdir)"
+	@echo "  Demos will go into     $(demodir)"
+	@echo "*******************************************************************"
+
+EXTRA_HC_OPTS = @extraHCopts@
+
+HC	= @WithHc@
+ifdef LOGGER
+PACKAGENET = -package net
+else
+PACKAGENET = 
+endif
+HC_OPTS = -static -cpp -fallow-overlapping-instances -fglasgow-exts \
+		-fallow-undecidable-instances -package util -package lang \
+		$(PACKAGENET) \
+		-i$(IFACES) $(EXTRA_HC_OPTS)
+
+AG      = @WithAG@
+AG_OPTS = -pmscfr
+
+# Helium sources
+
+PARSER	= \
+	parser/CollectFunctionBindings.hs parser/HaskellLexer.hs parser/OperatorTable.hs parser/ParsecLayout.hs \
+	parser/ParseCommon.hs parser/ParseDeclExp.hs parser/ParseImportExport.hs parser/ParsePat.hs \
+	parser/Parser.hs parser/ParseType.hs parser/ResolveOperators.hs
+
+MODULESYSTEM = \
+	modulesystem/EnvironmentSynonyms.hs modulesystem/ImportEnvironment.hs \
+	modulesystem/CoreToImportEnv.hs modulesystem/ExtractImportDecls.hs
+
+STATICANALYSIS = \
+	staticanalysis/StaticAnalysis.hs \
+	staticanalysis/constraints/LiftedConstraints.hs \
+	staticanalysis/constraints/Constraints.hs \
+	staticanalysis/constraints/ConstraintTree.hs \
+	staticanalysis/constraints/Strategy.hs \
+	staticanalysis/messages/HeliumConstraintInfo.hs \
+	staticanalysis/messages/Messages.hs \
+	staticanalysis/solvers/SolverOptions.hs \
+	staticanalysis/solvers/ConstraintInfo.hs \
+	staticanalysis/solvers/SolveConstraints.hs \
+	staticanalysis/solvers/SolveGreedy.hs \
+	staticanalysis/solvers/SolveState.hs \
+	staticanalysis/solvers/typegraph/TypeGraphConstraintInfo.hs \
+	staticanalysis/solvers/typegraph/SolveTypeGraph.hs \
+	staticanalysis/solvers/typegraph/SolveEquivalenceGroups.hs \
+	staticanalysis/solvers/typegraph/EquivalenceGroup.hs \
+	staticanalysis/solvers/typegraph/EquivalenceGroupsImplementation.hs \
+	staticanalysis/solvers/typegraph/EquivalenceGroupsToHTML.hs \
+	staticanalysis/solvers/typegraphheuristics/TypeGraphHeuristics.hs \
+	staticanalysis/solvers/typegraphheuristics/SimilarFunctionTable.hs \
+	staticanalysis/types/TypeUnification.hs \
+	staticanalysis/types/Types.hs \
+	staticanalysis/types/TypeBasics.hs \
+	staticanalysis/types/TypeSynonyms.hs \
+	staticanalysis/types/TypeConversion.hs \
+	staticanalysis/types/TypeSubstitution.hs \
+	staticanalysis/types/TypeRepresentation.hs \
+	staticanalysis/types/TypesToAlignedDocs.hs 
+
+UHA = \
+	syntax/UHA_Syntax.hs syntax/UHA_Utils.hs
+
+
+CODEGENERATION = \
+	codegeneration/CoreToLvm.hs codegeneration/PatternMatch.hs \
+	codegeneration/DerivingShow.hs codegeneration/CoreUtils.hs \
+        codegeneration/CodeGeneration.hs
+
+UTILS = \
+	utils/PPUtils.hs utils/Utils.hs utils/Logger.hs utils/PrettyPrinting.hs utils/OSSpecific.hs utils/OneLiner.hs \
+	utils/Similarity.hs utils/SortedAssocList.hs
+
+MAINFILES = \
+	main/Main.hs main/Version.hs main/Args.hs main/Compile.hs
+
+# Parsec sources
+
+PARSEC = \
+	$(PARSECDIR)/Parsec.hs $(PARSECDIR)/ParsecChar.hs $(PARSECDIR)/ParsecCombinator.hs $(PARSECDIR)/ParsecError.hs $(PARSECDIR)/ParsecExpr.hs \
+	$(PARSECDIR)/ParsecLanguage.hs $(PARSECDIR)/ParsecPerm.hs $(PARSECDIR)/ParsecPos.hs $(PARSECDIR)/ParsecPrim.hs $(PARSECDIR)/ParsecToken.hs
+
+
+# LVM sources
+
+LVMCOMMON = \
+	  $(LVMLIBDIR)/common/Id.hs $(LVMLIBDIR)/common/IdMap.hs $(LVMLIBDIR)/common/IdSet.hs $(LVMLIBDIR)/common/IntMap.hs \
+	  $(LVMLIBDIR)/common/Byte.hs $(LVMLIBDIR)/common/Standard.hs \
+	  $(LVMLIBDIR)/common/TopSort.hs $(LVMLIBDIR)/common/Set.hs \
+	  $(LVMLIBDIR)/common/ghc/Special.hs $(LVMLIBDIR)/common/PPrint.hs
+
+LVM	= $(LVMLIBDIR)/lvm/Lvm.hs $(LVMLIBDIR)/lvm/LvmPretty.hs $(LVMLIBDIR)/lvm/LvmWrite.hs $(LVMLIBDIR)/lvm/LvmRead.hs \
+	  $(LVMLIBDIR)/lvm/LvmImport.hs $(LVMLIBDIR)/lvm/Module.hs $(LVMLIBDIR)/lvm/ModulePretty.hs \
+	  $(LVMLIBDIR)/lvm/Instr.hs $(LVMLIBDIR)/lvm/InstrPretty.hs $(LVMLIBDIR)/lvm/InstrResolve.hs $(LVMLIBDIR)/lvm/InstrRewrite.hs
+
+ASM	= $(LVMLIBDIR)/asm/AsmOptimize.hs $(LVMLIBDIR)/asm/AsmInline.hs $(LVMLIBDIR)/asm/AsmOccur.hs \
+	  $(LVMLIBDIR)/asm/Asm.hs $(LVMLIBDIR)/asm/AsmPretty.hs $(LVMLIBDIR)/asm/AsmToLvm.hs
+
+CORE	= $(LVMLIBDIR)/core/Core.hs $(LVMLIBDIR)/core/CorePretty.hs $(LVMLIBDIR)/core/CoreToAsm.hs \
+	  $(LVMLIBDIR)/core/CoreParse.hs $(LVMLIBDIR)/core/CoreLexer.hs \
+	  $(LVMLIBDIR)/core/CoreNormalize.hs $(LVMLIBDIR)/core/CoreRemoveDead.hs \
+	  $(LVMLIBDIR)/core/CoreNoShadow.hs $(LVMLIBDIR)/core/CoreFreeVar.hs $(LVMLIBDIR)/core/CoreLetSort.hs \
+	  $(LVMLIBDIR)/core/CoreLift.hs $(LVMLIBDIR)/core/CoreSaturate.hs
+
+IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:$(PARSECDIR):./parser:./staticanalysis:./staticanalysis/solvers:./staticanalysis/solvers/typegraph:./staticanalysis/solvers/typegraphheuristics:./staticanalysis/constraints:./staticanalysis/types:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem
+
+
+#Sources and object files
+SRCS = $(PARSER) $(STATICANALYSIS) $(UHA) $(CODEGENERATION) $(UTILS) $(LVMCOMMON) \
+	$(LVM) $(ASM) $(CORE) $(PARSEC) $(MAINFILES) $(MODULESYSTEM)
+OBJS = $(SRCS:.hs=.o)
+
+# The main target
+compiler: $(OBJS)
+	# GHC Helium compiler
+	$(HC)	-o $(HELIUMBINDIR)/$(MAIN)$(EXE) $(HC_OPTS) $(OBJS)
+ifdef STRIP
+	$(STRIP) $(HELIUMBINDIR)/$(MAIN)$(EXE)
+endif
+
+all: ag depend compiler coreasm lvmrun libraries hi status
+
+coreasm:
+	# make core assembler
+	cd $(LVMLIBDIR); $(MAKE) 
+
+lvmrun:
+	# make lvmrun
+	cd $(LVMRUNTIMEDIR); $(MAKE)
+
+.SUFFIXES : .o .hs .hi .lhs .hc	.s .ag
+
+$(LVMLIBDIR)/common/ghc/Special.hi: $(LVMLIBDIR)/common/ghc/Special.hs
+	# GHC Special.hs
+	$(HC) -c $< -cpp -fglasgow-exts $(HC_OPTS) 
+
+libraries:
+	# Building libraries
+	cd ../lib; $(MAKE) 
+
+hi: interpreter/Main.hs utils/OSSpecific.hs
+	# GHC HeliumInterpreter
+	$(HC) --make -iutils -o $(HELIUMBINDIR)/hi$(EXE) interpreter/Main.hs 
+	$(STRIP) $(HELIUMBINDIR)/hi$(EXE)
+
+# AG sources
+
+ag : utils/PrettyPrinting.hs staticanalysis/StaticAnalysis.hs codegeneration/CodeGeneration.hs \
+     syntax/UHA_Syntax.hs modulesystem/ExtractImportDecls.hs
+
+ifdef AG
+utils/PrettyPrinting.hs : \
+		utils/PrettyPrinting.ag syntax/UHA_Pretty.ag syntax/UHA_Syntax.ag
+	# AG PrettyPrinting
+	cd utils;$(AG) $(AG_OPTS) PrettyPrinting.ag;cd ..
+
+staticanalysis/StaticAnalysis.hs : \
+		staticanalysis/StaticAnalysis.ag \
+                staticanalysis/inferencers/TypeInferencing.ag \
+                staticanalysis/inferencers/TypeInferencingInfo.ag \
+		staticanalysis/staticchecks/KindChecking.ag \
+                staticanalysis/staticchecks/TopLevelErrors.ag \
+                staticanalysis/staticchecks/MiscErrors.ag \
+                staticanalysis/staticchecks/Warnings.ag \
+		staticanalysis/staticchecks/ExportErrors.ag \
+                staticanalysis/staticchecks/Collect.ag \
+                staticanalysis/staticchecks/HeliumPartialSyntax.ag \
+                staticanalysis/staticchecks/Scope.ag \
+		syntax/UHA_Syntax.ag \
+                syntax/UHA_Self.ag \
+                syntax/UHA_Size.ag \
+                syntax/UHA_Range.ag \
+                syntax/UHA_OneLine.ag \
+                
+	# AG StaticAnalysis
+	cd staticanalysis;$(AG) $(AG_OPTS) StaticAnalysis.ag;cd ..
+
+codegeneration/CodeGeneration.hs : \
+		codegeneration/CodeGeneration.ag syntax/UHA_Pretty.ag syntax/UHA_Self.ag \
+		syntax/UHA_Syntax.ag syntax/UHA_Self.ag codegeneration/ToCoreModule.ag codegeneration/ToCoreDecl.ag \
+		codegeneration/ToCoreExpr.ag codegeneration/ToCorePat.ag codegeneration/ToCoreName.ag \
+                syntax/UHA_Size.ag syntax/UHA_Range.ag
+	# AG CodeGeneration
+	cd codegeneration;$(AG) $(AG_OPTS) CodeGeneration.ag;cd ..
+
+syntax/UHA_Syntax.hs : syntax/UHA_Syntax.ag
+	# AG UHA_Syntax
+	cd syntax;ag -dmr UHA_Syntax.ag;cd ..
+
+modulesystem/ExtractImportDecls.hs : \
+		modulesystem/ExtractImportDecls.ag codegeneration/ToCoreName.ag syntax/UHA_Syntax.ag
+	# AG ExtractImportDecls
+	cd modulesystem;$(AG) $(AG_OPTS) ExtractImportDecls.ag;cd ..
+endif
+
+# Standard suffix rules
+.o.hi:
+	@:
+
+.lhs.o:
+	$(HC) -c $< $(HC_OPTS)
+
+.hs.o:
+	$(HC) -c $< $(HC_OPTS)
+
+.hs.hi:
+	$(HC) -c $< $(HC_OPTS) 
+
+.lhs.hi:
+	$(HC) -c $< $(HC_OPTS)
+
+.ag.hs:
+	$(AG) -a $<
+
+
+# Clean	up
+clean:
+	$(RM) `find . -name "*.o" -print`
+	$(RM) `find . -name "*.hi" -print`
+	$(RM) `find . -name "*.class" -print`
+	$(RM) ../lib/*.lvm
+	$(RM) $(HELIUMBINDIR)/$(MAIN)$(EXE)
+	$(RM) $(HELIUMBINDIR)/hi$(EXE)	
+	$(RM) $(PARSECDIR)/*.o
+	$(RM) $(PARSECDIR)/*.hi
+	cd $(LVMLIBDIR); $(MAKE) clean
+	cd $(LVMRUNTIMEDIR); $(MAKE) clean
+
+# Inter-module dependencies
+depend :
+	# Checking dependencies
+	$(HC) -M $(HC_OPTS) $(SRCS)
+
+# UTRECHT ONLY
+
+newVersion: 
+	echo "module Version where version=\"`date`\"" >Version.hs
+
+smaller:
+	# *** UPX helium, hi & lvmrun
+ifdef UPX
+	$(UPX) -q $(HELIUMBINDIR)/$(MAIN)$(EXE) 
+	cd $(LVMRUNTIMEDIR); $(UPX) -q lvmrun$(EXE)
+	$(UPX) -q hi$(EXE)
+endif
+
+install : smaller
+	# *** Copy sources to library directory
+	$(MKDIR) $(bindir) $(libdir) $(demodir)
+	$(INSTALL) -m 644 ../lib/Prelude.hs ../lib/List.hs ../lib/Maybe.hs $(libdir)
+	$(INSTALL) -m 755 $(HELIUMBINDIR)/$(MAIN)$(EXE) $(bindir)
+	$(INSTALL) -m 755 $(LVMRUNTIMEDIR)/lvmrun$(EXE) $(bindir)
+	$(INSTALL) -m 755 hi$(EXE) $(bindir)
+	# *** Copying demos to demo directory
+	$(INSTALL) -m 644 demo/Calendar.hs demo/ParserLibrary.hs demo/ParserDemo.hs demo/TicTacToe.hs $(demodir)
+	# *** Copy generated lvms and touch them
+	$(INSTALL) -m 644 bin/*.lvm $(libdir)
+	touch $(libdir)/*.lvm
+
+movetohome: smaller
+	# *** Copying library sources to projects directory
+	cp bin/Prelude.hs bin/List.hs bin/Maybe.hs helium/lib
+	# *** Copying executables to projects directory
+	cp $(HELIUMBINDIR)/$(MAIN)$(EXE) helium/bin
+	cp $(LVMRUNTIMEDIR)/lvmrun$(EXE) helium/bin
+	cp hi$(EXE) helium/bin
+	# *** Copying demos to projects directory
+	cp demo/Calendar.hs demo/ParserLibrary.hs demo/ParserDemo.hs demo/TicTacToe.hs helium/demo
+	# *** Copy generated lvms and touch them
+	cp bin/*.lvm helium/lib
+	touch helium/lib/*.lvm # so that they are seen as up to date
+
+movetobbl: smaller
+	# *** Copying library sources to projects directory
+	cp bin/Prelude.hs bin/List.hs bin/Maybe.hs //p/helium/lib
+	# *** Copying executables to projects directory
+	cp $(MAIN).exe //p/helium/bin
+	cp $(LVMRUNTIMEDIR)/lvmrun.exe //p/helium/bin
+	cp hi.exe //p/helium/bin
+	# *** Copying demos to projects directory
+	cp demo/Calendar.hs demo/ParserLibrary.hs demo/ParserDemo.hs demo/TicTacToe.hs //p/helium/demo
+	# *** Copy generated lvms and touch them
+	cp bin/*.lvm //p/helium/lib
+	touch //p/helium/lib/*.lvm # so that they are seen as up to date
+	# DON'T FORGET TO CHECK PERMISSIONS
+
+# DO NOT DELETE: Beginning of Haskell dependencies
+# DO NOT DELETE: End of Haskell dependencies

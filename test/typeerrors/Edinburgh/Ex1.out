@@ -1,0 +1,9 @@
+Compiling typeerrors/Edinburgh/Ex1.hs
+
+(3,31): Type error in element of list
+*** Expression     : [x,3]
+*** Term           : 3
+*** Type           : Int     
+*** Does not match : Int -> a
+
+Compilation failed with 1 type error

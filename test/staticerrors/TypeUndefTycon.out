@@ -1,0 +1,4 @@
+Compiling staticerrors/TypeUndefTycon.hs
+(5,9): Undefined type constructor "Ink"
+  HINT - Did you mean "Int" ?
+Compilation failed with 1 error

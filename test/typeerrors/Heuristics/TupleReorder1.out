@@ -1,0 +1,9 @@
+Compiling typeerrors/Heuristics/TupleReorder1.hs
+
+(7,10): Type error in tuple
+*** Expression     : (True,5)
+*** Type           : (Bool , Int )
+*** Expected type  : (Int  , Bool)
+*** Probable fix   : re-order elements of tuple
+
+Compilation failed with 1 type error

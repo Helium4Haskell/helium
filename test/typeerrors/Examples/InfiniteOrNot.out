@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/InfiniteOrNot.hs
+
+(7,1): Type error in right hand side
+*** Term           : [sum x,main xs]
+*** Type           : [Int]
+*** Does not match : Int  
+
+Compilation failed with 1 type error

@@ -1,0 +1,10 @@
+Compiling typeerrors/Heuristics/AppInsert1.hs
+
+(4,8): Type error in application
+*** Expression     : filter [ 1 ..  ]
+*** Term           : filter
+*** Type           : (a -> Bool) -> [a] -> [a]
+*** Does not match : [Int]       -> [Int]     
+*** Probable fix   : insert a first argument
+
+Compilation failed with 1 type error

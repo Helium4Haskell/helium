@@ -1,0 +1,9 @@
+Compiling typeerrors/Heuristics/TupleRemove2.hs
+
+(7,14): Type error in tuple
+*** Expression     : (1,2,"hello","world")
+*** Type           : (Int, Int, String, String)
+*** Expected type  : (Int, Int)                
+*** Probable fix   : remove third and fourth element of tuple
+
+Compilation failed with 1 type error

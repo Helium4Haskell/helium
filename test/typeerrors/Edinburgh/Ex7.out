@@ -1,0 +1,9 @@
+Compiling typeerrors/Edinburgh/Ex7.hs
+
+(5,20): Type error in application
+*** Expression     : x True
+*** Term           : True
+*** Type           : Bool
+*** Does not match : Int 
+
+Compilation failed with 1 type error

@@ -1,0 +1,3 @@
+Compiling staticerrors/PatBindNovar.hs
+(5,1): left hand side pattern defines no variables
+Compilation failed with 1 error

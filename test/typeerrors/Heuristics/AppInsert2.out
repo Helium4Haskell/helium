@@ -1,0 +1,9 @@
+Compiling typeerrors/Heuristics/AppInsert2.hs
+
+(4,14): Type error in variable
+*** Expression     : foldr
+*** Type           : (a   -> b   -> b  ) -> b     -> [a] -> b
+*** Expected type  : (Int -> Int -> Int) -> [Int] -> Int     
+*** Probable fix   : use foldr1 instead
+
+Compilation failed with 1 type error

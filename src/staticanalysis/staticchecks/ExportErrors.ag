@@ -1,0 +1,61 @@
+-------------------------------------------------------------------------------
+--
+--   *** The Helium Compiler : Static Analysis ***
+--               ( ... )
+--
+-- ExportErrors.ag : !!! CLEAN UP THIS CODE !!!
+--
+-------------------------------------------------------------------------------
+
+{-
+SEM Export
+    | TypeOrClassComplete
+                  lhs . errors =  checkExport ExportTypeConstructor @name.self
+                                    @lhs.tyconsInScope
+    | TypeOrClass lhs . errors =  checkExport ExportTypeConstructor @name.self
+                                    @lhs.tyconsInScope
+                                ++
+                                concatMap
+                                    (\name ->
+                                        checkExport ExportConstructor name
+                                            @lhs.consInScope
+                                    )
+                                    @names.toList
+-}
+SEM Module
+  | Module  exports . namesInScope   = @body.namesInScope
+                    . modulesInScope = (@moduleName : @fileName : @body.importedModules)
+                    . tyconsInScope  = keys @tyconEnv
+                    . consInScope    = keys @constructorenv
+
+SEM Module 
+  | Module    loc . exportErrors = @exports.exportErrors
+                    
+ATTR MaybeExports Exports Export
+    [ namesInScope   : Names
+      modulesInScope : Names
+      tyconsInScope  : Names
+      consInScope    : Names
+    |
+    | exportErrors USE { ++ } { [] } : {[Error]}
+    ]                    
+    
+{
+checkExport entity name inScope =
+    makeUndefined entity
+        (if name `elem` inScope then
+            []
+         else
+            [name]
+        )
+        (nubBy equalName inScope)
+
+equalName x y =
+    getNameName x == getNameName y        
+}
+
+SEM Export
+    | Variable    lhs . exportErrors =  checkExport ExportVariable @name.self
+                                           @lhs.namesInScope
+    | Module      lhs . exportErrors =  checkExport ExportModule @name.self
+                                           @lhs.modulesInScope    

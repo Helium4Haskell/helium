@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/QualGuard.hs
+
+(3,11): Type error in boolean qualifier
+*** Expression     : 5
+*** Type           : Int 
+*** Does not match : Bool
+
+Compilation failed with 1 type error

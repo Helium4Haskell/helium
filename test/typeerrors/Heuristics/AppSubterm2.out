@@ -1,0 +1,9 @@
+Compiling typeerrors/Heuristics/AppSubterm2.hs
+
+(7,10): Type error in application
+*** Expression     : f 0 (x==1) x
+*** Term           : (x==1)
+*** Type           : Bool
+*** Does not match : Int 
+
+Compilation failed with 1 type error

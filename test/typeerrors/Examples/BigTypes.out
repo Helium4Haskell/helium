@@ -1,0 +1,17 @@
+Compiling typeerrors/Examples/BigTypes.hs
+
+(9,8): Type error in element of list
+*** Expression     : [f,g]
+*** Term           : g
+*** Type           : [(Bool, Bool, Bool)]                
+                     -> ([(Bool, Bool, Bool)]
+                        , [(Bool, Bool, Bool)]
+                        , [(Bool, Bool, Bool)])
+                     -> Bool           
+*** Does not match : ((Int, Int, Int) -> (Int, Int, Int))
+                     -> (Int                 
+                        , Int                 
+                        , Int                 )
+                     -> (Int, Int, Int)
+
+Compilation failed with 1 type error

@@ -1,0 +1,9 @@
+Compiling typeerrors/Examples/ExprListElem.hs
+
+(3,5): Type error in element of list
+*** Expression     : ["neushoorn",47]
+*** Term           : 47
+*** Type           : Int   
+*** Does not match : String
+
+Compilation failed with 1 type error

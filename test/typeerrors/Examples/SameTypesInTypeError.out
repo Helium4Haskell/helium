@@ -1,0 +1,15 @@
+Compiling typeerrors/Examples/SameTypesInTypeError.hs
+
+(4,17): Type error in infix application
+*** Expression     : s==[]
+*** Term           : ==
+*** Type           : Int      -> Int -> Bool
+*** Does not match : [String] -> [a] -> Bool
+
+(5,19): Type error in variable
+*** Expression     : ==
+*** Type           : Int    -> Int    -> Bool
+*** Expected type  : String -> String -> Bool
+*** Probable fix   : use eqString instead
+
+Compilation failed with 2 type errors
