@@ -5,6 +5,8 @@ import Top.States.BasicState (printMessage)
 import Top.TypeGraph.Basics (EdgeId, VertexId(..))
 import Top.TypeGraph.Heuristics
 import Top.TypeGraph.TypeGraphState
+import Top.Repair.Repair (repair)
+import Top.Repair.AExpr
 
 import ConstraintInfo
 import DoublyLinkedTree
@@ -14,12 +16,12 @@ import Utils (internalError)
 
 import Data.Maybe (isJust, fromJust)
 
----- For Arjen's repair system
-yourSystem :: AExpr RepairInfo -> [String]
-yourSystem aexpr =
-   [ show aexpr ]
+type HeliumRepairInfo = (Maybe Tp, Maybe UHA_Source)
 
-type RepairInfo = (Tp, UHA_Source)
+instance RepairInfo HeliumRepairInfo where
+   getType = fst
+   makeInfo tp = (Just tp, Nothing)
+   emptyInfo = (Nothing, Nothing)
 
 repairSystem :: Heuristic ConstraintInfo
 repairSystem = Heuristic (Filter "Repair System" handleList)
@@ -28,11 +30,11 @@ repairSystem = Heuristic (Filter "Repair System" handleList)
    handleList xs = 
       do aexprs <- recList xs
          printMessage "\n========== Begin of Repair System ===========\n"
-         printMessage $ unlines (map (unlines . yourSystem) aexprs)
+         printMessage $ unlines (map (unlines . repair) aexprs)
          printMessage "========== End of Repair System ===========\n"
          return xs
    
-   recList :: HasTypeGraph m ConstraintInfo => [(EdgeId, ConstraintInfo)] -> m [AExpr RepairInfo]
+   recList :: HasTypeGraph m ConstraintInfo => [(EdgeId, ConstraintInfo)] -> m [AExpr HeliumRepairInfo]
    recList []     = return []
    recList (x:xs) = 
       do mPair <- handleOne x
@@ -43,7 +45,7 @@ repairSystem = Heuristic (Filter "Repair System" handleList)
             Nothing ->
                recList xs
    
-   handleOne :: HasTypeGraph m ConstraintInfo => (EdgeId, ConstraintInfo) -> m (Maybe ([EdgeId], AExpr RepairInfo))
+   handleOne :: HasTypeGraph m ConstraintInfo => (EdgeId, ConstraintInfo) -> m (Maybe ([EdgeId], AExpr HeliumRepairInfo))
    handleOne (edgeId, info)
       | isBlock aexpr = return Nothing
       | otherwise = 
@@ -54,22 +56,22 @@ repairSystem = Heuristic (Filter "Repair System" handleList)
     where
       aexpr = makeAExpr (rootOfInfoTree (localInfo info))
                
-substituteLocalType :: HasTypeGraph m ConstraintInfo => AExpr LocalInfo -> m (Maybe (AExpr RepairInfo))
+substituteLocalType :: HasTypeGraph m ConstraintInfo => AExpr LocalInfo -> m (Maybe (AExpr HeliumRepairInfo))
 substituteLocalType aexpr = 
    do subExpr <- mapAExprM toRepairInfo aexpr
       return (change subExpr)
  where
-   change :: AExpr (Maybe RepairInfo) -> Maybe (AExpr RepairInfo)
+   change :: AExpr (Maybe HeliumRepairInfo) -> Maybe (AExpr HeliumRepairInfo)
    change aexpr
       | all isJust (getInfos aexpr) = Just (fmap fromJust aexpr)
       | otherwise                   = Nothing
  
-   toRepairInfo :: HasTypeGraph m ConstraintInfo => LocalInfo -> m (Maybe RepairInfo)
+   toRepairInfo :: HasTypeGraph m ConstraintInfo => LocalInfo -> m (Maybe HeliumRepairInfo)
    toRepairInfo info = 
       case assignedType info of
          Just tp ->
             do mtp <- substituteTypeSafe tp
-               return (fmap (\tp -> (tp, self info)) mtp)
+               return (fmap (\tp -> (Just tp, Just (self info))) mtp)
          Nothing ->
             return Nothing
             
@@ -131,7 +133,7 @@ whichEdges aexpr
 
 ------------------------------------------------------------------
 -- This part should be in the Top library
-
+{-
 data AExpr info = 
         App info (AExpr info) [AExpr info] -- ^ application node
     |   If info (AExpr info) (AExpr info) (AExpr info) -- ^ if-then-else node
@@ -197,3 +199,4 @@ subexpressions aexpr =
 isBlock :: AExpr a -> Bool
 isBlock (Blk _) = True
 isBlock _       = False
+-}

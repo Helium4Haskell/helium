@@ -152,6 +152,9 @@ STATICANALYSIS = \
         $(TOPDIR)/TypeGraph/TypeGraphState.hs \
         $(TOPDIR)/TypeGraph/Implementation.hs \
         $(TOPDIR)/TypeGraph/TypeGraphSubst.hs \
+        $(TOPDIR)/Repair/AExpr.hs \
+        $(TOPDIR)/Repair/Transformations.hs \
+        $(TOPDIR)/Repair/Repair.hs \
         
 UHA = \
 	syntax/UHA_Syntax.hs syntax/UHA_Utils.hs syntax/UHA_Range.hs \
