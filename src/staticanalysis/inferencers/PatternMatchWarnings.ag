@@ -1,11 +1,7 @@
+
 ------------------------------------------------
 -- PatternMatchWarnings.ag by Maarten Löffler --
 ------------------------------------------------
-
--- strings toch omzetten?
--- ineens: ging fout bij onvolledig gedef patronen (xor False = id)
-
--- guards
 
 imports {
 import UHA_Utils
@@ -30,8 +26,10 @@ SEM Module
   | Module    body . patternMatchWarnings = []
 
 -- attributes to convert a Pattern to a [PatternElement]
-ATTR FunctionBinding  LeftHandSide Alternative  Pattern  Literal [ || elements  : { [PatternElement] }]
-ATTR FunctionBindings              Alternatives Patterns         [ || elementss : {[[PatternElement]]}]
+ATTR                  LeftHandSide              Pattern  Literal [ || elements  : {  [PatternElement]        }]
+ATTR                                            Patterns         [ || elementss : {[ [PatternElement]       ]}]
+ATTR FunctionBinding               Alternative                   [ || elements  : { ([PatternElement], Bool) }]
+ATTR FunctionBindings              Alternatives                  [ || elementss : {[([PatternElement], Bool)]}]
 
 ATTR FunctionBinding  Alternative  [ || unrwar  :   Warning  ]
 ATTR FunctionBindings Alternatives [ || unrwars : {[Warning]}]
@@ -48,6 +46,7 @@ SEM FunctionBindings
 
 SEM FunctionBinding
   | FunctionBinding  lhs . unrwar    = UnreachablePatternLHS @lefthandside.self
+                     lhs . elements  = (@lefthandside.elements, @righthandside.fallthrough)
 
 SEM LeftHandSide
   | Function         lhs . elements  = concat @patterns.elementss
@@ -62,8 +61,9 @@ SEM Alternatives
                      lhs . unrwars   = @hd.unrwar   : @tl.unrwars
   
 SEM Alternative
-  | Alternative      lhs . unrwar    = UnreachablePatternCase @range @pattern.self
-  | Empty            lhs . elements  = []
+  | Alternative      lhs . elements  = (@pattern.elements, @righthandside.fallthrough)
+                     lhs . unrwar    = UnreachablePatternCase @range @pattern.self
+  | Empty            lhs . elements  = ([], False)
                      lhs . unrwar    = pmError "Alternative_Empty.unrwar" "empty alternative"
 
 SEM Patterns
@@ -87,31 +87,142 @@ SEM Literal
   | String           lhs . elements  = stringPat @value
 
 -- putting everything together
+{
+expandTypeFromImportEnvironment :: ImportEnvironment -> Tp -> Tp
+expandTypeFromImportEnvironment env = expandType (snd $ getOrderedTypeSynonyms env)
+
+patternMatchWarnings :: Substitution substitution
+                     => ImportEnvironment          -- the importenvironment
+                     -> substitution               -- substitution that contains the real types
+                     -> Tp                         -- type of the patterns, unsubstituted
+                     -> (Tp -> Tps)                -- how should the type be interpreted?
+                     -> [([PatternElement], Bool)] -- the patterns to be processed
+                     -> Range                      -- range for the missing-warnings
+                     -> Maybe Name                 -- maybe the name of the function
+                     -> Bool                       -- should there be parentheses around the patterns?
+                     -> [Warning]                  -- list of overlap-warnings for all of the patterns  
+                     -> String                     -- description of the place where the patterns are
+                     -> String                     -- symbol after the patterns
+                     -> [Warning]                  -- returns: list of warnings
+patternMatchWarnings impenv sub tp strip elementss rng name parens unrwars place sym
+  = unreachablewarnings ++ missingwarnings
+    where
+      env                 = map rearrange $ fmToList $ valueConstructors impenv
+      exprtype            = expandTypeFromImportEnvironment impenv $ sub |-> tp
+      types               = strip exprtype
+      unreachables        = unreachable env types $ map (\((a, b), c) -> (a, c)) $ filter (not.snd.fst) $ zip elementss [0..]
+      missing             = complement  env types $ map fst elementss
+      unreachablewarnings = map (unrwars !!) unreachables
+      missingwarnings
+        | null $ unMissing missing = []
+        | otherwise                = [MissingPatterns rng name exprtype (map (nicePattern parens env) $ missingList missing) place sym]
+}
+
 SEM Expression
-  | Case             loc . env                  = map rearrange $ fmToList $ valueConstructors @lhs.importEnvironment
-                     loc . exprtype             = expandType (snd (getOrderedTypeSynonyms @lhs.importEnvironment))
-                                                    (@lhs.substitution |-> @expression.beta)
-                     loc . elementss            = @alternatives.elementss
-                     loc . unreachables         = unreachable @loc.env [@loc.exprtype] (zip @loc.elementss [0..])
-                     lhs . patternMatchWarnings = case complement @loc.env [@loc.exprtype] @loc.elementss
-                                                  of PatternsMissing [] -> []
-                                                     missing            -> [MissingPatternsCase @range @loc.exprtype $ map (head.nicePattern False @loc.env) $ missingList missing]
-                                                  ++ map (@alternatives.unrwars !!) @loc.unreachables
-                                                  ++ @lhs.patternMatchWarnings 
+  | Case             lhs . patternMatchWarnings = patternMatchWarnings @lhs.importEnvironment
+                                                                       @lhs.substitution
+                                                                       @expression.beta
+                                                                       (:[])
+                                                                       @alternatives.elementss
+                                                                       @range
+                                                                       Nothing
+                                                                       False
+                                                                       @alternatives.unrwars
+                                                                       "case expression"
+                                                                       "->"
+                                                  ++ @alternatives.patternMatchWarnings                     
+  | Lambda           lhs . patternMatchWarnings = patternMatchWarnings @lhs.importEnvironment
+                                                                       @lhs.substitution
+                                                                       @loc.beta
+                                                                       (take (length @patterns.self) . fst . functionSpine)
+                                                                       [(concat @patterns.elementss, False)]
+                                                                       @range
+                                                                       (Just $ Name_Special noRange [] "\\")
+                                                                       True
+                                                                       []
+                                                                       "lambda expression"
+                                                                       "->"
+                                                  ++ @expression.patternMatchWarnings                     
 
 SEM Declaration
-  | FunctionBindings loc . env                  = map rearrange $ fmToList $ valueConstructors @lhs.importEnvironment
-                     loc . exprtype             = expandType (snd (getOrderedTypeSynonyms @lhs.importEnvironment))
-                                                      $ @lhs.substitution |-> @loc.beta
-                     loc . elementss            = @bindings.elementss
-                     loc . unreachables         = unreachable @loc.env (fst $ functionSpine @loc.exprtype) (zip @loc.elementss [0..])
-                     lhs . patternMatchWarnings = case complement @loc.env (take @bindings.argcount $ fst $ functionSpine @loc.exprtype) @loc.elementss
-                                                  of PatternsMissing [] -> []
-                                                     missing            -> [MissingPatternsLHS @range @bindings.name @loc.exprtype $ map (nicePattern True @loc.env) $ missingList missing]
-                                                  ++ map (@bindings.unrwars !!) @loc.unreachables
+  | FunctionBindings lhs . patternMatchWarnings = patternMatchWarnings @lhs.importEnvironment
+                                                                       @lhs.substitution
+                                                                       @loc.beta
+                                                                       (take @bindings.argcount . fst . functionSpine)
+                                                                       @bindings.elementss
+                                                                       @range
+                                                                       (Just @bindings.name)
+                                                                       True
+                                                                       @bindings.unrwars
+                                                                       "functionbindings"
+                                                                       "="
                                                   ++ @bindings.patternMatchWarnings 
---                                                  ++ [General @range $ show (      reachable @loc.env (fst $ functionSpine @loc.exprtype) (zip @loc.elementss [0..])) ++ " / " ++ show @loc.unreachables]
+  | PatternBinding   lhs . patternMatchWarnings = patternMatchWarnings @lhs.importEnvironment
+                                                                       @lhs.substitution
+                                                                       @pattern.beta
+                                                                       (:[])
+                                                                       [(@pattern.elements, @righthandside.fallthrough)]
+                                                                       @range
+                                                                       Nothing
+                                                                       False
+                                                                       []
+                                                                       "patternbinding"
+                                                                       "="
+                                                  ++ @righthandside.patternMatchWarnings
 
+SEM Statement        
+  | Generator        lhs . patternMatchWarnings = patternMatchWarnings @lhs.importEnvironment
+                                                                       @lhs.substitution
+                                                                       @pattern.beta
+                                                                       (:[])
+                                                                       [(@pattern.elements, False)]
+                                                                       @range
+                                                                       Nothing
+                                                                       False
+                                                                       []
+                                                                       "generator"
+                                                                       "<-"
+                                                  ++ @expression.patternMatchWarnings
+                                                  
+SEM Qualifier                                                  
+  | Generator        lhs . patternMatchWarnings = patternMatchWarnings @lhs.importEnvironment
+                                                                       @lhs.substitution
+                                                                       @pattern.beta
+                                                                       (:[])
+                                                                       [(@pattern.elements, False)]
+                                                                       @range
+                                                                       Nothing
+                                                                       False
+                                                                       []
+                                                                       "generator"
+                                                                       "<-"
+                                                  ++ @expression.patternMatchWarnings
+
+ATTR RightHandSide GuardedExpression GuardedExpressions [             || fallthrough : Bool    ]
+ATTR                                 GuardedExpressions [ open : Bool ||                       ]
+ATTR               GuardedExpression                    [             || range       : Range   ]
+ATTR               GuardedExpression                    [             || unrwar      : Warning ]
+
+SEM RightHandSide
+  | Expression        lhs . fallthrough = False
+  | Guarded           lhs . fallthrough = @guardedexpressions.fallthrough
+                      guardedexpressions . open = True
+                      lhs . patternMatchWarnings = (if @guardedexpressions.fallthrough then [FallThrough @range] else [])
+                                                   ++ @where.patternMatchWarnings
+
+SEM GuardedExpressions
+  | Nil               lhs . fallthrough = True
+  | Cons              lhs . fallthrough = @hd.fallthrough && @tl.fallthrough
+                      tl  . open        = @hd.fallthrough && @lhs.open
+                      lhs . patternMatchWarnings = (if not @lhs.open then [@hd.unrwar] else [])
+                                                   ++ @tl.patternMatchWarnings
+
+SEM GuardedExpression
+  | GuardedExpression lhs . fallthrough = case @guard.self
+                                          of Expression_Variable    _ (Name_Identifier _ _ "otherwise") -> False
+                                             Expression_Constructor _ (Name_Identifier _ _ "True"     ) -> False
+                                             _                                                          -> True
+                      lhs . unrwar = UnreachableGuard @range @guard.self
 {
 
 ----------
@@ -135,7 +246,7 @@ nrOfArguments :: Env -> String -> Int
 nrOfArguments env con | isTupleConstructor con = length con - 1
                       | otherwise = case lookup (nameFromString con) $ map snd env
                                     of Just args -> length args
-                                       Nothing   -> 0 -- pmError "nrOfArguments" "non-existing constructor"
+                                       Nothing   -> 0
 
 -- convert constructor to fit in an Env
 rearrange :: (Name, TpScheme) -> (Tp, (Name, [Tp]))
@@ -188,7 +299,7 @@ isInfiniteElement _                   = False
 elementString :: PatternElement -> String
 elementString (InfiniteElement s) = s
 elementString (  FiniteElement s) = s
-elementString _                   = [] -- pmError "elementString" "Wildcards have no elementString"
+elementString _                   = []
 
 -- needed for Pattern_List and Literal_String occurences
 listPat :: [[PatternElement]] -> [PatternElement]
@@ -327,7 +438,7 @@ reachable env (tp:tps) ps
     conReachable :: [([PatternElement], Int)] -> [Int]
     conReachable [] = []
     conReachable pats 
-      | null.tail.fst.head $ pats = [snd.head $ pats] -- hier: als deze guards bevat, ook volgende in de lijst, etc
+      | null.tail.fst.head $ pats = [snd.head $ pats]
       | otherwise                 = reachable env (arguments (elementString.head.fst.head $ pats) ++ tps) 
                                             $ map (\(es, i) -> (tail es, i)) pats
     arguments :: String -> [Tp]
@@ -342,499 +453,3 @@ thin (e               : es) | elem e thines =     thines
   where thines = thin es                            
                        
 }
-
-{- all of my former code
-
---patterncheck ::  Expression ->  [Alternative] -> [Warning]
---patterncheck _ _ = []
-
---patterncheck :: ValueConstructorEnvironment -> [PSPattern] -> ...
-
--- ValueConstructorEnvironment -> Name -> PSConstructor
-
-
-patterncheck e as = [general $ concat $ map (printpat.pat) as]
-
-pat :: Alternative -> Pattern
-pat (Alternative_Alternative _ p _) = p
-
-printpat :: Pattern -> String
-printpat (Pattern_Literal _ _) = "Literal"
-printpat _ = "something else"
-
-patterncheck :: PSType -> [PSPattern] -> PatternMatchWarning
---patterncheck PSInfiniteType PSAnyPattern = goed
---patterncheck PSInfiniteType PSInfinitePattern = fout
---patterncheck PSInfiniteType _ = error
-patterncheck t ps = "^" ++ (show $ ontbrekend t (head ps))
-
-ontbrekend :: PSType -> PSPattern -> PSType
-ontbrekend _ PSAnyPattern = PSFiniteType []
-ontbrekend PSInfiniteType PSInfinitePattern = PSInfiniteType
-ontbrekend (PSFiniteType cs) (PSFinitePattern s ps) = PSFiniteType $ concatMap rec cs
-  where
-    rec :: PSConstructor -> [PSConstructor] -- 0 of 1
-    rec (PSConstructor n ts) = let onts = zipWith ontbrekend ts ps
-                               in if and $ map (== PSFiniteType []) onts then [] else [PSConstructor n onts]
-ontbrekend _ _ = pmError "ontbrekend" "type en patroon niet hetzelfde!"
-
-floep :: [(Tp, (Name, [Tp]))] -> Tp -> PSType
-floep _ (TCon "Int"  ) = PSInfiniteType
-floep _ (TCon "Float") = PSInfiniteType
-floep _ (TCon "Char" ) = PSInfiniteType
-floep _ (TVar _      ) = PSInfiniteType -- kan op dezelfde manier behandeld worden
-floep e tp             = PSFiniteType $ concat $ map (floep2 tp) e
-  where
-    floep2 :: Tp -> (Tp, (Name, [Tp])) -> [PSConstructor] -- 0 of 1
-    floep2 t1 (t2, (name, args)) | t1 == t2 = [PSConstructor name $ map (floep e) args]
---    floep2 (TCon tcon) (TVar v, _) = singleSubstitution :: Int -> Tp -> FiniteMapSubstitution
---    floep2 (TApp t1 t2) (TApp t1 t2, ...) = 
-    floep2 _ _ = []
-
---data PSType = PSInfiniteType | PSFiniteType [PSConstructor]
---data PSConstructor = PSConstructor Name [PSType]
-
---data PSPattern = PSAnyPattern | PSInfinitePattern | PSFinitePattern String [PSPattern]
-
-emptyKnop :: PSType -> Knoop
-          (PSInfiniteType) = Inf Niet
-          PSFiniteType cs = Fin $ map blap cs
-  where
-    blap :: PSContructor -> Knoop
-    blap (C n ts) = (n, Niet, map emtyKnoop ts)
-    
-knoop :: Knoop -> PSPattern -> Knoop
-knoop (Inf Wel) PSInfinitePattern
-
-instance Show PSType
-  where
-    show = showDepthType 3
---    show PSInfiniteType = " ~"
---    show (PSFiniteType cs) = " <" ++ concat (map show cs) ++ ">"
-
-instance Show PSConstructor
-  where
-    show = showDepthConstructor 5
---    show (PSConstructor n ts) = "| " ++ getNameName n ++ concat (map show ts)
-
-data PSPattern = PSAnyPattern | PSInfinitePattern | PSFinitePattern String [PSPattern]
-  
-instance Show PSPattern
-  where
-    show PSAnyPattern = "any"
-    show PSInfinitePattern = "inf"
-    show (PSFinitePattern s ps) = s ++ show ps
-
-stringPat :: String -> PSPattern
-stringPat [] = PSFinitePattern "[]" []
-stringPat (_:cs) = PSFinitePattern ":" [PSInfinitePattern, stringPat cs]
-
-listPat :: [PSPattern] -> PSPattern
-listPat [] = PSFinitePattern "[]" []
-listPat (p:ps) = PSFinitePattern ":" [p, listPat ps]
-
-f :: Range -> [Warning]
-f _ = []
-
-g :: Expression -> [Warning]
-g _ = []
-
-data PSType = PSInfiniteType | PSFiniteType [PSConstructor] deriving Eq
-data PSConstructor = PSConstructor Name [PSType] deriving Eq
-
-showDepthType :: Int -> PSType -> String
-showDepthType 0 _ = "**maximum depth reached**"
-showDepthType _ PSInfiniteType = " ~"
-showDepthType n (PSFiniteType cs) = " <" ++ concat (map (showDepthConstructor (n - 1)) cs) ++ ">"
-    
-showDepthConstructor :: Int -> PSConstructor -> String
-showDepthConstructor n (PSConstructor name ts) = "| " ++ getNameName name ++ concat (map (showDepthType n) ts)
-
-ATTR Alternative Pattern Literal [ || bla : PSPattern]  
-ATTR Patterns Alternatives [ || blas : {[PSPattern]}]
-
-SEM Alternatives
-  | Nil  lhs . blas = []
-  | Cons lhs . blas = @hd.bla : @tl.blas
-  
-SEM Alternative
-  | Alternative lhs . bla = @pattern.bla -- "drie"
-  | Empty       lhs . bla = PSAnyPattern
-
-SEM Patterns
-  | Nil  lhs . blas = []
-  | Cons lhs . blas = @hd.bla : @tl.blas
-
-SEM Pattern
-  | Literal     lhs . bla = @literal.bla
---        range                    : Range
---        literal                  : Literal
-  | Variable    lhs . bla = PSAnyPattern
---        range                    : Range          
---        name                     : Name
-  | Constructor lhs . bla = PSFinitePattern (getNameName @name.self) @patterns.blas
-  --| Constructor lhs . bla = PSFinitePattern @name.name @patterns.blas
---        range                    : Range
---        name                     : Name
---        patterns                 : Patterns
-  | Wildcard    lhs . bla = PSAnyPattern
---        range                    : Range
-  | List        lhs . bla = listPat @patterns.blas
---        range                    : Range
---        patterns                 : Patterns
-  | Tuple       lhs . bla = PSFinitePattern ("(" ++ replicate (length $ tail @patterns.blas) ',' ++ ")") "(,)" @patterns.blas
---        range                    : Range
---        patterns                 : Patterns
-  | Record      lhs . bla = internalError "PatternMatchWarnings.ag" "n/a" "Records are not supported"
---        range                    : Range
---        name                     : Name
---        recordPatternBindings    : RecordPatternBindings
-
-SEM Literal
-  | Int         lhs . bla = PSInfinitePattern
-  | Char        lhs . bla = PSInfinitePattern
-  | Float       lhs . bla = PSInfinitePattern
-  | String      lhs . bla = stringPat @value
-
---                                           ++ ["type = " ++ show (@lhs.substitution |-> @expression.beta)]
---                                           ++ [show @exprtype]
---                                           ++ [concatMap show @alternatives.blas]
---                                           ++ [patterncheck @exprtype @alternatives.blas]
---                                          ++ ["functionSpine = " ++ show (functionSpine $ @lhs.substitution |-> @expression.beta)]
---                                          ++ ["fs " ++ show (functionSpine $ TCon "Piep" .->. TVar 6 .->. (TCon "Jas" .->. TVar 4) .->. TApp (TCon "Gat") (TVar 23))]
-
-blub :: Env -> [Tp] -> [[PMPattern]] -> (Complete, Teg)
-blub _   []       _   = (Full, Teg [])
---blub env (tp:tps) []  = (Not, Teg [(TegAny, snd $ blub env tps [])])
-blub _   _        []  = (Not, wildTeg $ 5)--Teg [(TegAny, Teg [])])
-blub env (tp:tps) pss = let anyPatterns = filter ((== PMAny).head) pss
-                            (anyComplete, anyTeg) = if null anyPatterns
-                                                    then (Not, wildTeg $ 5)--1 + length tps)--Teg [(TegAny, Teg [])])
-                                                    else let (c, t) = blub env tps $ map tail $ anyPatterns
-                                                         in (c, Teg [(TegAny, t)])
-                            cons = lookall tp env
-                            res = map blab cons
-                            finComplete = if null cons then Not else allComplete $ map fst res
-                            finTeg = if null cons
-                                     then wildTeg $ 5--length tps --Teg [(TegAny, Teg [])] 
---                                     else Teg $ zip (map (TegFin . getNameName . fst) cons) (map snd res)
---                                          c in cons, r in res: fst r == Partially -> TegFin name, snd r
---                                                                     == Not -> TegFin getName fst cons, Teg []
---                                                                     == Full -> ...
-                                     else Teg $ map (\((n,_),(_,t))->(TegFin $ getNameName n,t)) $ filter ((/= Full).fst.snd) (zip cons res)
-                            infPatterns = filter ((== PMInf).head) pss
-                            (infComplete, infTeg) = if null infPatterns
-                                                    then (Not, wildTeg $ 5)--, Teg [(TegAny, Teg [])])
-                                                    else (Partially, wildTeg $ 1 + length tps)--, Teg [(TegAny, Teg [])])
-                        in case anyComplete ||| finComplete ||| infComplete
-                           of Full      -> (Full, wildTeg $ length tps) -- (Full, Teg [])
-                              Partially -> (Partially, Teg ((if anyComplete == Partially then unTeg anyTeg else [])
-                                                         ++ (if finComplete == Partially then unTeg finTeg else [])
-                                                         ++ (if infComplete == Partially then unTeg infTeg else [])))
-                              Not       -> (Not, Teg [(TegAny, Teg[])])
-  where
-    blab :: (Name, [Tp]) -> (Complete, Teg)
-    blab (con, args) = let finPatterns = filter ((== PMFin (getNameName con)).head) pss
-                       in if null finPatterns
-                          then (Not, wildTeg $ length args) --Teg [])
-                          else blub env (args ++ tps) $ map tail $ finPatterns
-    (|||) :: Complete -> Complete -> Complete
-    Full ||| _    = Full
-    _    ||| Full = Full
-    Not  ||| Not  = Not
-    _    ||| _    = Partially
-
-wild :: Teg -> Bool
-wild (Teg []) = True
-wild (Teg [(d, t)]) = d == TegAny && wild t
-wild _ = False
-
-shrink :: [Teg] -> [Teg]
-shrink _ [] = []
-shrink (t:ts) | wild t = shrink ts
-              | otherwise = t : shrink ts
-
-blub :: Env -> [Tp] -> [[PMPattern]] -> Complete
-blub _ [] _ = Full
-blub env (tp:tps) pss = let anyPatterns = filter ((== PMAny).head) pss
-                            anyComplete = if null anyPatterns then Not else blub env tps $ map tail $ anyPatterns
-                            cons = lookall tp env
-                            finComplete = if null cons then Not else allComplete $ map blab cons
-                            infPatterns = filter ((== PMInf).head) pss
-                            infComplete = if null infPatterns then Not else Partially
-                        in anyComplete ||| finComplete ||| infComplete
-  where
-    blab :: (Name, [Tp]) -> Complete
-    blab (con, args) = let finPatterns = filter ((== PMFin (getNameName con)).head) pss
-                       in if null finPatterns then Not else blub env (args ++ tps) $ map tail $ finPatterns
-    (|||) :: Complete -> Complete -> Complete
-    Full ||| _    = Full
-    _    ||| Full = Full
-    Not  ||| Not  = Not
-    _    ||| _    = Partially
-                            
---data PSPattern = PSAnyPattern | PSInfinitePattern | PSFinitePattern String [PSPattern]
-
-
-replace :: Eq a => (a, b) -> [(a, b)] -> [(a, b)]
-replace (i, v) [] = [(i, v)]
-replace (i, v) ((j, w):l) | i == j = (i, v) : l
-                          | otherwise = (j, w) : replace (i, v) l
-
-lookupConstructor :: String -> [PMConstructor] -> PMConstructor
-lookupConstructor _ [] = pmError "lookupConstructor" "Invalid constructor"
-lookupConstructor s (c@(PMConstructor name _ _):cs) | s == name = c
-                                                  | otherwise = lookupConstructor s cs
-
-replaceConstructor :: PMConstructor -> [PMConstructor] -> [PMConstructor]
-replaceConstructor _ [] = pmError "replaceConstructor" "Invalid constructor" -- [c]
-replaceConstructor b@(PMConstructor n _ _) (c@(PMConstructor name _ _):cs)
-  | n == name = b : cs
-  | otherwise = c : replaceConstructor b cs
-
-data Complete = Full | Partially | Not deriving Eq
-fill :: Complete -> Complete
-fill Full = Full
-fill _ = Partially
-
-allComplete :: [Complete] -> Complete
-allComplete [] = pmError "allComplete" "Empty list"
-allComplete (Full:cs) = allFullComplete cs
-allComplete (Partially:cs) = Partially
-allComplete (Not:cs) = allNotComplete cs
-allFullComplete :: [Complete] -> Complete
-allFullComplete [] = Full
-allFullComplete (Full:cs) = allFullComplete cs
-allFullComplete _ = Partially
-allNotComplete :: [Complete] -> Complete
-allNotComplete [] = Not
-allNotComplete (Not:cs) = allNotComplete cs
-allNotComplete _ = Partially
-
--- a pattern match tree contains types and patterns!
-data PMTree = PMTree String -- name of type
-                     Complete
-                     (Maybe [PMConstructor]) -- list of constructors
-                                             -- Nothing = infinite type
-data PMConstructor = PMConstructor String -- name of constructor
-                                   Complete
-                                   [PMTree] -- list of arguments
-
-instance Show PMTree where
-  show = showPMTree 3
-  
-showPMTree :: Int -> PMTree -> String
-showPMTree 0 _ = " o"
-showPMTree n (PMTree name comp Nothing) = " " ++ showComp comp ++ name ++ " : ~"
-showPMTree n (PMTree name comp (Just cs)) = " " ++ showComp comp ++ name ++ " : <" ++ concatMap (showPMConstructor n) cs ++ ">"
-showPMConstructor n (PMConstructor name comp ts) = "| " ++ showComp comp ++ name ++ concatMap (showPMTree (n - 1)) ts
-
-showComp :: Complete -> String
-showComp Full      = "+"
-showComp Partially = "."
-showComp Not       = "-"
-
-initPMTree :: [(Tp, (Name, [Tp]))] -> Tp -> PMTree
-initPMTree _ (TCon con) | con == "Int" || con == "Float" || con == "Char" = PMTree con Not Nothing
---initPMTree _ (TVar _      ) = PSInfiniteType -- kan op dezelfde manier behandeld worden
-initPMTree e tp@(TCon con) = PMTree con Not $ Just $ concatMap (find tp) e
-  where
-    find :: Tp -> (Tp, (Name, [Tp])) -> [PMConstructor] -- 0 of 1
-    find t1 (t2, (name, args)) | t1 == t2 = [PMConstructor (getNameName name) Not (map (initPMTree e) args)]
---    floep2 (TCon tcon) (TVar v, _) = singleSubstitution :: Int -> Tp -> FiniteMapSubstitution
---    floep2 (TApp t1 t2) (TApp t1 t2, ...) = 
-    find _ _ = []
-initPMTree e tp = PMTree "undefined tree" Not Nothing
-
-nonTree :: PMTree
-nonTree = PMTree "NonTree" Not Nothing
-
-example :: PMTree -> String
-example (PMTree _ Full _) = "kan niet!"
-example (PMTree _ Not _) = "_"
-example (PMTree _ Partially Nothing) = "_"
-example (PMTree _ Partially (Just cs)) = head $ concatMap exampleC cs
-
-exampleC :: PMConstructor -> [String]
-exampleC (PMConstructor _ Full _) = []
-exampleC (PMConstructor name Not ts) = [name ++ concat (replicate (length ts) " _")]
-exampleC (PMConstructor name Partially ts) = [name ++ " " ++ example (head ts)] -- moet dus specifieker
-
---ATTR Alternative Alternatives Pattern Literal [ | pmtree  :   PMTree   | ]
---ATTR Patterns                                 [ | pmtrees : {[PMTree]} | ]
---data PMTree = PMTree String -- name of type
---                     Complete
---                     (Maybe [PMConstructor]) -- list of constructors
---                                             -- Nothing = infinite type
---type PMConstructor = ( String -- name of constructor
---                     , Complete
---                     , [PMTree] -- list of arguments
---                     )              
-
---loc . exprtype = floep (map rearrange $ fmToList $ valueConstructors @lhs.importEnvironment) (@lhs.substitution |-> @expression.beta)
-              
---                                           ++ [show $ @alternatives.pmtree]
---                                           ++ (let (PMTree tname tcomp mcs) = @alternatives.pmtree
---                                              in if tcomp == Full then [] else ["missing: " ++ example @alternatives.pmtree])
---              alternatives . pmtree  = initPMTree (map rearrange $ fmToList $ valueConstructors @lhs.importEnvironment) (@lhs.substitution |-> @expression.beta)
---  | Lambda    patterns     . pmtrees = []
---  | Literal   literal      . pmtree  = nonTree
- 
-
-SEM Pattern 
-
-  | Literal     lhs      . pmtree  = let (PMTree tname tcomp mcs) = @lhs.pmtree
-                                     in (PMTree tname (fill tcomp) mcs)
-  | Variable    lhs      . pmtree  = let (PMTree tname tcomp mcs) = @lhs.pmtree
-                                     in (PMTree tname Full mcs)
-  | Wildcard    lhs      . pmtree  = let (PMTree tname tcomp mcs) = @lhs.pmtree
-                                     in (PMTree tname Full mcs)
-  | Constructor patterns . pmtrees = let (PMTree tname tcomp mcs) = @lhs.pmtree
-                                         cs = case mcs of Just cs -> cs
-                                                          Nothing -> pmError "n/a" "Infinite types do not have constructors"
-                                         (PMConstructor cname ccomp args) = lookupConstructor (getNameName @name.self) cs
-                                     in args
-                lhs      . pmtree  = let (PMTree name comp (Just cs)) = @lhs.pmtree
-                                         ncs = replaceConstructor (PMConstructor (getNameName @name.self) (allFullComplete $ map (\(PMTree _ c _) -> c) @patterns.pmtrees) (@patterns.pmtrees)) cs
-                                     in (PMTree name 
-                                                (allComplete $ map (\(PMConstructor _ c _) -> c) ncs) 
-                                                (Just ncs)
-                                        )
-
-SEM Patterns
-  | Nil        lhs . pmtrees = []
-  | Cons       hd  . pmtree  = head @lhs.pmtrees
-               tl  . pmtrees = tail @lhs.pmtrees
-               lhs . pmtrees = @hd.pmtree : @tl.pmtrees
- 
-SEM LeftHandSide
-  | Function             patterns     . pmtrees = []
-  | Infix                leftPattern  . pmtree  = nonTree
-                         rightPattern . pmtree  = nonTree
-  | Parenthesized        patterns     . pmtrees = []
-
-SEM Qualifier
-  | Generator            pattern      . pmtree  = nonTree
-
-SEM RecordPatternBinding
-  | RecordPatternBinding pattern      . pmtree  = nonTree
-
-SEM Statement
-  | Generator            pattern      . pmtree  = nonTree
-
-SEM Declaration
-  | PatternBinding       pattern      . pmtree  = nonTree
-
-
---        range                    : Range
---        context                  : ContextItems
---        simpletype               : SimpleType
---        constructors             : Constructors
---        derivings                : Names
-  
-
-instance Show Teg where
-  show t = concat $ map ("\n" ++) $ showTegList t
---  show (Teg []) = ""
---  show (Teg [(d, t)]) = show d ++ " " ++ show t
---  show (Teg ((d, t):ts)) = "<" ++ show d ++ " " ++ show t ++ concatMap (\(d, t) -> "|" ++ show d ++ " " ++ show t) ts ++ ">"
-instance Show TegDing where
-  show TegAny = "_"
-  show (TegFin s) = s
-
-showTegList :: Teg -> [String]
-showTegList (Teg []) = [""]
-showTegList (Teg [(d,t)]) = map (\s -> show d ++ " " ++ s) $ showTegList t
-showTegList (Teg (d:ds)) = (showTegList $ Teg [d]) ++ (showTegList $ Teg ds)
-
-wildTeg :: Int -> Teg
-wildTeg 0 = Teg []
-wildTeg n = Teg [(TegAny, wildTeg $ n - 1)]
-
-complement :: Env -> [Tp] -> [[PMPattern]] -> Teg
-complement _   []       _   = Teg []
-complement env (tp:tps) pss | null $ unTeg anyComplement                      = Teg []
-                            | all ((\p -> p == PMAny || p == PMInf).head) pss = anyComplement
-                            | otherwise                                       = finComplement
-  where
-    patComplement :: [[PMPattern]] -> TegDing -> [Tp] -> Teg
-    patComplement []  current tps = Teg [(current, wildTeg $ length tps)]
-    patComplement pss current tps = case unTeg $ complement env tps $ map tail $ pss
-                                    of []   -> Teg []
-                                       tegs -> Teg [(current, Teg tegs)]
-    anyComplement :: Teg
-    anyComplement = patComplement (filter ((== PMAny).head) pss) TegAny tps
-    conComplement :: (Name, [Tp]) -> Teg
-    conComplement (con, args) = patComplement (  filter ((== PMFin (getNameName con)).head) pss
-                                              ++ map (\ps -> PMFin (getNameName con) : replicate (length args) PMAny ++ tail ps)
-                                                     (filter ((== PMAny).head) pss)
-                                              )
-                                              (TegFin (getNameName con)) (args ++ tps)
-    finComplement :: Teg
-    finComplement = case lookall tp env 
-                    of []   -> wildTeg $ 1 + length tps
-                       cons -> Teg $ concatMap (unTeg.conComplement) cons
-
--- stukje dat weg kan
---SEM Body
---  | Body      lhs  . patternMatchWarnings = @declarations.patternMatchWarnings 
---                                            ++ [(@range, show $ fmToList $ valueConstructors @lhs.importEnvironment)]
---                                            ++ [show @lhs.importEnvironment]
-
-
---makeName :: (Range -> [String] -> String -> Name) -> String -> Name
---makeName c n = c (Range_Range Position_Unknown Position_Unknown) [] n
- --makeName Name_Special
---nameFromString
-
-lookall :: Eq a => a -> [(a, b)] -> [b]
-lookall _ [] = []
-lookall a1 ((a2, b):ts) | a1 == a2  = b : lookall a1 ts
-                        | otherwise =     lookall a1 ts
-
-
-instance Show PatternElement where
-  show WildcardElement = "_"
-  show InfiniteElement = "~"
-  show (FiniteElement s) = s
-
-instance Show PatternsMissing where
-  show t = concat $ map ("\n" ++) $ showMissingList t
-showMissingList :: PatternsMissing -> [String]
-showMissingList (PatternsMissing []) = [""]
-showMissingList (PatternsMissing [(d,t)]) = map (\s -> show d ++ " " ++ s) $ showMissingList t
-showMissingList (PatternsMissing (d:ds)) = (showMissingList $ PatternsMissing [d]) ++ (showMissingList $ PatternsMissing ds)
-
-reachable :: Env -> [Tp] -> [([PatternElement], Int)] -> [Int]
-reachable _   []       _  = []
-reachable env (tp:tps) ps 
-  | all ((== WildcardElement).head.fst) ps = [] -- hier: recursie zonder vaste dinges
-  | otherwise = union $ map conReachable $ select (map (head.fst) ps) ++ constructors env tp
-  where
-    conReachable :: (Name, [Tp]) -> [Int]
-    conReachable (con, args) = case    filter ((== FiniteElement (getNameName con)).head.fst) ps
-                                    ++ map (\(es, i) -> (FiniteElement (getNameName con) : replicate (length args) WildcardElement ++ tail es, i)) (filter ((== WildcardElement).head.fst) ps)
-                                    ++ filter ((== InfiniteElement (getNameName con)).head.fst) ps
-                                    
-                                    filter (\p -> head (fst p) == FiniteElement   (getNameName con)
-                                               || head (fst p) == InfiniteElement (getNameName con)
-                                               || head (fst p) == WildcardElement) ps
-                                    
-                               of []   -> []
-                                  pats -> if null.tail.fst.head $ pats
-                                          then [snd $ head pats]
-                                            -- hier: als deze guards bevat, ook volgende in de lijst, etc
-                                          else reachable env (args ++ tps) $ map (\p -> (tail (fst p), snd p)) pats
-    union :: [[a]] -> [a]
-    union = concat
-
-select :: [PatternElement] -> [(Name, [Tp])]
-select []                       = [(Name_Identifier noRange [] [], [])]
-select (WildcardElement   : es) = select es
-select (InfiniteElement i : es) = (Name_Identifier noRange [] i, []) : select es
-select (FiniteElement   f : es) = select es
-
---    wilPats :: [([PatternElement], Int)]
---    wilPats = (filter (== WildcardElement).head.fst) ps
-
--}

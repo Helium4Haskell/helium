@@ -1,0 +1,4 @@
+
+main :: Bool -> ()
+main = \True -> ()
+

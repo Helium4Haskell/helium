@@ -242,6 +242,7 @@ staticanalysis/inferencers/TypeInferencing.hs : \
 		staticanalysis/inferencers/TypeInferencing.ag \
                 staticanalysis/inferencers/TypeInferenceRules.ag \
                 staticanalysis/inferencers/TypeInferenceInfo.ag \
+                staticanalysis/inferencers/PatternMatchWarnings.ag \
                 staticanalysis/staticchecks/HeliumPartialSyntax.ag \
 		syntax/UHA_Syntax.ag \
                 syntax/UHA_OneLine.ag \
