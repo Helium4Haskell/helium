@@ -1,11 +1,11 @@
 Compiling parser/ConfusingFloat.hs
-(1,12): Warning: Interpreted as an integer followed by function composition
+(1,12): Warning: Integer immediately followed by function composition (.)
   Hint: If a Float was meant, write "2.0"
         Otherwise, insert a space for readability
-(3,12): Warning: Interpreted as function composition followed by a number
+(3,12): Warning: Function composition (.) immediately followed by number
   Hint: If a Float was meant, write "0.2"
         Otherwise, insert a space for readability
-(5,11): Warning: Interpreted as an integer followed by function composition
+(5,11): Warning: Integer immediately followed by function composition (.)
   Hint: If a Float was meant, write "20.0"
         Otherwise, insert a space for readability
 (3,1): Syntax error: 

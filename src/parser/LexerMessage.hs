@@ -111,12 +111,12 @@ showLexerWarningInfo info =
             , "Configure your editor to replace tabs by spaces" 
             ]
         LooksLikeFloatNoFraction digits ->
-            [ "Interpreted as an integer followed by function composition"
+            [ "Integer immediately followed by function composition (.)"
             , "If a Float was meant, write \"" ++ digits ++ ".0\""
             , "Otherwise, insert a space for readability" 
             ]
         LooksLikeFloatNoDigits fraction ->
-            [ "Interpreted as function composition followed by a number"
+            [ "Function composition (.) immediately followed by number"
             , "If a Float was meant, write \"0." ++ fraction ++ "\""
             , "Otherwise, insert a space for readability" 
             ]
@@ -130,9 +130,3 @@ keepOneTabWarning = keepOneTab True
     keepOneTab isFirst (warning:rest) = 
         warning : keepOneTab isFirst rest
     keepOneTab _ [] = []
-    
-{- ./testP
-real    1m20.445s
-user    0m7.610s
-sys     0m3.810s
--}

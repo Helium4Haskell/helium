@@ -1,5 +1,5 @@
 Compiling parser/NotAFloat.hs
-(1,14): Warning: Interpreted as an integer followed by function composition
+(1,14): Warning: Integer immediately followed by function composition (.)
   Hint: If a Float was meant, write "20.0"
         Otherwise, insert a space for readability
 (1,1): Warning: Missing type signature: main :: [Int]
