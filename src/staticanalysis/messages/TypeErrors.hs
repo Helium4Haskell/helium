@@ -77,21 +77,28 @@ makeUnresolvedOverloadingError source description (functionType, usedAsType) =
                  , "type"     >:> MessageType functionType
                  , "used as"  >:> MessageType usedAsType
                  , "hint"     <:> MessageString ( "write an explicit type for this function" ++ 
-		                                 "\n   e.g. (show :: [Int] -> String)")
+		                                "\n   e.g. (show :: [Int] -> String)")
                  ]
    in TypeError [rangeOfSource source] message table []
       
-makeReductionError :: UHA_Source -> (TpScheme, Tp) -> ClassEnvironment -> Predicate -> TypeError
-makeReductionError source (scheme, tp) classEnvironment predicate@(Predicate className predicateTp) =
-   let message = [ MessageOneLiner (MessageString "Type error in overloaded function") ]
-       table   = [ "function" <:> MessageOneLineTree (oneLinerSource source)
-                 , "type"     >:> MessageType scheme
-                 , "used as"  >:> MessageType (toTpScheme tp)
-                 , "problem"  <:> MessageCompose [ MessageType (toTpScheme predicateTp)
-                                                 , MessageString (" is not an instance of class "++className)
-				                                 ]
-                 ]
-   in TypeError [rangeOfSource source] message table [("hint", MessageString hint)]
+makeReductionError :: UHA_Source -> Either (TpScheme, Tp) (String, Maybe Tp) -> ClassEnvironment -> Predicate -> TypeError
+makeReductionError source extra classEnvironment predicate@(Predicate className predicateTp) =
+   let location = either (const "function") fst extra
+       message  = [ MessageOneLiner $ MessageString $ "Type error in overloaded " ++ location ]
+       tab1     = case extra of 
+                     Left (scheme, tp) -> -- overloaded function
+                        [ "function" <:> MessageOneLineTree (oneLinerSource source)
+                        , "type"     >:> MessageType scheme
+                        , "used as"  >:> MessageType (toTpScheme tp)
+                        ]
+                     Right (_, mtp) -> -- overloaded language construct
+                        [ descriptionOfSource source <:> MessageOneLineTree (oneLinerSource source) ] ++
+                        maybe [] (\tp -> ["type" >:> MessageType (toTpScheme tp)]) mtp
+       tab2     = [ "problem"  <:> MessageCompose [ MessageType (toTpScheme predicateTp)
+                                                  , MessageString (" is not an instance of class "++className)
+			 	                                  ]
+                  ]
+   in TypeError [rangeOfSource source] message (tab1 ++ tab2) [("hint", MessageString hint)]
    
   where  
     hint :: String

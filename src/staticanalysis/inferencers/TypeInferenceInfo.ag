@@ -184,10 +184,7 @@ SEM Expression | Enum loc . cinfoResult =
 
 SEM Expression | Enum loc . cinfoPred =
   resultConstraint "enumeration" @parentTree 
-     [ PredicateArisingFrom (Predicate "Enum" @elementType, @cinfoResult)
-     , InstantiatedTypeScheme (makeScheme [] [] voidType)
-     , TypePair (voidType, voidType) 
-     ] -- ??
+     [ ReductionErrorInfo (Predicate "Enum" @elementType) ]
 
 -- Expression.Negate
 SEM Expression | Negate loc . cinfo =

@@ -4500,10 +4500,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                    [ FolkloreConstraint ]
             (_cinfoPred@_) =
                 resultConstraint "enumeration" _parentTree
-                   [ PredicateArisingFrom (Predicate "Enum" _elementType, _cinfoResult)
-                   , InstantiatedTypeScheme (makeScheme [] [] voidType)
-                   , TypePair (voidType, voidType)
-                   ]
+                   [ ReductionErrorInfo (Predicate "Enum" _elementType) ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta

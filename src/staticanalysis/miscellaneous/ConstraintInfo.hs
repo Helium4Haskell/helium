@@ -343,14 +343,16 @@ makeTypeErrors classEnv synonyms sub errors =
       -- a reduction error
       | label == unresolvedLabel =
            let f info = 
-                  let source = fst (sources info) 
-                      tp     = snd (typepair info)
-                      scheme = maybe err id (maybeInstantiatedTypeScheme info)
-                      err    = internalError "ConstraintInfo" "makeTypeErrors" "unknown predicate for reduction error"
-                  in case maybeReductionErrorPredicate info of
-                        Just predicate ->
-                           special info (sub |-> (makeReductionError source (scheme, tp) classEnv predicate))
-                        Nothing -> err
+                  let source = fst (sources info)
+                      extra  = case maybeInstantiatedTypeScheme info of
+                                  Just scheme -> -- overloaded function
+                                     Left (scheme, snd $ typepair info)
+                                  Nothing -> --overloaded language construct
+                                     Right (location info, sub |-> (assignedType $ attribute $ localInfo info))
+                      pred   = let err = internalError "ConstraintInfo" "makeTypeErrors" 
+                                                       "unknown predicate which resulted in a reduction error"
+                               in maybe err id $ maybeReductionErrorPredicate info
+                  in special info (sub |-> (makeReductionError source extra classEnv pred))
            in (4, map f infos)     
   
       -- ambiguous class predicates
