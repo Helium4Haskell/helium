@@ -110,7 +110,7 @@ SEM Declaration
                         let_ 
                             nextClauseId (patternMatchFail "pattern binding" @range.self)
                             @righthandside.core
-                    , Core.declCustoms = []
+                    , Core.declCustoms = [custom "type" "patternbinding"]
                     }
                 :
                 [ Core.DeclValue

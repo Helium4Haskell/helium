@@ -1,0 +1,3 @@
+import SynExportB
+
+main = x

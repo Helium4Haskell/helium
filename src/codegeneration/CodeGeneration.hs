@@ -1097,7 +1097,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
                                 let_
                                     nextClauseId (patternMatchFail "pattern binding" _rangeIself)
                                     _righthandsideIcore
-                            , Core.declCustoms = []
+                            , Core.declCustoms = [custom "type" "patternbinding"]
                             }
                         :
                         [ Core.DeclValue
