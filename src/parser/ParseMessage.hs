@@ -1,7 +1,7 @@
 module ParseMessage() where
 
 import Messages hiding (Message)
-import Lexer(floatErrors, stringErrors, charErrors)
+import Lexer(floatErrors, stringErrors, charErrors, commentErrors)
 import UHA_Syntax(Range(..), Position(..))
 
 import ParsecError
@@ -49,10 +49,14 @@ specialCase msgs
         [ head floatTexts
         , "correct examples of float-point literals: 1.0, 3.14159, 100.8, 0.00001"
         ]
-           
+
+    | not (null commentTexts) = Just
+        [ head commentTexts ]
+
     where
-        strings     = map messageString msgs 
-        charTexts   = [ t | t <- charErrors, t `elem` strings ] 
-        stringTexts = [ t | t <- stringErrors, t `elem` strings ]
-        floatTexts  = [ t | t <- floatErrors, t `elem` strings ]
+        strings      = map messageString msgs 
+        charTexts    = [ t | t <- charErrors, t `elem` strings ] 
+        stringTexts  = [ t | t <- stringErrors, t `elem` strings ]
+        floatTexts   = [ t | t <- floatErrors, t `elem` strings ]
+        commentTexts = [ t | t <- commentErrors, t `elem` strings ]
 specialCase _ = Nothing

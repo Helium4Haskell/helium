@@ -3,7 +3,7 @@ module Lexer
     , lexer
     , layout
     , lexemeLength
-    , charErrors, stringErrors, floatErrors
+    , charErrors, stringErrors, floatErrors, commentErrors
     ) where
 
 import Char
@@ -186,7 +186,7 @@ lexer :: Pos -> [Char] -> [Token]
 lexer (Pos ln col) []           = [((Pos (ln+1) 0), LexEOF)]
 
 lexer pos ('-':'-':cs)          = nextinc lexeol pos 2 cs
-lexer pos ('{':'-':cs)          = nextinc (lexComment 0) pos 2 cs
+lexer pos ('{':'-':cs)          = nextinc (lexComment [pos] 0) pos 2 cs
 
 lexer pos input@('\'':cs)       = lexChar   pos input
 lexer pos input@('"':cs)        = lexString pos input
@@ -255,21 +255,45 @@ lexIntFloat pos input =
     let (digits, rest) = span isDigit input
         posBehindDigits = incpos pos (length digits)
     in case rest of
-        ('.':'.':rest2) -> -- think of "[0..]"
-            (pos, LexInt digits) : lexer posBehindDigits rest
-        ('.':rest2) ->
+        ('.':rest2@(next:_)) | isDigit next ->
             let (fraction, rest3) = span isDigit rest2
-                posBehindDot = incpos posBehindDigits 1
-                posBehindFraction = incpos posBehindDot (length fraction)
-            in if null fraction then 
-                (posBehindDigits, LexError emptyFraction) :
-                lexer posBehindDot rest2
-               else
-                (pos, LexFloat (digits ++ "." ++ fraction)) :
-                lexer posBehindFraction rest3 
+                posBehindFraction = incpos posBehindDigits (length fraction + 1)
+                prefix = digits ++ "." ++ fraction
+            in lexMaybeExponent pos prefix LexFloat rest3
         _ ->
-            (pos, LexInt digits) : lexer posBehindDigits rest
-           
+            lexMaybeExponent pos digits LexInt rest
+
+lexMaybeExponent pos prefix token input = 
+    case input of
+        ('e':'+':rest) ->
+            lexExponent pos (prefix ++ "e+") rest
+        ('E':'+':rest) ->
+            lexExponent pos (prefix ++ "E+") rest
+        ('e':'-':rest) ->
+            lexExponent pos (prefix ++ "e-") rest
+        ('E':'-':rest) ->
+            lexExponent pos (prefix ++ "E-") rest
+        ('e':rest) ->
+            lexExponent pos (prefix ++ "e") rest
+        ('E':rest) ->
+            lexExponent pos (prefix ++ "E") rest
+        _ ->
+            (pos, token prefix) :
+            lexer posBehindPrefix input
+    where
+        posBehindPrefix = incpos pos (length prefix)
+
+lexExponent startPos prefix input =
+    let (exponent, rest) = span isDigit input
+        posAtExponent = incpos startPos (length prefix)
+        posBehindExponent = incpos posAtExponent (length exponent)
+    in if null exponent then
+            (posAtExponent, LexError missingExponentDigits) : 
+            lexer posAtExponent input
+       else
+            (startPos, LexFloat (prefix ++ exponent)) :
+            lexer posBehindExponent rest
+
 -----------------------------------------------------------
 -- Characters
 -----------------------------------------------------------
@@ -335,16 +359,17 @@ lexeol pos ('\n':cs)    = next lexer pos '\n' cs
 lexeol pos (c:cs)       = next lexeol pos c cs
 lexeol pos []           = lexer pos []
 
-lexComment :: Int -> Pos -> String -> [Token]
-lexComment level pos ('-':'}':cs)   
+lexComment :: [Pos] -> Int -> Pos -> String -> [Token]
+lexComment starts level pos ('-':'}':cs)   
     | level == 0    = nextinc lexer pos 2 cs
-    | otherwise     = nextinc (lexComment (level - 1)) pos 2 cs
-lexComment level pos ('{':'-':cs) = 
-    nextinc (lexComment (level+1)) pos 2 cs
-lexComment level pos (c:cs) = 
-    next (lexComment level) pos c cs
-lexComment level pos [] 
-    = lexer pos []
+    | otherwise     = nextinc (lexComment (tail starts) (level - 1)) pos 2 cs
+lexComment starts level pos ('{':'-':cs) = 
+    nextinc (lexComment (pos:starts) (level+1)) pos 2 cs
+lexComment starts level pos (c:cs) = 
+    next (lexComment starts level) pos c cs
+lexComment starts level pos [] 
+    = (head starts, LexError unterminatedComment) : lexer pos []
+-- at end-of-file show the most recently opened comment
 
 -----------------------------------------------------------
 -- Positions
@@ -367,8 +392,11 @@ illegalCharInString   = "illegal character in string literal"
 eofInString           = "end-of-file in string literal"
 illegalEscapeInString = "illegal escape sequence in string literal"
 
-emptyFraction         = "empty fraction in floating-point literal"
+missingExponentDigits = "missing digits in exponent"
 
-charErrors = [ nonTerminatedChar, illegalCharInChar, emptyChar, eofInChar ]
-stringErrors = [ newlineInString, illegalCharInString, eofInString ]
-floatErrors  = [ emptyFraction ]
+unterminatedComment   = "unterminated comment"
+
+charErrors    = [ nonTerminatedChar, illegalCharInChar, emptyChar, eofInChar ]
+stringErrors  = [ newlineInString, illegalCharInString, eofInString ]
+floatErrors   = [ missingExponentDigits ]
+commentErrors = [ unterminatedComment ]

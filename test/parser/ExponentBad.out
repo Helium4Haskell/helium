@@ -1,0 +1,5 @@
+Compiling parser/ExponentBad.hs
+(1,10): Syntax error: 
+    missing digits in exponent
+    correct examples of float-point literals: 1.0, 3.14159, 100.8, 0.00001
+Compilation failed with a syntax error

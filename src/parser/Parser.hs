@@ -506,7 +506,7 @@ exp     ->  exp0 "::" type  (expression type signature)
          |  exp0  
 -}
 
-exp_ = addRange $
+exp_ = addRange (
     do 
         e <- exp0
         option (\_ -> e) $ 
@@ -514,6 +514,8 @@ exp_ = addRange $
                 lexCOLCOL
                 t <- type_
                 return $ \r -> Expression_Typed r e t
+    )
+    <?> "expression"        
 
 {-
 expi  ->  expi+1 [op(n,i) expi+1]  
@@ -536,8 +538,8 @@ exp0 = addRange (
         u <- maybeUnaryMinus
         es <- exprChain
         return $ \r -> Expression_List noRange (u ++ es)
+    )
     <?> "expression"        
-  )
 
 exprChain :: HParser [Expression]
 exprChain = 
@@ -553,7 +555,9 @@ exprChain =
                 return ([o] ++ u ++ [e])
         return (e:es)
 
-maybeUnaryMinus = option [] (fmap (:[]) unaryMinus)  
+maybeUnaryMinus = 
+    option [] (fmap (:[]) unaryMinus)  
+    <?> "expression"
 
 unaryMinus :: HParser Expression
 unaryMinus = 
@@ -633,16 +637,23 @@ aexp    ->  var  (variable)
          |  con
          |  literal  
 
+         |  "[" "]" 
+         |  "[" exp1 "," ... "," expk "]"
+         |  "[" exp1 ( "," exp2 )? ".." exp3? "]"
+         |  "[" exp "|" qual1 "," ... "," qualn "]"
+
          |  () 
          |  (op fexp) (left section)
          |  (fexp op) (right section)
          |  ( exp )  (parenthesized expression)  
          |  ( exp1 , ... , expk )  (tuple, k>=2)  
+         
+Last cases parsed as:
 
-         |  "[" "]" 
-         |  "[" exp1 "," ... "," expk "]"
-         |  "[" exp1 ( "," exp2 )? ".." exp3? "]"
-         |  "[" exp "|" qual1 "," ... "," qualn "]"
+    "(" "-" exprChain ( "," exp_ )* ")"
+  | "(" op fexp ")"
+  | "(" fexp op ")"
+  | "(" ( exp_ )<sepBy ","> ")"
 -}
 
 operatorAsExpression :: HParser Expression
@@ -657,10 +668,17 @@ aexp = addRange (
         lexLPAREN
         ( -- dit haakje is nodig (snap niet waarom). Arjan
             do 
-                u <- unaryMinus
-                es <- exprChain
+                ue <- do
+                    u <- unaryMinus
+                    es <- exprChain
+                    return (Expression_List noRange (u:es))
+                es <- many (do { lexCOMMA; exp_ })
                 lexRPAREN
-                return $ \r -> Expression_List noRange (u:es)
+                return $ 
+                    if null es then
+                        \r -> Expression_Parenthesized r ue
+                    else 
+                        \r -> Expression_Tuple r (ue:es)
             <|>                
             do      -- operator followed by optional expression
                     -- either full section (if there is no expression) or 
@@ -806,7 +824,10 @@ stmt = addRange $
     do
         lexLET
         ds <- decls
-        return $ \r -> Statement_Let r ds
+        option (\r -> Statement_Let r ds) $ do
+            lexIN
+            e <- exp_
+            return (\r -> Statement_Expression r (Expression_Let r ds e))
     <|>
     do
         p <- try $
@@ -851,7 +872,10 @@ qual = addRange $
     do
         lexLET
         ds <- decls
-        return $ \r -> Qualifier_Let r ds
+        option (\r -> Qualifier_Let r ds) $ do
+            lexIN
+            e <- exp_
+            return (\r -> Qualifier_Guard r (Expression_Let r ds e))
     <|>
     do
         p <- try $

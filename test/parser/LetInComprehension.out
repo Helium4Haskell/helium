@@ -1,0 +1,5 @@
+Compiling parser/LetInComprehension.hs
+(1,1): Missing type signature: main :: [Int]
+(1,32): Missing type signature: y :: Int -> Bool
+Compilation successful with 2 warnings
+[2,4,6,8,10]

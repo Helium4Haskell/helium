@@ -1,0 +1,4 @@
+Compiling parser/UnclosedComment.hs
+(4,1): Syntax error: 
+    unterminated comment
+Compilation failed with a syntax error
