@@ -1,10 +1,10 @@
-module OneLiner(Tree(..), showOneLine) where
+module OneLiner(OneLineTree(..), showOneLine) where
 
 import List
 
-data Tree 
-    = Node [Tree]
-    | Text String
+data OneLineTree 
+    = OneLineNode [OneLineTree]
+    | OneLineText String
 
 collapseString :: String
 collapseString = "..."
@@ -12,13 +12,13 @@ collapseString = "..."
 collapseWidth :: Int
 collapseWidth  = length collapseString
 
-showOneLine :: Int -> Tree -> String
+showOneLine :: Int -> OneLineTree -> String
 showOneLine width tree = 
     case tree of
-        Text s -> s
-        Node ts -> oneLine True width ts
+        OneLineText s -> s
+        OneLineNode ts -> oneLine True width ts
         
-oneLine :: Bool -> Int -> [Tree] -> String
+oneLine :: Bool -> Int -> [OneLineTree] -> String
 oneLine toplevel width trees
     | not toplevel &&  -- do not collapse at toplevel
         thisLevel > width -- collapse if not even texts can be displayed
@@ -30,34 +30,34 @@ oneLine toplevel width trees
     | otherwise = concatMap processTree (zip childWidths trees)
     where
         thisLevel = countThisLevel trees
-        childSizes = map (\t -> case t of { Text _ -> 0; Node _ -> maxSize [t]} ) trees
+        childSizes = map (\t -> case t of { OneLineText _ -> 0; OneLineNode _ -> maxSize [t]} ) trees
         numberedChildren = zip [0..] childSizes
         childWidths = map snd (sort (distribute (width - thisLevel) numberedChildren))
         
-        processTree (_         , Text s) = s
-        processTree (childWidth, Node ts) = oneLine False childWidth ts
+        processTree (_         , OneLineText s) = s
+        processTree (childWidth, OneLineNode ts) = oneLine False childWidth ts
 
-maxSize :: [Tree] -> Int
+maxSize :: [OneLineTree] -> Int
 maxSize ts =
     let
-        sizeOne :: Tree -> Int
-        sizeOne (Text s) = length s
-        sizeOne (Node subTs) = maxSize subTs
+        sizeOne :: OneLineTree -> Int
+        sizeOne (OneLineText s)     = length s
+        sizeOne (OneLineNode subTs) = maxSize subTs
     in
         sum (map sizeOne ts)
 
-minSize :: [Tree] -> Int
+minSize :: [OneLineTree] -> Int
 minSize ts =
     let
-        sizeOne :: Tree -> Int
-        sizeOne (Text s) = length s
-        sizeOne (Node subTs) = min (minSize subTs) collapseWidth
+        sizeOne :: OneLineTree -> Int
+        sizeOne (OneLineText s) = length s
+        sizeOne (OneLineNode subTs) = min (minSize subTs) collapseWidth
     in
         sum (map sizeOne ts)
 
-countThisLevel :: [Tree] -> Int
+countThisLevel :: [OneLineTree] -> Int
 countThisLevel ts = 
-    sum [ length s | Text s <- ts ]
+    sum [ length s | OneLineText s <- ts ]
 
 
 distribute :: Int -> [(Int, Int)] -> [(Int, Int)]

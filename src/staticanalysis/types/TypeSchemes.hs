@@ -56,18 +56,21 @@ unsafeInstantiate scheme = tp
 arityOfTpScheme :: TpScheme -> Int
 arityOfTpScheme (TpScheme _ _ (_ :=> tp)) = arityOfTp tp
 
+isOverloaded :: TpScheme -> Bool
+isOverloaded (TpScheme _ _ (xs :=> tp)) = not (null xs)
+
 freezeFreeTypeVariables :: TpScheme -> TpScheme
 freezeFreeTypeVariables scheme = 
    let sub = listToSubstitution (map f (ftv scheme))
        f i = (i, TCon ('_' : show i))
    in sub |-> scheme
 
-unifiableTypeSchemes :: OrderedTypeSynonyms -> TpScheme -> TpScheme -> Bool
+{- unifiableTypeSchemes :: OrderedTypeSynonyms -> TpScheme -> TpScheme -> Bool
 unifiableTypeSchemes typesynonyms s1 s2 =
    let i       = maximum (0 : ftv s1 ++ ftv s2) + 1
        (i',_,t1) = instantiate i  s1
        (_ ,_,t2) = instantiate i' s2
-   in unifiable typesynonyms t1 t2
+   in unifiable typesynonyms t1 t2 -}
 
 genericInstanceOf :: OrderedTypeSynonyms -> ClassEnvironment -> TpScheme -> TpScheme -> Bool
 genericInstanceOf synonyms classes scheme1 scheme2 =

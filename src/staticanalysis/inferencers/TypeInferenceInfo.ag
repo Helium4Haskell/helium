@@ -16,7 +16,7 @@ SEM Body | Body loc . cinfo =
   CInfo { info       = (NTBody, AltBody, 0, show var)
         , location   = "variable"
         , errorrange = getNameRange var
-        , sources    = [ sourceExpression (Text (show var)) ]
+        , sources    = [ sourceExpression (OneLineText (show var)) ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , HighlyTrusted
@@ -385,7 +385,7 @@ SEM Expression | Negate loc . cinfo =
   CInfo { info       = (NTExpression, AltNegate, 0, "")
         , location   = "negation"
         , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceOperator (Text "-") ]
+        , sources    = [ sourceExpression @oneLineTree, sourceOperator (OneLineText "-") ]
         , typepair   = tppair
         , properties = [ Negation True ]
         }
@@ -395,7 +395,7 @@ SEM Expression | NegateFloat loc . cinfo =
   CInfo { info       = (NTExpression, AltNegateFloat, 0, "")
         , location   = "negation"
         , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceOperator (Text "-.") ]
+        , sources    = [ sourceExpression @oneLineTree, sourceOperator (OneLineText "-.") ]
         , typepair   = tppair
         , properties = [ Negation False ]
         }
@@ -493,7 +493,7 @@ SEM Pattern | InfixConstructor loc . cinfoApply =
   CInfo { info       = (NTPattern, AltInfixConstructor, 1, "apply")
         , location   = "infix pattern application"
         , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree, sourceConstructor (Text (showNameAsOperator @constructorOperator.self))]
+        , sources    = [ sourcePattern @oneLineTree, sourceConstructor (OneLineText (showNameAsOperator @constructorOperator.self))]
         , typepair   = tppair
         , properties = [ SubTermRange (getNameRange @constructorOperator.self)
                        , ApplicationEdge True
@@ -555,7 +555,7 @@ SEM Pattern |  As loc . cinfo =
   CInfo { info       = (NTPattern, AltAs, 0, "")
         , location   = "as pattern"
         , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm (Text (show @name.self)) ]
+        , sources    = [ sourceExpression @oneLineTree, sourceTerm (OneLineText (show @name.self)) ]
         , typepair   = tppair
         , properties = [ SubTermRange (getNameRange @name.self) ]
         }
@@ -662,7 +662,7 @@ cinfoBindingGroupExplicitTypedBinding =
   CInfo { info       = (NTBindingGroup,AltBindingGroup,3, "explicit typed binding, "++show name)
         , location   = "explicitly typed binding"
         , errorrange = getNameRange name
-        , sources    = [ sourceTerm (Text (show name))]
+        , sources    = [ sourceTerm (OneLineText (show name))]
         , typepair   = tppair
         , properties = [ {- FolkloreConstraint -}
                          ExplicitTypedBinding
@@ -675,7 +675,7 @@ variableBindingCInfo (infoNT,infoAlt,i) var tppair =
   CInfo { info       = (infoNT,infoAlt,i,show var) 
         , location   = "variable"
         , errorrange = getNameRange var
-        , sources    = [ sourceExpression (Text (show var)) ]
+        , sources    = [ sourceExpression (OneLineText (show var)) ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint ]  
         }
@@ -689,7 +689,7 @@ cinfoBindingGroupImplicit =
   CInfo { info       = (NTBindingGroup,AltBindingGroup,1,"implicit, "++show var)
         , location   = "variable"
         , errorrange = getNameRange var
-        , sources    = [ sourceExpression (Text (show var)) ]
+        , sources    = [ sourceExpression (OneLineText (show var)) ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint
                        , HighlyTrusted ]
@@ -701,7 +701,7 @@ cinfoBindingGroupExplicit =
   CInfo { info       = (NTBindingGroup,AltBindingGroup,2, "explicit, "++show var)
         , location   = "variable"
         , errorrange = getNameRange var
-        , sources    = [ sourceExpression (Text (show var)) ]
+        , sources    = [ sourceExpression (OneLineText (show var)) ]
         , typepair   = tppair
         , properties = [ FolkloreConstraint ]  
         }
@@ -710,13 +710,13 @@ cinfoBindingGroupExplicit =
 ----------------------------------------------------------------------------------------------------------------------------------
 -- Several utility functions
 
-SEM LeftHandSide [ | | patternTrees:{[Tree]} ]
+SEM LeftHandSide [ | | patternTrees:{[OneLineTree]} ]
     | Function      lhs . patternTrees = @patterns.oneLineTree
     | Infix         lhs . patternTrees = [@leftPattern.oneLineTree, @rightPattern.oneLineTree]
     | Parenthesized lhs . patternTrees = @lefthandside.patternTrees ++ @patterns.oneLineTree
 {
-convertMaybeOneLineTree :: Maybe Tree -> Tree
-convertMaybeOneLineTree = maybe (Text "") id
+convertMaybeOneLineTree :: Maybe OneLineTree -> OneLineTree
+convertMaybeOneLineTree = maybe (OneLineText "") id
     
 getRHSRange :: RightHandSide -> Range
 getRHSRange (RightHandSide_Expression r _ _) = r
@@ -731,7 +731,7 @@ tpToInt tp = case ftv tp of
                [i] -> i
                _   -> (-1)
 
-sourceTerm, sourceExpression, sourcePattern, sourceOperator :: Tree -> (String, Tree)
+sourceTerm, sourceExpression, sourcePattern, sourceOperator :: OneLineTree -> (String, OneLineTree)
 sourceTerm        = (,) "term"
 sourceExpression  = (,) "expression"
 sourcePattern     = (,) "pattern"

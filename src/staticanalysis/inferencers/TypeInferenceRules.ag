@@ -24,52 +24,46 @@ SEM Module
                               putStrLn $ "type variables in constraint set: "++show @body.betaUnique
                               putStrLn $ "type variables used while solving: "++show @betaUniqueAtTheEnd
                               putStrLn $ "constraints in set: "++show (length @constraints)
-                              when @filteredBool (putStrLn ("WARNING: Filtered type errors"))
                               @solveDebug
                                 
-      loc  . constraints = zipWith setPosition [0..] (ctRoot @body.constraints @lhs.strategy)
+      loc  . constraints = zipWith setPosition [0..] (flatten @lhs.flattening @body.constraints)
            . orderedTypeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment
-           . (betaUniqueAtTheEnd,substitution,finalPredicates,solveErrors,solveDebug) 
+           
+           . (betaUniqueAtTheEnd,substitution,predicates,solveErrors,solveDebug) 
                   = -- choose your algorithm to solve the type constraints
                     (if @lhs.useTypeGraph then solveTypeGraph' else solveGreedy') 
-                       @body.betaUnique ([ SolveWithTypeSynonyms @orderedTypeSynonyms 
-                                         , SolveWithTypeSignatures . map (\(n,ts) -> (show n,ts)) $
-                                              (  fmToList (valueConstructors @lhs.importEnvironment)
-                                              ++ fmToList (typeEnvironment @lhs.importEnvironment)
-                                              )
-                                         ] ++
-                                         [ SolveWithSiblings xs | Siblings xs <- typingStrategies @lhs.importEnvironment ]
-                                        )
-                                        @constraints
-                                        
+                       ( @body.betaUnique 
+                       , @orderedTypeSynonyms 
+                       , @siblings
+                       ) 
+                       @constraints
+           
+           . siblings = let f s = [ (s, ts) | ts <- findTpScheme (nameFromString s) ]
+                            findTpScheme n = catMaybes 
+                                                [ lookupFM (valueConstructors @lhs.importEnvironment) n
+                                                , lookupFM (typeEnvironment   @lhs.importEnvironment) n
+                                                ]
+                        in map (concatMap f) (similarFunctionTable ++ [ xs | Siblings xs <- typingStrategies @lhs.importEnvironment ])
+                                       
            . monomorphics  = ftv (  (eltsFM $ valueConstructors @lhs.importEnvironment) 
                                  ++ (eltsFM $ typeEnvironment @lhs.importEnvironment)
                                  )
            . monos = map TVar @monomorphics
-           . inferredgamma = map (\(name,tp) -> (name,generalize (ftv (@substitution |-> @monos)) [] (@substitution |-> tp))) @body.namesWithoutTypeDef
-           . (typeErrors,filteredBool)    
-                  = let notGeneralEnoughErrors = 
-                           let f ((m,t),s2,(tree,range)) = 
-                                  let m' = @substitution |-> m
-                                      t' = @substitution |-> t
-                                      s1 = generalize (ftv m') [] t'
-                                 in if not (genericInstanceOf @orderedTypeSynonyms standardClasses s2 s1) &&  
-                                       unifiableTypeSchemes   @orderedTypeSynonyms s1 s2
-                                    then [makeNotGeneralEnoughTypeError range tree s1 s2]
-                                    else []                                                                  
-                           in concatMap f @body.typeAnnotations
-                        
-                        op typeError (list,bool) = -- extra check: are the reported types still not unifiable? 
-                                                   case checkTypeError @orderedTypeSynonyms typeError of
-                                                      Just t  -> (t:list,bool) 
-                                                      Nothing -> (list,True)
-                                                                              
-                    in if null @solveErrors 
-                         then (notGeneralEnoughErrors,False)
-                         else foldr op ([], False) (map ((@substitution |->) . makeTypeError) @solveErrors)
-            
-           . toplevelTypes = addListToFM @body.typeSignatures @inferredgamma
-           
+           . checkedSolveErrors = catMaybes (map (checkTypeError @orderedTypeSynonyms . (@substitution |->) . makeTypeError) @solveErrors)
+           . typeErrors = 
+                if not (null @checkedSolveErrors)
+                  then @checkedSolveErrors
+                  else 
+                       let f ((m,t),s2,(tree,range)) = 
+                              let m' = @substitution |-> m
+                                  t' = @substitution |-> t
+                                  s1 = generalize (ftv m') @predicates t'
+                              in -- not unifiableTypeSchemes   @orderedTypeSynonyms s1 s2 
+                                 if not (genericInstanceOf @orderedTypeSynonyms standardClasses s2 s1)                                    
+                                   then [makeNotGeneralEnoughTypeError range tree s1 s2]
+                                   else []                                                                  
+                       in concatMap f @body.typeAnnotations
+                                 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Body
 
@@ -84,7 +78,7 @@ ATTR Body
 
 SEM Body
   | Body
-      lhs          . constraints         = ctNode [ @csetBinds .<<. @cset ]
+      lhs          . constraints         = Node [ @csetBinds .<<. @cset ]
                    . assumptions         = @aset'
                    . namesWithoutTypeDef = [ (n,tp) | (n,_,tp,_) <- @notypedefs ]
       declarations . bindingGroups       = []
@@ -114,9 +108,9 @@ SEM Declaration
                . mybdggrp      = ( unitFM @bindings.name @beta
                                  , @bindings.assumptions
                                  , [ @newcon !<!
-                                     ctNode [ ctVariable @lhs.betaUnique
-                                            , ctNode @bindings.constraintslist
-                                            ]
+                                     Node [ Receive @lhs.betaUnique
+                                          , Node @bindings.constraintslist
+                                          ]
                                    ]
                                  )
 
@@ -127,9 +121,9 @@ SEM Declaration
                     . mybdggrp      = ( @pattern.environment
                                       , @righthandside.assumptions
                                       , [ @newcon .>.
-                                          ctNode [ @pattern.constraints
-                                                 , @righthandside.constraints
-                                                 ]
+                                          Node [ @pattern.constraints
+                                               , @righthandside.constraints
+                                               ]
                                         ]
                                       )
 
@@ -156,10 +150,10 @@ SEM FunctionBinding
   | FunctionBinding
       lhs           . assumptions = @assumptions'
                     . constraints = @csetBinds .>>.
-                                    ctNode [ @conLeft  .<. @lefthandside.constraints
-                                           , @conRight .<. @righthandside.constraints
-                                           ]
-      righthandside . monos       = eltsFM @lefthandside.environment ++ @lhs.monos
+                                    Node [ @conLeft  .<. @lefthandside.constraints
+                                         , @conRight .<. @righthandside.constraints
+                                         ]
+      righthandside . monos       = eltsFM @lefthandside.environment ++ getMonos @csetBinds ++ @lhs.monos
       loc           . (csetBinds,assumptions') = (@lefthandside.environment .===. @righthandside.assumptions) @cinfoBind
                     . conLeft     = zipWith4 (\t1 t2 txt nr -> (t1 .==. t2) (@cinfoLeft nr txt)) @lefthandside.betas @lhs.betasLeft @lefthandside.patternTrees [0..]
                     . conRight    = [ (@righthandside.beta .==. @lhs.betaRight) @cinfoRight ]
@@ -187,23 +181,23 @@ ATTR              RightHandSide [ monos:Tps | | assumptions:Assumptions beta:Tp 
 SEM LeftHandSide
 
   | Function
-      lhs . constraints      = ctNode @patterns.constraintslist
+      lhs . constraints      = Node @patterns.constraintslist
           . name             = @name.self
 
   | Infix
       lhs . numberOfPatterns = 2
           . environment      = @leftPattern.environment `plusFM` @rightPattern.environment
           . betas            = [@leftPattern.beta,@rightPattern.beta]
-          . constraints      = ctNode [ @leftPattern.constraints
-                                      , @rightPattern.constraints
-                                      ]
+          . constraints      = Node [ @leftPattern.constraints
+                                    , @rightPattern.constraints
+                                    ]
           . name             = @operator.self
 
   | Parenthesized
       lhs . numberOfPatterns = @lefthandside.numberOfPatterns + @patterns.numberOfPatterns
           . environment      = @lefthandside.environment `plusFM` @patterns.environment
           . betas            = @lefthandside.betas ++ @patterns.betas
-          . constraints      = ctNode ( @lefthandside.constraints : @patterns.constraintslist )
+          . constraints      = Node ( @lefthandside.constraints : @patterns.constraintslist )
 
 SEM RightHandSide
 
@@ -220,7 +214,7 @@ SEM RightHandSide
                         . rightBeta      = @beta
                         . numberOfGuards = length @guardedexpressions.constraintslist
      where              . assumptions    = @guardedexpressions.assumptions
-                        . constraints    = ctNode @guardedexpressions.constraintslist
+                        . constraints    = Node @guardedexpressions.constraintslist
      loc                . beta           = TVar @lhs.betaUnique
 
 ---------------------------------------------------------------------------------------
@@ -238,13 +232,13 @@ SEM Expression
   | Literal
       lhs . betaUnique  = @lhs.betaUnique + 1
           . assumptions = noAssumptions
-      loc . constraints = ctSingle [ (@literal.literalType .==. @beta) @cinfo ]
+      loc . constraints = unitTree ((@literal.literalType .==. @beta) @cinfo)
           . beta        = TVar @lhs.betaUnique
 
   | Constructor
       lhs . betaUnique   = @lhs.betaUnique + 1
           . assumptions  = noAssumptions
-      loc . constraints  = ctSingle @newcon
+      loc . constraints  = listTree @newcon
           . beta         = TVar @lhs.betaUnique
           . newcon       = case lookupFM (valueConstructors @lhs.importEnvironment) @name.self of
                               Nothing  -> []
@@ -253,16 +247,16 @@ SEM Expression
   | Variable
       lhs . betaUnique  = @lhs.betaUnique + 1
           . assumptions = @name.self `single` @beta
-      loc . constraints = ctNode [ ctVariable @lhs.betaUnique ]
+      loc . constraints = Node [ Receive @lhs.betaUnique ]
           . beta        = TVar @lhs.betaUnique
 
   | NormalApplication
       lhs      . assumptions = @function.assumptions `combine` @arguments.assumptions
       function . betaUnique  = @lhs.betaUnique + 1
       loc      . constraints = @newcon .>.
-                               ctNode [ @function.constraints
-                                      , ctNode @arguments.constraintslist
-                                      ]      
+                               Node [ @function.constraints
+                                    , Node @arguments.constraintslist
+                                    ]      
                . beta        = TVar @lhs.betaUnique
                . newcon      = [ (@function.beta .==. foldr (.->.) @beta @arguments.betas) @cinfo ]
 
@@ -270,10 +264,10 @@ SEM Expression
       lhs            . assumptions = @leftExpression.assumptions `combine` @operator.assumptions `combine` @rightExpression.assumptions
       leftExpression . betaUnique  = @lhs.betaUnique + 2
       loc            . constraints = @conTotal .>.
-                                     ctNode [ @operator.constraints
-                                            , @leftExpression.constraints
-                                            , @rightExpression.constraints
-                                            ]
+                                     Node [ @operator.constraints
+                                          , @leftExpression.constraints
+                                          , @rightExpression.constraints
+                                          ]
                      . beta        = TVar @lhs.betaUnique
                      . betaResOp   = TVar (@lhs.betaUnique + 1)
                      . conOperator = (@operator.beta .==. @leftExpression.beta .->. @rightExpression.beta .->. @betaResOp) @cinfoOperator
@@ -286,10 +280,10 @@ SEM Expression
   | If
       lhs             . assumptions = @guardExpression.assumptions `combine` @thenExpression.assumptions `combine` @elseExpression.assumptions
       guardExpression . betaUnique  = @lhs.betaUnique + 1
-      loc             . constraints = ctNode [ @conGuard .<. @guardExpression.constraints
-                                             , @conThen  .<. @thenExpression.constraints
-                                             , @conElse  .<. @elseExpression.constraints
-                                             ]
+      loc             . constraints = Node [ @conGuard .<. @guardExpression.constraints
+                                           , @conThen  .<. @thenExpression.constraints
+                                           , @conElse  .<. @elseExpression.constraints
+                                           ]
                       . beta        = TVar @lhs.betaUnique
                       . conGuard    = [ (@guardExpression.beta .==. boolType) @cinfoGuard ]
                       . conThen     = [ (@thenExpression.beta  .==. @beta   ) @cinfoThen  ]
@@ -298,11 +292,11 @@ SEM Expression
   | Lambda
       lhs        . assumptions = @assumptions'
       patterns   . betaUnique  = @lhs.betaUnique + 1
-      expression . monos       = eltsFM @patterns.environment ++ @lhs.monos
+      expression . monos       = eltsFM @patterns.environment ++ getMonos @csetBinds ++ @lhs.monos
       loc        . constraints = @newcon .>. @csetBinds .>>.
-                                 ctNode [ ctNode @patterns.constraintslist
-                                        , @expression.constraints
-                                        ]
+                                 Node [ Node @patterns.constraintslist
+                                      , @expression.constraints
+                                      ]
                  . beta        = TVar @lhs.betaUnique
                  . (csetBinds,assumptions') = (@patterns.environment .===. @expression.assumptions) @cinfoBind
                  . newcon      = [ (foldr (.->.) @expression.beta @patterns.betas .==. @beta) @cinfoType ]
@@ -313,9 +307,9 @@ SEM Expression
       alternatives . betaLeft    = @beta'
                    . betaRight   = @beta
                    . nrOfAlternatives = length @alternatives.constraintslist
-      loc          . constraints = ctNode [ @newcon .<. @expression.constraints
-                                          , ctNode @alternatives.constraintslist
-                                          ]                   
+      loc          . constraints = Node [ @newcon .<. @expression.constraints
+                                        , Node @alternatives.constraintslist
+                                        ]                   
                    . beta        = TVar @lhs.betaUnique
                    . beta'       = TVar (@lhs.betaUnique + 1)
                    . newcon      = [ (@expression.beta .==. @beta') @cinfo ]
@@ -332,11 +326,11 @@ SEM Expression
                         performBindingGroup @lhs.monos @declarations.typeSignatures (@mybdggroup : @declarations.bindingGroups)
 
   | Do
-      lhs        . constraints   = ctNode [ @newcon .<. @statements.constraints ]
+      lhs        . constraints   = Node [ @newcon .<. @statements.constraints ]
       statements . betaUnique    = @lhs.betaUnique + 1
                  . generatorBeta = Nothing
                  . assumptions   = noAssumptions
-      loc        . constraints   = ctEmpty
+      loc        . constraints   = emptyTree
                  . beta          = TVar @lhs.betaUnique
                  . newcon        = case @statements.generatorBeta of
                                       Nothing -> []
@@ -345,7 +339,7 @@ SEM Expression
   | List
       expressions . betaUnique   = @lhs.betaUnique + 2
       loc         . constraints  = @newcon .>.
-                                    ctNode (zipWith3 @zipf @expressions.betas @childrenInfo @expressions.constraintslist)
+                                    Node (zipWith3 @zipf @expressions.betas @childrenInfo @expressions.constraintslist)
                   . beta         = TVar @lhs.betaUnique
                   . beta'        = TVar (@lhs.betaUnique + 1)
                   . newcon       = [ (listType @beta' .==. @beta) @cinfoResult ]
@@ -354,14 +348,14 @@ SEM Expression
 
   | Tuple
       expressions . betaUnique  = @lhs.betaUnique + 1
-      loc         . constraints = @newcon .>. ctNode @expressions.constraintslist
+      loc         . constraints = @newcon .>. Node @expressions.constraintslist
                   . beta        = TVar @lhs.betaUnique
                   . newcon      = [ (tupleType @expressions.betas .==. @beta) @cinfo ]
 
   | Typed     
       expression . betaUnique  = @lhs.betaUnique + 1
       loc        . constraints = @conResult .>.
-                                 ctNode [ @conExpr .<. @expression.constraints ]
+                                 Node [ @conExpr .<. @expression.constraints ]
                  . beta        = TVar @lhs.betaUnique
                  . typeScheme  = makeTpSchemeFromType @type.self 
                  . conResult   = [ (@beta            .::. @typeScheme) @cinfoResult ]
@@ -374,7 +368,7 @@ SEM Expression
       qualifiers . assumptions = @expression.assumptions
                  . constraints = @expression.constraints
                  . monos       = @lhs.monos
-      loc        . constraints = @newcon .>. ctNode [ @qualifiers.constraints ]
+      loc        . constraints = @newcon .>. Node [ @qualifiers.constraints ]
                  . beta        = TVar @lhs.betaUnique
                  . newcon      = [ (listType @expression.beta .==. @beta) @cinfo ]
 
@@ -382,10 +376,10 @@ SEM Expression
        lhs  . assumptions = @from.assumptions `combine` @then.assumptions `combine` @to.assumptions
        from . betaUnique  = @lhs.betaUnique + 1
        loc  . constraints = [ (listType intType .==. @beta) @cinfoResult ] .>.
-                            ctNode [ @conFrom .<. @from.constraints
-                                   , @conThen .<. @then.constraints
-                                   , @conTo   .<. @to.constraints
-                                   ]
+                            Node [ @conFrom .<. @from.constraints
+                                 , @conThen .<. @then.constraints
+                                 , @conTo   .<. @to.constraints
+                                 ]
             . beta        = TVar @lhs.betaUnique
             . conFrom     = [ (@from.beta .==. intType) @cinfoFrom ]
             . conThen     = [ (@then.beta .==. intType) @cinfoThen ]
@@ -393,7 +387,7 @@ SEM Expression
 
   | Negate
        expression . betaUnique  = @lhs.betaUnique + 1
-       loc        . constraints = @newcon .>. ctNode [ @expression.constraints ]
+       loc        . constraints = @newcon .>. Node [ @expression.constraints ]
                   . beta        = TVar @lhs.betaUnique
                   . newcon      = [ (intType .->. intType .==. @expression.beta .->. @beta) @cinfo]
 --                  . conResult   = [ (intType .==. @beta) @cinfoResult ]
@@ -401,7 +395,7 @@ SEM Expression
 
   | NegateFloat
        expression . betaUnique  = @lhs.betaUnique + 1
-       loc        . constraints = @newcon .>. ctNode [ @expression.constraints ]
+       loc        . constraints = @newcon .>. Node [ @expression.constraints ]
                   . beta        = TVar @lhs.betaUnique
                   . newcon      = [ (floatType .->. floatType .==. @expression.beta .->. @beta) @cinfo]
 --                  . conResult   = [ (floatType .==. @beta) @cinfoResult ]
@@ -428,16 +422,16 @@ SEM MaybeExpression
       lhs . section     = True
           . betaUnique  = @lhs.betaUnique + 1
           . assumptions = noAssumptions
-          . constraints = ctEmpty
+          . constraints = emptyTree
       loc . beta        = TVar @lhs.betaUnique
 
 SEM GuardedExpression
 
   | GuardedExpression
       lhs . beta        = @expression.beta
-          . constraints = ctNode [ @newconGuard .<. @guard.constraints
-                                 , @newconExpr  .<. @expression.constraints
-                                 ]
+          . constraints = Node [ @newconGuard .<. @guard.constraints
+                               , @newconExpr  .<. @expression.constraints
+                               ]
           . assumptions = @guard.assumptions `combine` @expression.assumptions
       loc . newconGuard = [ (@guard.beta .==. boolType) @cinfoGuard ]
           . newconExpr  = [ (@expression.beta .==. @lhs.rightBeta) @cinfoExpr ]
@@ -467,21 +461,21 @@ SEM Pattern
   | Literal
       lhs . betaUnique  = @lhs.betaUnique + 1
           . environment = noAssumptions
-          . constraints = ctSingle [ (@literal.literalType .==. @beta) @cinfo ]
+          . constraints = unitTree ((@literal.literalType .==. @beta) @cinfo)
       loc . beta        = TVar @lhs.betaUnique
 
   | Variable
       lhs . betaUnique  = @lhs.betaUnique + 1
           . environment = unitFM @name.self @beta
-          . constraints = ctVariable @lhs.betaUnique
+          . constraints = Receive @lhs.betaUnique
       loc . beta        = TVar @lhs.betaUnique
 
   | InfixConstructor
       lhs         . constraints    = @conApply .>.
-                                     ctNode [ ctSingle @conConstructor
-                                            , @leftPattern.constraints
-                                            , @rightPattern.constraints
-                                            ]
+                                     Node [ listTree @conConstructor
+                                          , @leftPattern.constraints
+                                          , @rightPattern.constraints
+                                          ]
                   . environment    = @leftPattern.environment `plusFM` @rightPattern.environment
       leftPattern . betaUnique     = @lhs.betaUnique + 2
       loc         . beta           = TVar @lhs.betaUnique
@@ -493,9 +487,9 @@ SEM Pattern
 
   | Constructor
       lhs      . constraints    = @conApply .>.
-                                  ctNode [ ctSingle @conConstructor
-                                         , ctNode @patterns.constraintslist
-                                         ]
+                                  Node [ listTree @conConstructor
+                                       , Node @patterns.constraintslist
+                                       ]
       patterns . betaUnique     = @lhs.betaUnique + 2
       loc      . beta           = TVar (@lhs.betaUnique)
                . betaCon        = TVar (@lhs.betaUnique + 1)
@@ -507,9 +501,9 @@ SEM Pattern
   | As
       lhs     . environment = addToFM @pattern.environment @name.self @beta
               . constraints = @newcon .>.
-                              ctNode [ ctVariable @lhs.betaUnique
-                                     , @pattern.constraints
-                                     ]
+                              Node [ Receive @lhs.betaUnique
+                                   , @pattern.constraints
+                                   ]
       pattern . betaUnique  = @lhs.betaUnique + 1
       loc     . beta        = TVar @lhs.betaUnique
               . newcon      = [ (@beta .==. @pattern.beta) @cinfo ]
@@ -517,12 +511,12 @@ SEM Pattern
   | Wildcard
       lhs . betaUnique  = @lhs.betaUnique + 1
           . environment = noAssumptions
-          . constraints = ctEmpty
+          . constraints = emptyTree
       loc . beta        = TVar @lhs.betaUnique
 
   | List
       lhs      . constraints  = @newcon .>.
-                                ctNode (zipWith3 @zipf @patterns.betas @childrenInfo @patterns.constraintslist)
+                                Node (zipWith3 @zipf @patterns.betas @childrenInfo @patterns.constraintslist)
       patterns . betaUnique   = @lhs.betaUnique + 2
       loc      . beta         = TVar @lhs.betaUnique
                . beta'        = TVar (@lhs.betaUnique + 1)
@@ -531,13 +525,13 @@ SEM Pattern
                . zipf         = \tp pair ctree -> [ (tp .==. @beta') (@cinfoElem pair) ] .<. ctree
 
   | Tuple
-      lhs      . constraints = @newcon .>. ctNode @patterns.constraintslist
+      lhs      . constraints = @newcon .>. Node @patterns.constraintslist
       patterns . betaUnique  = @lhs.betaUnique + 1
       loc      . beta        = TVar @lhs.betaUnique
                . newcon      = [ (tupleType @patterns.betas .==. @beta) @cinfo ]
 
   | Negate
-      lhs . constraints = ctSingle @newcon
+      lhs . constraints = listTree @newcon
           . betaUnique  = @lhs.betaUnique + 1
           . environment = noAssumptions
       loc . beta        = TVar @lhs.betaUnique
@@ -546,7 +540,7 @@ SEM Pattern
           -- . conPat      = [ (@literal.literalType .==. intType) @cinfoPat ]
 
   | NegateFloat
-      lhs . constraints = ctSingle @newcon
+      lhs . constraints = listTree @newcon
           . betaUnique  = @lhs.betaUnique + 1
           . environment = noAssumptions
       loc . beta        = TVar @lhs.betaUnique
@@ -580,18 +574,18 @@ SEM Alternative
 
   | Alternative
       lhs           . constraints = @csetBinds .>>.
-                                    ctNode [ @conLeft  .<. @pattern.constraints
-                                           , @conRight .<. @righthandside.constraints
-                                           ]
+                                    Node [ @conLeft  .<. @pattern.constraints
+                                         , @conRight .<. @righthandside.constraints
+                                         ]
                     . assumptions = @assumptions'
-      righthandside . monos       = eltsFM @pattern.environment ++ @lhs.monos
+      righthandside . monos       = eltsFM @pattern.environment ++ getMonos @csetBinds ++ @lhs.monos
       loc           . (csetBinds,assumptions') = (@pattern.environment .===. @righthandside.assumptions) @cinfoBind
                     . conLeft     = [ (@pattern.beta .==. @lhs.betaLeft) @cinfoLeft ]
                     . conRight    = [ (@righthandside.beta .==. @lhs.betaRight) @cinfoRight ]
 
   | Empty
       lhs . assumptions = noAssumptions
-          . constraints = ctEmpty
+          . constraints = emptyTree
 
 SEM Alternatives
 
@@ -615,9 +609,9 @@ SEM Statement
 
   | Expression
       lhs        . generatorBeta = Just @beta
-                 . constraints   = ctNode [ @newcon .<. @expression.constraints
-                                          , @lhs.constraints
-                                          ]
+                 . constraints   = Node [ @newcon .<. @expression.constraints
+                                        , @lhs.constraints
+                                        ]
                  . assumptions   = @lhs.assumptions `combine` @expression.assumptions
       expression . betaUnique    = @lhs.betaUnique + 1
       loc        . beta          = TVar @lhs.betaUnique
@@ -637,12 +631,12 @@ SEM Statement
   | Generator
       lhs . generatorBeta = Nothing
           . constraints   = @newcon .>. @csetBinds .>>.
-                            ctNode [ @pattern.constraints
-                                   , @expression.constraints
-                                   , @lhs.constraints
-                                   ]
+                            Node [ @pattern.constraints
+                                 , @expression.constraints
+                                 , @lhs.constraints
+                                 ]
           . assumptions   = @assumptions' `combine` @expression.assumptions
-          . monos         = eltsFM @pattern.environment ++ @lhs.monos
+          . monos         = eltsFM @pattern.environment ++ getMonos @csetBinds ++ @lhs.monos
       loc . (csetBinds,assumptions') = (@pattern.environment .===. @lhs.assumptions) @cinfoBind
           . newcon        = [ (@expression.beta .==. ioType @pattern.beta) @cinfoResult ]
 
@@ -660,9 +654,9 @@ SEM Qualifier
 
   | Guard
       lhs . assumptions = @lhs.assumptions `combine` @guard.assumptions
-          . constraints = ctNode [ @newcon .<. @guard.constraints
-                                 , @lhs.constraints
-                                 ]
+          . constraints = Node [ @newcon .<. @guard.constraints
+                               , @lhs.constraints
+                               ]
       loc . newcon      = [ (@guard.beta .==. boolType) @cinfo ]
 
   | Let   lhs          . assumptions    = @aset
@@ -677,11 +671,11 @@ SEM Qualifier
   | Generator
       lhs . assumptions = @assumptions' `combine` @expression.assumptions
           . constraints = @newcon .>. @csetBinds .>>.
-                          ctNode [ @pattern.constraints
-                                 , @expression.constraints
-                                 , @lhs.constraints
-                                 ]
-          . monos       = eltsFM @pattern.environment ++ @lhs.monos
+                          Node [ @pattern.constraints
+                               , @expression.constraints
+                               , @lhs.constraints
+                               ]
+          . monos       = eltsFM @pattern.environment ++ getMonos @csetBinds ++ @lhs.monos
       loc . (csetBinds,assumptions') = (@pattern.environment .===. @lhs.assumptions) @cinfoBind
           . newcon      = [ (@expression.beta .==. listType @pattern.beta) @cinfoResult ]
 
@@ -710,7 +704,6 @@ SEM Literal
 -- Collecting Type Signatures
 
 ATTR Declaration Declarations [ | typeSignatures:{FiniteMap Name TpScheme} | ]
-ATTR Body                     [ | | typeSignatures:{FiniteMap Name TpScheme} ]
 
 SEM Body              | Body    declarations . typeSignatures = emptyFM
 SEM Expression        | Let     declarations . typeSignatures = emptyFM
@@ -768,10 +761,12 @@ combine = plusFM_C (++)
 single :: Name -> Tp -> Assumptions
 single n t = unitFM n [(n,t)]
 
+getMonos :: TypeConstraints info -> Tps
+getMonos = map TVar . mapMaybe variableInConstraint
 
 type BindingGroups = [BindingGroup]
 type BindingGroup  = (PatternAssumptions,Assumptions,ConstraintSets)
-type MonoTable    = [(Names,Tps)]
+type MonoTable     = [(Names,Tps)]
 
 emptyBindingGroup :: BindingGroup
 emptyBindingGroup = (noAssumptions, noAssumptions, [])
@@ -782,13 +777,13 @@ combineBindingGroup (e1,a1,c1) (e2,a2,c2) = (e1 `plusFM` e2,a1 `combine` a2,c1++
 concatBindingGroups :: BindingGroups -> BindingGroup
 concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
 
-type TypeAnnotations = [((Tps,Tp),TpScheme,(Tree,Range))]
+type TypeAnnotations = [((Tps,Tp),TpScheme,(OneLineTree,Range))]
 type NoTypeDefs      = [(Name,Tps,Tp,Bool)]
 
 findTypeAnnotations :: Bool -> Tps -> FiniteMap Name TpScheme -> BindingGroups -> (TypeAnnotations,NoTypeDefs)
 findTypeAnnotations toplevel monos typeSignatures bdgs =
    let (environment,_,_) = concatBindingGroups bdgs
-       typeAnnotations   = [ ((monos,tp),ts,(Text (show n),getNameRange n))
+       typeAnnotations   = [ ((monos,tp),ts,(OneLineText (show n),getNameRange n))
                            | (n,(tp,ts)) <- fmToList (intersectFM_C (,) environment typeSignatures)
                            ]
        noTypeDefs        = [ (n,monos,tp,toplevel)
@@ -811,7 +806,7 @@ performBindingGroup monos typeSignatures = variableDependencies . bindingGroupAn
                           in map (concatBindingGroups . map (cs !!)) list
 
         variableDependencies :: BindingGroups -> (Assumptions,ConstraintSet,MonoTable)
-        variableDependencies = foldr op (noAssumptions,ctEmpty,[]) where
+        variableDependencies = foldr op (noAssumptions,emptyTree,[]) where
             op (e,a,c) (aset,cset,mt) =
                let (cset1,e'   ) = (typeSignatures !:::! e) cinfoBindingGroupExplicitTypedBinding
                    (cset5,aset') = (.<==.) monos e' aset    cinfoBindingGroupImplicit
@@ -819,9 +814,7 @@ performBindingGroup monos typeSignatures = variableDependencies . bindingGroupAn
                    (cset3,a''  ) = (e' .===. a')            cinfoSameBindingGroup
                in ( a'' `combine` aset'
                   , cset2 .>>. cset3 .>>. cset5 .>>. 
-                    ctStrictOrder [ cset1 .<<. ctNode (reverse c)
-                                  , cset
-                                  ] 
+                      (StrictOrder (cset1 .<<. Node (reverse c)) cset)
                   , (keysFM e,eltsFM e'):mt
                   )
 
@@ -829,23 +822,25 @@ findMono :: Name -> MonoTable -> Tps
 findMono n = let p = elem n . fst
              in snd . head . filter p
 
-solveGreedy' :: Int -> SolverOptions -> TypeConstraints HeliumConstraintInfo -> (Int, WrappedSubstitution ,[a], [HeliumConstraintInfo], IO ())
-solveGreedy' unique options constraints = 
-   solveGreedy unique options (liftConstraints constraints) $                
+solveGreedy' :: SolverOptions -> TypeConstraints HeliumConstraintInfo -> (Int, WrappedSubstitution ,Predicates, [HeliumConstraintInfo], IO ())
+solveGreedy' options constraints = 
+   solveGreedy options (liftConstraints constraints) $                
       do uniqueAtEnd <- getUnique
          errors      <- getErrors
          subst       <- buildSubstitutionGreedy
+         predicates  <- getReducedPredicates
          debug       <- getDebug
-         return (uniqueAtEnd, subst, [], errors, putStrLn debug)     
+         return (uniqueAtEnd, subst, predicates, errors, putStrLn debug)     
 
-solveTypeGraph' :: Int -> SolverOptions -> TypeConstraints HeliumConstraintInfo -> (Int, WrappedSubstitution ,[a], [HeliumConstraintInfo], IO ())
-solveTypeGraph' unique options constraints =
-   solveTypeGraph unique options (liftConstraints constraints) $
+solveTypeGraph' :: SolverOptions -> TypeConstraints HeliumConstraintInfo -> (Int, WrappedSubstitution ,Predicates, [HeliumConstraintInfo], IO ())
+solveTypeGraph' options constraints =
+   solveTypeGraph options (liftConstraints constraints) $
       do uniqueAtEnd <- getUnique
          errors      <- getErrors
          subst       <- buildSubstitutionTypeGraph
+         predicates  <- getReducedPredicates
          debug       <- getDebug
-         return (uniqueAtEnd, subst, [], errors, putStrLn debug)
+         return (uniqueAtEnd, subst, predicates, errors, putStrLn debug)
 
 }
 
@@ -899,3 +894,73 @@ SEM Module
                                 then [NoTypeDef n scheme isToplevel] 
                                 else []
         in concatMap f @body.collectednotypedef
+
+
+----------------------------------------------------------------------------------------
+-- Type Inferencing : extra information for overloading (for code generation)
+   
+ATTR Body Declarations Declaration MaybeDeclarations MaybeExpression Expression Expressions 
+     Statement Statements Qualifier Qualifiers RecordExpressionBindings GuardedExpression GuardedExpressions
+     FunctionBinding FunctionBindings Alternative Alternatives RightHandSide RecordExpressionBinding
+     [ predicates:Predicates | localTypes : {[(Name, TpScheme)]} | ]
+
+SEM Module 
+  | Module     body . localTypes = []
+
+ATTR Body [ | | toplevelTypes : TypeEnvironment ] 
+  
+SEM Body
+  | Body   lhs . toplevelTypes = listToFM (convert @lhs.substitution @lhs.predicates @notypedefs) `plusFM` @declarations.typeSignatures
+  
+SEM MaybeDeclarations
+  | Just   lhs . localTypes = convert @lhs.substitution @lhs.predicates @notypedefs ++ fmToList @declarations.typeSignatures ++ @declarations.localTypes 
+SEM Expression                    
+  | Let    lhs . localTypes = convert @lhs.substitution @lhs.predicates @notypedefs ++ fmToList @declarations.typeSignatures ++ @declarations.localTypes 
+SEM Statement                  
+  | Let    lhs . localTypes = convert @lhs.substitution @lhs.predicates @notypedefs ++ fmToList @declarations.typeSignatures ++ @declarations.localTypes 
+SEM Qualifier                    
+  | Let    lhs . localTypes = convert @lhs.substitution @lhs.predicates @notypedefs ++ fmToList @declarations.typeSignatures ++ @declarations.localTypes 
+ 
+----
+
+ATTR Statement Statements Qualifier Qualifiers MaybeExpression Expression Expressions
+     RightHandSide RecordExpressionBinding GuardedExpression GuardedExpressions
+     FunctionBinding FunctionBindings Alternative Alternatives Declaration Declarations
+     MaybeDeclarations Body RecordExpressionBindings
+     [ overloads : Names | overloadedVars : OverloadedVariables | ]
+
+SEM Module 
+  | Module     body . overloadedVars = []
+                    . overloads      = [ n 
+                                       | (n, ts) <- @body.localTypes ++ 
+                                                    fmToList @body.toplevelTypes ++
+                                                    fmToList (typeEnvironment @lhs.importEnvironment)
+                                       ,  isOverloaded ts
+                                       ]
+                                       
+  
+SEM Expression 
+  | Variable   lhs  . overloadedVars = let mName = filter (@name.self==) @lhs.namesInScope
+                                       in case mName of 
+                                             [name] | any (equalNames name) @lhs.overloads
+                                               -> (@name.self, name, @lhs.substitution |-> @beta) : @lhs.overloadedVars
+                                             _ -> @lhs.overloadedVars
+
+SEM Module 
+  | Module    loc . initialScope = keysFM (typeEnvironment @lhs.importEnvironment)
+{
+type OverloadedVariables = [(Name, Name, Tp)]
+
+convert :: WrappedSubstitution -> Predicates -> [(Name,Tps,Tp,Bool)] -> [(Name, TpScheme)]
+convert sub predicates = map f 
+   where f (name,monos,tp,_) = 
+            let monos' = ftv (sub |-> monos)
+                tp'    = sub |-> tp 
+            in (name, generalize monos' predicates tp')
+            
+equalNames :: Name -> Name -> Bool
+equalNames n1 n2 = n1 == n2 && (getNameRange n1) `cmp` (getNameRange n2)            
+   where cmp (Range_Range p1 p2) (Range_Range p3 p4) = p1 `cmp'` p3 && p2 `cmp'` p4
+         cmp' Position_Unknown Position_Unknown = True
+         cmp' p1 p2 = p1 == p2
+}

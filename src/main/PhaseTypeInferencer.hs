@@ -1,9 +1,14 @@
-module PhaseTypeInferencer(phaseTypeInferencer) where
+module PhaseTypeInferencer (phaseTypeInferencer) where
 
 import CompileUtils
-import Strategy(algM, algW)
+import Tree(flattenM, flattenW)
 import Warnings(Warning)
 import qualified TypeInferencing(sem_Module)
+
+import Types -- temporary
+import FiniteMap
+import UHA_Utils
+import UHA_Syntax
 
 phaseTypeInferencer :: 
     String -> Module -> [String] -> ImportEnvironment -> [ImportEnvironment] -> 
@@ -12,19 +17,22 @@ phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv
     enterNewPhase "Type inferencing" options
 
     let (strategy,useTypeGraph)
-            | AlgorithmW `elem` options = (algW,False)
-            | AlgorithmM `elem` options = (algM,False)
-            | otherwise                 = (algW,True ) -- default algorithm W + TypeGraphs
+            | AlgorithmW `elem` options = (flattenW,False)
+            | AlgorithmM `elem` options = (flattenM,False)
+            | otherwise                 = (flattenW,True ) -- default algorithm W + TypeGraphs
 
-        (debugTypes, _, toplevelTypes, typeErrors, warnings) =
+        (debugTypes, localTypes, overloadedVars, _, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_
-                completeEnv
                 strategy
-                useTypeGraph
-
+                (adjustIE completeEnv)                
+                useTypeGraph        
+        
         -- add the top-level types (including the inferred types)
         finalEnv = addToTypeEnvironment toplevelTypes completeEnv
-
+    
+--    putStrLn (unlines ("" : "localTypes:" : map show localTypes))
+--    putStrLn (unlines ("" : "overloadedVars:"   : map (\(n,m,t) -> show n ++ "/" ++ show m ++" :: " ++ show t) overloadedVars))
+    
     when (DumpTypeDebug `elem` options) debugTypes
     
     when (not (null typeErrors)) $ do
@@ -49,4 +57,17 @@ phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv
 maximumNumberOfTypeErrors :: Int
 maximumNumberOfTypeErrors = 3
 
+-- temporary: for testing type classes --> also remove extra imports
+adjustIE :: ImportEnvironment -> ImportEnvironment
+adjustIE x = x -- setTypeEnvironment (adjustTE (typeEnvironment x)) x
 
+adjustTE :: FiniteMap Name TpScheme -> FiniteMap Name TpScheme
+adjustTE fm = let op (s,ts) fm = addToFM fm (nameFromString s) ts 
+              in foldr op fm list
+              
+  where
+   list = [ ("showString", generalize [] [Predicate "Show" (TVar 0)] (TVar 0 .->. stringType))
+          , ("=="        , generalize [] [Predicate "Eq"   (TVar 0)] (TVar 0 .->. TVar 0 .->. boolType))
+          , ("<"         , generalize [] [Predicate "Ord"  (TVar 0)] (TVar 0 .->. TVar 0 .->. boolType))
+          ]
+        

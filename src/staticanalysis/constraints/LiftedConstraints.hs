@@ -38,3 +38,11 @@ lift combinator =
                        (xs,ys) = (as .:::. bs') cf                           
                        ys' = mapFM (\_ -> snd . head) ys
                    in (xs,ys')
+                   
+variableInConstraint :: TypeConstraint info -> Maybe Int
+variableInConstraint constraint = 
+   case constraint of
+      Equality _ _ (TVar i)           -> Just i
+      ExplicitInstance _ (TVar i) _   -> Just i 
+      ImplicitInstance _ (TVar i) _ _ -> Just i 
+      _                               -> Nothing                   

@@ -36,6 +36,12 @@ functionSpine :: Tp -> (Tps,Tp)
 functionSpine = rec [] where
    rec tps (TApp (TApp (TCon "->") t1) t2) = rec (t1:tps) t2
    rec tps tp                              = (reverse tps,tp)
+
+functionSpineOfLength :: Int -> Tp -> (Tps, Tp)
+functionSpineOfLength i tp = 
+   let (as, a ) = functionSpine tp
+       (bs, cs) = splitAt i as
+   in (bs, foldr (.->.) a cs)
    
 constantsInType :: Tp -> [String]
 constantsInType (TVar _)     = []

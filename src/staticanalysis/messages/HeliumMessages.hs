@@ -88,9 +88,9 @@ showTable = let leftStars = " "
 isTypeOrTypeSchemeMessage :: MessageBlock -> Bool
 isTypeOrTypeSchemeMessage mb =
    case mb of
-      MessageType _       -> True
-      MessageTypeScheme _ -> True
-      _                   -> False
+      MessageType _        -> True
+      MessageTypeScheme ts -> not . hasPredicates . getQualifiedType $ ts
+      _                    -> False
 
 -- if two types or type schemes follow each other in a table (on the right-hand side)
 -- then the two types are rendered in a special way.
@@ -109,7 +109,8 @@ renderTypesInRight width table =
 
   where maybeType :: MessageBlock -> Maybe Tp
         maybeType (MessageType tp      ) = Just tp
-        maybeType (MessageTypeScheme ts) = Just (unsafeInstantiate ts)
+        maybeType (MessageTypeScheme ts) | not . hasPredicates . getQualifiedType $ ts
+                                         = Just (unsafeInstantiate ts)
         maybeType _                      = Nothing
 
 -- make sure that a string does not exceed a certain with.
@@ -183,6 +184,7 @@ prepareTypesAndTypeSchemes messageLine = newMessageLine
         case messageBlock of
            MessageCompose mbs   -> let (r, i, ns) = f_MessageBlocks unique mbs
                                    in (MessageCompose r, i, ns)
-           MessageTypeScheme ts -> let (unique', _, its) = instantiateWithNameMap unique ts
+           MessageTypeScheme ts | not . hasPredicates . getQualifiedType $ ts
+                                -> let (unique', _, its) = instantiateWithNameMap unique ts
                                    in (MessageType its, unique', constantsInType its)
            _                    -> (messageBlock, unique, [])

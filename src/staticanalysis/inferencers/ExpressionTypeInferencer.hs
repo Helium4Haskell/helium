@@ -2,7 +2,7 @@ module ExpressionTypeInferencer (expressionTypeInferencer) where
 
 import TypeInferencing (sem_Module)
 import ImportEnvironment
-import Strategy (algW)
+import Tree (flattenW)
 import TypeErrors
 import Types
 import FiniteMap
@@ -33,11 +33,11 @@ expressionTypeInferencer importEnvironment expression =
                                   expression
                                   MaybeDeclarations_Nothing)])
                          
-       (_, _, typeEnvironment, errors, _) 
+       (_, _, _, _, typeEnvironment, errors, _) 
                 = sem_Module 
                      module_
-                     importEnvironment
-                     algW                   
+                     flattenW
+                     importEnvironment                                        
                      False
                      
        inferredType = let err = internalError "ExpressionTypeInferencer.hs" "expressionTypeInferencer" "cannot find inferred type"

@@ -18,11 +18,14 @@ isAmbiguous (ps :=> tp) =
 isGround :: Predicate -> Bool
 isGround (Predicate s tp) = null (ftv tp)
 
+hasPredicates :: QType -> Bool
+hasPredicates (ps :=> tp) = not (null ps)
+
 instance Show QType where
    show (ps :=> tp) = case ps of 
                          []  -> show tp
                          [p] -> show p ++ " => " ++ show tp
-                         _   -> let list = foldr1 (\x y -> x++","++y) (sort (map show ps))
+                         _   -> let list = foldr1 (\x y -> x++", "++y) (sort (map show ps))
                                 in "(" ++ list ++ ") => " ++ show tp
    
 instance Show Predicate where

@@ -106,6 +106,7 @@ contextReduction synonyms classes ps =
                            
    in (loop [] predicates, errors)
 
+{-
 contextReduction' :: OrderedTypeSynonyms -> ClassEnvironment -> [(Predicate,a)] -> ([(Predicate,a)], [a])
 contextReduction' synonyms classes ps = 
    let op (predicate, a) (reduced, errors) = 
@@ -119,7 +120,7 @@ contextReduction' synonyms classes ps =
                       | otherwise = loop (p:rs) ps  
           where entailed = scEntail classes (map fst (rs++ps)) (fst p)                      
                            
-   in (loop [] predicates, errors)
+   in (loop [] predicates, errors) -}
                              
 ---------------------------------------------------------------------- 
 -- Standard Class Environment

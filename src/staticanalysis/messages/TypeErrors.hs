@@ -12,7 +12,7 @@ module TypeErrors where
 import Messages
 import Types
 import List       (union)
-import OneLiner   (Tree)
+import OneLiner   (OneLineTree)
 import UHA_Syntax (Range)
 
 type TypeErrors = [TypeError]
@@ -32,7 +32,7 @@ data TypeErrorTable = UnificationErrorTable
                          (Either Tp TpScheme) -- conflicting type or expected type
                          
                     | NotGeneralEnoughTable           
-                         Tree                 -- expression
+                         OneLineTree          -- expression
                          TpScheme             -- declared type
                          TpScheme             -- inferred type
 
@@ -135,7 +135,7 @@ checkTypeError synonyms typeError@(TypeError r o table h) =
       _  -> Just typeError
 checkTypeError synonyms typeError = Just typeError
 
-makeNotGeneralEnoughTypeError :: Range -> Tree -> TpScheme -> TpScheme -> TypeError
+makeNotGeneralEnoughTypeError :: Range -> OneLineTree -> TpScheme -> TpScheme -> TypeError
 makeNotGeneralEnoughTypeError range tree tpscheme1 tpscheme2 =
    let sub      = listToSubstitution (zip (ftv [tpscheme1, tpscheme2]) [ TVar i | i <- [1..] ])
        ts1      = freezeFreeTypeVariables (sub |-> tpscheme1)

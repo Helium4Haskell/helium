@@ -15,7 +15,7 @@ data HeliumConstraintInfo =
    CInfo { info       :: InfoSource
          , location   :: String
          , errorrange :: Range
-         , sources    :: [(String, Tree)]
+         , sources    :: [(String, OneLineTree)]
          , typepair   :: (Tp,Tp)
          , properties :: Properties          
          }
@@ -28,7 +28,7 @@ data Property   = FolkloreConstraint
                 | SuperHighlyTrusted
                 | IsImported Name
                 | IsLiteral Literal
-                | ApplicationEdge Bool{-is binary-} [(Tree, Tp, Range)]{-info about terms-}
+                | ApplicationEdge Bool{-is binary-} [(OneLineTree, Tp, Range)]{-info about terms-}
                 | IsTupleEdge
                 | ExplicitTypedBinding
                 | FuntionBindingEdge Int
@@ -44,7 +44,7 @@ data Property   = FolkloreConstraint
 instance Show HeliumConstraintInfo where
    show = show . getInfoSource
 
-type ConstraintSet  = ConstraintTree  HeliumConstraintInfo
+type ConstraintSet  = ConstraintTree  HeliumConstraintInfo 
 type ConstraintSets = ConstraintTrees HeliumConstraintInfo
 
 instance ConstraintInfo HeliumConstraintInfo where                                  

@@ -23,7 +23,7 @@ import qualified PrettyPrinting (sem_Pattern, sem_LeftHandSide, sem_Expression)
 type Warnings = [Warning]
 data Warning  = NoTypeDef Name TpScheme Bool
               | Shadow Name Name
-              | Unused Entity Name {- toplevel or not -} Bool
+              | Unused Entity Name
               | SimilarFunctionBindings Name {- without typesignature -} Name {- with type signature -}
               | MissingPatterns Range (Maybe Name) Tp [[Pattern]] String String
               | UnreachablePatternCase Range Pattern
@@ -36,7 +36,7 @@ instance HasMessage Warning where
    getRanges warning = case warning of
       NoTypeDef name _ _            -> [getNameRange name]
       Shadow _ name                 -> [getNameRange name]
-      Unused _ name _               -> [getNameRange name]
+      Unused _ name                 -> [getNameRange name]
       SimilarFunctionBindings n1 n2 -> sortRanges [getNameRange n1, getNameRange n2]
       MissingPatterns rng _ _ _ _ _ -> [rng]
       UnreachablePatternCase rng _  -> [rng]
@@ -58,7 +58,7 @@ showWarning warning = case warning of
    Shadow shadowee shadower ->
       "Variable " ++ show (show shadower) ++ " shadows the one at " ++ showRange (getNameRange shadowee)
 
-   Unused entity name toplevel ->
+   Unused entity name ->
       capitalize (show entity) ++ " " ++ show (show name) ++ " is not used"
     
    SimilarFunctionBindings suspect witness ->
@@ -89,6 +89,3 @@ showWarning warning = case warning of
 plural :: [a] -> String -> String
 plural [_] = id
 plural _   = (++ "s")
-
-makeUnused :: Entity -> Names -> Bool -> [Warning]
-makeUnused entity names toplevel = [ Unused entity name toplevel | name <- names ]   

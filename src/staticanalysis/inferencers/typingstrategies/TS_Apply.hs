@@ -21,9 +21,10 @@ import Lexer (strategiesLexer)
 import ParseLibrary (runHParser)
 import qualified ResolveOperators
 import TS_Attributes
+import Tree
 
 type MetaVariableTable info = [(String, (ConstraintSet, info))]
-type MetaVariableInfo = (Tp, Tree, Range)
+type MetaVariableInfo = (Tp, OneLineTree, Range)
 
 applyTypingStrategy :: Core_TypingStrategy -> (ConstraintSet, MetaVariableInfo) -> MetaVariableTable MetaVariableInfo -> Int -> (ConstraintSet, IO (), Int)
 applyTypingStrategy = sem_Core_TypingStrategy
@@ -60,7 +61,7 @@ standardConstraintInfo pos tppair =
          , properties = [ ]
          }
 
-typeRuleCInfo :: String -> Maybe (String, Tree) -> MetaVariableInfo -> (Tp, Tp) -> HeliumConstraintInfo
+typeRuleCInfo :: String -> Maybe (String, OneLineTree) -> MetaVariableInfo -> (Tp, Tp) -> HeliumConstraintInfo
 typeRuleCInfo loc mTuple (tp1,tree,range) tppair =
    CInfo { info       = (NTBody, AltBody, (-1), "Typing Strategy, " ++ infoString)
          , location   = loc
@@ -74,7 +75,7 @@ typeRuleCInfo loc mTuple (tp1,tree,range) tppair =
           Nothing    -> ("conclusion", [sourceExpression tree], [FolkloreConstraint])
 
 -- see TypeInferenceInfo.ag
-sourceTerm, sourceExpression :: Tree -> (String, Tree)
+sourceTerm, sourceExpression :: OneLineTree -> (String, OneLineTree)
 sourceTerm        = (,) "term"
 sourceExpression  = (,) "expression"
 
@@ -210,7 +211,7 @@ sem_Core_TypingStrategy_Siblings :: ([String]) ->
                                     (T_Core_TypingStrategy)
 sem_Core_TypingStrategy_Siblings (_functions) (_lhs_localInfo) (_lhs_metaVariableTable) (_lhs_unique) =
     let 
-    in  ( ctEmpty,return (),_lhs_unique)
+    in  ( emptyTree,return (),_lhs_unique)
 sem_Core_TypingStrategy_TypingStrategy :: (T_Core_TypeRule) ->
                                           (T_Core_UserStatements) ->
                                           (T_Core_TypingStrategy)
@@ -238,14 +239,14 @@ sem_Core_TypingStrategy_TypingStrategy (_typerule) (_statements) (_lhs_localInfo
                                                    ]
             in concatMap find _specialTV
         (_allConstraintTrees) =
-            ctSingle (reverse _typerule_constraints) :
+            listTree (reverse _typerule_constraints) :
             (map snd _statements_metavarConstraints) ++
             (reverse _statements_collectConstraints)
         ( _typerule_constraints,_typerule_ftv,_typerule_judgements) =
             (_typerule (_lhs_localInfo) (_lhs_metaVariableTable) (_substitution))
         ( _statements_collectConstraints,_statements_currentPhase,_statements_currentPosition,_statements_ftv,_statements_metavarConstraints) =
             (_statements (makeAttributeTable (snd _lhs_localInfo) _lhs_metaVariableTable _substitution) ([]) (Nothing) ((_lhs_unique, 0)) (_lhs_localInfo) (_lhs_metaVariableTable) ([ (s,cs) | (s,(cs,_)) <- _lhs_metaVariableTable ]) (_substitution))
-    in  ( ctNode _allConstraintTrees,putStrLn "applying typing strategy",length _normalTV + _lhs_unique)
+    in  ( Node _allConstraintTrees,putStrLn "applying typing strategy",length _normalTV + _lhs_unique)
 -- Core_UserStatement ------------------------------------------
 -- semantic domain
 type T_Core_UserStatement = ([((String, Maybe String), MessageBlock)]) ->
@@ -262,10 +263,10 @@ sem_Core_UserStatement :: (Core_UserStatement) ->
                           (T_Core_UserStatement)
 sem_Core_UserStatement ((Constraint (_leftType) (_rightType) (_message))) =
     (sem_Core_UserStatement_Constraint (_leftType) (_rightType) (_message))
+sem_Core_UserStatement ((CorePhase (_phase))) =
+    (sem_Core_UserStatement_CorePhase (_phase))
 sem_Core_UserStatement ((MetaVariableConstraints (_name))) =
     (sem_Core_UserStatement_MetaVariableConstraints (_name))
-sem_Core_UserStatement ((Phase (_phase))) =
-    (sem_Core_UserStatement_Phase (_phase))
 sem_Core_UserStatement_Constraint :: (Tp) ->
                                      (Tp) ->
                                      (String) ->
@@ -279,13 +280,18 @@ sem_Core_UserStatement_Constraint (_leftType) (_rightType) (_message) (_lhs_attr
             in (_lhs_substitution |-> _leftType .==. _lhs_substitution |-> _rightType) cinfo
     in  ( case _lhs_currentPhase of
              Just phase | phase /= 5
-                        -> ctPhased (phase - 5) [ _newConstraint ] : _lhs_collectConstraints
-             _          -> ctSingle             [ _newConstraint ] : _lhs_collectConstraints
+                        -> Phase phase [ _newConstraint ] : _lhs_collectConstraints
+             _          -> unitTree _newConstraint : _lhs_collectConstraints
          ,_lhs_currentPhase
          ,(\(x, y) -> (x, y+1)) _lhs_currentPosition
          ,ftv [_leftType, _rightType]
          ,_lhs_metavarConstraints
          )
+sem_Core_UserStatement_CorePhase :: (Int) ->
+                                    (T_Core_UserStatement)
+sem_Core_UserStatement_CorePhase (_phase) (_lhs_attributeTable) (_lhs_collectConstraints) (_lhs_currentPhase) (_lhs_currentPosition) (_lhs_localInfo) (_lhs_metaVariableTable) (_lhs_metavarConstraints) (_lhs_substitution) =
+    let 
+    in  ( _lhs_collectConstraints,Just _phase,_lhs_currentPosition,[],_lhs_metavarConstraints)
 sem_Core_UserStatement_MetaVariableConstraints :: (String) ->
                                                   (T_Core_UserStatement)
 sem_Core_UserStatement_MetaVariableConstraints (_name) (_lhs_attributeTable) (_lhs_collectConstraints) (_lhs_currentPhase) (_lhs_currentPosition) (_lhs_localInfo) (_lhs_metaVariableTable) (_lhs_metavarConstraints) (_lhs_substitution) =
@@ -298,11 +304,6 @@ sem_Core_UserStatement_MetaVariableConstraints (_name) (_lhs_attributeTable) (_l
          ,[]
          ,filter ((_name /=) . fst) _lhs_metavarConstraints
          )
-sem_Core_UserStatement_Phase :: (Int) ->
-                                (T_Core_UserStatement)
-sem_Core_UserStatement_Phase (_phase) (_lhs_attributeTable) (_lhs_collectConstraints) (_lhs_currentPhase) (_lhs_currentPosition) (_lhs_localInfo) (_lhs_metaVariableTable) (_lhs_metavarConstraints) (_lhs_substitution) =
-    let 
-    in  ( _lhs_collectConstraints,Just _phase,_lhs_currentPosition,[],_lhs_metavarConstraints)
 -- Core_UserStatements -----------------------------------------
 -- semantic domain
 type T_Core_UserStatements = ([((String, Maybe String), MessageBlock)]) ->

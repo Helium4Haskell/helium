@@ -49,36 +49,36 @@ standardConstraintInfo tppair =
 
 
 
-encloseSep :: String -> String -> String -> [Tree] -> Tree
-encloseSep left sep right [] = Node [Text left, Text right]
+encloseSep :: String -> String -> String -> [OneLineTree] -> OneLineTree
+encloseSep left sep right [] = OneLineNode [OneLineText left, OneLineText right]
 encloseSep left sep right (t:ts) =
-    Node ([ Text left] ++ (t : concatMap (\t -> [Text sep,t]) ts) ++ [Text right] )
+    OneLineNode ([ OneLineText left] ++ (t : concatMap (\t -> [OneLineText sep,t]) ts) ++ [OneLineText right] )
 
-punctuate :: String -> [Tree] -> Tree
-punctuate _ [] = Text ""
+punctuate :: String -> [OneLineTree] -> OneLineTree
+punctuate _ [] = OneLineText ""
 punctuate _ [t] = t
-punctuate s (t:ts) = Node (t : concatMap (\t -> [Text s,t]) ts)
+punctuate s (t:ts) = OneLineNode (t : concatMap (\t -> [OneLineText s,t]) ts)
     
-parens :: Tree -> Tree
-parens tree = Node [ Text "(", tree, Text ")" ]
+parens :: OneLineTree -> OneLineTree
+parens tree = OneLineNode [ OneLineText "(", tree, OneLineText ")" ]
 
-sepBy :: Tree -> [Tree] -> [Tree]
+sepBy :: OneLineTree -> [OneLineTree] -> [OneLineTree]
 sepBy separator list =
-    intersperse separator (map (\x -> Node [x]) list)
+    intersperse separator (map (\x -> OneLineNode [x]) list)
 
 intErr :: String -> String -> a
 intErr node message = internalError "UHA_OneLine" node message
 
-oneLineTreeAsOperator :: Tree -> Tree
+oneLineTreeAsOperator :: OneLineTree -> OneLineTree
 oneLineTreeAsOperator tree =
    case tree of
-      Node [Text (first:_)]
+      OneLineNode [OneLineText (first:_)]
          |  isAlpha first || first == '_'
-         -> Node [ Text "`", tree, Text "`" ]
+         -> OneLineNode [ OneLineText "`", tree, OneLineText "`" ]
       _  -> tree
 -- Alternative -------------------------------------------------
 -- semantic domain
-type T_Alternative = ( (Tree),(Alternative))
+type T_Alternative = ( (OneLineTree),(Alternative))
 -- cata
 sem_Alternative :: (Alternative) ->
                    (T_Alternative)
@@ -94,7 +94,7 @@ sem_Alternative_Alternative (_range) (_pattern) (_righthandside) =
     let (_self) =
             Alternative_Alternative _range_self _pattern_self _righthandside_self
         (_oneLineTree) =
-            Node [ _pattern_oneLineTree, _righthandside_oneLineTree " -> " ]
+            OneLineNode [ _pattern_oneLineTree, _righthandside_oneLineTree " -> " ]
         ( _range_self) =
             (_range )
         ( _pattern_oneLineTree,_pattern_self) =
@@ -108,13 +108,13 @@ sem_Alternative_Empty (_range) =
     let (_self) =
             Alternative_Empty _range_self
         (_oneLineTree) =
-            Text ""
+            OneLineText ""
         ( _range_self) =
             (_range )
     in  ( _oneLineTree,_self)
 -- Alternatives ------------------------------------------------
 -- semantic domain
-type T_Alternatives = ( ( [ Tree] ),(Alternatives))
+type T_Alternatives = ( ( [ OneLineTree] ),(Alternatives))
 -- cata
 sem_Alternatives :: (Alternatives) ->
                     (T_Alternatives)
@@ -331,7 +331,7 @@ sem_ContextItems_Nil  =
     in  ( _self)
 -- Declaration -------------------------------------------------
 -- semantic domain
-type T_Declaration = ( (Tree),(Declaration))
+type T_Declaration = ( (OneLineTree),(Declaration))
 -- cata
 sem_Declaration :: (Declaration) ->
                    (T_Declaration)
@@ -417,7 +417,7 @@ sem_Declaration_Empty (_range) =
     let (_self) =
             Declaration_Empty _range_self
         (_oneLineTree) =
-            Text ""
+            OneLineText ""
         ( _range_self) =
             (_range )
     in  ( _oneLineTree,_self)
@@ -505,9 +505,9 @@ sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) =
     let (_self) =
             Declaration_PatternBinding _range_self _pattern_self _righthandside_self
         (_oneLineTree) =
-            Node
-                [ Node [_pattern_oneLineTree]
-                , Node [_righthandside_oneLineTree " = "]
+            OneLineNode
+                [ OneLineNode [_pattern_oneLineTree]
+                , OneLineNode [_righthandside_oneLineTree " = "]
                 ]
         ( _range_self) =
             (_range )
@@ -540,10 +540,10 @@ sem_Declaration_TypeSignature (_range) (_names) (_type) =
     let (_self) =
             Declaration_TypeSignature _range_self _names_self _type_self
         (_oneLineTree) =
-            Node
-                 [ Text (concat . intersperse "," . map show $ _names_self)
-                 , Text " :: "
-                 , Text (show (makeTpSchemeFromType _type_self))
+            OneLineNode
+                 [ OneLineText (concat . intersperse "," . map show $ _names_self)
+                 , OneLineText " :: "
+                 , OneLineText (show (makeTpSchemeFromType _type_self))
                  ]
         ( _range_self) =
             (_range )
@@ -554,7 +554,7 @@ sem_Declaration_TypeSignature (_range) (_names) (_type) =
     in  ( _oneLineTree,_self)
 -- Declarations ------------------------------------------------
 -- semantic domain
-type T_Declarations = ( ( [ Tree] ),(Declarations))
+type T_Declarations = ( ( [ OneLineTree] ),(Declarations))
 -- cata
 sem_Declarations :: (Declarations) ->
                     (T_Declarations)
@@ -663,7 +663,7 @@ sem_Exports_Nil  =
     in  ( _self)
 -- Expression --------------------------------------------------
 -- semantic domain
-type T_Expression = ( (Tree),(Expression))
+type T_Expression = ( (OneLineTree),(Expression))
 -- cata
 sem_Expression :: (Expression) ->
                   (T_Expression)
@@ -715,10 +715,10 @@ sem_Expression_Case (_range) (_expression) (_alternatives) =
     let (_self) =
             Expression_Case _range_self _expression_self _alternatives_self
         (_oneLineTree) =
-            Node
-                [ Text "case "
-                , Node [_expression_oneLineTree]
-                , Text " of "
+            OneLineNode
+                [ OneLineText "case "
+                , OneLineNode [_expression_oneLineTree]
+                , OneLineText " of "
                 , encloseSep "{" "; " "}" _alternatives_oneLineTree
                 ]
         ( _range_self) =
@@ -736,12 +736,12 @@ sem_Expression_Comprehension (_range) (_expression) (_qualifiers) =
     let (_self) =
             Expression_Comprehension _range_self _expression_self _qualifiers_self
         (_oneLineTree) =
-            Node
-                [ Text "[ "
-                , Node [_expression_oneLineTree]
-                , Text " | "
-                , Node [ punctuate ", " _qualifiers_oneLineTree ]
-                , Text " ]"
+            OneLineNode
+                [ OneLineText "[ "
+                , OneLineNode [_expression_oneLineTree]
+                , OneLineText " | "
+                , OneLineNode [ punctuate ", " _qualifiers_oneLineTree ]
+                , OneLineText " ]"
                 ]
         ( _range_self) =
             (_range )
@@ -757,7 +757,7 @@ sem_Expression_Constructor (_range) (_name) =
     let (_self) =
             Expression_Constructor _range_self _name_self
         (_oneLineTree) =
-            Node [_name_oneLineTree]
+            OneLineNode [_name_oneLineTree]
         ( _range_self) =
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
@@ -770,9 +770,9 @@ sem_Expression_Do (_range) (_statements) =
     let (_self) =
             Expression_Do _range_self _statements_self
         (_oneLineTree) =
-            Node
-                [ Text "do "
-                , Node (sepBy (Text "; ") _statements_oneLineTree)
+            OneLineNode
+                [ OneLineText "do "
+                , OneLineNode (sepBy (OneLineText "; ") _statements_oneLineTree)
                 ]
         ( _range_self) =
             (_range )
@@ -788,18 +788,18 @@ sem_Expression_Enum (_range) (_from) (_then) (_to) =
     let (_self) =
             Expression_Enum _range_self _from_self _then_self _to_self
         (_oneLineTree) =
-            Node (
-                [ Text "["
-                , Node [_from_oneLineTree]
+            OneLineNode (
+                [ OneLineText "["
+                , OneLineNode [_from_oneLineTree]
                 ]
                 ++
-                maybe [] (\x -> [Text ", ", x]) _then_oneLineTree
+                maybe [] (\x -> [OneLineText ", ", x]) _then_oneLineTree
                 ++
-                [ Text " .. " ]
+                [ OneLineText " .. " ]
                 ++
-                maybe [] (\x -> [Node [x]]) _to_oneLineTree
+                maybe [] (\x -> [OneLineNode [x]]) _to_oneLineTree
                 ++
-                [ Text "]" ]
+                [ OneLineText "]" ]
             )
         ( _range_self) =
             (_range )
@@ -819,13 +819,13 @@ sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression
     let (_self) =
             Expression_If _range_self _guardExpression_self _thenExpression_self _elseExpression_self
         (_oneLineTree) =
-            Node
-                [ Text "if "
-                , Node [_guardExpression_oneLineTree]
-                , Text " then "
-                , Node [_thenExpression_oneLineTree]
-                , Text " else "
-                , Node [_elseExpression_oneLineTree]
+            OneLineNode
+                [ OneLineText "if "
+                , OneLineNode [_guardExpression_oneLineTree]
+                , OneLineText " then "
+                , OneLineNode [_thenExpression_oneLineTree]
+                , OneLineText " else "
+                , OneLineNode [_elseExpression_oneLineTree]
                 ]
         ( _range_self) =
             (_range )
@@ -851,7 +851,7 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
                 (Nothing, Nothing) -> parens _operatorName
                 (Just l , Nothing) -> encloseSep "(" " " ")" [l, _operatorName]
                 (Nothing, Just r ) -> encloseSep "(" " " ")" [_operatorName, r]
-                (Just l , Just r ) -> Node [ l, Text " ", _operatorName, Text " ", r ]
+                (Just l , Just r ) -> OneLineNode [ l, OneLineText " ", _operatorName, OneLineText " ", r ]
         ( _range_self) =
             (_range )
         ( _leftExpression_oneLineTree,_leftExpression_self) =
@@ -869,9 +869,9 @@ sem_Expression_Lambda (_range) (_patterns) (_expression) =
     let (_self) =
             Expression_Lambda _range_self _patterns_self _expression_self
         (_oneLineTree) =
-            Node
-                (  [ Text "\\", punctuate " " _patterns_oneLineTree, Text " -> "
-                   , Node [_expression_oneLineTree]
+            OneLineNode
+                (  [ OneLineText "\\", punctuate " " _patterns_oneLineTree, OneLineText " -> "
+                   , OneLineNode [_expression_oneLineTree]
                    ]
                 )
         ( _range_self) =
@@ -889,11 +889,11 @@ sem_Expression_Let (_range) (_declarations) (_expression) =
     let (_self) =
             Expression_Let _range_self _declarations_self _expression_self
         (_oneLineTree) =
-            Node
-                [ Text "let "
+            OneLineNode
+                [ OneLineText "let "
                 , encloseSep "{" "; " "}" _declarations_oneLineTree
-                , Text " in "
-                , Node [_expression_oneLineTree]
+                , OneLineText " in "
+                , OneLineNode [_expression_oneLineTree]
                 ]
         ( _range_self) =
             (_range )
@@ -922,7 +922,7 @@ sem_Expression_Literal (_range) (_literal) =
     let (_self) =
             Expression_Literal _range_self _literal_self
         (_oneLineTree) =
-            Node [_literal_oneLineTree]
+            OneLineNode [_literal_oneLineTree]
         ( _range_self) =
             (_range )
         ( _literal_oneLineTree,_literal_self) =
@@ -935,7 +935,7 @@ sem_Expression_Negate (_range) (_expression) =
     let (_self) =
             Expression_Negate _range_self _expression_self
         (_oneLineTree) =
-            Node [ Text "-", Node [_expression_oneLineTree] ]
+            OneLineNode [ OneLineText "-", OneLineNode [_expression_oneLineTree] ]
         ( _range_self) =
             (_range )
         ( _expression_oneLineTree,_expression_self) =
@@ -948,7 +948,7 @@ sem_Expression_NegateFloat (_range) (_expression) =
     let (_self) =
             Expression_NegateFloat _range_self _expression_self
         (_oneLineTree) =
-            Node [ Text "-.", Node [_expression_oneLineTree] ]
+            OneLineNode [ OneLineText "-.", OneLineNode [_expression_oneLineTree] ]
         ( _range_self) =
             (_range )
         ( _expression_oneLineTree,_expression_self) =
@@ -1036,10 +1036,10 @@ sem_Expression_Typed (_range) (_expression) (_type) =
     let (_self) =
             Expression_Typed _range_self _expression_self _type_self
         (_oneLineTree) =
-            Node
-                [ Node [_expression_oneLineTree]
-                , Text " :: "
-                , Node [ Text (show (makeTpSchemeFromType _type_self))]
+            OneLineNode
+                [ OneLineNode [_expression_oneLineTree]
+                , OneLineText " :: "
+                , OneLineNode [ OneLineText (show (makeTpSchemeFromType _type_self))]
                 ]
         ( _range_self) =
             (_range )
@@ -1055,7 +1055,7 @@ sem_Expression_Variable (_range) (_name) =
     let (_self) =
             Expression_Variable _range_self _name_self
         (_oneLineTree) =
-            Node [_name_oneLineTree]
+            OneLineNode [_name_oneLineTree]
         ( _range_self) =
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
@@ -1063,7 +1063,7 @@ sem_Expression_Variable (_range) (_name) =
     in  ( _oneLineTree,_self)
 -- Expressions -------------------------------------------------
 -- semantic domain
-type T_Expressions = ( ( [ Tree] ),(Expressions))
+type T_Expressions = ( ( [ OneLineTree] ),(Expressions))
 -- cata
 sem_Expressions :: (Expressions) ->
                    (T_Expressions)
@@ -1169,7 +1169,7 @@ sem_Fixity_Infixr (_range) =
     in  ( _self)
 -- FunctionBinding ---------------------------------------------
 -- semantic domain
-type T_FunctionBinding = ( (Tree),(FunctionBinding))
+type T_FunctionBinding = ( (OneLineTree),(FunctionBinding))
 -- cata
 sem_FunctionBinding :: (FunctionBinding) ->
                        (T_FunctionBinding)
@@ -1183,7 +1183,7 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) =
     let (_self) =
             FunctionBinding_FunctionBinding _range_self _lefthandside_self _righthandside_self
         (_oneLineTree) =
-            Node [_lefthandside_oneLineTree, _righthandside_oneLineTree " = " ]
+            OneLineNode [_lefthandside_oneLineTree, _righthandside_oneLineTree " = " ]
         ( _range_self) =
             (_range )
         ( _lefthandside_oneLineTree,_lefthandside_self) =
@@ -1193,7 +1193,7 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) =
     in  ( _oneLineTree,_self)
 -- FunctionBindings --------------------------------------------
 -- semantic domain
-type T_FunctionBindings = ( ( [ Tree] ),(FunctionBindings))
+type T_FunctionBindings = ( ( [ OneLineTree] ),(FunctionBindings))
 -- cata
 sem_FunctionBindings :: (FunctionBindings) ->
                         (T_FunctionBindings)
@@ -1217,7 +1217,7 @@ sem_FunctionBindings_Nil  =
     in  ( [],_self)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
-type T_GuardedExpression = ( ( String -> Tree ),(GuardedExpression))
+type T_GuardedExpression = ( ( String -> OneLineTree ),(GuardedExpression))
 -- cata
 sem_GuardedExpression :: (GuardedExpression) ->
                          (T_GuardedExpression)
@@ -1231,7 +1231,7 @@ sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) =
     let (_self) =
             GuardedExpression_GuardedExpression _range_self _guard_self _expression_self
         (_oneLineTree) =
-            \assign -> Node [ _guard_oneLineTree, Text assign, _expression_oneLineTree ]
+            \assign -> OneLineNode [ _guard_oneLineTree, OneLineText assign, _expression_oneLineTree ]
         ( _range_self) =
             (_range )
         ( _guard_oneLineTree,_guard_self) =
@@ -1241,7 +1241,7 @@ sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) =
     in  ( _oneLineTree,_self)
 -- GuardedExpressions ------------------------------------------
 -- semantic domain
-type T_GuardedExpressions = ( ( [ String -> Tree ] ),(GuardedExpressions))
+type T_GuardedExpressions = ( ( [ String -> OneLineTree ] ),(GuardedExpressions))
 -- cata
 sem_GuardedExpressions :: (GuardedExpressions) ->
                           (T_GuardedExpressions)
@@ -1437,7 +1437,7 @@ sem_Judgement_Judgement (_expression) (_type) (_lhs_nameMap) =
     in  ( makeTpFromType _lhs_nameMap _type_self,Judgement (showOneLine 10000 _expression_oneLineTree) (makeTpFromType _lhs_nameMap _type_self),_self,_type_typevariables)
 -- LeftHandSide ------------------------------------------------
 -- semantic domain
-type T_LeftHandSide = ( (Tree),(LeftHandSide))
+type T_LeftHandSide = ( (OneLineTree),(LeftHandSide))
 -- cata
 sem_LeftHandSide :: (LeftHandSide) ->
                     (T_LeftHandSide)
@@ -1502,7 +1502,7 @@ sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) =
     in  ( _oneLineTree,_self)
 -- Literal -----------------------------------------------------
 -- semantic domain
-type T_Literal = ( (Tree),(Literal))
+type T_Literal = ( (OneLineTree),(Literal))
 -- cata
 sem_Literal :: (Literal) ->
                (T_Literal)
@@ -1521,7 +1521,7 @@ sem_Literal_Char (_range) (_value) =
     let (_self) =
             Literal_Char _range_self _value
         (_oneLineTree) =
-            Text ("'" ++ _value ++ "'")
+            OneLineText ("'" ++ _value ++ "'")
         ( _range_self) =
             (_range )
     in  ( _oneLineTree,_self)
@@ -1532,7 +1532,7 @@ sem_Literal_Float (_range) (_value) =
     let (_self) =
             Literal_Float _range_self _value
         (_oneLineTree) =
-            Text _value
+            OneLineText _value
         ( _range_self) =
             (_range )
     in  ( _oneLineTree,_self)
@@ -1543,7 +1543,7 @@ sem_Literal_Int (_range) (_value) =
     let (_self) =
             Literal_Int _range_self _value
         (_oneLineTree) =
-            Text _value
+            OneLineText _value
         ( _range_self) =
             (_range )
     in  ( _oneLineTree,_self)
@@ -1554,13 +1554,13 @@ sem_Literal_String (_range) (_value) =
     let (_self) =
             Literal_String _range_self _value
         (_oneLineTree) =
-            Text ("\"" ++ _value ++ "\"")
+            OneLineText ("\"" ++ _value ++ "\"")
         ( _range_self) =
             (_range )
     in  ( _oneLineTree,_self)
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
-type T_MaybeDeclarations = ( ( Maybe [Tree] ),(MaybeDeclarations))
+type T_MaybeDeclarations = ( ( Maybe [OneLineTree] ),(MaybeDeclarations))
 -- cata
 sem_MaybeDeclarations :: (MaybeDeclarations) ->
                          (T_MaybeDeclarations)
@@ -1610,7 +1610,7 @@ sem_MaybeExports_Nothing  =
     in  ( _self)
 -- MaybeExpression ---------------------------------------------
 -- semantic domain
-type T_MaybeExpression = ( ( Maybe Tree ),(MaybeExpression))
+type T_MaybeExpression = ( ( Maybe OneLineTree ),(MaybeExpression))
 -- cata
 sem_MaybeExpression :: (MaybeExpression) ->
                        (T_MaybeExpression)
@@ -1752,7 +1752,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) =
     in  ( _self)
 -- Name --------------------------------------------------------
 -- semantic domain
-type T_Name = ( (Bool),(Bool),(Bool),(Tree),(Name))
+type T_Name = ( (Bool),(Bool),(Bool),(OneLineTree),(Name))
 -- cata
 sem_Name :: (Name) ->
             (T_Name)
@@ -1770,7 +1770,7 @@ sem_Name_Identifier (_range) (_module) (_name) =
     let (_self) =
             Name_Identifier _range_self _module_self _name
         (_oneLineTree) =
-            Text _name
+            OneLineText _name
         ( _range_self) =
             (_range )
         ( _module_oneLineTree,_module_self) =
@@ -1784,7 +1784,7 @@ sem_Name_Operator (_range) (_module) (_name) =
     let (_self) =
             Name_Operator _range_self _module_self _name
         (_oneLineTree) =
-            Text _name
+            OneLineText _name
         ( _range_self) =
             (_range )
         ( _module_oneLineTree,_module_self) =
@@ -1798,7 +1798,7 @@ sem_Name_Special (_range) (_module) (_name) =
     let (_self) =
             Name_Special _range_self _module_self _name
         (_oneLineTree) =
-            Text _name
+            OneLineText _name
         ( _range_self) =
             (_range )
         ( _module_oneLineTree,_module_self) =
@@ -1806,7 +1806,7 @@ sem_Name_Special (_range) (_module) (_name) =
     in  ( False,False,True,_oneLineTree,_self)
 -- Names -------------------------------------------------------
 -- semantic domain
-type T_Names = ( ( [Bool] ),( [Bool] ),( [Bool] ),( [ Tree] ),(Names))
+type T_Names = ( ( [Bool] ),( [Bool] ),( [Bool] ),( [ OneLineTree] ),(Names))
 -- cata
 sem_Names :: (Names) ->
              (T_Names)
@@ -1830,7 +1830,7 @@ sem_Names_Nil  =
     in  ( [],[],[],[],_self)
 -- Pattern -----------------------------------------------------
 -- semantic domain
-type T_Pattern = ( (Tree),(Pattern))
+type T_Pattern = ( (OneLineTree),(Pattern))
 -- cata
 sem_Pattern :: (Pattern) ->
                (T_Pattern)
@@ -1870,10 +1870,10 @@ sem_Pattern_As (_range) (_name) (_pattern) =
     let (_self) =
             Pattern_As _range_self _name_self _pattern_self
         (_oneLineTree) =
-            Node
-                [ Node [_name_oneLineTree]
-                , Text "@"
-                , Node [_pattern_oneLineTree]
+            OneLineNode
+                [ OneLineNode [_name_oneLineTree]
+                , OneLineText "@"
+                , OneLineNode [_pattern_oneLineTree]
                 ]
         ( _range_self) =
             (_range )
@@ -1891,10 +1891,10 @@ sem_Pattern_Constructor (_range) (_name) (_patterns) =
             Pattern_Constructor _range_self _name_self _patterns_self
         (_operatorName) =
             if _name_isOperator
-              then Node [Text "(", _name_oneLineTree, Text ")"]
+              then OneLineNode [OneLineText "(", _name_oneLineTree, OneLineText ")"]
               else _name_oneLineTree
         (_oneLineTree) =
-            Node (sepBy (Text " ") (_operatorName : _patterns_oneLineTree))
+            OneLineNode (sepBy (OneLineText " ") (_operatorName : _patterns_oneLineTree))
         ( _range_self) =
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
@@ -1911,14 +1911,14 @@ sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_ri
     let (_self) =
             Pattern_InfixConstructor _range_self _leftPattern_self _constructorOperator_self _rightPattern_self
         (_operatorName) =
-            Text (showNameAsOperator _constructorOperator_self)
+            OneLineText (showNameAsOperator _constructorOperator_self)
         (_oneLineTree) =
-            Node
-                [ Node [_leftPattern_oneLineTree]
-                , Text " "
-                , Node [_operatorName]
-                , Text " "
-                , Node [_rightPattern_oneLineTree]
+            OneLineNode
+                [ OneLineNode [_leftPattern_oneLineTree]
+                , OneLineText " "
+                , OneLineNode [_operatorName]
+                , OneLineText " "
+                , OneLineNode [_rightPattern_oneLineTree]
                 ]
         ( _range_self) =
             (_range )
@@ -1975,7 +1975,7 @@ sem_Pattern_Negate (_range) (_literal) =
     let (_self) =
             Pattern_Negate _range_self _literal_self
         (_oneLineTree) =
-            Node [ Text "-", _literal_oneLineTree ]
+            OneLineNode [ OneLineText "-", _literal_oneLineTree ]
         ( _range_self) =
             (_range )
         ( _literal_oneLineTree,_literal_self) =
@@ -1988,7 +1988,7 @@ sem_Pattern_NegateFloat (_range) (_literal) =
     let (_self) =
             Pattern_NegateFloat _range_self _literal_self
         (_oneLineTree) =
-            Node [ Text "-." , _literal_oneLineTree ]
+            OneLineNode [ OneLineText "-." , _literal_oneLineTree ]
         ( _range_self) =
             (_range )
         ( _literal_oneLineTree,_literal_self) =
@@ -2071,13 +2071,13 @@ sem_Pattern_Wildcard (_range) =
     let (_self) =
             Pattern_Wildcard _range_self
         (_oneLineTree) =
-            Text "_"
+            OneLineText "_"
         ( _range_self) =
             (_range )
     in  ( _oneLineTree,_self)
 -- Patterns ----------------------------------------------------
 -- semantic domain
-type T_Patterns = ( ( [ Tree] ),(Patterns))
+type T_Patterns = ( ( [ OneLineTree] ),(Patterns))
 -- cata
 sem_Patterns :: (Patterns) ->
                 (T_Patterns)
@@ -2124,7 +2124,7 @@ sem_Position_Unknown  =
     in  ( _self)
 -- Qualifier ---------------------------------------------------
 -- semantic domain
-type T_Qualifier = ( (Tree),(Qualifier))
+type T_Qualifier = ( (OneLineTree),(Qualifier))
 -- cata
 sem_Qualifier :: (Qualifier) ->
                  (T_Qualifier)
@@ -2142,7 +2142,7 @@ sem_Qualifier_Empty (_range) =
     let (_self) =
             Qualifier_Empty _range_self
         (_oneLineTree) =
-            Text ""
+            OneLineText ""
         ( _range_self) =
             (_range )
     in  ( _oneLineTree,_self)
@@ -2154,7 +2154,7 @@ sem_Qualifier_Generator (_range) (_pattern) (_expression) =
     let (_self) =
             Qualifier_Generator _range_self _pattern_self _expression_self
         (_oneLineTree) =
-            Node [ _pattern_oneLineTree, Text " <- ", _expression_oneLineTree ]
+            OneLineNode [ _pattern_oneLineTree, OneLineText " <- ", _expression_oneLineTree ]
         ( _range_self) =
             (_range )
         ( _pattern_oneLineTree,_pattern_self) =
@@ -2182,7 +2182,7 @@ sem_Qualifier_Let (_range) (_declarations) =
     let (_self) =
             Qualifier_Let _range_self _declarations_self
         (_oneLineTree) =
-            Node [ Text "let ", encloseSep "{" "; " "}" _declarations_oneLineTree ]
+            OneLineNode [ OneLineText "let ", encloseSep "{" "; " "}" _declarations_oneLineTree ]
         ( _range_self) =
             (_range )
         ( _declarations_oneLineTree,_declarations_self) =
@@ -2190,7 +2190,7 @@ sem_Qualifier_Let (_range) (_declarations) =
     in  ( _oneLineTree,_self)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
-type T_Qualifiers = ( ( [ Tree] ),(Qualifiers))
+type T_Qualifiers = ( ( [ OneLineTree] ),(Qualifiers))
 -- cata
 sem_Qualifiers :: (Qualifiers) ->
                   (T_Qualifiers)
@@ -2325,7 +2325,7 @@ sem_RecordPatternBindings_Nil  =
     in  ( _self)
 -- RightHandSide -----------------------------------------------
 -- semantic domain
-type T_RightHandSide = ( ( String -> Tree ),(RightHandSide))
+type T_RightHandSide = ( ( String -> OneLineTree ),(RightHandSide))
 -- cata
 sem_RightHandSide :: (RightHandSide) ->
                      (T_RightHandSide)
@@ -2341,11 +2341,11 @@ sem_RightHandSide_Expression (_range) (_expression) (_where) =
     let (_self) =
             RightHandSide_Expression _range_self _expression_self _where_self
         (_oneLineTree) =
-            \assign -> Node
-                (  [ Text assign, _expression_oneLineTree ]
+            \assign -> OneLineNode
+                (  [ OneLineText assign, _expression_oneLineTree ]
                 ++ case _where_oneLineTree of
                     Nothing -> []
-                    Just ds -> [ Text " where ", encloseSep "{" "; " "}" ds ]
+                    Just ds -> [ OneLineText " where ", encloseSep "{" "; " "}" ds ]
                 )
         ( _range_self) =
             (_range )
@@ -2362,11 +2362,11 @@ sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) =
     let (_self) =
             RightHandSide_Guarded _range_self _guardedexpressions_self _where_self
         (_oneLineTree) =
-            \assign -> Node
+            \assign -> OneLineNode
                 (  [ punctuate " " [ ge assign | ge <- _guardedexpressions_oneLineTree ] ]
                 ++ case _where_oneLineTree of
                     Nothing -> []
-                    Just ds -> [ Text " where ", encloseSep "{" "; " "}" ds ]
+                    Just ds -> [ OneLineText " where ", encloseSep "{" "; " "}" ds ]
                 )
         ( _range_self) =
             (_range )
@@ -2448,7 +2448,7 @@ sem_SimpleType_SimpleType (_range) (_name) (_typevariables) =
     in  ( _self)
 -- Statement ---------------------------------------------------
 -- semantic domain
-type T_Statement = ( (Tree),(Statement))
+type T_Statement = ( (OneLineTree),(Statement))
 -- cata
 sem_Statement :: (Statement) ->
                  (T_Statement)
@@ -2466,7 +2466,7 @@ sem_Statement_Empty (_range) =
     let (_self) =
             Statement_Empty _range_self
         (_oneLineTree) =
-            Text ""
+            OneLineText ""
         ( _range_self) =
             (_range )
     in  ( _oneLineTree,_self)
@@ -2491,7 +2491,7 @@ sem_Statement_Generator (_range) (_pattern) (_expression) =
     let (_self) =
             Statement_Generator _range_self _pattern_self _expression_self
         (_oneLineTree) =
-            Node [ _pattern_oneLineTree, Text " <- ", _expression_oneLineTree ]
+            OneLineNode [ _pattern_oneLineTree, OneLineText " <- ", _expression_oneLineTree ]
         ( _range_self) =
             (_range )
         ( _pattern_oneLineTree,_pattern_self) =
@@ -2506,7 +2506,7 @@ sem_Statement_Let (_range) (_declarations) =
     let (_self) =
             Statement_Let _range_self _declarations_self
         (_oneLineTree) =
-            Node [ Text "let ", encloseSep "{" "; " "}" _declarations_oneLineTree ]
+            OneLineNode [ OneLineText "let ", encloseSep "{" "; " "}" _declarations_oneLineTree ]
         ( _range_self) =
             (_range )
         ( _declarations_oneLineTree,_declarations_self) =
@@ -2514,7 +2514,7 @@ sem_Statement_Let (_range) (_declarations) =
     in  ( _oneLineTree,_self)
 -- Statements --------------------------------------------------
 -- semantic domain
-type T_Statements = ( ( [ Tree] ),(Statements))
+type T_Statements = ( ( [ OneLineTree] ),(Statements))
 -- cata
 sem_Statements :: (Statements) ->
                   (T_Statements)
@@ -2538,7 +2538,7 @@ sem_Statements_Nil  =
     in  ( [],_self)
 -- Strings -----------------------------------------------------
 -- semantic domain
-type T_Strings = ( ( [ Tree] ),(Strings))
+type T_Strings = ( ( [ OneLineTree] ),(Strings))
 -- cata
 sem_Strings :: (Strings) ->
                (T_Strings)
@@ -2830,7 +2830,7 @@ sem_UserStatement_Phase :: (Int) ->
 sem_UserStatement_Phase (_phase) (_lhs_attributeTable) (_lhs_metaVariableConstraintNames) (_lhs_nameMap) (_lhs_standardConstraintInfo) (_lhs_userConstraints) =
     let (_self) =
             UserStatement_Phase _phase
-    in  ( Phase _phase,_lhs_metaVariableConstraintNames,_self,[],_lhs_userConstraints)
+    in  ( CorePhase _phase,_lhs_metaVariableConstraintNames,_self,[],_lhs_userConstraints)
 -- UserStatements ----------------------------------------------
 -- semantic domain
 type T_UserStatements = ([((String, Maybe String), MessageBlock)]) ->

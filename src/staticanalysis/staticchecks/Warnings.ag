@@ -4,9 +4,7 @@
 --               ( Bastiaan Heeren )
 --
 -- Warnings.ag : The warnings that are collected are the following:
---    1) A variable shadows another variable
---    2) An entity is not used (except top level entities, since these can be exported)
---    3) Suspicious function bindings (two groups of function bindings are next to each 
+--    1) Suspicious function bindings (two groups of function bindings are next to each 
 --               other in the program; the names are similar, but only one has an
 --               explicit type signature. Perhaps only one group of function bindings was intended?)
 --
@@ -28,48 +26,28 @@ SEM Body
                           @suspiciousErrors
   
 SEM Expression
-  | Lambda     lhs . warnings = @scopeWarnings ++
-                                @expression.warnings
-  | Let        lhs . warnings = @scopeWarnings ++
-                                @expression.warnings ++
+  | Let        lhs . warnings = @expression.warnings ++
                                 @suspiciousErrors
-
-SEM Alternative
-  | Alternative
-               lhs . warnings = @scopeWarnings ++
-                                @righthandside.warnings                                
-                                
-SEM Statement
-  | Generator  lhs . warnings = @scopeWarnings ++
-                                @expression.warnings                                  
-  | Let lhs . warnings =  @scopeWarnings ++
-                          @declarations.warnings ++
+                                                              
+SEM Statement                                 
+  | Let lhs . warnings =  @declarations.warnings ++
                           @suspiciousErrors
                           
-SEM Qualifier
-  | Generator  lhs . warnings = @scopeWarnings ++
-                                @expression.warnings                                  
-  | Let lhs . warnings =  @scopeWarnings ++
-                          @declarations.warnings ++
+SEM Qualifier                               
+  | Let lhs . warnings =  @declarations.warnings ++
                           @suspiciousErrors
-                                                            
-SEM FunctionBinding
-  | FunctionBinding
-                   lhs . warnings = @scopeWarnings ++
-                                    @righthandside.warnings                                  
-                                    
+                                                                                                                              
 SEM MaybeDeclarations
   | Just
-        lhs . warnings =  @scopeWarnings ++
-                          @declarations.warnings ++
+        lhs . warnings =  @declarations.warnings ++
                           @suspiciousErrors                                     
                           
 SEM Declaration
   | Data
-        lhs . warnings = makeUnused TypeVariable @unused False ++ @lhs.warnings
+        lhs . warnings = map (Unused TypeVariable) @unused ++ @lhs.warnings
           
   | Type                             
-        lhs . warnings = makeUnused TypeVariable @unused False ++ @lhs.warnings       
+        lhs . warnings = map (Unused TypeVariable) @unused ++ @lhs.warnings       
                                                   
 -------------------------------------------
 -- Suspicious Function Bindings

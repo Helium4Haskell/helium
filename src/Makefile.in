@@ -72,7 +72,8 @@ STATICANALYSIS = \
 	staticanalysis/constraints/LiftedConstraints.hs \
 	staticanalysis/constraints/Constraints.hs \
 	staticanalysis/constraints/ConstraintTree.hs \
-	staticanalysis/constraints/Strategy.hs \
+	staticanalysis/constraints/Tree.hs \
+	staticanalysis/constraints/TreeWalk.hs \
 	staticanalysis/constraints/TypeConstraints.hs \
 	staticanalysis/messages/HeliumConstraintInfo.hs \
 	staticanalysis/messages/Messages.hs \
@@ -84,7 +85,6 @@ STATICANALYSIS = \
 	staticanalysis/solvers/FixpointSolveState.hs \
 	staticanalysis/solvers/TypeConstraintSemantics.hs \
 	staticanalysis/solvers/IsSolver.hs \
-	staticanalysis/solvers/SolverOptions.hs \
 	staticanalysis/solvers/ConstraintInfo.hs \
 	staticanalysis/solvers/SolveGreedy.hs \
 	staticanalysis/solvers/SolveState.hs \
@@ -94,6 +94,10 @@ STATICANALYSIS = \
 	staticanalysis/solvers/typegraph/EquivalenceGroup.hs \
 	staticanalysis/solvers/typegraph/TypeGraphInstance.hs \
 	staticanalysis/solvers/typegraphheuristics/TypeGraphHeuristics.hs \
+	staticanalysis/solvers/typegraphheuristics/RepairHeuristics.hs \
+	staticanalysis/solvers/typegraphheuristics/TieBreakerHeuristics.hs \
+	staticanalysis/solvers/typegraphheuristics/FilterHeuristics.hs \
+	staticanalysis/solvers/typegraphheuristics/Heuristics.hs \
         staticanalysis/solvers/typegraphheuristics/InfiniteTypeHeuristic.hs \
 	staticanalysis/solvers/typegraphheuristics/SimilarFunctionTable.hs \
 	staticanalysis/types/TypeUnification.hs \
@@ -236,6 +240,7 @@ staticanalysis/staticchecks/StaticChecks.hs : \
                 staticanalysis/staticchecks/Collect.ag \
                 staticanalysis/staticchecks/HeliumPartialSyntax.ag \
                 staticanalysis/staticchecks/Scope.ag \
+                staticanalysis/staticchecks/ScopeErrors.ag \
 		syntax/UHA_Syntax.ag 
                 
 	# AG StaticAnalysis
@@ -248,10 +253,10 @@ staticanalysis/inferencers/TypeInferencing.hs : \
                 staticanalysis/inferencers/PatternMatchWarnings.ag \
                 staticanalysis/staticchecks/HeliumPartialSyntax.ag \
 		syntax/UHA_Syntax.ag \
-                syntax/UHA_OneLine.ag \
+                syntax/UHA_OneLine.ag staticanalysis/staticchecks/Scope.ag\
                 staticanalysis/inferencers/typingstrategies/TS_PatternMatching.ag
                 
-	# AG StaticAnalysis
+	# AG TypeInferencing
 	cd staticanalysis/inferencers;$(AG) $(AG_OPTS) --self TypeInferencing.ag;cd ../..
         
 codegeneration/CodeGeneration.hs : \

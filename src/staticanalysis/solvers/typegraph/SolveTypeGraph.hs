@@ -18,7 +18,6 @@ import Types
 import FixpointSolveState
 import IsSolver
 import IsTypeGraph
-import SolverOptions  
 import Constraints
 import SolveState
 import List
@@ -34,7 +33,7 @@ data TG info state =
 evalTypeGraph :: TypeGraph info result -> result
 evalTypeGraph x = fst $ runSTMonad $ runFix x newState
 
-solveTypeGraph :: IsTypeGraph (TypeGraph info) info => Int -> SolverOptions -> Constraints (TypeGraph info) -> TypeGraph info result -> result
+solveTypeGraph :: IsTypeGraph (TypeGraph info) info => SolverOptions -> Constraints (TypeGraph info) -> TypeGraph info result -> result
 solveTypeGraph = solveConstraints evalTypeGraph
 
 buildSubstitutionTypeGraph :: IsTypeGraph (TypeGraph info) info => TypeGraph info WrappedSubstitution 
@@ -82,10 +81,9 @@ instance IsTypeGraph (TypeGraph info) info => IsSolver (TypeGraph info) info whe
       mapM_ (\i -> addVertexWithChildren i (Nothing,[],Nothing)) is
 
    findSubstForVar i =   
-      do options   <- getSolverOptions
+      do synonyms  <- getTypeSynonyms
          vertices  <- getVerticesInGroup i
-         let synonyms = getTypeSynonyms options
-             constants = nubBy (\x y -> fst x == fst y)
+         let constants = nubBy (\x y -> fst x == fst y)
                        $ [ original | (_,(_,_,Just original)) <- vertices ]
                       ++ [ (s,cs)   | (_,(Just s,cs,Nothing)) <- vertices ] 
          types <- let f (s,cs) = do ts <- mapM findSubstForVar cs

@@ -8,6 +8,7 @@ data TypeConstraint info
    | ExplicitInstance ((Tp,Tp) -> info) Tp TpScheme 
    | ImplicitInstance ((Tp,Tp) -> info) Tp Tps Tp   
    | MakeConsistent -- :-(
+   | PredicateConstraint Predicate
 
 type TypeConstraints info = [TypeConstraint info]
 
@@ -40,6 +41,7 @@ instance Show info => Show (TypeConstraint info) where
                 monos    = if null ms then "" else "monos="++show (ftv ms)++"; "
             in show t1 ++ " <= " ++ show t2 ++ " : " ++ monos ++ show (info unknowns)            
          MakeConsistent -> "<MakeConsistent>"
+         PredicateConstraint p -> show p
 
 instance Functor TypeConstraint where 
    fmap function constraint = 
@@ -48,6 +50,7 @@ instance Functor TypeConstraint where
          ExplicitInstance a tp tps   -> ExplicitInstance (function . a) tp tps
          ImplicitInstance a t1 ms t2 -> ImplicitInstance (function . a) t1 ms t2
          MakeConsistent              -> MakeConsistent
+         PredicateConstraint p       -> PredicateConstraint p
             
 instance Substitutable (TypeConstraint info) where
 
@@ -55,10 +58,10 @@ instance Substitutable (TypeConstraint info) where
                            Equality         info t1 t2       -> Equality info (sub |-> t1) (sub |-> t2)
                            ImplicitInstance info t1 monos t2 -> ImplicitInstance info (sub |-> t1) (sub |-> monos) (sub |-> t2)
                            ExplicitInstance info tp ts       -> ExplicitInstance info (sub |-> tp) (sub |-> ts)
-                           MakeConsistent                    -> MakeConsistent
+                           _                                 -> constraint
                            
    ftv constraint = case constraint of
                        Equality         info t1 t2       -> ftv t1 `union` ftv t2
                        ImplicitInstance info t1 monos t2 -> ftv t1 `union` ftv monos `union` ftv t2
                        ExplicitInstance info tp ts       -> ftv tp `union` ftv ts  
-                       MakeConsistent                    -> []                              
+                       _                                 -> []                              

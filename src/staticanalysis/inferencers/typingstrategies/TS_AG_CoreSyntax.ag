@@ -25,5 +25,5 @@ DATA Core_UserStatement
         message     : String
    | MetaVariableConstraints        
         name        : String
-   | Phase 
+   | CorePhase 
         phase       : Int

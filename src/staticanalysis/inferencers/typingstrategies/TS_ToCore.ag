@@ -59,7 +59,7 @@ SEM UserStatement [ | | core : Core_UserStatement ]
                                              (makeTpFromType @lhs.nameMap @rightType.self) 
                                              (concat (substituteAttributes (algebraFromNameMap @lhs.nameMap) @message))
   | MetaVariableConstraints   lhs . core = MetaVariableConstraints (show @name.self)
-  | Phase                     lhs . core = Phase @phase
+  | Phase                     lhs . core = CorePhase @phase
        
 {
 algebraFromNameMap :: [(Name, Tp)] -> AttributeAlgebra String

@@ -20,7 +20,7 @@ data Core_TypingStrategy = Siblings [String]
 -- Core_UserStatement ------------------------------------------
 data Core_UserStatement = Constraint (Tp) (Tp) (String)
                         | MetaVariableConstraints (String)
-                        | Phase (Int)
+                        | CorePhase (Int)
    deriving Read                     
 -- Core_UserStatements -----------------------------------------
 type Core_UserStatements = [(Core_UserStatement)]                  
@@ -50,7 +50,7 @@ instance Show Core_Judgement where
 instance Show Core_UserStatement where
   show (Constraint t1 t2 s)        = "Constraint ("++showTp t1++") ("++showTp t2++") "++show s
   show (MetaVariableConstraints s) = "MetaVariableConstraints "++show s
-  show (Phase i)                   = "Phase "++show i
+  show (CorePhase i)               = "CorePhase "++show i
    
 showTp :: Tp -> String
 showTp (TVar i)   = "TVar "++show i

@@ -5,7 +5,6 @@ import List
 import IsSolver
 import SolveState
 import Utils (internalError)
-import SolverOptions (getTypeSynonyms)
 import TypeGraphConstraintInfo
                      
 class (TypeGraphConstraintInfo info, Monad m) => IsTypeGraph m info | m -> info where
@@ -34,12 +33,11 @@ isConsistent = do conflicts <- getConflicts
 makeTermGraph :: (IsTypeGraph m info, MonadState (SolveState m info a) m) => Tp -> m Int
 makeTermGraph tp = case leftSpine tp of
                      (TVar i,[]) -> do return i
-                     (TCon s,ts) -> do options <- getSolverOptions
+                     (TCon s,ts) -> do synonyms <- getTypeSynonyms
                                        unique   <- getUnique
                                        setUnique (unique+1)
                                        is <- mapM makeTermGraph ts
-                                       let synonyms = getTypeSynonyms options
-                                           tp'      = foldl TApp (TCon s) $ map TVar is
+                                       let tp' = foldl TApp (TCon s) $ map TVar is
                                        case leftSpine (expandTypeConstructor (snd synonyms) tp') of
                                           (TVar i,[])   -> do return i
                                           (TCon s',ts') -> do is' <- mapM makeTermGraph ts'
@@ -51,11 +49,10 @@ makeTermGraph tp = case leftSpine tp of
 
 checkErrors :: (IsTypeGraph m info, MonadState (SolveState m info a) m, IsSolver m info) => m ()
 checkErrors =
-   do errors  <- getErrors
-      options <- getSolverOptions
+   do errors   <- getErrors
+      synonyms <- getTypeSynonyms
       let isValidError info = 
-             let (t1,t2)  = getTwoTypes info
-                 synonyms = getTypeSynonyms options
+             let (t1,t2) = getTwoTypes info
              in do t1' <- applySubst t1
                    t2' <- applySubst t2
                    case mguWithTypeSynonyms synonyms t1' t2' of

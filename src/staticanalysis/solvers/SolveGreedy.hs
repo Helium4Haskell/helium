@@ -20,7 +20,6 @@ import SolveState
 import IsSolver
 import Utils (internalError, doubleSizeOfSTArray )
 import FixpointSolveState
-import SolverOptions
 import ConstraintInfo
 
 type Greedy info = Fix info () (STMonad (ArraySubstitution info))
@@ -28,7 +27,7 @@ type Greedy info = Fix info () (STMonad (ArraySubstitution info))
 evalGreedy :: Greedy info result -> result
 evalGreedy x = fst $ runSTMonad $ runFix x newState
 
-solveGreedy :: ConstraintInfo info => Int -> SolverOptions -> Constraints (Greedy info) -> Greedy info result -> result
+solveGreedy :: ConstraintInfo info => SolverOptions -> Constraints (Greedy info) -> Greedy info result -> result
 solveGreedy = solveConstraints evalGreedy
 
 instance ConstraintInfo info => IsSolver (Greedy info) info where 
@@ -40,10 +39,9 @@ instance ConstraintInfo info => IsSolver (Greedy info) info where
                return (A starray) )
  
    unifyTerms info t1 t2 =
-       do  t1'     <- applySubst t1
-           t2'     <- applySubst t2
-           options <- getSolverOptions
-           let synonyms = getTypeSynonyms options
+       do  t1'      <- applySubst t1
+           t2'      <- applySubst t2
+           synonyms <- getTypeSynonyms
            case mguWithTypeSynonyms synonyms t1' t2' of
                Right (used,sub) -> 
                    do liftUse

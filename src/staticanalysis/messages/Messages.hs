@@ -13,7 +13,7 @@ import UHA_Syntax
 import UHA_Utils
 import UHA_Range
 import Types 
-import qualified OneLiner
+import OneLiner
 import Similarity (similar)
 import Utils      (internalError)
 import List       (sortBy, sort, partition)
@@ -32,7 +32,7 @@ data MessageBlock  = MessageString       String
                    | MessageType         Tp
                    | MessageTypeScheme   TpScheme
                    | MessageInfoLink     String
-                   | MessageOneLineTree  OneLiner.Tree
+                   | MessageOneLineTree  OneLineTree
                    | MessageCompose      MessageBlocks                   
 
 class HasMessage a where

@@ -8,11 +8,13 @@
 -------------------------------------------------------------------------------
 
 ATTR Module
-   [ importEnvironment     : ImportEnvironment
-     strategy              : Strategy
+   [ flattening            : Flattening
+     importEnvironment     : ImportEnvironment     
      useTypeGraph          : Bool
    |
    | debugIO               : {IO ()}
+     localTypes            : {[(Name,TpScheme)]}
+     overloadedVars        : OverloadedVariables
      toplevelTypes         : TypeEnvironment
      typeErrors            : TypeErrors
      warnings              : Warnings
@@ -24,6 +26,7 @@ INCLUDE "PatternMatchWarnings.ag"
 INCLUDE "../staticchecks/HeliumPartialSyntax.ag"
 INCLUDE "../../syntax/UHA_OneLine.ag"
 INCLUDE "../../syntax/UHA_Syntax.ag"
+INCLUDE "../staticchecks/Scope.ag" 
 
 SEM Module
   | Module lhs . warnings = @loc.warnings ++ @body.patternMatchWarnings
@@ -33,6 +36,7 @@ imports {
 -- standard
 import Monad                   ( when )
 import List                    ( intersperse, partition, nub, zipWith4, union )
+import Maybe (catMaybes, mapMaybe)
 -- types
 import Types
 import TypeConversion
@@ -40,7 +44,8 @@ import TypeConversion
 import TypeConstraints
 import LiftedConstraints
 import ConstraintTree
-import Strategy
+import TreeWalk
+import Tree
 -- messages
 import Messages
 import TypeErrors
@@ -52,10 +57,11 @@ import SolveGreedy
 import ConstraintInfo
 import TypeGraphConstraintInfo
 import HeliumConstraintInfo
-import SolverOptions
 import Constraints
 import TypeConstraintSemantics
 import SolveState
+import IsSolver
+import SimilarFunctionTable    ( similarFunctionTable )
 -- other
 import TopSort                 ( topSort )
 import Utils                   ( internalError )

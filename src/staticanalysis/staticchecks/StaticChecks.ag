@@ -39,13 +39,16 @@ INCLUDE "TopLevelErrors.ag"
 INCLUDE "MiscErrors.ag"
 INCLUDE "ExportErrors.ag"
 INCLUDE "HeliumPartialSyntax.ag"
+INCLUDE "ScopeErrors.ag"
 
 -- combine all the collected errors, then filter out the "entity is undefined" 
 -- errors that are caused by the removal of "duplicated entities"
 SEM Module
   | Module   lhs . errors = filter (\err -> filterRemovedNames @removedEntities err 
                                          && filterDerivedNames @derivedRanges err) @allErrors
+                 . warnings  = @scopeWarnings ++ @warnings                                        
              loc . allErrors = concat [ @exportErrors
+                                      , @scopeErrors
                                       , @miscerrors
                                       , @kindErrors
                                       , @topLevelErrors
@@ -53,6 +56,7 @@ SEM Module
                  . removedEntities = [ (name,TypeConstructor) | name:_ <- @duplicatedTypeConstructors  ] ++   
                                      [ (name,Constructor    ) | name:_ <- @duplicatedValueConstructors ]
                  . derivedRanges   = map getNameRange (map fst @derivedFunctions)
+                 . initialScope    = map fst @derivedFunctions ++ concatMap (keysFM . typeEnvironment) @lhs.importEnvironments                 
 {
 -- filter undefined errors that are caused by the removal of a duplicate definition
 filterRemovedNames :: [(Name,Entity)] -> Error -> Bool

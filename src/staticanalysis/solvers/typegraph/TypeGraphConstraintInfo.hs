@@ -27,7 +27,7 @@ class (Show constraintinfo,ConstraintInfo constraintinfo) =>
    isFolkloreConstraint    :: constraintinfo -> Bool
    isExplicitTypedBinding  :: constraintinfo -> Bool
    isTupleEdge             :: constraintinfo -> Bool
-   maybeApplicationEdge    :: constraintinfo -> Maybe (Bool, [(Tree, Tp, Range)])
+   maybeApplicationEdge    :: constraintinfo -> Maybe (Bool, [(OneLineTree, Tp, Range)])
    maybeImportedFunction   :: constraintinfo -> Maybe Name
    getTwoTypes             :: constraintinfo -> (Tp,Tp)
    maybeLiteral            :: constraintinfo -> Maybe Literal
@@ -48,7 +48,7 @@ class (Show constraintinfo,ConstraintInfo constraintinfo) =>
                      in nt == NTPattern
 
 -- not a nice solution!
-makeTypeErrorForTerm :: TypeGraphConstraintInfo constraintinfo => (Bool,Bool) -> Int -> Tree -> (Tp,Tp) -> Range -> constraintinfo -> TypeError
+makeTypeErrorForTerm :: TypeGraphConstraintInfo constraintinfo => (Bool,Bool) -> Int -> OneLineTree -> (Tp,Tp) -> Range -> constraintinfo -> TypeError
 makeTypeErrorForTerm (isInfixApplication,isPatternApplication) argumentNumber termOneLiner (t1, t2) range cinfo =
    case makeTypeError cinfo of
 

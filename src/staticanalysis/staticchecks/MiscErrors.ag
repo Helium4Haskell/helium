@@ -15,7 +15,7 @@ ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alterna
 
 SEM Module
   | Module  body . miscerrors = []
-            loc  . miscerrors = @scopeErrors ++ @body.miscerrors
+            loc  . miscerrors = @body.miscerrors
                             
 -----------------------------------------
 -- Body
@@ -55,7 +55,7 @@ SEM Declaration
                  . undef   = filter (`notElem` @simpletype.typevariables) @type.typevariables 
        
 SEM MaybeDeclarations
-  | Just   lhs . miscerrors = @scopeErrors ++ @typeSignatureErrors ++ @declarations.miscerrors
+  | Just   lhs . miscerrors = @typeSignatureErrors ++ @declarations.miscerrors
            loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
            loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
 
@@ -93,13 +93,7 @@ mode xs =
 
 frequencies :: Ord a => [a] -> [(a, Int)]
 frequencies = map (\ys -> (head ys, length ys)) . group . sort
-}
-    
------------------------------------------
--- FunctionBinding
-
-SEM FunctionBinding
-  | FunctionBinding   lhs . miscerrors = @scopeErrors ++ @righthandside.miscerrors
+}    
 
 -----------------------------------------
 -- Expression
@@ -115,13 +109,12 @@ SEM Expression
                                                else let range = getStatementRange (last @statements.self)
                                                     in [ LastStatementNotExpr range ]  
                                                 
-  | Lambda       lhs . miscerrors = @scopeErrors ++ @expression.miscerrors  
   | Constructor  lhs . miscerrors = @undefinedConstructorErrors ++ @lhs.miscerrors
                  loc . undefinedConstructorErrors = case lookupFM @lhs.valueConstructors @name.self of
                                                        Nothing -> [ undefinedConstructorInExpr @name.self (@lhs.namesInScope ++ @lhs.allValueConstructors) @lhs.allTypeConstructors ]
                                                        Just _  -> []
 
-  | Let          lhs . miscerrors = @scopeErrors ++ @typeSignatureErrors ++ @expression.miscerrors
+  | Let          lhs . miscerrors = @typeSignatureErrors ++ @expression.miscerrors
                  loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
                  loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
 
@@ -176,18 +169,12 @@ simplePattern pattern =
                                          _   -> False
       _                            -> False
 }
------------------------------------------
--- Alternative
-
-SEM Alternative
-  | Alternative    lhs . miscerrors = @scopeErrors ++ @righthandside.miscerrors
   
 -----------------------------------------
 -- Statement  
 
  SEM Statement
-   | Generator  lhs . miscerrors = @scopeErrors ++ @expression.miscerrors
-   | Let        lhs . miscerrors = @scopeErrors ++ @typeSignatureErrors ++ @declarations.miscerrors 
+   | Let        lhs . miscerrors = @typeSignatureErrors ++ @declarations.miscerrors 
                 loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
                     . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
                        
@@ -195,8 +182,7 @@ SEM Alternative
 -- Qualifier    
        
 SEM Qualifier
-  | Generator lhs . miscerrors = @scopeErrors ++ @expression.miscerrors
-  | Let       lhs . miscerrors = @scopeErrors ++ @typeSignatureErrors ++ @declarations.miscerrors
+  | Let       lhs . miscerrors = @typeSignatureErrors ++ @declarations.miscerrors
               loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
                   . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
 

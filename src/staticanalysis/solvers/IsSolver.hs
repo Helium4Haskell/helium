@@ -3,7 +3,6 @@ module IsSolver where
 import Constraints
 import SolveState
 import Types
-import SolverOptions
 import ConstraintInfo
 
 class (ConstraintInfo info, Monad m) => IsSolver m info | m -> info where
@@ -17,13 +16,17 @@ class (ConstraintInfo info, Monad m) => IsSolver m info | m -> info where
    makeConsistent = return ()    -- default definition (do nothing)
    newVariables _ = return ()    -- default definition (do nothing)   
 
+type SolverOptions = (Int, OrderedTypeSynonyms, [[(String, TpScheme)]])
+
 solveConstraints :: ( IsSolver m info
                     , MonadState (SolveState m info ext) m
                     , Show ext
-                    ) => (m result -> result) -> Int -> SolverOptions -> Constraints m -> m result -> result
-solveConstraints evaluator unique options constraints monad = evaluator $
+                    ) => (m result -> result) -> SolverOptions -> Constraints m -> m result -> result
+solveConstraints evaluator (unique, synonyms, siblings) constraints monad = 
+   evaluator $
    do setUnique unique    
-      setSolverOptions options
+      setTypeSynonyms synonyms
+      addSiblings siblings
       initialize
       pushConstraints constraints
       stateDebug
@@ -38,9 +41,20 @@ applySubst (TApp t1 t2) = do t1' <- applySubst t1
                              t2' <- applySubst t2
                              return (TApp t1' t2')
                              
-applySubstScheme :: IsSolver m info => TpScheme -> m TpScheme
-applySubstScheme scheme = 
+applySubstGeneral :: (Substitutable a, IsSolver m info) => a -> m a
+applySubstGeneral scheme = 
    do let var = ftv scheme
       tps <- mapM findSubstForVar var
       let sub = listToSubstitution (zip var tps)                          
       return (sub |-> scheme)   
+
+getReducedPredicates :: (IsSolver m info, MonadState (SolveState m info ext) m) => m Predicates
+getReducedPredicates =
+   do synonyms    <- getTypeSynonyms
+      predicates  <- getPredicates
+      substituted <- applySubstGeneral predicates
+      let (reduced, errors) = contextReduction synonyms standardClasses substituted
+      unless (null errors) $ 
+         error (unlines ("" : "Reduction error(s)" : map show errors))
+      setPredicates reduced
+      return reduced

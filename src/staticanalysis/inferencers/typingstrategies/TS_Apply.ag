@@ -21,11 +21,12 @@ import Lexer (strategiesLexer)
 import ParseLibrary (runHParser)
 import qualified ResolveOperators
 import TS_Attributes
+import Tree
 }
 
 {
 type MetaVariableTable info = [(String, (ConstraintSet, info))]
-type MetaVariableInfo = (Tp, Tree, Range)
+type MetaVariableInfo = (Tp, OneLineTree, Range)
 
 applyTypingStrategy :: Core_TypingStrategy -> (ConstraintSet, MetaVariableInfo) -> MetaVariableTable MetaVariableInfo -> Int -> (ConstraintSet, IO (), Int)
 applyTypingStrategy = sem_Core_TypingStrategy
@@ -63,10 +64,10 @@ ATTR Core_TypingStrategy
           
 SEM Core_TypingStrategy 
   | Siblings     
-       lhs . constraintSet = ctEmpty
+       lhs . constraintSet = emptyTree
            . debugIO       = return ()
   | TypingStrategy     
-       lhs . constraintSet = ctNode @allConstraintTrees
+       lhs . constraintSet = Node @allConstraintTrees
            . unique        = length @normalTV + @lhs.unique
            . debugIO       = putStrLn "applying typing strategy"
        loc . substitution  = listToSubstitution (@standardSubst ++ @specialSubst)
@@ -117,7 +118,7 @@ ATTR Core_UserStatements Core_UserStatement
 
 SEM Core_TypingStrategy 
   | TypingStrategy
-       loc        . allConstraintTrees = ctSingle (reverse @typerule.constraints) :
+       loc        . allConstraintTrees = listTree (reverse @typerule.constraints) :
                                          (map snd @statements.metavarConstraints) ++
                                          (reverse @statements.collectConstraints)
        statements . collectConstraints = []
@@ -131,8 +132,8 @@ SEM Core_UserStatement
        lhs . currentPosition    = (\(x, y) -> (x, y+1)) @lhs.currentPosition 
            . collectConstraints = case @lhs.currentPhase of
                                      Just phase | phase /= 5 
-                                                -> ctPhased (phase - 5) [ @newConstraint ] : @lhs.collectConstraints
-                                     _          -> ctSingle             [ @newConstraint ] : @lhs.collectConstraints
+                                                -> Phase phase [ @newConstraint ] : @lhs.collectConstraints
+                                     _          -> unitTree @newConstraint : @lhs.collectConstraints
        
   | MetaVariableConstraints        
        lhs . metavarConstraints = filter ((@name /=) . fst) @lhs.metavarConstraints
@@ -140,7 +141,7 @@ SEM Core_UserStatement
                                       Just tree -> tree : @lhs.collectConstraints
                                       Nothing   -> internalError "TS_Apply.ag" "n/a" "unknown constraint set"
                                       
-  | Phase 
+  | CorePhase 
        lhs . currentPhase = Just @phase                  
 
 SEM Core_UserStatement
@@ -184,7 +185,7 @@ SEM Core_TypeRule
                                ]
 
 {
-typeRuleCInfo :: String -> Maybe (String, Tree) -> MetaVariableInfo -> (Tp, Tp) -> HeliumConstraintInfo
+typeRuleCInfo :: String -> Maybe (String, OneLineTree) -> MetaVariableInfo -> (Tp, Tp) -> HeliumConstraintInfo
 typeRuleCInfo loc mTuple (tp1,tree,range) tppair =
    CInfo { info       = (NTBody, AltBody, (-1), "Typing Strategy, " ++ infoString)
          , location   = loc
@@ -198,7 +199,7 @@ typeRuleCInfo loc mTuple (tp1,tree,range) tppair =
           Nothing    -> ("conclusion", [sourceExpression tree], [FolkloreConstraint])
 
 -- see TypeInferenceInfo.ag
-sourceTerm, sourceExpression :: Tree -> (String, Tree)
+sourceTerm, sourceExpression :: OneLineTree -> (String, OneLineTree)
 sourceTerm        = (,) "term"
 sourceExpression  = (,) "expression"
 

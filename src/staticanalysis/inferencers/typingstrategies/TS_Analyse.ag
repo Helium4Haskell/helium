@@ -77,7 +77,7 @@ SEM TypingStrategy
 
            -- Solve the constraint set.           
            . (substitution, solveErrors) =    
-                solveGreedy (length @uniqueTypevariables) [] 
+                solveGreedy (length @uniqueTypevariables, getOrderedTypeSynonyms @lhs.importEnvironment, [])
                             (reverse (liftConstraints @statements.userConstraints)) $                
                    do subst  <- buildSubstitutionGreedy
                       errors <- getErrors
