@@ -1,0 +1,7 @@
+Compiling typeerrors/Examples/TooGenBug.hs
+(1,1): Declared type is too general
+ function         : f
+   declared type  : a   -> Int
+   inferred type  : [b] -> Int
+
+Compilation failed with 1 error
