@@ -17,6 +17,7 @@ SEM Module
                                            , @valueConstructorErrors
                                            , @fixityErrors
                                            , @fixityButNoFunDefErrors
+                                           , @wrongFlagErrors
                                            , @recursiveTypeSynonymErrors
                                            , @wrongFileNameErrors
                                            ]
@@ -47,7 +48,18 @@ SEM Module
 SEM Module
   | Module   loc . fixityButNoFunDefErrors = let list = nub (@body.declVarNames ++ @allValueConstructors)
                                              in makeNoFunDef Fixity (filter (`notElem` list) @correctFixities) list
-                                                                                                         
+       
+------------------------------------------------------------------------------
+-- wrong overloading flag is used (w.r.t. imported functions)
+
+SEM Module
+  | Module   loc . wrongFlagErrors = 
+       [ WrongOverloadingFlag flag
+       | let flag = Overloading `elem` @lhs.options
+             imp  = any isOverloaded (concatMap (eltsFM . typeEnvironment) @lhs.importEnvironments)
+       , flag /= imp
+       ]
+       
 ------------------------------------------------------------------------------
 -- recursive type synonyms
 

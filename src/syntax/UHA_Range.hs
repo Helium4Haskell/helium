@@ -91,6 +91,8 @@ mergeRanges _ _ = Range_Range Position_Unknown Position_Unknown
 noRange :: Range
 noRange = Range_Range Position_Unknown Position_Unknown
 
+emptyRange :: Range
+emptyRange = let p = Position_Position "" 1 1 in Range_Range p p
 -----------------------------------------------------
 -- Misuse the second position of the range to
 -- store where the name was imported from.

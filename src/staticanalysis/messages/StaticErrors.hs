@@ -37,6 +37,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | NegateNeeded Range
             | OverloadingDisabled Range
             | OverloadedRestrPat Name
+            | WrongOverloadingFlag Bool{- flag? -}
             
             | AmbiguousContext Name
             | UnknownClass Name
@@ -60,10 +61,10 @@ instance HasMessage Error where
       NegateNeeded range          -> [range]
       OverloadingDisabled range   -> [range]
       OverloadedRestrPat name     -> [getNameRange name]
-      
+      WrongOverloadingFlag flag   -> [emptyRange]
       AmbiguousContext name       -> [getNameRange name]
       UnknownClass name           -> [getNameRange name]
-      _                           -> internalError "Messages.hs" 
+      _                           -> internalError "StaticErrors.hs" 
                                                    "instance IsMessage Error" 
                                                    "unknown type of Error"
          
@@ -142,6 +143,7 @@ showError anError = case anError of
       ( MessageString ("Recursive type synonym " ++ show (show string))
       , [ MessageString "Use \"data\" to write a recursive data type" ]
       )
+      
    RecursiveTypeSynonyms strings ->
       ( MessageString ("Recursive type synonyms " ++
             prettyAndList (map (show . show) (sortNamesByRange strings)))
@@ -181,6 +183,16 @@ showError anError = case anError of
       , []
       )
 
+   WrongOverloadingFlag False ->
+      ( MessageString ("Using overloaded Prelude while overloading is not enabled")
+      , [MessageString "Compile with --overloading, or use the simple Prelude"]
+      )
+
+   WrongOverloadingFlag True ->
+      ( MessageString ("Using simple Prelude while overloading is enabled")
+      , [MessageString "Compile without --overloading, or use the overloaded Prelude"]
+      )
+      
    AmbiguousContext name ->
       ( MessageString ("Type variable " ++ show (show name) ++ " appears in the context but not in the type")
       , []
@@ -192,7 +204,7 @@ showError anError = case anError of
       )
       
 
-   _ -> internalError "Messages.hs" "showError" "unknown type of Error"
+   _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
 makeUndefined :: Entity -> Names -> Names -> [Error]
 makeUndefined entity names inScope = [ Undefined entity name inScope [] | name <- names ]
@@ -239,6 +251,7 @@ errorLogCode anError = case anError of
           RecursiveTypeSynonyms _ -> "ts"
           PatternDefinesNoVars _  -> "nv"
           OverloadedRestrPat _    -> "od"
+          WrongOverloadingFlag _  -> "of"
           _                       -> "??"
    where code entity = maybe "??" id
                      . lookup entity 

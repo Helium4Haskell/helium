@@ -8074,6 +8074,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                        , _valueConstructorErrors
                        , _fixityErrors
                        , _fixityButNoFunDefErrors
+                       , _wrongFlagErrors
                        , _recursiveTypeSynonymErrors
                        , _wrongFileNameErrors
                        ]
@@ -8089,6 +8090,12 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             (_fixityButNoFunDefErrors@_) =
                 let list = nub (_bodyIdeclVarNames ++ _allValueConstructors)
                 in makeNoFunDef Fixity (filter (`notElem` list) _correctFixities) list
+            (_wrongFlagErrors@_) =
+                [ WrongOverloadingFlag flag
+                | let flag = Overloading `elem` _lhsIoptions
+                      imp  = any isOverloaded (concatMap (eltsFM . typeEnvironment) _lhsIimportEnvironments)
+                , flag /= imp
+                ]
             (_recursiveTypeSynonymErrors@_) =
                 let converted  = map (\(name, tuple) -> (show name, tuple)) _bodyIcollectTypeSynonyms
                     recursives = snd . getTypeSynonymOrdering . listToFM $ converted
