@@ -1,19 +1,23 @@
 module TS_Parser where
-
+ 
+-- UHA
 import UHA_Syntax
 import UHA_Utils (nameFromString)
+import qualified UHA_Pretty as PP
+-- Typing strategies
 import TS_Syntax
 import TS_CoreSyntax
 import qualified TS_ToCore
-import List (intersperse)
-import Data.IORef
-import Char
-import qualified UHA_Pretty as PP
-import qualified ResolveOperators
-import Parser
-import Text.ParserCombinators.Parsec
+-- Parser/Lexer
+import Lexer (Token, Lexeme)
 import ParseLibrary hiding (satisfy)
-import Lexer
+import Parser (exp0, type_)
+import qualified ResolveOperators (expression)
+import Text.ParserCombinators.Parsec
+-- Rest
+import Data.List (intersperse)
+import Data.IORef
+import Data.Char
 import OperatorTable
 
 parseTypingStrategies :: OperatorTable -> String -> [Token] -> Either ParseError TypingStrategies

@@ -343,7 +343,7 @@ fbHasTooManyArguments =
              maximumExplicit = arityOfTp (expandType (snd synonyms) t1)
              tvar            = head (ftv t2)
    
-         edgeList <- getAdjacentEdges tvar       
+         edgeList <- edgesFrom tvar       
          let maybeNumberOfPatterns = 
                 case [ i | Just i <- map (\(_,_,info) -> maybeFunctionBinding info) edgeList ] of 
                    [i] -> Just i
@@ -381,11 +381,11 @@ variableFunction =
               
               -- is this variable involved in an application?
               let EdgeID v1 v2 = edge
-              edges1 <- getAdjacentEdges v1
-              edges2 <- getAdjacentEdges v2
+              edges1 <- edgesFrom v1
+              edges2 <- edgesFrom v2
               let f ((EdgeID v1 v2),_,_) = [v1,v2]
               let special = concatMap f (filter (isEmptyInfixApplication . (\(_,_,info) -> info)) (edges1 ++ edges2)) \\ [v1,v2]
-              edges3 <- mapM getAdjacentEdges special
+              edges3 <- mapM edgesFrom special
               let isApplicationEdge = isJust . maybeApplicationEdge
                   application = any (\(_,_,info) -> isApplicationEdge info) (edges1 ++ edges2 ++ concat edges3)                                                               
              
@@ -419,7 +419,7 @@ considerUnifierVertices xs =
   unifierVertex :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => 
                        Int -> SolveState EquivalenceGroups info [(HeuristicResult, (EdgeID, info))]
   unifierVertex unifier =
-     do allEdgesAdjacentToUnifier <- getAdjacentEdges unifier
+     do allEdgesAdjacentToUnifier <- edgesFrom unifier
         doWithoutEdges allEdgesAdjacentToUnifier $
 
            do options     <- getSolverOptions
@@ -472,12 +472,6 @@ showNumber i | i <= 10 && i >=0 = list !! i
              | otherwise        = show i
    where list = [ "zero", "one", "two", "three", "four", "five"
                 , "six", "seven", "eight", "nine", "ten" ]      
-
-getAdjacentEdges :: HasTypeGraph m info => Int -> m [(EdgeID, Int, info)]
-getAdjacentEdges vertexID =   
-   do edgeList <- edgesInGroupOf vertexID
-      let predicate (EdgeID v1 v2,_,_) = v1 == vertexID || v2 == vertexID
-      return (filter predicate edgeList)
 
 heuristics_MAX        =    120 :: Int
 

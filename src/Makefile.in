@@ -49,8 +49,8 @@ PACKAGENET = -package net
 else
 PACKAGENET = 
 endif
-HC_OPTS = -static -cpp -fallow-overlapping-instances -fglasgow-exts \
-		-fallow-undecidable-instances $(PACKAGENET) -package lang -i$(IFACES) $(EXTRA_HC_OPTS)
+HC_OPTS = -static -cpp -fglasgow-exts \
+		$(PACKAGENET) -package lang -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
 AG_OPTS = -mscfr
