@@ -2,7 +2,7 @@ module PhaseResolveOperators(phaseResolveOperators) where
 
 import CompileUtils
 import ResolveOperators(resolveOperators, operatorsFromModule)
-import qualified PrettyPrinting(sem_Module)
+import qualified UHA_Pretty as PP(sem_Module)
 import Data.FiniteMap
 
 phaseResolveOperators :: String -> [String] -> Module -> [ImportEnvironment] -> 
@@ -23,7 +23,7 @@ phaseResolveOperators fullName doneModules moduleBeforeResolve importEnvs option
         showErrorsAndExit resolveErrors 20 options
 
     when (DumpUHA `elem` options) $
-        putStrLn $ show $ PrettyPrinting.sem_Module module_
+        putStrLn $ show $ PP.sem_Module module_
     
     return module_
 

@@ -1,6 +1,7 @@
 module HeliumConstraintInfo where
 
 import UHA_Syntax
+import UHA_Utils
 import OneLiner
 import Types
 import TypeErrors
@@ -11,26 +12,40 @@ import TypeConstraints
 import List
 import Tree
 import Maybe
+import UHA_Range
 import Utils (internalError)
+import DoublyLinkedTree
+import UHA_Source
 
 data HeliumConstraintInfo =
-   CInfo { info          :: InfoSource
-         , location      :: String
-         , errorrange    :: Range
-         , sources       :: [(String, OneLineTree)]
+   CInfo { location      :: String
+         , sources       :: (UHA_Source, Maybe UHA_Source {- term -}) 
          , typepair      :: (Tp,Tp)        
+         , localInfo     :: InfoTree
          , properties    :: Properties          
          }
 
+convertErrorRange :: HeliumConstraintInfo -> Range
+convertErrorRange cinfo = 
+   let (source, term) = sources cinfo
+   in maybe (rangeOfSource source) rangeOfSource term
+        
+type InfoTrees = [InfoTree]
+type InfoTree = DoublyLinkedTree LocalInfo
+                            
+data LocalInfo = 
+     LocalInfo { self           :: UHA_Source  
+               , assignedType   :: Maybe Tp
+               }
+                 
 type Properties = [Property]
 data Property   = FolkloreConstraint
                 | PositionInTreeWalk Int
                 | ConstraintPhaseNumber Int
-                | HighlyTrusted
-                | SuperHighlyTrusted
-                | IsImported Name
+                | HasTrustFactor Float
+                | IsImported
                 | IsLiteral Literal
-                | ApplicationEdge Bool{-is binary-} [(OneLineTree, Tp, Range)]{-info about terms-}
+                | ApplicationEdge Bool{-is binary-} [(UHA_Source, Tp, Range)]{-info about terms-}
                 | IsTupleEdge
                 | ExplicitTypedBinding
                 | FuntionBindingEdge Int
@@ -40,26 +55,25 @@ data Property   = FolkloreConstraint
                 | IsUserConstraint Int {- user-constraint-group unique number -} Int {- constraint number within group -}
                 | WithTypeError TypeError
                 | WithHint TypeErrorInfo
-                | SubTermRange Range
                 | Unifier Int {- the unifier -}
                 | ReductionErrorInfo Predicate
+                | IsEmptyInfixApplication
+                | FromBindingGroup
 
 instance Show HeliumConstraintInfo where
-   show = show . getInfoSource
+   show = location
 
 type ConstraintSet  = Tree  (TypeConstraint HeliumConstraintInfo)
 type ConstraintSets = Trees (TypeConstraint HeliumConstraintInfo)
 
 instance ConstraintInfo HeliumConstraintInfo where                                  
                                    
-   setOriginalTypeScheme scheme   = addProperty (OriginalTypeScheme scheme)           
+   setOriginalTypeScheme scheme   = addProperty (OriginalTypeScheme scheme) 
    setConstraintPhaseNumber phase = addProperty (ConstraintPhaseNumber phase)
    setReductionError predicate    = addProperty (ReductionErrorInfo predicate)
      
       
 instance TypeGraphConstraintInfo HeliumConstraintInfo where
-
-   getInfoSource = info
    setNewTypeError typeError = addProperty (WithTypeError typeError)
    setNewHint hint = addProperty (WithHint hint)
    getPosition cinfo = case [ i | PositionInTreeWalk i <- properties cinfo ] of
@@ -68,35 +82,38 @@ instance TypeGraphConstraintInfo HeliumConstraintInfo where
    getConstraintPhaseNumber cinfo = case [ i | ConstraintPhaseNumber i <- properties cinfo ] of
                                        [i] -> Just i
                                        _   -> Nothing
-   getTrustFactor cinfo | isSuperHighlyTrusted          = Just 10000
-                        | isHighlyTrusted               = Just 10
-                        | nt `elem` [ NTPattern
-                                    , NTDeclaration
-                                    , NTFunctionBinding
-                                    ]                   = Just 3
-                        | otherwise                     = Nothing
-       where isHighlyTrusted      = not (null [ () |      HighlyTrusted <- properties cinfo ])
-             isSuperHighlyTrusted = not (null [ () | SuperHighlyTrusted <- properties cinfo ])
-             (nt,_,_,_) = info cinfo
+   getTrustFactor cinfo =
+      let ntFactor = case (self . attribute . localInfo) cinfo of
+                        UHA_Pat  _ -> 3.0
+                        UHA_Decl _ -> 3.0
+                        UHA_FB   _ -> 3.0
+                        _          -> 1.0
+      in product (ntFactor : [ factor | HasTrustFactor factor <- properties cinfo ])
 
    isFolkloreConstraint   cinfo = not . null $ [ () | FolkloreConstraint   <- properties cinfo ]
    isExplicitTypedBinding cinfo = not . null $ [ () | ExplicitTypedBinding <- properties cinfo ]
    isTupleEdge            cinfo = not . null $ [ () | IsTupleEdge          <- properties cinfo ]
    isNegationResult       cinfo = not . null $ [ () | NegationResult       <- properties cinfo ]
+   isExprVariable         cinfo =
+         not (null [ () | FromBindingGroup <- properties cinfo ]) ||
+         isJust (maybeImportedFunction cinfo)            
    
    maybeUserConstraint cinfo = case [ (i1, i2) | IsUserConstraint i1 i2 <- properties cinfo ] of
              []  -> Nothing
              t:_ -> Just t
 
-   maybeImportedFunction cinfo = case [ name | IsImported name <- properties cinfo ] of
+   maybeImportedFunction cinfo = case [ () | IsImported <- properties cinfo ] of
              []  -> Nothing
-             t:_ -> Just t
+             t:_ -> case (self . attribute . localInfo) cinfo of
+                       UHA_Expr (Expression_Variable _ name) -> Just name
+                       _ -> Nothing
+             
    maybeLiteral cinfo = case [ literal | IsLiteral literal <- properties cinfo ] of
              []  -> Nothing
              t:_ -> Just t
-   maybeApplicationEdge cinfo = case [ (b,tuple) | ApplicationEdge b tuple <- properties cinfo ] of
+   maybeApplicationEdge cinfo = case [ (b, tuples) | ApplicationEdge b tuples <- properties cinfo ] of
              []  -> Nothing
-             t:_ -> Just t
+             (b, tuples):_ -> Just (b, [ (oneLinerSource self, tp, range) | (self, tp, range) <- tuples])
    maybeFunctionBinding cinfo = case [ t | FuntionBindingEdge t <- properties cinfo ] of
              []  -> Nothing
              t:_ -> Just t            
@@ -108,17 +125,7 @@ instance TypeGraphConstraintInfo HeliumConstraintInfo where
              t:_ -> Just t            
    getTwoTypes = typepair
 
-   maybeOriginalTypeScheme cinfo = case [ s | OriginalTypeScheme s <- properties cinfo ] of
-             []  -> Nothing
-             t:_ -> Just (b,t)
-        where b = not (x1 == NTExpression && x2 == AltTyped && x3 == 0)
-              (x1, x2, x3, x4) = getInfoSource cinfo
    setFolkloreConstraint = addProperty FolkloreConstraint
-
-   getErrorRange cinfo =
-      case [ r | SubTermRange r <- properties cinfo ] of
-         []  -> errorrange cinfo
-         r:_ -> r
          
    isReductionErrorInfo = isJust . maybeReductionErrorPredicate
    maybeReductionErrorPredicate cinfo = 
@@ -130,10 +137,9 @@ instance TypeGraphConstraintInfo HeliumConstraintInfo where
       let err = internalError "HeliumConstraintInfo" "makeTypeError" "..."
           (_, tp) = typepair cinfo
       in makeReductionError 
-           (getErrorRange cinfo) 
-           (case sources cinfo of (_,tree):_ -> tree ; _ -> err) 
+           (convertErrorRange cinfo) 
+           (case convertSources (sources cinfo) of (_,tree):_ -> tree ; _ -> err) 
            (case maybeOriginalTypeScheme cinfo of Just (b,ts) -> (ts, tp) ; _ -> err)
- 
            standardClasses
            (case maybeReductionErrorPredicate cinfo of Just p -> p ; _ -> err)
       
@@ -148,16 +154,26 @@ instance TypeGraphConstraintInfo HeliumConstraintInfo where
            Just (b,ts)
                 | b    -> (Right ts, Left t2)
                 | True -> (Left t2, Right ts)
-        oneliners = [ (s, MessageOneLineTree tree) | (s, tree) <- sources cinfo]
+        oneliners = [ (s, MessageOneLineTree tree) | (s, tree) <- convertSources (sources cinfo)]
         table = UnificationErrorTable oneliners msgtp1 msgtp2
-        extra = documentationLink (info cinfo)
-              : [ hint | WithHint hint <- properties cinfo ]
+        extra = -- documentationLink (info cinfo)
+                [ hint | WithHint hint <- properties cinfo ]
              ++ [ IsFolkloreTypeError | isFolkloreConstraint cinfo ]
     in case [t | WithTypeError t <- properties cinfo] of
          typeError : _ -> typeError
-         _             -> TypeError (getErrorRange cinfo) oneliner table extra
+         _             -> TypeError (convertErrorRange cinfo) oneliner table extra
 
-documentationLink :: InfoSource -> TypeErrorInfo
+   isPattern cinfo = 
+      case (self . attribute . localInfo) cinfo of 
+         UHA_Pat _ -> True
+         _         -> False
+
+   isEmptyInfixApplication cinfo = 
+      not (null [ () | IsEmptyInfixApplication <- properties cinfo ])
+      
+      
+
+{- documentationLink :: InfoSource -> TypeErrorInfo
 documentationLink (nt, alt, nr, _) =
    HasDocumentationLink . concat $
       [ drop 2 (show nt)
@@ -165,11 +181,22 @@ documentationLink (nt, alt, nr, _) =
       , drop 3 (show alt)
       , "-"
       , show nr
-      ]
+      ] -}
    
 addProperty :: Property -> HeliumConstraintInfo -> HeliumConstraintInfo
-addProperty property info = let old = properties info
-                            in info { properties = property : old }
+addProperty property cinfo = 
+   let old = properties cinfo
+   in cinfo { properties = property : old }
 
 setPosition :: Int -> TypeConstraint HeliumConstraintInfo -> TypeConstraint HeliumConstraintInfo
 setPosition = fmap . addProperty . PositionInTreeWalk
+
+maybeOriginalTypeScheme cinfo = 
+   let flipped = case (self . attribute . localInfo) cinfo of
+                    UHA_Expr (Expression_Typed _ _ _) -> False
+                    _                                 -> True
+   in case [ s | OriginalTypeScheme s <- properties cinfo ] of
+         []  -> Nothing
+         t:_ -> Just (flipped, t)
+         
+                

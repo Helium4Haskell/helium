@@ -6,7 +6,6 @@ typingStrategyToCore = fst . sem_TypingStrategy
 INCLUDE "TS_Syntax.ag"
 INCLUDE "TS_Collect.ag"
 INCLUDE "../../../syntax/UHA_Syntax.ag"
-INCLUDE "../../../syntax/UHA_OneLine.ag"
 
 imports {
 import TS_Syntax
@@ -39,7 +38,7 @@ SEM TypeRule [ | | core : Core_TypeRule ]
 
 SEM Judgement [ | | core : Core_Judgement ]
   | Judgement
-       lhs . core = Judgement (showOneLine 10000 @expression.oneLineTree) (makeTpFromType @lhs.nameMap @type.self)   
+       lhs . core = undefined -- Judgement (showOneLine 10000 @expression.oneLineTree) (makeTpFromType @lhs.nameMap @type.self)   
 
 SEM SimpleJudgements [ | | core : Core_Judgements ]
   | Cons  lhs . core = @hd.core : @tl.core

@@ -22,10 +22,9 @@ positionInList edge info =
                        
 trustFactorOfConstraint :: IsTypeGraph m info => TieBreakerHeuristic m info
 trustFactorOfConstraint edge info =
-   case getTrustFactor info of
-      Nothing    -> return (1.0, "no trustfactor")
-      Just trust -> let modifier = 1 / fromIntegral trust
-                    in return (modifier, "trustfactor="++show trust)
+   let trust    = getTrustFactor info
+       modifier = 1 / trust
+   in return (modifier, "trustfactor="++show trust)
                     
 isTopDownEdge :: IsTypeGraph m info => TieBreakerHeuristic m info
 isTopDownEdge edge info 

@@ -6,7 +6,7 @@ import PPrint (Doc)
 import Messages
 import ConstraintInfo (ConstraintInfo)
 import List (union)
-import qualified PrettyPrinting as PP
+import qualified UHA_Pretty as PP
 import qualified PPrint
 
 type KindErrors = [KindError]

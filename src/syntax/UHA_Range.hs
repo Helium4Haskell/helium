@@ -174,6 +174,55 @@ getLitRange (Literal_Float  r _) = r
 getLitRange (Literal_Int    r _) = r
 getLitRange (Literal_String r _) = r
 
+getQualifierRange :: Qualifier -> Range
+getQualifierRange qualifier = case qualifier of
+   Qualifier_Guard r _       -> r
+   Qualifier_Let r _         -> r
+   Qualifier_Generator r _ _ -> r
+   Qualifier_Empty r         -> r
+
+getAlternativeRange :: Alternative -> Range
+getAlternativeRange alternative = case alternative of
+   Alternative_Alternative r _ _ -> r
+   Alternative_Empty r           -> r
+
+getLHSRange :: LeftHandSide -> Range
+getLHSRange lhs = case lhs of
+   LeftHandSide_Function r _ _      -> r
+   LeftHandSide_Infix r _ _ _       -> r
+   LeftHandSide_Parenthesized r _ _ -> r
+
+getFBRange :: FunctionBinding -> Range
+getFBRange fb = case fb of
+   FunctionBinding_FunctionBinding r _ _ -> r
+        
+getDeclarationRange :: Declaration -> Range
+getDeclarationRange decl = case decl of
+   Declaration_Type r _ _           -> r
+   Declaration_Data  r _ _ _ _      -> r
+   Declaration_Newtype r _ _ _ _    -> r
+   Declaration_Class r _ _ _        -> r
+   Declaration_Instance r _ _ _ _   -> r
+   Declaration_Default r _          -> r
+   Declaration_FunctionBindings r _ -> r
+   Declaration_PatternBinding r _ _ -> r
+   Declaration_TypeSignature r _ _  -> r
+   Declaration_Fixity r _ _ _       -> r
+   Declaration_Empty r              -> r
+
+getBodyRange :: Body -> Range
+getBodyRange body = case body of
+   Body_Body r _ _ -> r
+   
+getGuardedExprRange :: GuardedExpression -> Range
+getGuardedExprRange gexpr = case gexpr of
+   GuardedExpression_GuardedExpression r _ _ -> r
+
+getRHSRangeSpecial :: RightHandSide -> Range
+getRHSRangeSpecial rhs = case rhs of 
+   RightHandSide_Expression _ expr _ -> getExprRange expr
+   RightHandSide_Guarded r _ _       -> r
+   
 showRanges :: [Range] -> String
 showRanges (range:ranges) = show range ++ concatMap ((", " ++) . show) ranges
 showRanges [] = ""

@@ -15,7 +15,7 @@ import UHA_Utils
 import Types
 import Messages
 import Utils        (internalError)
-import qualified PrettyPrinting (sem_Pattern, sem_LeftHandSide, sem_Expression)
+import qualified UHA_Pretty as PP (sem_Pattern, sem_LeftHandSide, sem_Expression)
 
 -------------------------------------------------------------
 -- (Static) Warnings
@@ -67,20 +67,20 @@ showWarning warning = case warning of
 
    MissingPatterns _ Nothing tp pss place sym ->
       "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
-      ++ concatMap (("\n  " ++).(++ (sym ++ " ...")).concatMap ((++ " ").show.PrettyPrinting.sem_Pattern)) pss
+      ++ concatMap (("\n  " ++).(++ (sym ++ " ...")).concatMap ((++ " ").show.PP.sem_Pattern)) pss
    
    MissingPatterns _ (Just n) tp pss place sym
      | isOperatorName n -> let name = getNameName n in
         "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
-        ++ concatMap (\[l, r] -> "\n  " ++ (show.PrettyPrinting.sem_Pattern) l ++ " " ++ name ++ " " ++ (show.PrettyPrinting.sem_Pattern) r ++ " " ++ sym ++ " ...") pss
+        ++ concatMap (\[l, r] -> "\n  " ++ (show.PP.sem_Pattern) l ++ " " ++ name ++ " " ++ (show.PP.sem_Pattern) r ++ " " ++ sym ++ " ...") pss
      | otherwise        -> let name = getNameName n in
         "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
-        ++ concatMap (("\n  " ++).(name ++).(' ' :).(++ (sym ++ " ...")).concatMap ((++ " ").show.PrettyPrinting.sem_Pattern)) pss
+        ++ concatMap (("\n  " ++).(name ++).(' ' :).(++ (sym ++ " ...")).concatMap ((++ " ").show.PP.sem_Pattern)) pss
 
-   UnreachablePatternLHS  lhs -> "Unreachable pattern: " ++ (show.PrettyPrinting.sem_LeftHandSide) lhs
-   UnreachablePatternCase _ p -> "Unreachable pattern: " ++ (show.PrettyPrinting.sem_Pattern     ) p
+   UnreachablePatternLHS  lhs -> "Unreachable pattern: " ++ (show.PP.sem_LeftHandSide) lhs
+   UnreachablePatternCase _ p -> "Unreachable pattern: " ++ (show.PP.sem_Pattern     ) p
 
-   UnreachableGuard _ e -> "Unreachable guard: | " ++ (show.PrettyPrinting.sem_Expression) e
+   UnreachableGuard _ e -> "Unreachable guard: | " ++ (show.PP.sem_Expression) e
 
    FallThrough _ -> "Possible fallthrough"
 

@@ -19,6 +19,8 @@ import Warnings
 import ConstraintInfo
 import TypeGraphConstraintInfo
 import HeliumConstraintInfo
+import DoublyLinkedTree
+import UHA_Source
 
 -- constraint solvers
 import SolveTypeGraph            (solveTypeGraph)
@@ -45,16 +47,7 @@ import Args
 -- standard
 import Data.FiniteMap
 import Maybe 
-import List                   
-
-
-import OneLiner
-import Char
-import UHA_Utils (showNameAsOperator)
-{-
-import List (intersperse)
-import SATypes (isTupleConstructor)
--}
+import List
 
 import List
 import Matchers
@@ -205,7 +198,7 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
           
              Just signature ->
                 -- is the signature not too general?
-                let info = (OneLineText (show nameOfSignature), getNameRange nameOfSignature)
+                let info = (nameToSelfExpr nameOfSignature, getNameRange nameOfSignature)
                     -- this name has a different range!
                     nameOfSignature = head [ n | n <- keysFM typeSignatures, n == nameWithRangeToName nameWR ]      
                     newErrors = checkNotTooGeneral info synonyms signature scheme             
@@ -219,9 +212,9 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
                      
              _ -> pair      
 
-checkNotTooGeneral :: (OneLineTree, Range) -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
-checkNotTooGeneral info synonyms signature scheme = 
-   [ makeNotGeneralEnoughTypeError info scheme signature
+checkNotTooGeneral :: (UHA_Source, Range) -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
+checkNotTooGeneral (self, range) synonyms signature scheme = 
+   [ makeNotGeneralEnoughTypeError (oneLinerSource self, range) scheme signature
    | not (genericInstanceOf synonyms standardClasses signature scheme)
    ]       
 
@@ -237,70 +230,79 @@ dependencyBinds fm cs =
    let err = error "could not find variable of a constraint"
    in [ (lookupChunkNumber i fm, c) | c <- cs, let i = maybe err id (variableInConstraint c)]   
 
+childConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+childConstraint childNr theLocation infoTree theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = ( (self . attribute) infoTree
+                       , Just $ (self . attribute . selectChild childNr) infoTree
+                       )
+        , typepair   = tppair
+        , localInfo  = infoTree        
+        , properties = theProperties
+        }
+
+specialConstraint :: String -> InfoTree -> (UHA_Source, Maybe UHA_Source) -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+specialConstraint theLocation infoTree theSources theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = theSources
+        , typepair   = tppair
+        , localInfo  = infoTree        
+        , properties = theProperties
+        }
+        
+orphanConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+orphanConstraint childNr theLocation infoTree theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = ( (self . attribute . selectChild childNr) infoTree
+                       , Nothing
+                       )
+        , typepair   = tppair
+        , localInfo  = infoTree        
+        , properties = theProperties
+        }        
+        
+resultConstraint :: String -> InfoTree -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+resultConstraint theLocation infoTree theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = ( (self . attribute) infoTree 
+                       , Nothing
+                       )
+        , typepair   = tppair
+        , localInfo  = infoTree    
+        , properties = theProperties
+        }        
+
+variableConstraint :: String -> UHA_Source -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+variableConstraint theLocation theSource theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = (theSource, Nothing)
+        , typepair   = tppair
+        , localInfo  = root (LocalInfo { self = theSource, assignedType = Just (snd tppair) }) []
+        , properties = theProperties
+        }               
+        
 cinfoBindingGroupExplicitTypedBinding :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoBindingGroupExplicitTypedBinding =
-  \name tppair ->
-  CInfo { info       = (NTBindingGroup,AltBindingGroup,3, "explicit typed binding, "++show name)
-        , location   = "explicitly typed binding"
-        , errorrange = getNameRange name
-        , sources    = [ sourceTerm (OneLineText (show name))]
-        , typepair   = tppair
-        , properties = [ {- FolkloreConstraint -}
-                         ExplicitTypedBinding
-                       , HighlyTrusted 
-                       ]
-        }
+cinfoSameBindingGroup                 :: Name -> (Tp,Tp) -> HeliumConstraintInfo
+cinfoBindingGroupImplicit             :: Name -> (Tp,Tp) -> HeliumConstraintInfo
+cinfoBindingGroupExplicit             :: Name -> (Tp,Tp) -> HeliumConstraintInfo
 
-variableBindingCInfo :: (InfoNT, InfoAlt, Int) -> Name -> (Tp,Tp) -> HeliumConstraintInfo
-variableBindingCInfo (infoNT,infoAlt,i) var tppair =
-  CInfo { info       = (infoNT,infoAlt,i,show var) 
-        , location   = "variable"
-        , errorrange = getNameRange var
-        , sources    = [ sourceExpression (OneLineText (show var)) ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint ]  
-        }
+cinfoBindingGroupExplicitTypedBinding name = 
+   variableConstraint "explicitly typed binding" (nameToSelfExpr name) [ FromBindingGroup, ExplicitTypedBinding, HasTrustFactor 10.0 ]
+cinfoSameBindingGroup name = 
+   variableConstraint "variable" (nameToSelfExpr name) [ FromBindingGroup, FolkloreConstraint ]
+cinfoBindingGroupImplicit name = 
+   variableConstraint "variable" (nameToSelfExpr name) [ FromBindingGroup, FolkloreConstraint, HasTrustFactor 10.0 ]
+cinfoBindingGroupExplicit name = 
+   variableConstraint "variable" (nameToSelfExpr name) [ FromBindingGroup, FolkloreConstraint ]      
+                           
+nameToSelfExpr :: Name -> UHA_Source
+nameToSelfExpr name = UHA_Expr (Expression_Variable (getNameRange name) name)
 
-cinfoSameBindingGroup :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoSameBindingGroup var = variableBindingCInfo (NTBindingGroup,AltBindingGroup,0) var
+nameToSelfPat :: Name -> UHA_Source
+nameToSelfPat name = UHA_Pat (Pattern_Variable (getNameRange name) name)
 
-cinfoBindingGroupImplicit :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoBindingGroupImplicit =
-  \var tppair ->   
-  CInfo { info       = (NTBindingGroup,AltBindingGroup,1,"implicit, "++show var)
-        , location   = "variable"
-        , errorrange = getNameRange var
-        , sources    = [ sourceExpression (OneLineText (show var)) ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , HighlyTrusted ]
-        }
-
-cinfoBindingGroupExplicit :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoBindingGroupExplicit =
-  \var tppair ->
-  CInfo { info       = (NTBindingGroup,AltBindingGroup,2, "explicit, "++show var)
-        , location   = "variable"
-        , errorrange = getNameRange var
-        , sources    = [ sourceExpression (OneLineText (show var)) ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint ]  
-        }
-
-convertMaybeOneLineTree :: Maybe OneLineTree -> OneLineTree
-convertMaybeOneLineTree = maybe (OneLineText "") id
-
-tpToInt :: Tp -> Int
-tpToInt tp = case ftv tp of
-               [i] -> i
-               _   -> (-1)
-
-sourceTerm, sourceExpression, sourcePattern, sourceOperator :: OneLineTree -> (String, OneLineTree)
-sourceTerm        = (,) "term"
-sourceExpression  = (,) "expression"
-sourcePattern     = (,) "pattern"
-sourceOperator    = (,) "operator"
-sourceConstructor = (,) "constructor"
+globalInfoError :: a
+globalInfoError = internalError "GlobalInfo.ag" "n/a" "global info not available"
                   
 type ScopeInfo = ( [Names]          -- duplicated variables
                  , [Name]           -- unused variables
@@ -322,35 +324,6 @@ uniqueAppearance :: Ord a => [a] -> ([a],[[a]])
 uniqueAppearance = foldr insert ([],[]) . group . sort
    where insert [x] (as,bs) = (x:as,bs)
          insert xs  (as,bs) = (as,xs:bs)
-
-
-encloseSep :: String -> String -> String -> [OneLineTree] -> OneLineTree
-encloseSep left sep right [] = OneLineNode [OneLineText left, OneLineText right]
-encloseSep left sep right (t:ts) =
-    OneLineNode ([ OneLineText left] ++ (t : concatMap (\t -> [OneLineText sep,t]) ts) ++ [OneLineText right] )
-
-punctuate :: String -> [OneLineTree] -> OneLineTree
-punctuate _ [] = OneLineText ""
-punctuate _ [t] = t
-punctuate s (t:ts) = OneLineNode (t : concatMap (\t -> [OneLineText s,t]) ts)
-    
-parens :: OneLineTree -> OneLineTree
-parens tree = OneLineNode [ OneLineText "(", tree, OneLineText ")" ]
-
-sepBy :: OneLineTree -> [OneLineTree] -> [OneLineTree]
-sepBy separator list =
-    intersperse separator (map (\x -> OneLineNode [x]) list)
-
-intErr :: String -> String -> a
-intErr node message = internalError "UHA_OneLine" node message
-
-oneLineTreeAsOperator :: OneLineTree -> OneLineTree
-oneLineTreeAsOperator tree =
-   case tree of
-      OneLineNode [OneLineText (first:_)]
-         |  isAlpha first || first == '_'
-         -> OneLineNode [ OneLineText "`", tree, OneLineText "`" ]
-      _  -> tree
 
 matchConverter0 :: [([String],())] -> ()
 matchConverter0 = const ()
@@ -394,8 +367,8 @@ match0' = generalMatch noMatch matchConverter0 noMetaVariableInfo 0
 match1' = generalMatch noMatch matchConverter1 noMetaVariableInfo 0
 match2' = generalMatch noMatch matchConverter2 noMetaVariableInfo 0
 
-matchOnlyVariable localInfo tryPats = 
-   let ((),matches,_,_,_) = match0 localInfo 0 noMatch tryPats [] []
+matchOnlyVariable infoTuple tryPats = 
+   let ((),matches,_,_,_) = match0 infoTuple 0 noMatch tryPats [] []
    in matches
 
 noMatch :: a -> Maybe b
@@ -751,11 +724,12 @@ type T_Alternative = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (Names) ->
                      (Int) ->
                      (OrderedTypeSynonyms) ->
+                     (InfoTree) ->
                      ([Warning]) ->
                      (Predicates) ->
                      (FixpointSubstitution) ->
                      (Int) ->
-                     ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),( ([PatternElement], Bool) ),(IO ()),(OneLineTree),([Warning]),(Alternative),(Names),(Int),(Warning))
+                     ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),( ([PatternElement], Bool) ),(InfoTree),(IO ()),([Warning]),(Alternative),(Names),(Int),(Warning))
 -- cata
 sem_Alternative :: (Alternative) ->
                    (T_Alternative)
@@ -788,6 +762,7 @@ sem_Alternative_Alternative (_range)
                             (_lhs_namesInScope)
                             (_lhs_nrOfAlternatives)
                             (_lhs_orderedTypeSynonyms)
+                            (_lhs_parentTree)
                             (_lhs_patternMatchWarnings)
                             (_lhs_predicates)
                             (_lhs_substitution)
@@ -806,35 +781,27 @@ sem_Alternative_Alternative (_range)
         (_conRight) =
             [ (_righthandside_beta .==. _lhs_betaRight) _cinfoRight ]
         (_cinfoLeft) =
-            \tppair ->
-            CInfo { info       = (NTAlternative, AltAlternative, 0, "left")
-                  , location   = "case pattern"
-                  , errorrange = _range_self
-                  , sources    = [ sourcePattern _pattern_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getPatRange _pattern_self) ]
-                  }
+            orphanConstraint 0 "case pattern" _parentTree
+               []
         (_cinfoRight) =
-            \tppair ->
-            CInfo { info       = (NTAlternative, AltAlternative, 1, "right")
-                  , location   = "right-hand side of case alternative"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression (_righthandside_oneLineTree "") ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getRHSRange _righthandside_self) ] ++
-                                 if _lhs_nrOfAlternatives > 1 then [] else [ HighlyTrusted ]
-                  }
+            orphanConstraint 1 "right-hand side of case alternative" _parentTree
+               [ HasTrustFactor 10.0 | _lhs_nrOfAlternatives < 2 ]
         (_cinfoBind) =
-            variableBindingCInfo (NTAlternative, AltAlternative, 2)
+            \name -> variableConstraint "variable" (nameToSelfExpr name)
+               [FolkloreConstraint]
+        (_localInfo) =
+            LocalInfo { self = UHA_Alt _self
+                      , assignedType = Nothing
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo [_pattern_infoTree, _righthandside_infoTree]
         ((_namesInScope,_unboundNames,_scopeInfo)) =
             changeOfScope _pattern_patVarNames _righthandside_unboundNames _lhs_namesInScope
-        (_oneLineTree) =
-            OneLineNode [ _pattern_oneLineTree, _righthandside_oneLineTree " -> " ]
         ( _range_self) =
             (_range )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
-            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_namesInScope) (_lhs_patternMatchWarnings))
-        ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectChunkNumbers,_righthandside_collectErrors,_righthandside_collectWarnings,_righthandside_constraints,_righthandside_dictionaryEnvironment,_righthandside_fallthrough,_righthandside_matchIO,_righthandside_oneLineTree,_righthandside_patternMatchWarnings,_righthandside_self,_righthandside_unboundNames,_righthandside_uniqueChunk) =
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_infoTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
+            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
+        ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectChunkNumbers,_righthandside_collectErrors,_righthandside_collectWarnings,_righthandside_constraints,_righthandside_dictionaryEnvironment,_righthandside_fallthrough,_righthandside_infoTree,_righthandside_matchIO,_righthandside_patternMatchWarnings,_righthandside_self,_righthandside_unboundNames,_righthandside_uniqueChunk) =
             (_righthandside (_lhs_allPatterns)
                             (_lhs_availablePredicates)
                             (_pattern_betaUnique)
@@ -850,11 +817,12 @@ sem_Alternative_Alternative (_range)
                             (eltsFM _pattern_environment ++ getMonos _csetBinds ++ _lhs_monos)
                             (_namesInScope)
                             (_lhs_orderedTypeSynonyms)
+                            (_parentTree)
                             (_pattern_patternMatchWarnings)
                             (_lhs_predicates)
                             (_lhs_substitution)
                             (_lhs_uniqueChunk))
-    in  ( _assumptions',_righthandside_betaUnique,_righthandside_collectChunkNumbers,_righthandside_collectErrors,_righthandside_collectWarnings,_constraints,_righthandside_dictionaryEnvironment,(_pattern_elements, _righthandside_fallthrough),_righthandside_matchIO,_oneLineTree,_righthandside_patternMatchWarnings,_self,_unboundNames,_righthandside_uniqueChunk,UnreachablePatternCase _range _pattern_self)
+    in  ( _assumptions',_righthandside_betaUnique,_righthandside_collectChunkNumbers,_righthandside_collectErrors,_righthandside_collectWarnings,_constraints,_righthandside_dictionaryEnvironment,(_pattern_elements, _righthandside_fallthrough),_parentTree,_righthandside_matchIO,_righthandside_patternMatchWarnings,_self,_unboundNames,_righthandside_uniqueChunk,UnreachablePatternCase _range _pattern_self)
 sem_Alternative_Empty :: (T_Range) ->
                          (T_Alternative)
 sem_Alternative_Empty (_range)
@@ -876,6 +844,7 @@ sem_Alternative_Empty (_range)
                       (_lhs_namesInScope)
                       (_lhs_nrOfAlternatives)
                       (_lhs_orderedTypeSynonyms)
+                      (_lhs_parentTree)
                       (_lhs_patternMatchWarnings)
                       (_lhs_predicates)
                       (_lhs_substitution)
@@ -884,11 +853,15 @@ sem_Alternative_Empty (_range)
             Alternative_Empty _range_self
         (_constraints) =
             emptyTree
-        (_oneLineTree) =
-            OneLineText ""
+        (_localInfo) =
+            LocalInfo { self = UHA_Alt _self
+                      , assignedType = Nothing
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo []
         ( _range_self) =
             (_range )
-    in  ( noAssumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_constraints,_lhs_dictionaryEnvironment,([], False),_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,[],_lhs_uniqueChunk,pmError "Alternative_Empty.unrwar" "empty alternative")
+    in  ( noAssumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_constraints,_lhs_dictionaryEnvironment,([], False),_parentTree,_lhs_matchIO,_lhs_patternMatchWarnings,_self,[],_lhs_uniqueChunk,pmError "Alternative_Empty.unrwar" "empty alternative")
 -- Alternatives ------------------------------------------------
 -- semantic domain
 type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -909,11 +882,12 @@ type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (Names) ->
                       (Int) ->
                       (OrderedTypeSynonyms) ->
+                      (InfoTree) ->
                       ([Warning]) ->
                       (Predicates) ->
                       (FixpointSubstitution) ->
                       (Int) ->
-                      ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSets),(DictionaryEnvironment),([([PatternElement], Bool)]),(IO ()),( [ OneLineTree] ),([Warning]),(Alternatives),(Names),(Int),([Warning]))
+                      ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSets),(DictionaryEnvironment),([([PatternElement], Bool)]),(InfoTrees),(IO ()),([Warning]),(Alternatives),(Names),(Int),([Warning]))
 -- cata
 sem_Alternatives :: (Alternatives) ->
                     (T_Alternatives)
@@ -942,13 +916,14 @@ sem_Alternatives_Cons (_hd)
                       (_lhs_namesInScope)
                       (_lhs_nrOfAlternatives)
                       (_lhs_orderedTypeSynonyms)
+                      (_lhs_parentTree)
                       (_lhs_patternMatchWarnings)
                       (_lhs_predicates)
                       (_lhs_substitution)
                       (_lhs_uniqueChunk) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_assumptions,_hd_betaUnique,_hd_collectChunkNumbers,_hd_collectErrors,_hd_collectWarnings,_hd_constraints,_hd_dictionaryEnvironment,_hd_elements,_hd_matchIO,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_self,_hd_unboundNames,_hd_uniqueChunk,_hd_unrwar) =
+        ( _hd_assumptions,_hd_betaUnique,_hd_collectChunkNumbers,_hd_collectErrors,_hd_collectWarnings,_hd_constraints,_hd_dictionaryEnvironment,_hd_elements,_hd_infoTree,_hd_matchIO,_hd_patternMatchWarnings,_hd_self,_hd_unboundNames,_hd_uniqueChunk,_hd_unrwar) =
             (_hd (_lhs_allPatterns)
                  (_lhs_availablePredicates)
                  (_lhs_betaLeft)
@@ -967,11 +942,12 @@ sem_Alternatives_Cons (_hd)
                  (_lhs_namesInScope)
                  (_lhs_nrOfAlternatives)
                  (_lhs_orderedTypeSynonyms)
+                 (_lhs_parentTree)
                  (_lhs_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_substitution)
                  (_lhs_uniqueChunk))
-        ( _tl_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_tl_constraintslist,_tl_dictionaryEnvironment,_tl_elementss,_tl_matchIO,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self,_tl_unboundNames,_tl_uniqueChunk,_tl_unrwars) =
+        ( _tl_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_tl_constraintslist,_tl_dictionaryEnvironment,_tl_elementss,_tl_infoTrees,_tl_matchIO,_tl_patternMatchWarnings,_tl_self,_tl_unboundNames,_tl_uniqueChunk,_tl_unrwars) =
             (_tl (_lhs_allPatterns)
                  (_lhs_availablePredicates)
                  (_lhs_betaLeft)
@@ -990,11 +966,12 @@ sem_Alternatives_Cons (_hd)
                  (_lhs_namesInScope)
                  (_lhs_nrOfAlternatives)
                  (_lhs_orderedTypeSynonyms)
+                 (_lhs_parentTree)
                  (_hd_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_substitution)
                  (_hd_uniqueChunk))
-    in  ( _hd_assumptions `combine` _tl_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_hd_constraints : _tl_constraintslist,_tl_dictionaryEnvironment,_hd_elements : _tl_elementss,_tl_matchIO,_hd_oneLineTree  :  _tl_oneLineTree,_tl_patternMatchWarnings,_self,_hd_unboundNames ++ _tl_unboundNames,_tl_uniqueChunk,_hd_unrwar   : _tl_unrwars)
+    in  ( _hd_assumptions `combine` _tl_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_hd_constraints : _tl_constraintslist,_tl_dictionaryEnvironment,_hd_elements : _tl_elementss,_hd_infoTree : _tl_infoTrees,_tl_matchIO,_tl_patternMatchWarnings,_self,_hd_unboundNames ++ _tl_unboundNames,_tl_uniqueChunk,_hd_unrwar   : _tl_unrwars)
 sem_Alternatives_Nil :: (T_Alternatives)
 sem_Alternatives_Nil (_lhs_allPatterns)
                      (_lhs_availablePredicates)
@@ -1014,13 +991,14 @@ sem_Alternatives_Nil (_lhs_allPatterns)
                      (_lhs_namesInScope)
                      (_lhs_nrOfAlternatives)
                      (_lhs_orderedTypeSynonyms)
+                     (_lhs_parentTree)
                      (_lhs_patternMatchWarnings)
                      (_lhs_predicates)
                      (_lhs_substitution)
                      (_lhs_uniqueChunk) =
     let (_self) =
             []
-    in  ( noAssumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,[],_lhs_matchIO,[],_lhs_patternMatchWarnings,_self,[],_lhs_uniqueChunk,[])
+    in  ( noAssumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,[],[],_lhs_matchIO,_lhs_patternMatchWarnings,_self,[],_lhs_uniqueChunk,[])
 -- AnnotatedType -----------------------------------------------
 -- semantic domain
 type T_AnnotatedType = (Names) ->
@@ -1088,7 +1066,7 @@ type T_Body = ([((Expression, [String]), Core_TypingStrategy)]) ->
               (Predicates) ->
               (FixpointSubstitution) ->
               (Int) ->
-              ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(Names),(DictionaryEnvironment),(IO ()),([Warning]),(Body),(TypeEnvironment),(Names),(Int))
+              ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(Names),(DictionaryEnvironment),(IO ()),([Warning]),(InfoTree),(Body),(TypeEnvironment),(Names),(Int))
 -- cata
 sem_Body :: (Body) ->
             (T_Body)
@@ -1135,22 +1113,19 @@ sem_Body_Body (_range)
         ((_errors,_warnings)) =
             checkAnnotations True _lhs_orderedTypeSynonyms _declarations_typeSignatures _localTypes
         (_cinfo) =
-            \var tppair ->
-            CInfo { info       = (NTBody, AltBody, 0, show var)
-                  , location   = "variable"
-                  , errorrange = getNameRange var
-                  , sources    = [ sourceExpression (OneLineText (show var)) ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , HighlyTrusted
-                                 , IsImported var
-                                 ]
-                  }
+            \name -> variableConstraint "variable" (nameToSelfExpr name)
+               [ FolkloreConstraint, HasTrustFactor 10.0, IsImported ]
+        (_declInfo) =
+            LocalInfo { self = UHA_Decls _declarations_self
+                      , assignedType = Nothing
+                      }
+        (_parentTree) =
+            root _declInfo _declarations_infoTrees
         ( _range_self) =
             (_range )
         ( _importdeclarations_self) =
             (_importdeclarations )
-        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectChunkNumbers,_declarations_collectErrors,_declarations_collectWarnings,_declarations_declVarNames,_declarations_dictionaryEnvironment,_declarations_matchIO,_declarations_oneLineTree,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeSignatures,_declarations_unboundNames,_declarations_uniqueChunk) =
+        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectChunkNumbers,_declarations_collectErrors,_declarations_collectWarnings,_declarations_declVarNames,_declarations_dictionaryEnvironment,_declarations_infoTrees,_declarations_matchIO,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeSignatures,_declarations_unboundNames,_declarations_uniqueChunk) =
             (_declarations (_lhs_allPatterns)
                            (_lhs_availablePredicates)
                            (_lhs_betaUnique)
@@ -1168,6 +1143,7 @@ sem_Body_Body (_range)
                            (_lhs_monos)
                            (_lhs_namesInScope)
                            (_lhs_orderedTypeSynonyms)
+                           (_parentTree)
                            (_lhs_patternMatchWarnings)
                            (_lhs_predicates)
                            (_lhs_substitution)
@@ -1183,6 +1159,7 @@ sem_Body_Body (_range)
          ,_declarations_dictionaryEnvironment
          ,_declarations_matchIO
          ,_declarations_patternMatchWarnings
+         ,_parentTree
          ,_self
          ,let (environment, _, _) = concatBindingGroups _declarations_bindingGroups
               monos' = ftv (_lhs_substitution |-> _lhs_monos)
@@ -1213,7 +1190,7 @@ sem_Constructor_Constructor (_range) (_constructor) (_types) (_lhs_namesInScope)
             Constructor_Constructor _range_self _constructor_self _types_self
         ( _range_self) =
             (_range )
-        ( _constructor_isIdentifier,_constructor_isOperator,_constructor_isSpecial,_constructor_oneLineTree,_constructor_self) =
+        ( _constructor_self) =
             (_constructor )
         ( _types_self,_types_unboundNames) =
             (_types (_lhs_namesInScope))
@@ -1230,7 +1207,7 @@ sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) (
             (_range )
         ( _leftType_self,_leftType_unboundNames) =
             (_leftType (_lhs_namesInScope))
-        ( _constructorOperator_isIdentifier,_constructorOperator_isOperator,_constructorOperator_isSpecial,_constructorOperator_oneLineTree,_constructorOperator_self) =
+        ( _constructorOperator_self) =
             (_constructorOperator )
         ( _rightType_self,_rightType_unboundNames) =
             (_rightType (_lhs_namesInScope))
@@ -1244,7 +1221,7 @@ sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) (_lhs_namesI
             Constructor_Record _range_self _constructor_self _fieldDeclarations_self
         ( _range_self) =
             (_range )
-        ( _constructor_isIdentifier,_constructor_isOperator,_constructor_isSpecial,_constructor_oneLineTree,_constructor_self) =
+        ( _constructor_self) =
             (_constructor )
         ( _fieldDeclarations_self,_fieldDeclarations_unboundNames) =
             (_fieldDeclarations (_lhs_namesInScope))
@@ -1293,7 +1270,7 @@ sem_ContextItem_ContextItem (_range) (_name) (_types) =
             internalError "PartialSyntax.ag" "n/a" "ContextItem.ContextItem"
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
         ( _types_self) =
             (_types )
@@ -1341,12 +1318,13 @@ type T_Declaration = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (Tps) ->
                      (Names) ->
                      (OrderedTypeSynonyms) ->
+                     (InfoTree) ->
                      ([Warning]) ->
                      (Predicates) ->
                      (FixpointSubstitution) ->
                      (FiniteMap Name TpScheme) ->
                      (Int) ->
-                     ( (Int),(BindingGroups),(ChunkNumberMap),(TypeErrors),(Warnings),(Names),(DictionaryEnvironment),(IO ()),(OneLineTree),([Warning]),(Declaration),(FiniteMap Name TpScheme),(Names),(Int))
+                     ( (Int),(BindingGroups),(ChunkNumberMap),(TypeErrors),(Warnings),(Names),(DictionaryEnvironment),(InfoTrees),(IO ()),([Warning]),(Declaration),(FiniteMap Name TpScheme),(Names),(Int))
 -- cata
 sem_Declaration :: (Declaration) ->
                    (T_Declaration)
@@ -1398,6 +1376,7 @@ sem_Declaration_Class (_range)
                       (_lhs_monos)
                       (_lhs_namesInScope)
                       (_lhs_orderedTypeSynonyms)
+                      (_lhs_parentTree)
                       (_lhs_patternMatchWarnings)
                       (_lhs_predicates)
                       (_lhs_substitution)
@@ -1407,15 +1386,13 @@ sem_Declaration_Class (_range)
             Declaration_Class _range_self _context_self _simpletype_self _where_self
         ((_assumptions,_constraints,_unboundNames)) =
             internalError "PartialSyntax.ag" "n/a" "Declaration.Class"
-        (_oneLineTree) =
-            intErr "Declaration" "class"
         ( _range_self) =
             (_range )
         ( _context_self) =
             (_context )
         ( _simpletype_self) =
             (_simpletype )
-        ( _where_assumptions,_where_betaUnique,_where_collectChunkNumbers,_where_collectErrors,_where_collectWarnings,_where_constraints,_where_dictionaryEnvironment,_where_localTypes,_where_matchIO,_where_namesInScope,_where_oneLineTree,_where_patternMatchWarnings,_where_self,_where_unboundNames,_where_uniqueChunk) =
+        ( _where_assumptions,_where_betaUnique,_where_collectChunkNumbers,_where_collectErrors,_where_collectWarnings,_where_constraints,_where_dictionaryEnvironment,_where_infoTrees,_where_localTypes,_where_matchIO,_where_namesInScope,_where_patternMatchWarnings,_where_self,_where_unboundNames,_where_uniqueChunk) =
             (_where (_lhs_allPatterns)
                     (_assumptions)
                     (_lhs_availablePredicates)
@@ -1433,12 +1410,13 @@ sem_Declaration_Class (_range)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_lhs_parentTree)
                     (_lhs_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
                     (_unboundNames)
                     (_lhs_uniqueChunk))
-    in  ( _where_betaUnique,_lhs_bindingGroups,_where_collectChunkNumbers,_where_collectErrors,_where_collectWarnings,[],_where_dictionaryEnvironment,_where_matchIO,_oneLineTree,_where_patternMatchWarnings,_self,_lhs_typeSignatures,_unboundNames,_where_uniqueChunk)
+    in  ( _where_betaUnique,_lhs_bindingGroups,_where_collectChunkNumbers,_where_collectErrors,_where_collectWarnings,[],_where_dictionaryEnvironment,_where_infoTrees,_where_matchIO,_where_patternMatchWarnings,_self,_lhs_typeSignatures,_unboundNames,_where_uniqueChunk)
 sem_Declaration_Data :: (T_Range) ->
                         (T_ContextItems) ->
                         (T_SimpleType) ->
@@ -1467,6 +1445,7 @@ sem_Declaration_Data (_range)
                      (_lhs_monos)
                      (_lhs_namesInScope)
                      (_lhs_orderedTypeSynonyms)
+                     (_lhs_parentTree)
                      (_lhs_patternMatchWarnings)
                      (_lhs_predicates)
                      (_lhs_substitution)
@@ -1474,8 +1453,6 @@ sem_Declaration_Data (_range)
                      (_lhs_uniqueChunk) =
     let (_self) =
             Declaration_Data _range_self _context_self _simpletype_self _constructors_self _derivings_self
-        (_oneLineTree) =
-            intErr "Declaration" "data"
         ( _range_self) =
             (_range )
         ( _context_self) =
@@ -1484,9 +1461,9 @@ sem_Declaration_Data (_range)
             (_simpletype )
         ( _constructors_self,_constructors_unboundNames) =
             (_constructors (_lhs_namesInScope))
-        ( _derivings_isIdentifier,_derivings_isOperator,_derivings_isSpecial,_derivings_oneLineTree,_derivings_self) =
+        ( _derivings_self) =
             (_derivings )
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeSignatures,_constructors_unboundNames,_lhs_uniqueChunk)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,[],_lhs_matchIO,_lhs_patternMatchWarnings,_self,_lhs_typeSignatures,_constructors_unboundNames,_lhs_uniqueChunk)
 sem_Declaration_Default :: (T_Range) ->
                            (T_Types) ->
                            (T_Declaration)
@@ -1509,6 +1486,7 @@ sem_Declaration_Default (_range)
                         (_lhs_monos)
                         (_lhs_namesInScope)
                         (_lhs_orderedTypeSynonyms)
+                        (_lhs_parentTree)
                         (_lhs_patternMatchWarnings)
                         (_lhs_predicates)
                         (_lhs_substitution)
@@ -1516,13 +1494,13 @@ sem_Declaration_Default (_range)
                         (_lhs_uniqueChunk) =
     let (_self) =
             Declaration_Default _range_self _types_self
-        (_oneLineTree) =
-            intErr "Declaration" "default"
+        (_infoTrees) =
+            globalInfoError
         ( _range_self) =
             (_range )
         ( _types_self) =
             (_types )
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeSignatures,[],_lhs_uniqueChunk)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,_infoTrees,_lhs_matchIO,_lhs_patternMatchWarnings,_self,_lhs_typeSignatures,[],_lhs_uniqueChunk)
 sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
 sem_Declaration_Empty (_range)
@@ -1543,6 +1521,7 @@ sem_Declaration_Empty (_range)
                       (_lhs_monos)
                       (_lhs_namesInScope)
                       (_lhs_orderedTypeSynonyms)
+                      (_lhs_parentTree)
                       (_lhs_patternMatchWarnings)
                       (_lhs_predicates)
                       (_lhs_substitution)
@@ -1550,11 +1529,9 @@ sem_Declaration_Empty (_range)
                       (_lhs_uniqueChunk) =
     let (_self) =
             Declaration_Empty _range_self
-        (_oneLineTree) =
-            OneLineText ""
         ( _range_self) =
             (_range )
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeSignatures,[],_lhs_uniqueChunk)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,[],_lhs_matchIO,_lhs_patternMatchWarnings,_self,_lhs_typeSignatures,[],_lhs_uniqueChunk)
 sem_Declaration_Fixity :: (T_Range) ->
                           (T_Fixity) ->
                           (T_MaybeInt) ->
@@ -1581,6 +1558,7 @@ sem_Declaration_Fixity (_range)
                        (_lhs_monos)
                        (_lhs_namesInScope)
                        (_lhs_orderedTypeSynonyms)
+                       (_lhs_parentTree)
                        (_lhs_patternMatchWarnings)
                        (_lhs_predicates)
                        (_lhs_substitution)
@@ -1588,17 +1566,15 @@ sem_Declaration_Fixity (_range)
                        (_lhs_uniqueChunk) =
     let (_self) =
             Declaration_Fixity _range_self _fixity_self _priority_self _operators_self
-        (_oneLineTree) =
-            intErr "Declaration" "fixity"
         ( _range_self) =
             (_range )
         ( _fixity_self) =
             (_fixity )
         ( _priority_self) =
             (_priority )
-        ( _operators_isIdentifier,_operators_isOperator,_operators_isSpecial,_operators_oneLineTree,_operators_self) =
+        ( _operators_self) =
             (_operators )
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeSignatures,[],_lhs_uniqueChunk)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,[],_lhs_matchIO,_lhs_patternMatchWarnings,_self,_lhs_typeSignatures,[],_lhs_uniqueChunk)
 sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)
@@ -1621,6 +1597,7 @@ sem_Declaration_FunctionBindings (_range)
                                  (_lhs_monos)
                                  (_lhs_namesInScope)
                                  (_lhs_orderedTypeSynonyms)
+                                 (_lhs_parentTree)
                                  (_lhs_patternMatchWarnings)
                                  (_lhs_predicates)
                                  (_lhs_substitution)
@@ -1651,22 +1628,17 @@ sem_Declaration_FunctionBindings (_range)
                 err = internalError "TypeInferenceOverloading.ag" "n/a" "could not find type for function binding"
             in expandPredicates _lhs_orderedTypeSynonyms predicates
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTDeclaration, AltFunctionBindings, 0, show _bindings_name)
-                  , location   = "function bindings (INTERNAL ERROR)"
-                  , errorrange = _range_self
-                  , sources    = [ ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , SuperHighlyTrusted
-                                 , FuntionBindingEdge _bindings_numberOfPatterns
-                                 ]
-                  }
-        (_oneLineTree) =
-            punctuate ";" _bindings_oneLineTree
+            resultConstraint "function bindings (INTERNAL ERROR)" _parentTree
+               [ FolkloreConstraint, HasTrustFactor 10000.0, FuntionBindingEdge _bindings_numberOfPatterns ]
+        (_localInfo) =
+            LocalInfo { self = UHA_Decl _self
+                      , assignedType = Nothing
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo _bindings_infoTrees
         ( _range_self) =
             (_range )
-        ( _bindings_argcount,_bindings_assumptions,_bindings_betaUnique,_bindings_collectChunkNumbers,_bindings_collectErrors,_bindings_collectWarnings,_bindings_constraintslist,_bindings_dictionaryEnvironment,_bindings_elementss,_bindings_matchIO,_bindings_name,_bindings_numberOfPatterns,_bindings_oneLineTree,_bindings_patternMatchWarnings,_bindings_self,_bindings_unboundNames,_bindings_uniqueChunk,_bindings_unrwars) =
+        ( _bindings_argcount,_bindings_assumptions,_bindings_betaUnique,_bindings_collectChunkNumbers,_bindings_collectErrors,_bindings_collectWarnings,_bindings_constraintslist,_bindings_dictionaryEnvironment,_bindings_elementss,_bindings_infoTrees,_bindings_matchIO,_bindings_name,_bindings_numberOfPatterns,_bindings_patternMatchWarnings,_bindings_self,_bindings_unboundNames,_bindings_uniqueChunk,_bindings_unrwars) =
             (_bindings (_lhs_allPatterns)
                        (_declPredicates ++ _lhs_availablePredicates)
                        (_betaRight)
@@ -1684,6 +1656,7 @@ sem_Declaration_FunctionBindings (_range)
                        (findMono _bindings_name _lhs_inheritedBDG ++ _lhs_monos)
                        (_lhs_namesInScope)
                        (_lhs_orderedTypeSynonyms)
+                       (_parentTree)
                        (_lhs_patternMatchWarnings)
                        (_lhs_predicates)
                        (_lhs_substitution)
@@ -1695,8 +1668,8 @@ sem_Declaration_FunctionBindings (_range)
          ,_bindings_collectWarnings
          ,[_bindings_name]
          ,addForDeclaration _bindings_name _declPredicates _bindings_dictionaryEnvironment
+         ,[_parentTree]
          ,_bindings_matchIO
-         ,_oneLineTree
          ,patternMatchWarnings _lhs_importEnvironment
                                _lhs_substitution
                                _beta
@@ -1742,6 +1715,7 @@ sem_Declaration_Instance (_range)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_lhs_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
@@ -1751,17 +1725,15 @@ sem_Declaration_Instance (_range)
             Declaration_Instance _range_self _context_self _name_self _types_self _where_self
         ((_assumptions,_constraints,_unboundNames)) =
             internalError "PartialSyntax.ag" "n/a" "Declaration.Instance"
-        (_oneLineTree) =
-            intErr "Declaration" "instance"
         ( _range_self) =
             (_range )
         ( _context_self) =
             (_context )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
         ( _types_self) =
             (_types )
-        ( _where_assumptions,_where_betaUnique,_where_collectChunkNumbers,_where_collectErrors,_where_collectWarnings,_where_constraints,_where_dictionaryEnvironment,_where_localTypes,_where_matchIO,_where_namesInScope,_where_oneLineTree,_where_patternMatchWarnings,_where_self,_where_unboundNames,_where_uniqueChunk) =
+        ( _where_assumptions,_where_betaUnique,_where_collectChunkNumbers,_where_collectErrors,_where_collectWarnings,_where_constraints,_where_dictionaryEnvironment,_where_infoTrees,_where_localTypes,_where_matchIO,_where_namesInScope,_where_patternMatchWarnings,_where_self,_where_unboundNames,_where_uniqueChunk) =
             (_where (_lhs_allPatterns)
                     (_assumptions)
                     (_lhs_availablePredicates)
@@ -1779,12 +1751,13 @@ sem_Declaration_Instance (_range)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_lhs_parentTree)
                     (_lhs_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
                     (_unboundNames)
                     (_lhs_uniqueChunk))
-    in  ( _where_betaUnique,_lhs_bindingGroups,_where_collectChunkNumbers,_where_collectErrors,_where_collectWarnings,[],_where_dictionaryEnvironment,_where_matchIO,_oneLineTree,_where_patternMatchWarnings,_self,_lhs_typeSignatures,_unboundNames,_where_uniqueChunk)
+    in  ( _where_betaUnique,_lhs_bindingGroups,_where_collectChunkNumbers,_where_collectErrors,_where_collectWarnings,[],_where_dictionaryEnvironment,_where_infoTrees,_where_matchIO,_where_patternMatchWarnings,_self,_lhs_typeSignatures,_unboundNames,_where_uniqueChunk)
 sem_Declaration_Newtype :: (T_Range) ->
                            (T_ContextItems) ->
                            (T_SimpleType) ->
@@ -1813,6 +1786,7 @@ sem_Declaration_Newtype (_range)
                         (_lhs_monos)
                         (_lhs_namesInScope)
                         (_lhs_orderedTypeSynonyms)
+                        (_lhs_parentTree)
                         (_lhs_patternMatchWarnings)
                         (_lhs_predicates)
                         (_lhs_substitution)
@@ -1820,8 +1794,8 @@ sem_Declaration_Newtype (_range)
                         (_lhs_uniqueChunk) =
     let (_self) =
             Declaration_Newtype _range_self _context_self _simpletype_self _constructor_self _derivings_self
-        (_oneLineTree) =
-            intErr "Declaration" "newtype"
+        (_infoTrees) =
+            globalInfoError
         ( _range_self) =
             (_range )
         ( _context_self) =
@@ -1830,9 +1804,9 @@ sem_Declaration_Newtype (_range)
             (_simpletype )
         ( _constructor_self,_constructor_unboundNames) =
             (_constructor (_lhs_namesInScope))
-        ( _derivings_isIdentifier,_derivings_isOperator,_derivings_isSpecial,_derivings_oneLineTree,_derivings_self) =
+        ( _derivings_self) =
             (_derivings )
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeSignatures,_constructor_unboundNames,_lhs_uniqueChunk)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,_infoTrees,_lhs_matchIO,_lhs_patternMatchWarnings,_self,_lhs_typeSignatures,_constructor_unboundNames,_lhs_uniqueChunk)
 sem_Declaration_PatternBinding :: (T_Range) ->
                                   (T_Pattern) ->
                                   (T_RightHandSide) ->
@@ -1857,6 +1831,7 @@ sem_Declaration_PatternBinding (_range)
                                (_lhs_monos)
                                (_lhs_namesInScope)
                                (_lhs_orderedTypeSynonyms)
+                               (_lhs_parentTree)
                                (_lhs_patternMatchWarnings)
                                (_lhs_predicates)
                                (_lhs_substitution)
@@ -1884,24 +1859,19 @@ sem_Declaration_PatternBinding (_range)
                  in Just (name, expandPredicates _lhs_orderedTypeSynonyms predicates)
               _                  -> Nothing
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTDeclaration, AltPatternBinding, 0, "")
-                  , location   = "right hand side"
-                  , errorrange = getRHSRange _righthandside_self
-                  , sources    = [ sourceExpression (_righthandside_oneLineTree "") ]
-                  , typepair   = tppair
-                  , properties = [ ]
-                  }
-        (_oneLineTree) =
-            OneLineNode
-                [ OneLineNode [_pattern_oneLineTree]
-                , OneLineNode [_righthandside_oneLineTree " = "]
-                ]
+            orphanConstraint 1 "right hand side" _parentTree
+               [ ]
+        (_localInfo) =
+            LocalInfo { self = UHA_Decl _self
+                      , assignedType = Nothing
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo [_pattern_infoTree, _righthandside_infoTree]
         ( _range_self) =
             (_range )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
-            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings))
-        ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectChunkNumbers,_righthandside_collectErrors,_righthandside_collectWarnings,_righthandside_constraints,_righthandside_dictionaryEnvironment,_righthandside_fallthrough,_righthandside_matchIO,_righthandside_oneLineTree,_righthandside_patternMatchWarnings,_righthandside_self,_righthandside_unboundNames,_righthandside_uniqueChunk) =
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_infoTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
+            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
+        ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectChunkNumbers,_righthandside_collectErrors,_righthandside_collectWarnings,_righthandside_constraints,_righthandside_dictionaryEnvironment,_righthandside_fallthrough,_righthandside_infoTree,_righthandside_matchIO,_righthandside_patternMatchWarnings,_righthandside_self,_righthandside_unboundNames,_righthandside_uniqueChunk) =
             (_righthandside (_lhs_allPatterns)
                             (case _declPredicates of
                                 Just (n, ps) -> ps ++ _lhs_availablePredicates
@@ -1919,6 +1889,7 @@ sem_Declaration_PatternBinding (_range)
                             (findMono (head (keysFM _pattern_environment)) _lhs_inheritedBDG ++ _lhs_monos)
                             (_lhs_namesInScope)
                             (_lhs_orderedTypeSynonyms)
+                            (_parentTree)
                             (_pattern_patternMatchWarnings)
                             (_lhs_predicates)
                             (_lhs_substitution)
@@ -1932,8 +1903,8 @@ sem_Declaration_PatternBinding (_range)
          ,case _declPredicates of
              Just (n, ps) -> addForDeclaration n ps _righthandside_dictionaryEnvironment
              Nothing      -> _righthandside_dictionaryEnvironment
+         ,[_parentTree]
          ,_righthandside_matchIO
-         ,_oneLineTree
          ,patternMatchWarnings _lhs_importEnvironment
                                _lhs_substitution
                                _pattern_beta
@@ -1975,6 +1946,7 @@ sem_Declaration_Type (_range)
                      (_lhs_monos)
                      (_lhs_namesInScope)
                      (_lhs_orderedTypeSynonyms)
+                     (_lhs_parentTree)
                      (_lhs_patternMatchWarnings)
                      (_lhs_predicates)
                      (_lhs_substitution)
@@ -1982,15 +1954,13 @@ sem_Declaration_Type (_range)
                      (_lhs_uniqueChunk) =
     let (_self) =
             Declaration_Type _range_self _simpletype_self _type_self
-        (_oneLineTree) =
-            intErr "Declaration" "type"
         ( _range_self) =
             (_range )
         ( _simpletype_self) =
             (_simpletype )
         ( _type_self) =
             (_type )
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeSignatures,[],_lhs_uniqueChunk)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,[],_lhs_matchIO,_lhs_patternMatchWarnings,_self,_lhs_typeSignatures,[],_lhs_uniqueChunk)
 sem_Declaration_TypeSignature :: (T_Range) ->
                                  (T_Names) ->
                                  (T_Type) ->
@@ -2015,6 +1985,7 @@ sem_Declaration_TypeSignature (_range)
                               (_lhs_monos)
                               (_lhs_namesInScope)
                               (_lhs_orderedTypeSynonyms)
+                              (_lhs_parentTree)
                               (_lhs_patternMatchWarnings)
                               (_lhs_predicates)
                               (_lhs_substitution)
@@ -2024,19 +1995,13 @@ sem_Declaration_TypeSignature (_range)
             Declaration_TypeSignature _range_self _names_self _type_self
         (_typeScheme) =
             makeTpSchemeFromType _type_self
-        (_oneLineTree) =
-            OneLineNode
-                 [ OneLineText (concat . intersperse "," . map show $ _names_self)
-                 , OneLineText " :: "
-                 , OneLineText (show (makeTpSchemeFromType _type_self))
-                 ]
         ( _range_self) =
             (_range )
-        ( _names_isIdentifier,_names_isOperator,_names_isSpecial,_names_oneLineTree,_names_self) =
+        ( _names_self) =
             (_names )
         ( _type_self) =
             (_type )
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,addListToFM _lhs_typeSignatures [ (name, _typeScheme) | name <- _names_self ],[],_lhs_uniqueChunk)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,[],_lhs_matchIO,_lhs_patternMatchWarnings,_self,addListToFM _lhs_typeSignatures [ (name, _typeScheme) | name <- _names_self ],[],_lhs_uniqueChunk)
 -- Declarations ------------------------------------------------
 -- semantic domain
 type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -2056,12 +2021,13 @@ type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (Tps) ->
                       (Names) ->
                       (OrderedTypeSynonyms) ->
+                      (InfoTree) ->
                       ([Warning]) ->
                       (Predicates) ->
                       (FixpointSubstitution) ->
                       (FiniteMap Name TpScheme) ->
                       (Int) ->
-                      ( (Int),(BindingGroups),(ChunkNumberMap),(TypeErrors),(Warnings),(Names),(DictionaryEnvironment),(IO ()),( [ OneLineTree] ),([Warning]),(Declarations),(FiniteMap Name TpScheme),(Names),(Int))
+                      ( (Int),(BindingGroups),(ChunkNumberMap),(TypeErrors),(Warnings),(Names),(DictionaryEnvironment),(InfoTrees),(IO ()),([Warning]),(Declarations),(FiniteMap Name TpScheme),(Names),(Int))
 -- cata
 sem_Declarations :: (Declarations) ->
                     (T_Declarations)
@@ -2089,6 +2055,7 @@ sem_Declarations_Cons (_hd)
                       (_lhs_monos)
                       (_lhs_namesInScope)
                       (_lhs_orderedTypeSynonyms)
+                      (_lhs_parentTree)
                       (_lhs_patternMatchWarnings)
                       (_lhs_predicates)
                       (_lhs_substitution)
@@ -2096,7 +2063,7 @@ sem_Declarations_Cons (_hd)
                       (_lhs_uniqueChunk) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_betaUnique,_hd_bindingGroups,_hd_collectChunkNumbers,_hd_collectErrors,_hd_collectWarnings,_hd_declVarNames,_hd_dictionaryEnvironment,_hd_matchIO,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_self,_hd_typeSignatures,_hd_unboundNames,_hd_uniqueChunk) =
+        ( _hd_betaUnique,_hd_bindingGroups,_hd_collectChunkNumbers,_hd_collectErrors,_hd_collectWarnings,_hd_declVarNames,_hd_dictionaryEnvironment,_hd_infoTrees,_hd_matchIO,_hd_patternMatchWarnings,_hd_self,_hd_typeSignatures,_hd_unboundNames,_hd_uniqueChunk) =
             (_hd (_lhs_allPatterns)
                  (_lhs_availablePredicates)
                  (_lhs_betaUnique)
@@ -2114,12 +2081,13 @@ sem_Declarations_Cons (_hd)
                  (_lhs_monos)
                  (_lhs_namesInScope)
                  (_lhs_orderedTypeSynonyms)
+                 (_lhs_parentTree)
                  (_lhs_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_substitution)
                  (_lhs_typeSignatures)
                  (_lhs_uniqueChunk))
-        ( _tl_betaUnique,_tl_bindingGroups,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_tl_declVarNames,_tl_dictionaryEnvironment,_tl_matchIO,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self,_tl_typeSignatures,_tl_unboundNames,_tl_uniqueChunk) =
+        ( _tl_betaUnique,_tl_bindingGroups,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_tl_declVarNames,_tl_dictionaryEnvironment,_tl_infoTrees,_tl_matchIO,_tl_patternMatchWarnings,_tl_self,_tl_typeSignatures,_tl_unboundNames,_tl_uniqueChunk) =
             (_tl (_lhs_allPatterns)
                  (_lhs_availablePredicates)
                  (_hd_betaUnique)
@@ -2137,12 +2105,13 @@ sem_Declarations_Cons (_hd)
                  (_lhs_monos)
                  (_lhs_namesInScope)
                  (_lhs_orderedTypeSynonyms)
+                 (_lhs_parentTree)
                  (_hd_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_substitution)
                  (_hd_typeSignatures)
                  (_hd_uniqueChunk))
-    in  ( _tl_betaUnique,_tl_bindingGroups,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_hd_declVarNames ++ _tl_declVarNames,_tl_dictionaryEnvironment,_tl_matchIO,_hd_oneLineTree  :  _tl_oneLineTree,_tl_patternMatchWarnings,_self,_tl_typeSignatures,_hd_unboundNames ++ _tl_unboundNames,_tl_uniqueChunk)
+    in  ( _tl_betaUnique,_tl_bindingGroups,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_hd_declVarNames ++ _tl_declVarNames,_tl_dictionaryEnvironment,_hd_infoTrees ++ _tl_infoTrees,_tl_matchIO,_tl_patternMatchWarnings,_self,_tl_typeSignatures,_hd_unboundNames ++ _tl_unboundNames,_tl_uniqueChunk)
 sem_Declarations_Nil :: (T_Declarations)
 sem_Declarations_Nil (_lhs_allPatterns)
                      (_lhs_availablePredicates)
@@ -2161,6 +2130,7 @@ sem_Declarations_Nil (_lhs_allPatterns)
                      (_lhs_monos)
                      (_lhs_namesInScope)
                      (_lhs_orderedTypeSynonyms)
+                     (_lhs_parentTree)
                      (_lhs_patternMatchWarnings)
                      (_lhs_predicates)
                      (_lhs_substitution)
@@ -2168,7 +2138,7 @@ sem_Declarations_Nil (_lhs_allPatterns)
                      (_lhs_uniqueChunk) =
     let (_self) =
             []
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,_lhs_matchIO,[],_lhs_patternMatchWarnings,_self,_lhs_typeSignatures,[],_lhs_uniqueChunk)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,[],_lhs_matchIO,_lhs_patternMatchWarnings,_self,_lhs_typeSignatures,[],_lhs_uniqueChunk)
 -- Export ------------------------------------------------------
 -- semantic domain
 type T_Export = ( (Export))
@@ -2191,7 +2161,7 @@ sem_Export_Module (_range) (_name) =
             Export_Module _range_self _name_self
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
     in  ( _self)
 sem_Export_TypeOrClass :: (T_Range) ->
@@ -2203,7 +2173,7 @@ sem_Export_TypeOrClass (_range) (_name) (_names) =
             Export_TypeOrClass _range_self _name_self _names_self
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
         ( _names_self) =
             (_names )
@@ -2216,7 +2186,7 @@ sem_Export_TypeOrClassComplete (_range) (_name) =
             Export_TypeOrClassComplete _range_self _name_self
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
     in  ( _self)
 sem_Export_Variable :: (T_Range) ->
@@ -2227,7 +2197,7 @@ sem_Export_Variable (_range) (_name) =
             Export_Variable _range_self _name_self
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
     in  ( _self)
 -- Exports -----------------------------------------------------
@@ -2271,13 +2241,14 @@ type T_Expression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (Tps) ->
                     (Names) ->
                     (OrderedTypeSynonyms) ->
+                    (InfoTree) ->
                     ([Warning]) ->
                     (Predicates) ->
                     (FixpointSubstitution) ->
                     ([(Expression     , [String])]) ->
                     (Int) ->
                     (Int) ->
-                    ( (Assumptions),(Tp),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),(OneLineTree),([Warning]),(Expression),(Names),(Int),(Int))
+                    ( (Assumptions),(Tp),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTree),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),([Warning]),(Expression),(Names),(Int),(Int))
 -- cata
 sem_Expression :: (Expression) ->
                   (T_Expression)
@@ -2343,6 +2314,7 @@ sem_Expression_Case (_range)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_lhs_parentTree)
                     (_lhs_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
@@ -2362,26 +2334,19 @@ sem_Expression_Case (_range)
         (_newcon) =
             [ (_expression_beta .==. _beta') _cinfo ]
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltCase, 0, "")
-                  , location   = "scrutinee of case expression"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getExprRange _expression_self) ]
-                  }
-        (_oneLineTree) =
-            OneLineNode
-                [ OneLineText "case "
-                , OneLineNode [_expression_oneLineTree]
-                , OneLineText " of "
-                , encloseSep "{" "; " "}" _alternatives_oneLineTree
-                ]
+            childConstraint 0 "scrutinee of case expression" _parentTree
+               []
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo (_expression_infoTree : _alternatives_infoTrees)
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_lhs_betaUnique + 2)
@@ -2397,13 +2362,14 @@ sem_Expression_Case (_range)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
                          ([])
                          (_lhs_uniqueChunk)
                          (_lhs_uniqueSecondRound))
-        ( _alternatives_assumptions,_alternatives_betaUnique,_alternatives_collectChunkNumbers,_alternatives_collectErrors,_alternatives_collectWarnings,_alternatives_constraintslist,_alternatives_dictionaryEnvironment,_alternatives_elementss,_alternatives_matchIO,_alternatives_oneLineTree,_alternatives_patternMatchWarnings,_alternatives_self,_alternatives_unboundNames,_alternatives_uniqueChunk,_alternatives_unrwars) =
+        ( _alternatives_assumptions,_alternatives_betaUnique,_alternatives_collectChunkNumbers,_alternatives_collectErrors,_alternatives_collectWarnings,_alternatives_constraintslist,_alternatives_dictionaryEnvironment,_alternatives_elementss,_alternatives_infoTrees,_alternatives_matchIO,_alternatives_patternMatchWarnings,_alternatives_self,_alternatives_unboundNames,_alternatives_uniqueChunk,_alternatives_unrwars) =
             (_alternatives (_lhs_allPatterns)
                            (_lhs_availablePredicates)
                            (_beta')
@@ -2422,6 +2388,7 @@ sem_Expression_Case (_range)
                            (_lhs_namesInScope)
                            (length _alternatives_constraintslist)
                            (_lhs_orderedTypeSynonyms)
+                           (_parentTree)
                            (_expression_patternMatchWarnings)
                            (_lhs_predicates)
                            (_lhs_substitution)
@@ -2434,9 +2401,9 @@ sem_Expression_Case (_range)
          ,_alternatives_collectWarnings
          ,_constraints
          ,_alternatives_dictionaryEnvironment
+         ,_parentTree
          ,_alternatives_matchIO
-         ,matchOnlyVariable _localInfo _lhs_tryPatterns
-         ,_oneLineTree
+         ,matchOnlyVariable _infoTuple _lhs_tryPatterns
          ,patternMatchWarnings _lhs_importEnvironment
                                _lhs_substitution
                                _expression_beta
@@ -2476,6 +2443,7 @@ sem_Expression_Comprehension (_range)
                              (_lhs_monos)
                              (_lhs_namesInScope)
                              (_lhs_orderedTypeSynonyms)
+                             (_lhs_parentTree)
                              (_lhs_patternMatchWarnings)
                              (_lhs_predicates)
                              (_lhs_substitution)
@@ -2491,27 +2459,19 @@ sem_Expression_Comprehension (_range)
         (_newcon) =
             [ (listType _expression_beta .==. _beta) _cinfo ]
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltComprehension, 0, "")
-                  , location   = "list comprehension"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint ]
-                  }
-        (_oneLineTree) =
-            OneLineNode
-                [ OneLineText "[ "
-                , OneLineNode [_expression_oneLineTree]
-                , OneLineText " | "
-                , OneLineNode [ punctuate ", " _qualifiers_oneLineTree ]
-                , OneLineText " ]"
-                ]
+            resultConstraint "list comprehension" _parentTree
+               [ FolkloreConstraint ]
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo _qualifiers_infoTrees
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_lhs_betaUnique + 1)
@@ -2527,13 +2487,14 @@ sem_Expression_Comprehension (_range)
                          (_qualifiers_monos)
                          (_qualifiers_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
                          ([])
                          (_lhs_uniqueChunk)
                          (_lhs_uniqueSecondRound))
-        ( _qualifiers_assumptions,_qualifiers_betaUnique,_qualifiers_collectChunkNumbers,_qualifiers_collectErrors,_qualifiers_collectWarnings,_qualifiers_constraints,_qualifiers_dictionaryEnvironment,_qualifiers_matchIO,_qualifiers_monos,_qualifiers_namesInScope,_qualifiers_oneLineTree,_qualifiers_patternMatchWarnings,_qualifiers_self,_qualifiers_unboundNames,_qualifiers_uniqueChunk,_qualifiers_uniqueSecondRound) =
+        ( _qualifiers_assumptions,_qualifiers_betaUnique,_qualifiers_collectChunkNumbers,_qualifiers_collectErrors,_qualifiers_collectWarnings,_qualifiers_constraints,_qualifiers_dictionaryEnvironment,_qualifiers_infoTrees,_qualifiers_matchIO,_qualifiers_monos,_qualifiers_namesInScope,_qualifiers_patternMatchWarnings,_qualifiers_self,_qualifiers_unboundNames,_qualifiers_uniqueChunk,_qualifiers_uniqueSecondRound) =
             (_qualifiers (_lhs_allPatterns)
                          (_expression_assumptions)
                          (_lhs_availablePredicates)
@@ -2551,13 +2512,14 @@ sem_Expression_Comprehension (_range)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_parentTree)
                          (_expression_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
                          (_expression_unboundNames)
                          (_expression_uniqueChunk)
                          (_expression_uniqueSecondRound))
-    in  ( _qualifiers_assumptions,_beta,_qualifiers_betaUnique,_qualifiers_collectChunkNumbers,_qualifiers_collectErrors,_qualifiers_collectWarnings,_constraints,_qualifiers_dictionaryEnvironment,_qualifiers_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_qualifiers_patternMatchWarnings,_self,_qualifiers_unboundNames,_qualifiers_uniqueChunk,_qualifiers_uniqueSecondRound)
+    in  ( _qualifiers_assumptions,_beta,_qualifiers_betaUnique,_qualifiers_collectChunkNumbers,_qualifiers_collectErrors,_qualifiers_collectWarnings,_constraints,_qualifiers_dictionaryEnvironment,_parentTree,_qualifiers_matchIO,matchOnlyVariable _infoTuple _lhs_tryPatterns,_qualifiers_patternMatchWarnings,_self,_qualifiers_unboundNames,_qualifiers_uniqueChunk,_qualifiers_uniqueSecondRound)
 sem_Expression_Constructor :: (T_Range) ->
                               (T_Name) ->
                               (T_Expression)
@@ -2578,6 +2540,7 @@ sem_Expression_Constructor (_range)
                            (_lhs_monos)
                            (_lhs_namesInScope)
                            (_lhs_orderedTypeSynonyms)
+                           (_lhs_parentTree)
                            (_lhs_patternMatchWarnings)
                            (_lhs_predicates)
                            (_lhs_substitution)
@@ -2595,31 +2558,26 @@ sem_Expression_Constructor (_range)
                Nothing  -> []
                Just ctp -> [ (_beta .::. ctp) _cinfo ]
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltConstructor, 0, "")
-                  , location   = "constructor"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _name_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , HighlyTrusted
-                                 , IsImported _name_self
-                                 ]
-                  }
-        (_oneLineTree) =
-            OneLineNode [_name_oneLineTree]
+            resultConstraint "constructor" _parentTree
+               [ FolkloreConstraint, HasTrustFactor 10.0, IsImported ]
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo []
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         (((),_matches,_newConstraintSet,_newUnique,_ioMatch)) =
-            match0 _localInfo _lhs_uniqueSecondRound
+            match0 _infoTuple _lhs_uniqueSecondRound
                    (match_Expression_Constructor _name_self)
                    _lhs_tryPatterns _lhs_allPatterns
                    []
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
-    in  ( noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_newConstraintSet,_lhs_dictionaryEnvironment,_lhs_matchIO >> _ioMatch,_matches,_oneLineTree,_lhs_patternMatchWarnings,_self,[],_lhs_uniqueChunk,_newUnique)
+    in  ( noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_newConstraintSet,_lhs_dictionaryEnvironment,_parentTree,_lhs_matchIO >> _ioMatch,_matches,_lhs_patternMatchWarnings,_self,[],_lhs_uniqueChunk,_newUnique)
 sem_Expression_Do :: (T_Range) ->
                      (T_Statements) ->
                      (T_Expression)
@@ -2640,6 +2598,7 @@ sem_Expression_Do (_range)
                   (_lhs_monos)
                   (_lhs_namesInScope)
                   (_lhs_orderedTypeSynonyms)
+                  (_lhs_parentTree)
                   (_lhs_patternMatchWarnings)
                   (_lhs_predicates)
                   (_lhs_substitution)
@@ -2657,24 +2616,19 @@ sem_Expression_Do (_range)
                Nothing -> []
                Just b  -> [ (ioType b .==. _beta) _cinfo ]
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltDo, 0, "")
-                  , location   = "do-expression"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint ]
-                  }
-        (_oneLineTree) =
-            OneLineNode
-                [ OneLineText "do "
-                , OneLineNode (sepBy (OneLineText "; ") _statements_oneLineTree)
-                ]
+            resultConstraint "do-expression" _parentTree
+               [ FolkloreConstraint ]
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo _statements_infoTrees
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         ( _range_self) =
             (_range )
-        ( _statements_assumptions,_statements_betaUnique,_statements_collectChunkNumbers,_statements_collectErrors,_statements_collectWarnings,_statements_constraints,_statements_dictionaryEnvironment,_statements_generatorBeta,_statements_matchIO,_statements_namesInScope,_statements_oneLineTree,_statements_patternMatchWarnings,_statements_self,_statements_unboundNames,_statements_uniqueChunk,_statements_uniqueSecondRound) =
+        ( _statements_assumptions,_statements_betaUnique,_statements_collectChunkNumbers,_statements_collectErrors,_statements_collectWarnings,_statements_constraints,_statements_dictionaryEnvironment,_statements_generatorBeta,_statements_infoTrees,_statements_matchIO,_statements_namesInScope,_statements_patternMatchWarnings,_statements_self,_statements_unboundNames,_statements_uniqueChunk,_statements_uniqueSecondRound) =
             (_statements (_lhs_allPatterns)
                          (noAssumptions)
                          (_lhs_availablePredicates)
@@ -2693,13 +2647,14 @@ sem_Expression_Do (_range)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
                          ([])
                          (_lhs_uniqueChunk)
                          (_lhs_uniqueSecondRound))
-    in  ( _statements_assumptions,_beta,_statements_betaUnique,_statements_collectChunkNumbers,_statements_collectErrors,_statements_collectWarnings,Node [ _newcon .<. _statements_constraints ],_statements_dictionaryEnvironment,_statements_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_statements_patternMatchWarnings,_self,_statements_unboundNames,_statements_uniqueChunk,_statements_uniqueSecondRound)
+    in  ( _statements_assumptions,_beta,_statements_betaUnique,_statements_collectChunkNumbers,_statements_collectErrors,_statements_collectWarnings,Node [ _newcon .<. _statements_constraints ],_statements_dictionaryEnvironment,_parentTree,_statements_matchIO,matchOnlyVariable _infoTuple _lhs_tryPatterns,_statements_patternMatchWarnings,_self,_statements_unboundNames,_statements_uniqueChunk,_statements_uniqueSecondRound)
 sem_Expression_Enum :: (T_Range) ->
                        (T_Expression) ->
                        (T_MaybeExpression) ->
@@ -2724,6 +2679,7 @@ sem_Expression_Enum (_range)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_lhs_parentTree)
                     (_lhs_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
@@ -2747,65 +2703,35 @@ sem_Expression_Enum (_range)
         (_conTo) =
             [ (_to_beta   .==. intType) _cinfoTo   ]
         (_cinfoFrom) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltEnum, 0, "from")
-                  , location   = "enumeration"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _from_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getExprRange _from_self) ]
-                  }
+            childConstraint 0 "enumeration" _parentTree
+               []
         (_cinfoThen) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltEnum, 1, "then")
-                  , location   = "enumeration"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm (convertMaybeOneLineTree _then_oneLineTree) ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getMaybeExprRange _then_self) ]
-                  }
+            childConstraint 1 "enumeration" _parentTree
+               []
+        (_toChildNr) =
+            1 + length _then_infoTrees
         (_cinfoTo) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltEnum, 2, "to")
-                  , location   = "enumeration"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm (convertMaybeOneLineTree _to_oneLineTree) ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getMaybeExprRange _to_self) ]
-                  }
+            childConstraint _toChildNr "enumeration" _parentTree
+               []
         (_cinfoResult) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltEnum, 3, "result")
-                  , location   = "enumeration"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint ]
-                  }
-        (_oneLineTree) =
-            OneLineNode (
-                [ OneLineText "["
-                , OneLineNode [_from_oneLineTree]
-                ]
-                ++
-                maybe [] (\x -> [OneLineText ", ", x]) _then_oneLineTree
-                ++
-                [ OneLineText " .. " ]
-                ++
-                maybe [] (\x -> [OneLineNode [x]]) _to_oneLineTree
-                ++
-                [ OneLineText "]" ]
-            )
+            resultConstraint "enumeration" _parentTree
+               [ FolkloreConstraint ]
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo (_from_infoTree : _then_infoTrees ++ _to_infoTrees)
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         (((_t1,_t2,_t3),_matches,_newConstraintSet,_newUnique,_ioMatch)) =
-            match3 _localInfo _to_uniqueSecondRound
+            match3 _infoTuple _to_uniqueSecondRound
                    match_Expression_Enum
                    _lhs_tryPatterns _lhs_allPatterns
                    [_from_matches, _then_matches, _to_matches]
         ( _range_self) =
             (_range )
-        ( _from_assumptions,_from_beta,_from_betaUnique,_from_collectChunkNumbers,_from_collectErrors,_from_collectWarnings,_from_constraints,_from_dictionaryEnvironment,_from_matchIO,_from_matches,_from_oneLineTree,_from_patternMatchWarnings,_from_self,_from_unboundNames,_from_uniqueChunk,_from_uniqueSecondRound) =
+        ( _from_assumptions,_from_beta,_from_betaUnique,_from_collectChunkNumbers,_from_collectErrors,_from_collectWarnings,_from_constraints,_from_dictionaryEnvironment,_from_infoTree,_from_matchIO,_from_matches,_from_patternMatchWarnings,_from_self,_from_unboundNames,_from_uniqueChunk,_from_uniqueSecondRound) =
             (_from (_lhs_allPatterns)
                    (_lhs_availablePredicates)
                    (_lhs_betaUnique + 1)
@@ -2821,13 +2747,14 @@ sem_Expression_Enum (_range)
                    (_lhs_monos)
                    (_lhs_namesInScope)
                    (_lhs_orderedTypeSynonyms)
+                   (_parentTree)
                    (_lhs_patternMatchWarnings)
                    (_lhs_predicates)
                    (_lhs_substitution)
                    (_t1)
                    (_lhs_uniqueChunk)
                    (_lhs_uniqueSecondRound))
-        ( _then_assumptions,_then_beta,_then_betaUnique,_then_collectChunkNumbers,_then_collectErrors,_then_collectWarnings,_then_constraints,_then_dictionaryEnvironment,_then_matchIO,_then_matches,_then_oneLineTree,_then_patternMatchWarnings,_then_section,_then_self,_then_unboundNames,_then_uniqueChunk,_then_uniqueSecondRound) =
+        ( _then_assumptions,_then_beta,_then_betaUnique,_then_collectChunkNumbers,_then_collectErrors,_then_collectWarnings,_then_constraints,_then_dictionaryEnvironment,_then_infoTrees,_then_matchIO,_then_matches,_then_patternMatchWarnings,_then_section,_then_self,_then_unboundNames,_then_uniqueChunk,_then_uniqueSecondRound) =
             (_then (_lhs_allPatterns)
                    (_lhs_availablePredicates)
                    (_from_betaUnique)
@@ -2843,13 +2770,14 @@ sem_Expression_Enum (_range)
                    (_lhs_monos)
                    (_lhs_namesInScope)
                    (_lhs_orderedTypeSynonyms)
+                   (_parentTree)
                    (_from_patternMatchWarnings)
                    (_lhs_predicates)
                    (_lhs_substitution)
                    (_t2)
                    (_from_uniqueChunk)
                    (_from_uniqueSecondRound))
-        ( _to_assumptions,_to_beta,_to_betaUnique,_to_collectChunkNumbers,_to_collectErrors,_to_collectWarnings,_to_constraints,_to_dictionaryEnvironment,_to_matchIO,_to_matches,_to_oneLineTree,_to_patternMatchWarnings,_to_section,_to_self,_to_unboundNames,_to_uniqueChunk,_to_uniqueSecondRound) =
+        ( _to_assumptions,_to_beta,_to_betaUnique,_to_collectChunkNumbers,_to_collectErrors,_to_collectWarnings,_to_constraints,_to_dictionaryEnvironment,_to_infoTrees,_to_matchIO,_to_matches,_to_patternMatchWarnings,_to_section,_to_self,_to_unboundNames,_to_uniqueChunk,_to_uniqueSecondRound) =
             (_to (_lhs_allPatterns)
                  (_lhs_availablePredicates)
                  (_then_betaUnique)
@@ -2865,13 +2793,14 @@ sem_Expression_Enum (_range)
                  (_lhs_monos)
                  (_lhs_namesInScope)
                  (_lhs_orderedTypeSynonyms)
+                 (_parentTree)
                  (_then_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_substitution)
                  (_t3)
                  (_then_uniqueChunk)
                  (_then_uniqueSecondRound))
-    in  ( _from_assumptions `combine` _then_assumptions `combine` _to_assumptions,_beta,_to_betaUnique,_to_collectChunkNumbers,_to_collectErrors,_to_collectWarnings,_newConstraintSet,_to_dictionaryEnvironment,_to_matchIO >> _ioMatch,_matches,_oneLineTree,_to_patternMatchWarnings,_self,_from_unboundNames ++ _then_unboundNames ++ _to_unboundNames,_to_uniqueChunk,_newUnique)
+    in  ( _from_assumptions `combine` _then_assumptions `combine` _to_assumptions,_beta,_to_betaUnique,_to_collectChunkNumbers,_to_collectErrors,_to_collectWarnings,_newConstraintSet,_to_dictionaryEnvironment,_parentTree,_to_matchIO >> _ioMatch,_matches,_to_patternMatchWarnings,_self,_from_unboundNames ++ _then_unboundNames ++ _to_unboundNames,_to_uniqueChunk,_newUnique)
 sem_Expression_If :: (T_Range) ->
                      (T_Expression) ->
                      (T_Expression) ->
@@ -2896,6 +2825,7 @@ sem_Expression_If (_range)
                   (_lhs_monos)
                   (_lhs_namesInScope)
                   (_lhs_orderedTypeSynonyms)
+                  (_lhs_parentTree)
                   (_lhs_patternMatchWarnings)
                   (_lhs_predicates)
                   (_lhs_substitution)
@@ -2918,47 +2848,24 @@ sem_Expression_If (_range)
         (_conElse) =
             [ (_elseExpression_beta  .==. _beta   ) _cinfoElse  ]
         (_cinfoGuard) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltIf, 0, "guard")
-                  , location   = "conditional"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _guardExpression_oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getExprRange _guardExpression_self) ]
-                  }
+            childConstraint 0 "conditional" _parentTree
+               []
         (_cinfoThen) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltIf, 1, "then")
-                  , location   = "then branch of conditional"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _thenExpression_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getExprRange _thenExpression_self)
-                                 , Unifier (tpToInt _beta) ]
-                  }
+            childConstraint 1 "then branch of conditional" _parentTree
+               []
         (_cinfoElse) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltIf,2, "else")
-                  , location   = "else branch of conditional"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _elseExpression_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getExprRange _elseExpression_self)
-                                 , Unifier (tpToInt _beta) ]
-                  }
-        (_oneLineTree) =
-            OneLineNode
-                [ OneLineText "if "
-                , OneLineNode [_guardExpression_oneLineTree]
-                , OneLineText " then "
-                , OneLineNode [_thenExpression_oneLineTree]
-                , OneLineText " else "
-                , OneLineNode [_elseExpression_oneLineTree]
-                ]
+            childConstraint 2 "else branch of conditional" _parentTree
+               []
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo [_guardExpression_infoTree, _thenExpression_infoTree, _elseExpression_infoTree]
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         (((_t1,_t2,_t3),_matches,_newConstraintSet,_newUnique,_ioMatch)) =
-            match3 _localInfo _elseExpression_uniqueSecondRound
+            match3 _infoTuple _elseExpression_uniqueSecondRound
                    match_Expression_If
                    _lhs_tryPatterns _lhs_allPatterns
                    [_guardExpression_matches,_thenExpression_matches,_elseExpression_matches]
@@ -2972,9 +2879,9 @@ sem_Expression_If (_range)
          ,_guardExpression_collectWarnings
          ,_guardExpression_constraints
          ,_guardExpression_dictionaryEnvironment
+         ,_guardExpression_infoTree
          ,_guardExpression_matchIO
          ,_guardExpression_matches
-         ,_guardExpression_oneLineTree
          ,_guardExpression_patternMatchWarnings
          ,_guardExpression_self
          ,_guardExpression_unboundNames
@@ -2996,6 +2903,7 @@ sem_Expression_If (_range)
                               (_lhs_monos)
                               (_lhs_namesInScope)
                               (_lhs_orderedTypeSynonyms)
+                              (_parentTree)
                               (_lhs_patternMatchWarnings)
                               (_lhs_predicates)
                               (_lhs_substitution)
@@ -3010,9 +2918,9 @@ sem_Expression_If (_range)
          ,_thenExpression_collectWarnings
          ,_thenExpression_constraints
          ,_thenExpression_dictionaryEnvironment
+         ,_thenExpression_infoTree
          ,_thenExpression_matchIO
          ,_thenExpression_matches
-         ,_thenExpression_oneLineTree
          ,_thenExpression_patternMatchWarnings
          ,_thenExpression_self
          ,_thenExpression_unboundNames
@@ -3034,6 +2942,7 @@ sem_Expression_If (_range)
                              (_lhs_monos)
                              (_lhs_namesInScope)
                              (_lhs_orderedTypeSynonyms)
+                             (_parentTree)
                              (_guardExpression_patternMatchWarnings)
                              (_lhs_predicates)
                              (_lhs_substitution)
@@ -3048,9 +2957,9 @@ sem_Expression_If (_range)
          ,_elseExpression_collectWarnings
          ,_elseExpression_constraints
          ,_elseExpression_dictionaryEnvironment
+         ,_elseExpression_infoTree
          ,_elseExpression_matchIO
          ,_elseExpression_matches
-         ,_elseExpression_oneLineTree
          ,_elseExpression_patternMatchWarnings
          ,_elseExpression_self
          ,_elseExpression_unboundNames
@@ -3072,6 +2981,7 @@ sem_Expression_If (_range)
                              (_lhs_monos)
                              (_lhs_namesInScope)
                              (_lhs_orderedTypeSynonyms)
+                             (_parentTree)
                              (_thenExpression_patternMatchWarnings)
                              (_lhs_predicates)
                              (_lhs_substitution)
@@ -3086,9 +2996,9 @@ sem_Expression_If (_range)
          ,_elseExpression_collectWarnings
          ,_newConstraintSet
          ,_elseExpression_dictionaryEnvironment
+         ,_parentTree
          ,_elseExpression_matchIO >> _ioMatch
          ,_matches
-         ,_oneLineTree
          ,_elseExpression_patternMatchWarnings
          ,_self
          ,_guardExpression_unboundNames ++ _thenExpression_unboundNames ++ _elseExpression_unboundNames
@@ -3119,6 +3029,7 @@ sem_Expression_InfixApplication (_range)
                                 (_lhs_monos)
                                 (_lhs_namesInScope)
                                 (_lhs_orderedTypeSynonyms)
+                                (_lhs_parentTree)
                                 (_lhs_patternMatchWarnings)
                                 (_lhs_predicates)
                                 (_lhs_substitution)
@@ -3145,80 +3056,52 @@ sem_Expression_InfixApplication (_range)
                    (True ,True ) -> [               (_operator_beta .==. _beta)                        _cinfoEmpty        ]
                    (False,True ) -> [ _conOperator, (_rightExpression_beta .->. _betaResOp .==. _beta) _cinfoRightSection ]
                    (True ,False) -> [ _conOperator, (_leftExpression_beta  .->. _betaResOp .==. _beta) _cinfoLeftSection  ]
+        (_operatorNr) =
+            length _leftExpression_infoTrees
         (_cinfoOperator) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltInfixApplication, 0, "operator")
-                  , location   = "infix application"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceOperator _operatorName ]
-                  , typepair   = tppair
-                  , properties = (if _leftExpression_section || _rightExpression_section
-                                    then [ HighlyTrusted ]
-                                    else [ ApplicationEdge True
-                                                   [ ( convertMaybeOneLineTree _leftExpression_oneLineTree
-                                                     , _leftExpression_beta
-                                                     , getMaybeExprRange _leftExpression_self
-                                                     )
-                                                   , ( convertMaybeOneLineTree _rightExpression_oneLineTree
-                                                     , _rightExpression_beta
-                                                     , getMaybeExprRange _rightExpression_self
-                                                     )
-                                                   ] ])
-                                 ++
-                                 [ SubTermRange (getExprRange _operator_self) ]
-                  }
+            childConstraint _operatorNr "infix application" _parentTree
+               (case (_leftExpression_infoTrees, _rightExpression_infoTrees) of
+                  ([left], [right]) ->
+                     [ ApplicationEdge True
+                          [ ( (self . attribute) left
+                            , _leftExpression_beta
+                            , getMaybeExprRange _leftExpression_self
+                            )
+                          , ( (self . attribute) right
+                            , _rightExpression_beta
+                            , getMaybeExprRange _rightExpression_self
+                            )
+                          ]
+                     ]
+                  _  ->
+                     [ HasTrustFactor 10.0 ])
         (_cinfoComplete) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltInfixApplication, 1, "")
-                  , location   = "infix application (INTERNAL ERROR)"
-                  , errorrange = _range_self
-                  , sources    = [ ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , SuperHighlyTrusted
-                                 ]
-                  }
+            specialConstraint "infix application (INTERNAL ERROR)" _parentTree
+               (self _localInfo, Nothing)
+               [ FolkloreConstraint, HasTrustFactor 10000.0 ]
         (_cinfoLeftSection) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltInfixApplication, 2, "left")
-                  , location   = "left section"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ ]
-                  }
+            specialConstraint "left section" _parentTree
+               (self _localInfo, Nothing)
+               [ ]
         (_cinfoRightSection) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltInfixApplication, 3, "right")
-                  , location   = "right section"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ ]
-                  }
+            specialConstraint "right section" _parentTree
+               (self _localInfo, Nothing)
+               [ ]
         (_cinfoEmpty) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltInfixApplication, 4, "empty")
-                  , location   = "infix application"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , HighlyTrusted
-                                 ]
-                  }
-        (_operatorName) =
-            oneLineTreeAsOperator _operator_oneLineTree
-        (_oneLineTree) =
-            case (_leftExpression_oneLineTree, _rightExpression_oneLineTree) of
-                (Nothing, Nothing) -> parens _operatorName
-                (Just l , Nothing) -> encloseSep "(" " " ")" [l, _operatorName]
-                (Nothing, Just r ) -> encloseSep "(" " " ")" [_operatorName, r]
-                (Just l , Just r ) -> OneLineNode [ l, OneLineText " ", _operatorName, OneLineText " ", r ]
+            specialConstraint "infix application" _parentTree
+              (self _localInfo, Nothing)
+              [ FolkloreConstraint, HasTrustFactor 10.0, IsEmptyInfixApplication ]
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo
+              (_leftExpression_infoTrees ++ [_operator_infoTree] ++ _rightExpression_infoTrees)
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         (((_t1,_t2,_t3),_matches,_newConstraintSet,_newUnique,_ioMatch)) =
-            match3 _localInfo _rightExpression_uniqueSecondRound
+            match3 _infoTuple _rightExpression_uniqueSecondRound
                    match_Expression_InfixApplication
                    _lhs_tryPatterns _lhs_allPatterns
                    [_leftExpression_matches, _operator_matches,_rightExpression_matches]
@@ -3232,9 +3115,9 @@ sem_Expression_InfixApplication (_range)
          ,_leftExpression_collectWarnings
          ,_leftExpression_constraints
          ,_leftExpression_dictionaryEnvironment
+         ,_leftExpression_infoTrees
          ,_leftExpression_matchIO
          ,_leftExpression_matches
-         ,_leftExpression_oneLineTree
          ,_leftExpression_patternMatchWarnings
          ,_leftExpression_section
          ,_leftExpression_self
@@ -3257,13 +3140,14 @@ sem_Expression_InfixApplication (_range)
                              (_lhs_monos)
                              (_lhs_namesInScope)
                              (_lhs_orderedTypeSynonyms)
+                             (_parentTree)
                              (_lhs_patternMatchWarnings)
                              (_lhs_predicates)
                              (_lhs_substitution)
                              (_t1)
                              (_lhs_uniqueChunk)
                              (_lhs_uniqueSecondRound))
-        ( _operator_assumptions,_operator_beta,_operator_betaUnique,_operator_collectChunkNumbers,_operator_collectErrors,_operator_collectWarnings,_operator_constraints,_operator_dictionaryEnvironment,_operator_matchIO,_operator_matches,_operator_oneLineTree,_operator_patternMatchWarnings,_operator_self,_operator_unboundNames,_operator_uniqueChunk,_operator_uniqueSecondRound) =
+        ( _operator_assumptions,_operator_beta,_operator_betaUnique,_operator_collectChunkNumbers,_operator_collectErrors,_operator_collectWarnings,_operator_constraints,_operator_dictionaryEnvironment,_operator_infoTree,_operator_matchIO,_operator_matches,_operator_patternMatchWarnings,_operator_self,_operator_unboundNames,_operator_uniqueChunk,_operator_uniqueSecondRound) =
             (_operator (_lhs_allPatterns)
                        (_lhs_availablePredicates)
                        (_leftExpression_betaUnique)
@@ -3279,6 +3163,7 @@ sem_Expression_InfixApplication (_range)
                        (_lhs_monos)
                        (_lhs_namesInScope)
                        (_lhs_orderedTypeSynonyms)
+                       (_parentTree)
                        (_leftExpression_patternMatchWarnings)
                        (_lhs_predicates)
                        (_lhs_substitution)
@@ -3293,9 +3178,9 @@ sem_Expression_InfixApplication (_range)
          ,_rightExpression_collectWarnings
          ,_rightExpression_constraints
          ,_rightExpression_dictionaryEnvironment
+         ,_rightExpression_infoTrees
          ,_rightExpression_matchIO
          ,_rightExpression_matches
-         ,_rightExpression_oneLineTree
          ,_rightExpression_patternMatchWarnings
          ,_rightExpression_section
          ,_rightExpression_self
@@ -3318,6 +3203,7 @@ sem_Expression_InfixApplication (_range)
                               (_lhs_monos)
                               (_lhs_namesInScope)
                               (_lhs_orderedTypeSynonyms)
+                              (_parentTree)
                               (_operator_patternMatchWarnings)
                               (_lhs_predicates)
                               (_lhs_substitution)
@@ -3332,9 +3218,9 @@ sem_Expression_InfixApplication (_range)
          ,_rightExpression_collectWarnings
          ,_newConstraintSet
          ,_rightExpression_dictionaryEnvironment
+         ,_parentTree
          ,_rightExpression_matchIO >> _ioMatch
          ,_matches
-         ,_oneLineTree
          ,_rightExpression_patternMatchWarnings
          ,_self
          ,_leftExpression_unboundNames ++ _operator_unboundNames ++ _rightExpression_unboundNames
@@ -3363,6 +3249,7 @@ sem_Expression_Lambda (_range)
                       (_lhs_monos)
                       (_lhs_namesInScope)
                       (_lhs_orderedTypeSynonyms)
+                      (_lhs_parentTree)
                       (_lhs_patternMatchWarnings)
                       (_lhs_predicates)
                       (_lhs_substitution)
@@ -3383,31 +3270,26 @@ sem_Expression_Lambda (_range)
         (_newcon) =
             [ (foldr (.->.) _expression_beta _patterns_betas .==. _beta) _cinfoType ]
         (_cinfoBind) =
-            variableBindingCInfo (NTExpression, AltLambda, 0)
+            \name -> variableConstraint "variable" (nameToSelfExpr name)
+               [FolkloreConstraint]
         (_cinfoType) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltLambda, 1, "type")
-                  , location   = "lambda abstraction"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint ]
-                  }
+            resultConstraint "lambda abstraction" _parentTree
+               [ FolkloreConstraint ]
+        (_localInfo) =
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo (_patterns_infoTrees ++ [_expression_infoTree])
         ((_namesInScope,_unboundNames,_scopeInfo)) =
             changeOfScope _patterns_patVarNames _expression_unboundNames _lhs_namesInScope
-        (_oneLineTree) =
-            OneLineNode
-                (  [ OneLineText "\\", punctuate " " _patterns_oneLineTree, OneLineText " -> "
-                   , OneLineNode [_expression_oneLineTree]
-                   ]
-                )
-        (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         ( _range_self) =
             (_range )
-        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_patVarNames,_patterns_patternMatchWarnings,_patterns_self,_patterns_unboundNames) =
-            (_patterns (_lhs_betaUnique + 1) (_lhs_importEnvironment) (_namesInScope) (_lhs_patternMatchWarnings))
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_infoTrees,_patterns_numberOfPatterns,_patterns_patVarNames,_patterns_patternMatchWarnings,_patterns_self,_patterns_unboundNames) =
+            (_patterns (_lhs_betaUnique + 1) (_lhs_importEnvironment) (_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_patterns_betaUnique)
@@ -3423,6 +3305,7 @@ sem_Expression_Lambda (_range)
                          (eltsFM _patterns_environment ++ getMonos _csetBinds ++ _lhs_monos)
                          (_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_parentTree)
                          (_patterns_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
@@ -3437,9 +3320,9 @@ sem_Expression_Lambda (_range)
          ,_expression_collectWarnings
          ,_constraints
          ,_expression_dictionaryEnvironment
+         ,_parentTree
          ,_expression_matchIO
-         ,matchOnlyVariable _localInfo _lhs_tryPatterns
-         ,_oneLineTree
+         ,matchOnlyVariable _infoTuple _lhs_tryPatterns
          ,patternMatchWarnings _lhs_importEnvironment
                                _lhs_substitution
                                _beta
@@ -3479,6 +3362,7 @@ sem_Expression_Let (_range)
                    (_lhs_monos)
                    (_lhs_namesInScope)
                    (_lhs_orderedTypeSynonyms)
+                   (_lhs_parentTree)
                    (_lhs_patternMatchWarnings)
                    (_lhs_predicates)
                    (_lhs_substitution)
@@ -3502,33 +3386,29 @@ sem_Expression_Let (_range)
         ((_errors,_warnings)) =
             checkAnnotations False _lhs_orderedTypeSynonyms _declarations_typeSignatures _localTypes
         (_cinfoType) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltLet, 0, "")
-                  , location   = "let expression (INTERNAL ERROR)"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , SuperHighlyTrusted
-                                 , SubTermRange (getExprRange _expression_self)
-                                 ]
-                  }
+            resultConstraint "let expression (INTERNAL ERROR)" _thisTree
+               [ FolkloreConstraint, HasTrustFactor 10000.0 ]
+        (_localInfo) =
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_declInfo) =
+            LocalInfo { self = UHA_Decls _declarations_self
+                      , assignedType = Nothing
+                      }
+        (_thisTree) =
+            node _lhs_parentTree _localInfo [_declTree, _expression_infoTree]
+        (_declTree) =
+            node _thisTree _declInfo _declarations_infoTrees
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel Expression"
         ((_namesInScope,_unboundNames,_scopeInfo)) =
             changeOfScope _declarations_declVarNames (_declarations_unboundNames ++ _expression_unboundNames) _lhs_namesInScope
-        (_oneLineTree) =
-            OneLineNode
-                [ OneLineText "let "
-                , encloseSep "{" "; " "}" _declarations_oneLineTree
-                , OneLineText " in "
-                , OneLineNode [_expression_oneLineTree]
-                ]
-        (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         ( _range_self) =
             (_range )
-        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectChunkNumbers,_declarations_collectErrors,_declarations_collectWarnings,_declarations_declVarNames,_declarations_dictionaryEnvironment,_declarations_matchIO,_declarations_oneLineTree,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeSignatures,_declarations_unboundNames,_declarations_uniqueChunk) =
+        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectChunkNumbers,_declarations_collectErrors,_declarations_collectWarnings,_declarations_declVarNames,_declarations_dictionaryEnvironment,_declarations_infoTrees,_declarations_matchIO,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeSignatures,_declarations_unboundNames,_declarations_uniqueChunk) =
             (_declarations (_lhs_allPatterns)
                            (_lhs_availablePredicates)
                            (_lhs_betaUnique + 1)
@@ -3546,12 +3426,13 @@ sem_Expression_Let (_range)
                            (_lhs_monos)
                            (_namesInScope)
                            (_lhs_orderedTypeSynonyms)
+                           (_declTree)
                            (_lhs_patternMatchWarnings)
                            (_lhs_predicates)
                            (_lhs_substitution)
                            (emptyFM)
                            (_lhs_uniqueChunk))
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_declarations_betaUnique)
@@ -3567,13 +3448,14 @@ sem_Expression_Let (_range)
                          (_lhs_monos)
                          (_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_thisTree)
                          (_declarations_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
                          ([])
                          (_declarations_uniqueChunk)
                          (_lhs_uniqueSecondRound))
-    in  ( _aset,_beta,_expression_betaUnique,_expression_collectChunkNumbers,_errors ++ _expression_collectErrors,_warnings ++ _expression_collectWarnings,_constraints,_expression_dictionaryEnvironment,_expression_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_expression_patternMatchWarnings,_self,_unboundNames,_chunkNr,_expression_uniqueSecondRound)
+    in  ( _aset,_beta,_expression_betaUnique,_expression_collectChunkNumbers,_errors ++ _expression_collectErrors,_warnings ++ _expression_collectWarnings,_constraints,_expression_dictionaryEnvironment,_thisTree,_expression_matchIO,matchOnlyVariable _infoTuple _lhs_tryPatterns,_expression_patternMatchWarnings,_self,_unboundNames,_chunkNr,_expression_uniqueSecondRound)
 sem_Expression_List :: (T_Range) ->
                        (T_Expressions) ->
                        (T_Expression)
@@ -3594,6 +3476,7 @@ sem_Expression_List (_range)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_lhs_parentTree)
                     (_lhs_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
@@ -3604,48 +3487,38 @@ sem_Expression_List (_range)
             Expression_List _range_self _expressions_self
         (_constraints) =
             _newcon .>.
-             Node (zipWith3 _zipf _expressions_betas _childrenInfo _expressions_constraintslist)
+             Node (zipWith3 _zipf _expressions_betas [0..] _expressions_constraintslist)
         (_beta) =
             TVar _lhs_betaUnique
         (_beta') =
             TVar (_lhs_betaUnique + 1)
         (_newcon) =
             [ (listType _beta' .==. _beta) _cinfoResult ]
-        (_childrenInfo) =
-            zip _expressions_oneLineTree (map getExprRange _expressions_self)
         (_zipf) =
-            \tp pair ctree -> [ (tp .==. _beta') (_cinfoElem pair) ] .<. ctree
+            \tp childNr ctree -> [ (tp .==. _beta') (_cinfoElem childNr) ] .<. ctree
         (_cinfoElem) =
-            \(elemtext, elemrange) tppair ->
-            CInfo { info       = (NTExpression, AltList, 0, "element")
-                  , location   = "element of list"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm elemtext ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange elemrange ] ++
-                                 if length _expressions_betas > 1 then [] else [ HighlyTrusted ]
-                  }
+            \elemNr ->
+            childConstraint elemNr "element of list" _parentTree
+            [ HasTrustFactor 10.0 | length _expressions_betas < 2 ]
         (_cinfoResult) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltList, 1, "result")
-                  , location   = "list"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint ]
-                  }
-        (_oneLineTree) =
-            encloseSep "[" ", " "]" _expressions_oneLineTree
+            resultConstraint "list" _parentTree
+            [ FolkloreConstraint ]
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo (_expressions_infoTrees)
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         ((_t1,_matches,_newConstraintSet,_newUnique,_ioMatch)) =
-            match1 _localInfo _expressions_uniqueSecondRound
+            match1 _infoTuple _expressions_uniqueSecondRound
                match_Expression_List
                _lhs_tryPatterns _lhs_allPatterns
                [_expressions_matches]
         ( _range_self) =
             (_range )
-        ( _expressions_assumptions,_expressions_betaUnique,_expressions_betas,_expressions_collectChunkNumbers,_expressions_collectErrors,_expressions_collectWarnings,_expressions_constraintslist,_expressions_dictionaryEnvironment,_expressions_matchIO,_expressions_matches,_expressions_oneLineTree,_expressions_patternMatchWarnings,_expressions_self,_expressions_unboundNames,_expressions_uniqueChunk,_expressions_uniqueSecondRound) =
+        ( _expressions_assumptions,_expressions_betaUnique,_expressions_betas,_expressions_collectChunkNumbers,_expressions_collectErrors,_expressions_collectWarnings,_expressions_constraintslist,_expressions_dictionaryEnvironment,_expressions_infoTrees,_expressions_matchIO,_expressions_matches,_expressions_patternMatchWarnings,_expressions_self,_expressions_unboundNames,_expressions_uniqueChunk,_expressions_uniqueSecondRound) =
             (_expressions (_lhs_allPatterns)
                           (_lhs_availablePredicates)
                           (_lhs_betaUnique + 2)
@@ -3661,13 +3534,14 @@ sem_Expression_List (_range)
                           (_lhs_monos)
                           (_lhs_namesInScope)
                           (_lhs_orderedTypeSynonyms)
+                          (_parentTree)
                           (_lhs_patternMatchWarnings)
                           (_lhs_predicates)
                           (_lhs_substitution)
                           (_t1)
                           (_lhs_uniqueChunk)
                           (_lhs_uniqueSecondRound))
-    in  ( _expressions_assumptions,_beta,_expressions_betaUnique,_expressions_collectChunkNumbers,_expressions_collectErrors,_expressions_collectWarnings,_newConstraintSet,_expressions_dictionaryEnvironment,_expressions_matchIO,_matches,_oneLineTree,_expressions_patternMatchWarnings,_self,_expressions_unboundNames,_expressions_uniqueChunk,_newUnique)
+    in  ( _expressions_assumptions,_beta,_expressions_betaUnique,_expressions_collectChunkNumbers,_expressions_collectErrors,_expressions_collectWarnings,_newConstraintSet,_expressions_dictionaryEnvironment,_parentTree,_expressions_matchIO,_matches,_expressions_patternMatchWarnings,_self,_expressions_unboundNames,_expressions_uniqueChunk,_newUnique)
 sem_Expression_Literal :: (T_Range) ->
                           (T_Literal) ->
                           (T_Expression)
@@ -3688,6 +3562,7 @@ sem_Expression_Literal (_range)
                        (_lhs_monos)
                        (_lhs_namesInScope)
                        (_lhs_orderedTypeSynonyms)
+                       (_lhs_parentTree)
                        (_lhs_patternMatchWarnings)
                        (_lhs_predicates)
                        (_lhs_substitution)
@@ -3701,31 +3576,26 @@ sem_Expression_Literal (_range)
         (_beta) =
             TVar _lhs_betaUnique
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltLiteral, 0, "")
-                  , location   = "literal"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , HighlyTrusted
-                                 , IsLiteral _literal_self
-                                 ]
-                  }
-        (_oneLineTree) =
-            OneLineNode [_literal_oneLineTree]
+            resultConstraint "literal" _parentTree
+               [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral _literal_self ]
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                           }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo []
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         (((),_matches,_newConstraintSet,_newUnique,_ioMatch)) =
-            match0 _localInfo _lhs_uniqueSecondRound
+            match0 _infoTuple _lhs_uniqueSecondRound
                    (match_Expression_Literal _literal_self)
                    _lhs_tryPatterns _lhs_allPatterns
                    []
         ( _range_self) =
             (_range )
-        ( _literal_elements,_literal_literalType,_literal_oneLineTree,_literal_self) =
+        ( _literal_elements,_literal_literalType,_literal_self) =
             (_literal )
-    in  ( noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_newConstraintSet,_lhs_dictionaryEnvironment,_lhs_matchIO >> _ioMatch,_matches,_oneLineTree,_lhs_patternMatchWarnings,_self,[],_lhs_uniqueChunk,_newUnique)
+    in  ( noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_newConstraintSet,_lhs_dictionaryEnvironment,_parentTree,_lhs_matchIO >> _ioMatch,_matches,_lhs_patternMatchWarnings,_self,[],_lhs_uniqueChunk,_newUnique)
 sem_Expression_Negate :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
@@ -3746,6 +3616,7 @@ sem_Expression_Negate (_range)
                       (_lhs_monos)
                       (_lhs_namesInScope)
                       (_lhs_orderedTypeSynonyms)
+                      (_lhs_parentTree)
                       (_lhs_patternMatchWarnings)
                       (_lhs_predicates)
                       (_lhs_substitution)
@@ -3776,26 +3647,25 @@ sem_Expression_Negate (_range)
         ((_newDEnv,_overloadingErrors)) =
             resolveOverloading _localName _lhs_availablePredicates _requiredDictionaries _expression_dictionaryEnvironment
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltNegate, 0, "")
-                  , location   = "negation"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceOperator (OneLineText "-") ]
-                  , typepair   = tppair
-                  , properties = [ Negation True ]
-                  }
-        (_oneLineTree) =
-            OneLineNode [ OneLineText "-", OneLineNode [_expression_oneLineTree] ]
+            specialConstraint "negation" _parentTree
+               (self _localInfo, Just $ nameToSelfExpr (Name_Identifier _range [] "-"))
+               [ Negation True ]
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo [_expression_infoTree]
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         ((_t1,_matches,_newConstraintSet,_newUnique,_ioMatch)) =
-            match1 _localInfo _expression_uniqueSecondRound
+            match1 _infoTuple _expression_uniqueSecondRound
                    match_Expression_Negate
                    _lhs_tryPatterns _lhs_allPatterns
                    [_expression_matches]
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_lhs_betaUnique + 1)
@@ -3811,13 +3681,14 @@ sem_Expression_Negate (_range)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
                          (_t1)
                          (_lhs_uniqueChunk)
                          (_lhs_uniqueSecondRound))
-    in  ( _expression_assumptions,_beta,_expression_betaUnique,_expression_collectChunkNumbers,map (makeUnresolvedOverloadingError _range_self _oneLineTree) _overloadingErrors ++ _expression_collectErrors,_expression_collectWarnings,_newConstraintSet,_newDEnv,_expression_matchIO >> _ioMatch,_matches,_oneLineTree,_expression_patternMatchWarnings,_self,_expression_unboundNames,_expression_uniqueChunk,_newUnique)
+    in  ( _expression_assumptions,_beta,_expression_betaUnique,_expression_collectChunkNumbers,map (makeUnresolvedOverloadingError _range_self (oneLinerSource $ self _localInfo)) _overloadingErrors ++ _expression_collectErrors,_expression_collectWarnings,_newConstraintSet,_newDEnv,_parentTree,_expression_matchIO >> _ioMatch,_matches,_expression_patternMatchWarnings,_self,_expression_unboundNames,_expression_uniqueChunk,_newUnique)
 sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
@@ -3838,6 +3709,7 @@ sem_Expression_NegateFloat (_range)
                            (_lhs_monos)
                            (_lhs_namesInScope)
                            (_lhs_orderedTypeSynonyms)
+                           (_lhs_parentTree)
                            (_lhs_patternMatchWarnings)
                            (_lhs_predicates)
                            (_lhs_substitution)
@@ -3853,26 +3725,25 @@ sem_Expression_NegateFloat (_range)
         (_newcon) =
             [ (floatType .->. floatType .==. _expression_beta .->. _beta) _cinfo]
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltNegateFloat, 0, "")
-                  , location   = "negation"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceOperator (OneLineText "-.") ]
-                  , typepair   = tppair
-                  , properties = [ Negation False ]
-                  }
-        (_oneLineTree) =
-            OneLineNode [ OneLineText "-.", OneLineNode [_expression_oneLineTree] ]
+            specialConstraint "negation" _parentTree
+               (self _localInfo, Just $ nameToSelfExpr (Name_Identifier _range [] "-."))
+               [ Negation False ]
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo [_expression_infoTree]
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         ((_t1,_matches,_newConstraintSet,_newUnique,_ioMatch)) =
-            match1 _localInfo _expression_uniqueSecondRound
+            match1 _infoTuple _expression_uniqueSecondRound
                    match_Expression_NegateFloat
                    _lhs_tryPatterns _lhs_allPatterns
                    [_expression_matches]
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_lhs_betaUnique + 1)
@@ -3888,13 +3759,14 @@ sem_Expression_NegateFloat (_range)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
                          (_t1)
                          (_lhs_uniqueChunk)
                          (_lhs_uniqueSecondRound))
-    in  ( _expression_assumptions,_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_newConstraintSet,_expression_dictionaryEnvironment,_expression_matchIO >> _ioMatch,_matches,_oneLineTree,_expression_patternMatchWarnings,_self,_expression_unboundNames,_expression_uniqueChunk,_newUnique)
+    in  ( _expression_assumptions,_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_newConstraintSet,_expression_dictionaryEnvironment,_parentTree,_expression_matchIO >> _ioMatch,_matches,_expression_patternMatchWarnings,_self,_expression_unboundNames,_expression_uniqueChunk,_newUnique)
 sem_Expression_NormalApplication :: (T_Range) ->
                                     (T_Expression) ->
                                     (T_Expressions) ->
@@ -3917,6 +3789,7 @@ sem_Expression_NormalApplication (_range)
                                  (_lhs_monos)
                                  (_lhs_namesInScope)
                                  (_lhs_orderedTypeSynonyms)
+                                 (_lhs_parentTree)
                                  (_lhs_patternMatchWarnings)
                                  (_lhs_predicates)
                                  (_lhs_substitution)
@@ -3935,31 +3808,28 @@ sem_Expression_NormalApplication (_range)
         (_newcon) =
             [ (_function_beta .==. foldr (.->.) _beta _arguments_betas) _cinfo ]
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltNormalApplication, 0, "")
-                  , location   = "application"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _function_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ ApplicationEdge False (zip3 _arguments_oneLineTree
-                                                               _arguments_betas
-                                                               (map getExprRange _arguments_self)
-                                                         )
-                                 , SubTermRange (getExprRange _function_self)
-                                 ]
-                  }
-        (_oneLineTree) =
-            punctuate " " (_function_oneLineTree : _arguments_oneLineTree)
+            childConstraint 0 "application" _parentTree
+               [ ApplicationEdge False (zip3 (map (self. attribute) _arguments_infoTrees)
+                                             _arguments_betas
+                                             (map getExprRange _arguments_self)
+                                       )
+               ]
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo (_function_infoTree : _arguments_infoTrees)
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         (((_t1,_t2),_matches,_newConstraintSet,_newUnique,_ioMatch)) =
-            match2 _localInfo _arguments_uniqueSecondRound
+            match2 _infoTuple _arguments_uniqueSecondRound
                    match_Expression_NormalApplication
                    _lhs_tryPatterns _lhs_allPatterns
                    [_function_matches, _arguments_matches]
         ( _range_self) =
             (_range )
-        ( _function_assumptions,_function_beta,_function_betaUnique,_function_collectChunkNumbers,_function_collectErrors,_function_collectWarnings,_function_constraints,_function_dictionaryEnvironment,_function_matchIO,_function_matches,_function_oneLineTree,_function_patternMatchWarnings,_function_self,_function_unboundNames,_function_uniqueChunk,_function_uniqueSecondRound) =
+        ( _function_assumptions,_function_beta,_function_betaUnique,_function_collectChunkNumbers,_function_collectErrors,_function_collectWarnings,_function_constraints,_function_dictionaryEnvironment,_function_infoTree,_function_matchIO,_function_matches,_function_patternMatchWarnings,_function_self,_function_unboundNames,_function_uniqueChunk,_function_uniqueSecondRound) =
             (_function (_lhs_allPatterns)
                        (_lhs_availablePredicates)
                        (_lhs_betaUnique + 1)
@@ -3975,13 +3845,14 @@ sem_Expression_NormalApplication (_range)
                        (_lhs_monos)
                        (_lhs_namesInScope)
                        (_lhs_orderedTypeSynonyms)
+                       (_parentTree)
                        (_lhs_patternMatchWarnings)
                        (_lhs_predicates)
                        (_lhs_substitution)
                        (_t1)
                        (_lhs_uniqueChunk)
                        (_lhs_uniqueSecondRound))
-        ( _arguments_assumptions,_arguments_betaUnique,_arguments_betas,_arguments_collectChunkNumbers,_arguments_collectErrors,_arguments_collectWarnings,_arguments_constraintslist,_arguments_dictionaryEnvironment,_arguments_matchIO,_arguments_matches,_arguments_oneLineTree,_arguments_patternMatchWarnings,_arguments_self,_arguments_unboundNames,_arguments_uniqueChunk,_arguments_uniqueSecondRound) =
+        ( _arguments_assumptions,_arguments_betaUnique,_arguments_betas,_arguments_collectChunkNumbers,_arguments_collectErrors,_arguments_collectWarnings,_arguments_constraintslist,_arguments_dictionaryEnvironment,_arguments_infoTrees,_arguments_matchIO,_arguments_matches,_arguments_patternMatchWarnings,_arguments_self,_arguments_unboundNames,_arguments_uniqueChunk,_arguments_uniqueSecondRound) =
             (_arguments (_lhs_allPatterns)
                         (_lhs_availablePredicates)
                         (_function_betaUnique)
@@ -3997,13 +3868,14 @@ sem_Expression_NormalApplication (_range)
                         (_lhs_monos)
                         (_lhs_namesInScope)
                         (_lhs_orderedTypeSynonyms)
+                        (_parentTree)
                         (_function_patternMatchWarnings)
                         (_lhs_predicates)
                         (_lhs_substitution)
                         (_t2)
                         (_function_uniqueChunk)
                         (_function_uniqueSecondRound))
-    in  ( _function_assumptions `combine` _arguments_assumptions,_beta,_arguments_betaUnique,_arguments_collectChunkNumbers,_arguments_collectErrors,_arguments_collectWarnings,_newConstraintSet,_arguments_dictionaryEnvironment,_arguments_matchIO >> _ioMatch,_matches,_oneLineTree,_arguments_patternMatchWarnings,_self,_function_unboundNames ++ _arguments_unboundNames,_arguments_uniqueChunk,_newUnique)
+    in  ( _function_assumptions `combine` _arguments_assumptions,_beta,_arguments_betaUnique,_arguments_collectChunkNumbers,_arguments_collectErrors,_arguments_collectWarnings,_newConstraintSet,_arguments_dictionaryEnvironment,_parentTree,_arguments_matchIO >> _ioMatch,_matches,_arguments_patternMatchWarnings,_self,_function_unboundNames ++ _arguments_unboundNames,_arguments_uniqueChunk,_newUnique)
 sem_Expression_Parenthesized :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Expression)
@@ -4024,6 +3896,7 @@ sem_Expression_Parenthesized (_range)
                              (_lhs_monos)
                              (_lhs_namesInScope)
                              (_lhs_orderedTypeSynonyms)
+                             (_lhs_parentTree)
                              (_lhs_patternMatchWarnings)
                              (_lhs_predicates)
                              (_lhs_substitution)
@@ -4032,11 +3905,9 @@ sem_Expression_Parenthesized (_range)
                              (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_Parenthesized _range_self _expression_self
-        (_oneLineTree) =
-            parens _expression_oneLineTree
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_lhs_betaUnique)
@@ -4052,13 +3923,14 @@ sem_Expression_Parenthesized (_range)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_lhs_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
                          (_lhs_tryPatterns)
                          (_lhs_uniqueChunk)
                          (_lhs_uniqueSecondRound))
-    in  ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_oneLineTree,_expression_patternMatchWarnings,_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound)
+    in  ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound)
 sem_Expression_RecordConstruction :: (T_Range) ->
                                      (T_Name) ->
                                      (T_RecordExpressionBindings) ->
@@ -4081,6 +3953,7 @@ sem_Expression_RecordConstruction (_range)
                                   (_lhs_monos)
                                   (_lhs_namesInScope)
                                   (_lhs_orderedTypeSynonyms)
+                                  (_lhs_parentTree)
                                   (_lhs_patternMatchWarnings)
                                   (_lhs_predicates)
                                   (_lhs_substitution)
@@ -4089,19 +3962,19 @@ sem_Expression_RecordConstruction (_range)
                                   (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_RecordConstruction _range_self _name_self _recordExpressionBindings_self
+        (_infoTree) =
+            globalInfoError
         ((_assumptions,_constraints,_beta)) =
             internalError "PartialSyntax.ag" "n/a" "Expression.RecordConstruction"
-        (_oneLineTree) =
-            intErr "Expression" "record construction"
         (_matches) =
             undefined
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
         ( _recordExpressionBindings_collectChunkNumbers,_recordExpressionBindings_collectErrors,_recordExpressionBindings_collectWarnings,_recordExpressionBindings_dictionaryEnvironment,_recordExpressionBindings_patternMatchWarnings,_recordExpressionBindings_self,_recordExpressionBindings_unboundNames,_recordExpressionBindings_uniqueChunk) =
             (_recordExpressionBindings (_lhs_availablePredicates) (_lhs_chunkNumberMap) (_lhs_collectChunkNumbers) (_lhs_collectErrors) (_lhs_collectWarnings) (_lhs_currentChunk) (_lhs_dictionaryEnvironment) (_lhs_importEnvironment) (_lhs_inferredTypes) (_lhs_namesInScope) (_lhs_orderedTypeSynonyms) (_lhs_patternMatchWarnings) (_lhs_predicates) (_lhs_substitution) (_lhs_uniqueChunk))
-    in  ( _assumptions,_beta,_lhs_betaUnique,_recordExpressionBindings_collectChunkNumbers,_recordExpressionBindings_collectErrors,_recordExpressionBindings_collectWarnings,_constraints,_recordExpressionBindings_dictionaryEnvironment,_lhs_matchIO,_matches,_oneLineTree,_recordExpressionBindings_patternMatchWarnings,_self,_recordExpressionBindings_unboundNames,_recordExpressionBindings_uniqueChunk,_lhs_uniqueSecondRound)
+    in  ( _assumptions,_beta,_lhs_betaUnique,_recordExpressionBindings_collectChunkNumbers,_recordExpressionBindings_collectErrors,_recordExpressionBindings_collectWarnings,_constraints,_recordExpressionBindings_dictionaryEnvironment,_infoTree,_lhs_matchIO,_matches,_recordExpressionBindings_patternMatchWarnings,_self,_recordExpressionBindings_unboundNames,_recordExpressionBindings_uniqueChunk,_lhs_uniqueSecondRound)
 sem_Expression_RecordUpdate :: (T_Range) ->
                                (T_Expression) ->
                                (T_RecordExpressionBindings) ->
@@ -4124,6 +3997,7 @@ sem_Expression_RecordUpdate (_range)
                             (_lhs_monos)
                             (_lhs_namesInScope)
                             (_lhs_orderedTypeSynonyms)
+                            (_lhs_parentTree)
                             (_lhs_patternMatchWarnings)
                             (_lhs_predicates)
                             (_lhs_substitution)
@@ -4132,11 +4006,9 @@ sem_Expression_RecordUpdate (_range)
                             (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_RecordUpdate _range_self _expression_self _recordExpressionBindings_self
-        (_oneLineTree) =
-            intErr "Expression" "record update"
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_lhs_betaUnique)
@@ -4152,6 +4024,7 @@ sem_Expression_RecordUpdate (_range)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_lhs_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
@@ -4168,9 +4041,9 @@ sem_Expression_RecordUpdate (_range)
          ,_recordExpressionBindings_collectWarnings
          ,_expression_constraints
          ,_recordExpressionBindings_dictionaryEnvironment
+         ,_expression_infoTree
          ,_expression_matchIO
          ,_expression_matches
-         ,_oneLineTree
          ,_recordExpressionBindings_patternMatchWarnings
          ,_self
          ,_expression_unboundNames ++ _recordExpressionBindings_unboundNames
@@ -4197,6 +4070,7 @@ sem_Expression_Tuple (_range)
                      (_lhs_monos)
                      (_lhs_namesInScope)
                      (_lhs_orderedTypeSynonyms)
+                     (_lhs_parentTree)
                      (_lhs_patternMatchWarnings)
                      (_lhs_predicates)
                      (_lhs_substitution)
@@ -4212,27 +4086,24 @@ sem_Expression_Tuple (_range)
         (_newcon) =
             [ (tupleType _expressions_betas .==. _beta) _cinfo ]
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltTuple, 0, "")
-                  , location   = "tuple"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , IsTupleEdge ]
-                  }
-        (_oneLineTree) =
-            encloseSep "(" ", " ")" _expressions_oneLineTree
+            resultConstraint "tuple" _parentTree
+               [ FolkloreConstraint, IsTupleEdge ]
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo (_expressions_infoTrees)
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         ((_t1,_matches,_newConstraintSet,_newUnique,_ioMatch)) =
-            match1 _localInfo _expressions_uniqueSecondRound
+            match1 _infoTuple _expressions_uniqueSecondRound
                    match_Expression_Tuple
                    _lhs_tryPatterns _lhs_allPatterns
                    [_expressions_matches]
         ( _range_self) =
             (_range )
-        ( _expressions_assumptions,_expressions_betaUnique,_expressions_betas,_expressions_collectChunkNumbers,_expressions_collectErrors,_expressions_collectWarnings,_expressions_constraintslist,_expressions_dictionaryEnvironment,_expressions_matchIO,_expressions_matches,_expressions_oneLineTree,_expressions_patternMatchWarnings,_expressions_self,_expressions_unboundNames,_expressions_uniqueChunk,_expressions_uniqueSecondRound) =
+        ( _expressions_assumptions,_expressions_betaUnique,_expressions_betas,_expressions_collectChunkNumbers,_expressions_collectErrors,_expressions_collectWarnings,_expressions_constraintslist,_expressions_dictionaryEnvironment,_expressions_infoTrees,_expressions_matchIO,_expressions_matches,_expressions_patternMatchWarnings,_expressions_self,_expressions_unboundNames,_expressions_uniqueChunk,_expressions_uniqueSecondRound) =
             (_expressions (_lhs_allPatterns)
                           (_lhs_availablePredicates)
                           (_lhs_betaUnique + 1)
@@ -4248,13 +4119,14 @@ sem_Expression_Tuple (_range)
                           (_lhs_monos)
                           (_lhs_namesInScope)
                           (_lhs_orderedTypeSynonyms)
+                          (_parentTree)
                           (_lhs_patternMatchWarnings)
                           (_lhs_predicates)
                           (_lhs_substitution)
                           (_t1)
                           (_lhs_uniqueChunk)
                           (_lhs_uniqueSecondRound))
-    in  ( _expressions_assumptions,_beta,_expressions_betaUnique,_expressions_collectChunkNumbers,_expressions_collectErrors,_expressions_collectWarnings,_newConstraintSet,_expressions_dictionaryEnvironment,_expressions_matchIO >> _ioMatch,_matches,_oneLineTree,_expressions_patternMatchWarnings,_self,_expressions_unboundNames,_expressions_uniqueChunk,_newUnique)
+    in  ( _expressions_assumptions,_beta,_expressions_betaUnique,_expressions_collectChunkNumbers,_expressions_collectErrors,_expressions_collectWarnings,_newConstraintSet,_expressions_dictionaryEnvironment,_parentTree,_expressions_matchIO >> _ioMatch,_matches,_expressions_patternMatchWarnings,_self,_expressions_unboundNames,_expressions_uniqueChunk,_newUnique)
 sem_Expression_Typed :: (T_Range) ->
                         (T_Expression) ->
                         (T_Type) ->
@@ -4277,6 +4149,7 @@ sem_Expression_Typed (_range)
                      (_lhs_monos)
                      (_lhs_namesInScope)
                      (_lhs_orderedTypeSynonyms)
+                     (_lhs_parentTree)
                      (_lhs_patternMatchWarnings)
                      (_lhs_predicates)
                      (_lhs_substitution)
@@ -4300,37 +4173,25 @@ sem_Expression_Typed (_range)
             let scheme = generalize monos' _lhs_predicates tp'
                 monos' = ftv (_lhs_substitution |-> _lhs_monos)
                 tp'    = _lhs_substitution |-> _expression_beta
-                info   = (_expression_oneLineTree, _range_self)
+                info   = ( (self . attribute) _expression_infoTree, _range_self)
             in checkNotTooGeneral info _lhs_orderedTypeSynonyms _typeScheme scheme
         (_cinfoExpr) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltTyped, 0, "expression")
-                  , location   = "type annotation"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getExprRange _expression_self) ]
-                  }
+            childConstraint 0 "type annotation" _parentTree
+               []
         (_cinfoResult) =
-            \tppair ->
-            CInfo { info       = (NTExpression, AltTyped, 1, "result")
-                  , location   = "type annotation"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint ]
-                  }
-        (_oneLineTree) =
-            OneLineNode
-                [ OneLineNode [_expression_oneLineTree]
-                , OneLineText " :: "
-                , OneLineNode [ OneLineText (show (makeTpSchemeFromType _type_self))]
-                ]
+            resultConstraint "type annotation" _parentTree
+               [ FolkloreConstraint ]
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo [_expression_infoTree]
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_lhs_betaUnique + 1)
@@ -4346,6 +4207,7 @@ sem_Expression_Typed (_range)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
@@ -4354,7 +4216,7 @@ sem_Expression_Typed (_range)
                          (_lhs_uniqueSecondRound))
         ( _type_self) =
             (_type )
-    in  ( _expression_assumptions,_beta,_expression_betaUnique,_expression_collectChunkNumbers,_errors ++ _expression_collectErrors,_expression_collectWarnings,_constraints,_expression_dictionaryEnvironment,_expression_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_expression_patternMatchWarnings,_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound)
+    in  ( _expression_assumptions,_beta,_expression_betaUnique,_expression_collectChunkNumbers,_errors ++ _expression_collectErrors,_expression_collectWarnings,_constraints,_expression_dictionaryEnvironment,_parentTree,_expression_matchIO,matchOnlyVariable _infoTuple _lhs_tryPatterns,_expression_patternMatchWarnings,_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound)
 sem_Expression_Variable :: (T_Range) ->
                            (T_Name) ->
                            (T_Expression)
@@ -4375,6 +4237,7 @@ sem_Expression_Variable (_range)
                         (_lhs_monos)
                         (_lhs_namesInScope)
                         (_lhs_orderedTypeSynonyms)
+                        (_lhs_parentTree)
                         (_lhs_patternMatchWarnings)
                         (_lhs_predicates)
                         (_lhs_substitution)
@@ -4400,20 +4263,24 @@ sem_Expression_Variable (_range)
                                  scheme
         ((_newDEnv,_overloadingErrors)) =
             resolveOverloading _name_self _lhs_availablePredicates _requiredDictionaries _lhs_dictionaryEnvironment
-        (_oneLineTree) =
-            OneLineNode [_name_oneLineTree]
         (_localInfo) =
-            (_constraints, (_beta, _oneLineTree, _range_self))
+            LocalInfo { self = UHA_Expr _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo []
+        (_infoTuple) =
+            (_constraints, (_beta, self _localInfo, _range_self))
         (((),_matches,_newConstraintSet,_newUnique,_ioMatch)) =
-            match0 _localInfo _lhs_uniqueSecondRound
+            match0 _infoTuple _lhs_uniqueSecondRound
                    (match_Expression_Variable _name_self)
                    _lhs_tryPatterns _lhs_allPatterns
                    []
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
-    in  ( _name_self `single` _beta,_beta,_lhs_betaUnique + 1,addToFM _lhs_collectChunkNumbers _lhs_betaUnique _lhs_currentChunk,map (makeUnresolvedOverloadingError _range_self _oneLineTree) _overloadingErrors ++ _lhs_collectErrors,_lhs_collectWarnings,_newConstraintSet,_newDEnv,_lhs_matchIO >> _ioMatch,_matches,_oneLineTree,_lhs_patternMatchWarnings,_self,[ _name_self ],_lhs_uniqueChunk,_newUnique)
+    in  ( _name_self `single` _beta,_beta,_lhs_betaUnique + 1,addToFM _lhs_collectChunkNumbers _lhs_betaUnique _lhs_currentChunk,map (makeUnresolvedOverloadingError _range_self (oneLinerSource $ self _localInfo)) _overloadingErrors ++ _lhs_collectErrors,_lhs_collectWarnings,_newConstraintSet,_newDEnv,_parentTree,_lhs_matchIO >> _ioMatch,_matches,_lhs_patternMatchWarnings,_self,[ _name_self ],_lhs_uniqueChunk,_newUnique)
 -- Expressions -------------------------------------------------
 -- semantic domain
 type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -4431,13 +4298,14 @@ type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (Tps) ->
                      (Names) ->
                      (OrderedTypeSynonyms) ->
+                     (InfoTree) ->
                      ([Warning]) ->
                      (Predicates) ->
                      (FixpointSubstitution) ->
                      ([(Expressions    , [String])]) ->
                      (Int) ->
                      (Int) ->
-                     ( (Assumptions),(Int),(Tps),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSets),(DictionaryEnvironment),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),( [ OneLineTree] ),([Warning]),(Expressions),(Names),(Int),(Int))
+                     ( (Assumptions),(Int),(Tps),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSets),(DictionaryEnvironment),(InfoTrees),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),([Warning]),(Expressions),(Names),(Int),(Int))
 -- cata
 sem_Expressions :: (Expressions) ->
                    (T_Expressions)
@@ -4463,6 +4331,7 @@ sem_Expressions_Cons (_hd)
                      (_lhs_monos)
                      (_lhs_namesInScope)
                      (_lhs_orderedTypeSynonyms)
+                     (_lhs_parentTree)
                      (_lhs_patternMatchWarnings)
                      (_lhs_predicates)
                      (_lhs_substitution)
@@ -4473,7 +4342,7 @@ sem_Expressions_Cons (_hd)
             (:) _hd_self _tl_self
         (((_t1,_t2),_matches,_,_,_)) =
             match2' match_Expressions_Cons _lhs_tryPatterns [] [_hd_matches, _tl_matches]
-        ( _hd_assumptions,_hd_beta,_hd_betaUnique,_hd_collectChunkNumbers,_hd_collectErrors,_hd_collectWarnings,_hd_constraints,_hd_dictionaryEnvironment,_hd_matchIO,_hd_matches,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_self,_hd_unboundNames,_hd_uniqueChunk,_hd_uniqueSecondRound) =
+        ( _hd_assumptions,_hd_beta,_hd_betaUnique,_hd_collectChunkNumbers,_hd_collectErrors,_hd_collectWarnings,_hd_constraints,_hd_dictionaryEnvironment,_hd_infoTree,_hd_matchIO,_hd_matches,_hd_patternMatchWarnings,_hd_self,_hd_unboundNames,_hd_uniqueChunk,_hd_uniqueSecondRound) =
             (_hd (_lhs_allPatterns)
                  (_lhs_availablePredicates)
                  (_lhs_betaUnique)
@@ -4489,13 +4358,14 @@ sem_Expressions_Cons (_hd)
                  (_lhs_monos)
                  (_lhs_namesInScope)
                  (_lhs_orderedTypeSynonyms)
+                 (_lhs_parentTree)
                  (_lhs_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_substitution)
                  (_t1)
                  (_lhs_uniqueChunk)
                  (_lhs_uniqueSecondRound))
-        ( _tl_assumptions,_tl_betaUnique,_tl_betas,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_tl_constraintslist,_tl_dictionaryEnvironment,_tl_matchIO,_tl_matches,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self,_tl_unboundNames,_tl_uniqueChunk,_tl_uniqueSecondRound) =
+        ( _tl_assumptions,_tl_betaUnique,_tl_betas,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_tl_constraintslist,_tl_dictionaryEnvironment,_tl_infoTrees,_tl_matchIO,_tl_matches,_tl_patternMatchWarnings,_tl_self,_tl_unboundNames,_tl_uniqueChunk,_tl_uniqueSecondRound) =
             (_tl (_lhs_allPatterns)
                  (_lhs_availablePredicates)
                  (_hd_betaUnique)
@@ -4511,13 +4381,14 @@ sem_Expressions_Cons (_hd)
                  (_lhs_monos)
                  (_lhs_namesInScope)
                  (_lhs_orderedTypeSynonyms)
+                 (_lhs_parentTree)
                  (_hd_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_substitution)
                  (_t2)
                  (_hd_uniqueChunk)
                  (_hd_uniqueSecondRound))
-    in  ( _hd_assumptions `combine` _tl_assumptions,_tl_betaUnique,_hd_beta : _tl_betas,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_hd_constraints : _tl_constraintslist,_tl_dictionaryEnvironment,_tl_matchIO,_matches,_hd_oneLineTree  :  _tl_oneLineTree,_tl_patternMatchWarnings,_self,_hd_unboundNames ++ _tl_unboundNames,_tl_uniqueChunk,_tl_uniqueSecondRound)
+    in  ( _hd_assumptions `combine` _tl_assumptions,_tl_betaUnique,_hd_beta : _tl_betas,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_hd_constraints : _tl_constraintslist,_tl_dictionaryEnvironment,_hd_infoTree : _tl_infoTrees,_tl_matchIO,_matches,_tl_patternMatchWarnings,_self,_hd_unboundNames ++ _tl_unboundNames,_tl_uniqueChunk,_tl_uniqueSecondRound)
 sem_Expressions_Nil :: (T_Expressions)
 sem_Expressions_Nil (_lhs_allPatterns)
                     (_lhs_availablePredicates)
@@ -4534,6 +4405,7 @@ sem_Expressions_Nil (_lhs_allPatterns)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_lhs_parentTree)
                     (_lhs_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
@@ -4544,7 +4416,7 @@ sem_Expressions_Nil (_lhs_allPatterns)
             []
         (((),_matches,_,_,_)) =
             match0' match_Expressions_Nil _lhs_tryPatterns [] []
-    in  ( noAssumptions,_lhs_betaUnique,[],_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,_lhs_matchIO,_matches,[],_lhs_patternMatchWarnings,_self,[],_lhs_uniqueChunk,_lhs_uniqueSecondRound)
+    in  ( noAssumptions,_lhs_betaUnique,[],_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,[],_lhs_matchIO,_matches,_lhs_patternMatchWarnings,_self,[],_lhs_uniqueChunk,_lhs_uniqueSecondRound)
 -- FieldDeclaration --------------------------------------------
 -- semantic domain
 type T_FieldDeclaration = (Names) ->
@@ -4565,7 +4437,7 @@ sem_FieldDeclaration_FieldDeclaration (_range) (_names) (_type) (_lhs_namesInSco
             internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
         ( _range_self) =
             (_range )
-        ( _names_isIdentifier,_names_isOperator,_names_isSpecial,_names_oneLineTree,_names_self) =
+        ( _names_self) =
             (_names )
         ( _type_self,_type_unboundNames) =
             (_type (_lhs_namesInScope))
@@ -4650,11 +4522,12 @@ type T_FunctionBinding = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (Tps) ->
                          (Names) ->
                          (OrderedTypeSynonyms) ->
+                         (InfoTree) ->
                          ([Warning]) ->
                          (Predicates) ->
                          (FixpointSubstitution) ->
                          (Int) ->
-                         ( (Int),(Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),( ([PatternElement], Bool) ),(IO ()),(Name),(Int),(OneLineTree),([Warning]),(FunctionBinding),(Names),(Int),(Warning))
+                         ( (Int),(Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),( ([PatternElement], Bool) ),(InfoTree),(IO ()),(Name),(Int),([Warning]),(FunctionBinding),(Names),(Int),(Warning))
 -- cata
 sem_FunctionBinding :: (FunctionBinding) ->
                        (T_FunctionBinding)
@@ -4684,6 +4557,7 @@ sem_FunctionBinding_FunctionBinding (_range)
                                     (_lhs_monos)
                                     (_lhs_namesInScope)
                                     (_lhs_orderedTypeSynonyms)
+                                    (_lhs_parentTree)
                                     (_lhs_patternMatchWarnings)
                                     (_lhs_predicates)
                                     (_lhs_substitution)
@@ -4698,38 +4572,32 @@ sem_FunctionBinding_FunctionBinding (_range)
         ((_csetBinds,_assumptions')) =
             (_lefthandside_environment .===. _righthandside_assumptions) _cinfoBind
         (_conLeft) =
-            zipWith4 (\t1 t2 txt nr -> (t1 .==. t2) (_cinfoLeft nr txt)) _lefthandside_betas _lhs_betasLeft _lefthandside_patternTrees [0..]
+            zipWith3 (\t1 t2 nr -> (t1 .==. t2) (_cinfoLeft nr)) _lefthandside_betas _lhs_betasLeft [0..]
         (_conRight) =
             [ (_righthandside_beta .==. _lhs_betaRight) _cinfoRight ]
         (_cinfoLeft) =
-            \num txt tppair ->
-            CInfo { info       = (NTFunctionBinding, AltFunctionBinding, 0, "left "++show num)
-                  , location   = "pattern of function binding"
-                  , errorrange = _range_self
-                  , sources    = [ sourcePattern txt ]
-                  , typepair   = tppair
-                  , properties = [ ]
-                  }
+            \num  ->
+            orphanConstraint num "pattern of function binding" _parentTree
+               [ ]
         (_cinfoRight) =
-            \tppair ->
-            CInfo { info       = (NTFunctionBinding, AltFunctionBinding, 1, "right")
-                  , location   = "right hand side"
-                  , errorrange = _range_self
-                  , sources    = [ sourceTerm (_righthandside_oneLineTree "") ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getRHSRange _righthandside_self) ]
-                  }
+            orphanConstraint 1 "right hand side" _parentTree
+               []
         (_cinfoBind) =
-            variableBindingCInfo (NTFunctionBinding, AltFunctionBinding, 2)
+            \name -> variableConstraint "variable" (nameToSelfExpr name)
+               [FolkloreConstraint]
+        (_localInfo) =
+            LocalInfo { self = UHA_FB _self
+                      , assignedType = Nothing
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo (_lefthandside_infoTrees ++ [_righthandside_infoTree])
         ((_namesInScope,_unboundNames,_scopeInfo)) =
             changeOfScope _lefthandside_patVarNames _righthandside_unboundNames _lhs_namesInScope
-        (_oneLineTree) =
-            OneLineNode [_lefthandside_oneLineTree, _righthandside_oneLineTree " = " ]
         ( _range_self) =
             (_range )
-        ( _lefthandside_argcount,_lefthandside_betaUnique,_lefthandside_betas,_lefthandside_constraints,_lefthandside_elements,_lefthandside_environment,_lefthandside_name,_lefthandside_numberOfPatterns,_lefthandside_oneLineTree,_lefthandside_patVarNames,_lefthandside_patternMatchWarnings,_lefthandside_patternTrees,_lefthandside_self,_lefthandside_unboundNames) =
-            (_lefthandside (_lhs_betaUnique) (_lhs_importEnvironment) (_namesInScope) (_lhs_patternMatchWarnings))
-        ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectChunkNumbers,_righthandside_collectErrors,_righthandside_collectWarnings,_righthandside_constraints,_righthandside_dictionaryEnvironment,_righthandside_fallthrough,_righthandside_matchIO,_righthandside_oneLineTree,_righthandside_patternMatchWarnings,_righthandside_self,_righthandside_unboundNames,_righthandside_uniqueChunk) =
+        ( _lefthandside_argcount,_lefthandside_betaUnique,_lefthandside_betas,_lefthandside_constraints,_lefthandside_elements,_lefthandside_environment,_lefthandside_infoTrees,_lefthandside_name,_lefthandside_numberOfPatterns,_lefthandside_patVarNames,_lefthandside_patternMatchWarnings,_lefthandside_self,_lefthandside_unboundNames) =
+            (_lefthandside (_lhs_betaUnique) (_lhs_importEnvironment) (_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
+        ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectChunkNumbers,_righthandside_collectErrors,_righthandside_collectWarnings,_righthandside_constraints,_righthandside_dictionaryEnvironment,_righthandside_fallthrough,_righthandside_infoTree,_righthandside_matchIO,_righthandside_patternMatchWarnings,_righthandside_self,_righthandside_unboundNames,_righthandside_uniqueChunk) =
             (_righthandside (_lhs_allPatterns)
                             (_lhs_availablePredicates)
                             (_lefthandside_betaUnique)
@@ -4745,6 +4613,7 @@ sem_FunctionBinding_FunctionBinding (_range)
                             (eltsFM _lefthandside_environment ++ getMonos _csetBinds ++ _lhs_monos)
                             (_namesInScope)
                             (_lhs_orderedTypeSynonyms)
+                            (_parentTree)
                             (_lefthandside_patternMatchWarnings)
                             (_lhs_predicates)
                             (_lhs_substitution)
@@ -4758,10 +4627,10 @@ sem_FunctionBinding_FunctionBinding (_range)
          ,_constraints
          ,_righthandside_dictionaryEnvironment
          ,(_lefthandside_elements, _righthandside_fallthrough)
+         ,_parentTree
          ,_righthandside_matchIO
          ,_lefthandside_name
          ,_lefthandside_numberOfPatterns
-         ,_oneLineTree
          ,_righthandside_patternMatchWarnings
          ,_self
          ,_unboundNames
@@ -4787,11 +4656,12 @@ type T_FunctionBindings = ([((Expression, [String]), Core_TypingStrategy)]) ->
                           (Tps) ->
                           (Names) ->
                           (OrderedTypeSynonyms) ->
+                          (InfoTree) ->
                           ([Warning]) ->
                           (Predicates) ->
                           (FixpointSubstitution) ->
                           (Int) ->
-                          ( (Int),(Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSets),(DictionaryEnvironment),([([PatternElement], Bool)]),(IO ()),(Name),(Int),( [ OneLineTree] ),([Warning]),(FunctionBindings),(Names),(Int),([Warning]))
+                          ( (Int),(Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSets),(DictionaryEnvironment),([([PatternElement], Bool)]),(InfoTrees),(IO ()),(Name),(Int),([Warning]),(FunctionBindings),(Names),(Int),([Warning]))
 -- cata
 sem_FunctionBindings :: (FunctionBindings) ->
                         (T_FunctionBindings)
@@ -4819,13 +4689,14 @@ sem_FunctionBindings_Cons (_hd)
                           (_lhs_monos)
                           (_lhs_namesInScope)
                           (_lhs_orderedTypeSynonyms)
+                          (_lhs_parentTree)
                           (_lhs_patternMatchWarnings)
                           (_lhs_predicates)
                           (_lhs_substitution)
                           (_lhs_uniqueChunk) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_argcount,_hd_assumptions,_hd_betaUnique,_hd_collectChunkNumbers,_hd_collectErrors,_hd_collectWarnings,_hd_constraints,_hd_dictionaryEnvironment,_hd_elements,_hd_matchIO,_hd_name,_hd_numberOfPatterns,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_self,_hd_unboundNames,_hd_uniqueChunk,_hd_unrwar) =
+        ( _hd_argcount,_hd_assumptions,_hd_betaUnique,_hd_collectChunkNumbers,_hd_collectErrors,_hd_collectWarnings,_hd_constraints,_hd_dictionaryEnvironment,_hd_elements,_hd_infoTree,_hd_matchIO,_hd_name,_hd_numberOfPatterns,_hd_patternMatchWarnings,_hd_self,_hd_unboundNames,_hd_uniqueChunk,_hd_unrwar) =
             (_hd (_lhs_allPatterns)
                  (_lhs_availablePredicates)
                  (_lhs_betaRight)
@@ -4843,11 +4714,12 @@ sem_FunctionBindings_Cons (_hd)
                  (_lhs_monos)
                  (_lhs_namesInScope)
                  (_lhs_orderedTypeSynonyms)
+                 (_lhs_parentTree)
                  (_lhs_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_substitution)
                  (_lhs_uniqueChunk))
-        ( _tl_argcount,_tl_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_tl_constraintslist,_tl_dictionaryEnvironment,_tl_elementss,_tl_matchIO,_tl_name,_tl_numberOfPatterns,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self,_tl_unboundNames,_tl_uniqueChunk,_tl_unrwars) =
+        ( _tl_argcount,_tl_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_tl_constraintslist,_tl_dictionaryEnvironment,_tl_elementss,_tl_infoTrees,_tl_matchIO,_tl_name,_tl_numberOfPatterns,_tl_patternMatchWarnings,_tl_self,_tl_unboundNames,_tl_uniqueChunk,_tl_unrwars) =
             (_tl (_lhs_allPatterns)
                  (_lhs_availablePredicates)
                  (_lhs_betaRight)
@@ -4865,11 +4737,12 @@ sem_FunctionBindings_Cons (_hd)
                  (_lhs_monos)
                  (_lhs_namesInScope)
                  (_lhs_orderedTypeSynonyms)
+                 (_lhs_parentTree)
                  (_hd_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_substitution)
                  (_hd_uniqueChunk))
-    in  ( _hd_argcount,_hd_assumptions `combine` _tl_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_hd_constraints : _tl_constraintslist,_tl_dictionaryEnvironment,_hd_elements : _tl_elementss,_tl_matchIO,_hd_name,_hd_numberOfPatterns,_hd_oneLineTree  :  _tl_oneLineTree,_tl_patternMatchWarnings,_self,_hd_unboundNames ++ _tl_unboundNames,_tl_uniqueChunk,_hd_unrwar   : _tl_unrwars)
+    in  ( _hd_argcount,_hd_assumptions `combine` _tl_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_hd_constraints : _tl_constraintslist,_tl_dictionaryEnvironment,_hd_elements : _tl_elementss,_hd_infoTree : _tl_infoTrees,_tl_matchIO,_hd_name,_hd_numberOfPatterns,_tl_patternMatchWarnings,_self,_hd_unboundNames ++ _tl_unboundNames,_tl_uniqueChunk,_hd_unrwar   : _tl_unrwars)
 sem_FunctionBindings_Nil :: (T_FunctionBindings)
 sem_FunctionBindings_Nil (_lhs_allPatterns)
                          (_lhs_availablePredicates)
@@ -4888,13 +4761,14 @@ sem_FunctionBindings_Nil (_lhs_allPatterns)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_lhs_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
                          (_lhs_uniqueChunk) =
     let (_self) =
             []
-    in  ( pmError "FunctionBindings_Nil.argcount" "?empty list of function bindings?",noAssumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,[],_lhs_matchIO,internalError "TypeInferencing.ag" "n/a" "FunctionBindings(2)",internalError "TypeInferencing.ag" "n/a" "FunctionBindings(1)",[],_lhs_patternMatchWarnings,_self,[],_lhs_uniqueChunk,[])
+    in  ( pmError "FunctionBindings_Nil.argcount" "?empty list of function bindings?",noAssumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,[],[],_lhs_matchIO,internalError "TypeInferencing.ag" "n/a" "FunctionBindings(2)",internalError "TypeInferencing.ag" "n/a" "FunctionBindings(1)",_lhs_patternMatchWarnings,_self,[],_lhs_uniqueChunk,[])
 -- GuardedExpression -------------------------------------------
 -- semantic domain
 type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -4913,13 +4787,14 @@ type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (Names) ->
                            (Int) ->
                            (OrderedTypeSynonyms) ->
+                           (InfoTree) ->
                            ([Warning]) ->
                            (Predicates) ->
                            (Tp) ->
                            (FixpointSubstitution) ->
                            (Int) ->
                            (Int) ->
-                           ( (Assumptions),(Tp),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Bool),(IO ()),( String -> OneLineTree ),([Warning]),(Range),(GuardedExpression),(Names),(Int),(Int),(Warning))
+                           ( (Assumptions),(Tp),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Bool),(InfoTrees),(IO ()),([Warning]),(Range),(GuardedExpression),(Names),(Int),(Int),(Warning))
 -- cata
 sem_GuardedExpression :: (GuardedExpression) ->
                          (T_GuardedExpression)
@@ -4948,6 +4823,7 @@ sem_GuardedExpression_GuardedExpression (_range)
                                         (_lhs_namesInScope)
                                         (_lhs_numberOfGuards)
                                         (_lhs_orderedTypeSynonyms)
+                                        (_lhs_parentTree)
                                         (_lhs_patternMatchWarnings)
                                         (_lhs_predicates)
                                         (_lhs_rightBeta)
@@ -4961,28 +4837,14 @@ sem_GuardedExpression_GuardedExpression (_range)
         (_newconExpr) =
             [ (_expression_beta .==. _lhs_rightBeta) _cinfoExpr ]
         (_cinfoGuard) =
-            \tppair ->
-            CInfo { info       = (NTGuardedExpression, AltGuardedExpression, 0, "guard")
-                  , location   = "guard"
-                  , errorrange = getExprRange _guard_self
-                  , sources    = [ sourceExpression _guard_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ ]
-                  }
+            resultConstraint "guard" _guard_infoTree
+               []
         (_cinfoExpr) =
-            \tppair ->
-            CInfo { info       = (NTGuardedExpression, AltGuardedExpression, 1, "expression")
-                  , location   = "guarded expression"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _expression_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = if _lhs_numberOfGuards > 1 then [] else [ HighlyTrusted ]
-                  }
-        (_oneLineTree) =
-            \assign -> OneLineNode [ _guard_oneLineTree, OneLineText assign, _expression_oneLineTree ]
+            resultConstraint "guarded expression" _expression_infoTree
+               [ HasTrustFactor 10.0 | _lhs_numberOfGuards < 2 ]
         ( _range_self) =
             (_range )
-        ( _guard_assumptions,_guard_beta,_guard_betaUnique,_guard_collectChunkNumbers,_guard_collectErrors,_guard_collectWarnings,_guard_constraints,_guard_dictionaryEnvironment,_guard_matchIO,_guard_matches,_guard_oneLineTree,_guard_patternMatchWarnings,_guard_self,_guard_unboundNames,_guard_uniqueChunk,_guard_uniqueSecondRound) =
+        ( _guard_assumptions,_guard_beta,_guard_betaUnique,_guard_collectChunkNumbers,_guard_collectErrors,_guard_collectWarnings,_guard_constraints,_guard_dictionaryEnvironment,_guard_infoTree,_guard_matchIO,_guard_matches,_guard_patternMatchWarnings,_guard_self,_guard_unboundNames,_guard_uniqueChunk,_guard_uniqueSecondRound) =
             (_guard (_lhs_allPatterns)
                     (_lhs_availablePredicates)
                     (_lhs_betaUnique)
@@ -4998,13 +4860,14 @@ sem_GuardedExpression_GuardedExpression (_range)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_lhs_parentTree)
                     (_lhs_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
                     ([])
                     (_lhs_uniqueChunk)
                     (_lhs_uniqueSecondRound))
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_guard_betaUnique)
@@ -5020,6 +4883,7 @@ sem_GuardedExpression_GuardedExpression (_range)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_lhs_parentTree)
                          (_guard_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
@@ -5040,8 +4904,8 @@ sem_GuardedExpression_GuardedExpression (_range)
           of Expression_Variable    _ (Name_Identifier _ _ "otherwise") -> False
              Expression_Constructor _ (Name_Identifier _ _ "True"     ) -> False
              _                                                          -> True
+         ,[_guard_infoTree, _expression_infoTree]
          ,_expression_matchIO
-         ,_oneLineTree
          ,_expression_patternMatchWarnings
          ,_range
          ,_self
@@ -5069,13 +4933,14 @@ type T_GuardedExpressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                             (Int) ->
                             (Bool) ->
                             (OrderedTypeSynonyms) ->
+                            (InfoTree) ->
                             ([Warning]) ->
                             (Predicates) ->
                             (Tp) ->
                             (FixpointSubstitution) ->
                             (Int) ->
                             (Int) ->
-                            ( (Assumptions),(Int),(Tps),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSets),(DictionaryEnvironment),(Bool),(IO ()),( [ String -> OneLineTree ] ),([Warning]),(GuardedExpressions),(Names),(Int),(Int))
+                            ( (Assumptions),(Int),(Tps),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSets),(DictionaryEnvironment),(Bool),(InfoTrees),(IO ()),([Warning]),(GuardedExpressions),(Names),(Int),(Int))
 -- cata
 sem_GuardedExpressions :: (GuardedExpressions) ->
                           (T_GuardedExpressions)
@@ -5103,6 +4968,7 @@ sem_GuardedExpressions_Cons (_hd)
                             (_lhs_numberOfGuards)
                             (_lhs_open)
                             (_lhs_orderedTypeSynonyms)
+                            (_lhs_parentTree)
                             (_lhs_patternMatchWarnings)
                             (_lhs_predicates)
                             (_lhs_rightBeta)
@@ -5111,7 +4977,7 @@ sem_GuardedExpressions_Cons (_hd)
                             (_lhs_uniqueSecondRound) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_assumptions,_hd_beta,_hd_betaUnique,_hd_collectChunkNumbers,_hd_collectErrors,_hd_collectWarnings,_hd_constraints,_hd_dictionaryEnvironment,_hd_fallthrough,_hd_matchIO,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_range,_hd_self,_hd_unboundNames,_hd_uniqueChunk,_hd_uniqueSecondRound,_hd_unrwar) =
+        ( _hd_assumptions,_hd_beta,_hd_betaUnique,_hd_collectChunkNumbers,_hd_collectErrors,_hd_collectWarnings,_hd_constraints,_hd_dictionaryEnvironment,_hd_fallthrough,_hd_infoTrees,_hd_matchIO,_hd_patternMatchWarnings,_hd_range,_hd_self,_hd_unboundNames,_hd_uniqueChunk,_hd_uniqueSecondRound,_hd_unrwar) =
             (_hd (_lhs_allPatterns)
                  (_lhs_availablePredicates)
                  (_lhs_betaUnique)
@@ -5128,13 +4994,14 @@ sem_GuardedExpressions_Cons (_hd)
                  (_lhs_namesInScope)
                  (_lhs_numberOfGuards)
                  (_lhs_orderedTypeSynonyms)
+                 (_lhs_parentTree)
                  (_lhs_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_rightBeta)
                  (_lhs_substitution)
                  (_lhs_uniqueChunk)
                  (_lhs_uniqueSecondRound))
-        ( _tl_assumptions,_tl_betaUnique,_tl_betas,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_tl_constraintslist,_tl_dictionaryEnvironment,_tl_fallthrough,_tl_matchIO,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self,_tl_unboundNames,_tl_uniqueChunk,_tl_uniqueSecondRound) =
+        ( _tl_assumptions,_tl_betaUnique,_tl_betas,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_tl_constraintslist,_tl_dictionaryEnvironment,_tl_fallthrough,_tl_infoTrees,_tl_matchIO,_tl_patternMatchWarnings,_tl_self,_tl_unboundNames,_tl_uniqueChunk,_tl_uniqueSecondRound) =
             (_tl (_lhs_allPatterns)
                  (_lhs_availablePredicates)
                  (_hd_betaUnique)
@@ -5152,6 +5019,7 @@ sem_GuardedExpressions_Cons (_hd)
                  (_lhs_numberOfGuards)
                  (_hd_fallthrough && _lhs_open)
                  (_lhs_orderedTypeSynonyms)
+                 (_lhs_parentTree)
                  (_hd_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_rightBeta)
@@ -5167,8 +5035,8 @@ sem_GuardedExpressions_Cons (_hd)
          ,_hd_constraints : _tl_constraintslist
          ,_tl_dictionaryEnvironment
          ,_hd_fallthrough && _tl_fallthrough
+         ,_hd_infoTrees ++ _tl_infoTrees
          ,_tl_matchIO
-         ,_hd_oneLineTree  :  _tl_oneLineTree
          ,(if not _lhs_open then [_hd_unrwar] else [])
           ++ _tl_patternMatchWarnings
          ,_self
@@ -5194,6 +5062,7 @@ sem_GuardedExpressions_Nil (_lhs_allPatterns)
                            (_lhs_numberOfGuards)
                            (_lhs_open)
                            (_lhs_orderedTypeSynonyms)
+                           (_lhs_parentTree)
                            (_lhs_patternMatchWarnings)
                            (_lhs_predicates)
                            (_lhs_rightBeta)
@@ -5202,7 +5071,7 @@ sem_GuardedExpressions_Nil (_lhs_allPatterns)
                            (_lhs_uniqueSecondRound) =
     let (_self) =
             []
-    in  ( noAssumptions,_lhs_betaUnique,[],_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,True,_lhs_matchIO,[],_lhs_patternMatchWarnings,_self,[],_lhs_uniqueChunk,_lhs_uniqueSecondRound)
+    in  ( noAssumptions,_lhs_betaUnique,[],_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,[],_lhs_dictionaryEnvironment,True,[],_lhs_matchIO,_lhs_patternMatchWarnings,_self,[],_lhs_uniqueChunk,_lhs_uniqueSecondRound)
 -- Import ------------------------------------------------------
 -- semantic domain
 type T_Import = ( (Import))
@@ -5224,7 +5093,7 @@ sem_Import_TypeOrClass (_range) (_name) (_names) =
             Import_TypeOrClass _range_self _name_self _names_self
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
         ( _names_self) =
             (_names )
@@ -5237,7 +5106,7 @@ sem_Import_TypeOrClassComplete (_range) (_name) =
             Import_TypeOrClassComplete _range_self _name_self
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
     in  ( _self)
 sem_Import_Variable :: (T_Range) ->
@@ -5248,7 +5117,7 @@ sem_Import_Variable (_range) (_name) =
             Import_Variable _range_self _name_self
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
     in  ( _self)
 -- ImportDeclaration -------------------------------------------
@@ -5280,7 +5149,7 @@ sem_ImportDeclaration_Import (_range) (_qualified) (_name) (_asname) (_importspe
             ImportDeclaration_Import _range_self _qualified _name_self _asname_self _importspecification_self
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
         ( _asname_self) =
             (_asname )
@@ -5360,8 +5229,9 @@ sem_Imports_Nil  =
 type T_LeftHandSide = (Int) ->
                       (ImportEnvironment) ->
                       (Names) ->
+                      (InfoTree) ->
                       ([Warning]) ->
-                      ( (Int),(Int),(Tps),(ConstraintSet),(  [PatternElement]        ),(PatternAssumptions),(Name),(Int),(OneLineTree),(Names),([Warning]),([OneLineTree]),(LeftHandSide),(Names))
+                      ( (Int),(Int),(Tps),(ConstraintSet),(  [PatternElement]        ),(PatternAssumptions),(InfoTrees),(Name),(Int),(Names),([Warning]),(LeftHandSide),(Names))
 -- cata
 sem_LeftHandSide :: (LeftHandSide) ->
                     (T_LeftHandSide)
@@ -5375,80 +5245,71 @@ sem_LeftHandSide_Function :: (T_Range) ->
                              (T_Name) ->
                              (T_Patterns) ->
                              (T_LeftHandSide)
-sem_LeftHandSide_Function (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_LeftHandSide_Function (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             LeftHandSide_Function _range_self _name_self _patterns_self
         (_constraints) =
             Node _patterns_constraintslist
-        (_oneLineTree) =
-            punctuate " " (_name_oneLineTree : _patterns_oneLineTree)
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
-        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_patVarNames,_patterns_patternMatchWarnings,_patterns_self,_patterns_unboundNames) =
-            (_patterns (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings))
-    in  ( length _patterns_self,_patterns_betaUnique,_patterns_betas,_constraints,concat _patterns_elementss,_patterns_environment,_name_self,_patterns_numberOfPatterns,_oneLineTree,_patterns_patVarNames,_patterns_patternMatchWarnings,_patterns_oneLineTree,_self,_patterns_unboundNames)
+        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_infoTrees,_patterns_numberOfPatterns,_patterns_patVarNames,_patterns_patternMatchWarnings,_patterns_self,_patterns_unboundNames) =
+            (_patterns (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings))
+    in  ( length _patterns_self,_patterns_betaUnique,_patterns_betas,_constraints,concat _patterns_elementss,_patterns_environment,_patterns_infoTrees,_name_self,_patterns_numberOfPatterns,_patterns_patVarNames,_patterns_patternMatchWarnings,_self,_patterns_unboundNames)
 sem_LeftHandSide_Infix :: (T_Range) ->
                           (T_Pattern) ->
                           (T_Name) ->
                           (T_Pattern) ->
                           (T_LeftHandSide)
-sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             LeftHandSide_Infix _range_self _leftPattern_self _operator_self _rightPattern_self
         (_constraints) =
             Node [ _leftPattern_constraints
                  , _rightPattern_constraints
                  ]
-        (_operatorName) =
-            oneLineTreeAsOperator _operator_oneLineTree
-        (_oneLineTree) =
-            punctuate " " [_leftPattern_oneLineTree, _operatorName, _rightPattern_oneLineTree]
         ( _range_self) =
             (_range )
-        ( _leftPattern_beta,_leftPattern_betaUnique,_leftPattern_constraints,_leftPattern_elements,_leftPattern_environment,_leftPattern_oneLineTree,_leftPattern_patVarNames,_leftPattern_patternMatchWarnings,_leftPattern_self,_leftPattern_unboundNames) =
-            (_leftPattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings))
-        ( _operator_isIdentifier,_operator_isOperator,_operator_isSpecial,_operator_oneLineTree,_operator_self) =
+        ( _leftPattern_beta,_leftPattern_betaUnique,_leftPattern_constraints,_leftPattern_elements,_leftPattern_environment,_leftPattern_infoTree,_leftPattern_patVarNames,_leftPattern_patternMatchWarnings,_leftPattern_self,_leftPattern_unboundNames) =
+            (_leftPattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings))
+        ( _operator_self) =
             (_operator )
-        ( _rightPattern_beta,_rightPattern_betaUnique,_rightPattern_constraints,_rightPattern_elements,_rightPattern_environment,_rightPattern_oneLineTree,_rightPattern_patVarNames,_rightPattern_patternMatchWarnings,_rightPattern_self,_rightPattern_unboundNames) =
-            (_rightPattern (_leftPattern_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_leftPattern_patternMatchWarnings))
-    in  ( 2,_rightPattern_betaUnique,[_leftPattern_beta,_rightPattern_beta],_constraints,_leftPattern_elements ++ _rightPattern_elements,_leftPattern_environment `plusFM` _rightPattern_environment,_operator_self,2,_oneLineTree,_leftPattern_patVarNames ++ _rightPattern_patVarNames,_rightPattern_patternMatchWarnings,[_leftPattern_oneLineTree, _rightPattern_oneLineTree],_self,_leftPattern_unboundNames ++ _rightPattern_unboundNames)
+        ( _rightPattern_beta,_rightPattern_betaUnique,_rightPattern_constraints,_rightPattern_elements,_rightPattern_environment,_rightPattern_infoTree,_rightPattern_patVarNames,_rightPattern_patternMatchWarnings,_rightPattern_self,_rightPattern_unboundNames) =
+            (_rightPattern (_leftPattern_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_leftPattern_patternMatchWarnings))
+    in  ( 2,_rightPattern_betaUnique,[_leftPattern_beta,_rightPattern_beta],_constraints,_leftPattern_elements ++ _rightPattern_elements,_leftPattern_environment `plusFM` _rightPattern_environment,[_leftPattern_infoTree, _rightPattern_infoTree],_operator_self,2,_leftPattern_patVarNames ++ _rightPattern_patVarNames,_rightPattern_patternMatchWarnings,_self,_leftPattern_unboundNames ++ _rightPattern_unboundNames)
 sem_LeftHandSide_Parenthesized :: (T_Range) ->
                                   (T_LeftHandSide) ->
                                   (T_Patterns) ->
                                   (T_LeftHandSide)
-sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             LeftHandSide_Parenthesized _range_self _lefthandside_self _patterns_self
         (_constraints) =
             Node ( _lefthandside_constraints : _patterns_constraintslist )
-        (_oneLineTree) =
-            punctuate " " ( parens _lefthandside_oneLineTree : _patterns_oneLineTree )
         ( _range_self) =
             (_range )
-        ( _lefthandside_argcount,_lefthandside_betaUnique,_lefthandside_betas,_lefthandside_constraints,_lefthandside_elements,_lefthandside_environment,_lefthandside_name,_lefthandside_numberOfPatterns,_lefthandside_oneLineTree,_lefthandside_patVarNames,_lefthandside_patternMatchWarnings,_lefthandside_patternTrees,_lefthandside_self,_lefthandside_unboundNames) =
-            (_lefthandside (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings))
-        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_patVarNames,_patterns_patternMatchWarnings,_patterns_self,_patterns_unboundNames) =
-            (_patterns (_lefthandside_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lefthandside_patternMatchWarnings))
+        ( _lefthandside_argcount,_lefthandside_betaUnique,_lefthandside_betas,_lefthandside_constraints,_lefthandside_elements,_lefthandside_environment,_lefthandside_infoTrees,_lefthandside_name,_lefthandside_numberOfPatterns,_lefthandside_patVarNames,_lefthandside_patternMatchWarnings,_lefthandside_self,_lefthandside_unboundNames) =
+            (_lefthandside (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings))
+        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_infoTrees,_patterns_numberOfPatterns,_patterns_patVarNames,_patterns_patternMatchWarnings,_patterns_self,_patterns_unboundNames) =
+            (_patterns (_lefthandside_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lefthandside_patternMatchWarnings))
     in  ( _lefthandside_argcount
          ,_patterns_betaUnique
          ,_lefthandside_betas ++ _patterns_betas
          ,_constraints
          ,_lefthandside_elements
          ,_lefthandside_environment `plusFM` _patterns_environment
+         ,_lefthandside_infoTrees ++ _patterns_infoTrees
          ,_lefthandside_name
          ,_lefthandside_numberOfPatterns + _patterns_numberOfPatterns
-         ,_oneLineTree
          ,_lefthandside_patVarNames ++ _patterns_patVarNames
          ,_patterns_patternMatchWarnings
-         ,_lefthandside_patternTrees ++ _patterns_oneLineTree
          ,_self
          ,_lefthandside_unboundNames ++ _patterns_unboundNames
          )
 -- Literal -----------------------------------------------------
 -- semantic domain
-type T_Literal = ( (  [PatternElement]        ),(Tp),(OneLineTree),(Literal))
+type T_Literal = ( (  [PatternElement]        ),(Tp),(Literal))
 -- cata
 sem_Literal :: (Literal) ->
                (T_Literal)
@@ -5466,44 +5327,36 @@ sem_Literal_Char :: (T_Range) ->
 sem_Literal_Char (_range) (_value) =
     let (_self) =
             Literal_Char _range_self _value
-        (_oneLineTree) =
-            OneLineText ("'" ++ _value ++ "'")
         ( _range_self) =
             (_range )
-    in  ( [InfiniteElement _value],charType,_oneLineTree,_self)
+    in  ( [InfiniteElement _value],charType,_self)
 sem_Literal_Float :: (T_Range) ->
                      (String) ->
                      (T_Literal)
 sem_Literal_Float (_range) (_value) =
     let (_self) =
             Literal_Float _range_self _value
-        (_oneLineTree) =
-            OneLineText _value
         ( _range_self) =
             (_range )
-    in  ( [InfiniteElement _value],floatType,_oneLineTree,_self)
+    in  ( [InfiniteElement _value],floatType,_self)
 sem_Literal_Int :: (T_Range) ->
                    (String) ->
                    (T_Literal)
 sem_Literal_Int (_range) (_value) =
     let (_self) =
             Literal_Int _range_self _value
-        (_oneLineTree) =
-            OneLineText _value
         ( _range_self) =
             (_range )
-    in  ( [InfiniteElement _value],intType,_oneLineTree,_self)
+    in  ( [InfiniteElement _value],intType,_self)
 sem_Literal_String :: (T_Range) ->
                       (String) ->
                       (T_Literal)
 sem_Literal_String (_range) (_value) =
     let (_self) =
             Literal_String _range_self _value
-        (_oneLineTree) =
-            OneLineText ("\"" ++ _value ++ "\"")
         ( _range_self) =
             (_range )
-    in  ( stringPat _value,stringType,_oneLineTree,_self)
+    in  ( stringPat _value,stringType,_self)
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
 type T_MaybeDeclarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -5523,12 +5376,13 @@ type T_MaybeDeclarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (Tps) ->
                            (Names) ->
                            (OrderedTypeSynonyms) ->
+                           (InfoTree) ->
                            ([Warning]) ->
                            (Predicates) ->
                            (FixpointSubstitution) ->
                            (Names) ->
                            (Int) ->
-                           ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),([(NameWithRange, TpScheme)]),(IO ()),(Names),( Maybe [OneLineTree] ),([Warning]),(MaybeDeclarations),(Names),(Int))
+                           ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTrees),([(NameWithRange, TpScheme)]),(IO ()),(Names),([Warning]),(MaybeDeclarations),(Names),(Int))
 -- cata
 sem_MaybeDeclarations :: (MaybeDeclarations) ->
                          (T_MaybeDeclarations)
@@ -5556,6 +5410,7 @@ sem_MaybeDeclarations_Just (_declarations)
                            (_lhs_monos)
                            (_lhs_namesInScope)
                            (_lhs_orderedTypeSynonyms)
+                           (_lhs_parentTree)
                            (_lhs_patternMatchWarnings)
                            (_lhs_predicates)
                            (_lhs_substitution)
@@ -5571,13 +5426,17 @@ sem_MaybeDeclarations_Just (_declarations)
             getInferredTypes _lhs_monos _lhs_substitution _lhs_predicates _declarations_bindingGroups
         ((_errors,_warnings)) =
             checkAnnotations False _lhs_orderedTypeSynonyms _declarations_typeSignatures _localTypes
+        (_declInfo) =
+            LocalInfo { self = UHA_Decls _declarations_self
+                      , assignedType = Nothing
+                      }
+        (_theNode) =
+            node _lhs_parentTree _declInfo _declarations_infoTrees
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel MaybeDeclaration"
         ((_namesInScope,_unboundNames,_scopeInfo)) =
             changeOfScope _declarations_declVarNames (_declarations_unboundNames ++ _lhs_unboundNames) _lhs_namesInScope
-        (_oneLineTree) =
-            Just _declarations_oneLineTree
-        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectChunkNumbers,_declarations_collectErrors,_declarations_collectWarnings,_declarations_declVarNames,_declarations_dictionaryEnvironment,_declarations_matchIO,_declarations_oneLineTree,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeSignatures,_declarations_unboundNames,_declarations_uniqueChunk) =
+        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectChunkNumbers,_declarations_collectErrors,_declarations_collectWarnings,_declarations_declVarNames,_declarations_dictionaryEnvironment,_declarations_infoTrees,_declarations_matchIO,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeSignatures,_declarations_unboundNames,_declarations_uniqueChunk) =
             (_declarations (_lhs_allPatterns)
                            (_lhs_availablePredicates)
                            (_lhs_betaUnique)
@@ -5595,12 +5454,13 @@ sem_MaybeDeclarations_Just (_declarations)
                            (_lhs_monos)
                            (_namesInScope)
                            (_lhs_orderedTypeSynonyms)
+                           (_theNode)
                            (_lhs_patternMatchWarnings)
                            (_lhs_predicates)
                            (_lhs_substitution)
                            (emptyFM)
                            (_lhs_uniqueChunk))
-    in  ( _aset,_declarations_betaUnique,_declarations_collectChunkNumbers,_errors ++ _declarations_collectErrors,_warnings ++ _declarations_collectWarnings,_cset,_declarations_dictionaryEnvironment,_localTypes,_declarations_matchIO,_namesInScope,_oneLineTree,_declarations_patternMatchWarnings,_self,_unboundNames,_chunkNr)
+    in  ( _aset,_declarations_betaUnique,_declarations_collectChunkNumbers,_errors ++ _declarations_collectErrors,_warnings ++ _declarations_collectWarnings,_cset,_declarations_dictionaryEnvironment,[_theNode],_localTypes,_declarations_matchIO,_namesInScope,_declarations_patternMatchWarnings,_self,_unboundNames,_chunkNr)
 sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
 sem_MaybeDeclarations_Nothing (_lhs_allPatterns)
                               (_lhs_assumptions)
@@ -5619,6 +5479,7 @@ sem_MaybeDeclarations_Nothing (_lhs_allPatterns)
                               (_lhs_monos)
                               (_lhs_namesInScope)
                               (_lhs_orderedTypeSynonyms)
+                              (_lhs_parentTree)
                               (_lhs_patternMatchWarnings)
                               (_lhs_predicates)
                               (_lhs_substitution)
@@ -5628,9 +5489,7 @@ sem_MaybeDeclarations_Nothing (_lhs_allPatterns)
             MaybeDeclarations_Nothing
         (_localTypes) =
             []
-        (_oneLineTree) =
-            Nothing
-    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_lhs_constraints,_lhs_dictionaryEnvironment,_localTypes,_lhs_matchIO,_lhs_namesInScope,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_unboundNames,_lhs_uniqueChunk)
+    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_lhs_constraints,_lhs_dictionaryEnvironment,[],_localTypes,_lhs_matchIO,_lhs_namesInScope,_lhs_patternMatchWarnings,_self,_lhs_unboundNames,_lhs_uniqueChunk)
 -- MaybeExports ------------------------------------------------
 -- semantic domain
 type T_MaybeExports = ( (MaybeExports))
@@ -5671,13 +5530,14 @@ type T_MaybeExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (Tps) ->
                          (Names) ->
                          (OrderedTypeSynonyms) ->
+                         (InfoTree) ->
                          ([Warning]) ->
                          (Predicates) ->
                          (FixpointSubstitution) ->
                          ([(MaybeExpression, [String])]) ->
                          (Int) ->
                          (Int) ->
-                         ( (Assumptions),(Tp),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),( Maybe OneLineTree ),([Warning]),(Bool),(MaybeExpression),(Names),(Int),(Int))
+                         ( (Assumptions),(Tp),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTrees),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),([Warning]),(Bool),(MaybeExpression),(Names),(Int),(Int))
 -- cata
 sem_MaybeExpression :: (MaybeExpression) ->
                        (T_MaybeExpression)
@@ -5703,6 +5563,7 @@ sem_MaybeExpression_Just (_expression)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_lhs_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
@@ -5711,11 +5572,9 @@ sem_MaybeExpression_Just (_expression)
                          (_lhs_uniqueSecondRound) =
     let (_self) =
             MaybeExpression_Just _expression_self
-        (_oneLineTree) =
-            Just _expression_oneLineTree
         ((_t1,_matches,_,_,_)) =
             match1' match_MaybeExpression_Just _lhs_tryPatterns [] [_expression_matches]
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_lhs_betaUnique)
@@ -5731,13 +5590,14 @@ sem_MaybeExpression_Just (_expression)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_lhs_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
                          (_t1)
                          (_lhs_uniqueChunk)
                          (_lhs_uniqueSecondRound))
-    in  ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_matches,_oneLineTree,_expression_patternMatchWarnings,False,_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound)
+    in  ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,[_expression_infoTree],_expression_matchIO,_matches,_expression_patternMatchWarnings,False,_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound)
 sem_MaybeExpression_Nothing :: (T_MaybeExpression)
 sem_MaybeExpression_Nothing (_lhs_allPatterns)
                             (_lhs_availablePredicates)
@@ -5754,6 +5614,7 @@ sem_MaybeExpression_Nothing (_lhs_allPatterns)
                             (_lhs_monos)
                             (_lhs_namesInScope)
                             (_lhs_orderedTypeSynonyms)
+                            (_lhs_parentTree)
                             (_lhs_patternMatchWarnings)
                             (_lhs_predicates)
                             (_lhs_substitution)
@@ -5764,11 +5625,9 @@ sem_MaybeExpression_Nothing (_lhs_allPatterns)
             MaybeExpression_Nothing
         (_beta) =
             TVar _lhs_betaUnique
-        (_oneLineTree) =
-            Nothing
         (((),_matches,_,_,_)) =
             match0' match_MaybeExpression_Nothing _lhs_tryPatterns [] []
-    in  ( noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,emptyTree,_lhs_dictionaryEnvironment,_lhs_matchIO,_matches,_oneLineTree,_lhs_patternMatchWarnings,True,_self,[],_lhs_uniqueChunk,_lhs_uniqueSecondRound)
+    in  ( noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,emptyTree,_lhs_dictionaryEnvironment,[],_lhs_matchIO,_matches,_lhs_patternMatchWarnings,True,_self,[],_lhs_uniqueChunk,_lhs_uniqueSecondRound)
 -- MaybeImportSpecification ------------------------------------
 -- semantic domain
 type T_MaybeImportSpecification = ( (MaybeImportSpecification))
@@ -5828,7 +5687,7 @@ sem_MaybeName_Just :: (T_Name) ->
 sem_MaybeName_Just (_name) =
     let (_self) =
             MaybeName_Just _name_self
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
     in  ( _self)
 sem_MaybeName_Nothing :: (T_MaybeName)
@@ -5851,7 +5710,7 @@ sem_MaybeNames_Just :: (T_Names) ->
 sem_MaybeNames_Just (_names) =
     let (_self) =
             MaybeNames_Just _names_self
-        ( _names_isIdentifier,_names_isOperator,_names_isSpecial,_names_oneLineTree,_names_self) =
+        ( _names_self) =
             (_names )
     in  ( _self)
 sem_MaybeNames_Nothing :: (T_MaybeNames)
@@ -5941,7 +5800,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
             (_name )
         ( _exports_self) =
             (_exports )
-        ( _body_assumptions,_body_betaUnique,_body_collectChunkNumbers,_body_collectErrors,_body_collectWarnings,_body_constraints,_body_declVarNames,_body_dictionaryEnvironment,_body_matchIO,_body_patternMatchWarnings,_body_self,_body_toplevelTypes,_body_unboundNames,_body_uniqueChunk) =
+        ( _body_assumptions,_body_betaUnique,_body_collectChunkNumbers,_body_collectErrors,_body_collectWarnings,_body_constraints,_body_declVarNames,_body_dictionaryEnvironment,_body_matchIO,_body_patternMatchWarnings,_body_root,_body_self,_body_toplevelTypes,_body_unboundNames,_body_uniqueChunk) =
             (_body ([ (matchInfo, typingStrategy)
                     | typingStrategy <- typingStrategies _lhs_importEnvironment
                     , matchInfo      <- matchInformation
@@ -5971,7 +5830,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
     in  ( _debugIO >> putStrLn "Inference Strategies:" >> _body_matchIO,_body_dictionaryEnvironment,_self,_body_toplevelTypes,_typeErrors,_warnings     ++ _body_patternMatchWarnings)
 -- Name --------------------------------------------------------
 -- semantic domain
-type T_Name = ( (Bool),(Bool),(Bool),(OneLineTree),(Name))
+type T_Name = ( (Name))
 -- cata
 sem_Name :: (Name) ->
             (T_Name)
@@ -5988,13 +5847,11 @@ sem_Name_Identifier :: (T_Range) ->
 sem_Name_Identifier (_range) (_module) (_name) =
     let (_self) =
             Name_Identifier _range_self _module_self _name
-        (_oneLineTree) =
-            OneLineText _name
         ( _range_self) =
             (_range )
-        ( _module_oneLineTree,_module_self) =
+        ( _module_self) =
             (_module )
-    in  ( True,False,False,_oneLineTree,_self)
+    in  ( _self)
 sem_Name_Operator :: (T_Range) ->
                      (T_Strings) ->
                      (String) ->
@@ -6002,13 +5859,11 @@ sem_Name_Operator :: (T_Range) ->
 sem_Name_Operator (_range) (_module) (_name) =
     let (_self) =
             Name_Operator _range_self _module_self _name
-        (_oneLineTree) =
-            OneLineText _name
         ( _range_self) =
             (_range )
-        ( _module_oneLineTree,_module_self) =
+        ( _module_self) =
             (_module )
-    in  ( False,True,False,_oneLineTree,_self)
+    in  ( _self)
 sem_Name_Special :: (T_Range) ->
                     (T_Strings) ->
                     (String) ->
@@ -6016,16 +5871,14 @@ sem_Name_Special :: (T_Range) ->
 sem_Name_Special (_range) (_module) (_name) =
     let (_self) =
             Name_Special _range_self _module_self _name
-        (_oneLineTree) =
-            OneLineText _name
         ( _range_self) =
             (_range )
-        ( _module_oneLineTree,_module_self) =
+        ( _module_self) =
             (_module )
-    in  ( False,False,True,_oneLineTree,_self)
+    in  ( _self)
 -- Names -------------------------------------------------------
 -- semantic domain
-type T_Names = ( ( [Bool] ),( [Bool] ),( [Bool] ),( [ OneLineTree] ),(Names))
+type T_Names = ( (Names))
 -- cata
 sem_Names :: (Names) ->
              (T_Names)
@@ -6037,23 +5890,24 @@ sem_Names_Cons :: (T_Name) ->
 sem_Names_Cons (_hd) (_tl) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_isIdentifier,_hd_isOperator,_hd_isSpecial,_hd_oneLineTree,_hd_self) =
+        ( _hd_self) =
             (_hd )
-        ( _tl_isIdentifier,_tl_isOperator,_tl_isSpecial,_tl_oneLineTree,_tl_self) =
+        ( _tl_self) =
             (_tl )
-    in  ( _hd_isIdentifier  :  _tl_isIdentifier,_hd_isOperator  :  _tl_isOperator,_hd_isSpecial  :  _tl_isSpecial,_hd_oneLineTree  :  _tl_oneLineTree,_self)
+    in  ( _self)
 sem_Names_Nil :: (T_Names)
 sem_Names_Nil  =
     let (_self) =
             []
-    in  ( [],[],[],[],_self)
+    in  ( _self)
 -- Pattern -----------------------------------------------------
 -- semantic domain
 type T_Pattern = (Int) ->
                  (ImportEnvironment) ->
                  (Names) ->
+                 (InfoTree) ->
                  ([Warning]) ->
-                 ( (Tp),(Int),(ConstraintSet),(  [PatternElement]        ),(PatternAssumptions),(OneLineTree),(Names),([Warning]),(Pattern),(Names))
+                 ( (Tp),(Int),(ConstraintSet),(  [PatternElement]        ),(PatternAssumptions),(InfoTree),(Names),([Warning]),(Pattern),(Names))
 -- cata
 sem_Pattern :: (Pattern) ->
                (T_Pattern)
@@ -6089,7 +5943,7 @@ sem_Pattern_As :: (T_Range) ->
                   (T_Name) ->
                   (T_Pattern) ->
                   (T_Pattern)
-sem_Pattern_As (_range) (_name) (_pattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Pattern_As (_range) (_name) (_pattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             Pattern_As _range_self _name_self _pattern_self
         (_constraints) =
@@ -6102,32 +5956,27 @@ sem_Pattern_As (_range) (_name) (_pattern) (_lhs_betaUnique) (_lhs_importEnviron
         (_newcon) =
             [ (_beta .==. _pattern_beta) _cinfo ]
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTPattern, AltAs, 0, "")
-                  , location   = "as pattern"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm (OneLineText (show _name_self)) ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getNameRange _name_self) ]
-                  }
-        (_oneLineTree) =
-            OneLineNode
-                [ OneLineNode [_name_oneLineTree]
-                , OneLineText "@"
-                , OneLineNode [_pattern_oneLineTree]
-                ]
+            specialConstraint "as pattern" _parentTree
+               (self _localInfo, Just $ nameToSelfPat _name_self)
+               []
+        (_localInfo) =
+            LocalInfo { self = UHA_Pat _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo [_pattern_infoTree]
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
-            (_pattern (_lhs_betaUnique + 1) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings))
-    in  ( _beta,_pattern_betaUnique,_constraints,_pattern_elements,addToFM _pattern_environment _name_self _beta,_oneLineTree,_name_self : _pattern_patVarNames,_pattern_patternMatchWarnings,_self,_pattern_unboundNames)
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_infoTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
+            (_pattern (_lhs_betaUnique + 1) (_lhs_importEnvironment) (_lhs_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
+    in  ( _beta,_pattern_betaUnique,_constraints,_pattern_elements,addToFM _pattern_environment _name_self _beta,_parentTree,_name_self : _pattern_patVarNames,_pattern_patternMatchWarnings,_self,_pattern_unboundNames)
 sem_Pattern_Constructor :: (T_Range) ->
                            (T_Name) ->
                            (T_Patterns) ->
                            (T_Pattern)
-sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             Pattern_Constructor _range_self _name_self _patterns_self
         (_constraints) =
@@ -6140,60 +5989,44 @@ sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_imp
         (_betaCon) =
             TVar (_lhs_betaUnique + 1)
         (_conApply) =
-            [ (_betaCon .==. foldr (.->.) _beta _patterns_betas) _cinfoApply ]
+            [ (_betaCon .==. foldr (.->.) _beta _patterns_betas)
+              (if _patterns_numberOfPatterns == 0  then _cinfoEmpty else _cinfoApply) ]
         (_conConstructor) =
             case lookupFM (valueConstructors _lhs_importEnvironment) _name_self of
                Nothing  -> []
                Just ctp -> [ (_betaCon .::. ctp) _cinfoConstructor ]
         (_cinfoConstructor) =
-            \tppair ->
-            CInfo { info       = (NTPattern, AltConstructor, 0, "")
-                  , location   = "pattern constructor"
-                  , errorrange = getNameRange _name_self
-                  , sources    = [ sourcePattern _oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , HighlyTrusted
-                                 ]
-                  }
+            resultConstraint "pattern constructor" _parentTree
+               [ FolkloreConstraint, HasTrustFactor 10.0 ]
         (_cinfoApply) =
-            \tppair ->
-            CInfo { info       = (NTPattern, AltConstructor, 1, "apply")
-                  , location   = if _patterns_numberOfPatterns == 0
-                                   then "pattern constructor"
-                                   else "pattern application"
-                  , errorrange = _range_self
-                  , sources    = if _patterns_numberOfPatterns == 0
-                                   then [ sourcePattern _oneLineTree                            ]
-                                   else [ sourcePattern _oneLineTree, sourceConstructor _name_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getNameRange _name_self) ] ++
-                                 if _patterns_numberOfPatterns == 0
-                                   then [HighlyTrusted]
-                                   else [ ApplicationEdge False (zip3 _patterns_oneLineTree
-                                                                      _patterns_betas
-                                                                      (map getPatRange (_patterns_self))
-                                                                )]
-                  }
-        (_operatorName) =
-            if _name_isOperator
-              then OneLineNode [OneLineText "(", _name_oneLineTree, OneLineText ")"]
-              else _name_oneLineTree
-        (_oneLineTree) =
-            OneLineNode (sepBy (OneLineText " ") (_operatorName : _patterns_oneLineTree))
+            specialConstraint "pattern application" _parentTree
+               (self _localInfo, Just $ nameToSelfPat _name_self)
+               [ ApplicationEdge False (zip3 (map (self. attribute) _patterns_infoTrees)
+                                              _patterns_betas
+                                              (map getPatRange (_patterns_self))
+                                        )]
+        (_cinfoEmpty) =
+            resultConstraint "pattern constructor" _parentTree
+               [ HasTrustFactor 10.0 ]
+        (_localInfo) =
+            LocalInfo { self = UHA_Pat _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo (_patterns_infoTrees)
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
-        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_patVarNames,_patterns_patternMatchWarnings,_patterns_self,_patterns_unboundNames) =
-            (_patterns (_lhs_betaUnique + 2) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings))
-    in  ( _beta,_patterns_betaUnique,_constraints,FiniteElement (getNameName _name_self) : concat _patterns_elementss,_patterns_environment,_oneLineTree,_patterns_patVarNames,_patterns_patternMatchWarnings,_self,_patterns_unboundNames)
+        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_infoTrees,_patterns_numberOfPatterns,_patterns_patVarNames,_patterns_patternMatchWarnings,_patterns_self,_patterns_unboundNames) =
+            (_patterns (_lhs_betaUnique + 2) (_lhs_importEnvironment) (_lhs_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
+    in  ( _beta,_patterns_betaUnique,_constraints,FiniteElement (getNameName _name_self) : concat _patterns_elementss,_patterns_environment,_parentTree,_patterns_patVarNames,_patterns_patternMatchWarnings,_self,_patterns_unboundNames)
 sem_Pattern_InfixConstructor :: (T_Range) ->
                                 (T_Pattern) ->
                                 (T_Name) ->
                                 (T_Pattern) ->
                                 (T_Pattern)
-sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_rightPattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_rightPattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             Pattern_InfixConstructor _range_self _leftPattern_self _constructorOperator_self _rightPattern_self
         (_constraints) =
@@ -6213,112 +6046,81 @@ sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_ri
                Nothing  -> []
                Just ctp -> [ (_betaCon .::. ctp) _cinfoConstructor ]
         (_cinfoConstructor) =
-            \tppair ->
-            CInfo { info       = (NTPattern, AltInfixConstructor, 0, "")
-                  , location   = "pattern constructor"
-                  , errorrange = getNameRange _constructorOperator_self
-                  , sources    = [ sourceOperator _constructorOperator_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , HighlyTrusted
-                                 , SubTermRange (getNameRange _constructorOperator_self)
-                                 ]
-                  }
+            variableConstraint "pattern constructor" (nameToSelfPat _constructorOperator_self)
+               [ FolkloreConstraint, HasTrustFactor 10.0 ]
         (_cinfoApply) =
-            \tppair ->
-            CInfo { info       = (NTPattern, AltInfixConstructor, 1, "apply")
-                  , location   = "infix pattern application"
-                  , errorrange = _range_self
-                  , sources    = [ sourcePattern _oneLineTree, sourceConstructor (OneLineText (showNameAsOperator _constructorOperator_self))]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getNameRange _constructorOperator_self)
-                                 , ApplicationEdge True
-                                                   [ (_leftPattern_oneLineTree ,_leftPattern_beta ,getPatRange (_leftPattern_self))
-                                                   , (_rightPattern_oneLineTree,_rightPattern_beta,getPatRange (_rightPattern_self))
-                                                   ]
+            specialConstraint "infix pattern application" _parentTree
+               (self _localInfo, Just $ nameToSelfPat  _constructorOperator_self)
+               [ ApplicationEdge True
+                                 [ ((self . attribute) _leftPattern_infoTree ,_leftPattern_beta ,getPatRange (_leftPattern_self))
+                                 , ((self . attribute) _rightPattern_infoTree,_rightPattern_beta,getPatRange (_rightPattern_self))
                                  ]
-                  }
-        (_operatorName) =
-            OneLineText (showNameAsOperator _constructorOperator_self)
-        (_oneLineTree) =
-            OneLineNode
-                [ OneLineNode [_leftPattern_oneLineTree]
-                , OneLineText " "
-                , OneLineNode [_operatorName]
-                , OneLineText " "
-                , OneLineNode [_rightPattern_oneLineTree]
-                ]
+               ]
+        (_localInfo) =
+            LocalInfo { self = UHA_Pat _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo [_leftPattern_infoTree, _rightPattern_infoTree]
         ( _range_self) =
             (_range )
-        ( _leftPattern_beta,_leftPattern_betaUnique,_leftPattern_constraints,_leftPattern_elements,_leftPattern_environment,_leftPattern_oneLineTree,_leftPattern_patVarNames,_leftPattern_patternMatchWarnings,_leftPattern_self,_leftPattern_unboundNames) =
-            (_leftPattern (_lhs_betaUnique + 2) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings))
-        ( _constructorOperator_isIdentifier,_constructorOperator_isOperator,_constructorOperator_isSpecial,_constructorOperator_oneLineTree,_constructorOperator_self) =
+        ( _leftPattern_beta,_leftPattern_betaUnique,_leftPattern_constraints,_leftPattern_elements,_leftPattern_environment,_leftPattern_infoTree,_leftPattern_patVarNames,_leftPattern_patternMatchWarnings,_leftPattern_self,_leftPattern_unboundNames) =
+            (_leftPattern (_lhs_betaUnique + 2) (_lhs_importEnvironment) (_lhs_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
+        ( _constructorOperator_self) =
             (_constructorOperator )
-        ( _rightPattern_beta,_rightPattern_betaUnique,_rightPattern_constraints,_rightPattern_elements,_rightPattern_environment,_rightPattern_oneLineTree,_rightPattern_patVarNames,_rightPattern_patternMatchWarnings,_rightPattern_self,_rightPattern_unboundNames) =
-            (_rightPattern (_leftPattern_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_leftPattern_patternMatchWarnings))
-    in  ( _beta,_rightPattern_betaUnique,_constraints,FiniteElement (getNameName _constructorOperator_self) : _leftPattern_elements ++ _rightPattern_elements,_leftPattern_environment `plusFM` _rightPattern_environment,_oneLineTree,_leftPattern_patVarNames ++ _rightPattern_patVarNames,_rightPattern_patternMatchWarnings,_self,_leftPattern_unboundNames ++ _rightPattern_unboundNames)
+        ( _rightPattern_beta,_rightPattern_betaUnique,_rightPattern_constraints,_rightPattern_elements,_rightPattern_environment,_rightPattern_infoTree,_rightPattern_patVarNames,_rightPattern_patternMatchWarnings,_rightPattern_self,_rightPattern_unboundNames) =
+            (_rightPattern (_leftPattern_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_parentTree) (_leftPattern_patternMatchWarnings))
+    in  ( _beta,_rightPattern_betaUnique,_constraints,FiniteElement (getNameName _constructorOperator_self) : _leftPattern_elements ++ _rightPattern_elements,_leftPattern_environment `plusFM` _rightPattern_environment,_parentTree,_leftPattern_patVarNames ++ _rightPattern_patVarNames,_rightPattern_patternMatchWarnings,_self,_leftPattern_unboundNames ++ _rightPattern_unboundNames)
 sem_Pattern_Irrefutable :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Pattern)
-sem_Pattern_Irrefutable (_range) (_pattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Pattern_Irrefutable (_range) (_pattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             Pattern_Irrefutable _range_self _pattern_self
-        (_oneLineTree) =
-            intErr "pattern" "irrefutable"
         ( _range_self) =
             (_range )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
-            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings))
-    in  ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_oneLineTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_self,_pattern_unboundNames)
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_infoTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
+            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings))
+    in  ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_infoTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_self,_pattern_unboundNames)
 sem_Pattern_List :: (T_Range) ->
                     (T_Patterns) ->
                     (T_Pattern)
-sem_Pattern_List (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Pattern_List (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             Pattern_List _range_self _patterns_self
         (_constraints) =
             _newcon .>.
-            Node (zipWith3 _zipf _patterns_betas _childrenInfo _patterns_constraintslist)
+            Node (zipWith3 _zipf _patterns_betas [0..] _patterns_constraintslist)
         (_beta) =
             TVar _lhs_betaUnique
         (_beta') =
             TVar (_lhs_betaUnique + 1)
         (_newcon) =
             [ (listType _beta' .==. _beta) _cinfoResult ]
-        (_childrenInfo) =
-            zip _patterns_oneLineTree (map getPatRange _patterns_self)
         (_zipf) =
-            \tp pair ctree -> [ (tp .==. _beta') (_cinfoElem pair) ] .<. ctree
+            \tp elemNr ctree -> [ (tp .==. _beta') (_cinfoElem elemNr) ] .<. ctree
         (_cinfoElem) =
-            \(elemtext, elemrange) tppair ->
-            CInfo { info       = (NTPattern, AltList, 0, "element")
-                  , location   = "element of pattern list"
-                  , errorrange = _range_self
-                  , sources    = [ sourcePattern _oneLineTree, sourceTerm elemtext ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange elemrange ] ++
-                                 if length _patterns_constraintslist > 1 then [] else [ HighlyTrusted  ]
-                  }
+            \elemNr ->
+            childConstraint elemNr "element of pattern list" _parentTree
+               [ HasTrustFactor 10.0 | length _patterns_constraintslist < 2 ]
         (_cinfoResult) =
-            \tppair ->
-            CInfo { info       = (NTPattern, AltList, 1, "result")
-                  , location   = "pattern list"
-                  , errorrange = _range_self
-                  , sources    = [ sourcePattern _oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint ]
-                  }
-        (_oneLineTree) =
-            encloseSep "[" ", " "]" _patterns_oneLineTree
+            resultConstraint "pattern list" _parentTree
+               [ FolkloreConstraint ]
+        (_localInfo) =
+            LocalInfo { self = UHA_Pat _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo _patterns_infoTrees
         ( _range_self) =
             (_range )
-        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_patVarNames,_patterns_patternMatchWarnings,_patterns_self,_patterns_unboundNames) =
-            (_patterns (_lhs_betaUnique + 2) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings))
-    in  ( _beta,_patterns_betaUnique,_constraints,listPat _patterns_elementss,_patterns_environment,_oneLineTree,_patterns_patVarNames,_patterns_patternMatchWarnings,_self,_patterns_unboundNames)
+        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_infoTrees,_patterns_numberOfPatterns,_patterns_patVarNames,_patterns_patternMatchWarnings,_patterns_self,_patterns_unboundNames) =
+            (_patterns (_lhs_betaUnique + 2) (_lhs_importEnvironment) (_lhs_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
+    in  ( _beta,_patterns_betaUnique,_constraints,listPat _patterns_elementss,_patterns_environment,_parentTree,_patterns_patVarNames,_patterns_patternMatchWarnings,_self,_patterns_unboundNames)
 sem_Pattern_Literal :: (T_Range) ->
                        (T_Literal) ->
                        (T_Pattern)
-sem_Pattern_Literal (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Pattern_Literal (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             Pattern_Literal _range_self _literal_self
         (_constraints) =
@@ -6326,28 +6128,23 @@ sem_Pattern_Literal (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironmen
         (_beta) =
             TVar _lhs_betaUnique
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTPattern, AltLiteral, 0, "")
-                  , location   = "literal pattern"
-                  , errorrange = _range_self
-                  , sources    = [ sourcePattern _oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , HighlyTrusted
-                                 , IsLiteral _literal_self
-                                 ]
-                  }
-        (_oneLineTree) =
-            _literal_oneLineTree
+            resultConstraint "literal pattern" _parentTree
+               [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral _literal_self ]
+        (_localInfo) =
+            LocalInfo { self = UHA_Pat _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo []
         ( _range_self) =
             (_range )
-        ( _literal_elements,_literal_literalType,_literal_oneLineTree,_literal_self) =
+        ( _literal_elements,_literal_literalType,_literal_self) =
             (_literal )
-    in  ( _beta,_lhs_betaUnique + 1,_constraints,_literal_elements,noAssumptions,_oneLineTree,[],_lhs_patternMatchWarnings,_self,[])
+    in  ( _beta,_lhs_betaUnique + 1,_constraints,_literal_elements,noAssumptions,_parentTree,[],_lhs_patternMatchWarnings,_self,[])
 sem_Pattern_Negate :: (T_Range) ->
                       (T_Literal) ->
                       (T_Pattern)
-sem_Pattern_Negate (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Pattern_Negate (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             Pattern_Negate _range_self _literal_self
         (_constraints) =
@@ -6359,25 +6156,23 @@ sem_Pattern_Negate (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment
                 tpscheme = lookupWithDefaultFM (typeEnvironment _lhs_importEnvironment) standard (nameFromString "negate")
             in [ (_literal_literalType .->. _beta .::. tpscheme) _cinfo]
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTPattern, AltNegate, 0, "")
-                  , location   = "pattern negation"
-                  , errorrange = _range_self
-                  , sources    = [ sourcePattern _oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint ]
-                  }
-        (_oneLineTree) =
-            OneLineNode [ OneLineText "-", _literal_oneLineTree ]
+            resultConstraint "pattern negation" _parentTree
+               [ FolkloreConstraint ]
+        (_localInfo) =
+            LocalInfo { self = UHA_Pat _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo []
         ( _range_self) =
             (_range )
-        ( _literal_elements,_literal_literalType,_literal_oneLineTree,_literal_self) =
+        ( _literal_elements,_literal_literalType,_literal_self) =
             (_literal )
-    in  ( _beta,_lhs_betaUnique + 1,_constraints,_literal_elements,noAssumptions,_oneLineTree,[],_lhs_patternMatchWarnings,_self,[])
+    in  ( _beta,_lhs_betaUnique + 1,_constraints,_literal_elements,noAssumptions,_parentTree,[],_lhs_patternMatchWarnings,_self,[])
 sem_Pattern_NegateFloat :: (T_Range) ->
                            (T_Literal) ->
                            (T_Pattern)
-sem_Pattern_NegateFloat (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Pattern_NegateFloat (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             Pattern_NegateFloat _range_self _literal_self
         (_constraints) =
@@ -6387,76 +6182,70 @@ sem_Pattern_NegateFloat (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnviro
         (_newcon) =
             [ (floatType .==. _beta) _cinfo ]
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTPattern, AltNegateFloat, 0, "")
-                  , location   = "pattern negation"
-                  , errorrange = _range_self
-                  , sources    = [ sourcePattern _oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , NegationResult
-                                 ]
-                  }
-        (_oneLineTree) =
-            OneLineNode [ OneLineText "-." , _literal_oneLineTree ]
+            resultConstraint "pattern negation" _parentTree
+               [ FolkloreConstraint, NegationResult ]
+        (_localInfo) =
+            LocalInfo { self = UHA_Pat _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo []
         ( _range_self) =
             (_range )
-        ( _literal_elements,_literal_literalType,_literal_oneLineTree,_literal_self) =
+        ( _literal_elements,_literal_literalType,_literal_self) =
             (_literal )
-    in  ( _beta,_lhs_betaUnique + 1,_constraints,_literal_elements,noAssumptions,_oneLineTree,[],_lhs_patternMatchWarnings,_self,[])
+    in  ( _beta,_lhs_betaUnique + 1,_constraints,_literal_elements,noAssumptions,_parentTree,[],_lhs_patternMatchWarnings,_self,[])
 sem_Pattern_Parenthesized :: (T_Range) ->
                              (T_Pattern) ->
                              (T_Pattern)
-sem_Pattern_Parenthesized (_range) (_pattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Pattern_Parenthesized (_range) (_pattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             Pattern_Parenthesized _range_self _pattern_self
-        (_oneLineTree) =
-            parens _pattern_oneLineTree
         ( _range_self) =
             (_range )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
-            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings))
-    in  ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_oneLineTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_self,_pattern_unboundNames)
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_infoTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
+            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings))
+    in  ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_infoTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_self,_pattern_unboundNames)
 sem_Pattern_Record :: (T_Range) ->
                       (T_Name) ->
                       (T_RecordPatternBindings) ->
                       (T_Pattern)
-sem_Pattern_Record (_range) (_name) (_recordPatternBindings) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Pattern_Record (_range) (_name) (_recordPatternBindings) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             Pattern_Record _range_self _name_self _recordPatternBindings_self
+        (_infoTree) =
+            globalInfoError
         ((_beta,_constraints,_environment)) =
             internalError "PartialSyntax.ag" "n/a" "Pattern.Record"
-        (_oneLineTree) =
-            intErr "pattern" "record"
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
         ( _recordPatternBindings_patternMatchWarnings,_recordPatternBindings_self,_recordPatternBindings_unboundNames) =
             (_recordPatternBindings (_lhs_namesInScope) (_lhs_patternMatchWarnings))
-    in  ( _beta,_lhs_betaUnique,_constraints,pmError "Pattern_Record.elements" "Records are not supported",_environment,_oneLineTree,[],_recordPatternBindings_patternMatchWarnings,_self,_recordPatternBindings_unboundNames)
+    in  ( _beta,_lhs_betaUnique,_constraints,pmError "Pattern_Record.elements" "Records are not supported",_environment,_infoTree,[],_recordPatternBindings_patternMatchWarnings,_self,_recordPatternBindings_unboundNames)
 sem_Pattern_Successor :: (T_Range) ->
                          (T_Name) ->
                          (T_Literal) ->
                          (T_Pattern)
-sem_Pattern_Successor (_range) (_name) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Pattern_Successor (_range) (_name) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             Pattern_Successor _range_self _name_self _literal_self
+        (_infoTree) =
+            globalInfoError
         ((_beta,_constraints,_environment)) =
             internalError "PartialSyntax.ag" "n/a" "Pattern.Successor"
-        (_oneLineTree) =
-            intErr "pattern" "successor"
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
-        ( _literal_elements,_literal_literalType,_literal_oneLineTree,_literal_self) =
+        ( _literal_elements,_literal_literalType,_literal_self) =
             (_literal )
-    in  ( _beta,_lhs_betaUnique,_constraints,pmError "Pattern_Successor.elements" "Successors are not supported",_environment,_oneLineTree,[],_lhs_patternMatchWarnings,_self,[])
+    in  ( _beta,_lhs_betaUnique,_constraints,pmError "Pattern_Successor.elements" "Successors are not supported",_environment,_infoTree,[],_lhs_patternMatchWarnings,_self,[])
 sem_Pattern_Tuple :: (T_Range) ->
                      (T_Patterns) ->
                      (T_Pattern)
-sem_Pattern_Tuple (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Pattern_Tuple (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             Pattern_Tuple _range_self _patterns_self
         (_constraints) =
@@ -6466,61 +6255,66 @@ sem_Pattern_Tuple (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment
         (_newcon) =
             [ (tupleType _patterns_betas .==. _beta) _cinfo ]
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTPattern, AltTuple, 0, "result")
-                  , location   = "pattern tuple"
-                  , errorrange = _range_self
-                  , sources    = [ sourcePattern _oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ FolkloreConstraint
-                                 , IsTupleEdge
-                                 ]
-                  }
-        (_oneLineTree) =
-            encloseSep "(" ", " ")" _patterns_oneLineTree
+            resultConstraint "pattern tuple" _parentTree
+            [ FolkloreConstraint, IsTupleEdge ]
+        (_localInfo) =
+            LocalInfo { self = UHA_Pat _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo _patterns_infoTrees
         ( _range_self) =
             (_range )
-        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_patVarNames,_patterns_patternMatchWarnings,_patterns_self,_patterns_unboundNames) =
-            (_patterns (_lhs_betaUnique + 1) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings))
-    in  ( _beta,_patterns_betaUnique,_constraints,FiniteElement ("(" ++ replicate (length $ tail _patterns_self) ',' ++ ")") : concat _patterns_elementss,_patterns_environment,_oneLineTree,_patterns_patVarNames,_patterns_patternMatchWarnings,_self,_patterns_unboundNames)
+        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_infoTrees,_patterns_numberOfPatterns,_patterns_patVarNames,_patterns_patternMatchWarnings,_patterns_self,_patterns_unboundNames) =
+            (_patterns (_lhs_betaUnique + 1) (_lhs_importEnvironment) (_lhs_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
+    in  ( _beta,_patterns_betaUnique,_constraints,FiniteElement ("(" ++ replicate (length $ tail _patterns_self) ',' ++ ")") : concat _patterns_elementss,_patterns_environment,_parentTree,_patterns_patVarNames,_patterns_patternMatchWarnings,_self,_patterns_unboundNames)
 sem_Pattern_Variable :: (T_Range) ->
                         (T_Name) ->
                         (T_Pattern)
-sem_Pattern_Variable (_range) (_name) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Pattern_Variable (_range) (_name) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             Pattern_Variable _range_self _name_self
         (_constraints) =
             Receive _lhs_betaUnique
         (_beta) =
             TVar _lhs_betaUnique
-        (_oneLineTree) =
-            _name_oneLineTree
+        (_localInfo) =
+            LocalInfo { self = UHA_Pat _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo []
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
-    in  ( _beta,_lhs_betaUnique + 1,_constraints,[WildcardElement],unitFM _name_self _beta,_oneLineTree,[ _name_self ],_lhs_patternMatchWarnings,_self,[])
+    in  ( _beta,_lhs_betaUnique + 1,_constraints,[WildcardElement],unitFM _name_self _beta,_parentTree,[ _name_self ],_lhs_patternMatchWarnings,_self,[])
 sem_Pattern_Wildcard :: (T_Range) ->
                         (T_Pattern)
-sem_Pattern_Wildcard (_range) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Pattern_Wildcard (_range) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             Pattern_Wildcard _range_self
         (_constraints) =
             emptyTree
         (_beta) =
             TVar _lhs_betaUnique
-        (_oneLineTree) =
-            OneLineText "_"
+        (_localInfo) =
+            LocalInfo { self = UHA_Pat _self
+                      , assignedType = Just _beta
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo []
         ( _range_self) =
             (_range )
-    in  ( _beta,_lhs_betaUnique + 1,_constraints,[WildcardElement],noAssumptions,_oneLineTree,[],_lhs_patternMatchWarnings,_self,[])
+    in  ( _beta,_lhs_betaUnique + 1,_constraints,[WildcardElement],noAssumptions,_parentTree,[],_lhs_patternMatchWarnings,_self,[])
 -- Patterns ----------------------------------------------------
 -- semantic domain
 type T_Patterns = (Int) ->
                   (ImportEnvironment) ->
                   (Names) ->
+                  (InfoTree) ->
                   ([Warning]) ->
-                  ( (Int),(Tps),(ConstraintSets),([ [PatternElement]       ]),(PatternAssumptions),(Int),( [ OneLineTree] ),(Names),([Warning]),(Patterns),(Names))
+                  ( (Int),(Tps),(ConstraintSets),([ [PatternElement]       ]),(PatternAssumptions),(InfoTrees),(Int),(Names),([Warning]),(Patterns),(Names))
 -- cata
 sem_Patterns :: (Patterns) ->
                 (T_Patterns)
@@ -6529,19 +6323,19 @@ sem_Patterns (list) =
 sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns) ->
                      (T_Patterns)
-sem_Patterns_Cons (_hd) (_tl) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Patterns_Cons (_hd) (_tl) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_beta,_hd_betaUnique,_hd_constraints,_hd_elements,_hd_environment,_hd_oneLineTree,_hd_patVarNames,_hd_patternMatchWarnings,_hd_self,_hd_unboundNames) =
-            (_hd (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings))
-        ( _tl_betaUnique,_tl_betas,_tl_constraintslist,_tl_elementss,_tl_environment,_tl_numberOfPatterns,_tl_oneLineTree,_tl_patVarNames,_tl_patternMatchWarnings,_tl_self,_tl_unboundNames) =
-            (_tl (_hd_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_hd_patternMatchWarnings))
-    in  ( _tl_betaUnique,_hd_beta : _tl_betas,_hd_constraints : _tl_constraintslist,_hd_elements : _tl_elementss,_hd_environment `plusFM` _tl_environment,1 + _tl_numberOfPatterns,_hd_oneLineTree  :  _tl_oneLineTree,_hd_patVarNames ++ _tl_patVarNames,_tl_patternMatchWarnings,_self,_hd_unboundNames ++ _tl_unboundNames)
+        ( _hd_beta,_hd_betaUnique,_hd_constraints,_hd_elements,_hd_environment,_hd_infoTree,_hd_patVarNames,_hd_patternMatchWarnings,_hd_self,_hd_unboundNames) =
+            (_hd (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings))
+        ( _tl_betaUnique,_tl_betas,_tl_constraintslist,_tl_elementss,_tl_environment,_tl_infoTrees,_tl_numberOfPatterns,_tl_patVarNames,_tl_patternMatchWarnings,_tl_self,_tl_unboundNames) =
+            (_tl (_hd_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_hd_patternMatchWarnings))
+    in  ( _tl_betaUnique,_hd_beta : _tl_betas,_hd_constraints : _tl_constraintslist,_hd_elements : _tl_elementss,_hd_environment `plusFM` _tl_environment,_hd_infoTree : _tl_infoTrees,1 + _tl_numberOfPatterns,_hd_patVarNames ++ _tl_patVarNames,_tl_patternMatchWarnings,_self,_hd_unboundNames ++ _tl_unboundNames)
 sem_Patterns_Nil :: (T_Patterns)
-sem_Patterns_Nil (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
+sem_Patterns_Nil (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_namesInScope) (_lhs_parentTree) (_lhs_patternMatchWarnings) =
     let (_self) =
             []
-    in  ( _lhs_betaUnique,[],[],[],noAssumptions,0,[],[],_lhs_patternMatchWarnings,_self,[])
+    in  ( _lhs_betaUnique,[],[],[],noAssumptions,[],0,[],_lhs_patternMatchWarnings,_self,[])
 -- Position ----------------------------------------------------
 -- semantic domain
 type T_Position = ( (Position))
@@ -6584,13 +6378,14 @@ type T_Qualifier = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (Tps) ->
                    (Names) ->
                    (OrderedTypeSynonyms) ->
+                   (InfoTree) ->
                    ([Warning]) ->
                    (Predicates) ->
                    (FixpointSubstitution) ->
                    (Names) ->
                    (Int) ->
                    (Int) ->
-                   ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(IO ()),(Tps),(Names),(OneLineTree),([Warning]),(Qualifier),(Names),(Int),(Int))
+                   ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTree),(IO ()),(Tps),(Names),([Warning]),(Qualifier),(Names),(Int),(Int))
 -- cata
 sem_Qualifier :: (Qualifier) ->
                  (T_Qualifier)
@@ -6622,6 +6417,7 @@ sem_Qualifier_Empty (_range)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_lhs_parentTree)
                     (_lhs_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
@@ -6630,11 +6426,15 @@ sem_Qualifier_Empty (_range)
                     (_lhs_uniqueSecondRound) =
     let (_self) =
             Qualifier_Empty _range_self
-        (_oneLineTree) =
-            OneLineText ""
+        (_localInfo) =
+            LocalInfo { self = UHA_Qual _self
+                      , assignedType = Nothing
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo []
         ( _range_self) =
             (_range )
-    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_lhs_constraints,_lhs_dictionaryEnvironment,_lhs_matchIO,_lhs_monos,_lhs_namesInScope,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_unboundNames,_lhs_uniqueChunk,_lhs_uniqueSecondRound)
+    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_lhs_constraints,_lhs_dictionaryEnvironment,_parentTree,_lhs_matchIO,_lhs_monos,_lhs_namesInScope,_lhs_patternMatchWarnings,_self,_lhs_unboundNames,_lhs_uniqueChunk,_lhs_uniqueSecondRound)
 sem_Qualifier_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
@@ -6659,6 +6459,7 @@ sem_Qualifier_Generator (_range)
                         (_lhs_monos)
                         (_lhs_namesInScope)
                         (_lhs_orderedTypeSynonyms)
+                        (_lhs_parentTree)
                         (_lhs_patternMatchWarnings)
                         (_lhs_predicates)
                         (_lhs_substitution)
@@ -6678,25 +6479,24 @@ sem_Qualifier_Generator (_range)
         (_newcon) =
             [ (_expression_beta .==. listType _pattern_beta) _cinfoResult ]
         (_cinfoResult) =
-            \tppair ->
-            CInfo { info       = (NTQualifier,AltGenerator,0, "result")
-                  , location   = "generator"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getExprRange _expression_self) ]
-                  }
+            childConstraint 1 "generator" _parentTree
+               []
         (_cinfoBind) =
-            variableBindingCInfo (NTQualifier,AltGenerator,1 )
+            \name -> variableConstraint "variable" (nameToSelfExpr name)
+               [FolkloreConstraint]
+        (_localInfo) =
+            LocalInfo { self = UHA_Qual _self
+                      , assignedType = Nothing
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo [_pattern_infoTree, _expression_infoTree]
         ((_namesInScope,_unboundNames,_scopeInfo)) =
             changeOfScope _pattern_patVarNames (_expression_unboundNames  ++ _lhs_unboundNames)  _lhs_namesInScope
-        (_oneLineTree) =
-            OneLineNode [ _pattern_oneLineTree, OneLineText " <- ", _expression_oneLineTree ]
         ( _range_self) =
             (_range )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
-            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_namesInScope) (_lhs_patternMatchWarnings))
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_infoTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
+            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_pattern_betaUnique)
@@ -6712,6 +6512,7 @@ sem_Qualifier_Generator (_range)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_parentTree)
                          (_pattern_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
@@ -6725,10 +6526,10 @@ sem_Qualifier_Generator (_range)
          ,_expression_collectWarnings
          ,_locConstraints
          ,_expression_dictionaryEnvironment
+         ,_parentTree
          ,_expression_matchIO
          ,eltsFM _pattern_environment ++ getMonos _csetBinds ++ _lhs_monos
          ,_namesInScope
-         ,_oneLineTree
          ,patternMatchWarnings _lhs_importEnvironment
                                _lhs_substitution
                                _pattern_beta
@@ -6768,6 +6569,7 @@ sem_Qualifier_Guard (_range)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_lhs_parentTree)
                     (_lhs_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
@@ -6783,19 +6585,17 @@ sem_Qualifier_Guard (_range)
         (_newcon) =
             [ (_guard_beta .==. boolType) _cinfo ]
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTQualifier,AltGuard,0, "")
-                  , location   = "boolean qualifier"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree  ]
-                  , typepair   = tppair
-                  , properties = [ ]
-                  }
-        (_oneLineTree) =
-            _guard_oneLineTree
+            orphanConstraint 0 "boolean qualifier" _parentTree
+               []
+        (_localInfo) =
+            LocalInfo { self = UHA_Qual _self
+                      , assignedType = Nothing
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo [_guard_infoTree]
         ( _range_self) =
             (_range )
-        ( _guard_assumptions,_guard_beta,_guard_betaUnique,_guard_collectChunkNumbers,_guard_collectErrors,_guard_collectWarnings,_guard_constraints,_guard_dictionaryEnvironment,_guard_matchIO,_guard_matches,_guard_oneLineTree,_guard_patternMatchWarnings,_guard_self,_guard_unboundNames,_guard_uniqueChunk,_guard_uniqueSecondRound) =
+        ( _guard_assumptions,_guard_beta,_guard_betaUnique,_guard_collectChunkNumbers,_guard_collectErrors,_guard_collectWarnings,_guard_constraints,_guard_dictionaryEnvironment,_guard_infoTree,_guard_matchIO,_guard_matches,_guard_patternMatchWarnings,_guard_self,_guard_unboundNames,_guard_uniqueChunk,_guard_uniqueSecondRound) =
             (_guard (_lhs_allPatterns)
                     (_lhs_availablePredicates)
                     (_lhs_betaUnique)
@@ -6811,13 +6611,14 @@ sem_Qualifier_Guard (_range)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_parentTree)
                     (_lhs_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
                     ([])
                     (_lhs_uniqueChunk)
                     (_lhs_uniqueSecondRound))
-    in  ( _lhs_assumptions `combine` _guard_assumptions,_guard_betaUnique,_guard_collectChunkNumbers,_guard_collectErrors,_guard_collectWarnings,_locConstraints,_guard_dictionaryEnvironment,_guard_matchIO,_lhs_monos,_lhs_namesInScope,_oneLineTree,_guard_patternMatchWarnings,_self,_guard_unboundNames ++ _lhs_unboundNames,_guard_uniqueChunk,_guard_uniqueSecondRound)
+    in  ( _lhs_assumptions `combine` _guard_assumptions,_guard_betaUnique,_guard_collectChunkNumbers,_guard_collectErrors,_guard_collectWarnings,_locConstraints,_guard_dictionaryEnvironment,_parentTree,_guard_matchIO,_lhs_monos,_lhs_namesInScope,_guard_patternMatchWarnings,_self,_guard_unboundNames ++ _lhs_unboundNames,_guard_uniqueChunk,_guard_uniqueSecondRound)
 sem_Qualifier_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Qualifier)
@@ -6840,6 +6641,7 @@ sem_Qualifier_Let (_range)
                   (_lhs_monos)
                   (_lhs_namesInScope)
                   (_lhs_orderedTypeSynonyms)
+                  (_lhs_parentTree)
                   (_lhs_patternMatchWarnings)
                   (_lhs_predicates)
                   (_lhs_substitution)
@@ -6858,15 +6660,25 @@ sem_Qualifier_Let (_range)
             getInferredTypes _lhs_monos _lhs_substitution _lhs_predicates _declarations_bindingGroups
         ((_errors,_warnings)) =
             checkAnnotations False _lhs_orderedTypeSynonyms _declarations_typeSignatures _localTypes
+        (_localInfo) =
+            LocalInfo { self = UHA_Qual _self
+                      , assignedType = Nothing
+                      }
+        (_declInfo) =
+            LocalInfo { self = UHA_Decls _declarations_self
+                      , assignedType = Nothing
+                      }
+        (_thisTree) =
+            node _lhs_parentTree _localInfo [_declTree]
+        (_declTree) =
+            node _thisTree _declInfo _declarations_infoTrees
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel Qualifier"
         ((_namesInScope,_unboundNames,_scopeInfo)) =
             changeOfScope _declarations_declVarNames (_declarations_unboundNames ++ _lhs_unboundNames) _lhs_namesInScope
-        (_oneLineTree) =
-            OneLineNode [ OneLineText "let ", encloseSep "{" "; " "}" _declarations_oneLineTree ]
         ( _range_self) =
             (_range )
-        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectChunkNumbers,_declarations_collectErrors,_declarations_collectWarnings,_declarations_declVarNames,_declarations_dictionaryEnvironment,_declarations_matchIO,_declarations_oneLineTree,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeSignatures,_declarations_unboundNames,_declarations_uniqueChunk) =
+        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectChunkNumbers,_declarations_collectErrors,_declarations_collectWarnings,_declarations_declVarNames,_declarations_dictionaryEnvironment,_declarations_infoTrees,_declarations_matchIO,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeSignatures,_declarations_unboundNames,_declarations_uniqueChunk) =
             (_declarations (_lhs_allPatterns)
                            (_lhs_availablePredicates)
                            (_lhs_betaUnique)
@@ -6884,12 +6696,13 @@ sem_Qualifier_Let (_range)
                            (_lhs_monos)
                            (_namesInScope)
                            (_lhs_orderedTypeSynonyms)
+                           (_declTree)
                            (_lhs_patternMatchWarnings)
                            (_lhs_predicates)
                            (_lhs_substitution)
                            (emptyFM)
                            (_lhs_uniqueChunk))
-    in  ( _aset,_declarations_betaUnique,_declarations_collectChunkNumbers,_errors ++ _declarations_collectErrors,_warnings ++ _declarations_collectWarnings,_locConstraints,_declarations_dictionaryEnvironment,_declarations_matchIO,_lhs_monos,_namesInScope,_oneLineTree,_declarations_patternMatchWarnings,_self,_unboundNames,_chunkNr,_lhs_uniqueSecondRound)
+    in  ( _aset,_declarations_betaUnique,_declarations_collectChunkNumbers,_errors ++ _declarations_collectErrors,_warnings ++ _declarations_collectWarnings,_locConstraints,_declarations_dictionaryEnvironment,_thisTree,_declarations_matchIO,_lhs_monos,_namesInScope,_declarations_patternMatchWarnings,_self,_unboundNames,_chunkNr,_lhs_uniqueSecondRound)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
 type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -6909,13 +6722,14 @@ type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (Tps) ->
                     (Names) ->
                     (OrderedTypeSynonyms) ->
+                    (InfoTree) ->
                     ([Warning]) ->
                     (Predicates) ->
                     (FixpointSubstitution) ->
                     (Names) ->
                     (Int) ->
                     (Int) ->
-                    ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(IO ()),(Tps),(Names),( [ OneLineTree] ),([Warning]),(Qualifiers),(Names),(Int),(Int))
+                    ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTrees),(IO ()),(Tps),(Names),([Warning]),(Qualifiers),(Names),(Int),(Int))
 -- cata
 sem_Qualifiers :: (Qualifiers) ->
                   (T_Qualifiers)
@@ -6943,6 +6757,7 @@ sem_Qualifiers_Cons (_hd)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_lhs_parentTree)
                     (_lhs_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
@@ -6951,7 +6766,7 @@ sem_Qualifiers_Cons (_hd)
                     (_lhs_uniqueSecondRound) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_assumptions,_hd_betaUnique,_hd_collectChunkNumbers,_hd_collectErrors,_hd_collectWarnings,_hd_constraints,_hd_dictionaryEnvironment,_hd_matchIO,_hd_monos,_hd_namesInScope,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_self,_hd_unboundNames,_hd_uniqueChunk,_hd_uniqueSecondRound) =
+        ( _hd_assumptions,_hd_betaUnique,_hd_collectChunkNumbers,_hd_collectErrors,_hd_collectWarnings,_hd_constraints,_hd_dictionaryEnvironment,_hd_infoTree,_hd_matchIO,_hd_monos,_hd_namesInScope,_hd_patternMatchWarnings,_hd_self,_hd_unboundNames,_hd_uniqueChunk,_hd_uniqueSecondRound) =
             (_hd (_lhs_allPatterns)
                  (_tl_assumptions)
                  (_lhs_availablePredicates)
@@ -6969,13 +6784,14 @@ sem_Qualifiers_Cons (_hd)
                  (_lhs_monos)
                  (_lhs_namesInScope)
                  (_lhs_orderedTypeSynonyms)
+                 (_lhs_parentTree)
                  (_lhs_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_substitution)
                  (_tl_unboundNames)
                  (_lhs_uniqueChunk)
                  (_lhs_uniqueSecondRound))
-        ( _tl_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_tl_constraints,_tl_dictionaryEnvironment,_tl_matchIO,_tl_monos,_tl_namesInScope,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self,_tl_unboundNames,_tl_uniqueChunk,_tl_uniqueSecondRound) =
+        ( _tl_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_tl_constraints,_tl_dictionaryEnvironment,_tl_infoTrees,_tl_matchIO,_tl_monos,_tl_namesInScope,_tl_patternMatchWarnings,_tl_self,_tl_unboundNames,_tl_uniqueChunk,_tl_uniqueSecondRound) =
             (_tl (_lhs_allPatterns)
                  (_lhs_assumptions)
                  (_lhs_availablePredicates)
@@ -6993,13 +6809,14 @@ sem_Qualifiers_Cons (_hd)
                  (_hd_monos)
                  (_hd_namesInScope)
                  (_lhs_orderedTypeSynonyms)
+                 (_lhs_parentTree)
                  (_hd_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_substitution)
                  (_lhs_unboundNames)
                  (_hd_uniqueChunk)
                  (_hd_uniqueSecondRound))
-    in  ( _hd_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_hd_constraints,_tl_dictionaryEnvironment,_tl_matchIO,_tl_monos,_tl_namesInScope,_hd_oneLineTree  :  _tl_oneLineTree,_tl_patternMatchWarnings,_self,_hd_unboundNames,_tl_uniqueChunk,_tl_uniqueSecondRound)
+    in  ( _hd_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_hd_constraints,_tl_dictionaryEnvironment,_hd_infoTree : _tl_infoTrees,_tl_matchIO,_tl_monos,_tl_namesInScope,_tl_patternMatchWarnings,_self,_hd_unboundNames,_tl_uniqueChunk,_tl_uniqueSecondRound)
 sem_Qualifiers_Nil :: (T_Qualifiers)
 sem_Qualifiers_Nil (_lhs_allPatterns)
                    (_lhs_assumptions)
@@ -7018,6 +6835,7 @@ sem_Qualifiers_Nil (_lhs_allPatterns)
                    (_lhs_monos)
                    (_lhs_namesInScope)
                    (_lhs_orderedTypeSynonyms)
+                   (_lhs_parentTree)
                    (_lhs_patternMatchWarnings)
                    (_lhs_predicates)
                    (_lhs_substitution)
@@ -7026,7 +6844,7 @@ sem_Qualifiers_Nil (_lhs_allPatterns)
                    (_lhs_uniqueSecondRound) =
     let (_self) =
             []
-    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_lhs_constraints,_lhs_dictionaryEnvironment,_lhs_matchIO,_lhs_monos,_lhs_namesInScope,[],_lhs_patternMatchWarnings,_self,_lhs_unboundNames,_lhs_uniqueChunk,_lhs_uniqueSecondRound)
+    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_lhs_constraints,_lhs_dictionaryEnvironment,[],_lhs_matchIO,_lhs_monos,_lhs_namesInScope,_lhs_patternMatchWarnings,_self,_lhs_unboundNames,_lhs_uniqueChunk,_lhs_uniqueSecondRound)
 -- Range -------------------------------------------------------
 -- semantic domain
 type T_Range = ( (Range))
@@ -7076,15 +6894,17 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
 sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expression) (_lhs_availablePredicates) (_lhs_chunkNumberMap) (_lhs_collectChunkNumbers) (_lhs_collectErrors) (_lhs_collectWarnings) (_lhs_currentChunk) (_lhs_dictionaryEnvironment) (_lhs_importEnvironment) (_lhs_inferredTypes) (_lhs_namesInScope) (_lhs_orderedTypeSynonyms) (_lhs_patternMatchWarnings) (_lhs_predicates) (_lhs_substitution) (_lhs_uniqueChunk) =
     let (_self) =
             RecordExpressionBinding_RecordExpressionBinding _range_self _name_self _expression_self
+        (_parentTree) =
+            globalInfoError
         ((_monos,_constructorenv,_betaUnique,_miscerrors,_warnings,_kindErrors,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_importEnvironment)) =
             internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
         ((_allPatterns,_tryPatterns,_matchIO,_uniqueSecondRound)) =
             undefined
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_allPatterns)
                          (_lhs_availablePredicates)
                          (_betaUnique)
@@ -7100,6 +6920,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expressio
                          (_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
@@ -7163,14 +6984,16 @@ sem_RecordPatternBinding_RecordPatternBinding :: (T_Range) ->
 sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) (_lhs_namesInScope) (_lhs_patternMatchWarnings) =
     let (_self) =
             RecordPatternBinding_RecordPatternBinding _range_self _name_self _pattern_self
+        (_parentTree) =
+            globalInfoError
         ((_constructorenv,_betaUnique,_miscerrors,_warnings,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_importEnvironment)) =
             internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
-            (_pattern (_betaUnique) (_importEnvironment) (_lhs_namesInScope) (_lhs_patternMatchWarnings))
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_infoTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
+            (_pattern (_betaUnique) (_importEnvironment) (_lhs_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
     in  ( _pattern_patternMatchWarnings,_self,_pattern_unboundNames)
 -- RecordPatternBindings ---------------------------------------
 -- semantic domain
@@ -7215,11 +7038,12 @@ type T_RightHandSide = ([((Expression, [String]), Core_TypingStrategy)]) ->
                        (Tps) ->
                        (Names) ->
                        (OrderedTypeSynonyms) ->
+                       (InfoTree) ->
                        ([Warning]) ->
                        (Predicates) ->
                        (FixpointSubstitution) ->
                        (Int) ->
-                       ( (Assumptions),(Tp),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Bool),(IO ()),( String -> OneLineTree ),([Warning]),(RightHandSide),(Names),(Int))
+                       ( (Assumptions),(Tp),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Bool),(InfoTree),(IO ()),([Warning]),(RightHandSide),(Names),(Int))
 -- cata
 sem_RightHandSide :: (RightHandSide) ->
                      (T_RightHandSide)
@@ -7249,6 +7073,7 @@ sem_RightHandSide_Expression (_range)
                              (_lhs_monos)
                              (_lhs_namesInScope)
                              (_lhs_orderedTypeSynonyms)
+                             (_lhs_parentTree)
                              (_lhs_patternMatchWarnings)
                              (_lhs_predicates)
                              (_lhs_substitution)
@@ -7259,16 +7084,15 @@ sem_RightHandSide_Expression (_range)
             _where_constraints
         (_inferredTypes) =
             addListToFM _lhs_inferredTypes _where_localTypes
-        (_oneLineTree) =
-            \assign -> OneLineNode
-                (  [ OneLineText assign, _expression_oneLineTree ]
-                ++ case _where_oneLineTree of
-                    Nothing -> []
-                    Just ds -> [ OneLineText " where ", encloseSep "{" "; " "}" ds ]
-                )
+        (_localInfo) =
+            LocalInfo { self = UHA_RHS _self
+                      , assignedType = Nothing
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo (_expression_infoTree : _where_infoTrees)
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_lhs_betaUnique)
@@ -7284,13 +7108,14 @@ sem_RightHandSide_Expression (_range)
                          (_lhs_monos)
                          (_where_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
                          ([])
                          (_lhs_uniqueChunk)
                          (_expression_betaUnique))
-        ( _where_assumptions,_where_betaUnique,_where_collectChunkNumbers,_where_collectErrors,_where_collectWarnings,_where_constraints,_where_dictionaryEnvironment,_where_localTypes,_where_matchIO,_where_namesInScope,_where_oneLineTree,_where_patternMatchWarnings,_where_self,_where_unboundNames,_where_uniqueChunk) =
+        ( _where_assumptions,_where_betaUnique,_where_collectChunkNumbers,_where_collectErrors,_where_collectWarnings,_where_constraints,_where_dictionaryEnvironment,_where_infoTrees,_where_localTypes,_where_matchIO,_where_namesInScope,_where_patternMatchWarnings,_where_self,_where_unboundNames,_where_uniqueChunk) =
             (_where (_lhs_allPatterns)
                     (_expression_assumptions)
                     (_lhs_availablePredicates)
@@ -7308,12 +7133,13 @@ sem_RightHandSide_Expression (_range)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_parentTree)
                     (_expression_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
                     (_expression_unboundNames)
                     (_expression_uniqueChunk))
-    in  ( _where_assumptions,_expression_beta,_where_betaUnique,_where_collectChunkNumbers,_where_collectErrors,_where_collectWarnings,_constraints,_where_dictionaryEnvironment,False,_where_matchIO,_oneLineTree,_where_patternMatchWarnings,_self,_where_unboundNames,_where_uniqueChunk)
+    in  ( _where_assumptions,_expression_beta,_where_betaUnique,_where_collectChunkNumbers,_where_collectErrors,_where_collectWarnings,_constraints,_where_dictionaryEnvironment,False,_parentTree,_where_matchIO,_where_patternMatchWarnings,_self,_where_unboundNames,_where_uniqueChunk)
 sem_RightHandSide_Guarded :: (T_Range) ->
                              (T_GuardedExpressions) ->
                              (T_MaybeDeclarations) ->
@@ -7336,6 +7162,7 @@ sem_RightHandSide_Guarded (_range)
                           (_lhs_monos)
                           (_lhs_namesInScope)
                           (_lhs_orderedTypeSynonyms)
+                          (_lhs_parentTree)
                           (_lhs_patternMatchWarnings)
                           (_lhs_predicates)
                           (_lhs_substitution)
@@ -7348,13 +7175,12 @@ sem_RightHandSide_Guarded (_range)
             TVar _lhs_betaUnique
         (_inferredTypes) =
             addListToFM _lhs_inferredTypes _where_localTypes
-        (_oneLineTree) =
-            \assign -> OneLineNode
-                (  [ punctuate " " [ ge assign | ge <- _guardedexpressions_oneLineTree ] ]
-                ++ case _where_oneLineTree of
-                    Nothing -> []
-                    Just ds -> [ OneLineText " where ", encloseSep "{" "; " "}" ds ]
-                )
+        (_localInfo) =
+            LocalInfo { self = UHA_RHS _self
+                      , assignedType = Nothing
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo (_guardedexpressions_infoTrees ++ _where_infoTrees)
         ( _range_self) =
             (_range )
         ( _guardedexpressions_assumptions
@@ -7366,8 +7192,8 @@ sem_RightHandSide_Guarded (_range)
          ,_guardedexpressions_constraintslist
          ,_guardedexpressions_dictionaryEnvironment
          ,_guardedexpressions_fallthrough
+         ,_guardedexpressions_infoTrees
          ,_guardedexpressions_matchIO
-         ,_guardedexpressions_oneLineTree
          ,_guardedexpressions_patternMatchWarnings
          ,_guardedexpressions_self
          ,_guardedexpressions_unboundNames
@@ -7391,13 +7217,14 @@ sem_RightHandSide_Guarded (_range)
                                  (length _guardedexpressions_constraintslist)
                                  (True)
                                  (_lhs_orderedTypeSynonyms)
+                                 (_parentTree)
                                  (_lhs_patternMatchWarnings)
                                  (_lhs_predicates)
                                  (_beta)
                                  (_lhs_substitution)
                                  (_lhs_uniqueChunk)
                                  (_guardedexpressions_betaUnique))
-        ( _where_assumptions,_where_betaUnique,_where_collectChunkNumbers,_where_collectErrors,_where_collectWarnings,_where_constraints,_where_dictionaryEnvironment,_where_localTypes,_where_matchIO,_where_namesInScope,_where_oneLineTree,_where_patternMatchWarnings,_where_self,_where_unboundNames,_where_uniqueChunk) =
+        ( _where_assumptions,_where_betaUnique,_where_collectChunkNumbers,_where_collectErrors,_where_collectWarnings,_where_constraints,_where_dictionaryEnvironment,_where_infoTrees,_where_localTypes,_where_matchIO,_where_namesInScope,_where_patternMatchWarnings,_where_self,_where_unboundNames,_where_uniqueChunk) =
             (_where (_lhs_allPatterns)
                     (_guardedexpressions_assumptions)
                     (_lhs_availablePredicates)
@@ -7415,6 +7242,7 @@ sem_RightHandSide_Guarded (_range)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_parentTree)
                     (_guardedexpressions_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
@@ -7429,8 +7257,8 @@ sem_RightHandSide_Guarded (_range)
          ,_where_constraints
          ,_where_dictionaryEnvironment
          ,_guardedexpressions_fallthrough
+         ,_parentTree
          ,_where_matchIO
-         ,_oneLineTree
          ,(if _guardedexpressions_fallthrough then [FallThrough _range] else [])
           ++ _where_patternMatchWarnings
          ,_self
@@ -7454,9 +7282,9 @@ sem_SimpleType_SimpleType (_range) (_name) (_typevariables) =
             SimpleType_SimpleType _range_self _name_self _typevariables_self
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
-        ( _typevariables_isIdentifier,_typevariables_isOperator,_typevariables_isSpecial,_typevariables_oneLineTree,_typevariables_self) =
+        ( _typevariables_self) =
             (_typevariables )
     in  ( _self)
 -- Statement ---------------------------------------------------
@@ -7479,13 +7307,14 @@ type T_Statement = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (Tps) ->
                    (Names) ->
                    (OrderedTypeSynonyms) ->
+                   (InfoTree) ->
                    ([Warning]) ->
                    (Predicates) ->
                    (FixpointSubstitution) ->
                    (Names) ->
                    (Int) ->
                    (Int) ->
-                   ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Maybe Tp),(IO ()),(Tps),(Names),(OneLineTree),([Warning]),(Statement),(Names),(Int),(Int))
+                   ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Maybe Tp),(InfoTree),(IO ()),(Tps),(Names),([Warning]),(Statement),(Names),(Int),(Int))
 -- cata
 sem_Statement :: (Statement) ->
                  (T_Statement)
@@ -7518,6 +7347,7 @@ sem_Statement_Empty (_range)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_lhs_parentTree)
                     (_lhs_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
@@ -7526,11 +7356,15 @@ sem_Statement_Empty (_range)
                     (_lhs_uniqueSecondRound) =
     let (_self) =
             Statement_Empty _range_self
-        (_oneLineTree) =
-            OneLineText ""
+        (_localInfo) =
+            LocalInfo { self = UHA_Stat _self
+                      , assignedType = Nothing
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo []
         ( _range_self) =
             (_range )
-    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_lhs_constraints,_lhs_dictionaryEnvironment,_lhs_generatorBeta,_lhs_matchIO,_lhs_monos,_lhs_namesInScope,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_unboundNames,_lhs_uniqueChunk,_lhs_uniqueSecondRound)
+    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_lhs_constraints,_lhs_dictionaryEnvironment,_lhs_generatorBeta,_parentTree,_lhs_matchIO,_lhs_monos,_lhs_namesInScope,_lhs_patternMatchWarnings,_self,_lhs_unboundNames,_lhs_uniqueChunk,_lhs_uniqueSecondRound)
 sem_Statement_Expression :: (T_Range) ->
                             (T_Expression) ->
                             (T_Statement)
@@ -7554,6 +7388,7 @@ sem_Statement_Expression (_range)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_lhs_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
@@ -7571,19 +7406,17 @@ sem_Statement_Expression (_range)
         (_newcon) =
             [ (_expression_beta .==. ioType _beta) _cinfo ]
         (_cinfo) =
-            \tppair ->
-            CInfo { info       = (NTStatement,AltExpression,0, "")
-                  , location   = "generator"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ ]
-                  }
-        (_oneLineTree) =
-            _expression_oneLineTree
+            orphanConstraint 0 "generator" _parentTree
+               []
+        (_localInfo) =
+            LocalInfo { self = UHA_Stat _self
+                      , assignedType = Nothing
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo [_expression_infoTree]
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_lhs_betaUnique + 1)
@@ -7599,13 +7432,14 @@ sem_Statement_Expression (_range)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_parentTree)
                          (_lhs_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
                          ([])
                          (_lhs_uniqueChunk)
                          (_lhs_uniqueSecondRound))
-    in  ( _lhs_assumptions `combine` _expression_assumptions,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_locConstraints,_expression_dictionaryEnvironment,Just _beta,_expression_matchIO,_lhs_monos,_lhs_namesInScope,_oneLineTree,_expression_patternMatchWarnings,_self,_expression_unboundNames ++ _lhs_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound)
+    in  ( _lhs_assumptions `combine` _expression_assumptions,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_locConstraints,_expression_dictionaryEnvironment,Just _beta,_parentTree,_expression_matchIO,_lhs_monos,_lhs_namesInScope,_expression_patternMatchWarnings,_self,_expression_unboundNames ++ _lhs_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound)
 sem_Statement_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
@@ -7631,6 +7465,7 @@ sem_Statement_Generator (_range)
                         (_lhs_monos)
                         (_lhs_namesInScope)
                         (_lhs_orderedTypeSynonyms)
+                        (_lhs_parentTree)
                         (_lhs_patternMatchWarnings)
                         (_lhs_predicates)
                         (_lhs_substitution)
@@ -7650,25 +7485,24 @@ sem_Statement_Generator (_range)
         (_newcon) =
             [ (_expression_beta .==. ioType _pattern_beta) _cinfoResult ]
         (_cinfoResult) =
-            \tppair ->
-            CInfo { info       = (NTStatement, AltGenerator, 0, "result")
-                  , location   = "generator"
-                  , errorrange = _range_self
-                  , sources    = [ sourceExpression _oneLineTree, sourceTerm _expression_oneLineTree ]
-                  , typepair   = tppair
-                  , properties = [ SubTermRange (getExprRange _expression_self) ]
-                  }
+            childConstraint 1 "generator" _parentTree
+               []
         (_cinfoBind) =
-            variableBindingCInfo (NTStatement, AltGenerator, 1)
+            \name -> variableConstraint "variable" (nameToSelfExpr name)
+               [FolkloreConstraint]
+        (_localInfo) =
+            LocalInfo { self = UHA_Stat _self
+                      , assignedType = Nothing
+                      }
+        (_parentTree) =
+            node _lhs_parentTree _localInfo [_pattern_infoTree, _expression_infoTree]
         ((_namesInScope,_unboundNames,_scopeInfo)) =
             changeOfScope _pattern_patVarNames (_expression_unboundNames ++ _lhs_unboundNames) _lhs_namesInScope
-        (_oneLineTree) =
-            OneLineNode [ _pattern_oneLineTree, OneLineText " <- ", _expression_oneLineTree ]
         ( _range_self) =
             (_range )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
-            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_namesInScope) (_lhs_patternMatchWarnings))
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_infoTree,_pattern_patVarNames,_pattern_patternMatchWarnings,_pattern_self,_pattern_unboundNames) =
+            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_namesInScope) (_parentTree) (_lhs_patternMatchWarnings))
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectChunkNumbers,_expression_collectErrors,_expression_collectWarnings,_expression_constraints,_expression_dictionaryEnvironment,_expression_infoTree,_expression_matchIO,_expression_matches,_expression_patternMatchWarnings,_expression_self,_expression_unboundNames,_expression_uniqueChunk,_expression_uniqueSecondRound) =
             (_expression (_lhs_allPatterns)
                          (_lhs_availablePredicates)
                          (_pattern_betaUnique)
@@ -7684,6 +7518,7 @@ sem_Statement_Generator (_range)
                          (_lhs_monos)
                          (_lhs_namesInScope)
                          (_lhs_orderedTypeSynonyms)
+                         (_parentTree)
                          (_pattern_patternMatchWarnings)
                          (_lhs_predicates)
                          (_lhs_substitution)
@@ -7698,10 +7533,10 @@ sem_Statement_Generator (_range)
          ,_locConstraints
          ,_expression_dictionaryEnvironment
          ,Nothing
+         ,_parentTree
          ,_expression_matchIO
          ,eltsFM _pattern_environment ++ getMonos _csetBinds ++ _lhs_monos
          ,_namesInScope
-         ,_oneLineTree
          ,patternMatchWarnings _lhs_importEnvironment
                                _lhs_substitution
                                _pattern_beta
@@ -7742,6 +7577,7 @@ sem_Statement_Let (_range)
                   (_lhs_monos)
                   (_lhs_namesInScope)
                   (_lhs_orderedTypeSynonyms)
+                  (_lhs_parentTree)
                   (_lhs_patternMatchWarnings)
                   (_lhs_predicates)
                   (_lhs_substitution)
@@ -7760,15 +7596,25 @@ sem_Statement_Let (_range)
             getInferredTypes _lhs_monos _lhs_substitution _lhs_predicates _declarations_bindingGroups
         ((_errors,_warnings)) =
             checkAnnotations False _lhs_orderedTypeSynonyms _declarations_typeSignatures _localTypes
+        (_localInfo) =
+            LocalInfo { self = UHA_Stat _self
+                      , assignedType = Nothing
+                      }
+        (_declInfo) =
+            LocalInfo { self = UHA_Decls _declarations_self
+                      , assignedType = Nothing
+                      }
+        (_thisTree) =
+            node _lhs_parentTree _localInfo [_declTree]
+        (_declTree) =
+            node _thisTree _declInfo _declarations_infoTrees
         ((_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities)) =
             internalError "PartialSyntax.ag" "n/a" "toplevel Statement"
         ((_namesInScope,_unboundNames,_scopeInfo)) =
             changeOfScope _declarations_declVarNames (_declarations_unboundNames ++ _lhs_unboundNames) _lhs_namesInScope
-        (_oneLineTree) =
-            OneLineNode [ OneLineText "let ", encloseSep "{" "; " "}" _declarations_oneLineTree ]
         ( _range_self) =
             (_range )
-        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectChunkNumbers,_declarations_collectErrors,_declarations_collectWarnings,_declarations_declVarNames,_declarations_dictionaryEnvironment,_declarations_matchIO,_declarations_oneLineTree,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeSignatures,_declarations_unboundNames,_declarations_uniqueChunk) =
+        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectChunkNumbers,_declarations_collectErrors,_declarations_collectWarnings,_declarations_declVarNames,_declarations_dictionaryEnvironment,_declarations_infoTrees,_declarations_matchIO,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeSignatures,_declarations_unboundNames,_declarations_uniqueChunk) =
             (_declarations (_lhs_allPatterns)
                            (_lhs_availablePredicates)
                            (_lhs_betaUnique)
@@ -7786,12 +7632,13 @@ sem_Statement_Let (_range)
                            (_lhs_monos)
                            (_namesInScope)
                            (_lhs_orderedTypeSynonyms)
+                           (_declTree)
                            (_lhs_patternMatchWarnings)
                            (_lhs_predicates)
                            (_lhs_substitution)
                            (emptyFM)
                            (_lhs_uniqueChunk))
-    in  ( _aset,_declarations_betaUnique,_declarations_collectChunkNumbers,_errors ++ _declarations_collectErrors,_warnings ++ _declarations_collectWarnings,_locConstraints,_declarations_dictionaryEnvironment,Nothing,_declarations_matchIO,_lhs_monos,_namesInScope,_oneLineTree,_declarations_patternMatchWarnings,_self,_unboundNames,_chunkNr,_lhs_uniqueSecondRound)
+    in  ( _aset,_declarations_betaUnique,_declarations_collectChunkNumbers,_errors ++ _declarations_collectErrors,_warnings ++ _declarations_collectWarnings,_locConstraints,_declarations_dictionaryEnvironment,Nothing,_thisTree,_declarations_matchIO,_lhs_monos,_namesInScope,_declarations_patternMatchWarnings,_self,_unboundNames,_chunkNr,_lhs_uniqueSecondRound)
 -- Statements --------------------------------------------------
 -- semantic domain
 type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -7812,13 +7659,14 @@ type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (Tps) ->
                     (Names) ->
                     (OrderedTypeSynonyms) ->
+                    (InfoTree) ->
                     ([Warning]) ->
                     (Predicates) ->
                     (FixpointSubstitution) ->
                     (Names) ->
                     (Int) ->
                     (Int) ->
-                    ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Maybe Tp),(IO ()),(Names),( [ OneLineTree] ),([Warning]),(Statements),(Names),(Int),(Int))
+                    ( (Assumptions),(Int),(ChunkNumberMap),(TypeErrors),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Maybe Tp),(InfoTrees),(IO ()),(Names),([Warning]),(Statements),(Names),(Int),(Int))
 -- cata
 sem_Statements :: (Statements) ->
                   (T_Statements)
@@ -7847,6 +7695,7 @@ sem_Statements_Cons (_hd)
                     (_lhs_monos)
                     (_lhs_namesInScope)
                     (_lhs_orderedTypeSynonyms)
+                    (_lhs_parentTree)
                     (_lhs_patternMatchWarnings)
                     (_lhs_predicates)
                     (_lhs_substitution)
@@ -7855,7 +7704,7 @@ sem_Statements_Cons (_hd)
                     (_lhs_uniqueSecondRound) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_assumptions,_hd_betaUnique,_hd_collectChunkNumbers,_hd_collectErrors,_hd_collectWarnings,_hd_constraints,_hd_dictionaryEnvironment,_hd_generatorBeta,_hd_matchIO,_hd_monos,_hd_namesInScope,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_self,_hd_unboundNames,_hd_uniqueChunk,_hd_uniqueSecondRound) =
+        ( _hd_assumptions,_hd_betaUnique,_hd_collectChunkNumbers,_hd_collectErrors,_hd_collectWarnings,_hd_constraints,_hd_dictionaryEnvironment,_hd_generatorBeta,_hd_infoTree,_hd_matchIO,_hd_monos,_hd_namesInScope,_hd_patternMatchWarnings,_hd_self,_hd_unboundNames,_hd_uniqueChunk,_hd_uniqueSecondRound) =
             (_hd (_lhs_allPatterns)
                  (_tl_assumptions)
                  (_lhs_availablePredicates)
@@ -7874,13 +7723,14 @@ sem_Statements_Cons (_hd)
                  (_lhs_monos)
                  (_lhs_namesInScope)
                  (_lhs_orderedTypeSynonyms)
+                 (_lhs_parentTree)
                  (_lhs_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_substitution)
                  (_tl_unboundNames)
                  (_lhs_uniqueChunk)
                  (_lhs_uniqueSecondRound))
-        ( _tl_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_tl_constraints,_tl_dictionaryEnvironment,_tl_generatorBeta,_tl_matchIO,_tl_namesInScope,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self,_tl_unboundNames,_tl_uniqueChunk,_tl_uniqueSecondRound) =
+        ( _tl_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_tl_constraints,_tl_dictionaryEnvironment,_tl_generatorBeta,_tl_infoTrees,_tl_matchIO,_tl_namesInScope,_tl_patternMatchWarnings,_tl_self,_tl_unboundNames,_tl_uniqueChunk,_tl_uniqueSecondRound) =
             (_tl (_lhs_allPatterns)
                  (_lhs_assumptions)
                  (_lhs_availablePredicates)
@@ -7899,13 +7749,14 @@ sem_Statements_Cons (_hd)
                  (_hd_monos)
                  (_hd_namesInScope)
                  (_lhs_orderedTypeSynonyms)
+                 (_lhs_parentTree)
                  (_hd_patternMatchWarnings)
                  (_lhs_predicates)
                  (_lhs_substitution)
                  (_lhs_unboundNames)
                  (_hd_uniqueChunk)
                  (_hd_uniqueSecondRound))
-    in  ( _hd_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_hd_constraints,_tl_dictionaryEnvironment,_tl_generatorBeta,_tl_matchIO,_tl_namesInScope,_hd_oneLineTree  :  _tl_oneLineTree,_tl_patternMatchWarnings,_self,_hd_unboundNames,_tl_uniqueChunk,_tl_uniqueSecondRound)
+    in  ( _hd_assumptions,_tl_betaUnique,_tl_collectChunkNumbers,_tl_collectErrors,_tl_collectWarnings,_hd_constraints,_tl_dictionaryEnvironment,_tl_generatorBeta,_hd_infoTree : _tl_infoTrees,_tl_matchIO,_tl_namesInScope,_tl_patternMatchWarnings,_self,_hd_unboundNames,_tl_uniqueChunk,_tl_uniqueSecondRound)
 sem_Statements_Nil :: (T_Statements)
 sem_Statements_Nil (_lhs_allPatterns)
                    (_lhs_assumptions)
@@ -7925,6 +7776,7 @@ sem_Statements_Nil (_lhs_allPatterns)
                    (_lhs_monos)
                    (_lhs_namesInScope)
                    (_lhs_orderedTypeSynonyms)
+                   (_lhs_parentTree)
                    (_lhs_patternMatchWarnings)
                    (_lhs_predicates)
                    (_lhs_substitution)
@@ -7933,10 +7785,10 @@ sem_Statements_Nil (_lhs_allPatterns)
                    (_lhs_uniqueSecondRound) =
     let (_self) =
             []
-    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_lhs_constraints,_lhs_dictionaryEnvironment,_lhs_generatorBeta,_lhs_matchIO,_lhs_namesInScope,[],_lhs_patternMatchWarnings,_self,_lhs_unboundNames,_lhs_uniqueChunk,_lhs_uniqueSecondRound)
+    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectChunkNumbers,_lhs_collectErrors,_lhs_collectWarnings,_lhs_constraints,_lhs_dictionaryEnvironment,_lhs_generatorBeta,[],_lhs_matchIO,_lhs_namesInScope,_lhs_patternMatchWarnings,_self,_lhs_unboundNames,_lhs_uniqueChunk,_lhs_uniqueSecondRound)
 -- Strings -----------------------------------------------------
 -- semantic domain
-type T_Strings = ( ( [ OneLineTree] ),(Strings))
+type T_Strings = ( (Strings))
 -- cata
 sem_Strings :: (Strings) ->
                (T_Strings)
@@ -7948,14 +7800,14 @@ sem_Strings_Cons :: (String) ->
 sem_Strings_Cons (_hd) (_tl) =
     let (_self) =
             (:) _hd _tl_self
-        ( _tl_oneLineTree,_tl_self) =
+        ( _tl_self) =
             (_tl )
-    in  ( _tl_oneLineTree,_self)
+    in  ( _self)
 sem_Strings_Nil :: (T_Strings)
 sem_Strings_Nil  =
     let (_self) =
             []
-    in  ( [],_self)
+    in  ( _self)
 -- Type --------------------------------------------------------
 -- semantic domain
 type T_Type = ( (Type))
@@ -7999,7 +7851,7 @@ sem_Type_Constructor (_range) (_name) =
             Type_Constructor _range_self _name_self
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
     in  ( _self)
 sem_Type_Exists :: (T_Range) ->
@@ -8011,7 +7863,7 @@ sem_Type_Exists (_range) (_typevariables) (_type) =
             Type_Exists _range_self _typevariables_self _type_self
         ( _range_self) =
             (_range )
-        ( _typevariables_isIdentifier,_typevariables_isOperator,_typevariables_isSpecial,_typevariables_oneLineTree,_typevariables_self) =
+        ( _typevariables_self) =
             (_typevariables )
         ( _type_self) =
             (_type )
@@ -8025,7 +7877,7 @@ sem_Type_Forall (_range) (_typevariables) (_type) =
             Type_Forall _range_self _typevariables_self _type_self
         ( _range_self) =
             (_range )
-        ( _typevariables_isIdentifier,_typevariables_isOperator,_typevariables_isSpecial,_typevariables_oneLineTree,_typevariables_self) =
+        ( _typevariables_self) =
             (_typevariables )
         ( _type_self) =
             (_type )
@@ -8063,7 +7915,7 @@ sem_Type_Variable (_range) (_name) =
             Type_Variable _range_self _name_self
         ( _range_self) =
             (_range )
-        ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
+        ( _name_self) =
             (_name )
     in  ( _self)
 -- Types -------------------------------------------------------

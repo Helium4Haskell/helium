@@ -313,7 +313,7 @@ fbHasTooManyArguments edge info
 
 variableFunction :: IsTypeGraph (TypeGraph info) info => RepairHeuristic (TypeGraph info) info
 variableFunction edge info
-   | (nt, alt) /= (NTBindingGroup, AltBindingGroup) && (nt, alt) /= (NTBody, AltBody) 
+   | not (isExprVariable info)
         = return Nothing
    | otherwise 
         = doWithoutEdge (edge,info) $ 
@@ -325,11 +325,8 @@ variableFunction edge info
               let EdgeID v1 v2 = edge
               edges1 <- getAdjacentEdges v1
               edges2 <- getAdjacentEdges v2
-              let predicate x = 
-                     let (a,b,c,_) = getInfoSource x -- Empty InfixApplication 
-                     in (a,b,c) == (NTExpression, AltInfixApplication, 4)
-                  f (EdgeID v1 v2) = [v1,v2]
-              let special = concatMap (f . fst) (filter (predicate . snd) (edges1 ++ edges2)) \\ [v1,v2]
+              let f (EdgeID v1 v2) = [v1,v2]
+              let special = concatMap (f . fst) (filter (isEmptyInfixApplication . snd) (edges1 ++ edges2)) \\ [v1,v2]
               edges3 <- mapM getAdjacentEdges special
               let isApplicationEdge = isJust . maybeApplicationEdge
                   application = any (isApplicationEdge . snd) (edges1 ++ edges2 ++ concat edges3)                                                               
@@ -347,8 +344,6 @@ variableFunction edge info
                                               if minArgumentsForContext <= 1 then "" else "s")
                               in return (Just (4, [hint], ("insert arguments to function variable")))
                  _                       -> return Nothing                   
-
-  where (nt, alt, _, _) = getInfoSource info
 
 {-
 considerUnifierVertices :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => 

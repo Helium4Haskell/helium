@@ -130,7 +130,8 @@ STATICANALYSIS = \
         staticanalysis/inferencers/typingstrategies/TS_Attributes.hs        
 
 UHA = \
-	syntax/UHA_Syntax.hs syntax/UHA_Utils.hs syntax/UHA_Range.hs
+	syntax/UHA_Syntax.hs syntax/UHA_Utils.hs syntax/UHA_Range.hs \
+        syntax/UHA_Pretty.hs syntax/UHA_OneLine.hs
 
 
 CODEGENERATION = \
@@ -139,8 +140,8 @@ CODEGENERATION = \
         codegeneration/CodeGeneration.hs
 
 UTILS = \
-	utils/Utils.hs utils/Logger.hs utils/PrettyPrinting.hs utils/OSSpecific.hs utils/OneLiner.hs \
-	utils/Similarity.hs 
+	utils/Utils.hs utils/Logger.hs utils/OSSpecific.hs utils/OneLiner.hs \
+	utils/Similarity.hs
 
 MAINFILES = \
 	main/Main.hs main/Version.hs main/Args.hs main/Compile.hs \
@@ -220,7 +221,8 @@ texthint: texthint/Main.hs utils/OSSpecific.hs
 
 # AG sources
 
-ag : utils/PrettyPrinting.hs staticanalysis/staticchecks/StaticChecks.hs staticanalysis/inferencers/TypeInferencing.hs \
+ag : syntax/UHA_Pretty.hs syntax/UHA_OneLine.hs \
+     staticanalysis/staticchecks/StaticChecks.hs staticanalysis/inferencers/TypeInferencing.hs \
      staticanalysis/inferencers/KindInferencing.hs \
      codegeneration/CodeGeneration.hs \
      syntax/UHA_Syntax.hs modulesystem/ExtractImportDecls.hs staticanalysis/inferencers/typingstrategies/TS_Syntax.hs \
@@ -233,10 +235,15 @@ parser/ResolveOperators.hs : \
 	# AG ResolveOperators
 	cd parser;$(AG) $(AG_OPTS) --self ResolveOperators.ag;cd ..
 
-utils/PrettyPrinting.hs : \
-		utils/PrettyPrinting.ag syntax/UHA_Pretty.ag syntax/UHA_Syntax.ag
-	# AG PrettyPrinting
-	cd utils;$(AG) $(AG_OPTS) PrettyPrinting.ag;cd ..
+syntax/UHA_Pretty.hs : \
+		syntax/UHA_Pretty.ag syntax/UHA_Syntax.ag
+	# AG UHA_Pretty
+	cd syntax;$(AG) $(AG_OPTS) UHA_Pretty.ag;cd ..
+
+syntax/UHA_OneLine.hs : \
+		syntax/UHA_OneLine.ag syntax/UHA_Syntax.ag
+	# AG UHA_OneLine
+	cd syntax;$(AG) $(AG_OPTS) --self UHA_OneLine.ag;cd ..
 
 staticanalysis/staticchecks/StaticChecks.hs : \
 		staticanalysis/staticchecks/StaticChecks.ag \
@@ -261,9 +268,11 @@ staticanalysis/inferencers/TypeInferencing.hs : \
                 staticanalysis/inferencers/TypeInferenceCollect.ag \
                 staticanalysis/inferencers/TypeInferenceInfo.ag \
                 staticanalysis/inferencers/PatternMatchWarnings.ag \
+                staticanalysis/inferencers/LocalInfo.ag \
+                staticanalysis/inferencers/GlobalInfo.ag \
                 staticanalysis/staticchecks/HeliumPartialSyntax.ag \
 		syntax/UHA_Syntax.ag \
-                syntax/UHA_OneLine.ag staticanalysis/staticchecks/Scope.ag\
+                staticanalysis/staticchecks/Scope.ag\
                 staticanalysis/inferencers/typingstrategies/TS_PatternMatching.ag
                 
 	# AG TypeInferencing
@@ -277,7 +286,7 @@ staticanalysis/inferencers/KindInferencing.hs : \
 	cd staticanalysis/inferencers;$(AG) $(AG_OPTS) --self KindInferencing.ag;cd ../..
 
 codegeneration/CodeGeneration.hs : \
-		codegeneration/CodeGeneration.ag syntax/UHA_Pretty.ag \
+		codegeneration/CodeGeneration.ag \
 		syntax/UHA_Syntax.ag codegeneration/ToCoreModule.ag codegeneration/ToCoreDecl.ag \
 		codegeneration/ToCoreExpr.ag codegeneration/ToCorePat.ag codegeneration/ToCoreName.ag
 	# AG CodeGeneration
@@ -302,7 +311,7 @@ staticanalysis/inferencers/typingstrategies/TS_Analyse.hs : \
         staticanalysis/inferencers/typingstrategies/TS_Collect.ag \
         staticanalysis/inferencers/typingstrategies/TS_Analyse.ag \
         syntax/UHA_Syntax.ag 
-	# AG TS_Syntax
+	# AG TS_Analyse
 	cd staticanalysis/inferencers/typingstrategies;$(AG) $(AG_OPTS) --self TS_Analyse.ag;cd ../../..
 
 staticanalysis/inferencers/typingstrategies/TS_Apply.hs : \

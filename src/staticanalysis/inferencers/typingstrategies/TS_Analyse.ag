@@ -34,7 +34,7 @@ import ExpressionTypeInferencer (expressionTypeInferencer)
 import Data.FiniteMap
 import Char (isAlphaNum)
 import Utils (internalError)
-import qualified PrettyPrinting as PP
+import qualified UHA_Pretty as PP
 }
 
 ATTR TypingStrategy  [ importEnvironment : ImportEnvironment

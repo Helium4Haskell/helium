@@ -1,11 +1,14 @@
+INCLUDE "UHA_Syntax.ag"
+
 imports{
 import OneLiner
 import Char
 import UHA_Utils (showNameAsOperator)
-{-
-import List (intersperse)
-import SATypes (isTupleConstructor)
--}
+import Types
+import TypeConversion
+import UHA_Syntax
+import List
+import Utils (internalError)
 }
 
 {

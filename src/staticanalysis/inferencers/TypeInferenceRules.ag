@@ -153,7 +153,7 @@ SEM FunctionBinding
                                          , @conRight .<. @righthandside.constraints
                                          ]
                     . (csetBinds,assumptions') = (@lefthandside.environment .===. @righthandside.assumptions) @cinfoBind
-                    . conLeft     = zipWith4 (\t1 t2 txt nr -> (t1 .==. t2) (@cinfoLeft nr txt)) @lefthandside.betas @lhs.betasLeft @lefthandside.patternTrees [0..]
+                    . conLeft     = zipWith3 (\t1 t2 nr -> (t1 .==. t2) (@cinfoLeft nr)) @lefthandside.betas @lhs.betasLeft [0..]
                     . conRight    = [ (@righthandside.beta .==. @lhs.betaRight) @cinfoRight ]
 
 SEM FunctionBindings
@@ -339,12 +339,11 @@ SEM Expression
   | List
       expressions . betaUnique   = @lhs.betaUnique + 2
       loc         . constraints  = @newcon .>.
-                                    Node (zipWith3 @zipf @expressions.betas @childrenInfo @expressions.constraintslist)
+                                    Node (zipWith3 @zipf @expressions.betas [0..] @expressions.constraintslist)
                   . beta         = TVar @lhs.betaUnique
                   . beta'        = TVar (@lhs.betaUnique + 1)
                   . newcon       = [ (listType @beta' .==. @beta) @cinfoResult ]
-                  . childrenInfo = zip @expressions.oneLineTree (map getExprRange @expressions.self)
-                  . zipf         = \tp pair ctree -> [ (tp .==. @beta') (@cinfoElem pair) ] .<. ctree
+                  . zipf         = \tp childNr ctree -> [ (tp .==. @beta') (@cinfoElem childNr) ] .<. ctree
 
   | Tuple
       expressions . betaUnique  = @lhs.betaUnique + 1
@@ -493,7 +492,8 @@ SEM Pattern
                                        ]
                . beta           = TVar (@lhs.betaUnique)
                . betaCon        = TVar (@lhs.betaUnique + 1)
-               . conApply       = [ (@betaCon .==. foldr (.->.) @beta @patterns.betas) @cinfoApply ]             
+               . conApply       = [ (@betaCon .==. foldr (.->.) @beta @patterns.betas) 
+                                    (if @patterns.numberOfPatterns == 0  then @cinfoEmpty else @cinfoApply) ]             
                . conConstructor = case lookupFM (valueConstructors @lhs.importEnvironment) @name.self of
                                      Nothing  -> []
                                      Just ctp -> [ (@betaCon .::. ctp) @cinfoConstructor ]
@@ -517,12 +517,11 @@ SEM Pattern
   | List
       patterns . betaUnique   = @lhs.betaUnique + 2
       loc      . constraints  = @newcon .>.
-                                Node (zipWith3 @zipf @patterns.betas @childrenInfo @patterns.constraintslist)
+                                Node (zipWith3 @zipf @patterns.betas [0..] @patterns.constraintslist)
                . beta         = TVar @lhs.betaUnique
                . beta'        = TVar (@lhs.betaUnique + 1)
                . newcon       = [ (listType @beta' .==. @beta) @cinfoResult ]
-               . childrenInfo = zip @patterns.oneLineTree (map getPatRange @patterns.self)
-               . zipf         = \tp pair ctree -> [ (tp .==. @beta') (@cinfoElem pair) ] .<. ctree
+               . zipf         = \tp elemNr ctree -> [ (tp .==. @beta') (@cinfoElem elemNr) ] .<. ctree
 
   | Tuple    
       patterns . betaUnique  = @lhs.betaUnique + 1

@@ -92,8 +92,8 @@ SEM Module
                  . collectWarnings = []
 
 SEM Expression
-  | Variable   lhs . collectErrors = map (makeUnresolvedOverloadingError @range.self @oneLineTree) @overloadingErrors ++ @lhs.collectErrors
-  | Negate     lhs . collectErrors = map (makeUnresolvedOverloadingError @range.self @oneLineTree) @overloadingErrors ++ @expression.collectErrors                              
+  | Variable   lhs . collectErrors = map (makeUnresolvedOverloadingError @range.self (oneLinerSource $ self @localInfo)) @overloadingErrors ++ @lhs.collectErrors
+  | Negate     lhs . collectErrors = map (makeUnresolvedOverloadingError @range.self (oneLinerSource $ self @localInfo)) @overloadingErrors ++ @expression.collectErrors                              
 
 -- declared type too general / missing type signature
 SEM Body
@@ -114,7 +114,7 @@ SEM Expression
   | Typed  loc . errors             = let scheme = generalize monos' @lhs.predicates tp'
                                           monos' = ftv (@lhs.substitution |-> @lhs.monos)
                                           tp'    = @lhs.substitution |-> @expression.beta
-                                          info   = (@expression.oneLineTree, @range.self)
+                                          info   = ( (self . attribute) @expression.infoTree, @range.self)
                                       in checkNotTooGeneral info @lhs.orderedTypeSynonyms @typeScheme scheme
            lhs . collectErrors      = @errors ++ @expression.collectErrors
 
@@ -138,7 +138,7 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
           
              Just signature ->
                 -- is the signature not too general?
-                let info = (OneLineText (show nameOfSignature), getNameRange nameOfSignature)
+                let info = (nameToSelfExpr nameOfSignature, getNameRange nameOfSignature)
                     -- this name has a different range!
                     nameOfSignature = head [ n | n <- keysFM typeSignatures, n == nameWithRangeToName nameWR ]      
                     newErrors = checkNotTooGeneral info synonyms signature scheme             
@@ -152,9 +152,9 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
                      
              _ -> pair      
 
-checkNotTooGeneral :: (OneLineTree, Range) -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
-checkNotTooGeneral info synonyms signature scheme = 
-   [ makeNotGeneralEnoughTypeError info scheme signature
+checkNotTooGeneral :: (UHA_Source, Range) -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
+checkNotTooGeneral (self, range) synonyms signature scheme = 
+   [ makeNotGeneralEnoughTypeError (oneLinerSource self, range) scheme signature
    | not (genericInstanceOf synonyms standardClasses signature scheme)
    ]       
 }

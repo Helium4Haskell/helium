@@ -11,722 +11,392 @@
 ---------------------------------------------------------------------------------------
 -- Constraint Information : Body
 
-SEM Body | Body loc . cinfo =
-  \var tppair ->
-  CInfo { info       = (NTBody, AltBody, 0, show var)
-        , location   = "variable"
-        , errorrange = getNameRange var
-        , sources    = [ sourceExpression (OneLineText (show var)) ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , HighlyTrusted
-                       , IsImported var
-                       ]
-        }
+SEM Body | Body loc . cinfo = 
+  \name -> variableConstraint "variable" (nameToSelfExpr name) 
+     [ FolkloreConstraint, HasTrustFactor 10.0, IsImported ]
 
 ---------------------------------------------------------------------------------------
 -- Constraint Information : Declaration
 
 SEM Declaration | FunctionBindings loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTDeclaration, AltFunctionBindings, 0, show @bindings.name)
-        , location   = "function bindings (INTERNAL ERROR)"
-        , errorrange = @range.self
-        , sources    = [ ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , SuperHighlyTrusted
-                       , FuntionBindingEdge @bindings.numberOfPatterns
-                       ]
-        }
+  resultConstraint "function bindings (INTERNAL ERROR)" @parentTree
+     [ FolkloreConstraint, HasTrustFactor 10000.0, FuntionBindingEdge @bindings.numberOfPatterns ]
 
 SEM Declaration | PatternBinding loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTDeclaration, AltPatternBinding, 0, "")
-        , location   = "right hand side"
-        , errorrange = getRHSRange @righthandside.self
-        , sources    = [ sourceExpression (@righthandside.oneLineTree "") ]
-        , typepair   = tppair
-        , properties = [ ]
-        }
+  orphanConstraint 1 "right hand side" @parentTree
+     [ ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : FunctionBinding
 SEM FunctionBinding | FunctionBinding loc . cinfoLeft =
-  \num txt tppair ->
-  CInfo { info       = (NTFunctionBinding, AltFunctionBinding, 0, "left "++show num)
-        , location   = "pattern of function binding"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern txt ]
-        , typepair   = tppair
-        , properties = [ ]
-        }
+  \num  -> 
+  orphanConstraint num "pattern of function binding" @parentTree
+     [ ]
 
 SEM FunctionBinding | FunctionBinding loc . cinfoRight =
-  \tppair ->
-  CInfo { info       = (NTFunctionBinding, AltFunctionBinding, 1, "right")
-        , location   = "right hand side"
-        , errorrange = @range.self
-        , sources    = [ sourceTerm (@righthandside.oneLineTree "") ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getRHSRange @righthandside.self) ]                       
-        }
+  orphanConstraint 1 "right hand side" @parentTree
+     []                       
 
 SEM FunctionBinding | FunctionBinding loc . cinfoBind =
-   variableBindingCInfo (NTFunctionBinding, AltFunctionBinding, 2)
+  \name -> variableConstraint "variable" (nameToSelfExpr name) 
+     [FolkloreConstraint]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Expression
 
 -- Expression.Literal
 SEM Expression | Literal loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltLiteral, 0, "")
-        , location   = "literal"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , HighlyTrusted
-                       , IsLiteral @literal.self
-                       ]
-        }
+  resultConstraint "literal" @parentTree
+     [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral @literal.self ]
 
 -- Expression.Constructor
 SEM Expression | Constructor loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltConstructor, 0, "")
-        , location   = "constructor"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @name.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , HighlyTrusted
-                       , IsImported @name.self
-                       ]
-        }
+  resultConstraint "constructor" @parentTree       
+     [ FolkloreConstraint, HasTrustFactor 10.0, IsImported ]
 
 -- Expression.NormalApplication
 SEM Expression | NormalApplication loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltNormalApplication, 0, "")
-        , location   = "application"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @function.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ ApplicationEdge False (zip3 @arguments.oneLineTree
-                                                     @arguments.betas
-                                                     (map getExprRange @arguments.self)
-                                               )
-                       , SubTermRange (getExprRange @function.self)
-                       ]
-        }
+  childConstraint 0 "application" @parentTree
+     [ ApplicationEdge False (zip3 (map (self. attribute) @arguments.infoTrees)
+                                   @arguments.betas
+                                   (map getExprRange @arguments.self)
+                             )
+     ]
 
 -- Expression.InfixApplication
-SEM Expression | InfixApplication loc . cinfoOperator =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltInfixApplication, 0, "operator")
-        , location   = "infix application"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceOperator @operatorName ]
-        , typepair   = tppair
-        , properties = (if @leftExpression.section || @rightExpression.section
-                          then [ HighlyTrusted ]
-                          else [ ApplicationEdge True
-                                         [ ( convertMaybeOneLineTree @leftExpression.oneLineTree 
-                                           , @leftExpression.beta
-                                           , getMaybeExprRange @leftExpression.self
-                                           )
-                                         , ( convertMaybeOneLineTree @rightExpression.oneLineTree
-                                           , @rightExpression.beta
-                                           , getMaybeExprRange @rightExpression.self
-                                           )
-                                         ] ])
-                       ++
-                       [ SubTermRange (getExprRange @operator.self) ]
-        }
+SEM Expression | InfixApplication loc . operatorNr    = length @leftExpression.infoTrees
+                                  loc . cinfoOperator =
+  childConstraint @operatorNr "infix application" @parentTree
+     (case (@leftExpression.infoTrees, @rightExpression.infoTrees) of
+        ([left], [right]) -> 
+           [ ApplicationEdge True
+                [ ( (self . attribute) left
+                  , @leftExpression.beta
+                  , getMaybeExprRange @leftExpression.self
+                  )
+                , ( (self . attribute) right
+                  , @rightExpression.beta
+                  , getMaybeExprRange @rightExpression.self
+                  )
+                ] 
+           ]
+        _  -> 
+           [ HasTrustFactor 10.0 ])
 
 SEM Expression | InfixApplication loc . cinfoComplete =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltInfixApplication, 1, "")
-        , location   = "infix application (INTERNAL ERROR)"
-        , errorrange = @range.self
-        , sources    = [ ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , SuperHighlyTrusted
-                       ]
-        }
+  specialConstraint "infix application (INTERNAL ERROR)" @parentTree
+     (self @localInfo, Nothing)
+     [ FolkloreConstraint, HasTrustFactor 10000.0 ]
 
 SEM Expression | InfixApplication loc . cinfoLeftSection =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltInfixApplication, 2, "left")
-        , location   = "left section"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree ]
-        , typepair   = tppair
-        , properties = [ ]
-        }
+  specialConstraint "left section" @parentTree
+     (self @localInfo, Nothing)
+     [ ]
 
 SEM Expression | InfixApplication loc . cinfoRightSection =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltInfixApplication, 3, "right")
-        , location   = "right section"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree ]
-        , typepair   = tppair
-        , properties = [ ]
-        }
+  specialConstraint "right section" @parentTree        
+     (self @localInfo, Nothing)
+     [ ]
 
 SEM Expression | InfixApplication loc . cinfoEmpty =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltInfixApplication, 4, "empty")
-        , location   = "infix application"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , HighlyTrusted
-                       ]
-        }
-
+  specialConstraint "infix application" @parentTree
+    (self @localInfo, Nothing)
+    [ FolkloreConstraint, HasTrustFactor 10.0, IsEmptyInfixApplication ]
+    
 -- Expression.If
 SEM Expression | If loc . cinfoGuard =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltIf, 0, "guard")
-        , location   = "conditional"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @guardExpression.oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getExprRange @guardExpression.self) ]
-        }
+  childConstraint 0 "conditional" @parentTree 
+     []   
 
 SEM Expression | If loc . cinfoThen =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltIf, 1, "then")
-        , location   = "then branch of conditional"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @thenExpression.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getExprRange @thenExpression.self) 
-                       , Unifier (tpToInt @beta) ]
-        }
+  childConstraint 1 "then branch of conditional" @parentTree 
+     []
 
 SEM Expression | If loc . cinfoElse =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltIf,2, "else")
-        , location   = "else branch of conditional"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @elseExpression.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getExprRange @elseExpression.self) 
-                       , Unifier (tpToInt @beta) ]
-        }
+  childConstraint 2 "else branch of conditional" @parentTree 
+     []
 
 -- Expression.Lambda
 SEM Expression | Lambda loc . cinfoBind =
-   variableBindingCInfo (NTExpression, AltLambda, 0)
+  \name -> variableConstraint "variable" (nameToSelfExpr name)
+     [FolkloreConstraint]
 
 SEM Expression | Lambda loc . cinfoType =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltLambda, 1, "type")
-        , location   = "lambda abstraction"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint ]
-        }
+  resultConstraint "lambda abstraction" @parentTree 
+     [ FolkloreConstraint ]
 
 -- Expression.Case
 SEM Expression | Case loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltCase, 0, "")
-        , location   = "scrutinee of case expression"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getExprRange @expression.self) ]
-        }
+  childConstraint 0 "scrutinee of case expression" @parentTree
+     []
 
 -- Expression.Let
 SEM Expression | Let loc . cinfoType =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltLet, 0, "")
-        , location   = "let expression (INTERNAL ERROR)"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , SuperHighlyTrusted
-                       , SubTermRange (getExprRange @expression.self)
-                       ]
-        }
-
+  resultConstraint "let expression (INTERNAL ERROR)" @thisTree
+     [ FolkloreConstraint, HasTrustFactor 10000.0 ]
+     
 -- Expression.Do
 SEM Expression | Do loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltDo, 0, "")
-        , location   = "do-expression"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint ]
-        }
+  resultConstraint "do-expression" @parentTree
+     [ FolkloreConstraint ]
 
 -- Expression.List
 SEM Expression | List loc . cinfoElem =
-  \(elemtext, elemrange) tppair ->
-  CInfo { info       = (NTExpression, AltList, 0, "element")
-        , location   = "element of list"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm elemtext ]
-        , typepair   = tppair
-        , properties = [ SubTermRange elemrange ] ++
-                       if length @expressions.betas > 1 then [] else [ HighlyTrusted ]
-        }
+  \elemNr ->
+  childConstraint elemNr "element of list" @parentTree
+  [ HasTrustFactor 10.0 | length @expressions.betas < 2 ]
+
 
 SEM Expression | List loc . cinfoResult =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltList, 1, "result")
-        , location   = "list"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint ]
-        }
+  resultConstraint "list" @parentTree
+  [ FolkloreConstraint ]
 
 -- Expression.Tuple   
 SEM Expression | Tuple loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltTuple, 0, "")
-        , location   = "tuple"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , IsTupleEdge ]
-        }
+  resultConstraint "tuple" @parentTree 
+     [ FolkloreConstraint, IsTupleEdge ]
         
 -- Expression.Comprehension   
 SEM Expression | Comprehension loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltComprehension, 0, "")
-        , location   = "list comprehension"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint ]
-        }
+  resultConstraint "list comprehension" @parentTree
+     [ FolkloreConstraint ]
 
 -- Expression.Typed
 SEM Expression | Typed loc . cinfoExpr =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltTyped, 0, "expression")
-        , location   = "type annotation"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getExprRange @expression.self) ]
-        }
+  childConstraint 0 "type annotation" @parentTree 
+     []
 
 SEM Expression | Typed loc . cinfoResult =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltTyped, 1, "result")
-        , location   = "type annotation"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint ]     {- ??? -}
-        }
-
+  resultConstraint "type annotation" @parentTree 
+     [ FolkloreConstraint ]     {- ??? -}
+       
 -- Expression.Enum
 SEM Expression | Enum loc . cinfoFrom =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltEnum, 0, "from")
-        , location   = "enumeration"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @from.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getExprRange @from.self) ]
-        }
+  childConstraint 0 "enumeration" @parentTree 
+     []
 
 SEM Expression | Enum loc . cinfoThen =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltEnum, 1, "then")
-        , location   = "enumeration"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm (convertMaybeOneLineTree @then.oneLineTree) ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getMaybeExprRange @then.self) ]
-        }
+  childConstraint 1 "enumeration" @parentTree                      
+     []
 
-SEM Expression | Enum loc . cinfoTo =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltEnum, 2, "to")
-        , location   = "enumeration"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm (convertMaybeOneLineTree @to.oneLineTree) ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getMaybeExprRange @to.self) ]
-        }
+SEM Expression | Enum loc . toChildNr = 1 + length @then.infoTrees
+                      loc . cinfoTo =
+  childConstraint @toChildNr "enumeration" @parentTree
+     []
 
 SEM Expression | Enum loc . cinfoResult =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltEnum, 3, "result")
-        , location   = "enumeration"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint ]
-        }
+  resultConstraint "enumeration" @parentTree
+     [ FolkloreConstraint ]       
 
+-- Expression.Negate
 SEM Expression | Negate loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltNegate, 0, "")
-        , location   = "negation"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceOperator (OneLineText "-") ]
-        , typepair   = tppair
-        , properties = [ Negation True ]
-        }
+  specialConstraint "negation" @parentTree 
+     (self @localInfo, Just $ nameToSelfExpr (Name_Identifier @range [] "-")) 
+     [ Negation True ]
 
 SEM Expression | NegateFloat loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTExpression, AltNegateFloat, 0, "")
-        , location   = "negation"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceOperator (OneLineText "-.") ]
-        , typepair   = tppair
-        , properties = [ Negation False ]
-        }
+  specialConstraint "negation" @parentTree 
+     (self @localInfo, Just $ nameToSelfExpr (Name_Identifier @range [] "-.")) 
+     [ Negation False ]        
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : GuardedExpression
 
 SEM GuardedExpression | GuardedExpression loc . cinfoGuard =
-  \tppair ->
-  CInfo { info       = (NTGuardedExpression, AltGuardedExpression, 0, "guard")
-        , location   = "guard"
-        , errorrange = getExprRange @guard.self
-        , sources    = [ sourceExpression @guard.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ ]
-        }
+  resultConstraint "guard" @guard.infoTree
+     []       
 
 SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
-  \tppair ->
-  CInfo { info       = (NTGuardedExpression, AltGuardedExpression, 1, "expression")
-        , location   = "guarded expression"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @expression.oneLineTree ]
-        , typepair   = tppair
-        , properties = if @lhs.numberOfGuards > 1 then [] else [ HighlyTrusted ]
-        }
+  resultConstraint "guarded expression" @expression.infoTree
+     [ HasTrustFactor 10.0 | @lhs.numberOfGuards < 2 ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Pattern
 
 -- Pattern.Literal
 SEM Pattern | Literal loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTPattern, AltLiteral, 0, "")
-        , location   = "literal pattern"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , HighlyTrusted
-                       , IsLiteral @literal.self
-                       ]
-        }
+  resultConstraint "literal pattern" @parentTree
+     [ FolkloreConstraint, HasTrustFactor 10.0, IsLiteral @literal.self ]        
 
 -- Pattern.Constructor
 SEM Pattern | Constructor loc . cinfoConstructor =
-  \tppair ->
-  CInfo { info       = (NTPattern, AltConstructor, 0, "")
-        , location   = "pattern constructor"
-        , errorrange = getNameRange @name.self
-        , sources    = [ sourcePattern @oneLineTree ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , HighlyTrusted
-                       ]
-        }
+  resultConstraint "pattern constructor" @parentTree
+     [ FolkloreConstraint, HasTrustFactor 10.0 ]
 
 SEM Pattern | Constructor loc . cinfoApply =
-  \tppair ->
-  CInfo { info       = (NTPattern, AltConstructor, 1, "apply")
-        , location   = if @patterns.numberOfPatterns == 0
-                         then "pattern constructor"
-                         else "pattern application"
-        , errorrange = @range.self
-        , sources    = if @patterns.numberOfPatterns == 0
-                         then [ sourcePattern @oneLineTree                            ]
-                         else [ sourcePattern @oneLineTree, sourceConstructor @name.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getNameRange @name.self) ] ++
-                       if @patterns.numberOfPatterns == 0
-                         then [HighlyTrusted]          
-                         else [ ApplicationEdge False (zip3 @patterns.oneLineTree 
-                                                            @patterns.betas
-                                                            (map getPatRange (@patterns.self))
-                                                      )]
-                           
-        }
-
+  specialConstraint "pattern application" @parentTree
+     (self @localInfo, Just $ nameToSelfPat @name.self)
+     [ ApplicationEdge False (zip3 (map (self. attribute) @patterns.infoTrees)
+                                    @patterns.betas
+                                    (map getPatRange (@patterns.self))
+                              )]     
+                                   
+SEM Pattern | Constructor loc . cinfoEmpty =
+  resultConstraint "pattern constructor" @parentTree
+     [ HasTrustFactor 10.0 ]
+                                
 -- Pattern.InfixConstructor
 SEM Pattern | InfixConstructor loc . cinfoConstructor =
-  \tppair ->
-  CInfo { info       = (NTPattern, AltInfixConstructor, 0, "")
-        , location   = "pattern constructor"
-        , errorrange = getNameRange @constructorOperator.self
-        , sources    = [ sourceOperator @constructorOperator.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , HighlyTrusted
-                       , SubTermRange (getNameRange @constructorOperator.self)
-                       ]
-        }
+  variableConstraint "pattern constructor" (nameToSelfPat @constructorOperator.self) 
+     [ FolkloreConstraint, HasTrustFactor 10.0 ] 
 
 SEM Pattern | InfixConstructor loc . cinfoApply =
-  \tppair ->
-  CInfo { info       = (NTPattern, AltInfixConstructor, 1, "apply")
-        , location   = "infix pattern application"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree, sourceConstructor (OneLineText (showNameAsOperator @constructorOperator.self))]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getNameRange @constructorOperator.self)
-                       , ApplicationEdge True
-                                         [ (@leftPattern.oneLineTree ,@leftPattern.beta ,getPatRange (@leftPattern.self))
-                                         , (@rightPattern.oneLineTree,@rightPattern.beta,getPatRange (@rightPattern.self))
-                                         ]
-                       ]  
-        }
+  specialConstraint "infix pattern application" @parentTree 
+     (self @localInfo, Just $ nameToSelfPat  @constructorOperator.self)
+     [ ApplicationEdge True
+                       [ ((self . attribute) @leftPattern.infoTree ,@leftPattern.beta ,getPatRange (@leftPattern.self))
+                       , ((self . attribute) @rightPattern.infoTree,@rightPattern.beta,getPatRange (@rightPattern.self))
+                       ]
+     ]  
 
 -- Pattern.List
 SEM Pattern | List loc . cinfoElem =
-  \(elemtext, elemrange) tppair ->
-  CInfo { info       = (NTPattern, AltList, 0, "element")
-        , location   = "element of pattern list"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree, sourceTerm elemtext ]
-        , typepair   = tppair
-        , properties = [ SubTermRange elemrange ] ++
-                       if length @patterns.constraintslist > 1 then [] else [ HighlyTrusted  ]
-        }
+  \elemNr ->
+  childConstraint elemNr "element of pattern list" @parentTree
+     [ HasTrustFactor 10.0 | length @patterns.constraintslist < 2 ]
 
 SEM Pattern | List loc . cinfoResult =
-  \tppair ->
-  CInfo { info       = (NTPattern, AltList, 1, "result")
-        , location   = "pattern list"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint ]
-        }
+  resultConstraint "pattern list" @parentTree
+     [ FolkloreConstraint ]
 
 -- Pattern.Tuple
 SEM Pattern | Tuple loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTPattern, AltTuple, 0, "result")
-        , location   = "pattern tuple"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , IsTupleEdge
-                       ]
-        }
+  resultConstraint "pattern tuple" @parentTree
+  [ FolkloreConstraint, IsTupleEdge ]
 
 -- Pattern.Negate
 SEM Pattern | Negate loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTPattern, AltNegate, 0, "")
-        , location   = "pattern negation"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint ]
-        }
+  resultConstraint "pattern negation" @parentTree
+     [ FolkloreConstraint ]
 
 -- Pattern.As
 SEM Pattern |  As loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTPattern, AltAs, 0, "")
-        , location   = "as pattern"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm (OneLineText (show @name.self)) ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getNameRange @name.self) ]
-        }
+  specialConstraint "as pattern" @parentTree
+     (self @localInfo, Just $ nameToSelfPat @name.self)
+     []
 
 -- Pattern.NegateFloat
 SEM Pattern | NegateFloat loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTPattern, AltNegateFloat, 0, "")
-        , location   = "pattern negation"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , NegationResult
-                       ]
-        }
+  resultConstraint "pattern negation" @parentTree
+     [ FolkloreConstraint, NegationResult ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Alternative
 
 SEM Alternative | Alternative loc . cinfoLeft =
-  \tppair ->
-  CInfo { info       = (NTAlternative, AltAlternative, 0, "left")
-        , location   = "case pattern"
-        , errorrange = @range.self
-        , sources    = [ sourcePattern @pattern.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getPatRange @pattern.self) ]
-        }
+  orphanConstraint 0 "case pattern" @parentTree
+     []
 
 SEM Alternative | Alternative loc . cinfoRight =
-  \tppair ->
-  CInfo { info       = (NTAlternative, AltAlternative, 1, "right")
-        , location   = "right-hand side of case alternative"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression (@righthandside.oneLineTree "") ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getRHSRange @righthandside.self) ] ++
-                       if @lhs.nrOfAlternatives > 1 then [] else [ HighlyTrusted ]
-        }
+  orphanConstraint 1 "right-hand side of case alternative" @parentTree
+     [ HasTrustFactor 10.0 | @lhs.nrOfAlternatives < 2 ]       
 
 SEM Alternative | Alternative loc . cinfoBind =
-   variableBindingCInfo (NTAlternative, AltAlternative, 2)
+  \name -> variableConstraint "variable" (nameToSelfExpr name) 
+     [FolkloreConstraint]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Statement
 
 SEM Statement | Expression loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTStatement,AltExpression,0, "")
-        , location   = "generator"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree ]
-        , typepair   = tppair
-        , properties = [ ]
-        }
+  orphanConstraint 0 "generator" @parentTree
+     []
 
 SEM Statement | Generator loc . cinfoResult =
-  \tppair ->
-  CInfo { info       = (NTStatement, AltGenerator, 0, "result")
-        , location   = "generator"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getExprRange @expression.self) ]
-        }
-
+  childConstraint 1 "generator" @parentTree
+     []
+     
 SEM Statement | Generator loc . cinfoBind =
-   variableBindingCInfo (NTStatement, AltGenerator, 1)
+  \name -> variableConstraint "variable" (nameToSelfExpr name)
+     [FolkloreConstraint]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Qualifier
 
 SEM Qualifier | Guard loc . cinfo =
-  \tppair ->
-  CInfo { info       = (NTQualifier,AltGuard,0, "")
-        , location   = "boolean qualifier"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree  ]
-        , typepair   = tppair
-        , properties = [ ]
-        }
+  orphanConstraint 0 "boolean qualifier" @parentTree
+     []
 
 SEM Qualifier | Generator loc . cinfoResult =
-  \tppair ->
-  CInfo { info       = (NTQualifier,AltGenerator,0, "result")
-        , location   = "generator"
-        , errorrange = @range.self
-        , sources    = [ sourceExpression @oneLineTree, sourceTerm @expression.oneLineTree ]
-        , typepair   = tppair
-        , properties = [ SubTermRange (getExprRange @expression.self) ]
-        }
-
+  childConstraint 1 "generator" @parentTree
+     []
+     
 SEM Qualifier | Generator loc . cinfoBind =
-   variableBindingCInfo (NTQualifier,AltGenerator,1 )
-
-----------------------------------------------------------------------------------------------------------------------------------
--- Constraint Info : Variable Binding
+  \name -> variableConstraint "variable" (nameToSelfExpr name) 
+     [FolkloreConstraint]
+  
+-----------------------------------------------------------------
+-- Smart constructors
 
 {
+childConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+childConstraint childNr theLocation infoTree theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = ( (self . attribute) infoTree
+                       , Just $ (self . attribute . selectChild childNr) infoTree
+                       )
+        , typepair   = tppair
+        , localInfo  = infoTree        
+        , properties = theProperties
+        }
+
+specialConstraint :: String -> InfoTree -> (UHA_Source, Maybe UHA_Source) -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+specialConstraint theLocation infoTree theSources theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = theSources
+        , typepair   = tppair
+        , localInfo  = infoTree        
+        , properties = theProperties
+        }
+        
+orphanConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+orphanConstraint childNr theLocation infoTree theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = ( (self . attribute . selectChild childNr) infoTree
+                       , Nothing
+                       )
+        , typepair   = tppair
+        , localInfo  = infoTree        
+        , properties = theProperties
+        }        
+        
+resultConstraint :: String -> InfoTree -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+resultConstraint theLocation infoTree theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = ( (self . attribute) infoTree 
+                       , Nothing
+                       )
+        , typepair   = tppair
+        , localInfo  = infoTree    
+        , properties = theProperties
+        }        
+
+variableConstraint :: String -> UHA_Source -> Properties -> (Tp, Tp) -> HeliumConstraintInfo
+variableConstraint theLocation theSource theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = (theSource, Nothing)
+        , typepair   = tppair
+        , localInfo  = root (LocalInfo { self = theSource, assignedType = Just (snd tppair) }) []
+        , properties = theProperties
+        }               
+        
 cinfoBindingGroupExplicitTypedBinding :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoBindingGroupExplicitTypedBinding =
-  \name tppair ->
-  CInfo { info       = (NTBindingGroup,AltBindingGroup,3, "explicit typed binding, "++show name)
-        , location   = "explicitly typed binding"
-        , errorrange = getNameRange name
-        , sources    = [ sourceTerm (OneLineText (show name))]
-        , typepair   = tppair
-        , properties = [ {- FolkloreConstraint -}
-                         ExplicitTypedBinding
-                       , HighlyTrusted 
-                       ]
-        }
+cinfoSameBindingGroup                 :: Name -> (Tp,Tp) -> HeliumConstraintInfo
+cinfoBindingGroupImplicit             :: Name -> (Tp,Tp) -> HeliumConstraintInfo
+cinfoBindingGroupExplicit             :: Name -> (Tp,Tp) -> HeliumConstraintInfo
 
-variableBindingCInfo :: (InfoNT, InfoAlt, Int) -> Name -> (Tp,Tp) -> HeliumConstraintInfo
-variableBindingCInfo (infoNT,infoAlt,i) var tppair =
-  CInfo { info       = (infoNT,infoAlt,i,show var) 
-        , location   = "variable"
-        , errorrange = getNameRange var
-        , sources    = [ sourceExpression (OneLineText (show var)) ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint ]  
-        }
+cinfoBindingGroupExplicitTypedBinding name = 
+   variableConstraint "explicitly typed binding" (nameToSelfExpr name) [ FromBindingGroup, ExplicitTypedBinding, HasTrustFactor 10.0 ]
+cinfoSameBindingGroup name = 
+   variableConstraint "variable" (nameToSelfExpr name) [ FromBindingGroup, FolkloreConstraint ]
+cinfoBindingGroupImplicit name = 
+   variableConstraint "variable" (nameToSelfExpr name) [ FromBindingGroup, FolkloreConstraint, HasTrustFactor 10.0 ]
+cinfoBindingGroupExplicit name = 
+   variableConstraint "variable" (nameToSelfExpr name) [ FromBindingGroup, FolkloreConstraint ]      
+                           
+nameToSelfExpr :: Name -> UHA_Source
+nameToSelfExpr name = UHA_Expr (Expression_Variable (getNameRange name) name)
 
-cinfoSameBindingGroup :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoSameBindingGroup var = variableBindingCInfo (NTBindingGroup,AltBindingGroup,0) var
-
-cinfoBindingGroupImplicit :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoBindingGroupImplicit =
-  \var tppair ->   
-  CInfo { info       = (NTBindingGroup,AltBindingGroup,1,"implicit, "++show var)
-        , location   = "variable"
-        , errorrange = getNameRange var
-        , sources    = [ sourceExpression (OneLineText (show var)) ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint
-                       , HighlyTrusted ]
-        }
-
-cinfoBindingGroupExplicit :: Name -> (Tp,Tp) -> HeliumConstraintInfo
-cinfoBindingGroupExplicit =
-  \var tppair ->
-  CInfo { info       = (NTBindingGroup,AltBindingGroup,2, "explicit, "++show var)
-        , location   = "variable"
-        , errorrange = getNameRange var
-        , sources    = [ sourceExpression (OneLineText (show var)) ]
-        , typepair   = tppair
-        , properties = [ FolkloreConstraint ]  
-        }
-}
-
-----------------------------------------------------------------------------------------------------------------------------------
--- Several utility functions
-
-SEM LeftHandSide [ | | patternTrees:{[OneLineTree]} ]
-    | Function      lhs . patternTrees = @patterns.oneLineTree
-    | Infix         lhs . patternTrees = [@leftPattern.oneLineTree, @rightPattern.oneLineTree]
-    | Parenthesized lhs . patternTrees = @lefthandside.patternTrees ++ @patterns.oneLineTree
-{
-convertMaybeOneLineTree :: Maybe OneLineTree -> OneLineTree
-convertMaybeOneLineTree = maybe (OneLineText "") id
-
-tpToInt :: Tp -> Int
-tpToInt tp = case ftv tp of
-               [i] -> i
-               _   -> (-1)
-
-sourceTerm, sourceExpression, sourcePattern, sourceOperator :: OneLineTree -> (String, OneLineTree)
-sourceTerm        = (,) "term"
-sourceExpression  = (,) "expression"
-sourcePattern     = (,) "pattern"
-sourceOperator    = (,) "operator"
-sourceConstructor = (,) "constructor"
-}
+nameToSelfPat :: Name -> UHA_Source
+nameToSelfPat name = UHA_Pat (Pattern_Variable (getNameRange name) name)
+}   

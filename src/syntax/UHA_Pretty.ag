@@ -1,8 +1,12 @@
+INCLUDE "../syntax/UHA_Syntax.ag"
+
 imports{
 import PPrint
 import Char
 import List (intersperse)
 import Types (isTupleConstructor)
+import UHA_Syntax
+import Utils (internalError)
 }
 
 {
@@ -38,7 +42,7 @@ utrechtList start end (d:ds) =
 }
 
 ATTR
-    {- Module -} Export Body
+    Module Export Body
     ImportDeclaration ImportSpecification Import Declaration Fixity
     Type SimpleType ContextItem
     Constructor

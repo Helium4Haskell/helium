@@ -21,7 +21,7 @@ import ExpressionTypeInferencer (expressionTypeInferencer)
 import Data.FiniteMap
 import Char (isAlphaNum)
 import Utils (internalError)
-import qualified PrettyPrinting as PP
+import qualified UHA_Pretty as PP
 
 import UHA_Syntax
 
@@ -41,10 +41,8 @@ findDuplicates = filter (not . isSingleton) . group . sort
      
 standardConstraintInfo :: (Tp, Tp) -> HeliumConstraintInfo
 standardConstraintInfo tppair =
-   CInfo { info       = (NTBody, AltBody, (-1), "  Strategy, user constraint")
-         , location   = "Typing Strategy" -- !!!!!
-         , errorrange = noRange
-         , sources    = [ ]
+   CInfo { location   = "Typing Strategy"
+         , sources    = undefined
          , typepair   = tppair
          , properties = [ ]
          }

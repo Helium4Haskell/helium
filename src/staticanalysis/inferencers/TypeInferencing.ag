@@ -19,9 +19,10 @@ INCLUDE "TypeInferenceRules.ag"
 INCLUDE "TypeInferenceOverloading.ag"
 INCLUDE "TypeInferenceCollect.ag"
 INCLUDE "TypeInferenceInfo.ag"
+INCLUDE "LocalInfo.ag"
+INCLUDE "GlobalInfo.ag"
 INCLUDE "../staticchecks/HeliumPartialSyntax.ag"
 INCLUDE "../staticchecks/Scope.ag"  
-INCLUDE "../../syntax/UHA_OneLine.ag"
 INCLUDE "../../syntax/UHA_Syntax.ag"
 
 --- Type Inference Directives (may be turned off)
@@ -54,6 +55,8 @@ import Warnings
 import ConstraintInfo
 import TypeGraphConstraintInfo
 import HeliumConstraintInfo
+import DoublyLinkedTree
+import UHA_Source
 
 -- constraint solvers
 import SolveTypeGraph            (solveTypeGraph)
@@ -80,6 +83,5 @@ import Args
 -- standard
 import Data.FiniteMap
 import Maybe 
-import List                   
-
+import List
 }

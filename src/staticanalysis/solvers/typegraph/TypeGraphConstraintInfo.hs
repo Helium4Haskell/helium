@@ -19,10 +19,9 @@ import Utils         (internalError)
 
 class (Show constraintinfo,ConstraintInfo constraintinfo) => 
          TypeGraphConstraintInfo constraintinfo where
-             
-   getInfoSource           :: constraintinfo -> InfoSource
+          
    getPosition             :: constraintinfo -> Maybe Int
-   getTrustFactor          :: constraintinfo -> Maybe Int
+   getTrustFactor          :: constraintinfo -> Float 
    getConstraintPhaseNumber :: constraintinfo -> Maybe Int 
    isFolkloreConstraint    :: constraintinfo -> Bool
    isExplicitTypedBinding  :: constraintinfo -> Bool
@@ -34,20 +33,18 @@ class (Show constraintinfo,ConstraintInfo constraintinfo) =>
    maybeNegation           :: constraintinfo -> Maybe Bool
    isNegationResult        :: constraintinfo -> Bool
    maybeFunctionBinding    :: constraintinfo -> Maybe Int
-   maybeOriginalTypeScheme :: constraintinfo -> Maybe (Bool,TpScheme)
    maybeUserConstraint     :: constraintinfo -> Maybe (Int, Int)
    maybeUnifier            :: constraintinfo -> Maybe Int
    setFolkloreConstraint   :: constraintinfo -> constraintinfo
    setNewTypeError         :: TypeError -> constraintinfo -> constraintinfo
    setNewHint              :: TypeErrorInfo -> constraintinfo -> constraintinfo
    makeTypeError           :: constraintinfo -> TypeError
-   getErrorRange           :: constraintinfo -> Range
-
    isPattern               :: constraintinfo -> Bool
-   isPattern cinfo = let (nt, _, _, _) = getInfoSource cinfo 
-                     in nt == NTPattern
+   isEmptyInfixApplication :: constraintinfo -> Bool
    isReductionErrorInfo :: constraintinfo -> Bool
    maybeReductionErrorPredicate :: constraintinfo -> Maybe Predicate
+   isExprVariable               :: constraintinfo -> Bool
+   
 -- not a nice solution!
 makeTypeErrorForTerm :: TypeGraphConstraintInfo constraintinfo => (Bool,Bool) -> Int -> OneLineTree -> (Tp,Tp) -> Range -> constraintinfo -> TypeError
 makeTypeErrorForTerm (isInfixApplication,isPatternApplication) argumentNumber termOneLiner (t1, t2) range cinfo =
@@ -73,20 +70,3 @@ makeTypeErrorForTerm (isInfixApplication,isPatternApplication) argumentNumber te
          in TypeError range oneliner (UnificationErrorTable newSources (Left t1) (Left t2)) infos
 
       typeError -> typeError
-
--- Info source
-type InfoSource = (InfoNT, InfoAlt, Int, String)
-           
-data InfoNT = NTBody              | NTDeclaration  | NTFunctionBinding | NTExpression 
-            | NTGuardedExpression | NTPattern      | NTAlternative     | NTStatement
-            | NTQualifier         | NTBindingGroup
-   deriving (Show,Eq)
-   
-data InfoAlt = AltBody             | AltFunctionBindings | AltPatternBinding    | AltFunctionBinding
-             | AltLiteral          | AltConstructor      | AltLet               | AltCase
-             | AltLambda           | AltInfixApplication | AltDo                | AltIf 
-             | AltEnum             | AltNegate           | AltTyped             | AltList 
-             | AltComprehension    | AltTuple            | AltNormalApplication | AltGuardedExpression 
-             | AltInfixConstructor | AltAs               | AltAlternative       | AltExpression             
-             | AltGenerator        | AltGuard            | AltBindingGroup      | AltNegateFloat
-   deriving (Show,Eq)

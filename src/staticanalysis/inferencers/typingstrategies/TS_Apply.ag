@@ -21,11 +21,12 @@ import ParseLibrary (runHParser)
 import qualified ResolveOperators
 import TS_Attributes
 import Tree
+import UHA_Source
 }
 
 {
 type MetaVariableTable info = [(String, (ConstraintSet, info))]
-type MetaVariableInfo = (Tp, OneLineTree, Range)
+type MetaVariableInfo = (Tp, UHA_Source, Range)
 
 applyTypingStrategy :: Core_TypingStrategy -> (ConstraintSet, MetaVariableInfo) -> MetaVariableTable MetaVariableInfo -> Int -> (ConstraintSet, IO (), Int)
 applyTypingStrategy = sem_Core_TypingStrategy
@@ -54,7 +55,7 @@ expressionParser operatorTable string =
 }
 
 ATTR Core_TypingStrategy 
-     [ localInfo         : {(ConstraintSet, MetaVariableInfo)}
+     [ infoTuple         : {(ConstraintSet, MetaVariableInfo)}
        metaVariableTable : {MetaVariableTable MetaVariableInfo}  
      | unique            : Int 
      | constraintSet     : ConstraintSet
@@ -80,7 +81,7 @@ SEM Core_TypingStrategy
            . specialSubst  = let conclusionVar = case snd (last @typerule.judgements) of
                                                     TVar i -> Just i
                                                     _      -> Nothing
-                                 find i | Just i == conclusionVar = [(i, fst3 (snd @lhs.localInfo))]
+                                 find i | Just i == conclusionVar = [(i, fst3 (snd @lhs.infoTuple))]
                                         | otherwise               = [ (i,tp)
                                                                     | (s1, TVar j)       <- @typerule.judgements
                                                                     , i == j
@@ -94,7 +95,7 @@ ATTR Core_TypeRule
      Core_Judgements Core_Judgement
      Core_UserStatements Core_UserStatement 
      [ substitution      : FiniteMapSubstitution 
-       localInfo         : {(ConstraintSet, MetaVariableInfo)}
+       infoTuple         : {(ConstraintSet, MetaVariableInfo)}
        metaVariableTable : {MetaVariableTable MetaVariableInfo} 
      | 
      | ftv USE {++} {[]} : {[Int]} 
@@ -124,7 +125,7 @@ SEM Core_TypingStrategy
                   . currentPhase       = Nothing
                   . currentPosition    = (@lhs.unique, 0)
                   . metavarConstraints = [ (s,cs) | (s,(cs,_)) <- @lhs.metaVariableTable ] 
-                  . attributeTable     = makeAttributeTable (snd @lhs.localInfo) @lhs.metaVariableTable @substitution
+                  . attributeTable     = makeAttributeTable (snd @lhs.infoTuple) @lhs.metaVariableTable @substitution
 
 SEM Core_UserStatement
   | Constraint
@@ -149,17 +150,15 @@ SEM Core_UserStatement
           let cinfo   = addProperty (WithTypeError (CustomTypeError [] message)) . 
                         addProperty (uncurry IsUserConstraint @lhs.currentPosition) .
                         standardConstraintInfo @lhs.currentPosition
-                           -- (setCustomTypeError (snd @lhs.localInfo) . standardConstraintInfo)
+                           -- (setCustomTypeError (snd @lhs.infoTuple) . standardConstraintInfo)
               message = [MessageOneLiner (MessageCompose (substituteAttributes (makeMessageAlgebra @lhs.attributeTable) @message))]                       
           in (@lhs.substitution |-> @leftType .==. @lhs.substitution |-> @rightType) cinfo
 
 {
 standardConstraintInfo :: (Int, Int) -> (Tp, Tp) -> HeliumConstraintInfo
 standardConstraintInfo pos tppair =
-   CInfo { info       = (NTBody, AltBody, (-1), "Strategy, user constraint, "++show pos)
-         , location   = "Typing Strategy"
-         , errorrange = noRange
-         , sources    = [ ]
+   CInfo { location   = "Typing Strategy"
+         , sources    = undefined -- [ ]
          , typepair   = tppair
          , properties = [ ]
          }
@@ -169,10 +168,10 @@ ATTR Core_TypeRule [ | | constraints : {TypeConstraints HeliumConstraintInfo} ]
 
 SEM Core_TypeRule             
   | TypeRule        
-       lhs .  constraints = let localInfo@(localType, localTree, _) = snd @lhs.localInfo
+       lhs .  constraints = let infoTuple@(localType, localTree, _) = snd @lhs.infoTuple
                                 localLocation = "expression" -- not very precise
                             in [ (@lhs.substitution |-> tp1 .==. localType) 
-                                    (typeRuleCInfo localLocation Nothing localInfo)
+                                    (typeRuleCInfo localLocation Nothing infoTuple)
                                | (s1, tp1) <- @conclusion.judgements
                                ]
                                ++
@@ -184,18 +183,16 @@ SEM Core_TypeRule
                                ]
 
 {
-typeRuleCInfo :: String -> Maybe (String, OneLineTree) -> MetaVariableInfo -> (Tp, Tp) -> HeliumConstraintInfo
+typeRuleCInfo :: String -> Maybe (String, UHA_Source) -> MetaVariableInfo -> (Tp, Tp) -> HeliumConstraintInfo
 typeRuleCInfo loc mTuple (tp1,tree,range) tppair =
-   CInfo { info       = (NTBody, AltBody, (-1), "Typing Strategy, " ++ infoString)
-         , location   = loc
-         , errorrange = range
-         , sources    = srcs
+   CInfo { location   = loc
+         , sources    = undefined -- srcs
          , typepair   = tppair
-         , properties = props
+         , properties = undefined -- props
          }
- where (infoString, srcs, props) = case mTuple of 
-          Just (s,t) -> ("meta variable "++s, [sourceExpression t, sourceTerm tree], [])
-          Nothing    -> ("conclusion", [sourceExpression tree], [FolkloreConstraint])
+-- where (infoString, srcs, props) = case mTuple of 
+--          Just (s,t) -> ("meta variable "++s, [sourceExpression t, sourceTerm tree], [])
+--          Nothing    -> ("conclusion", [sourceExpression tree], [FolkloreConstraint])
 
 -- see TypeInferenceInfo.ag
 sourceTerm, sourceExpression :: OneLineTree -> (String, OneLineTree)
@@ -208,13 +205,13 @@ exactlyOnce (x:xs) | x `elem` xs = exactlyOnce . filter (/= x) $ xs
                    | otherwise   = x : exactlyOnce xs
 
 setCustomTypeError :: MetaVariableInfo -> HeliumConstraintInfo -> HeliumConstraintInfo
-setCustomTypeError (tp, tree, range) cinfo =
+setCustomTypeError (tp, source, range) cinfo =
    addProperty (WithTypeError customTypeError) cinfo        
 
      where customTypeError = CustomTypeError [range] message
            message = [ MessageOneLiner (MessageString ("Type error in "++"Typing Strategy")) -- !!!
                      , MessageTable
-                       [ (MessageString "Expression", MessageOneLineTree tree) ]                     
+                       [ (MessageString "Expression", MessageOneLineTree (oneLinerSource source)) ]                     
                      , MessageOneLiner (MessageString "   implies that the following types are equal:")
                      , MessageTable 
                        [ (MessageString "Type 1", MessageType (fst (typepair cinfo)))
@@ -234,10 +231,10 @@ makeMessageAlgebra table = ( MessageString
 makeAttributeTable :: MetaVariableInfo -> MetaVariableTable MetaVariableInfo -> FiniteMapSubstitution -> [((String, Maybe String), MessageBlock)]
 makeAttributeTable local table substitution = 
    let f :: String -> MetaVariableInfo -> [((String, Maybe String), MessageBlock)]
-       f string (tp, tree, range) = [ ((string, Just "type" ), MessageType tp)
-                                    , ((string, Just "pp"   ), MessageOneLineTree tree)
-                                    , ((string, Just "range"), MessageRange range)
-                                    ]
+       f string (tp, source, range) = [ ((string, Just "type" ), MessageType tp)
+                                      , ((string, Just "pp"   ), MessageOneLineTree (oneLinerSource source))
+                                      , ((string, Just "range"), MessageRange range)
+                                      ]
    in f "expr" local 
    ++ concatMap (\(s,(_,info)) -> f s info) table 
    ++ [ ((show i, Nothing), MessageType (substitution |-> TVar i)) | i <- dom substitution ]  

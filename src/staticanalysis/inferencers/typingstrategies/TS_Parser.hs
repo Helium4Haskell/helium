@@ -8,7 +8,7 @@ import qualified TS_ToCore
 import List (intersperse)
 import Data.IORef
 import Char
-import qualified PrettyPrinting as PP
+import qualified UHA_Pretty as PP
 import qualified ResolveOperators
 import Parser
 import Parsec

@@ -61,9 +61,9 @@ SEM Expression
        lhs . matchIO           = @lhs.matchIO >> @ioMatch
            . constraints       = @newConstraintSet
            . uniqueSecondRound = @newUnique       
-       loc . localInfo         = (@constraints, (@beta, @oneLineTree, @range.self))
+       loc . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
            . ((),matches,newConstraintSet,newUnique,ioMatch) = 
-                match0 @localInfo @lhs.uniqueSecondRound 
+                match0 @infoTuple @lhs.uniqueSecondRound 
                        (match_Expression_Literal @literal.self) 
                        @lhs.tryPatterns @lhs.allPatterns 
                        []               
@@ -72,9 +72,9 @@ SEM Expression
        lhs . matchIO           = @lhs.matchIO >> @ioMatch
            . constraints       = @newConstraintSet
            . uniqueSecondRound = @newUnique      
-       loc . localInfo         = (@constraints, (@beta, @oneLineTree, @range.self))
+       loc . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
            . ((),matches,newConstraintSet,newUnique,ioMatch) = 
-                match0 @localInfo @lhs.uniqueSecondRound 
+                match0 @infoTuple @lhs.uniqueSecondRound 
                        (match_Expression_Variable @name.self) 
                        @lhs.tryPatterns @lhs.allPatterns 
                        []
@@ -83,9 +83,9 @@ SEM Expression
        lhs . matchIO           = @lhs.matchIO >> @ioMatch
            . constraints       = @newConstraintSet
            . uniqueSecondRound = @newUnique     
-       loc . localInfo         = (@constraints, (@beta, @oneLineTree, @range.self))
+       loc . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
            . ((),matches,newConstraintSet,newUnique,ioMatch) = 
-                match0 @localInfo @lhs.uniqueSecondRound 
+                match0 @infoTuple @lhs.uniqueSecondRound 
                        (match_Expression_Constructor @name.self) 
                        @lhs.tryPatterns @lhs.allPatterns 
                        []
@@ -96,9 +96,9 @@ SEM Expression
        lhs       . matchIO           = @arguments.matchIO >> @ioMatch  
                  . constraints       = @newConstraintSet
                  . uniqueSecondRound = @newUnique   
-       loc       . localInfo         = (@constraints, (@beta, @oneLineTree, @range.self))
+       loc       . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
                  . ((t1,t2),matches,newConstraintSet,newUnique,ioMatch) = 
-                      match2 @localInfo @arguments.uniqueSecondRound 
+                      match2 @infoTuple @arguments.uniqueSecondRound 
                              match_Expression_NormalApplication 
                              @lhs.tryPatterns @lhs.allPatterns 
                              [@function.matches, @arguments.matches]
@@ -110,9 +110,9 @@ SEM Expression
        lhs             . matchIO           = @rightExpression.matchIO >> @ioMatch
                        . constraints       = @newConstraintSet
                        . uniqueSecondRound = @newUnique
-       loc             . localInfo         = (@constraints, (@beta, @oneLineTree, @range.self))
+       loc             . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
            . ((t1,t2,t3),matches,newConstraintSet,newUnique,ioMatch) = 
-                match3 @localInfo @rightExpression.uniqueSecondRound 
+                match3 @infoTuple @rightExpression.uniqueSecondRound 
                        match_Expression_InfixApplication 
                        @lhs.tryPatterns @lhs.allPatterns 
                        [@leftExpression.matches, @operator.matches,@rightExpression.matches]  
@@ -124,9 +124,9 @@ SEM Expression
        lhs             . matchIO           = @elseExpression.matchIO >> @ioMatch     
                        . constraints       = @newConstraintSet
                        . uniqueSecondRound = @newUnique  
-       loc             . localInfo         = (@constraints, (@beta, @oneLineTree, @range.self))
+       loc             . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
                        . ((t1,t2,t3),matches,newConstraintSet,newUnique,ioMatch) =
-                            match3 @localInfo @elseExpression.uniqueSecondRound  
+                            match3 @infoTuple @elseExpression.uniqueSecondRound  
                                    match_Expression_If 
                                    @lhs.tryPatterns @lhs.allPatterns 
                                    [@guardExpression.matches,@thenExpression.matches,@elseExpression.matches]
@@ -136,9 +136,9 @@ SEM Expression
        lhs         . matchIO           = @expressions.matchIO
                    . constraints       = @newConstraintSet
                    . uniqueSecondRound = @newUnique     
-       loc         . localInfo         = (@constraints, (@beta, @oneLineTree, @range.self))
+       loc         . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
                    . ((t1),matches,newConstraintSet,newUnique,ioMatch) = 
-                        match1 @localInfo @expressions.uniqueSecondRound 
+                        match1 @infoTuple @expressions.uniqueSecondRound 
                            match_Expression_List 
                            @lhs.tryPatterns @lhs.allPatterns 
                            [@expressions.matches]       
@@ -148,9 +148,9 @@ SEM Expression
        lhs         . matchIO           = @expressions.matchIO >> @ioMatch    
                    . constraints       = @newConstraintSet
                    . uniqueSecondRound = @newUnique        
-       loc         . localInfo         = (@constraints, (@beta, @oneLineTree, @range.self))
+       loc         . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
                    . ((t1),matches,newConstraintSet,newUnique,ioMatch) = 
-                        match1 @localInfo @expressions.uniqueSecondRound 
+                        match1 @infoTuple @expressions.uniqueSecondRound 
                                match_Expression_Tuple 
                                @lhs.tryPatterns @lhs.allPatterns 
                                [@expressions.matches]     
@@ -162,9 +162,9 @@ SEM Expression
        lhs  . matchIO           = @to.matchIO >> @ioMatch
             . constraints       = @newConstraintSet
             . uniqueSecondRound = @newUnique
-       loc  . localInfo         = (@constraints, (@beta, @oneLineTree, @range.self))
+       loc  . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
             . ((t1,t2,t3),matches,newConstraintSet,newUnique,ioMatch) = 
-                 match3 @localInfo @to.uniqueSecondRound 
+                 match3 @infoTuple @to.uniqueSecondRound 
                         match_Expression_Enum 
                         @lhs.tryPatterns @lhs.allPatterns 
                         [@from.matches, @then.matches, @to.matches]
@@ -175,9 +175,9 @@ SEM Expression
        lhs        . matchIO           = @expression.matchIO >> @ioMatch
                   . constraints       = @newConstraintSet
                   . uniqueSecondRound = @newUnique
-       loc        . localInfo         = (@constraints, (@beta, @oneLineTree, @range.self))
+       loc        . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
                   . ((t1),matches,newConstraintSet,newUnique,ioMatch) = 
-                       match1 @localInfo @expression.uniqueSecondRound 
+                       match1 @infoTuple @expression.uniqueSecondRound 
                               match_Expression_Negate 
                               @lhs.tryPatterns @lhs.allPatterns 
                               [@expression.matches]
@@ -187,9 +187,9 @@ SEM Expression
        lhs        . matchIO           = @expression.matchIO >> @ioMatch
                   . constraints       = @newConstraintSet
                   . uniqueSecondRound = @newUnique              
-       loc        . localInfo         = (@constraints, (@beta, @oneLineTree, @range.self))
+       loc        . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
                   . ((t1),matches,newConstraintSet,newUnique,ioMatch) = 
-                       match1 @localInfo @expression.uniqueSecondRound 
+                       match1 @infoTuple @expression.uniqueSecondRound 
                               match_Expression_NegateFloat 
                               @lhs.tryPatterns @lhs.allPatterns 
                               [@expression.matches]       
@@ -215,28 +215,28 @@ SEM MaybeExpression
 -- No matching 
 
 SEM Expression
-  | Lambda             lhs . matches     = matchOnlyVariable @localInfo @lhs.tryPatterns
+  | Lambda             lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
                        expression . tryPatterns = []
-                       loc . localInfo   = (@constraints, (@beta, @oneLineTree, @range.self))
+                       loc . infoTuple   = (@constraints, (@beta, self @localInfo, @range.self))
                        
-  | Case               lhs . matches     = matchOnlyVariable @localInfo @lhs.tryPatterns
+  | Case               lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
                        expression . tryPatterns = []
-                       loc . localInfo   = (@constraints, (@beta, @oneLineTree, @range.self))
+                       loc . infoTuple   = (@constraints, (@beta, self @localInfo, @range.self))
                                               
-  | Let                lhs . matches     = matchOnlyVariable @localInfo @lhs.tryPatterns
+  | Let                lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
                        expression . tryPatterns = []
-                       loc . localInfo   = (@constraints, (@beta, @oneLineTree, @range.self))
+                       loc . infoTuple   = (@constraints, (@beta, self @localInfo, @range.self))
                                               
-  | Do                 lhs . matches     = matchOnlyVariable @localInfo @lhs.tryPatterns
-                       loc . localInfo   = (@constraints, (@beta, @oneLineTree, @range.self))
+  | Do                 lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
+                       loc . infoTuple   = (@constraints, (@beta, self @localInfo, @range.self))
                          
-  | Comprehension      lhs . matches     = matchOnlyVariable @localInfo @lhs.tryPatterns
+  | Comprehension      lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
                        expression . tryPatterns = []
-                       loc . localInfo   = (@constraints, (@beta, @oneLineTree, @range.self))
+                       loc . infoTuple   = (@constraints, (@beta, self @localInfo, @range.self))
                                               
-  | Typed              lhs . matches     = matchOnlyVariable @localInfo @lhs.tryPatterns
+  | Typed              lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
                        expression . tryPatterns = []
-                       loc . localInfo   = (@constraints, (@beta, @oneLineTree, @range.self))
+                       loc . infoTuple   = (@constraints, (@beta, self @localInfo, @range.self))
                        
 SEM Statement
   | Expression  expression . tryPatterns = []
@@ -297,8 +297,8 @@ match0' = generalMatch noMatch matchConverter0 noMetaVariableInfo 0
 match1' = generalMatch noMatch matchConverter1 noMetaVariableInfo 0
 match2' = generalMatch noMatch matchConverter2 noMetaVariableInfo 0
 
-matchOnlyVariable localInfo tryPats = 
-   let ((),matches,_,_,_) = match0 localInfo 0 noMatch tryPats [] []
+matchOnlyVariable infoTuple tryPats = 
+   let ((),matches,_,_,_) = match0 infoTuple 0 noMatch tryPats [] []
    in matches
 
 noMatch :: a -> Maybe b
