@@ -422,7 +422,48 @@ variableFunction =
                               in return $ Just 
                                     (4, "insert arguments to function variable", [edge], [hint info])
                  _ -> return Nothing
-                 
+
+-----------------------------------------------------------------------------
+
+class MaybeUnaryMinus a where
+   maybeUnaryMinus :: a -> Maybe (Either Int Float)
+
+unaryMinus :: (HasTypeGraph m info, MaybeApplication info, MaybeUnaryMinus info, HasTwoTypes info, WithHints info) => Selector m info
+unaryMinus = 
+   Selector ("Unary minus", f) where
+
+ f (edge, cnr, info) =
+   case maybeApplicationEdge info of
+      Just (isInfix, tuplesForArguments) | isInfix && length tuplesForArguments == 2 -> 
+         case maybeUnaryMinus info of
+	    Just someLiteral ->
+	       doWithoutEdge (edge,info) $ 
+	          do synonyms <- getTypeSynonyms 
+		     let leftBeta = snd (head tuplesForArguments)
+		     leftType <- safeApplySubst leftBeta
+		     (_, mt2) <- getSubstitutedTypes info
+		     let contextType = fmap (snd . functionSpineOfLength 2 . expandType (snd synonyms)) mt2
+		     case (someLiteral, leftType, contextType) of
+		        (Left int, Just leftTp, Just contextTp) 
+			   | unifiable synonyms leftTp (intType .->. contextTp) -> 
+			        let hint = possibleHint ("Insert parentheses to negate the int literal: (-"++show int++")")
+                                in return $ Just 
+                                     (5, "Unary minus for int", [edge], [hint info])
+	                (Right float, Just leftTp, Just contextTp) 
+			   | unifiable synonyms leftTp (floatType .->. contextTp) -> 
+			        let hint = possibleHint ("Insert parentheses to negate the float literal: (-."++show float++")")
+                                in return $ Just 
+                                     (5, "Unary minus for float", [edge], [hint info])
+			_ -> return Nothing
+	    _ -> return Nothing
+      
+      {- | isBinary && isInfixMinus info ->
+        $
+       
+          do undefined-}
+	  
+      _ -> return Nothing
+                       
 -----------------------------------------------------------------------------
 -- REST 
 
@@ -461,6 +502,7 @@ class WithHints a where
    addHint          :: String -> String -> a -> a
    typeErrorForTerm :: (Bool,Bool) -> Int -> OneLineTree -> (Tp,Tp) -> Range -> a -> a
    
-fixHint, becauseHint :: WithHints a => String -> a -> a
-fixHint     = addHint "probable fix"
-becauseHint = addHint "because"
+fixHint, becauseHint, possibleHint :: WithHints a => String -> a -> a
+fixHint      = addHint "probable fix"
+becauseHint  = addHint "because"
+possibleHint = addHint "possible fix"

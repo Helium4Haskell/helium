@@ -30,6 +30,9 @@ import Top.TypeGraph.Basics
 
 listOfHeuristics :: [Option] -> Siblings -> [Heuristic ConstraintInfo]
 listOfHeuristics options siblings =
+   let is = [ i | SelectConstraintNumber i <- options ]
+   in [ selectConstraintNumbers is | not (null is) ]
+   ++
    [ highParticipation 1.00
    , phaseFilter
    ] ++
@@ -41,6 +44,7 @@ listOfHeuristics options siblings =
         , tupleEdge
         , fbHasTooManyArguments
         , variableFunction
+	, unaryMinus
 	, constraintFromUser
         ] ++
         [ unifierVertex | UnifierHeuristics `elem` options ]))

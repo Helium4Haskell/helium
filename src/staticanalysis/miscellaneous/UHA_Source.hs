@@ -27,7 +27,10 @@ data UHA_Source =
    | UHA_RHS    RightHandSide
    | UHA_Decl   Declaration
    | UHA_Decls  Declarations
-          
+         
+instance Show UHA_Source where
+   show = showOneLine 80 . oneLinerSource
+	 
 rangeOfSource :: UHA_Source -> Range
 rangeOfSource source =
    case source of

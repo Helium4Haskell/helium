@@ -76,15 +76,31 @@ instance MaybeApplication ConstraintInfo where
       fmap (length . snd) . maybeApplicationEdge
       
    maybeApplicationEdge cinfo = 
-      case list of 
-         []      -> Nothing
-         tuple:_ -> Just tuple
-    where
-     list = [ (b, zip (map self infoTrees) (map fromJust tps))
-            | ApplicationEdge b infoTrees <- properties cinfo
-	    , let tps = map assignedType infoTrees
-	    , all isJust tps
-            ]
+      let list = [ (b, zip (map self infoTrees) (map fromJust tps))
+                 | ApplicationEdge b infoTrees <- properties cinfo
+	         , let tps = map assignedType infoTrees
+	         , all isJust tps
+                 ]
+      in case list of 
+            []      -> Nothing
+            tuple:_ -> Just tuple
+
+instance MaybeUnaryMinus ConstraintInfo where
+   maybeUnaryMinus cinfo = 
+      case (self . attribute . localInfo) cinfo of
+         UHA_Expr (Expression_InfixApplication _
+		      (MaybeExpression_Just _)
+		      (Expression_Variable _ name)
+		      (MaybeExpression_Just (Expression_Literal _ literal)))
+            | show name == "-"
+	         -> case literal of
+		       Literal_Int _ s -> Just (Left (read s))
+		       _               -> Nothing
+            | show name == "-."
+	         -> case literal of
+		       Literal_Float _ s -> Just (Right (read s))
+		       _                 -> Nothing
+	 _  -> Nothing
    
 instance MaybeNegation ConstraintInfo where
    maybeNegation cinfo = 

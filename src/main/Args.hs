@@ -7,6 +7,7 @@ module Args
 import System
 import Version
 import Utils
+import Data.Char
 import System.Console.GetOpt
 
 processArgs :: [String] -> IO ([Option], String)
@@ -70,9 +71,10 @@ processArgs args =
             ,   Option "" ["no-spreading" ] (NoArg NoSpreading) "do not spread type constraints"
 	    
 	    -- options for type graph heuristics
-	    ,   Option "" ["no-repair-heuristics"] (NoArg NoRepairHeuristics) "don't suggest program fixes"
-	    ,   Option "" ["unifier-heuristics"]   (NoArg UnifierHeuristics)  "use unifier heuristics (experimental)"
-	    ,   Option "" ["highlighting"]         (NoArg Highlighting)       "highlighting with type errors (experimental)"
+	    ,   Option "" ["no-repair-heuristics"]     (NoArg NoRepairHeuristics) "don't suggest program fixes"
+	    ,   Option "" ["unifier-heuristics"]       (NoArg UnifierHeuristics)  "use unifier heuristics (experimental)"
+	    ,   Option "" ["highlighting"]             (NoArg Highlighting)       "highlighting with type errors (experimental)"
+	    ,   Option "" ["select-constraint-number"] (ReqArg selectCNR "CNR")   "select constraint number to be reported"
             ]
 
 data Option
@@ -110,7 +112,7 @@ data Option
     | KindInferencing    
     -- other type inference options
     | RightToLeft | NoSpreading
-    | NoRepairHeuristics | UnifierHeuristics | Highlighting
+    | NoRepairHeuristics | UnifierHeuristics | Highlighting | SelectConstraintNumber Int
     | Overloading
     
     deriving Eq
@@ -119,3 +121,8 @@ lvmPathFromOptions :: [Option] -> Maybe String
 lvmPathFromOptions [] = Nothing
 lvmPathFromOptions (LvmPath s : _) = Just s
 lvmPathFromOptions (_ : rest) = lvmPathFromOptions rest
+
+selectCNR :: String -> Option
+selectCNR s
+   | all isDigit s && not (null s) = SelectConstraintNumber (read s) 
+   | otherwise                     = SelectConstraintNumber (-1) -- problem with argument 
