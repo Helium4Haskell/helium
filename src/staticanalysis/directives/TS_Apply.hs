@@ -7,7 +7,7 @@ import ConstraintInfo
 import Top.Types
 import List
 import UHA_Range (noRange)
-import Utils (internalError, fst3)
+import Utils (internalError)
 import OneLiner
 import Messages
 import TypeErrors
@@ -25,9 +25,11 @@ import Data.FiniteMap
 import DoublyLinkedTree (root)
 
 type MetaVariableTable info = [(String, (ConstraintSet, info))]
-type MetaVariableInfo = (Tp, UHA_Source, Range)
 
-applyTypingStrategy :: Core_TypingStrategy -> (ConstraintSet, MetaVariableInfo) -> MetaVariableTable MetaVariableInfo -> Int -> (ConstraintSet, IO (), Int)
+getTheType :: LocalInfo -> Tp
+getTheType = maybe (TCon "???") id . assignedType
+
+applyTypingStrategy :: Core_TypingStrategy -> (ConstraintSet, LocalInfo) -> MetaVariableTable LocalInfo -> Int -> (ConstraintSet, IO (), Int)
 applyTypingStrategy = sem_Core_TypingStrategy
 
 matchInformation :: ImportEnvironment -> Core_TypingStrategy -> [(Expression, [String])]
@@ -61,10 +63,11 @@ standardConstraintInfo pos tppair =
          , properties = [ ]
          }
 
-typeRuleCInfo :: String -> Maybe (String, UHA_Source) -> MetaVariableInfo -> (Tp, Tp) -> ConstraintInfo
-typeRuleCInfo loc mTuple (tp1,tree,range) tppair =
+typeRuleCInfo :: String -> Maybe (String, UHA_Source) -> LocalInfo -> (Tp, Tp) -> ConstraintInfo
+typeRuleCInfo loc mTuple source tppair =
    CInfo { location   = loc
          , sources    = (UHA_Decls [], Nothing)
+         , localInfo  = root source []
          , typepair   = tppair
          , properties = []
          }
@@ -72,29 +75,24 @@ typeRuleCInfo loc mTuple (tp1,tree,range) tppair =
 --          Just (s,t) -> ("meta variable "++s, [sourceExpression t, sourceTerm tree], [])
 --          Nothing    -> ("conclusion", [sourceExpression tree], [FolkloreConstraint])
 
--- see TypeInferenceInfo.ag
-sourceTerm, sourceExpression :: OneLineTree -> (String, OneLineTree)
-sourceTerm        = (,) "term"
-sourceExpression  = (,) "expression"
-
 exactlyOnce :: Eq a => [a] -> [a]
 exactlyOnce []     = []
 exactlyOnce (x:xs) | x `elem` xs = exactlyOnce . filter (/= x) $ xs
                    | otherwise   = x : exactlyOnce xs
 
-setCustomTypeError :: MetaVariableInfo -> ConstraintInfo -> ConstraintInfo
-setCustomTypeError (tp, source, range) cinfo =
+setCustomTypeError :: LocalInfo -> ConstraintInfo -> ConstraintInfo
+setCustomTypeError source cinfo =
    addProperty (WithTypeError customTypeError) cinfo        
 
-     where customTypeError = TypeError [range] message [] []
+     where customTypeError = TypeError [rangeOfSource (self source)] message [] []
            message = [ MessageOneLiner (MessageString ("Type error in "++"Typing Strategy"))
                      , MessageTable
-                       [ (MessageString "Expression", MessageOneLineTree (oneLinerSource source)) ]                     
+                          [ (MessageString "Expression", MessageOneLineTree (oneLinerSource (self source))) ]                     
                      , MessageOneLiner (MessageString "   implies that the following types are equal:")
                      , MessageTable 
-                       [ (MessageString "Type 1", MessageType (toTpScheme (fst (typepair cinfo))))
-                       , (MessageString "Type 2", MessageType (toTpScheme (snd (typepair cinfo))))
-                       ]                     
+                          [ (MessageString "Type 1", MessageType (toTpScheme (fst (typepair cinfo))))
+                          , (MessageString "Type 2", MessageType (toTpScheme (snd (typepair cinfo))))
+                          ]                     
                      ]  
 
 makeMessageAlgebra :: AttributeTable MessageBlock -> AttributeAlgebra MessageBlock
@@ -106,20 +104,20 @@ makeMessageAlgebra table = ( MessageString
                                                "; known attributes are " ++ show (map (showAttribute . fst) table))
                            )
 
-makeAttributeTable :: MetaVariableInfo -> MetaVariableTable MetaVariableInfo -> FiniteMapSubstitution -> [((String, Maybe String), MessageBlock)]
+makeAttributeTable :: LocalInfo -> MetaVariableTable LocalInfo -> FiniteMapSubstitution -> [((String, Maybe String), MessageBlock)]
 makeAttributeTable local table substitution = 
-   let f :: String -> MetaVariableInfo -> [((String, Maybe String), MessageBlock)]
-       f string (tp, source, range) = [ ((string, Just "type" ), MessageType (toTpScheme tp))
-                                      , ((string, Just "pp"   ), MessageOneLineTree (oneLinerSource source))
-                                      , ((string, Just "range"), MessageRange range)
-                                      ]
+   let f :: String -> LocalInfo -> [((String, Maybe String), MessageBlock)]
+       f string source = [ ((string, Just "type" ), MessageType (toTpScheme (getTheType source)))
+                         , ((string, Just "pp"   ), MessageOneLineTree (oneLinerSource (self source)))
+                         , ((string, Just "range"), MessageRange (rangeOfSource (self source)))
+                         ]
    in f "expr" local 
    ++ concatMap (\(s,(_,info)) -> f s info) table 
    ++ [ ((show i, Nothing), MessageType (toTpScheme (substitution |-> TVar i))) | i <- dom substitution ]  
 -- Core_Judgement ----------------------------------------------
 -- semantic domain
-type T_Core_Judgement = ((ConstraintSet, MetaVariableInfo)) ->
-                        (MetaVariableTable MetaVariableInfo) ->
+type T_Core_Judgement = ((ConstraintSet, LocalInfo)) ->
+                        (MetaVariableTable LocalInfo) ->
                         (FiniteMapSubstitution) ->
                         ( ([Int]),([(String, Tp)]))
 -- cata
@@ -143,8 +141,8 @@ sem_Core_Judgement_Judgement (expression_) (type_) =
         in  ( _lhsOftv,_lhsOjudgements)
 -- Core_Judgements ---------------------------------------------
 -- semantic domain
-type T_Core_Judgements = ((ConstraintSet, MetaVariableInfo)) ->
-                         (MetaVariableTable MetaVariableInfo) ->
+type T_Core_Judgements = ((ConstraintSet, LocalInfo)) ->
+                         (MetaVariableTable LocalInfo) ->
                          (FiniteMapSubstitution) ->
                          ( ([Int]),([(String, Tp)]))
 -- cata
@@ -163,13 +161,13 @@ sem_Core_Judgements_Cons (hd_) (tl_) =
             _lhsOjudgements :: ([(String, Tp)])
             _hdIftv :: ([Int])
             _hdIjudgements :: ([(String, Tp)])
-            _hdOinfoTuple :: ((ConstraintSet, MetaVariableInfo))
-            _hdOmetaVariableTable :: (MetaVariableTable MetaVariableInfo)
+            _hdOinfoTuple :: ((ConstraintSet, LocalInfo))
+            _hdOmetaVariableTable :: (MetaVariableTable LocalInfo)
             _hdOsubstitution :: (FiniteMapSubstitution)
             _tlIftv :: ([Int])
             _tlIjudgements :: ([(String, Tp)])
-            _tlOinfoTuple :: ((ConstraintSet, MetaVariableInfo))
-            _tlOmetaVariableTable :: (MetaVariableTable MetaVariableInfo)
+            _tlOinfoTuple :: ((ConstraintSet, LocalInfo))
+            _tlOmetaVariableTable :: (MetaVariableTable LocalInfo)
             _tlOsubstitution :: (FiniteMapSubstitution)
             ( _hdIftv,_hdIjudgements) =
                 (hd_ (_hdOinfoTuple) (_hdOmetaVariableTable) (_hdOsubstitution))
@@ -206,8 +204,8 @@ sem_Core_Judgements_Nil  =
         in  ( _lhsOftv,_lhsOjudgements)
 -- Core_TypeRule -----------------------------------------------
 -- semantic domain
-type T_Core_TypeRule = ((ConstraintSet, MetaVariableInfo)) ->
-                       (MetaVariableTable MetaVariableInfo) ->
+type T_Core_TypeRule = ((ConstraintSet, LocalInfo)) ->
+                       (MetaVariableTable LocalInfo) ->
                        (FiniteMapSubstitution) ->
                        ( (TypeConstraints ConstraintInfo),([Int]),([(String, Tp)]))
 -- cata
@@ -227,30 +225,30 @@ sem_Core_TypeRule_TypeRule (premises_) (conclusion_) =
             _lhsOjudgements :: ([(String, Tp)])
             _premisesIftv :: ([Int])
             _premisesIjudgements :: ([(String, Tp)])
-            _premisesOinfoTuple :: ((ConstraintSet, MetaVariableInfo))
-            _premisesOmetaVariableTable :: (MetaVariableTable MetaVariableInfo)
+            _premisesOinfoTuple :: ((ConstraintSet, LocalInfo))
+            _premisesOmetaVariableTable :: (MetaVariableTable LocalInfo)
             _premisesOsubstitution :: (FiniteMapSubstitution)
             _conclusionIftv :: ([Int])
             _conclusionIjudgements :: ([(String, Tp)])
-            _conclusionOinfoTuple :: ((ConstraintSet, MetaVariableInfo))
-            _conclusionOmetaVariableTable :: (MetaVariableTable MetaVariableInfo)
+            _conclusionOinfoTuple :: ((ConstraintSet, LocalInfo))
+            _conclusionOmetaVariableTable :: (MetaVariableTable LocalInfo)
             _conclusionOsubstitution :: (FiniteMapSubstitution)
             ( _premisesIftv,_premisesIjudgements) =
                 (premises_ (_premisesOinfoTuple) (_premisesOmetaVariableTable) (_premisesOsubstitution))
             ( _conclusionIftv,_conclusionIjudgements) =
                 (conclusion_ (_conclusionOinfoTuple) (_conclusionOmetaVariableTable) (_conclusionOsubstitution))
             (_lhsOconstraints@_) =
-                let infoTuple@(localType, localTree, _) = snd _lhsIinfoTuple
+                let infoTuple = snd _lhsIinfoTuple
                     localLocation = "expression"
-                in [ (_lhsIsubstitution |-> tp1 .==. localType)
+                in [ (_lhsIsubstitution |-> tp1 .==. getTheType infoTuple)
                         (typeRuleCInfo localLocation Nothing infoTuple)
                    | (s1, tp1) <- _conclusionIjudgements
                    ]
                    ++
-                   [ (tp2 .==. _lhsIsubstitution |-> tp1)
-                        (typeRuleCInfo localLocation (Just (s1, localTree)) mvinfo)
-                   | (s1, tp1)                   <- _premisesIjudgements
-                   , (s2, (_, mvinfo@(tp2,_,_))) <- _lhsImetaVariableTable
+                   [ (getTheType mvinfo .==. _lhsIsubstitution |-> tp1)
+                        (typeRuleCInfo localLocation (Just (s1, self infoTuple)) mvinfo)
+                   | (s1, tp1)         <- _premisesIjudgements
+                   , (s2, (_, mvinfo)) <- _lhsImetaVariableTable
                    , s1 == s2
                    ]
             (_lhsOftv@_) =
@@ -272,8 +270,8 @@ sem_Core_TypeRule_TypeRule (premises_) (conclusion_) =
         in  ( _lhsOconstraints,_lhsOftv,_lhsOjudgements)
 -- Core_TypingStrategy -----------------------------------------
 -- semantic domain
-type T_Core_TypingStrategy = ((ConstraintSet, MetaVariableInfo)) ->
-                             (MetaVariableTable MetaVariableInfo) ->
+type T_Core_TypingStrategy = ((ConstraintSet, LocalInfo)) ->
+                             (MetaVariableTable LocalInfo) ->
                              (Int) ->
                              ( (ConstraintSet),(IO ()),(Int))
 -- cata
@@ -312,8 +310,8 @@ sem_Core_TypingStrategy_TypingStrategy (typerule_) (statements_) =
             _typeruleIconstraints :: (TypeConstraints ConstraintInfo)
             _typeruleIftv :: ([Int])
             _typeruleIjudgements :: ([(String, Tp)])
-            _typeruleOinfoTuple :: ((ConstraintSet, MetaVariableInfo))
-            _typeruleOmetaVariableTable :: (MetaVariableTable MetaVariableInfo)
+            _typeruleOinfoTuple :: ((ConstraintSet, LocalInfo))
+            _typeruleOmetaVariableTable :: (MetaVariableTable LocalInfo)
             _typeruleOsubstitution :: (FiniteMapSubstitution)
             _statementsIcollectConstraints :: (Trees (TypeConstraint ConstraintInfo))
             _statementsIcurrentPhase :: (Maybe Int)
@@ -324,8 +322,8 @@ sem_Core_TypingStrategy_TypingStrategy (typerule_) (statements_) =
             _statementsOcollectConstraints :: (Trees (TypeConstraint ConstraintInfo))
             _statementsOcurrentPhase :: (Maybe Int)
             _statementsOcurrentPosition :: ((Int, Int))
-            _statementsOinfoTuple :: ((ConstraintSet, MetaVariableInfo))
-            _statementsOmetaVariableTable :: (MetaVariableTable MetaVariableInfo)
+            _statementsOinfoTuple :: ((ConstraintSet, LocalInfo))
+            _statementsOmetaVariableTable :: (MetaVariableTable LocalInfo)
             _statementsOmetavarConstraints :: ([(String,Tree (TypeConstraint ConstraintInfo))])
             _statementsOsubstitution :: (FiniteMapSubstitution)
             ( _typeruleIconstraints,_typeruleIftv,_typeruleIjudgements) =
@@ -336,11 +334,11 @@ sem_Core_TypingStrategy_TypingStrategy (typerule_) (statements_) =
                 let conclusionVar = case snd (last _typeruleIjudgements) of
                                        TVar i -> Just i
                                        _      -> Nothing
-                    find i | Just i == conclusionVar = [(i, fst3 (snd _lhsIinfoTuple))]
-                           | otherwise               = [ (i,tp)
-                                                       | (s1, TVar j)       <- _typeruleIjudgements
+                    find i | Just i == conclusionVar = [ (i, getTheType (snd _lhsIinfoTuple)) ]
+                           | otherwise               = [ (i, getTheType (snd infoTuple))
+                                                       | (s1, TVar j) <- _typeruleIjudgements
                                                        , i == j
-                                                       , (s2, (_,(tp,_,_))) <- _lhsImetaVariableTable
+                                                       , (s2,infoTuple) <- _lhsImetaVariableTable
                                                        , s1 == s2
                                                        ]
                 in concatMap find _specialTV
@@ -393,8 +391,8 @@ type T_Core_UserStatement = ([((String, Maybe String), MessageBlock)]) ->
                             (Trees (TypeConstraint ConstraintInfo)) ->
                             (Maybe Int) ->
                             ((Int, Int)) ->
-                            ((ConstraintSet, MetaVariableInfo)) ->
-                            (MetaVariableTable MetaVariableInfo) ->
+                            ((ConstraintSet, LocalInfo)) ->
+                            (MetaVariableTable LocalInfo) ->
                             ([(String,Tree (TypeConstraint ConstraintInfo))]) ->
                             (FiniteMapSubstitution) ->
                             ( (Trees (TypeConstraint ConstraintInfo)),(Maybe Int),((Int, Int)),([Int]),([(String,Tree (TypeConstraint ConstraintInfo))]))
@@ -437,8 +435,14 @@ sem_Core_UserStatement_Constraint (leftType_) (rightType_) (message_) =
             (_newConstraint@_) =
                 let cinfo   = addProperty (WithTypeError (TypeError [] message [] [])) .
                               addProperty (uncurry IsUserConstraint _lhsIcurrentPosition) .
+                              inPhase .
                               standardConstraintInfo _lhsIcurrentPosition
-                    message = [MessageOneLiner (MessageCompose (substituteAttributes (makeMessageAlgebra _lhsIattributeTable) message_))]
+                    inPhase = case _lhsIcurrentPhase of
+                                 Just phase | phase /= 5
+                                    -> addProperty (ConstraintPhaseNumber phase)
+                                 _  -> id
+                    message = let f = MessageOneLiner . MessageCompose . substituteAttributes (makeMessageAlgebra _lhsIattributeTable)
+                              in map f (lines message_)
                 in (_lhsIsubstitution |-> leftType_ .==. _lhsIsubstitution |-> rightType_) cinfo
             (_lhsOcurrentPhase@_) =
                 _lhsIcurrentPhase
@@ -507,8 +511,8 @@ type T_Core_UserStatements = ([((String, Maybe String), MessageBlock)]) ->
                              (Trees (TypeConstraint ConstraintInfo)) ->
                              (Maybe Int) ->
                              ((Int, Int)) ->
-                             ((ConstraintSet, MetaVariableInfo)) ->
-                             (MetaVariableTable MetaVariableInfo) ->
+                             ((ConstraintSet, LocalInfo)) ->
+                             (MetaVariableTable LocalInfo) ->
                              ([(String,Tree (TypeConstraint ConstraintInfo))]) ->
                              (FiniteMapSubstitution) ->
                              ( (Trees (TypeConstraint ConstraintInfo)),(Maybe Int),((Int, Int)),([Int]),([(String,Tree (TypeConstraint ConstraintInfo))]))
@@ -543,8 +547,8 @@ sem_Core_UserStatements_Cons (hd_) (tl_) =
             _hdOcollectConstraints :: (Trees (TypeConstraint ConstraintInfo))
             _hdOcurrentPhase :: (Maybe Int)
             _hdOcurrentPosition :: ((Int, Int))
-            _hdOinfoTuple :: ((ConstraintSet, MetaVariableInfo))
-            _hdOmetaVariableTable :: (MetaVariableTable MetaVariableInfo)
+            _hdOinfoTuple :: ((ConstraintSet, LocalInfo))
+            _hdOmetaVariableTable :: (MetaVariableTable LocalInfo)
             _hdOmetavarConstraints :: ([(String,Tree (TypeConstraint ConstraintInfo))])
             _hdOsubstitution :: (FiniteMapSubstitution)
             _tlIcollectConstraints :: (Trees (TypeConstraint ConstraintInfo))
@@ -556,8 +560,8 @@ sem_Core_UserStatements_Cons (hd_) (tl_) =
             _tlOcollectConstraints :: (Trees (TypeConstraint ConstraintInfo))
             _tlOcurrentPhase :: (Maybe Int)
             _tlOcurrentPosition :: ((Int, Int))
-            _tlOinfoTuple :: ((ConstraintSet, MetaVariableInfo))
-            _tlOmetaVariableTable :: (MetaVariableTable MetaVariableInfo)
+            _tlOinfoTuple :: ((ConstraintSet, LocalInfo))
+            _tlOmetaVariableTable :: (MetaVariableTable LocalInfo)
             _tlOmetavarConstraints :: ([(String,Tree (TypeConstraint ConstraintInfo))])
             _tlOsubstitution :: (FiniteMapSubstitution)
             ( _hdIcollectConstraints,_hdIcurrentPhase,_hdIcurrentPosition,_hdIftv,_hdImetavarConstraints) =

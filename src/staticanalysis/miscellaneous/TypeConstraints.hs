@@ -27,22 +27,28 @@ type TypeConstraints info = [TypeConstraint info]
 data TypeConstraint  info
    = TC_Eq   (EqualityConstraint  info)
    | TC_Inst (InstanceConstraint  info)
+   | TC_Oper String (forall m . HasSubst m info => m ())
 
 instance (HasBasic m info, HasTI m info, HasSubst m info, Show info) => Solvable (TypeConstraint info) m where 
-   solveConstraint (TC_Eq c)   = solveConstraint c
-   solveConstraint (TC_Inst c) = solveConstraint c
-   checkCondition  (TC_Eq c)   = checkCondition c
-   checkCondition  (TC_Inst c) = checkCondition c
+   solveConstraint (TC_Eq c)     = solveConstraint c
+   solveConstraint (TC_Inst c)   = solveConstraint c
+   solveConstraint (TC_Oper _ f) = f
+   checkCondition  (TC_Eq c)     = checkCondition c
+   checkCondition  (TC_Inst c)   = checkCondition c
+   checkCondition  (TC_Oper _ _) = return True
    
 instance Show info => Show (TypeConstraint info) where
-   show (TC_Eq c)   = show c
-   show (TC_Inst c) = show c
+   show (TC_Eq c)     = show c
+   show (TC_Inst c)   = show c
+   show (TC_Oper s _) = "<"++s++">"
    
 instance Substitutable (TypeConstraint info) where
    sub |-> (TC_Eq   c) = TC_Eq   (sub |-> c)
    sub |-> (TC_Inst c) = TC_Inst (sub |-> c)
+   sub |-> tc          = tc
    ftv (TC_Eq   c) = ftv c
    ftv (TC_Inst c) = ftv c
+   ftv _           = []
    
 ------------
 
@@ -52,6 +58,7 @@ spreadFunction tc =
       TC_Eq (Equality t1 t2 info)              -> spreadFromType t2
       TC_Inst (ExplicitInstance tp ts info)    -> spreadFromType tp
       TC_Inst (ImplicitInstance t1 ms t2 info) -> spreadFromType t1
+      _                                        -> Nothing
 
 spreadFromType :: Tp -> Maybe Int
 spreadFromType (TVar i) = Just i

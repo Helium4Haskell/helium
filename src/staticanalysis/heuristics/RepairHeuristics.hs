@@ -40,7 +40,7 @@ siblingFunctions :: (MaybeImported info, HasTwoTypes info, WithHints info, HasTy
 siblingFunctions siblings = 
    Selector ("Sibling functions", f) where
   
- f (edge, cnr, info) =    
+ f (edge, cnr, info) =
    case maybeImportedName info of 
       Nothing   -> return Nothing
       Just name -> 
@@ -64,11 +64,12 @@ siblingFunctions siblings =
       
                          Just tp ->                             
                             case filter (unifiable synonyms tp . unqualify . snd . instantiate 123456789 . snd) functions of
-                               [(s, scheme)] -> let hint = fixHint ("use "++s++" instead")
+			      
+                               (s, scheme):_ -> let hint = fixHint ("use "++s++" instead")
                                                 in return $ Just
                                                       (10,"Sibling "++show s++" instead of "++show name, [edge], [hint info])
-                               _             -> return Nothing 
-
+                               _             -> return Nothing
+			       
 -----------------------------------------------------------------------------
 
 class MaybeLiteral a where

@@ -16,7 +16,7 @@
 imports {
 import List
 import Matchers
-import TS_Apply (applyTypingStrategy, matchInformation, MetaVariableTable, MetaVariableInfo)
+import TS_Apply (applyTypingStrategy, matchInformation, MetaVariableTable)
 import TS_CoreSyntax
 }
 
@@ -69,14 +69,14 @@ ATTR MaybeExpression [ tryPatterns     : {[(MaybeExpression, [String])]} | | ]
                             
 ---------------------------------------------------------------------------------------------------------
 
-ATTR Expression Expressions MaybeExpression [ | | matches : {[Maybe (MetaVariableTable MetaVariableInfo)]} ]
+ATTR Expression Expressions MaybeExpression [ | | matches : {[Maybe (MetaVariableTable LocalInfo)]} ]
                                 
 SEM Expression   
   | Literal 
        lhs . matchIO           = @lhs.matchIO >> @ioMatch
            . constraints       = @newConstraintSet
            . uniqueSecondRound = @newUnique       
-       loc . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
+       loc . infoTuple         = (@constraints, @localInfo)
            . ((),matches,newConstraintSet,newUnique,ioMatch) = 
                 match0 @infoTuple @lhs.uniqueSecondRound 
                        (match_Expression_Literal @literal.self) 
@@ -87,7 +87,7 @@ SEM Expression
        lhs . matchIO           = @lhs.matchIO >> @ioMatch
            . constraints       = @newConstraintSet
            . uniqueSecondRound = @newUnique      
-       loc . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
+       loc . infoTuple         = (@constraints, @localInfo)
            . ((),matches,newConstraintSet,newUnique,ioMatch) = 
                 match0 @infoTuple @lhs.uniqueSecondRound 
                        (match_Expression_Variable @name.self) 
@@ -98,7 +98,7 @@ SEM Expression
        lhs . matchIO           = @lhs.matchIO >> @ioMatch
            . constraints       = @newConstraintSet
            . uniqueSecondRound = @newUnique     
-       loc . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
+       loc . infoTuple         = (@constraints, @localInfo)
            . ((),matches,newConstraintSet,newUnique,ioMatch) = 
                 match0 @infoTuple @lhs.uniqueSecondRound 
                        (match_Expression_Constructor @name.self) 
@@ -111,7 +111,7 @@ SEM Expression
        lhs       . matchIO           = @arguments.matchIO >> @ioMatch  
                  . constraints       = @newConstraintSet
                  . uniqueSecondRound = @newUnique   
-       loc       . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
+       loc       . infoTuple         = (@constraints, @localInfo)
                  . ((t1,t2),matches,newConstraintSet,newUnique,ioMatch) = 
                       match2 @infoTuple @arguments.uniqueSecondRound 
                              match_Expression_NormalApplication 
@@ -125,7 +125,7 @@ SEM Expression
        lhs             . matchIO           = @rightExpression.matchIO >> @ioMatch
                        . constraints       = @newConstraintSet
                        . uniqueSecondRound = @newUnique
-       loc             . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
+       loc             . infoTuple         = (@constraints, @localInfo)
            . ((t1,t2,t3),matches,newConstraintSet,newUnique,ioMatch) = 
                 match3 @infoTuple @rightExpression.uniqueSecondRound 
                        match_Expression_InfixApplication 
@@ -139,7 +139,7 @@ SEM Expression
        lhs             . matchIO           = @elseExpression.matchIO >> @ioMatch     
                        . constraints       = @newConstraintSet
                        . uniqueSecondRound = @newUnique  
-       loc             . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
+       loc             . infoTuple         = (@constraints, @localInfo)
                        . ((t1,t2,t3),matches,newConstraintSet,newUnique,ioMatch) =
                             match3 @infoTuple @elseExpression.uniqueSecondRound  
                                    match_Expression_If 
@@ -151,7 +151,7 @@ SEM Expression
        lhs         . matchIO           = @expressions.matchIO
                    . constraints       = @newConstraintSet
                    . uniqueSecondRound = @newUnique     
-       loc         . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
+       loc         . infoTuple         = (@constraints, @localInfo)
                    . ((t1),matches,newConstraintSet,newUnique,ioMatch) = 
                         match1 @infoTuple @expressions.uniqueSecondRound 
                            match_Expression_List 
@@ -163,7 +163,7 @@ SEM Expression
        lhs         . matchIO           = @expressions.matchIO >> @ioMatch    
                    . constraints       = @newConstraintSet
                    . uniqueSecondRound = @newUnique        
-       loc         . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
+       loc         . infoTuple         = (@constraints, @localInfo)
                    . ((t1),matches,newConstraintSet,newUnique,ioMatch) = 
                         match1 @infoTuple @expressions.uniqueSecondRound 
                                match_Expression_Tuple 
@@ -177,7 +177,7 @@ SEM Expression
        lhs  . matchIO           = @to.matchIO >> @ioMatch
             . constraints       = @newConstraintSet
             . uniqueSecondRound = @newUnique
-       loc  . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
+       loc  . infoTuple         = (@constraints, @localInfo)
             . ((t1,t2,t3),matches,newConstraintSet,newUnique,ioMatch) = 
                  match3 @infoTuple @to.uniqueSecondRound 
                         match_Expression_Enum 
@@ -190,7 +190,7 @@ SEM Expression
        lhs        . matchIO           = @expression.matchIO >> @ioMatch
                   . constraints       = @newConstraintSet
                   . uniqueSecondRound = @newUnique
-       loc        . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
+       loc        . infoTuple         = (@constraints, @localInfo)
                   . ((t1),matches,newConstraintSet,newUnique,ioMatch) = 
                        match1 @infoTuple @expression.uniqueSecondRound 
                               match_Expression_Negate 
@@ -202,7 +202,7 @@ SEM Expression
        lhs        . matchIO           = @expression.matchIO >> @ioMatch
                   . constraints       = @newConstraintSet
                   . uniqueSecondRound = @newUnique              
-       loc        . infoTuple         = (@constraints, (@beta, self @localInfo, @range.self))
+       loc        . infoTuple         = (@constraints, @localInfo)
                   . ((t1),matches,newConstraintSet,newUnique,ioMatch) = 
                        match1 @infoTuple @expression.uniqueSecondRound 
                               match_Expression_NegateFloat 
@@ -232,26 +232,26 @@ SEM MaybeExpression
 SEM Expression
   | Lambda             lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
                        expression . tryPatterns = []
-                       loc . infoTuple   = (@constraints, (@beta, self @localInfo, @range.self))
+                       loc . infoTuple   = (@constraints, @localInfo)
                        
   | Case               lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
                        expression . tryPatterns = []
-                       loc . infoTuple   = (@constraints, (@beta, self @localInfo, @range.self))
+                       loc . infoTuple   = (@constraints, @localInfo)
                                               
   | Let                lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
                        expression . tryPatterns = []
-                       loc . infoTuple   = (@constraints, (@beta, self @localInfo, @range.self))
+                       loc . infoTuple   = (@constraints, @localInfo)
                                               
   | Do                 lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
-                       loc . infoTuple   = (@constraints, (@beta, self @localInfo, @range.self))
+                       loc . infoTuple   = (@constraints, @localInfo)
                          
   | Comprehension      lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
                        expression . tryPatterns = []
-                       loc . infoTuple   = (@constraints, (@beta, self @localInfo, @range.self))
+                       loc . infoTuple   = (@constraints, @localInfo)
                                               
   | Typed              lhs . matches     = matchOnlyVariable @infoTuple @lhs.tryPatterns
                        expression . tryPatterns = []
-                       loc . infoTuple   = (@constraints, (@beta, self @localInfo, @range.self))
+                       loc . infoTuple   = (@constraints, @localInfo)
                        
 SEM Statement
   | Expression  expression . tryPatterns = []
@@ -319,19 +319,18 @@ matchOnlyVariable infoTuple tryPats =
 noMatch :: a -> Maybe b
 noMatch = const Nothing
 
---noMetaVariableInfo :: MetaVariableInfo
 noMetaVariableInfo = internalError "PatternMatching.ag" "noMetaVariableInfo" ""
 
 generalMatch :: (nonTerminal -> Maybe String) 
              -> ([([String], childrenTuple)] -> childrenResult)
-             -> (ConstraintSet, MetaVariableInfo)
+             -> (ConstraintSet, LocalInfo)
              -> Int             
              -> (nonTerminal -> Maybe childrenTuple) 
              -> [(nonTerminal, [String])] 
              -> [((nonTerminal, [String]), Core_TypingStrategy)] 
-             -> [[Maybe (MetaVariableTable MetaVariableInfo)]] 
+             -> [[Maybe (MetaVariableTable LocalInfo)]] 
              -> ( childrenResult
-                , [Maybe (MetaVariableTable MetaVariableInfo)]
+                , [Maybe (MetaVariableTable LocalInfo)]
                 , ConstraintSet
                 , Int
                 , IO ()

@@ -13,12 +13,13 @@ module SelectConstraintSolver (selectConstraintSolver) where
 
 import Args (Option(..))
 import ConstraintInfo (ConstraintInfo)
-import TypeConstraints (TypeConstraint, spreadFunction, dependencyTypeConstraint)
+import TypeConstraints (TypeConstraint(..), spreadFunction, dependencyTypeConstraint)
 import ContributingSites (contributingSites)
 import ListOfHeuristics (listOfHeuristics)
 import ImportEnvironment (ImportEnvironment, getSiblings)
 import Top.Types (OrderedTypeSynonyms)
 import Top.States.BasicState (updateErrors)
+import Top.States.SubstState (makeConsistent)
 import Top.Solvers.SolveConstraints (Solver, SolveResult)
 import Top.Solvers.SimpleSolver (solveSimple)
 import Top.Solvers.GreedySolver (solveGreedy)
@@ -53,11 +54,12 @@ selectConstraintSolver options importenv synonyms unique constraintTree =
        selectedTreeWalk 
           | RightToLeft `elem` options = reverseTreeWalk simpleTreeWalk
           | otherwise                  = simpleTreeWalk
-	
-       flattening  = flattenTree selectedTreeWalk . phaseTree . spreadingOrNot
+       
+       phases      = phaseTree (TC_Oper "MakeConsistent" makeConsistent)	
+       flattening  = flattenTree selectedTreeWalk . phases . spreadingOrNot
        
        constraints      = flattening constraintTree
-       chunkConstraints = chunkTree dependencyTypeConstraint . phaseTree . spreadTree spreadFunction $ constraintTree
+       chunkConstraints = chunkTree dependencyTypeConstraint . phases . spreadTree spreadFunction $ constraintTree
        siblings         = getSiblings importenv
        
        selectedSolver
