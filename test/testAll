@@ -1,10 +1,10 @@
-#!/bin/sh
 clear
-./testP
-./testSE
-./testTE
-./testM
-./testTh
-./testC
-./testSW
-./testR
+echo DID YOU START THIS SCRIPT WITH:   bash testAll  ?
+bash testP
+bash testSE
+bash testTE
+bash testM
+bash testTh
+bash testC
+bash testSW
+bash testR

@@ -1,4 +1,3 @@
-#!/bin/sh
 export LVMPATH="${1%/*};../lib"
 ../bin/helium -lT $1 && lvmrun $1
 rm -f ${1%/*}/*.lvm
