@@ -37,6 +37,18 @@ class HasMessage a where
    getRanges      :: a -> [Range]
    getMessage     :: a -> Message
 
+instance Substitutable MessageLine where
+
+   sub |-> ml = case ml of   
+                   MessageOneLiner mb -> MessageOneLiner (sub |-> mb)
+                   MessageTable table -> MessageTable (sub |-> table)
+                   MessageHints s mbs -> MessageHints s (sub |-> mbs)
+
+   ftv ml = case ml of
+               MessageOneLiner mb -> ftv mb
+               MessageTable table -> ftv table
+               MessageHints s mbs -> ftv mbs
+                                       
 instance Substitutable MessageBlock where
 
    sub |-> mb = case mb of
@@ -44,11 +56,13 @@ instance Substitutable MessageBlock where
                    MessageTypeScheme ts -> -- see "substitution is static"
                                            let sub' = listToSubstitution [ (i, sub |-> TVar i) | i <- ftv ts ]
                                            in MessageTypeScheme (sub' |-> ts)
+                   MessageCompose mbs   -> MessageCompose (sub |-> mbs) 
                    _                    -> mb
 
    ftv mb = case mb of         
                MessageType tp       -> ftv tp
                MessageTypeScheme ts -> ftv ts
+               MessageCompose mbs   -> ftv mbs
                _                    -> []       
 
 -------------------------------------------------------------

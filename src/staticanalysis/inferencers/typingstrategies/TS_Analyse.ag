@@ -29,6 +29,8 @@ import ImportEnvironment
 import SolveGreedy
 import ExpressionTypeInferencer (expressionTypeInferencer)
 import FiniteMap
+import Char (isAlphaNum)
+import Utils (internalError)
 }
 
 ATTR TypingStrategy  [ importEnvironment : ImportEnvironment

@@ -1,96 +1,228 @@
-INCLUDE "../../../syntax/UHA_Syntax.ag"
-INCLUDE "TS_Syntax.ag"
-INCLUDE "TS_Collect.ag"
-INCLUDE "../../../syntax/UHA_Self.ag"
+INCLUDE "TS_AG_CoreSyntax.ag"
 
 imports {
-import TS_Syntax
+import UHA_Syntax
+import TS_CoreSyntax
 import ConstraintTree
 import Constraints
 import HeliumConstraintInfo
 import TypeGraphConstraintInfo
 import Types
 import List
-import TypeConversion
 import UHA_Utils (noRange)
 import Utils (internalError)
 import OneLiner
+import Messages
+import TypeErrors
+import Char (isAlphaNum)
+import ImportEnvironment
+import OperatorTable (OperatorTable)
+import ParseDeclExp (exp_)
+import HaskellLexer (runHParser)
+import qualified ResolveOperators
 }
 
 {
 type MetaVariableTable info = [(String, (ConstraintSet, info))]
 type MetaVariableInfo = (Tp, Tree, Range)
 
-applyTypingStrategy :: TypingStrategy -> (ConstraintSet, MetaVariableInfo) -> MetaVariableTable MetaVariableInfo -> Int -> (ConstraintSet, IO (), Int)
-applyTypingStrategy = sem_TypingStrategy
+applyTypingStrategy :: Core_TypingStrategy -> (ConstraintSet, MetaVariableInfo) -> MetaVariableTable MetaVariableInfo -> Int -> (ConstraintSet, IO (), Int)
+applyTypingStrategy = sem_Core_TypingStrategy
+
+matchInformation :: ImportEnvironment -> Core_TypingStrategy -> (Expression, [String])
+matchInformation importEnvironment typingStrategy = 
+   case typingStrategy of 
+      TypingStrategy (TypeRule premises conclusion) _ -> 
+         let Judgement exprstring _ = conclusion
+             expression = expressionParser (operatorTable importEnvironment) exprstring
+             metas      = [ s | Judgement s t <- premises ]
+         in (expression, metas)
+      _ -> internalError "TS_Apply.ag" "n/a" "unknown TypingStrategy"
+      
+expressionParser :: OperatorTable -> String -> Expression
+expressionParser operatorTable string = 
+   case runHParser exp_ "TS_Apply" string of
+      Left parseError  -> internalError "TS_Apply.ag" "n/a" ("unparsable expression: "++show parseError)
+      Right expression -> ResolveOperators.expression operatorTable expression
 }
 
-ATTR TypingStrategy [ localInfo         : {(ConstraintSet, MetaVariableInfo)}
-                      metaVariableTable : {MetaVariableTable MetaVariableInfo}  
-                    | unique            : Int 
-                    | constraintSet     : ConstraintSet
-                      debugIO           : {IO ()}
-                    ] 
-            
-SEM TypingStrategy 
+
+ATTR Core_TypingStrategy 
+     [ localInfo         : {(ConstraintSet, MetaVariableInfo)}
+       metaVariableTable : {MetaVariableTable MetaVariableInfo}  
+     | unique            : Int 
+     | constraintSet     : ConstraintSet
+       debugIO           : {IO ()}
+     ] 
+          
+SEM Core_TypingStrategy 
   | TypingStrategy     
-       lhs . constraintSet = ctNode (reverse @statements.collectConstraints)
-           . unique        = length @uniqueTypevariables + @lhs.unique
-           . debugIO       = putStrLn ("applying typing strategy " ++ @name)
-       loc . nameMap = zip @uniqueTypevariables (map TVar [@lhs.unique..])
+       lhs . constraintSet = ctNode @allConstraintTrees
+           . unique        = length @ftv + @lhs.unique
+           . debugIO       = putStrLn "applying typing strategy"
+       loc . substitution  = listToSubstitution (zip @ftv (map TVar [@lhs.unique..]))
+           . ftv           = @typerule.ftv `union` @statements.ftv
 
--- Construct type constraints from the typing rule
+ATTR Core_TypeRule
+     Core_Judgements Core_Judgement
+     Core_UserStatements Core_UserStatement 
+     [ substitution      : FiniteMapSubstitution 
+       localInfo         : {(ConstraintSet, MetaVariableInfo)}
+       metaVariableTable : {MetaVariableTable MetaVariableInfo} 
+     | 
+     | ftv USE {++} {[]} : {[Int]} 
+     ]
 
-SEM TypingStrategy 
+SEM Core_UserStatement 
+  | Constraint  lhs . ftv = ftv [@leftType, @rightType]
+
+SEM Core_Judgement
+  | Judgement   lhs . ftv = ftv @type
+
+ATTR Core_UserStatements Core_UserStatement 
+     [ attributeTable     : {[((String, Maybe String), MessageBlock)]}
+     | collectConstraints : {ConstraintTrees HeliumConstraintInfo} 
+       currentPhase       : {Maybe Int} 
+       metavarConstraints : {[(String,ConstraintTree HeliumConstraintInfo)]}
+     | 
+     ]
+
+SEM Core_TypingStrategy 
   | TypingStrategy
-       loc . typeruleConstraints = [ (tp1 .==. tp2) (@cinfo s1 mvinfo)
-                                   | (s1,(_,mvinfo@(tp1,_,_))) <- ("?toplevel?", @lhs.localInfo) : @lhs.metaVariableTable 
-                                   , (s2,tp2)                  <- ("?toplevel?", @typerule.conclusionType) : @typerule.simpleJudgements
-                                   , s1 == s2
-                                   ]
-           . cinfo = \string (tp1,tree,range) tppair ->
-                     CInfo { info       = (NTBody, AltBody, "Typing Strategy, meta-typevariable " ++ string)
-                           , location   = "Typing Strategy"
-                           , errorrange = noRange
-                           , sources    = [ ]
-                           , typepair   = tppair
-                           , properties = [ HighlyTrusted ] 
-                           }
+       loc        . allConstraintTrees = ctSingle (reverse @typerule.constraints) :
+                                         (map snd @statements.metavarConstraints) ++
+                                         (reverse @statements.collectConstraints)
+       statements . collectConstraints = []
+                  . currentPhase       = Nothing
+                  . metavarConstraints = [ (s,cs) | (s,(cs,_)) <- @lhs.metaVariableTable ] 
+                  . attributeTable     = makeAttributeTable (snd @lhs.localInfo) @lhs.metaVariableTable ++
+                                         @typerule.attributeTable
 
--- build the constraint tree
-
-ATTR UserStatements UserStatement [ metavarConstraints : {[(String,ConstraintTree HeliumConstraintInfo)]}
-                                  | collectConstraints : {ConstraintTrees HeliumConstraintInfo} 
-                                    currrentPhase      : {Maybe Int} 
-                                  | 
-                                  ]
-
-SEM TypingStrategy 
-  | TypingStrategy
-       statements    . collectConstraints = ctSingle (reverse @typeruleConstraints) : 
-                                            reverse [ cs 
-                                                    | (s,(cs,_)) <- @lhs.metaVariableTable
-                                                    , s /= "?toplevel?" 
-                                                    , s `elem` @constraintsNotExplicit
-                                                    ] 
-                     . currrentPhase      = Nothing
-                     . metavarConstraints = [ (s,cs) 
-                                            | (s,(cs,_)) <- @lhs.metaVariableTable
-                                            ]
-
-SEM UserStatement
+SEM Core_UserStatement
   | Constraint
-       lhs . collectConstraints = case @lhs.currrentPhase of
+       lhs . collectConstraints = case @lhs.currentPhase of
                                      Just phase -> ctPhased phase [ @newConstraint ] : @lhs.collectConstraints
                                      Nothing    -> ctSingle       [ @newConstraint ] : @lhs.collectConstraints
        
   | MetaVariableConstraints        
-       lhs . collectConstraints = case lookup (show @name) @lhs.metavarConstraints of
+       lhs . metavarConstraints = filter ((@name /=) . fst) @lhs.metavarConstraints
+           . collectConstraints = case lookup @name @lhs.metavarConstraints of
                                       Just tree -> tree : @lhs.collectConstraints
                                       Nothing   -> internalError "TS_Apply.ag" "n/a" "unknown constraint set"
                                       
   | Phase 
-       lhs . currrentPhase = Just @phase
-                  
--- prevent AG-Warnings
-SEM TypingStrategies | Cons  loc . (unique,metaVariableTable,localInfo) = undefined
+       lhs . currentPhase = Just @phase                  
+
+SEM Core_UserStatement
+  | Constraint
+       loc . newConstraint = 
+          let cinfo   = addProperty (WithTypeError (CustomTypeError [] message)) . standardConstraintInfo       
+                           -- (setCustomTypeError (snd @lhs.localInfo) . standardConstraintInfo)
+              message = case makeMessageBlockWithAttributes @lhs.attributeTable @message of
+                           Just mb -> [MessageOneLiner mb]
+                           Nothing -> internalError "TypingStrategies" "n/a" 
+                                                    ("unknown attribute: " ++ @message ++ 
+                                                     "\nknown attributes: " ++ show (map fst @lhs.attributeTable))                             
+          in (@lhs.substitution |-> @leftType .==. @lhs.substitution |-> @rightType) cinfo
+
+{
+standardConstraintInfo :: (Tp, Tp) -> HeliumConstraintInfo
+standardConstraintInfo tppair =
+   CInfo { info       = (NTBody, AltBody, "  Strategy, user constraint")
+         , location   = "Typing Strategy" -- !!!!!
+         , errorrange = noRange
+         , sources    = [ ]
+         , typepair   = tppair
+         , properties = [ ]
+         }
+}
+
+ATTR Core_TypeRule [ | | constraints : {Constraints HeliumConstraintInfo} ]
+
+SEM Core_TypeRule             
+  | TypeRule        
+       lhs .  constraints = [ (@lhs.substitution |-> tp1 .==. tp2) (typeRuleCInfo "conclusion" mvinfo)
+                            | (s1, tp1) <- @conclusion.judgements
+                            , let (_, mvinfo@(tp2,_,_)) = @lhs.localInfo
+                            ]
+                            ++
+                            [ (@lhs.substitution |-> tp1 .==. tp2) (typeRuleCInfo s1 mvinfo)
+                            | (s1, tp1)                   <- @premises.judgements 
+                            , (s2, (_, mvinfo@(tp2,_,_))) <- @lhs.metaVariableTable
+                            , s1 == s2
+                            ]
+
+{
+typeRuleCInfo :: String -> MetaVariableInfo -> (Tp, Tp) -> HeliumConstraintInfo
+typeRuleCInfo = 
+   \string (tp1,tree,range) tppair ->
+      CInfo { info       = (NTBody, AltBody, "Typing Strategy, meta-typevariable " ++ string)
+            , location   = "Typing Strategy"
+            , errorrange = noRange
+            , sources    = [ ]
+            , typepair   = tppair
+            , properties = [ HighlyTrusted ] 
+            }
+
+setCustomTypeError :: MetaVariableInfo -> HeliumConstraintInfo -> HeliumConstraintInfo
+setCustomTypeError (tp, tree, range) cinfo =
+   addProperty (WithTypeError customTypeError) cinfo        
+
+     where customTypeError = CustomTypeError [range] message
+           message = [ MessageOneLiner (MessageString ("Type error in "++"Typing Strategy")) -- !!!
+                     , MessageTable
+                       [ (MessageString "Expression", MessageOneLineTree tree) ]                     
+                     , MessageOneLiner (MessageString "   implies that the following types are equal:")
+                     , MessageTable 
+                       [ (MessageString "Type 1", MessageType (fst (typepair cinfo)))
+                       , (MessageString "Type 2", MessageType (snd (typepair cinfo)))
+                       ]                     
+                     ]  
+
+makeMessageBlockWithAttributes :: [((String, Maybe String), MessageBlock)] -> String -> Maybe MessageBlock
+makeMessageBlockWithAttributes table = rec
+   where rec "" = Just (MessageString "")
+         rec xs = let (begin, rest) = span (/= '@') xs
+                  in case rest of
+                        []           -> Just (MessageString begin)
+                        '@':'@':rest -> do result <- rec rest
+                                           return (MessageCompose [MessageString (begin++"@"), result])
+                        '@':rest     -> let (variableName, as) = span isAlphaNum rest
+                                        in case as of
+                                              '@':rest -> do mb <- lookup (variableName, Nothing) table
+                                                             result <- rec rest                                                               
+                                                             return (MessageCompose [MessageString begin, mb, result])
+                                              '.':rest -> let (fieldName, bs) = span isAlphaNum rest
+                                                          in case bs of
+                                                                '@':rest -> do mb <- lookup (variableName, Just fieldName) table
+                                                                               result <- rec rest                                                               
+                                                                               return (MessageCompose [MessageString begin, mb, result])
+                                                                _ -> Nothing
+                                              _ -> Nothing
+
+makeAttributeTable :: MetaVariableInfo -> MetaVariableTable MetaVariableInfo -> [((String, Maybe String), MessageBlock)]
+makeAttributeTable local table = 
+   let f :: String -> MetaVariableInfo -> [((String, Maybe String), MessageBlock)]
+       f string (tp, tree, range) = [ ((string, Just "type" ), MessageType tp)
+                                    , ((string, Just "pp"   ), MessageOneLineTree tree)
+                                    , ((string, Just "range"), MessageRange range)
+                                    ]
+   in f "expr" local 
+   ++ concatMap (\(s,(_,info)) -> f s info) table                     
+}
+
+ATTR Core_Judgements Core_Judgement [ | | judgements USE {++} {[]} : {[(String, Tp)]} ]
+
+
+
+SEM Core_Judgement
+  | Judgement
+       lhs . judgements = [(@expression, @type)]
+
+ATTR Core_TypeRule [ | | attributeTable     : {[((String, Maybe String), MessageBlock)]} ]
+
+SEM Core_TypeRule
+  | TypeRule 
+       lhs . attributeTable = [ ((show i, Nothing), MessageType (@lhs.substitution |-> tp)) 
+                              | (_, tp@(TVar i)) <- @premises.judgements ++ @conclusion.judgements 
+                              ]

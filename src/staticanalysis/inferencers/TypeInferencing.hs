@@ -41,12 +41,10 @@ import List (intersperse)
 import SATypes (isTupleConstructor)
 -}
 
-import TS_Syntax
 import List
 import Matchers
-import TS_Apply (applyTypingStrategy, MetaVariableTable, MetaVariableInfo)
-
-import UHA_Syntax
+import TS_Apply (applyTypingStrategy, matchInformation, MetaVariableTable, MetaVariableInfo)
+import TS_CoreSyntax
 
 type Assumptions        = FiniteMap Name [(Name,Tp)]
 type PatternAssumptions = FiniteMap Name Tp
@@ -217,16 +215,6 @@ intErr :: String -> String -> a
 intErr node message = internalError "UHA_OneLine" node message
 
 
-expressionFromTypingStrategy :: TypingStrategy -> Expression
-expressionFromTypingStrategy typingStrategy =
-   let TypingStrategy_TypingStrategy _ (TypeRule_TypeRule _ (Judgement_Judgement expr _)) _ = typingStrategy
-   in expr
-
-metaVariablesInTypingStrategy :: TypingStrategy -> [String]
-metaVariablesInTypingStrategy typingStrategy = 
-   let TypingStrategy_TypingStrategy _ (TypeRule_TypeRule premises _) _ = typingStrategy
-   in [ show name | SimpleJudgement_SimpleJudgement name _ <- premises ]
-
 matchConverter0 :: [([String],())] -> ()
 matchConverter0 = const ()
 
@@ -285,7 +273,7 @@ generalMatch :: (nonTerminal -> Maybe String)
              -> Int             
              -> (nonTerminal -> Maybe childrenTuple) 
              -> [(nonTerminal, [String])] 
-             -> [((nonTerminal, [String]), TypingStrategy)] 
+             -> [((nonTerminal, [String]), Core_TypingStrategy)] 
              -> [[Maybe (MetaVariableTable MetaVariableInfo)]] 
              -> ( childrenResult
                 , [Maybe (MetaVariableTable MetaVariableInfo)]
@@ -345,7 +333,7 @@ generalMatch exprVarMatcher converter metaVariableInfo unique matcher tryPats al
               ] -}
 -- Alternative -------------------------------------------------
 -- semantic domain
-type T_Alternative = ([((Expression, [String]), TypingStrategy)]) ->
+type T_Alternative = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (Tp) ->
                      (Tp) ->
                      (Int) ->
@@ -434,7 +422,7 @@ sem_Alternative_Empty (_range) (_lhs_allPatterns) (_lhs_betaLeft) (_lhs_betaRigh
     in  (noAssumptions,_lhs_betaUnique,_lhs_collectednotypedef,ctEmpty,_lhs_matchIO,_oneLineTree,_self,_size,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
 -- Alternatives ------------------------------------------------
 -- semantic domain
-type T_Alternatives = ([((Expression, [String]), TypingStrategy)]) ->
+type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (Tp) ->
                       (Tp) ->
                       (Int) ->
@@ -512,7 +500,7 @@ sem_AnnotatedTypes_Nil  =
     in  (_self)
 -- Body --------------------------------------------------------
 -- semantic domain
-type T_Body = ([((Expression, [String]), TypingStrategy)]) ->
+type T_Body = ([((Expression, [String]), Core_TypingStrategy)]) ->
               (Int) ->
               ([(Name,Tps,Tp,Bool)]) ->
               (ImportEnvironment) ->
@@ -688,7 +676,7 @@ sem_ContextItems_Nil  =
     in  (_self)
 -- Declaration -------------------------------------------------
 -- semantic domain
-type T_Declaration = ([((Expression, [String]), TypingStrategy)]) ->
+type T_Declaration = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (Int) ->
                      (BindingGroups) ->
                      ([(Name,Tps,Tp,Bool)]) ->
@@ -993,7 +981,7 @@ sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_allPatterns) (_lhs
     in  (_lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_self,_size,_lhs_typeAnnotations,addListToFM _lhs_typeSignatures [ (name, _typeScheme) | name <- _names_self ],_lhs_uniqueSecondRound)
 -- Declarations ------------------------------------------------
 -- semantic domain
-type T_Declarations = ([((Expression, [String]), TypingStrategy)]) ->
+type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (Int) ->
                       (BindingGroups) ->
                       ([(Name,Tps,Tp,Bool)]) ->
@@ -1113,7 +1101,7 @@ sem_Exports_Nil  =
     in  (_self)
 -- Expression --------------------------------------------------
 -- semantic domain
-type T_Expression = ([((Expression, [String]), TypingStrategy)]) ->
+type T_Expression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (Int) ->
                     ([(Name,Tps,Tp,Bool)]) ->
                     (ImportEnvironment) ->
@@ -2116,7 +2104,7 @@ sem_Expression_Variable (_range) (_name) (_lhs_allPatterns) (_lhs_betaUnique) (_
     in  (_name_self `single` _beta,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,_newConstraintSet,_lhs_matchIO >> _ioMatch,_matches,_oneLineTree,_self,_size,_lhs_typeAnnotations,_newUnique)
 -- Expressions -------------------------------------------------
 -- semantic domain
-type T_Expressions = ([((Expression, [String]), TypingStrategy)]) ->
+type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (Int) ->
                      ([(Name,Tps,Tp,Bool)]) ->
                      (ImportEnvironment) ->
@@ -2237,7 +2225,7 @@ sem_Fixity_Infixr (_range) =
     in  (_self)
 -- FunctionBinding ---------------------------------------------
 -- semantic domain
-type T_FunctionBinding = ([((Expression, [String]), TypingStrategy)]) ->
+type T_FunctionBinding = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (Tp) ->
                          (Int) ->
                          (Tps) ->
@@ -2314,7 +2302,7 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_
         )
 -- FunctionBindings --------------------------------------------
 -- semantic domain
-type T_FunctionBindings = ([((Expression, [String]), TypingStrategy)]) ->
+type T_FunctionBindings = ([((Expression, [String]), Core_TypingStrategy)]) ->
                           (Tp) ->
                           (Int) ->
                           (Tps) ->
@@ -2348,7 +2336,7 @@ sem_FunctionBindings_Nil (_lhs_allPatterns) (_lhs_betaRight) (_lhs_betaUnique) (
     in  (noAssumptions,_lhs_betaUnique,_lhs_collectednotypedef,[],_lhs_matchIO,internalError "TypeInferencing.ag" "n/a" "FunctionBindings(2)",internalError "TypeInferencing.ag" "n/a" "FunctionBindings(1)",[],_self,0,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
-type T_GuardedExpression = ([((Expression, [String]), TypingStrategy)]) ->
+type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (Int) ->
                            ([(Name,Tps,Tp,Bool)]) ->
                            (ImportEnvironment) ->
@@ -2418,7 +2406,7 @@ sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_al
         )
 -- GuardedExpressions ------------------------------------------
 -- semantic domain
-type T_GuardedExpressions = ([((Expression, [String]), TypingStrategy)]) ->
+type T_GuardedExpressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                             (Int) ->
                             ([(Name,Tps,Tp,Bool)]) ->
                             (ImportEnvironment) ->
@@ -2601,25 +2589,6 @@ sem_Imports_Nil  =
     let (_self) =
             []
     in  (_self)
--- Judgement ---------------------------------------------------
--- semantic domain
-type T_Judgement = ()
--- cata
-sem_Judgement :: (Judgement) ->
-                 (T_Judgement)
-sem_Judgement ((Judgement_Judgement (_expression) (_type))) =
-    (sem_Judgement_Judgement ((sem_Expression (_expression))) ((sem_Type (_type))))
-sem_Judgement_Judgement :: (T_Expression) ->
-                           (T_Type) ->
-                           (T_Judgement)
-sem_Judgement_Judgement (_expression) (_type) =
-    let ((_betaUnique,_allPatterns,_collectednotypedef,_importEnvironment,_monos,_tryPatterns,_typeAnnotations,_matchIO,_uniqueSecondRound)) =
-            undefined
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_size,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_allPatterns) (_betaUnique) (_collectednotypedef) (_importEnvironment) (_matchIO) (_monos) (_tryPatterns) (_typeAnnotations) (_uniqueSecondRound))
-        ( _type_self) =
-            (_type )
-    in  ()
 -- LeftHandSide ------------------------------------------------
 -- semantic domain
 type T_LeftHandSide = (Int) ->
@@ -2762,7 +2731,7 @@ sem_Literal_String (_range) (_value) =
     in  (stringType,_oneLineTree,_self)
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
-type T_MaybeDeclarations = ([((Expression, [String]), TypingStrategy)]) ->
+type T_MaybeDeclarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (Assumptions) ->
                            (Int) ->
                            ([(Name,Tps,Tp,Bool)]) ->
@@ -2830,7 +2799,7 @@ sem_MaybeExports_Nothing  =
     in  (_self)
 -- MaybeExpression ---------------------------------------------
 -- semantic domain
-type T_MaybeExpression = ([((Expression, [String]), TypingStrategy)]) ->
+type T_MaybeExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (Int) ->
                          ([(Name,Tps,Tp,Bool)]) ->
                          (ImportEnvironment) ->
@@ -2964,7 +2933,6 @@ sem_MaybeNames_Nothing  =
 -- semantic domain
 type T_Module = (ImportEnvironment) ->
                 (Strategy) ->
-                (TypingStrategies) ->
                 (Bool) ->
                 ((IO ()),(TypeEnvironment),(TypeErrors),(Warnings))
 -- cata
@@ -2977,7 +2945,7 @@ sem_Module_Module :: (T_Range) ->
                      (T_MaybeExports) ->
                      (T_Body) ->
                      (T_Module)
-sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (_lhs_strategy) (_lhs_typingStrategies) (_lhs_useTypeGraph) =
+sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (_lhs_strategy) (_lhs_useTypeGraph) =
     let (_debugIO) =
             do putStrLn "--- Debug Info ---"
                putStrLn $ unlines $ map show _constraints
@@ -3042,7 +3010,18 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
         ( _exports_self) =
             (_exports )
         ( _body_assumptions,_body_betaUnique,_body_collectednotypedef,_body_constraints,_body_matchIO,_body_namesWithoutTypeDef,_body_self,_body_size,_body_typeAnnotations,_body_typeSignatures) =
-            (_body (map (\x -> ((expressionFromTypingStrategy x, metaVariablesInTypingStrategy x), x)) _lhs_typingStrategies) (maximum (0 : _monomorphics) + 1) ([]) (_lhs_importEnvironment) (return ()) (_monos) ([]))
+            (_body ([ (matchInfo, typingStrategy)
+                    | typingStrategy <- typingStrategies _lhs_importEnvironment
+                    , let matchInfo = matchInformation
+                                         _lhs_importEnvironment
+                                         typingStrategy
+                    ])
+                   (maximum (0 : _monomorphics) + 1)
+                   ([])
+                   (_lhs_importEnvironment)
+                   (return ())
+                   (_monos)
+                   ([]))
     in  (_debugIO >> putStrLn "Inference Strategies:" >> _body_matchIO,_toplevelTypes,_typeErrors,_warnings)
 -- Name --------------------------------------------------------
 -- semantic domain
@@ -3686,7 +3665,7 @@ sem_Position_Unknown  =
     in  (_self)
 -- Qualifier ---------------------------------------------------
 -- semantic domain
-type T_Qualifier = ([((Expression, [String]), TypingStrategy)]) ->
+type T_Qualifier = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (Assumptions) ->
                    (Int) ->
                    ([(Name,Tps,Tp,Bool)]) ->
@@ -3828,7 +3807,7 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_allPatterns) (_lhs_assumptions)
     in  (_aset,_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_cset,_declarations_matchIO,_lhs_monos,_oneLineTree,_self,_declarations_size,_anns ++ _declarations_typeAnnotations,_declarations_uniqueSecondRound)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
-type T_Qualifiers = ([((Expression, [String]), TypingStrategy)]) ->
+type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (Assumptions) ->
                     (Int) ->
                     ([(Name,Tps,Tp,Bool)]) ->
@@ -3983,7 +3962,7 @@ sem_RecordPatternBindings_Nil  =
     in  (_self)
 -- RightHandSide -----------------------------------------------
 -- semantic domain
-type T_RightHandSide = ([((Expression, [String]), TypingStrategy)]) ->
+type T_RightHandSide = ([((Expression, [String]), Core_TypingStrategy)]) ->
                        (Int) ->
                        ([(Name,Tps,Tp,Bool)]) ->
                        (ImportEnvironment) ->
@@ -4047,41 +4026,6 @@ sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) (_lhs_allPatte
         ( _where_assumptions,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_matchIO,_where_oneLineTree,_where_self,_where_size,_where_typeAnnotations,_where_uniqueSecondRound) =
             (_where (_lhs_allPatterns) (_guardedexpressions_assumptions) (_guardedexpressions_betaUnique) (_guardedexpressions_collectednotypedef) (ctNode _guardedexpressions_constraintslist) (_lhs_importEnvironment) (_guardedexpressions_matchIO) (_lhs_monos) (_guardedexpressions_typeAnnotations) (_guardedexpressions_uniqueSecondRound))
     in  (_where_assumptions,_beta,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_matchIO,_oneLineTree,_self,_size,_where_typeAnnotations,_where_uniqueSecondRound)
--- SimpleJudgement ---------------------------------------------
--- semantic domain
-type T_SimpleJudgement = ()
--- cata
-sem_SimpleJudgement :: (SimpleJudgement) ->
-                       (T_SimpleJudgement)
-sem_SimpleJudgement ((SimpleJudgement_SimpleJudgement (_name) (_type))) =
-    (sem_SimpleJudgement_SimpleJudgement ((sem_Name (_name))) ((sem_Type (_type))))
-sem_SimpleJudgement_SimpleJudgement :: (T_Name) ->
-                                       (T_Type) ->
-                                       (T_SimpleJudgement)
-sem_SimpleJudgement_SimpleJudgement (_name) (_type) =
-    let ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-        ( _type_self) =
-            (_type )
-    in  ()
--- SimpleJudgements --------------------------------------------
--- semantic domain
-type T_SimpleJudgements = ()
--- cata
-sem_SimpleJudgements :: (SimpleJudgements) ->
-                        (T_SimpleJudgements)
-sem_SimpleJudgements (list) =
-    (foldr (sem_SimpleJudgements_Cons) (sem_SimpleJudgements_Nil) ((map sem_SimpleJudgement list)))
-sem_SimpleJudgements_Cons :: (T_SimpleJudgement) ->
-                             (T_SimpleJudgements) ->
-                             (T_SimpleJudgements)
-sem_SimpleJudgements_Cons (_hd) (_tl) =
-    let 
-    in  ()
-sem_SimpleJudgements_Nil :: (T_SimpleJudgements)
-sem_SimpleJudgements_Nil  =
-    let 
-    in  ()
 -- SimpleType --------------------------------------------------
 -- semantic domain
 type T_SimpleType = ((SimpleType))
@@ -4106,7 +4050,7 @@ sem_SimpleType_SimpleType (_range) (_name) (_typevariables) =
     in  (_self)
 -- Statement ---------------------------------------------------
 -- semantic domain
-type T_Statement = ([((Expression, [String]), TypingStrategy)]) ->
+type T_Statement = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (Assumptions) ->
                    (Int) ->
                    ([(Name,Tps,Tp,Bool)]) ->
@@ -4253,7 +4197,7 @@ sem_Statement_Let (_range) (_declarations) (_lhs_allPatterns) (_lhs_assumptions)
     in  (_aset,_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_cset,Nothing,_declarations_matchIO,_lhs_monos,_oneLineTree,_self,_declarations_size,_anns ++ _declarations_typeAnnotations,_declarations_uniqueSecondRound)
 -- Statements --------------------------------------------------
 -- semantic domain
-type T_Statements = ([((Expression, [String]), TypingStrategy)]) ->
+type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (Assumptions) ->
                     (Int) ->
                     ([(Name,Tps,Tp,Bool)]) ->
@@ -4418,20 +4362,6 @@ sem_Type_Variable (_range) (_name) =
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
     in  (_self)
--- TypeRule ----------------------------------------------------
--- semantic domain
-type T_TypeRule = ()
--- cata
-sem_TypeRule :: (TypeRule) ->
-                (T_TypeRule)
-sem_TypeRule ((TypeRule_TypeRule (_premises) (_conclusion))) =
-    (sem_TypeRule_TypeRule ((sem_SimpleJudgements (_premises))) ((sem_Judgement (_conclusion))))
-sem_TypeRule_TypeRule :: (T_SimpleJudgements) ->
-                         (T_Judgement) ->
-                         (T_TypeRule)
-sem_TypeRule_TypeRule (_premises) (_conclusion) =
-    let 
-    in  ()
 -- Types -------------------------------------------------------
 -- semantic domain
 type T_Types = ((Types))
@@ -4456,88 +4386,4 @@ sem_Types_Nil  =
     let (_self) =
             []
     in  (_self)
--- TypingStrategies --------------------------------------------
--- semantic domain
-type T_TypingStrategies = ()
--- cata
-sem_TypingStrategies :: (TypingStrategies) ->
-                        (T_TypingStrategies)
-sem_TypingStrategies (list) =
-    (foldr (sem_TypingStrategies_Cons) (sem_TypingStrategies_Nil) ((map sem_TypingStrategy list)))
-sem_TypingStrategies_Cons :: (T_TypingStrategy) ->
-                             (T_TypingStrategies) ->
-                             (T_TypingStrategies)
-sem_TypingStrategies_Cons (_hd) (_tl) =
-    let 
-    in  ()
-sem_TypingStrategies_Nil :: (T_TypingStrategies)
-sem_TypingStrategies_Nil  =
-    let 
-    in  ()
--- TypingStrategy ----------------------------------------------
--- semantic domain
-type T_TypingStrategy = ()
--- cata
-sem_TypingStrategy :: (TypingStrategy) ->
-                      (T_TypingStrategy)
-sem_TypingStrategy ((TypingStrategy_TypingStrategy (_name) (_typerule) (_statements))) =
-    (sem_TypingStrategy_TypingStrategy (_name) ((sem_TypeRule (_typerule))) ((sem_UserStatements (_statements))))
-sem_TypingStrategy_TypingStrategy :: (String) ->
-                                     (T_TypeRule) ->
-                                     (T_UserStatements) ->
-                                     (T_TypingStrategy)
-sem_TypingStrategy_TypingStrategy (_name) (_typerule) (_statements) =
-    let 
-    in  ()
--- UserStatement -----------------------------------------------
--- semantic domain
-type T_UserStatement = ()
--- cata
-sem_UserStatement :: (UserStatement) ->
-                     (T_UserStatement)
-sem_UserStatement ((UserStatement_Constraint (_leftType) (_rightType) (_message))) =
-    (sem_UserStatement_Constraint ((sem_Type (_leftType))) ((sem_Type (_rightType))) (_message))
-sem_UserStatement ((UserStatement_MetaVariableConstraints (_name))) =
-    (sem_UserStatement_MetaVariableConstraints ((sem_Name (_name))))
-sem_UserStatement ((UserStatement_Phase (_phase))) =
-    (sem_UserStatement_Phase (_phase))
-sem_UserStatement_Constraint :: (T_Type) ->
-                                (T_Type) ->
-                                (String) ->
-                                (T_UserStatement)
-sem_UserStatement_Constraint (_leftType) (_rightType) (_message) =
-    let ( _leftType_self) =
-            (_leftType )
-        ( _rightType_self) =
-            (_rightType )
-    in  ()
-sem_UserStatement_MetaVariableConstraints :: (T_Name) ->
-                                             (T_UserStatement)
-sem_UserStatement_MetaVariableConstraints (_name) =
-    let ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
-            (_name )
-    in  ()
-sem_UserStatement_Phase :: (Int) ->
-                           (T_UserStatement)
-sem_UserStatement_Phase (_phase) =
-    let 
-    in  ()
--- UserStatements ----------------------------------------------
--- semantic domain
-type T_UserStatements = ()
--- cata
-sem_UserStatements :: (UserStatements) ->
-                      (T_UserStatements)
-sem_UserStatements (list) =
-    (foldr (sem_UserStatements_Cons) (sem_UserStatements_Nil) ((map sem_UserStatement list)))
-sem_UserStatements_Cons :: (T_UserStatement) ->
-                           (T_UserStatements) ->
-                           (T_UserStatements)
-sem_UserStatements_Cons (_hd) (_tl) =
-    let 
-    in  ()
-sem_UserStatements_Nil :: (T_UserStatements)
-sem_UserStatements_Nil  =
-    let 
-    in  ()
 

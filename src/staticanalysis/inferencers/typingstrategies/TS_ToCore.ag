@@ -1,0 +1,57 @@
+{
+typingStrategyToCore :: TypingStrategy -> Core_TypingStrategy
+typingStrategyToCore = sem_TypingStrategy
+}
+
+INCLUDE "TS_Syntax.ag"
+INCLUDE "TS_Collect.ag"
+INCLUDE "../../../syntax/UHA_Syntax.ag"
+INCLUDE "../../../syntax/UHA_Self.ag"
+INCLUDE "../../../syntax/UHA_OneLine.ag"
+
+imports {
+import TS_Syntax
+import TS_CoreSyntax
+import Messages
+import Types
+import HeliumConstraintInfo
+import Constraints
+import TypeGraphConstraintInfo
+import UHA_Utils (noRange)
+import TypeConversion
+import Utils (internalError)
+import List
+import TypeErrors
+import OneLiner
+}
+
+SEM TypingStrategy [ | | core : Core_TypingStrategy ]
+  | TypingStrategy
+      lhs . core = TypingStrategy @typerule.core @statements.core    
+      loc . nameMap = zip @uniqueTypevariables (map TVar [0..])
+
+SEM TypeRule [ | | core : Core_TypeRule ]
+  | TypeRule 
+      lhs . core = TypeRule @premises.core @conclusion.core
+
+SEM Judgement [ | | core : Core_Judgement ]
+  | Judgement
+       lhs . core = Judgement (showOneLine 10000 @expression.oneLineTree) (makeTpFromType @lhs.nameMap @type.self)   
+
+SEM SimpleJudgements [ | | core : Core_Judgements ]
+  | Cons  lhs . core = @hd.core : @tl.core
+  | Nil   lhs . core = []
+
+SEM SimpleJudgement [ | | core : Core_Judgement ] 
+  | SimpleJudgement 
+       lhs . core = Judgement (show @name.self) (makeTpFromType @lhs.nameMap @type.self)              
+       
+SEM UserStatements [ | | core : Core_UserStatements ]
+  | Cons  lhs . core = @hd.core : @tl.core
+  | Nil   lhs . core = []
+
+SEM UserStatement [ | | core : Core_UserStatement ]
+  | Constraint                lhs . core = Constraint (makeTpFromType @lhs.nameMap @leftType.self) (makeTpFromType @lhs.nameMap @rightType.self) @message
+  | MetaVariableConstraints   lhs . core = MetaVariableConstraints (show @name.self)
+  | Phase                     lhs . core = Phase @phase
+       

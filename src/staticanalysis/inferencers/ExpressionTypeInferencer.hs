@@ -36,8 +36,7 @@ expressionTypeInferencer importEnvironment expression =
                 = sem_Module 
                      module_
                      importEnvironment
-                     algW       
-                     []              
+                     algW                   
                      False
                      
        inferredType = let err = internalError "ExpressionTypeInferencer.hs" "expressionTypeInferencer" "cannot find inferred type"

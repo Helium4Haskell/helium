@@ -1,12 +1,9 @@
 imports {
-import TS_Syntax
 import List
 import Matchers
-import TS_Apply (applyTypingStrategy, MetaVariableTable, MetaVariableInfo)
+import TS_Apply (applyTypingStrategy, matchInformation, MetaVariableTable, MetaVariableInfo)
+import TS_CoreSyntax
 }
-
-INCLUDE "typingstrategies/TS_Syntax.ag"
-
 
 ATTR Body Statement Qualifier Statements Qualifiers Expression RightHandSide MaybeExpression
      Expressions GuardedExpression GuardedExpressions FunctionBinding FunctionBindings
@@ -31,23 +28,16 @@ SEM Body
 ATTR Body Expression Expressions MaybeExpression Statements Statement Qualifiers Qualifier
      GuardedExpression GuardedExpressions FunctionBinding FunctionBindings 
      Declaration Declarations MaybeDeclarations RightHandSide Alternative Alternatives
-     [ allPatterns : {[((Expression, [String]), TypingStrategy)]} | | ]
+     [ allPatterns : {[((Expression, [String]), Core_TypingStrategy)]} | | ]
           
 SEM Module 
   | Module
-       body . allPatterns = map (\x -> ((expressionFromTypingStrategy x, metaVariablesInTypingStrategy x), x)) @lhs.typingStrategies
-                             
-{
-expressionFromTypingStrategy :: TypingStrategy -> Expression
-expressionFromTypingStrategy typingStrategy =
-   let TypingStrategy_TypingStrategy _ (TypeRule_TypeRule _ (Judgement_Judgement expr _)) _ = typingStrategy
-   in expr
-
-metaVariablesInTypingStrategy :: TypingStrategy -> [String]
-metaVariablesInTypingStrategy typingStrategy = 
-   let TypingStrategy_TypingStrategy _ (TypeRule_TypeRule premises _) _ = typingStrategy
-   in [ show name | SimpleJudgement_SimpleJudgement name _ <- premises ]
-}
+       body . allPatterns = [ (matchInfo, typingStrategy)
+                            | typingStrategy <- typingStrategies @lhs.importEnvironment 
+                            , let matchInfo = matchInformation 
+                                                 @lhs.importEnvironment 
+                                                 typingStrategy
+                            ] 
                                        
 ---------------------------------------------------------------------------------------------------------
 
@@ -316,7 +306,7 @@ generalMatch :: (nonTerminal -> Maybe String)
              -> Int             
              -> (nonTerminal -> Maybe childrenTuple) 
              -> [(nonTerminal, [String])] 
-             -> [((nonTerminal, [String]), TypingStrategy)] 
+             -> [((nonTerminal, [String]), Core_TypingStrategy)] 
              -> [[Maybe (MetaVariableTable MetaVariableInfo)]] 
              -> ( childrenResult
                 , [Maybe (MetaVariableTable MetaVariableInfo)]
@@ -377,6 +367,5 @@ generalMatch exprVarMatcher converter metaVariableInfo unique matcher tryPats al
 }
 
 -- prevent ag-warnings
-SEM Judgement | Judgement  loc . (betaUnique,allPatterns,collectednotypedef,importEnvironment,monos,tryPatterns,typeAnnotations,matchIO,uniqueSecondRound) = undefined
 SEM RecordExpressionBinding | RecordExpressionBinding   loc . (allPatterns,tryPatterns,matchIO,uniqueSecondRound) = undefined
 SEM Expression | RecordConstruction loc . matches = undefined

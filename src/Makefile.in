@@ -108,7 +108,10 @@ STATICANALYSIS = \
         staticanalysis/inferencers/typingstrategies/Matchers.hs \
         staticanalysis/inferencers/typingstrategies/TS_Apply.hs \
         staticanalysis/inferencers/typingstrategies/TS_Messages.hs \
-        staticanalysis/inferencers/typingstrategies/TS_Analyse.hs
+        staticanalysis/inferencers/typingstrategies/TS_Analyse.hs \
+        staticanalysis/inferencers/typingstrategies/TS_CoreSyntax.hs \
+        staticanalysis/inferencers/typingstrategies/TS_ToCore.hs \
+        staticanalysis/inferencers/typingstrategies/TS_Compile.hs        
 
 UHA = \
 	syntax/UHA_Syntax.hs syntax/UHA_Utils.hs
@@ -199,7 +202,8 @@ hint: interpreter/Main.hs utils/OSSpecific.hs
 
 ag : utils/PrettyPrinting.hs staticanalysis/staticchecks/StaticChecks.hs staticanalysis/inferencers/TypeInferencing.hs codegeneration/CodeGeneration.hs \
      syntax/UHA_Syntax.hs modulesystem/ExtractImportDecls.hs staticanalysis/inferencers/typingstrategies/TS_Syntax.hs \
-     staticanalysis/inferencers/typingstrategies/TS_Apply.hs staticanalysis/inferencers/typingstrategies/TS_Analyse.hs
+     staticanalysis/inferencers/typingstrategies/TS_Apply.hs staticanalysis/inferencers/typingstrategies/TS_Analyse.hs \
+     staticanalysis/inferencers/typingstrategies/TS_ToCore.hs
 
 ifdef AG
 utils/PrettyPrinting.hs : \
@@ -259,15 +263,6 @@ staticanalysis/inferencers/typingstrategies/TS_Syntax.hs : \
 	# AG TS_Syntax
 	cd staticanalysis/inferencers/typingstrategies;$(AG) -dmr TS_Syntax.ag;cd ../../..
 
-staticanalysis/inferencers/typingstrategies/TS_Apply.hs : \
-        staticanalysis/inferencers/typingstrategies/TS_Syntax.ag \
-        staticanalysis/inferencers/typingstrategies/TS_Collect.ag \
-        staticanalysis/inferencers/typingstrategies/TS_Apply.ag \
-        syntax/UHA_Syntax.ag \
-        syntax/UHA_Self.ag \
-	# AG TS_Syntax
-	cd staticanalysis/inferencers/typingstrategies;$(AG) $(AG_OPTS) TS_Apply.ag;cd ../../..
-
 staticanalysis/inferencers/typingstrategies/TS_Analyse.hs : \
         staticanalysis/inferencers/typingstrategies/TS_Syntax.ag \
         staticanalysis/inferencers/typingstrategies/TS_Collect.ag \
@@ -276,6 +271,25 @@ staticanalysis/inferencers/typingstrategies/TS_Analyse.hs : \
         syntax/UHA_Self.ag \
 	# AG TS_Syntax
 	cd staticanalysis/inferencers/typingstrategies;$(AG) $(AG_OPTS) TS_Analyse.ag;cd ../../..
+
+staticanalysis/inferencers/typingstrategies/TS_Apply.hs : \
+        staticanalysis/inferencers/typingstrategies/TS_Syntax.ag \
+        staticanalysis/inferencers/typingstrategies/TS_Collect.ag \
+        staticanalysis/inferencers/typingstrategies/TS_Apply.ag \
+        staticanalysis/inferencers/typingstrategies/TS_AG_CoreSyntax.ag \
+        syntax/UHA_Syntax.ag \
+        syntax/UHA_Self.ag \
+	# AG TS_Syntax
+	cd staticanalysis/inferencers/typingstrategies;$(AG) -mscf TS_Apply.ag;cd ../../..
+
+staticanalysis/inferencers/typingstrategies/TS_ToCore.hs : \
+        staticanalysis/inferencers/typingstrategies/TS_Syntax.ag \
+        staticanalysis/inferencers/typingstrategies/TS_Collect.ag \
+        syntax/UHA_Syntax.ag \
+        syntax/UHA_Self.ag \
+        syntax/UHA_OneLine.ag \
+	# AG TS_Syntax
+	cd staticanalysis/inferencers/typingstrategies;$(AG) -mscrf TS_ToCore.ag;cd ../../..
                         
 endif
 

@@ -22,6 +22,10 @@ data TypeError  = TypeError
                      TypeErrorTable           -- Hugs-like table
                      TypeErrorInfos           -- extra info (e.g. hints)
 
+                | CustomTypeError
+                     [Range]
+                     Message
+
 data TypeErrorTable = UnificationErrorTable
                          [(String, Tree)]     -- sources to be reported
                          (Either Tp TpScheme) -- type or typescheme of n.t. or subterm of n.t.
@@ -44,18 +48,27 @@ instance HasMessage TypeError where
           hints      = [(MessageString s, b) | TypeErrorHint s b <- infos ]
           emptyLine  = MessageOneLiner (MessageString "")
       in [MessageOneLiner oneliner, MessageTable (newtable ++ hints), emptyLine]
+   
+   getMessage (CustomTypeError ranges message) = message ++ [MessageOneLiner (MessageString "")]
       
-   getRanges (TypeError range oneliner table infos) =                        
-      [range]
+   getRanges (TypeError range oneliner table infos) = [range]
+      
+   getRanges (CustomTypeError ranges message) = ranges      
 
 instance Substitutable TypeError where
 
    sub |-> (TypeError range oneliner table hints) = 
       TypeError range (sub |-> oneliner) (sub |-> table) (sub |-> hints)
 
+   sub |-> (CustomTypeError ranges message) = 
+      CustomTypeError ranges (sub |-> message)
+
    ftv (TypeError range oneliner table hints) = 
       ftv oneliner `union` ftv table `union` ftv hints
-   
+      
+   ftv (CustomTypeError ranges message) =    
+      ftv message
+      
 instance Substitutable TypeErrorTable where
    sub |-> (UnificationErrorTable sources type1 type2) = 
       let type1' = either (Left . (sub |->)) (Right . f) type1
@@ -115,7 +128,8 @@ checkTypeError synonyms typeError@(TypeError r o table h) =
                Right _            -> Nothing
                _        -> Just typeError
       _  -> Just typeError
-      
+checkTypeError synonyms typeError = Just typeError
+
 makeNotGeneralEnoughTypeError :: Range -> Tree -> TpScheme -> TpScheme -> TypeError
 makeNotGeneralEnoughTypeError range tree tpscheme1 tpscheme2 = 
    let [ts1, ts2] = freezeMonosInTypeSchemes [tpscheme1, tpscheme2]

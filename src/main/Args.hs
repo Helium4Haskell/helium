@@ -34,8 +34,9 @@ processArgs args =
             ,   Option "3" ["stop-after-type-inferencing"] (NoArg StopAfterTypeInferencing) "stop after type inferencing"
             ,   Option "4" ["stop-after-desugaring"] (NoArg StopAfterDesugar) "stop after desugaring into Core"
             
-            ,   Option "W" ["algorithm-w"]   (NoArg AlgorithmW) "use algorithm W for type inferencing"
-            ,   Option "M" ["algorithm-m"]   (NoArg AlgorithmM) "use algorithm M for type inferencing"
+            ,   Option "W" ["algorithm-w"]     (NoArg AlgorithmW)     "use algorithm W for type inferencing"
+            ,   Option "M" ["algorithm-m"]     (NoArg AlgorithmM)     "use algorithm M for type inferencing"
+            ,   Option "T" ["typing-strategy"] (NoArg TypingStrategy) "enable typing strategies"
             
             ,   Option "v" ["verbose"] (NoArg Verbose) "show the phase the compiler is in"
 #endif
@@ -59,6 +60,7 @@ data Option
     
     | AlgorithmW --
     | AlgorithmM --
+    | TypingStrategy
         
     | Verbose --
     | Build --

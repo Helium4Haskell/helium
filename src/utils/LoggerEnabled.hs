@@ -2,6 +2,7 @@ module Logger ( logger ) where
 
 import Socket   
 import Concurrent
+--import Posix
 import Monad
 import System
 import List
@@ -15,7 +16,7 @@ loggerHOSTNAME    = {- Bastiaan     -} -- "ikaria.cs.uu.nl"
                     {- StudentenNet -} "bellatrix.students.cs.uu.nl" 
 loggerPORTNUMBER  = 5010
 loggerDELAY       = 50000    -- in micro-seconds
-loggerRETRIES     = 1
+loggerRETRIES     = 5
 loggerSPLITSTRING = "\n\NUL\n"
 loggerNOPROGRAMS  = "\n\SOH\n"
 loggerDEBUGMODE   = False
@@ -52,15 +53,14 @@ sendLogString :: String -> IO ()
 sendLogString message = withSocketsDo (rec 0)
  
  where
-  rec i = do sendToAndFlush loggerHOSTNAME (PortNumber loggerPORTNUMBER) message
-             debug "The log-information was successfully sent"
+  rec i = do --installHandler sigPIPE Ignore Nothing
+             handle <- connectTo loggerHOSTNAME (PortNumber loggerPORTNUMBER)
+             hSetBuffering handle (BlockBuffering (Just 1024))
+             sendToAndFlush handle message
           `catch`       
               \exception -> 
-
                  if i+1 >= loggerRETRIES 
-
-                   then debug "Could not make a connection: stopping"
-
+                   then debug "Could not make a connection: no send"
                    else do debug "Could not make a connection: sleeping"
                            threadDelay loggerDELAY
                            rec (i+1)
@@ -91,14 +91,41 @@ extractPath filePath =
             Nothing     ->  Nothing
             Just idx    ->  Just (length xs - idx - 1)            
 
+
+
 {-
 sendToAndFlush :: Hostname      -- Hostname
                -> PortID        -- Port Number
                -> String        -- Message to send
                -> IO ()
 -}               
-sendToAndFlush h p msg = do
-  s <- connectTo h p
-  hPutStr s msg
-  hFlush s
-  hClose s
+sendToAndFlush handle msg = do  
+  hPutStr handle msg
+  hPutStr handle loggerSPLITSTRING
+  hFlush handle
+--  b1 <- hIsWritable s
+--  b2 <- hIsReadable s
+--  putStrLn ((if b1 then "writable" else "not writable") ++ " and " ++ 
+--      (if b2 then "readable" else "not readable"))
+  debug "Waiting for a handshake"  
+  handshake <- getRetriedLine 0
+  debug ("Received a handshake: " ++ show handshake)
+--  hClose handle
+  where
+    getRetriedLine i = 
+      do
+        line <- hGetLine handle
+        return line
+      `catch`
+        \exception -> 
+          if i+1 >= loggerRETRIES 
+            then do
+                   debug "Did not receive anything back"
+                   return ""
+            else do 
+                   debug "Waiting to try again"
+                   threadDelay loggerDELAY
+                   getRetriedLine (i+1)    
+    debug :: String -> IO ()
+    debug s = when loggerDEBUGMODE (putStrLn s)
+

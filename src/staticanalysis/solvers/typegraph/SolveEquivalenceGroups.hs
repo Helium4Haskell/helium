@@ -20,7 +20,8 @@ import Monad               ( unless, when                       )
 import Utils               ( internalError, doubleSizeOfSTArray )
 import ConstraintInfo      ( ConstraintInfo(..) ) 
 import TypeGraphConstraintInfo ( TypeGraphConstraintInfo(..) )
-                
+-- import EquivalenceGroupsToHTML ( equivalenceGroupsToHTML )
+
 data EquivalenceGroups info state = 
         EQGroups { indexSTArray   :: STArray state Int (STRef state (EquivalenceGroup info))
                  , signaledErrors :: STRef state [(UnificationError,Int)]
@@ -114,7 +115,8 @@ solveEquivalenceGroups :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintI
 solveEquivalenceGroups unique = runSolver buildSubstitution unique where
 
    buildSubstitution :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => SolveState EquivalenceGroups info Subst 
-   buildSubstitution = do newUnique <- getUnique
+   buildSubstitution = do -- equivalenceGroupsToHTML
+                          newUnique <- getUnique
                           bintreesubst <- rec (0, newUnique - 1)
                           return (Right bintreesubst)
    

@@ -1,0 +1,27 @@
+DATA Core_TypingStrategy 
+   | TypingStrategy       
+        typerule    : Core_TypeRule
+        statements  : Core_UserStatements
+        
+DATA Core_TypeRule 
+   | TypeRule 
+        premises    : Core_Judgements
+        conclusion  : Core_Judgement
+
+TYPE Core_Judgements = [Core_Judgement]
+DATA Core_Judgement
+   | Judgement
+        expression  : String
+        type        : Tp
+        
+TYPE Core_UserStatements = [Core_UserStatement]
+
+DATA Core_UserStatement 
+   | Constraint
+        leftType    : Tp
+        rightType   : Tp
+        message     : String
+   | MetaVariableConstraints        
+        name        : String
+   | Phase 
+        phase       : Int

@@ -18,6 +18,7 @@ import Strategy
 import Constraints
 import Types
 import Utils            (fst3, snd3, thd3, internalError)
+import List             (intersperse)
 import ConstraintInfo
 import FiniteMap
 
@@ -131,4 +132,5 @@ inStrictOrder :: TreeWalk ->                          -- treewalk
 inStrictOrder (TreeWalk treewalk) (flattened, added, phased) = 
    let list        = treewalk id [(flattened, added)]
        listOfLists = eltsFM phased
-   in foldr (.) id (list : listOfLists)   
+       seperator   = (MakeConsistent:)
+   in foldr (.) id (intersperse seperator (list : listOfLists))

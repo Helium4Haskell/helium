@@ -44,9 +44,7 @@ import IOExts(unsafePerformIO, writeIORef)
 import FiniteMap
 
 -- Typing Strategies
-import TS_Analyse (analyseTypingStrategies)
-import TS_Messages
-import TS_Parser
+import TS_Compile (readTypingStrategiesFromFile)
 
 ------------------------------------------------------------------------------------
 -- Compiling a single Helium file consists of the following phases:
@@ -128,40 +126,32 @@ compile fullName options doneModules =
         stopCompilingIf (StopAfterStaticAnalysis `elem` options || not (null errors)) 
 
         -- Special Phase: Typing Strategies
-        {- let typingStrategiesFile = "special.ti"
-        input <- readFile typingStrategiesFile -}      
+        let combinedEnvironment = foldr combineImportEnvironments collectEnvironment importEnvironments                
         
-        typingStrategies <- return [] {-
-           case parseTypingStrategies importOperatorTable typingStrategiesFile input of
-              Left parseError -> do putStrLn ("Parse error in Typing Strategy: \n" ++ show parseError)
-                                    exitWith (ExitFailure 1)
-              Right ts -> return ts
+        (completeEnvironment, typingStrategiesDecls) <-
+           if TypingStrategy `notElem` options
+             then 
+                  return (removeTypingStrategies combinedEnvironment, [])
+             else 
+                  do typingStrategies <- readTypingStrategiesFromFile 
+                                         options
+                                         (fullNameNoExt ++ ".type")
+                                         combinedEnvironment
+                     return (addTypingStrategies typingStrategies combinedEnvironment, [])            
 
-        let (tsErrors, tsWarnings) = analyseTypingStrategies typingStrategies (foldr combineImportEnvironments collectEnvironment importEnvironments)
-
-        unless (null tsErrors) $ 
-           do putStr . unlines . sortAndShow $ tsErrors
-              exitWith (ExitFailure 1)
-
-        unless (NoWarnings `elem` options) $
-           do putStr . unlines . sortAndShow $ tsWarnings -}
-      
         -- Phase 3: Type inferencing
         enterNewPhase "Type inferencing" options
         
         let (strategy,useTypeGraph)   
                | AlgorithmW `elem` options = (algW,False)
                | AlgorithmM `elem` options = (algM,False)
-               | otherwise                 = (algW,True ) -- default algorithm W + TypeGraphs
-                                    
-            completeEnvironment = foldr combineImportEnvironments collectEnvironment importEnvironments
+               | otherwise                 = (algW,True ) -- default algorithm W + TypeGraphs                                                
                      
             (debugTypes, toplevelTypes, typeErrors, warnings2) = 
                 {-# SCC "StaticAnalysis" #-} 
                 TypeInferencing.sem_Module module_ 
                     completeEnvironment
-                    strategy 
-                    typingStrategies
+                    strategy                     
                     useTypeGraph
         
             -- add the top-level types (including the inferred types)

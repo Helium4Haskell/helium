@@ -24,16 +24,8 @@ SEM TypingStrategy
 SEM UserStatement
   | Constraint 
        lhs . userConstraints = @newConstraint : @lhs.userConstraints
-       loc . newConstraint   = (makeTpFromType @lhs.nameMap @leftType.self .==. makeTpFromType @lhs.nameMap @rightType.self) @cinfo
-           . cinfo = \tppair ->
-                     CInfo { info       = (NTBody, AltBody, "Typing Strategy, user constraint")
-                           , location   = "Typing Strategy"
-                           , errorrange = noRange
-                           , sources    = [ ]
-                           , typepair   = tppair
-                           , properties = [ ] -- WithHint (Because @message)] 
-                           }
-
+       loc . newConstraint   = (makeTpFromType @lhs.nameMap @leftType.self .==. makeTpFromType @lhs.nameMap @rightType.self) @lhs.standardConstraintInfo
+                     
 -- Collect judgements in typerule
 
 ATTR SimpleJudgement SimpleJudgements TypeRule [ | simpleJudgements:{[(String,Tp)]} | ]
@@ -68,3 +60,24 @@ SEM TypingStrategy
   | TypingStrategy  
        loc . allMetaVariables     = map fst @typerule.simpleJudgements 
            . constraintsNotExplicit = filter (`notElem` (map show @statements.metaVariableConstraintNames)) @allMetaVariables       
+
+ATTR UserStatements UserStatement [ standardConstraintInfo : {((Tp, Tp) -> HeliumConstraintInfo)} 
+                                    attributeTable : {[((String, Maybe String), MessageBlock)]} | | ]
+
+SEM TypingStrategy
+  | TypingStrategy
+       loc . standardConstraintInfo = standardConstraintInfo
+           . attributeTable         = [] 
+{     
+standardConstraintInfo :: (Tp, Tp) -> HeliumConstraintInfo
+standardConstraintInfo tppair =
+   CInfo { info       = (NTBody, AltBody, "  Strategy, user constraint")
+         , location   = "Typing Strategy" -- !!!!!
+         , errorrange = noRange
+         , sources    = [ ]
+         , typepair   = tppair
+         , properties = [ ]
+         }
+
+
+}                                                                       

@@ -24,7 +24,7 @@ import Types                ( UnificationError(..)    )
 import Utils                ( internalError           )
 import Monad                ( foldM, filterM, unless  )
 import List                 ( nub                     )
---import EquivalenceGroupsToHTML ( equivalenceGroupsToHTML )
+
 
 import Int 
 import Monad
@@ -124,7 +124,7 @@ instance TypeGraphConstraintInfo info => TypeGraph EquivalenceGroups info where
          list'    <- mapM getRepresentative list
 
          let conflicts = nub list'
-         useSolver ( flip writeSTRef conflicts . signaledErrors )
+         useSolver ( flip writeSTRef conflicts . signaledErrors )         
          return conflicts
 
    deleteEdge (EdgeID v1 v2) =
@@ -141,5 +141,4 @@ instance TypeGraphConstraintInfo info => TypeGraph EquivalenceGroups info where
          mapM_ removeImpliedClique cliques         
          mapM_ checkConsistencyForGroupOf is
          
-   getHeuristics = do --equivalenceGroupsToHTML
-                      heuristics
+   getHeuristics = heuristics
