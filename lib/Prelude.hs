@@ -130,11 +130,11 @@ lcm x y = abs ((x `quot` gcd x y) * y)
 (^) :: Num a => a -> Int -> a
 _ ^ 0           = fromInt 1
 i ^ n  | n > 0  = f i (n-1) i
+       | otherwise = error "Prelude.^: negative exponent"
           where f _ 0 y = y
                 f x m y = g x m
                           where g x' m' | even m'    = g (x' * x') (m' `quot` 2)
                                         | otherwise  = f x' (m' - 1) (x' * y)
-_ ^ _           = error "Prelude.^: negative exponent"
 
 {-----------------------------------------------
  -- Float
@@ -324,63 +324,57 @@ concat :: [[a]] -> [a]
 concat = foldr (++) []
 
 (!!) :: [a] -> Int -> a
-_      !! n | n < 0 = error "Prelude.(!!): negative index"
-(x:_)  !! 0         = x
-(_:xs) !! n         = xs !! (n - 1)
-[]     !! _         = error "Prelude.(!!): index too large"
+xs !! n | n < 0     = error "Prelude.(!!): negative index"
+        | null xs   = error "Prelude.(!!): index too large"
+        | n == 0    = head xs
+        | otherwise = tail xs !! (n - 1)
 
-foldl :: (a -> b -> a) -> a -> [b] -> a
-foldl _ z [] = z
-foldl f z (x:xs) = foldl f (f z x) xs
+foldl            :: (a -> b -> a) -> a -> [b] -> a
+foldl _ z []      = z
+foldl f z (x:xs)  = foldl f (f z x) xs
 
-foldl' :: (a -> b -> a) -> a -> [b] -> a
-foldl' _ a [] = a
+foldl'           :: (a -> b -> a) -> a -> [b] -> a
+foldl' _ a []     = a
 foldl' f a (x:xs) = (foldl' f $! f a x) xs
 
-foldl1 :: (a -> a -> a) -> [a] -> a
-foldl1 f (x:xs) = foldl f x xs
+foldl1           :: (a -> a -> a) -> [a] -> a
+foldl1 f (x:xs)   = foldl f x xs
+foldl1 _ []       = error "Prelude.foldl1: empty list"
 
-scanl :: (a -> b -> a) -> a -> [b] -> [a]
-scanl f q xxs =
-    q
-    :
-    (case xxs of 
-        x:xs -> scanl f (f q x) xs
-        []   -> []
+scanl            :: (a -> b -> a) -> a -> [b] -> [a]
+scanl f q xs      = q : 
+    ( case xs of
+             []   -> []
+             y:ys -> scanl f (f q y) ys
     )
 
-scanl1 :: (a -> a -> a) -> [a] -> [a]
-scanl1 f xxs =
-    case xxs of 
-        x:xs -> scanl f x xs
+scanl1           :: (a -> a -> a) -> [a] -> [a]
+scanl1 _ []       = []
+scanl1 f (x:xs)   = scanl f x xs
 
-foldr :: (a -> b -> b) -> b -> [a] -> b
-foldr _ z [] = z
-foldr f z (x:xs) = x `f` (foldr f z xs)
+foldr            :: (a -> b -> b) -> b -> [a] -> b
+foldr _ z []      = z
+foldr f z (x:xs)  = f x (foldr f z xs)
 
-foldr1 :: (a -> a -> a) -> [a] -> a
-foldr1 _ [x] = x
-foldr1 f (x:xs) = f x (foldr1 f xs)
+foldr1           :: (a -> a -> a) -> [a] -> a
+foldr1 _ [x]      = x
+foldr1 f (x:xs)   = f x (foldr1 f xs)
+foldr1 _ []       = error "Prelude.foldr1: empty list"
 
-scanr :: (a -> b -> b) -> b -> [a] -> [b]
-scanr f q0 xxs =
-    case xxs of 
-        [] ->
-            [q0]
-        x:xs -> 
-            let qs = scanr f q0 xs in
-                case qs of { q:_ -> f x q : qs }
+scanr            :: (a -> b -> b) -> b -> [a] -> [b]
+scanr _ q0 []     = [q0]
+scanr f q0 (x:xs) = 
+    case scanr f q0 xs of
+        qs@(q:_) -> f x q : qs
+        _        -> error "Prelude.scanr"
 
-scanr1 :: (a -> a -> a) -> [a] -> [a]
-scanr1 f xxs =
-    case xxs of 
-        x:xs ->
-            case xs of 
-                [] ->
-                    [x]
-                _ ->
-                    let qs = scanr1 f xs in
-                        case qs of { q:_ -> f x q : qs }
+scanr1           :: (a -> a -> a) -> [a] -> [a]
+scanr1 _ []       = []
+scanr1 _ [x]      = [x]
+scanr1 f (x:xs)   = 
+    case scanr1 f xs of
+        qs@(q:_) -> f x q : qs
+        _        -> error "Prelude.scanr"
 
 iterate :: (a -> a) -> a -> [a]
 iterate f x = x : iterate f (f x)
@@ -396,19 +390,28 @@ cycle [] = error "Prelude.cycle: empty list"
 cycle xs = xs' where xs'=xs++xs'
 
 take :: Int -> [a] -> [a]
-take n _  | n <= 0  = []
-take _ []           = []
-take n (x:xs)       = x : take (n-1) xs
-
+take n xs 
+    | n <= 0   = []
+    | otherwise = 
+        case xs of 
+            [] -> []
+            (y:ys) -> y : take (n-1) ys
+          
 drop :: Int -> [a] -> [a]
-drop n xs | n <= 0  = xs
-drop _ []           = []
-drop n (_:xs)       = drop (n-1) xs
+drop n xs 
+    | n <= 0 = xs
+    | otherwise = 
+        case xs of
+            [] -> []
+            (_:ys) -> drop (n-1) ys
 
 splitAt :: Int -> [a] -> ([a], [a])
-splitAt n xs | n <= 0 = ([],xs)
-splitAt _ []          = ([],[])
-splitAt n (x:xs)      = (x:xs',xs'') where (xs',xs'') = splitAt (n-1) xs
+splitAt n xs 
+    | n <= 0 = ([],xs)
+    | otherwise = 
+        case xs of 
+            [] -> ([],[])
+            (y:ys) -> (y:as,bs) where (as,bs) = splitAt (n-1) ys
 
 takeWhile :: (a -> Bool) -> [a] -> [a]
 takeWhile _ [] = []
@@ -568,7 +571,7 @@ until :: (a -> Bool) -> (a -> a) -> a -> a
 until p f x = if p x then x else until p f (f x)
 
 undefined :: a
-undefined = case True of { False -> undefined }
+undefined = error "undefined"
 
 {-----------------------------------------------
  -- IO

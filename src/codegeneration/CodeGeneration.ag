@@ -1,23 +1,12 @@
 ATTR Module
-   [   additionalDecls  : { [Core.CoreDecl] }
-       dictionaryEnv    : DictionaryEnvironment
+   [   dictionaryEnv    : DictionaryEnvironment
+       extraDecls       : { [Core.CoreDecl] }
        importEnv        : ImportEnvironment
        toplevelTypes    : TypeEnvironment
    |
    |   core             : { Core.CoreModule }
    ]
 
-ATTR Body Declarations Declaration Expressions Expression Statements Statement
-     Qualifiers Qualifier GuardedExpressions GuardedExpression 
-     Alternatives Alternative FunctionBindings FunctionBinding
-     RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
-     RecordExpressionBindings Constructors Constructor
-    [ importEnv     : ImportEnvironment 
-      dictionaryEnv : DictionaryEnvironment
-    |
-    |
-    ]
-    
 -- UHA
 INCLUDE "../syntax/UHA_Syntax.ag"
 
@@ -65,6 +54,16 @@ type CoreDecl = Core.Decl Core.Expr
 
 --Collect.ag
 
+ATTR Body Declarations Declaration Expressions Expression Statements Statement
+     Qualifiers Qualifier GuardedExpressions GuardedExpression 
+     Alternatives Alternative FunctionBindings FunctionBinding
+     RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
+     RecordExpressionBindings Constructors Constructor
+    [ dictionaryEnv : DictionaryEnvironment | | ]
+
+ATTR Body Declarations Declaration Constructor Constructors
+    [ importEnv     : ImportEnvironment | | ]
+    
 SEM Expression        | Let  loc.importEnv = internalError "CodeGeneration.ag" "Expression.Let" ""
 SEM MaybeDeclarations | Just loc.importEnv = internalError "CodeGeneration.ag" "MaybeDeclarations.Just" ""      
 SEM Qualifier         | Let  loc.importEnv = internalError "CodeGeneration.ag" "Qualifier.Let" ""       

@@ -47,6 +47,8 @@ module PreludePrim
     , ''dictOrd(,,,,,,)'', ''dictOrd(,,,,,,,)'', ''dictOrd(,,,,,,,,)'', ''dictOrd(,,,,,,,,,)''
     , Ordering(EQ, LT, GT), showOrdering
     
+    , getEqFromOrd, getEqFromNum, getShowFromNum
+    
     ) where
 
 import HeliumLang
@@ -275,10 +277,12 @@ dictNumFloat = (@0, 7) dictEqFloat dictShowFloat (+.) (*.) (-.) negFloat intToFl
 
 id x = x
 
+getEqFromNum :: "GetEqFromNum"
 getEqFromNum dNum = 
     case dNum of
             (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x1
             
+getShowFromNum :: "GetShowFromNum"
 getShowFromNum dNum = 
     case dNum of
             (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x2
@@ -544,6 +548,7 @@ lexico xs =
                 EQ -> lexico os
                 _  -> o
 
+getEqFromOrd :: "GetEqFromOrd"
 getEqFromOrd dOrd = 
     case dOrd of
         (@0, 2) eq cmp -> eq

@@ -1,7 +1,7 @@
 Compiling typeerrors/Edinburgh/Ex12.hs
 (3,19): Type error in infix application
- expression       : p + p
- operator         : +
+ expression       : p +# p
+ operator         : +#
    type           : Int            -> Int            -> Int
    does not match : (Bool -> Bool) -> (Bool -> Bool) -> [a]
 

@@ -72,7 +72,7 @@ SEM Module
             , @exports.mods     -- module ImportedModule, module ThisModule
             )
             (makeCoreModule (fmap idFromName @name.name)
-                ( @body.decls ++ @lhs.additionalDecls
+                ( @body.decls ++ @lhs.extraDecls
                 ))
     --  range                    : Range
     --  name                     : MaybeName

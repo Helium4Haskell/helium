@@ -54,15 +54,18 @@ compile fullName options lvmPath doneModules =
             showMessages staticWarnings
 
         stopCompilingIf (StopAfterStaticAnalysis `elem` options)
-
+        
         -- Phase 6: Typing Strategies
-        (completeEnv, typingStrategiesDecls) <-
-            phaseTypingStrategies fullName localEnv importEnvs typeSignatures options
+        (beforeTypeInferEnv, typingStrategiesDecls) <-
+            phaseTypingStrategies 
+                    fullName 
+                    (foldr combineImportEnvironments localEnv importEnvs) 
+                    typeSignatures options
 
         -- Phase 7: Type inferencing
-        (dictionaryEnv, finalEnv, toplevelTypes, typeWarnings) <- 
+        (dictionaryEnv, afterTypeInferEnv, toplevelTypes, typeWarnings) <- 
             phaseTypeInferencer fullName resolvedModule doneModules localEnv 
-                                    completeEnv options
+                                    beforeTypeInferEnv options
 
         unless (NoWarnings `elem` options) $
             showMessages typeWarnings
@@ -74,7 +77,7 @@ compile fullName options lvmPath doneModules =
             phaseDesugarer dictionaryEnv
                            fullName resolvedModule 
                            (typingStrategiesDecls ++ indirectionDecls) 
-                           finalEnv
+                           afterTypeInferEnv
                            toplevelTypes 
                            options                           
 

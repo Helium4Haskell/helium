@@ -15,7 +15,7 @@ phaseTypeInferencer ::
            IO ( DictionaryEnvironment,
                ImportEnvironment, 
                TypeEnvironment, [Warning])
-phaseTypeInferencer fullName module_ doneModules localEnv completeEnv options = do
+phaseTypeInferencer fullName module_ doneModules localEnv beforeTypeInferEnv options = do
     enterNewPhase "Type inferencing" options
 
     -- 'W' and 'M' are predefined type inference algorithms
@@ -27,27 +27,19 @@ phaseTypeInferencer fullName module_ doneModules localEnv completeEnv options = 
                         else id)
                    $ options
     
-        (debugIO, dictionaryEnv, localTypes, _, toplevelTypes, typeErrors, warnings) =
+        (debugIO, dictionaryEnv, _, _, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_
-                completeEnv
+                beforeTypeInferEnv
                 newOptions        
         
         -- add the top-level types (including the inferred types)
-        finalEnv = addToTypeEnvironment toplevelTypes completeEnv
-        inferredTypes = addListToFM localTypes 
-                [ (NameWithRange name, ts) | (name, ts) <- fmToList (typeEnvironment finalEnv) ]
+        afterTypeInferEnv = addToTypeEnvironment toplevelTypes beforeTypeInferEnv
     
     when (DumpTypeDebug `elem` options) debugIO      
     
-{-
-    putStrLn (unlines ("" : "toplevelTypes: " : map (\(n,ts) -> show (NameWithRange n) ++ " :: "++show (getQualifiedType ts)) (fmToList toplevelTypes)))
-    putStrLn (unlines ("" : "localTypes:" : map show (fmToList localTypes)))
-    putStrLn (unlines ("" : "overloadedVars:"   : map (\(n,(m,t)) -> show n ++ " in scope of " ++ show m ++" has type " ++ show t) (fmToList overloadedVars)))        
--}
-
     when (not (null typeErrors)) $ do
         when (DumpInformationForAllModules `elem` options) $
-            putStr (show completeEnv)
+            putStr (show beforeTypeInferEnv)
         unless (NoLogging `elem` options) $ 
             sendLog "T" fullName doneModules options
         showErrorsAndExit (reverse typeErrors) maximumNumberOfTypeErrors options
@@ -55,14 +47,14 @@ phaseTypeInferencer fullName module_ doneModules localEnv completeEnv options = 
     -- Dump information
     if (DumpInformationForAllModules `elem` options)
       then
-         putStrLn (show finalEnv)
+         putStrLn (show afterTypeInferEnv)
       else if (DumpInformationForThisModule `elem` options)
              then
                 putStrLn (show (addToTypeEnvironment toplevelTypes localEnv))
              else
                 return ()
 
-    return (dictionaryEnv, finalEnv, toplevelTypes, warnings)
+    return (dictionaryEnv, afterTypeInferEnv, toplevelTypes, warnings)
 
 maximumNumberOfTypeErrors :: Int
 maximumNumberOfTypeErrors = 3

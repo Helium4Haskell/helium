@@ -11,25 +11,30 @@ import DictionaryEnvironment (DictionaryEnvironment)
 import qualified CodeGeneration(sem_Module)
 import Types
 import UHA_Utils
-import Data.FiniteMap
 
 phaseDesugarer :: DictionaryEnvironment -> 
                   String -> Module -> [CoreDecl] -> 
                     ImportEnvironment ->
                     TypeEnvironment -> [Option] -> IO CoreModule
-phaseDesugarer dictionaryEnv fullName module_ extraDecls finalEnv toplevelTypes options = do
+phaseDesugarer dictionaryEnv fullName module_ extraDecls afterTypeInferEnv toplevelTypes options = do
     enterNewPhase "Desugaring" options
 
     let (path, baseName, _) = splitFilePath fullName
         fullNameNoExt = combinePathAndFile path baseName
 
+{- hier kunnen we misschien main inserten en dan is toplevelTypes niet nodig in AG. 
+
+en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren hoeven gezien te worden
+
+-}
+
         moduleWithName = fixModuleName module_ baseName
 
         coreModule = fst $
             CodeGeneration.sem_Module moduleWithName                
-                extraDecls
                 dictionaryEnv
-                finalEnv
+                extraDecls
+                afterTypeInferEnv
                 toplevelTypes            
 
         strippedCoreModule = coreRemoveDead coreModule

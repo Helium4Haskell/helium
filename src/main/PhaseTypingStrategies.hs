@@ -7,24 +7,21 @@ import Data.FiniteMap (listToFM)
 import UHA_Syntax (Name)
 import Types (TpScheme)
 
-phaseTypingStrategies :: String -> ImportEnvironment -> [ImportEnvironment] -> [(Name, TpScheme)] -> [Option] ->
+phaseTypingStrategies :: String -> ImportEnvironment -> [(Name, TpScheme)] -> [Option] ->
                             IO (ImportEnvironment, [CoreDecl])
-phaseTypingStrategies fullName localEnv importEnvs typeSignatures options
+phaseTypingStrategies fullName combinedEnv typeSignatures options
 
    | TypeInferenceDirectives `notElem` options = 
-        return (removeTypingStrategies combinedEnvironment, [])
+        return (removeTypingStrategies combinedEnv, [])
 
    | otherwise =
         let (path, baseName, _) = splitFilePath fullName
             fullNameNoExt       = combinePathAndFile path baseName            
         in do enterNewPhase "Type inference directives" options
               (typingStrategies, typingStrategiesDecls) <-
-                 readTypingStrategiesFromFile options (fullNameNoExt ++ ".type") combinedEnvironment
+                 readTypingStrategiesFromFile options (fullNameNoExt ++ ".type")        
+                            (addToTypeEnvironment (listToFM typeSignatures) combinedEnv)
               return 
-                 ( addTypingStrategies typingStrategies combinedEnvironment
+                 ( addTypingStrategies typingStrategies combinedEnv
                  , typingStrategiesDecls
                  )              
-
- where 
-   combinedEnvironment :: ImportEnvironment
-   combinedEnvironment = foldr combineImportEnvironments (addToTypeEnvironment (listToFM typeSignatures) localEnv) importEnvs
