@@ -1,0 +1,9 @@
+Compiling runtimeerrors/CatchBug.hs
+(1,21): Warning: Variable "x" is not used
+(2,16): Warning: Variable "err" is not used
+(1,1): Warning: Missing type signature: main :: IO ()
+(1,20): Warning: Missing patterns in generator: 
+  _ : (_ : _) <- ...
+  [] <- ...
+Compilation successful with 4 warnings
+The exception has been caught
