@@ -1,19 +1,18 @@
 DOCUMENTATIE
 
 ! User manual hint A4
-! User manual helium A4
-! User manual lvmrun A5
 ! Alle mogelijke fouten/warnings/hints uitleggen adhv voorbeeldje (DICTAAT?)
 ! Tour of Haskell syntax controleren
 ! commentaar over List en Maybe
+! haddock over implementatie
 
 INTERPRETER
 * hint opties doorspelen naar Helium
 * hint parameter mag ook .hs bevatten, maar geen pad (of wel?) 
   :l ook; pad van meegegeven file vooraan LVMPATH
 * testen of TEMP schrijfbaar is
-* Wat voor een voorzieningen nodig in de compiler?
 * :r
+* functies definieren?
 
 FANCY 
 * autoload feature (zie e-mails van Stephen Milborrow)
@@ -30,15 +29,13 @@ DAAN
 ! strictheid van error
 
 COMPILER
-* interpreter kan module die Main heet niet inlezen?! "module imports itself"
+* pattern match incomplete check
 ! XML uitvoer van errors en warnings t.b.v. interpreter
 ! parse error tests (zie Thompson)
 ! installer voor Windows
 ! environment vars weg
 * bij chasing niet de hele module parsen
-* operator definitie in pp haakjes er omheen
 * read functies voor andere types dan Int
-* deriving Eq
 * catchen van exception van writeFile/openFileEx etc.
 * unexpected '\n' als je een string niet beeindigd. kan dat newline worden?
 * AG geeft geen ExitFailure bij een fout (en make gaat vrolijk verder).
@@ -46,12 +43,12 @@ COMPILER
 * bij het exporteren van een functie moeten ook de types geexporteerd worden. Hoe?
 	we moeten ook weten waar iets oorspronkelijk vandaan komt (definitieplek)
 * import Module(N) moet ook de show importeren: import Module (N, showN)
-* generiek maken show voor tupels (Daan)
-* ParseCommon.literal: "Daan moet eigenlijk niet interpreteren" (by Arjan)
-* import SomeModule(SomeDataType(..)) is impossible in core
 
 ---- ONBELANGRIJK ----
                 
+* generiek maken show voor tupels (Daan)
+* import SomeModule(SomeDataType(..)) is impossible in core
+* ParseCommon.literal: "Daan moet eigenlijk niet interpreteren" (by Arjan)
 * JCreator: Rijk-Jan
 * show implementeren met shows, ShowS; efficienter
 * HeliumCompatibility module voor Hugs/GHC
@@ -59,6 +56,9 @@ COMPILER
 
 ---- DONE ----================================================================================
 
+* operator definitie in pp haakjes er omheen
+! User manual helium A4
+! User manual lvmrun A5
 * pretty printer voor foutmeldingen
 * lvmrun compileren met -O
 ! pattern-match failure beter presenteren (niet alleen begin)
@@ -96,6 +96,8 @@ helium +- src   +- main (Main.hs, Args.hs, Version.hs, Compile.hs)
 
 
 ======================== DONE ======================== 
+
+* interpreter kan module die Main heet niet inlezen?! "module imports itself"
 
 - MATCHFLOAT showFloat, sqrt, round, truncate, ceiling, floor, intToFlat
 

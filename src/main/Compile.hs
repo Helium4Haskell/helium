@@ -20,7 +20,7 @@ import OperatorTable
 
 -- UHA
 import UHA_Syntax
-import UHA_Utils(noRange, getNameName, stringFromImportDeclaration)
+import UHA_Utils(noRange, getNameName, stringFromImportDeclaration, isOperatorName)
 
 -- LVM
 import Standard(getLvmPath, searchPath)
@@ -174,7 +174,7 @@ compile fullName options doneModules =
         when (DumpTypes `elem` options) $
             putStr . unlines $
                 map
-                    (\(name,tp) -> show name ++ " :: " ++ show tp)
+                    (\(name,tp) -> parensIfOperator name ++ " :: " ++ show tp)
                     (fmToList toplevelTypes)                   
 
         stopCompilingIf (StopAfterTypeInferencing `elem` options || not (null typeErrors))         
@@ -225,6 +225,10 @@ compile fullName options doneModules =
                       if number == 0 || (NoWarnings `elem` options)   
                         then "" 
                         else " with " ++ show number ++ " warning" ++ if number == 1 then "" else "s"          
+
+parensIfOperator :: Name -> String
+parensIfOperator n = 
+    if isOperatorName n then "(" ++ show n ++ ")" else show n
 
 enterNewPhase :: String -> [Option] -> IO ()
 enterNewPhase phase options = 

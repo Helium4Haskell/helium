@@ -19,6 +19,7 @@ module UHA_Utils
     , idFromName
     , stringFromImportDeclaration
     , rangeFromImportDeclaration
+    , isOperatorName
     -- These functions misuse ranges
     , makeImportRange, isImportRange, isImportName, modulesFromImportRange
     , nameFromString
@@ -216,3 +217,7 @@ rangeFromImportDeclaration importDecl =
     
 nameFromString :: String -> Name
 nameFromString s = Name_Identifier noRange [] s
+
+isOperatorName :: Name -> Bool
+isOperatorName (Name_Operator   _ _ name) = True
+isOperatorName _ = False

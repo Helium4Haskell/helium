@@ -160,7 +160,7 @@ number base baseDigit
 -----------------------------------------------------------
 charLiteral :: HParser Char
 charLiteral     = lexeme (between (char '\'') 
-                                  (char '\'' <?> "end of character")
+                                  (char '\'' <?> "end of character (maybe you're using the wrong quotes?)")
                                   characterChar )
                 <?> "character"
 
