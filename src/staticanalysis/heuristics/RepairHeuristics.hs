@@ -30,11 +30,13 @@ import UHA_Syntax (Range)
 
 -----------------------------------------------------------------------------
 
+type Siblings = [[(String, TpScheme)]]
+
 class MaybeImported a where
    maybeImportedName :: a -> Maybe String
 
 siblingFunctions :: (MaybeImported info, HasTwoTypes info, WithHints info, HasTypeGraph m info) 
-                       => [[(String,TpScheme)]] -> Selector m info
+                       => Siblings -> Selector m info
 siblingFunctions siblings = 
    Selector ("Sibling functions", f) where
   

@@ -56,11 +56,6 @@ imports {
 import Top.Types
 import TypeConversion
 
--- constraints and constraint trees
-import TypeConstraints
-import Top.ComposedSolvers.TreeWalk
-import Top.ComposedSolvers.Tree
-
 -- error messages and warnings
 import Messages
 import TypeErrors
@@ -69,27 +64,15 @@ import ConstraintInfo
 import DoublyLinkedTree
 import UHA_Source
 
--- constraint solvers
-import Top.Constraints.Constraints
-import Top.Solvers.SimpleSolver (solveSimple)
-import Top.Solvers.GreedySolver (solveGreedy)
-import Top.TypeGraph.TypeGraphSolver (solveTypeGraphPlusDoAtEnd)
-import Top.Solvers.SolveConstraints
-import Top.ComposedSolvers.CombinationSolver ((|>>|))
-import Top.ComposedSolvers.ChunkySolver
-import Top.States.TIState
-import Top.TypeGraph.TypeGraphMonad (setHeuristics)
-import Top.TypeGraph.Heuristics (HComponent(..), Heuristic(..) )
-import Top.TypeGraph.DefaultHeuristics
+-- constraints and constraint trees
+import TypeConstraints
+import Top.ComposedSolvers.Tree
 
--- specialized type graph heuristics
-import HeuristicsInfo
-import RepairHeuristics
-import TieBreakerHeuristics
-import OnlyResultHeuristics
-import UnifierHeuristics     (unifierVertex)
-import ContributingSites     (contributingSites)
-import Top.States.BasicState (updateErrors)
+-- constraint solving
+import SelectConstraintSolver (selectConstraintSolver)
+import Top.Solvers.SolveConstraints (SolveResult(..))
+import HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
+import BindingGroupAnalysis
 
 -- UHA syntax
 import UHA_Syntax
@@ -99,13 +82,12 @@ import UHA_Utils                 (showNameAsOperator, intUnaryMinusName, NameWit
 -- other
 import Utils                     (internalError)
 import DerivingShow              (typeOfShowFunction, nameOfShowFunction) 
-import TopSort                   (topSort)
 import ImportEnvironment  hiding (setTypeSynonyms)
 import DictionaryEnvironment
 import Args
 
 -- standard
 import Data.FiniteMap
-import Maybe 
-import List
+import Data.Maybe 
+import Data.List
 }

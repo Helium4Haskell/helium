@@ -146,7 +146,7 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
           
              Just signature ->
                 -- is the signature not too general?
-                let info = nameToSelfExpr nameOfSignature
+                let info = nameToUHA_Expr nameOfSignature
                     -- this name has a different range!
                     nameOfSignature = head [ n | n <- keysFM typeSignatures, n == nameWithRangeToName nameWR ]      
                     newErrors = checkNotTooGeneral info synonyms signature scheme             
@@ -217,17 +217,3 @@ SEM Declaration
   
 SEM Expression 
   | Variable   lhs . collectChunkNumbers = addToFM @lhs.collectChunkNumbers @lhs.betaUnique @lhs.currentChunk
-     
-{
-type ChunkNumberMap = FiniteMap Int Int
-
-lookupChunkNumber :: Int -> ChunkNumberMap -> Int
-lookupChunkNumber i fm = 
-   let err = error ("could not find beta in lookupChunkNumber [i="++show i++"] [fm="++show (fmToList fm)++"]")
-   in lookupWithDefaultFM fm err i
-
-dependencyBinds :: ChunkNumberMap -> TypeConstraints ConstraintInfo -> [(Int, TypeConstraint ConstraintInfo)]
-dependencyBinds fm cs = 
-   let err = error "could not find variable of a constraint"
-   in [ (lookupChunkNumber i fm, c) | c <- cs, let i = maybe err id (spreadFunction c)]   
-} 

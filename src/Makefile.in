@@ -77,6 +77,7 @@ STATICANALYSIS = \
 	staticanalysis/messages/KindErrors.hs \
 	staticanalysis/messages/Warnings.hs \
 	staticanalysis/heuristics/HeuristicsInfo.hs \
+	staticanalysis/heuristics/ListOfHeuristics.hs \
 	staticanalysis/heuristics/OnlyResultHeuristics.hs \
 	staticanalysis/heuristics/RepairHeuristics.hs \
 	staticanalysis/heuristics/TieBreakerHeuristics.hs \
@@ -85,6 +86,8 @@ STATICANALYSIS = \
 	staticanalysis/inferencers/TypeInferencing.hs \
 	staticanalysis/inferencers/KindInferencing.hs \
 	staticanalysis/inferencers/ExpressionTypeInferencer.hs \
+	staticanalysis/inferencers/SelectConstraintSolver.hs \
+	staticanalysis/inferencers/BindingGroupAnalysis.hs \
 	staticanalysis/directives/TS_Parser.hs \
 	staticanalysis/directives/TS_Syntax.hs \
 	staticanalysis/directives/Matchers.hs \

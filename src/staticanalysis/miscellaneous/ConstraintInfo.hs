@@ -39,7 +39,75 @@ data ConstraintInfo =
      
 instance Show ConstraintInfo where
    show = location
-     
+
+-----------------------------------------------------------------
+-- Smart constructors
+
+childConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
+childConstraint childNr theLocation infoTree theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = ( (self . attribute) infoTree
+                       , Just $ (self . attribute . selectChild childNr) infoTree
+                       )
+        , typepair   = tppair
+        , localInfo  = infoTree        
+        , properties = theProperties
+        }
+
+specialConstraint :: String -> InfoTree -> (UHA_Source, Maybe UHA_Source) -> Properties -> (Tp, Tp) -> ConstraintInfo
+specialConstraint theLocation infoTree theSources theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = theSources
+        , typepair   = tppair
+        , localInfo  = infoTree        
+        , properties = theProperties
+        }
+        
+orphanConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
+orphanConstraint childNr theLocation infoTree theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = ( (self . attribute . selectChild childNr) infoTree
+                       , Nothing
+                       )
+        , typepair   = tppair
+        , localInfo  = infoTree        
+        , properties = theProperties
+        }        
+        
+resultConstraint :: String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
+resultConstraint theLocation infoTree theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = ( (self . attribute) infoTree 
+                       , Nothing
+                       )
+        , typepair   = tppair
+        , localInfo  = infoTree    
+        , properties = theProperties
+        }        
+
+variableConstraint :: String -> UHA_Source -> Properties -> (Tp, Tp) -> ConstraintInfo
+variableConstraint theLocation theSource theProperties tppair =
+  CInfo { location   = theLocation
+        , sources    = (theSource, Nothing)
+        , typepair   = tppair
+        , localInfo  = root (LocalInfo { self = theSource, assignedType = Just (snd tppair) }) []
+        , properties = theProperties
+        }               
+        
+cinfoBindingGroupExplicitTypedBinding :: Name -> (Tp,Tp) -> ConstraintInfo
+cinfoSameBindingGroup                 :: Name -> (Tp,Tp) -> ConstraintInfo
+cinfoBindingGroupImplicit             :: Name -> (Tp,Tp) -> ConstraintInfo
+cinfoBindingGroupExplicit             :: Name -> (Tp,Tp) -> ConstraintInfo
+
+cinfoBindingGroupExplicitTypedBinding name = 
+   variableConstraint "explicitly typed binding" (nameToUHA_Expr name) [ FromBindingGroup, ExplicitTypedBinding, HasTrustFactor 10.0 ]
+cinfoSameBindingGroup name = 
+   variableConstraint "variable" (nameToUHA_Expr name) [ FromBindingGroup, FolkloreConstraint ]
+cinfoBindingGroupImplicit name = 
+   variableConstraint "variable" (nameToUHA_Expr name) [ FromBindingGroup, FolkloreConstraint, HasTrustFactor 10.0 ]
+cinfoBindingGroupExplicit name = 
+   variableConstraint "variable" (nameToUHA_Expr name) [ FromBindingGroup, FolkloreConstraint ] 
+
 type InfoTrees = [InfoTree]
 type InfoTree = DoublyLinkedTree LocalInfo
                             

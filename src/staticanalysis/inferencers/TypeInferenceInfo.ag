@@ -13,7 +13,7 @@
 -- Constraint Information : Body
 
 SEM Body | Body loc . cinfo = 
-  \name -> variableConstraint "variable" (nameToSelfExpr name) 
+  \name -> variableConstraint "variable" (nameToUHA_Expr name) 
      [ FolkloreConstraint, HasTrustFactor 10.0, IsImported name ]
 
 ---------------------------------------------------------------------------------------
@@ -36,7 +36,7 @@ SEM FunctionBinding | FunctionBinding loc . cinfoLeft =
      [ Unifier (head (ftv (@lhs.betasLeft !! num))) (ordinal True (num+1)++" pattern of function bindings", attribute @lhs.parentTree, "pattern") ]                      
 
 SEM FunctionBinding | FunctionBinding loc . cinfoBind =
-  \name -> variableConstraint "variable" (nameToSelfExpr name) 
+  \name -> variableConstraint "variable" (nameToUHA_Expr name) 
      [ FolkloreConstraint 
      , makeUnifier name "function binding" @lefthandside.environment @parentTree
      ]
@@ -110,7 +110,7 @@ SEM Expression | If loc . cinfoElse =
 
 -- Expression.Lambda
 SEM Expression | Lambda loc . cinfoBind =
-  \name -> variableConstraint "variable" (nameToSelfExpr name)
+  \name -> variableConstraint "variable" (nameToUHA_Expr name)
      [ FolkloreConstraint
      , makeUnifier name "lambda abstraction" @patterns.environment @parentTree
      ]
@@ -185,12 +185,12 @@ SEM Expression | Enum loc . cinfoResult =
 -- Expression.Negate
 SEM Expression | Negate loc . cinfo =
   specialConstraint "negation" @parentTree 
-     (self @localInfo, Just $ nameToSelfExpr (Name_Operator @range [] "-")) 
+     (self @localInfo, Just $ nameToUHA_Expr (Name_Operator @range [] "-")) 
      []
 
 SEM Expression | NegateFloat loc . cinfo =
   specialConstraint "negation" @parentTree 
-     (self @localInfo, Just $ nameToSelfExpr (Name_Operator @range [] "-."))
+     (self @localInfo, Just $ nameToUHA_Expr (Name_Operator @range [] "-."))
      []        
 
 ---------------------------------------------------------------------------------------
@@ -220,7 +220,7 @@ SEM Pattern | Constructor loc . cinfoConstructor =
 
 SEM Pattern | Constructor loc . cinfoApply =
   specialConstraint "pattern application" @parentTree
-     (self @localInfo, Just $ nameToSelfPat @name.self)
+     (self @localInfo, Just $ nameToUHA_Pat @name.self)
      [ ApplicationEdge False (map attribute @patterns.infoTrees) ]    
                                    
 SEM Pattern | Constructor loc . cinfoEmpty =
@@ -229,12 +229,12 @@ SEM Pattern | Constructor loc . cinfoEmpty =
                                 
 -- Pattern.InfixConstructor
 SEM Pattern | InfixConstructor loc . cinfoConstructor =
-  variableConstraint "pattern constructor" (nameToSelfPat @constructorOperator.self) 
+  variableConstraint "pattern constructor" (nameToUHA_Pat @constructorOperator.self) 
      [ FolkloreConstraint, HasTrustFactor 10.0 ] 
 
 SEM Pattern | InfixConstructor loc . cinfoApply =
   specialConstraint "infix pattern application" @parentTree 
-     (self @localInfo, Just $ nameToSelfPat  @constructorOperator.self)
+     (self @localInfo, Just $ nameToUHA_Pat  @constructorOperator.self)
      [ ApplicationEdge True (map attribute [@leftPattern.infoTree, @rightPattern.infoTree]) ] 
 
 -- Pattern.List
@@ -261,7 +261,7 @@ SEM Pattern | Negate loc . cinfo =
 -- Pattern.As
 SEM Pattern |  As loc . cinfo =
   specialConstraint "as pattern" @parentTree
-     (self @localInfo, Just $ nameToSelfPat @name.self)
+     (self @localInfo, Just $ nameToUHA_Pat @name.self)
      []
 
 -- Pattern.NegateFloat
@@ -277,7 +277,7 @@ SEM Alternative | Alternative loc . cinfoLeft =
      [ Unifier (head (ftv @lhs.betaLeft)) ("case patterns", attribute @lhs.parentTree, "case pattern") ]     
 
 SEM Alternative | Alternative loc . cinfoBind =
-  \name -> variableConstraint "variable" (nameToSelfExpr name) 
+  \name -> variableConstraint "variable" (nameToUHA_Expr name) 
      [ FolkloreConstraint
      , makeUnifier name "case alternative" @pattern.environment @lhs.parentTree
      ]
@@ -294,7 +294,7 @@ SEM Statement | Generator loc . cinfoResult =
      []
      
 SEM Statement | Generator loc . cinfoBind =
-  \name -> variableConstraint "variable" (nameToSelfExpr name)
+  \name -> variableConstraint "variable" (nameToUHA_Expr name)
      [ FolkloreConstraint 
      , makeUnifier name "generator" @pattern.environment @parentTree
      ]
@@ -311,83 +311,7 @@ SEM Qualifier | Generator loc . cinfoResult =
      []
      
 SEM Qualifier | Generator loc . cinfoBind =
-  \name -> variableConstraint "variable" (nameToSelfExpr name) 
+  \name -> variableConstraint "variable" (nameToUHA_Expr name) 
      [ FolkloreConstraint
      , makeUnifier name "generator" @pattern.environment @parentTree
-     ]
-  
------------------------------------------------------------------
--- Smart constructors
-
-{
-childConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
-childConstraint childNr theLocation infoTree theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = ( (self . attribute) infoTree
-                       , Just $ (self . attribute . selectChild childNr) infoTree
-                       )
-        , typepair   = tppair
-        , localInfo  = infoTree        
-        , properties = theProperties
-        }
-
-specialConstraint :: String -> InfoTree -> (UHA_Source, Maybe UHA_Source) -> Properties -> (Tp, Tp) -> ConstraintInfo
-specialConstraint theLocation infoTree theSources theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = theSources
-        , typepair   = tppair
-        , localInfo  = infoTree        
-        , properties = theProperties
-        }
-        
-orphanConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
-orphanConstraint childNr theLocation infoTree theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = ( (self . attribute . selectChild childNr) infoTree
-                       , Nothing
-                       )
-        , typepair   = tppair
-        , localInfo  = infoTree        
-        , properties = theProperties
-        }        
-        
-resultConstraint :: String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
-resultConstraint theLocation infoTree theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = ( (self . attribute) infoTree 
-                       , Nothing
-                       )
-        , typepair   = tppair
-        , localInfo  = infoTree    
-        , properties = theProperties
-        }        
-
-variableConstraint :: String -> UHA_Source -> Properties -> (Tp, Tp) -> ConstraintInfo
-variableConstraint theLocation theSource theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = (theSource, Nothing)
-        , typepair   = tppair
-        , localInfo  = root (LocalInfo { self = theSource, assignedType = Just (snd tppair) }) []
-        , properties = theProperties
-        }               
-        
-cinfoBindingGroupExplicitTypedBinding :: Name -> (Tp,Tp) -> ConstraintInfo
-cinfoSameBindingGroup                 :: Name -> (Tp,Tp) -> ConstraintInfo
-cinfoBindingGroupImplicit             :: Name -> (Tp,Tp) -> ConstraintInfo
-cinfoBindingGroupExplicit             :: Name -> (Tp,Tp) -> ConstraintInfo
-
-cinfoBindingGroupExplicitTypedBinding name = 
-   variableConstraint "explicitly typed binding" (nameToSelfExpr name) [ FromBindingGroup, ExplicitTypedBinding, HasTrustFactor 10.0 ]
-cinfoSameBindingGroup name = 
-   variableConstraint "variable" (nameToSelfExpr name) [ FromBindingGroup, FolkloreConstraint ]
-cinfoBindingGroupImplicit name = 
-   variableConstraint "variable" (nameToSelfExpr name) [ FromBindingGroup, FolkloreConstraint, HasTrustFactor 10.0 ]
-cinfoBindingGroupExplicit name = 
-   variableConstraint "variable" (nameToSelfExpr name) [ FromBindingGroup, FolkloreConstraint ]      
-                           
-nameToSelfExpr :: Name -> UHA_Source
-nameToSelfExpr name = UHA_Expr (Expression_Variable (getNameRange name) name)
-
-nameToSelfPat :: Name -> UHA_Source
-nameToSelfPat name = UHA_Pat (Pattern_Variable (getNameRange name) name)
-}   
+     ] 

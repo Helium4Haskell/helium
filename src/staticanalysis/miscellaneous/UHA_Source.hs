@@ -63,7 +63,13 @@ descriptionOfSource source =
       UHA_RHS   rhs   -> "right-hand side"
       UHA_Decl  decl  -> "declaration"
       UHA_Decls decls -> "declarations"
-      
+
+nameToUHA_Expr :: Name -> UHA_Source
+nameToUHA_Expr name = UHA_Expr (Expression_Variable (getNameRange name) name)
+
+nameToUHA_Pat :: Name -> UHA_Source
+nameToUHA_Pat name = UHA_Pat (Pattern_Variable (getNameRange name) name)
+
 convertSources :: (UHA_Source, Maybe UHA_Source) -> [(String, UHA_Source)]
 convertSources (source, maybeSource) = 
    (descriptionOfSource source, source) : maybe [] (\s -> [(f s, s)]) maybeSource

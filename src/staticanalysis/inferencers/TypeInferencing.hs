@@ -6,11 +6,6 @@ module TypeInferencing where
 import Top.Types
 import TypeConversion
 
--- constraints and constraint trees
-import TypeConstraints
-import Top.ComposedSolvers.TreeWalk
-import Top.ComposedSolvers.Tree
-
 -- error messages and warnings
 import Messages
 import TypeErrors
@@ -19,27 +14,15 @@ import ConstraintInfo
 import DoublyLinkedTree
 import UHA_Source
 
--- constraint solvers
-import Top.Constraints.Constraints
-import Top.Solvers.SimpleSolver (solveSimple)
-import Top.Solvers.GreedySolver (solveGreedy)
-import Top.TypeGraph.TypeGraphSolver (solveTypeGraphPlusDoAtEnd)
-import Top.Solvers.SolveConstraints
-import Top.ComposedSolvers.CombinationSolver ((|>>|))
-import Top.ComposedSolvers.ChunkySolver
-import Top.States.TIState
-import Top.TypeGraph.TypeGraphMonad (setHeuristics)
-import Top.TypeGraph.Heuristics (HComponent(..), Heuristic(..) )
-import Top.TypeGraph.DefaultHeuristics
+-- constraints and constraint trees
+import TypeConstraints
+import Top.ComposedSolvers.Tree
 
--- specialized type graph heuristics
-import HeuristicsInfo
-import RepairHeuristics
-import TieBreakerHeuristics
-import OnlyResultHeuristics
-import UnifierHeuristics     (unifierVertex)
-import ContributingSites     (contributingSites)
-import Top.States.BasicState (updateErrors)
+-- constraint solving
+import SelectConstraintSolver (selectConstraintSolver)
+import Top.Solvers.SolveConstraints (SolveResult(..))
+import HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
+import BindingGroupAnalysis
 
 -- UHA syntax
 import UHA_Syntax
@@ -49,15 +32,14 @@ import UHA_Utils                 (showNameAsOperator, intUnaryMinusName, NameWit
 -- other
 import Utils                     (internalError)
 import DerivingShow              (typeOfShowFunction, nameOfShowFunction) 
-import TopSort                   (topSort)
 import ImportEnvironment  hiding (setTypeSynonyms)
 import DictionaryEnvironment
 import Args
 
 -- standard
 import Data.FiniteMap
-import Maybe 
-import List
+import Data.Maybe 
+import Data.List
 
 import List
 import Matchers
@@ -65,132 +47,6 @@ import TS_Apply (applyTypingStrategy, matchInformation, MetaVariableTable, MetaV
 import TS_CoreSyntax
 
 import UHA_Utils
-
-type Assumptions        = FiniteMap Name [(Name,Tp)]
-type PatternAssumptions = FiniteMap Name Tp
-type Monos              = FiniteMap Name Tp
-
-noAssumptions :: FiniteMap Name a
-noAssumptions = emptyFM
-
-combine :: Assumptions -> Assumptions -> Assumptions
-combine = plusFM_C (++)
-
-single :: Name -> Tp -> Assumptions
-single n t = unitFM n [(n,t)]
-
-type BindingGroups = [BindingGroup]
-type BindingGroup  = (PatternAssumptions,Assumptions,ConstraintSets)
-type InheritedBDG  = [(Names,(Monos, Int))]
-
-emptyBindingGroup :: BindingGroup
-emptyBindingGroup = (noAssumptions, noAssumptions, [])
-
-combineBindingGroup :: BindingGroup -> BindingGroup -> BindingGroup
-combineBindingGroup (e1,a1,c1) (e2,a2,c2) = (e1 `plusFM` e2,a1 `combine` a2,c1++c2)
-
-concatBindingGroups :: BindingGroups -> BindingGroup
-concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
-                    
-performBindingGroup :: Int -> Int -> ChunkNumberMap -> Monos -> FiniteMap Name TpScheme -> Maybe (Assumptions, ConstraintSets) -> BindingGroups -> (Assumptions,ConstraintSet,InheritedBDG,Int)
-performBindingGroup currentChunk uniqueChunk chunkNumberMap monos typeSignatures context groups = 
-   variableDependencies 
-
-   where   
-        bindingGroupAnalysis :: BindingGroups -> BindingGroups
-
-        bindingGroupAnalysis cs
-                        = let explicits = keysFM typeSignatures
-                              indexMap = concat (zipWith f cs [0..])
-                              f (env,_,_) i = [ (n,i) | n <- keysFM env, n `notElem` explicits ]
-                              edges    = concat (zipWith f' cs [0..])
-                              f' (_,ass,_) i = [ (i,j)| n <- keysFM ass, (n',j) <- indexMap, n==n' ]
-                              list = topSort (length cs-1) edges
-                          in map (concatBindingGroups . map (cs !!)) list
-
-        chunkedBindingGroups  :: [(Int, BindingGroup)]
-        chunkedBindingGroups = zip [uniqueChunk..] (bindingGroupAnalysis groups) ++ 
-                               case context of 
-                                  Nothing     -> []
-                                  Just (a, c) -> [(currentChunk, (emptyFM, a, c))]
-        
-        monomorphicNames :: [Name]
-        monomorphicNames = 
-           let initial = let f (e, a, _) = if any (`elem` ftv (eltsFM monos)) (ftv $ map snd $ concat $ eltsFM a)
-                                             then keysFM e
-                                             else []
-                         in concatMap f groups
-               expand [] _       = []
-               expand (n:ns) gps = let (xs, ys)  = partition p gps
-                                       p (_,a,_) = n `elem` keysFM a
-                                       f (e,_,_) = keysFM e
-                                   in n : expand (concatMap f xs ++ ns) ys
-           in expand initial groups
-                          
-        variableDependencies :: (Assumptions,ConstraintSet,InheritedBDG,Int)
-        variableDependencies = 
-           let (aset, cset, mt) = foldr op initial chunkedBindingGroups
-           in (aset, cset, mt, uniqueChunk + length groups)
-
-          where        
-            initial = (noAssumptions, emptyTree, [])
-          
-            op (cnr,(e,a,c)) (aset,cset,mt) =
-               let (cset1,e'   )  = (typeSignatures !:::! e) cinfoBindingGroupExplicitTypedBinding                   
-                   (cset2,a'   )  = (typeSignatures .:::. a) cinfoBindingGroupExplicit
-                   (cset3,a''  )  = (e' .===. a')            cinfoSameBindingGroup
-                   (cset4,aset')  = (.<==.) monos e' aset    cinfoBindingGroupImplicit
-                   
-                   monomorphic    = any (`elem` monomorphicNames) (keysFM e) || cnr == currentChunk
-
-                   constraintTree 
-                    | monomorphic = StrictOrder 
-                                       ( (cset1 ++ cset2 ++ cset3) .>>. Node (reverse c) )
-                                       ( cset4 .>>. cset )
-                    | otherwise   = Chunk cnr
-                                          (cset3 .>>. Node (reverse c))
-                                          (dependencyBinds chunkNumberMap cset4)
-                                          ([(cnr, c) | c <- cset1] ++ dependencyBinds chunkNumberMap cset2)
-                                          cset
-               in  
-                  ( a'' `combine` aset'
-                  , constraintTree
-                  , (keysFM e,(e', if monomorphic then currentChunk else cnr)) : mt                   
-                  )
-
-findMono :: Name -> InheritedBDG -> Monos
-findMono n = let p = elem n . fst
-             in fst . snd . head . filter p                  
-
-getMonos :: TypeConstraints info -> FiniteMap Name Tp
-getMonos tcs = listToFM [ (nameFromString "_", TVar i) | tc <- tcs, i <- ftv tc ]
-
-findCurrentChunk :: Name -> InheritedBDG -> Int
-findCurrentChunk n = let p = elem n . fst
-                     in snd . snd . head . filter p  
-
-heliumTypeGraphHeuristics :: [Option] -> [[(String, TpScheme)]] -> [Heuristic ConstraintInfo]
-heliumTypeGraphHeuristics options siblings = 
-   [ highParticipation 1.00
-   ] ++
-   [ Heuristic (Voting $
-        [ siblingFunctions siblings
-        , similarLiterals
-        , similarNegation
-        , applicationEdge
-        , tupleEdge
-        , fbHasTooManyArguments
-        , variableFunction
-        ] ++
-        [ unifierVertex | UnifierHeuristics `elem` options ])
-   | NoRepairHeuristics `notElem` options
-   ] ++
-   [ applicationResult
-   , negationResult
-   , trustFactorOfConstraint
-   , isTopDownEdge
-   , positionInList
-   ]
          
 getRequiredDictionaries :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
 getRequiredDictionaries synonyms useType defType = 
@@ -232,7 +88,7 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
           
              Just signature ->
                 -- is the signature not too general?
-                let info = nameToSelfExpr nameOfSignature
+                let info = nameToUHA_Expr nameOfSignature
                     -- this name has a different range!
                     nameOfSignature = head [ n | n <- keysFM typeSignatures, n == nameWithRangeToName nameWR ]      
                     newErrors = checkNotTooGeneral info synonyms signature scheme             
@@ -251,89 +107,6 @@ checkNotTooGeneral source synonyms signature scheme =
    [ makeNotGeneralEnoughTypeError source scheme signature
    | not (genericInstanceOf synonyms standardClasses signature scheme)
    ]       
-
-type ChunkNumberMap = FiniteMap Int Int
-
-lookupChunkNumber :: Int -> ChunkNumberMap -> Int
-lookupChunkNumber i fm = 
-   let err = error ("could not find beta in lookupChunkNumber [i="++show i++"] [fm="++show (fmToList fm)++"]")
-   in lookupWithDefaultFM fm err i
-
-dependencyBinds :: ChunkNumberMap -> TypeConstraints ConstraintInfo -> [(Int, TypeConstraint ConstraintInfo)]
-dependencyBinds fm cs = 
-   let err = error "could not find variable of a constraint"
-   in [ (lookupChunkNumber i fm, c) | c <- cs, let i = maybe err id (spreadFunction c)]   
-
-childConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
-childConstraint childNr theLocation infoTree theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = ( (self . attribute) infoTree
-                       , Just $ (self . attribute . selectChild childNr) infoTree
-                       )
-        , typepair   = tppair
-        , localInfo  = infoTree        
-        , properties = theProperties
-        }
-
-specialConstraint :: String -> InfoTree -> (UHA_Source, Maybe UHA_Source) -> Properties -> (Tp, Tp) -> ConstraintInfo
-specialConstraint theLocation infoTree theSources theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = theSources
-        , typepair   = tppair
-        , localInfo  = infoTree        
-        , properties = theProperties
-        }
-        
-orphanConstraint :: Int -> String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
-orphanConstraint childNr theLocation infoTree theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = ( (self . attribute . selectChild childNr) infoTree
-                       , Nothing
-                       )
-        , typepair   = tppair
-        , localInfo  = infoTree        
-        , properties = theProperties
-        }        
-        
-resultConstraint :: String -> InfoTree -> Properties -> (Tp, Tp) -> ConstraintInfo
-resultConstraint theLocation infoTree theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = ( (self . attribute) infoTree 
-                       , Nothing
-                       )
-        , typepair   = tppair
-        , localInfo  = infoTree    
-        , properties = theProperties
-        }        
-
-variableConstraint :: String -> UHA_Source -> Properties -> (Tp, Tp) -> ConstraintInfo
-variableConstraint theLocation theSource theProperties tppair =
-  CInfo { location   = theLocation
-        , sources    = (theSource, Nothing)
-        , typepair   = tppair
-        , localInfo  = root (LocalInfo { self = theSource, assignedType = Just (snd tppair) }) []
-        , properties = theProperties
-        }               
-        
-cinfoBindingGroupExplicitTypedBinding :: Name -> (Tp,Tp) -> ConstraintInfo
-cinfoSameBindingGroup                 :: Name -> (Tp,Tp) -> ConstraintInfo
-cinfoBindingGroupImplicit             :: Name -> (Tp,Tp) -> ConstraintInfo
-cinfoBindingGroupExplicit             :: Name -> (Tp,Tp) -> ConstraintInfo
-
-cinfoBindingGroupExplicitTypedBinding name = 
-   variableConstraint "explicitly typed binding" (nameToSelfExpr name) [ FromBindingGroup, ExplicitTypedBinding, HasTrustFactor 10.0 ]
-cinfoSameBindingGroup name = 
-   variableConstraint "variable" (nameToSelfExpr name) [ FromBindingGroup, FolkloreConstraint ]
-cinfoBindingGroupImplicit name = 
-   variableConstraint "variable" (nameToSelfExpr name) [ FromBindingGroup, FolkloreConstraint, HasTrustFactor 10.0 ]
-cinfoBindingGroupExplicit name = 
-   variableConstraint "variable" (nameToSelfExpr name) [ FromBindingGroup, FolkloreConstraint ]      
-                           
-nameToSelfExpr :: Name -> UHA_Source
-nameToSelfExpr name = UHA_Expr (Expression_Variable (getNameRange name) name)
-
-nameToSelfPat :: Name -> UHA_Source
-nameToSelfPat name = UHA_Pat (Pattern_Variable (getNameRange name) name)
 
 globalInfoError :: a
 globalInfoError = internalError "GlobalInfo.ag" "n/a" "global info not available"
@@ -902,7 +675,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
                 resultConstraint "case pattern" _patternIinfoTree
                    [ Unifier (head (ftv _lhsIbetaLeft)) ("case patterns", attribute _lhsIparentTree, "case pattern") ]
             (_cinfoBind@_) =
-                \name -> variableConstraint "variable" (nameToSelfExpr name)
+                \name -> variableConstraint "variable" (nameToUHA_Expr name)
                    [ FolkloreConstraint
                    , makeUnifier name "case alternative" _patternIenvironment _lhsIparentTree
                    ]
@@ -1693,7 +1466,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             (_lhsOuniqueChunk@_) =
                 _chunkNr
             (_cinfo@_) =
-                \name -> variableConstraint "variable" (nameToSelfExpr name)
+                \name -> variableConstraint "variable" (nameToUHA_Expr name)
                    [ FolkloreConstraint, HasTrustFactor 10.0, IsImported name ]
             (_declInfo@_) =
                 LocalInfo { self = UHA_Decls _declarationsIself
@@ -6583,7 +6356,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
             (_patternsObetaUnique@_) =
                 _lhsIbetaUnique + 1
             (_cinfoBind@_) =
-                \name -> variableConstraint "variable" (nameToSelfExpr name)
+                \name -> variableConstraint "variable" (nameToUHA_Expr name)
                    [ FolkloreConstraint
                    , makeUnifier name "lambda abstraction" _patternsIenvironment _parentTree
                    ]
@@ -7484,7 +7257,7 @@ sem_Expression_Negate (range_) (expression_) =
                 map (makeUnresolvedOverloadingError (self _localInfo)) _overloadingErrors ++ _expressionIcollectErrors
             (_cinfo@_) =
                 specialConstraint "negation" _parentTree
-                   (self _localInfo, Just $ nameToSelfExpr (Name_Operator range_ [] "-"))
+                   (self _localInfo, Just $ nameToUHA_Expr (Name_Operator range_ [] "-"))
                    []
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
@@ -7689,7 +7462,7 @@ sem_Expression_NegateFloat (range_) (expression_) =
                 _lhsIbetaUnique + 1
             (_cinfo@_) =
                 specialConstraint "negation" _parentTree
-                   (self _localInfo, Just $ nameToSelfExpr (Name_Operator range_ [] "-."))
+                   (self _localInfo, Just $ nameToUHA_Expr (Name_Operator range_ [] "-."))
                    []
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
@@ -9945,7 +9718,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
                 orphanConstraint num "pattern of function binding" _parentTree
                    [ Unifier (head (ftv (_lhsIbetasLeft !! num))) (ordinal True (num+1)++" pattern of function bindings", attribute _lhsIparentTree, "pattern") ]
             (_cinfoBind@_) =
-                \name -> variableConstraint "variable" (nameToSelfExpr name)
+                \name -> variableConstraint "variable" (nameToUHA_Expr name)
                    [ FolkloreConstraint
                    , makeUnifier name "function binding" _lefthandsideIenvironment _parentTree
                    ]
@@ -12710,55 +12483,13 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 if null _checkedSolveErrors then _bodyIcollectErrors else _checkedSolveErrors
             (_checkedSolveErrors@_) =
                 makeTypeErrors _orderedTypeSynonyms _substitution _solveErrors
-            (_siblings@_) =
-                let f s = [ (s, ts) | ts <- findTpScheme (nameFromString s) ]
-                    findTpScheme n = catMaybes
-                                        [ lookupFM (valueConstructors _lhsIimportEnvironment) n
-                                        , lookupFM (typeEnvironment   _lhsIimportEnvironment) n
-                                        ]
-                in map (concatMap f) (getSiblings _lhsIimportEnvironment)
-            ((SolveResult (_betaUniqueAtTheEnd@_)(_substitution@_)(_predicates@_)(_solveErrors@_)(_debugString@_))) =
-                _selectedSolver _orderedTypeSynonyms _bodyIbetaUnique _constraints
             (_orderedTypeSynonyms@_) =
                 getOrderedTypeSynonyms _lhsIimportEnvironment
-            (_constraints@_) =
-                _flattening _bodyIconstraints
-            (_flattening@_) =
-                flattenTree _selectedTreeWalk . phaseTree . _spreadingOrNot
-            (_spreadingOrNot@_) =
-                if NoSpreading `elem` _lhsIoptions
-                  then id
-                  else spreadTree spreadFunction
-            (_selectedTreeWalk@_) =
-                let select
-                       | TreeWalkTopDown             `elem` _lhsIoptions = topDownTreeWalk
-                       | TreeWalkBottomUp            `elem` _lhsIoptions = bottomUpTreeWalk
-                       | TreeWalkInorderTopFirstPre  `elem` _lhsIoptions = inorderTopFirstPreTreeWalk
-                       | TreeWalkInorderTopLastPre   `elem` _lhsIoptions = inorderTopLastPreTreeWalk
-                       | TreeWalkInorderTopFirstPost `elem` _lhsIoptions = inorderTopFirstPostTreeWalk
-                       | otherwise                                       = inorderTopLastPostTreeWalk
-                    reverseOrNot
-                       | RightToLeft `elem` _lhsIoptions = reverseTreeWalk
-                       | otherwise                       = id
-                in reverseOrNot select
-            (_selectedSolver@_) =
-                let typegraphSolver =
-                       let atEnd = if Highlighting `elem` _lhsIoptions
-                                     then updateErrors contributingSites
-                                     else return ()
-                           heuristics = heliumTypeGraphHeuristics _lhsIoptions _siblings
-                       in solveTypeGraphPlusDoAtEnd heuristics atEnd
-                    combinedSolver = solveGreedy |>>| typegraphSolver
-                    select
-                       | SolverSimple      `elem` _lhsIoptions = solveSimple
-                       | SolverGreedy      `elem` _lhsIoptions = solveGreedy
-                       | SolverTypeGraph   `elem` _lhsIoptions = typegraphSolver
-                       | SolverCombination `elem` _lhsIoptions = combinedSolver
-                       | otherwise = \synonyms unique _ ->
-                                        let chunkConstraints :: ChunkConstraints (TypeConstraint ConstraintInfo)
-                                            chunkConstraints = chunkTree dependencyTypeConstraint . phaseTree . spreadTree spreadFunction $ _bodyIconstraints
-                                        in solveChunkConstraints combinedSolver (flattenTree _selectedTreeWalk) synonyms unique chunkConstraints
-                in select
+            ((SolveResult (_betaUniqueAtTheEnd@_)(_substitution@_)(_predicates@_)(_solveErrors@_)(_debugString@_))) =
+                (selectConstraintSolver _lhsIoptions _lhsIimportEnvironment)
+                   _orderedTypeSynonyms
+                   _bodyIbetaUnique
+                   _bodyIconstraints
             (_bodyOdictionaryEnvironment@_) =
                 emptyDictionaryEnvironment
             (_bodyOavailablePredicates@_) =
@@ -13010,7 +12741,7 @@ sem_Pattern_As (range_) (name_) (pattern_) =
                 addToFM _patternIenvironment _nameIself _beta
             (_cinfo@_) =
                 specialConstraint "as pattern" _parentTree
-                   (self _localInfo, Just $ nameToSelfPat _nameIself)
+                   (self _localInfo, Just $ nameToUHA_Pat _nameIself)
                    []
             (_localInfo@_) =
                 LocalInfo { self = UHA_Pat _self
@@ -13119,7 +12850,7 @@ sem_Pattern_Constructor (range_) (name_) (patterns_) =
                    [ FolkloreConstraint, HasTrustFactor 10.0 ]
             (_cinfoApply@_) =
                 specialConstraint "pattern application" _parentTree
-                   (self _localInfo, Just $ nameToSelfPat _nameIself)
+                   (self _localInfo, Just $ nameToUHA_Pat _nameIself)
                    [ ApplicationEdge False (map attribute _patternsIinfoTrees) ]
             (_cinfoEmpty@_) =
                 resultConstraint "pattern constructor" _parentTree
@@ -13249,11 +12980,11 @@ sem_Pattern_InfixConstructor (range_) (leftPattern_) (constructorOperator_) (rig
             (_lhsOenvironment@_) =
                 _leftPatternIenvironment `plusFM` _rightPatternIenvironment
             (_cinfoConstructor@_) =
-                variableConstraint "pattern constructor" (nameToSelfPat _constructorOperatorIself)
+                variableConstraint "pattern constructor" (nameToUHA_Pat _constructorOperatorIself)
                    [ FolkloreConstraint, HasTrustFactor 10.0 ]
             (_cinfoApply@_) =
                 specialConstraint "infix pattern application" _parentTree
-                   (self _localInfo, Just $ nameToSelfPat  _constructorOperatorIself)
+                   (self _localInfo, Just $ nameToUHA_Pat  _constructorOperatorIself)
                    [ ApplicationEdge True (map attribute [_leftPatternIinfoTree, _rightPatternIinfoTree]) ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Pat _self
@@ -14561,7 +14292,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
                 childConstraint 1 "generator" _parentTree
                    []
             (_cinfoBind@_) =
-                \name -> variableConstraint "variable" (nameToSelfExpr name)
+                \name -> variableConstraint "variable" (nameToUHA_Expr name)
                    [ FolkloreConstraint
                    , makeUnifier name "generator" _patternIenvironment _parentTree
                    ]
@@ -17239,7 +16970,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
                 childConstraint 1 "generator" _parentTree
                    []
             (_cinfoBind@_) =
-                \name -> variableConstraint "variable" (nameToSelfExpr name)
+                \name -> variableConstraint "variable" (nameToUHA_Expr name)
                    [ FolkloreConstraint
                    , makeUnifier name "generator" _patternIenvironment _parentTree
                    ]

@@ -6,8 +6,10 @@ import UHA_Utils
 import Top.Types
 import OperatorTable
 import Messages -- instance Show Name
+import RepairHeuristics (Siblings)
 import TS_CoreSyntax
-import List (sortBy, partition, groupBy)
+import Data.List (sortBy, partition, groupBy)
+import Data.Maybe (catMaybes)
 
 type TypeEnvironment             = FiniteMap Name TpScheme
 type ValueConstructorEnvironment = FiniteMap Name TpScheme
@@ -91,10 +93,19 @@ addTypingStrategies new importenv = importenv {typingStrategies = new ++ typingS
 removeTypingStrategies :: ImportEnvironment -> ImportEnvironment  
 removeTypingStrategies importenv = importenv {typingStrategies = []}
 
-getSiblings :: ImportEnvironment -> [[String]]
-getSiblings importenv = 
+getSiblingGroups :: ImportEnvironment -> [[String]]
+getSiblingGroups importenv = 
    [ xs | Siblings xs <- typingStrategies importenv ]
 
+getSiblings :: ImportEnvironment -> Siblings
+getSiblings importenv =
+   let f s = [ (s, ts) | ts <- findTpScheme (nameFromString s) ]
+       findTpScheme n = 
+          catMaybes [ lookupFM (valueConstructors importenv) n
+                    , lookupFM (typeEnvironment   importenv) n
+                    ]
+   in map (concatMap f) (getSiblingGroups importenv) 
+			
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
 combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 xs2) = 
    ImportEnvironment 
