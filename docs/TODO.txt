@@ -2,6 +2,7 @@
 ===============
 
 HELIUM
+- --version vlag (aanroepen bij start van Hint)
 - Unit tests voor type classes nalopen (*)
 - Nieuwe tests in simple overbrengen naar type class unit tests (*)
 - Libraries met en zonder overloading in overeenstemming brengen (*)
@@ -41,6 +42,7 @@ HINT
 TEXTHINT
 - pijltjestoetsen onder Win95/98/Me en UNIX
 - paden via command-line
+- KIJKEN NAAR HMAKE Van Malcolm Wallace
 
 LVM
 - File I/O op Mac

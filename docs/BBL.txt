@@ -1,7 +1,7 @@
 Versiebeheer
 
-Pas Version.hs aan
-make newVersion
+- Pas in makefile target newVersion aan
+- make newVersion
 
 BBL versie
 

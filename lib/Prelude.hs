@@ -605,8 +605,8 @@ putStrLn s = primPutStrLn s
 unsafePerformIO :: IO a -> a 
 unsafePerformIO = primUnsafePerformIO
 
-print :: (a -> String) -> a -> IO ()
-print showElement e = putStrLn (showElement e)
+print :: Show a => a -> IO ()
+print e = putStrLn (show e)
 
 getLine   :: IO String
 getLine = do 
