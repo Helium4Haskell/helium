@@ -1,5 +1,5 @@
 Compiling typeerrors/Examples/PatLiteral.hs
-(4,1): Type error in pattern of function binding
+(4,3): Type error in pattern of function binding
  pattern          : 1
    type           : Int 
    does not match : Bool

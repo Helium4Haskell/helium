@@ -1,5 +1,5 @@
 Compiling typeerrors/Examples/DeclPatBinding.hs
-(3,7): Type error in right hand side
+(3,9): Type error in right-hand side
  expression       : True
    type           : Bool  
    does not match : (a, b)
