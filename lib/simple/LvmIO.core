@@ -17,9 +17,11 @@ import LvmLang( primIO, packedLength, packedFromString, bindIO, unsafePerformStr
 {----------------------------------------------------------
   Primitive I/O operations
 ----------------------------------------------------------}
-extern prim_open            :: "azI"
+extern prim_open            :: "IzII"
 extern prim_close           :: "vI"
 extern prim_flag_mask       :: "II"
+extern prim_input_flags     :: "II"
+extern prim_output_flags    :: "III"
 
 extern prim_open_descriptor :: "aIb"
 extern prim_close_channel   :: "va"
@@ -30,6 +32,7 @@ extern prim_output_char     :: "vac"
 extern prim_output          :: "vazll"
 extern prim_input_char      :: "Ia"
 
+
 {----------------------------------------------------------
   Channels
 ----------------------------------------------------------}
@@ -38,16 +41,58 @@ data Output
 data Channel a
 type Descriptor   = Int
 
+
 {----------------------------------------------------------
   Private helpers
 ----------------------------------------------------------}
 primOpenInputDescriptor :: Descriptor -> Channel Input
 primOpenInputDescriptor fd
-  = case fd of fd -> prim_open_descriptor fd False
+  = let! fd = fd in prim_open_descriptor fd False
 
 primOpenOutputDescriptor :: Descriptor -> Channel Output
 primOpenOutputDescriptor fd
-  = case fd of fd -> prim_open_descriptor fd True
+  = let! fd = fd in prim_open_descriptor fd True
+
+
+{----------------------------------------------------------
+  Files
+----------------------------------------------------------}
+data CreateMode
+  = CreateNever       -- don't create a new file, and append writes
+  | CreateIfNotExists -- create one if none exists yet, append otherwise
+  | CreateExclusive   -- create if none exists, but fail if a file exists
+  | CreateOverwrite   -- destroy previous file, and create a new one
+
+{----------------------------------------------------------
+  Private file operations
+----------------------------------------------------------}
+data OpenFlag
+  = OpenReadOnly
+  | OpenWriteOnly
+  | OpenCreate
+  | OpenTruncate
+  | OpenExclusive
+  | OpenBinary
+  | OpenText
+  | OpenNonBlocking
+
+primOpenInputFile :: FilePath -> Bool -> Channel Input
+primOpenInputFile fpath asText
+  = let! b     = asText
+         m     = prim_input_flags b
+         fname = packedFromString fpath
+         fd    = prim_open fname m 0                         
+    in primOpenInputDescriptor fd
+
+primOpenOutputFile :: FilePath -> Bool -> CreateMode -> Channel Output
+primOpenOutputFile fpath asText cmode
+  = let! b     = asText
+         c     = cmode
+         m     = prim_output_flags b c
+         fname = packedFromString fpath
+         fd    = prim_open fname m 0
+    in primOpenOutputDescriptor fd
+
 
 {----------------------------------------------------------
   Channel I/O, based on the OCaml interface
@@ -64,6 +109,19 @@ stderr :: Channel Output
 stderr
   = primOpenOutputDescriptor 2
 
+openInputFile :: FilePath -> Bool -> IO (Channel Input)
+openInputFile fpath asText
+  = let action _ = primOpenInputFile fpath asText
+    in primIO action
+
+openOutputFile :: FilePath -> Bool -> CreateMode -> IO (Channel Output)
+openOutputFile fpath asText createMode
+  = let action _ = primOpenOutputFile fpath asText createMode
+    in primIO action
+
+{--------------------------------------------------------------------------
+  Channel operations  
+--------------------------------------------------------------------------}
 flush :: Channel Output -> IO ()
 flush out
   = let action _ = (let! out = out in prim_flush out) 
