@@ -187,8 +187,6 @@ compile fullName options doneModules =
               when (number > maximumNumberOfTypeErrors) $ putStrLn "(...)\n" 
               putStrLn ("Compilation failed with " ++ show number ++ " type error" ++ if number == 1 then "" else "s")
 
-        stopCompilingIf (StopAfterTypeInferencing `elem` options || not (null typeErrors))         
-
         -- Dump information
         if (DumpInformationForAllModules `elem` options)
           then 
@@ -205,6 +203,8 @@ compile fullName options doneModules =
         unless (NoWarnings `elem` options) $
             putStr . sortAndShowMessages $ warnings
                            
+        stopCompilingIf (StopAfterTypeInferencing `elem` options || not (null typeErrors))         
+
         -- Phase 4: Desugaring
         enterNewPhase "Desugaring" options
 

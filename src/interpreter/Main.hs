@@ -82,9 +82,9 @@ processSpecial ('t':rest) state =
     let expression = trim rest
     in if not (null expression) then do
             writeModule expression state
-            (success, output) <- compile "-t" state
+            (success, output) <- compile "-i" state
             if success then do
-                let typeLine = filter (interpreterMain `isPrefixOf`) (lines output)
+                let typeLine = filter (interpreterMain `isPrefixOf`) (map trim (lines output))
                 if null typeLine then
                     return ()
                   else 
@@ -95,7 +95,9 @@ processSpecial ('t':rest) state =
                             . drop (length interpreterMain) 
                             . head
                             $ typeLine
-                    in putStrLn (expression ++ " :: " ++ typeString)
+                    in do 
+
+                          putStrLn (expression ++ " :: " ++ typeString)
               else
                 putStr output
             return state
@@ -139,7 +141,7 @@ processExpression :: String -> State -> IO ()
 processExpression expression state = do
     writeModule expression state
     (success, output) <- compile "" state
-    putStr (removeUpToDateLines output)
+    putStr output -- removeUpToDateLines
     when success $ do
         let cmd = "lvmrun " ++ tempDir state ++ internalModule ++ ".lvm"
         system cmd
@@ -152,7 +154,7 @@ compile options state = do
                             "> " ++ outputFilePath)
     contents <- readFile outputFilePath
                 `catch` (\_ -> fatal ("Can't read from file " ++ show outputFilePath))
-    let newContents = removeEvidence contents state
+    let newContents = contents -- removeEvidence contents state
     case exitCode of 
         ExitSuccess -> return (True, newContents)
         _ -> return (False, newContents)
@@ -193,6 +195,7 @@ header = unlines
     , "|_| |_|\\___|_|_|\\__,_|_| |_| |_|   --    or a command (:? for a list)   --"
     ]
 
+{-
 removeEvidence :: String -> State -> String
 removeEvidence output state = 
     let 
@@ -215,7 +218,8 @@ removeUpToDateLines =
       unlines
     . filter (not . ("is up to date" `isSuffixOf`))
     . lines
-    
+-}
+
 safeTail :: [a] -> [a]
 safeTail [] = []
 safeTail (_:tl) = tl

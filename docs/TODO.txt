@@ -31,7 +31,6 @@ COMPILER
 ! XML uitvoer van errors en warnings t.b.v. interpreter
 ! installer voor Windows
 ! environment vars weg
-* read functies voor andere types dan Int
 * catchen van exception van writeFile/openFileEx etc.
 * AG geeft geen ExitFailure bij een fout (en make gaat vrolijk verder).
 * bij het exporteren van een functie moeten ook de types geexporteerd worden. Hoe?
@@ -41,6 +40,7 @@ COMPILER
 
 ---- ONBELANGRIJK ----
                 
+* read functies voor andere types dan Int
 * clashes with HeliumLang ==> clash with built-in (MANUAL)
 * generiek maken show voor tupels (Daan)
 * import SomeModule(SomeDataType(..)) is impossible in core
