@@ -13,8 +13,9 @@ import UHA_Utils
 import FiniteMap
 
 phaseDesugarer :: String -> Module -> [CoreDecl] -> 
-                    ImportEnvironment -> FiniteMap NameWithRange TpScheme {- == LocalTypes -} -> TypeEnvironment -> [Option] -> IO CoreModule
-phaseDesugarer fullName module_ extraDecls finalEnv inferredTypes toplevelTypes options = do
+                    ImportEnvironment -> FiniteMap NameWithRange TpScheme {- == LocalTypes -} -> 
+                    FiniteMap NameWithRange (NameWithRange, QType) -> TypeEnvironment -> [Option] -> IO CoreModule
+phaseDesugarer fullName module_ extraDecls finalEnv inferredTypes overloadedVars toplevelTypes options = do
     enterNewPhase "Desugaring" options
 
     let (path, baseName, _) = splitFilePath fullName
@@ -27,6 +28,7 @@ phaseDesugarer fullName module_ extraDecls finalEnv inferredTypes toplevelTypes 
                 extraDecls
                 finalEnv
                 inferredTypes
+                overloadedVars
                 toplevelTypes
 
         strippedCoreModule = coreRemoveDead coreModule

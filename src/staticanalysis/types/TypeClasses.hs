@@ -35,6 +35,12 @@ matchPredicates synonyms (Predicate s1 t1) (Predicate s2 t2)
 inClassEnvironment :: String -> ClassEnvironment -> Bool
 inClassEnvironment = elemFM
 
+superclassPaths :: String -> String -> ClassEnvironment -> [[String]]
+superclassPaths from to cs 
+   | from == to = [[to]]
+   | otherwise  = [ from : path | sc <- superclasses from cs, path <- superclassPaths sc to cs ]
+
+-- for example, Eq is a superclass of Ord
 superclasses :: String -> ClassEnvironment -> [String]
 superclasses s cs = maybe [] fst (lookupFM cs s)
 
@@ -127,8 +133,11 @@ contextReduction' synonyms classes ps =
 
 standardClasses :: ClassEnvironment
 standardClasses = listToFM
-   [ ("Eq" , ([]    , rules "Eq"  ))
-   , ("Ord", (["Eq"], rules "Ord" ))
+   [ ("Eq" ,  ([]    , rules "Eq"  ))
+   , ("Ord",  (["Eq"], rules "Ord" ))
+   , ("Show", ([],     rules "Show"))
+   , ("Num",  (["Eq","Show"], rules "Num"))
+   , ("Real", (["Num", "Ord"], rules "Real"))
    ]
   where rules s = (Predicate s (listType (TVar 0)), [Predicate s (TVar 0)])
                 : [ (Predicate s g, []) | g <- [intType, floatType, boolType, charType]]               

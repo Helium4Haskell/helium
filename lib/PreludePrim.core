@@ -3,13 +3,23 @@ module PreludePrim
     -- Conversion
       ord, chr, intToFloat, ceiling, floor, truncate, round
     
+    -- Num
+    , (+), (-), (*), negate, fromInt
+    
+    -- Eq
+    , (==), (/=)
+    
+    -- Ord
+    , (<), (>), (<=), (>=)
+
+    -- Show
+    , show
+    
     -- Int
-    , (+), (-), (*), div, mod, quot, rem
-    , (==), (/=), (<), (>), (<=), (>=)
+    , div, mod, quot, rem
     
     -- Float
-    , (+.), (-.), (*.), (/.)
-    , (==.), (/=.), (<.), (>.), (<=.), (>=.)
+    , (/)
     , sqrt, (**.), exp, log, sin, cos, tan
         
     -- IO
@@ -23,18 +33,35 @@ module PreludePrim
     , error, catch
     ) where
 
-import LvmLang 
-    ( return = returnIO
+import HeliumLang(showFloat, showInt)
 
-    , (+), (-), (*), div = (/), mod = (%), quot, rem
-    , (==), (/=), (<), (>), (<=), (>=)
-
-    , (+.), (-.), (*.), (/.)
-    , (==.), (/=.), (<.), (>.), (<=.), (>=.)
+import LvmLang
+    ( (+#) = (+), (*#) = (*), (-#) = (-), negInt
+    , (==#) = (==), (/=#) = (/=)
+    , (<#) = (<), (<=#) = (<=), (>=#) = (>=), (>#) = (>)
+    , quot, rem, div = (/)
     
+    , (+.), (*.), (-.), (/) = (/.), negFloat
+    , (==.), (/=.)
+    , (<.), (<=.), (>=.), (>.)
+    
+
+    , primPackedToString = stringFromPacked
+
+    , Int(), Float(), IO()
+    , custom "typedecl" String
+    , Bool(True, False)
+    , '':[]''('':[]'', (:))
+    , '':()''('':()'')
+    , primBindIO = bindIO, primReturnIO = returnIO
+    , primPackedToString = stringFromPacked
+    , primUnsafePerformIO = unsafePerformIO
+    
+    , return = returnIO
     , ($!), seq
     , True -- hack
     )
+
 import LvmIO(stdin, inputChar)
 import LvmException(error, errorPacked {- hack -}, catch )
 
@@ -53,17 +80,7 @@ custom infix (>)  : public [4,"none"]
 custom infix (<=) : public [4,"none"]
 custom infix (>=) : public [4,"none"]
 
-custom infix (+.) : public [6,"left"]
-custom infix (-.) : public [6,"left"]
-custom infix (*.) : public [7,"left"]
-custom infix (/.) : public [7,"left"]
-
-custom infix (==.) : public [4,"none"]
-custom infix (/=.) : public [4,"none"]
-custom infix (<.)  : public [4,"none"]
-custom infix (>.)  : public [4,"none"]
-custom infix (<=.) : public [4,"none"]
-custom infix (>=.) : public [4,"none"]
+custom infix (/)  : public [7,"left"]
 
 custom infix (**.) : public [8,"right"]
 custom infix ($!)  : public [0,"right"]
@@ -86,7 +103,7 @@ sqrt :: Float -> Float
 sqrt x = let! x = x 
               y = float_of_string_extern "0.0"
          in
-            case (>=.) x y of
+            case (>=) dictOrdFloat x y of
             {   True -> primFloatSqrt x
             ;   _    -> errorPacked "Can't apply sqrt to negative floating-point number"
             }
@@ -154,3 +171,123 @@ round x
            z = primFloatNear     y
            i = primFloatRoundInt z
       in i
+
+
+
+
+
+
+
+-- Overloading
+
+{- Show -}
+
+dictShowInt   = (@0, 1) showInt
+dictShowFloat = (@0, 1) showFloat
+
+show :: "Show a => a -> String"
+show dShow = 
+    case dShow of
+        (@0, 1) x1 -> x1
+        
+{- Num -}
+
+dictNumInt   = (@0, 7) dictEqInt   dictShowInt   (+#) (*#) (-#) negInt   id
+dictNumFloat = (@0, 7) dictEqFloat dictShowFloat (+.) (*.) (-.) negFloat intToFloat {- fromInt -}
+
+id x = x
+
+getEqFromNum dNum = 
+    case dNum of
+            (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x1
+            
+getShowFromNum dNum = 
+    case dNum of
+            (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x2
+
+(+) :: "Num a => a -> a -> a"
+(+) dNum = 
+    case dNum of
+            (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x3
+
+(*) :: "Num a => a -> a -> a"
+(*) dNum = 
+    case dNum of
+            (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x4
+
+(-) :: "Num a => a -> a -> a"
+(-) dNum = 
+    case dNum of
+            (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x5
+
+negate :: "Num a => a -> a"
+negate dNum = 
+    case dNum of
+            (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x6
+
+fromInt :: "Num a => Int -> a"
+fromInt dNum = 
+    case dNum of
+            (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x7
+
+{- Eq -}
+
+dictEqInt    = (@0, 2) (==#) (/=#)
+dictEqFloat  = (@0, 2) (==.) (/=.)
+
+(==) :: "Eq a => a -> a -> Bool"
+(==) dEq =
+    case dEq of
+        (@0, 2) x1 x2 -> x1
+        
+(/=) :: "Eq a => a -> a -> Bool"
+(/=) dEq =
+    case dEq of
+        (@0, 2) x1 x2 -> x2
+
+{- Ord -}
+
+dictOrdInt   = (@0, 5) dictEqInt   (<#) (<=#) (>=#) (>#) 
+dictOrdFloat = (@0, 5) dictEqFloat (<.) (<=.) (>=.) (>.) 
+
+getEqFromOrd dOrd = 
+    case dOrd of
+        (@0, 5) x1 x2 x3 x4 x5 -> x1
+
+(<) :: "Ord a => a -> a -> Bool"
+(<) dOrd = 
+    case dOrd of
+        (@0, 5) x1 x2 x3 x4 x5 -> x2
+
+(<=) :: "Ord a => a -> a -> Bool"
+(<=) dOrd = 
+    case dOrd of
+        (@0, 5) x1 x2 x3 x4 x5 -> x3
+
+(>=) :: "Ord a => a -> a -> Bool"
+(>=) dOrd = 
+    case dOrd of
+        (@0, 5) x1 x2 x3 x4 x5 -> x4
+
+(>) :: "Ord a => a -> a -> Bool"
+(>) dOrd = 
+    case dOrd of
+        (@0, 5) x1 x2 x3 x4 x5 -> x5
+
+
+
+
+
+{- misc -}
+
+primAppend :: [a] -> [a] -> [a] -- is '++'
+primAppend xs ys =
+    case xs of 
+    {   '':[]'' -> ys
+    ;   (:) z zs -> (:) z (primAppend zs ys)
+    }
+
+extern primIntToFloat "float_of_int" :: "FI"
+
+intToFloat :: Int -> Float
+intToFloat x = let! x = x in primIntToFloat x

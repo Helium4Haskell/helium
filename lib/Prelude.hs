@@ -7,58 +7,96 @@ import PreludePrim
 infixr 9  .
 infixl 9  !!
 infixr 8  ^, ^. -- , **.
--- infixl 7  *, *., `quot`, `rem`, `div`, `mod`, /., /         [PreludePrim]
--- infixl 6  +, -, +., -.                                      [PreludePrim]
+-- infixl 7  *, `quot`, `rem`, `div`, `mod`,  /                [PreludePrim]
+-- infixl 6  +, -                                              [PreludePrim]
 infixr 5  ++
 -- infixr 5 :                                                  [HeliumLang]
--- infix  4  ==, /=, <=, <, >, >=, ==., /=., <=., <., >., >=.  [PreludePrim]
+-- infix  4  ==, /=, <=, <, >, >=                              [PreludePrim]
 infixr 3  &&
 infixr 2  ||
 infixr 0  $ --, $!                                             [PreludePrim]
+
+{-----------------------------------------------
+ -- Num
+ -----------------------------------------------}
+
+{- imported from PreludePrim
+
+(+)     :: Num a => a -> a -> a
+(-)     :: Num a => a -> a -> a
+(*)     :: Num a => a -> a -> a
+negate  :: Num a => a -> a
+fromInt :: Num a => Int -> a
+-}
+
+sum :: Num a => [a] -> a
+sum = foldl' (+) (fromInt 0)
+
+product :: Num a => [a] -> a
+product = foldl' (*) (fromInt 1)
+
+{-----------------------------------------------
+ -- Eq
+ -----------------------------------------------}
+
+{- imported from PreludePrim
+
+(==) :: Eq a => a -> a -> Bool
+(/=) :: Eq a => a -> a -> Bool
+-}
+
+elem :: Eq a => a -> [a] -> Bool
+elem _ [] = False
+elem x (y:ys) 
+  | x == y = True
+  | otherwise = elem x ys
+  
+notElem :: Eq a => a -> [a] -> Bool
+notElem x ys = not (x `elem` ys)
+
+lookup :: Eq a => a -> [(a,b)] -> Maybe b
+lookup _ []       = Nothing
+lookup k ((x,y):xys)
+      | k == x  = Just y
+      | otherwise = lookup k xys  
+
+{-----------------------------------------------
+ -- Ord
+ -----------------------------------------------}
+
+{- imported from PreludePrim
+
+(<)  :: Ord a => a -> a -> Bool
+(<=) :: Ord a => a -> a -> Bool
+(>)  :: Ord a => a -> a -> Bool
+(>=) :: Ord a => a -> a -> Bool
+-}
+
+max :: Ord a => a -> a -> a
+max x y = if x < y then y else x
+
+min :: Ord a => a -> a -> a
+min x y = if x < y then x else y
+
+maximum :: Ord a => [a] -> a
+maximum = foldl1 max
+
+minimum :: Ord a => [a] -> a
+minimum = foldl1 min
 
 {-----------------------------------------------
  -- Int
  -----------------------------------------------}
 
 {- imported from PreludePrim
-
-(+) :: Int -> Int -> Int
-(-) :: Int -> Int -> Int
-(*) :: Int -> Int -> Int
-
--}
-
-(/) :: Int -> Int -> Int
-(/) = div
-
-negate :: Int -> Int
-negate = primNegInt
-
-{- imported from PreludePrim
-
-(<)  :: Int -> Int -> Bool
-(<=) :: Int -> Int -> Bool
-(>)  :: Int -> Int -> Bool
-(>=) :: Int -> Int -> Bool
-(==) :: Int -> Int -> Bool
-(/=) :: Int -> Int -> Bool
 rem  :: Int -> Int -> Int
 div  :: Int -> Int -> Int
 mod  :: Int -> Int -> Int
 quot :: Int -> Int -> Int
 -}
 
-max :: Int -> Int -> Int
-max x y = if x < y then y else x
-
-min :: Int -> Int -> Int
-min x y = if x < y then x else y
-
 abs :: Int -> Int
 abs x = if x < 0 then - x else x
-
-absFloat :: Float -> Float
-absFloat x = if x <. 0.0 then -. x else x
 
 signum :: Int -> Int
 signum x =
@@ -105,18 +143,7 @@ _ ^ _           = error "Prelude.^: negative exponent"
 
 {- imported from PreludePrim
 
-(+.) :: Float -> Float -> Float
-(-.) :: Float -> Float -> Float
-(*.) :: Float -> Float -> Float
-(/.) :: Float -> Float -> Float
-
-(<.)  :: Float -> Float -> Bool
-(<=.) :: Float -> Float -> Bool
-(>.)  :: Float -> Float -> Bool
-(>=.) :: Float -> Float -> Bool
-(==.) :: Float -> Float -> Bool
-(/=.) :: Float -> Float -> Bool
-
+(/)   :: Float -> Float -> Float
 sqrt  :: Float -> Float
 (**.) :: Float -> Float -> Float
 exp   :: Float -> Float
@@ -125,6 +152,9 @@ sin   :: Float -> Float
 cos   :: Float -> Float
 tan   :: Float -> Float
 -}
+
+absFloat :: Float -> Float
+absFloat x = if x < 0.0 then -. x else x
 
 signumFloat :: Float -> Int
 signumFloat x =
@@ -140,8 +170,8 @@ i ^. n  | n > 0  = f i (n-1) i
                 f _ 0 y = y
                 f x m y = g x m
                           where g :: Float -> Int -> Float
-                                g x' m' | even m'    = g (x' *. x') (m' `quot` 2)
-                                        | otherwise  = f x' (m' - 1) (x' *. y)
+                                g x' m' | even m'    = g (x' * x') (m' `quot` 2)
+                                        | otherwise  = f x' (m' - 1) (x' * y)
 _ ^. _           = error "Prelude.^.: negative exponent"
 
 pi :: Float
@@ -437,21 +467,6 @@ any p = or . map p
 all :: (a -> Bool) -> [a] -> Bool
 all p = and . map p
 
-sum :: [Int] -> Int
-sum = foldl' (+) 0
-
-sumFloat :: [Float] -> Float
-sumFloat = foldl' (+.) 0.0
-
-product :: [Int] -> Int
-product = foldl' (*) 1
-
-maximum :: [Int] -> Int
-maximum = foldl1 max
-
-minimum :: [Int] -> Int
-minimum = foldl1 min
-
 concatMap :: (a -> [b]) -> [a] -> [b]
 concatMap f = concat . map f
 
@@ -513,11 +528,7 @@ round      :: Float -> Int
 floor      :: Float -> Int
 ceiling    :: Float -> Int
 truncate   :: Float -> Int
-
 -}
-
-fromInt :: Int -> Float
-fromInt = intToFloat
 
 {-----------------------------------------------
  -- Some standard functions
@@ -636,11 +647,13 @@ eqString s1 s2 =
         EQ -> True
         _  -> False
 
+{-
 eqInt :: Int -> Int -> Bool
 eqInt = (==)
 
 eqFloat :: Float -> Float -> Bool
 eqFloat = (==.)
+-}
 
 {-----------------------------------------------
  -- Ord
@@ -660,8 +673,8 @@ ordInt x y
     
 ordFloat :: Float -> Float -> Ordering
 ordFloat x y 
-    | x <. y    = LT
-    | x ==. y   = EQ
+    | x < y     = LT
+    | x == y    = EQ
     | otherwise = GT
 
 ordList :: (a -> a -> Ordering) -> [a] -> [a] -> Ordering
@@ -701,23 +714,3 @@ readUnsigned =
     map (\c -> ord c - ord '0')
     .
     takeWhile isDigit
-
-{-----------------------------------------------
- -- "Overloaded" functions
- -----------------------------------------------}
-
-elemBy :: (a -> a -> Bool) -> a -> [a] -> Bool
-elemBy _ _ [] = False
-elemBy eq x (y:ys) 
-  | x `eq` y = True
-  | otherwise = elemBy eq x ys
-  
-notElemBy :: (a -> a -> Bool) -> a -> [a] -> Bool
-notElemBy eq x ys = not (elemBy eq x ys)
-
-lookupBy :: (a -> a -> Bool) -> a -> [(a,b)] -> Maybe b
-lookupBy _ _ []       = Nothing
-lookupBy eq k ((x,y):xys)
-      | k `eq` x  = Just y
-      | otherwise = lookupBy eq k xys  
-      

@@ -13,7 +13,8 @@ import UHA_Syntax
 phaseTypeInferencer :: 
     String -> Module -> [String] -> ImportEnvironment -> [ImportEnvironment] -> 
         ImportEnvironment -> [Option] -> 
-           IO (ImportEnvironment, FiniteMap NameWithRange TpScheme  {- == LocalTypes -}, TypeEnvironment, [Warning])
+           IO (ImportEnvironment, FiniteMap NameWithRange TpScheme  {- == LocalTypes -}, 
+               FiniteMap NameWithRange (NameWithRange, QType) {- OverloadedVariables -}, TypeEnvironment, [Warning])
 phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv options = do
     enterNewPhase "Type inferencing" options
 
@@ -29,7 +30,9 @@ phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv
                 useTypeGraph        
         
         -- add the top-level types (including the inferred types)
-        finalEnv = addToTypeEnvironment toplevelTypes completeEnv
+        finalEnv = addToTypeEnvironment toplevelTypes (adjustIE completeEnv)
+        inferredTypes = addListToFM localTypes 
+                [ (NameWithRange name, ts) | (name, ts) <- fmToList (typeEnvironment finalEnv) ]
     
     putStrLn (unlines ("" : "toplevelTypes: " : map (\(n,ts) -> show n ++ " :: "++show (getQualifiedType ts)) (fmToList toplevelTypes)))
     putStrLn (unlines ("" : "localTypes:" : map show (fmToList localTypes)))
@@ -54,7 +57,7 @@ phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv
              else
                 return ()
 
-    return (finalEnv, localTypes, toplevelTypes, warnings)
+    return (finalEnv, inferredTypes, overloadedVars, toplevelTypes, warnings)
 
 maximumNumberOfTypeErrors :: Int
 maximumNumberOfTypeErrors = 3
@@ -64,12 +67,24 @@ adjustIE :: ImportEnvironment -> ImportEnvironment
 adjustIE x = setTypeEnvironment (adjustTE (typeEnvironment x)) x
 
 adjustTE :: FiniteMap Name TpScheme -> FiniteMap Name TpScheme
-adjustTE fm = let op (s,ts) fm = addToFM fm (nameFromString s) ts 
+adjustTE fm = mapFM f fm 
+   where f name old 
+             | show name == "==" = generalize [] [Predicate "Eq"   (TVar 0)] (TVar 0 .->. TVar 0 .->. boolType)
+             | show name == "<"  = generalize [] [Predicate "Ord"  (TVar 0)] (TVar 0 .->. TVar 0 .->. boolType)
+             | otherwise         = old
+{-
+let op (s,ts) fm = addToFM fm (myNameFromString s) ts 
               in foldr op fm list
-              
+       
   where
    list = [ ("showString", generalize [] [Predicate "Show" (TVar 0)] (TVar 0 .->. stringType))
-          , ("=="        , generalize [] [Predicate "Eq"   (TVar 0)] (TVar 0 .->. TVar 0 .->. boolType))
+          , 
+            ("=="        , generalize [] [Predicate "Eq"   (TVar 0)] (TVar 0 .->. TVar 0 .->. boolType))
           , ("<"         , generalize [] [Predicate "Ord"  (TVar 0)] (TVar 0 .->. TVar 0 .->. boolType))
           ]
+          
         
+myNameFromString s = Name_Operator
+                    (Range_Range (Position_Position "Bla" 0 0) 
+                                 (Position_Position "Prelude" 0 0)) 
+                     [] s -} 

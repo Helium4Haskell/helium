@@ -10,12 +10,65 @@ SEM MaybeExpression [ | | core : { Maybe Core.Expr } ]
 
 ATTR Expressions [ | | core USE { : } { [] } : { [Core.Expr] } ]
 
+imports{
+import IOExts
+}
+
+{
+getDictionaries :: OrderedTypeSynonyms -> Predicates -> Predicates -> [Core.Expr]
+getDictionaries synonyms ps = map (getDictionary synonyms ps)
+
+getDictionary :: OrderedTypeSynonyms -> Predicates -> Predicate -> Core.Expr
+getDictionary synonyms availablePredicates p@(Predicate className tp) =      
+   case tp of
+      TVar i | p `elem` availablePredicates -> Core.Var (predicateToId p)
+             | otherwise -> case [ (path, availablePredicate)
+                                 | availablePredicate@(Predicate c t) <- availablePredicates
+                                 , t == tp
+                                 , path <- superclassPaths c className standardClasses
+                                 ] of
+                             []     -> internalError "ToCoreExpr" "getDictionary" "no path"
+                             (path,fromPredicate):_ -> 
+                                foldr Core.Ap 
+                                      (Core.Var (predicateToId fromPredicate)) 
+                                      [ Core.Var . idFromString $ "get" ++ super ++ "From" ++ sub 
+                                      | (sub, super) <- reverse (zip path (tail path))
+                                      ]
+      _      -> case byInstance synonyms standardClasses p of
+                   Nothing -> internalError "ToCoreExpr" "getDictionary" "reduction error"
+                   Just predicates -> 
+                      let dictInstance = Core.Var . idFromString $ "dict"++className++s
+                          (TCon s, _)  = leftSpine tp
+                      in foldl Core.Ap
+                            dictInstance
+                            (getDictionaries synonyms availablePredicates predicates)
+
+    --Core.Var (idFromString $ "<<<" ++ show availablePredicates ++ ";" ++ show p ++ ">>>")
+}
+
 SEM Expression [ | | core : { Core.Expr } ]
     | Literal            lhs.core = @literal.core      
     --  range                    : Range
     --  literal                  : Literal
 
-    | Variable           lhs.core = Core.Var (idFromName @name.self)
+    | Variable           lhs.core = 
+        case lookupFM @lhs.overloadedVars (NameWithRange @name.self) of
+            Nothing -> Core.Var (idFromName @name.self)
+            Just (defName, _ :=> useType) ->
+                case lookupFM @lhs.inferredTypes defName of
+                    Nothing -> internalError "ToCoreExpr" "Expression.Variable" ("can't find: " ++ show defName ++ " in " ++ show (fmToList @lhs.inferredTypes))
+                    Just defType -> 
+                        let i  = maximum (0 : ftv useType) + 1
+                            (_, instantiatedPreds, instantiatedType) = instantiate i defType
+                            synonyms = getOrderedTypeSynonyms @lhs.importEnv
+                        in -- one-way unification is necessary!
+                           case mguWithTypeSynonyms synonyms instantiatedType useType of
+                              Left _ -> internalError "ToCoreExpr" "Expression.Variable" ("unify: " ++ show useType ++ " with " ++ show instantiatedType)
+                              Right (_, sub) ->
+                                 foldl Core.Ap (Core.Var (idFromName @name.self))
+                                               (getDictionaries synonyms @lhs.predicates (sub |-> instantiatedPreds))
+                        
+
     --  range                    : Range
     --  name                     : Name
 
@@ -143,12 +196,12 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  then                     : MaybeExpression
     --  to                       : MaybeExpression
 
-    | RecordConstruction lhs.core = intErr "Expression" "records not supported"
+    | RecordConstruction lhs.core = internalError "ToCoreExpr" "Expression" "records not supported"
     --  range                    : Range
     --  name                     : Name
     --  recordExpressionBindings : RecordExpressionBindings
 
-    | RecordUpdate       lhs.core = intErr "Expression" "records not supported"
+    | RecordUpdate       lhs.core = internalError "ToCoreExpr" "Expression" "records not supported"
     --  range                    : Range
     --  expression               : Expression
     --  recordExpressionBindings : RecordExpressionBindings
@@ -170,7 +223,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
                           lhs.core =
             \rest ->
                 case rest of
-                    Nothing   -> intErr "Statement" "'let' can't be last in 'do'"
+                    Nothing   -> internalError "ToCoreExpr" "Statement" "'let' can't be last in 'do'"
                     Just rest -> letrec_ @declarations.decls rest 
     --  range                    : Range
     --  declarations             : Declarations
@@ -180,7 +233,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
     -- in expression >>= ok
     | Generator           lhs.core =
         \rest -> case rest of
-            Nothing   -> intErr "Statement" "generator can't be last in 'do'"
+            Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
             Just rest -> 
                 let_ nextClauseId (patternMatchFail "generator" @range.self)
                     (let_ 
@@ -199,7 +252,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
     | Empty               lhs.core =
             \rest ->
                 case rest of 
-                    Nothing   -> intErr "Statement" "empty statements not supported"
+                    Nothing   -> internalError "ToCoreExpr" "Statement" "empty statements not supported"
                     Just rest -> rest
     --  range                    : Range
 
@@ -242,7 +295,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
     
 -- Not supported
 
-    | Empty               lhs.core = intErr "Qualifier" "empty qualifiers not supported"
+    | Empty               lhs.core = internalError "ToCoreExpr" "Qualifier" "empty qualifiers not supported"
     --  range                    : Range
                   
 SEM Alternatives [ caseRange : Range | | core : { Core.Expr } ]

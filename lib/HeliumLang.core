@@ -1,6 +1,6 @@
 {- The (type) constructors and functions in this module are
    used in the translation of language constructs.
--}
+-} 
 
 module HeliumLang
     ( Bool(True, False), '':[]''('':[]'', (:)), '':()''('':()''), '':->''

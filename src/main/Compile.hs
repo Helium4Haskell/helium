@@ -60,7 +60,7 @@ compile fullName options lvmPath doneModules =
             phaseTypingStrategies fullName localEnv importEnvs options
 
         -- Phase 7: Type inferencing
-        (finalEnv, inferredTypes, toplevelTypes, typeWarnings) <- 
+        (finalEnv, inferredTypes, overloadedVars, toplevelTypes, typeWarnings) <- 
             phaseTypeInferencer fullName resolvedModule doneModules localEnv 
                                     importEnvs completeEnv options
 
@@ -73,7 +73,7 @@ compile fullName options lvmPath doneModules =
         coreModule <-                
             phaseDesugarer fullName resolvedModule 
                             (typingStrategiesDecls ++ indirectionDecls) 
-                            finalEnv inferredTypes toplevelTypes options
+                            finalEnv inferredTypes overloadedVars toplevelTypes options
 
         stopCompilingIf (StopAfterDesugar `elem` options)
 

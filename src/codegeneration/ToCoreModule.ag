@@ -108,10 +108,10 @@ SEM Export
     --  range                    : Range
     --  name                     : Name
     --  names                    : MaybeNames  -- constructors or field names or class methods
-    | TypeOrClassComplete    lhs.values = internalError "UHA_ToCore" "exports.tocc" "Unsupported export declaration"
-                                .types  = internalError "UHA_ToCore" "exports.tocc" "Unsupported export declaration"
-                                .cons   = internalError "UHA_ToCore" "exports.tocc" "Unsupported export declaration"
-                                .mods   = internalError "UHA_ToCore" "exports.tocc" "Unsupported export declaration"
+    | TypeOrClassComplete    lhs.values = internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
+                                .types  = internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
+                                .cons   = internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
+                                .mods   = internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
     --  range                    : Range
     --  name                     : Name
     | Module                 lhs.values = emptySet

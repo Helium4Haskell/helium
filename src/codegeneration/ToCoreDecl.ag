@@ -61,12 +61,17 @@ SEM Declaration
     | FunctionBindings  loc.ids      = freshIds "u$" @bindings.arity
                         bindings.ids = @loc.ids
                         bindings.range = @range.self
+                        loc.dictionaries = map predicateToId @predicates
+                        loc.predicates = case lookupFM @lhs.inferredTypes (NameWithRange @bindings.name) of
+                                          Nothing -> internalError "ToCoreDecl" "FunctionBinding.core" ("can't find: " ++ show @bindings.name ++ " in " ++ show (fmToList @lhs.inferredTypes))
+                                          Just t -> case getQualifiedType t of (predicates :=> _) -> predicates
+                        bindings.predicates = @lhs.predicates ++ @predicates                                         
                         lhs.decls    =
         [ Core.DeclValue
             { Core.declName    = idFromName @bindings.name
             , Core.declAccess  = Core.private
             , Core.valueEnc    = Nothing
-            , Core.valueValue  = foldr Core.Lam @bindings.core (@bindings.dictionaries ++ @ids)
+            , Core.valueValue  = foldr Core.Lam @bindings.core (@dictionaries ++ @ids)
             , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv @lhs.isTopLevel
             }
         ]
@@ -74,6 +79,17 @@ SEM Declaration
     --  bindings                 : FunctionBindings -- should all be for the same function
     
     | PatternBinding    lhs.patBindNr = @lhs.patBindNr + 1
+                        loc.dictionaries = map predicateToId @predicates
+                        
+                        loc.predicates = 
+                            case @pattern.self of
+                                Pattern_Variable _ n ->
+                                    case lookupFM @lhs.inferredTypes (NameWithRange n) of
+                                          Nothing -> internalError "ToCoreDecl" "PatternBinding" ("can't find: " ++ show n)
+                                          Just t -> case getQualifiedType t of (predicates :=> _) -> predicates
+                                _ -> []
+                        righthandside.predicates = @lhs.predicates ++ @predicates
+                        
                         lhs.decls     =
         case @pattern.self of
             Pattern_Variable _ n ->
@@ -82,9 +98,12 @@ SEM Declaration
                     , Core.declAccess  = Core.private
                     , Core.valueEnc    = Nothing
                     , Core.valueValue  = 
-                        let_ 
-                            nextClauseId (patternMatchFail "pattern binding" @range.self)
-                            @righthandside.core
+                        foldr Core.Lam 
+                            ( let_ -- because guards can fail
+                                nextClauseId (patternMatchFail "pattern binding" @range.self)
+                                @righthandside.core
+                            )
+                            @dictionaries
                     , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel
                     }
                ]
@@ -159,7 +178,7 @@ SEM Declaration
     
     -- Not supported
     
-    | Newtype           lhs.decls    = intErr "Declaration" "'newType' not supported"
+    | Newtype           lhs.decls    = internalError "ToCoreDecl" "Declaration" "'newType' not supported"
                         constructor.tag = 0
                         constructor.dataTypeName = @simpletype.name
     --  range                    : Range
@@ -168,13 +187,13 @@ SEM Declaration
     --  constructor              : Constructor  -- has only one field, no strictness
     --  derivings                : Names
     
-    | Class             lhs.decls    = intErr "Declaration" "'class' not supported"
+    | Class             lhs.decls    = internalError "ToCoreDecl" "Declaration" "'class' not supported"
     --  range                    : Range
     --  context                  : ContextItems -- is a "simple" context
     --  simpletype               : SimpleType   -- Haskell 98 allows only one variable
     --  where                    : MaybeDeclarations -- cannot have everything
     
-    | Instance          lhs.decls    = intErr "Declaration" "'instance' not supported"
+    | Instance          lhs.decls    = internalError "ToCoreDecl" "Declaration" "'instance' not supported"
     --  range                    : Range
     --  context                  : ContextItems -- is a "simple" context
     --  name                     : Name
@@ -182,32 +201,43 @@ SEM Declaration
                                                 -- that is severely restricted
     --  where                    : MaybeDeclarations -- cannot have everything
     
-    | Default           lhs.decls    = intErr "Declaration" "'default' not supported"
+    | Default           lhs.decls    = internalError "ToCoreDecl" "Declaration" "'default' not supported"
     --  range                    : Range
     --  types                    : Types        -- should be instances of Num
     
-    | Empty             lhs.decls    = intErr "Declaration" "empty declarations not supported"
+    | Empty             lhs.decls    = internalError "ToCoreDecl" "Declaration" "empty declarations not supported"
     --  range                    : Range
+
+
+ATTR Declarations Declaration Expressions Expression Statements Statement
+     Qualifiers Qualifier GuardedExpressions GuardedExpression 
+     Alternatives Alternative FunctionBindings FunctionBinding
+     RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
+     RecordExpressionBindings
+     [ predicates : { Predicates }
+     |
+     |
+     ]
+     
+SEM Body
+    | Body declarations.predicates = []
+
+
 
 ATTR FunctionBinding FunctionBindings 
     [   ids : { [Id] }
     | 
     |   arity : Int
-        dictionaries : { [Id] }
     ]
 
-SEM FunctionBindings [ range : Range | | core : {Core.Expr} ]
+SEM FunctionBindings [ range : Range | | core : {Core.Expr}  ]
     | Cons             lhs.core  = @hd.core @tl.core
+                          .arity = @hd.arity
     | Nil              lhs.core  = patternMatchFail "function bindings" @lhs.range
-                          .arity = intErr "FunctionBindings" "empty list of function bindings"
-                          .dictionaries = intErr "FunctionBindings" "empty list of function bindings"
+                          .arity = internalError "ToCoreDecl" "FunctionBindings" "arity: empty list of function bindings"
 
 SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
     | FunctionBinding  lhs.arity = @lefthandside.arity
-                       lhs.dictionaries = map predicateToId @predicates
-                       loc.predicates = case lookupFM @lhs.inferredTypes (NameWithRange @lefthandside.name) of
-                                          Nothing -> internalError "ToCoreDecl" "FunctionBinding.core" ""
-                                          Just t -> case getQualifiedType t of (predicates :=> _) -> predicates
                        lhs.core = 
         \nextClause ->
             let thisClause = 
@@ -331,7 +361,7 @@ SEM Constructor [ dataTypeName : Name | | ]
     
 -- Not supported
 
-    | Record            lhs.cons = intErr "Constructor" "records not supported"
+    | Record            lhs.cons = internalError "ToCoreDecl" "Constructor" "records not supported"
     --  range                    : Range
     --  constructor              : Name
     --  fieldDeclarations        : FieldDeclarations
@@ -347,14 +377,14 @@ toplevelType name ie isTopLevel
     | otherwise  = []
     where
         typeString = maybe
-            (internalError "UHA_ToCore" "Declaration" ("no type found for " ++ getNameName name))
+            (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name))
             show
             (lookupFM (typeEnvironment ie) name)
 
 constructorCustoms :: Name -> Name -> ValueConstructorEnvironment -> [Core.Custom]
 constructorCustoms dataTypeName name env =
     maybe 
-        (internalError "UHA_ToCore" "Constructor" ("no type found for " ++ show name))
+        (internalError "ToCoreDecl" "Constructor" ("no type found for " ++ show name))
         (\tpScheme -> 
             [ custom "type" (show tpScheme)
             , Core.CustomLink 
