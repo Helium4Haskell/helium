@@ -52,12 +52,11 @@ instantiate :: Int -> TpScheme -> (Int,Tp)
 instantiate unique (Scheme as nameMap tp) = 
    let sub = listToSubstitution (zip as (map TVar [unique..]))
    in (unique + length as,sub |-> tp)
-
--- ???
-instantiateWithNameMap :: TpScheme -> Tp
-instantiateWithNameMap (Scheme qs nm tp) = 
+   
+instantiateWithNameMap :: Int -> TpScheme -> (Int, Tp)
+instantiateWithNameMap unique (Scheme qs nm tp) = 
    let sub = listToSubstitution [ (i,TCon s) | (i,s) <- nm, i `elem` qs ]
-   in unsafeInstantiate (Scheme (qs \\ (map fst nm)) [] (sub |-> tp))
+   in instantiate unique (Scheme (qs \\ (map fst nm)) [] (sub |-> tp))
 
 unsafeInstantiate :: TpScheme -> Tp
 unsafeInstantiate = snd . instantiate magicNumber

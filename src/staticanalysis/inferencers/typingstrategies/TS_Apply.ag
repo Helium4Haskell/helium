@@ -83,6 +83,7 @@ ATTR Core_UserStatements Core_UserStatement
      [ attributeTable     : {[((String, Maybe String), MessageBlock)]}
      | collectConstraints : {ConstraintTrees HeliumConstraintInfo} 
        currentPhase       : {Maybe Int} 
+       currentPosition    : {(Int, Int)}
        metavarConstraints : {[(String,ConstraintTree HeliumConstraintInfo)]}
      | 
      ]
@@ -94,12 +95,14 @@ SEM Core_TypingStrategy
                                          (reverse @statements.collectConstraints)
        statements . collectConstraints = []
                   . currentPhase       = Nothing
+                  . currentPosition    = (@lhs.unique, 0)
                   . metavarConstraints = [ (s,cs) | (s,(cs,_)) <- @lhs.metaVariableTable ] 
                   . attributeTable     = makeAttributeTable (snd @lhs.localInfo) @lhs.metaVariableTable @substitution
 
 SEM Core_UserStatement
   | Constraint
-       lhs . collectConstraints = case @lhs.currentPhase of
+       lhs . currentPosition    = (\(x, y) -> (x, y+1)) @lhs.currentPosition 
+           . collectConstraints = case @lhs.currentPhase of
                                      Just phase -> ctPhased phase [ @newConstraint ] : @lhs.collectConstraints
                                      Nothing    -> ctSingle       [ @newConstraint ] : @lhs.collectConstraints
        
@@ -113,18 +116,20 @@ SEM Core_UserStatement
        lhs . currentPhase = Just @phase                  
 
 SEM Core_UserStatement
-  | Constraint
+  | Constraint  
        loc . newConstraint = 
-          let cinfo   = addProperty (WithTypeError (CustomTypeError [] message)) . standardConstraintInfo       
+          let cinfo   = addProperty (WithTypeError (CustomTypeError [] message)) . 
+                        addProperty (uncurry IsUserConstraint @lhs.currentPosition) .
+                        standardConstraintInfo @lhs.currentPosition
                            -- (setCustomTypeError (snd @lhs.localInfo) . standardConstraintInfo)
               message = [MessageOneLiner (MessageCompose (substituteAttributes (makeMessageAlgebra @lhs.attributeTable) @message))]                       
           in (@lhs.substitution |-> @leftType .==. @lhs.substitution |-> @rightType) cinfo
 
 {
-standardConstraintInfo :: (Tp, Tp) -> HeliumConstraintInfo
-standardConstraintInfo tppair =
-   CInfo { info       = (NTBody, AltBody, "  Strategy, user constraint")
-         , location   = "Typing Strategy" -- !!!!!
+standardConstraintInfo :: (Int, Int) -> (Tp, Tp) -> HeliumConstraintInfo
+standardConstraintInfo pos tppair =
+   CInfo { info       = (NTBody, AltBody, "Strategy, user constraint, "++show pos)
+         , location   = "Typing Strategy"
          , errorrange = noRange
          , sources    = [ ]
          , typepair   = tppair

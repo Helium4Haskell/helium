@@ -61,7 +61,9 @@ SEM Module
                                                       Just t  -> (t:list,bool) 
                                                       Nothing -> (list,True)
                                                                               
-                    in foldr op (notGeneralEnoughErrors,False) (map ((@substitution |->) . makeTypeError) @solveErrors)
+                    in if null @solveErrors 
+                         then (notGeneralEnoughErrors,False)
+                         else foldr op ([], False) (map ((@substitution |->) . makeTypeError) @solveErrors)
             
            . toplevelTypes = addListToFM @body.typeSignatures @inferredgamma
            

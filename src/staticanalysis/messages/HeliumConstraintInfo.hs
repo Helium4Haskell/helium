@@ -44,6 +44,7 @@ data Property   = FolkloreConstraint
                 | Size Int
                 | Negation Int
                 | NegationResult
+                | IsUserConstraint Int {- user-constraint-group unique number -} Int {- constraint number within group -}
                 | WithTypeError TypeError    
                 | WithHint TypeErrorInfo
   
@@ -84,6 +85,10 @@ instance TypeGraphConstraintInfo HeliumConstraintInfo where
    isExplicitTypedBinding cinfo = not . null $ [ () | ExplicitTypedBinding <- properties cinfo ]
    isTupleEdge            cinfo = not . null $ [ () | IsTupleEdge          <- properties cinfo ]
    isNegationResult       cinfo = not . null $ [ () | NegationResult       <- properties cinfo ]
+   
+   maybeUserConstraint cinfo = case [ (i1, i2) | IsUserConstraint i1 i2 <- properties cinfo ] of
+             []  -> Nothing
+             t:_ -> Just t
 
    maybeImportedFunction cinfo = case [ name | IsImported name <- properties cinfo ] of
              []  -> Nothing

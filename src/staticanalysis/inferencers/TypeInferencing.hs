@@ -2990,7 +2990,9 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
                                            case checkTypeError _orderedTypeSynonyms typeError of
                                               Just t  -> (t:list,bool)
                                               Nothing -> (list,True)
-            in foldr op (notGeneralEnoughErrors,False) (map ((_substitution |->) . makeTypeError) _solveErrors)
+            in if null _solveErrors
+                 then (notGeneralEnoughErrors,False)
+                 else foldr op ([], False) (map ((_substitution |->) . makeTypeError) _solveErrors)
         (_toplevelTypes) =
             addListToFM _body_typeSignatures _inferredgamma
         (_warnings) =

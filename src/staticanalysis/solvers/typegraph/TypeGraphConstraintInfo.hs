@@ -53,6 +53,7 @@ class (Show constraintinfo,ConstraintInfo constraintinfo) =>
    isNegationResult        :: constraintinfo -> Bool
    maybeFunctionBinding    :: constraintinfo -> Maybe Int   
    maybeOriginalTypeScheme :: constraintinfo -> Maybe (Bool,TpScheme)
+   maybeUserConstraint     :: constraintinfo -> Maybe (Int, Int)
    setFolkloreConstraint   :: constraintinfo -> constraintinfo 
    setNewTypeError         :: TypeError -> constraintinfo -> constraintinfo
    setNewHint              :: TypeErrorInfo -> constraintinfo -> constraintinfo

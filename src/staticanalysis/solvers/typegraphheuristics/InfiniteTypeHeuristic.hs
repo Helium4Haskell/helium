@@ -9,6 +9,9 @@ import List   (nub, maximumBy, minimumBy)
 import Maybe  (catMaybes)
 import Utils  (internalError)
 
+-- temporary
+import EquivalenceGroup
+
 infiniteTypeHeuristic :: (TypeGraph EquivalenceGroups info, TypeGraphConstraintInfo info, Show info) =>  
                           [Int] -> SolveState EquivalenceGroups info ([EdgeID], [info])
 infiniteTypeHeuristic is = 
@@ -45,7 +48,8 @@ infiniteTypeHeuristic is =
                  $ pathsList
 
       case result of 
-         Just (edge, info) -> return ([edge], [info])
+         Just (edge, info) -> do edges <- moreEdgesFromUser info edge 
+                                 return (edges, [info])
          Nothing           -> internalError "TypeGraphHeuristics" 
                                             "heuristicsInfiniteType" 
                                             "could not return a result"
@@ -70,3 +74,29 @@ safeMinimumBy :: (a -> a -> Ordering) -> [a] -> Maybe a
 safeMinimumBy f xs 
    | null xs   = Nothing
    | otherwise = Just (minimumBy f xs)
+
+-- temporary
+moreEdgesFromUser :: TypeGraphConstraintInfo cinfo => cinfo -> EdgeID -> SolveState EquivalenceGroups cinfo [EdgeID]
+moreEdgesFromUser cinfo edgeID = 
+   case maybeUserConstraint cinfo of
+      Nothing         -> return [edgeID]
+      Just (gid, pos) -> 
+         do edges <- allEdgesInTypeGraph
+            let edgesToRemove = let predicate info = case maybeUserConstraint info of
+                                                        Nothing           -> False
+                                                        Just (gid', pos') -> gid == gid' && pos < pos'
+                                in filter (predicate . snd) edges
+            return (edgeID : map fst edgesToRemove)
+      
+allEdgesInTypeGraph :: SolveState EquivalenceGroups cinfo [(EdgeID, cinfo)]
+allEdgesInTypeGraph = 
+   do unique  <- getUnique 
+      ints    <- let f i = useSolver
+                              (\groups -> do eqg <- equivalenceGroupOf i groups
+                                             return (representative eqg))
+                 in mapM f [0..unique-1]
+      results <- let f i = useSolver 
+                              (\groups -> do eqg <- equivalenceGroupOf i groups
+                                             return (edges eqg))
+                 in mapM f (nub ints)
+      return (concat results)                 

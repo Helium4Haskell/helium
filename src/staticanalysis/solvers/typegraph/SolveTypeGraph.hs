@@ -40,7 +40,7 @@ showPath = unlines . map f
    where f (edge,info) = "   "++take 15 (show edge++repeat ' ')++show info
 
 instance TypeGraphConstraintInfo info => Show (EdgeInfo info) where
-   show (Initial info)    = "(" ++ show (getInfoSource info) ++ ")"
+   show (Initial info)    = '#' : take 5 (show (maybe 0 id $ getPosition info)++repeat ' ')++ "(" ++ show (getInfoSource info) ++ ")"
    show (Implied i p1 p2) = "(" ++ show i ++ " : " ++ show (p1,p2) ++ ")"
    show (Child i)         = "(" ++ show i ++ ")"
 

@@ -7,70 +7,109 @@
 --
 -------------------------------------------------------------------------------
 
-module TypesToAlignedDocs where
+module TypesToAlignedDocs (typesToAlignedDocs) where
 
-import List     ( (\\), union )
+import List     ( (\\), union, transpose )
 import Types
 import PPrint
+
+typesToAlignedDocs :: Tps -> [PPrint.Doc]
+typesToAlignedDocs []  = []
+typesToAlignedDocs tps
+
+   | allFunctionType
+     = let functionSpines = map functionSpine tps
+           shortestSpine  = minimum (map (length . fst) functionSpines)
+           tupleSpines    = map partOfSpine functionSpines
+           partOfSpine (ts, t) = let (xs, ys) = splitAt shortestSpine ts 
+                                 in (xs, foldr (.->.) t ys)
+           (left, right)  = unzip tupleSpines
+           docsLeft       = recs (<1) left
+           docsRight      = rec  (const False) right
+       in map funDocs (zipWith (\xs x -> xs++[x]) docsLeft docsRight)
+  
+   | allVariable
+     = map PPrint.text (sameLength [ 'v' : show i | (TVar i, _) <- spines])
+
+   | allConstant
+     = map PPrint.text (sameLength [ s | (TCon s, _) <- spines])
    
--- shows and aligns the two types
-showTwoTypesSpecial :: (Tp,Tp) -> (PPrint.Doc,PPrint.Doc)
-showTwoTypesSpecial (t1,t2) = let vars = ftv [t1,t2]
-                                  cons = constantsInType t1 `union` constantsInType t2
-                                  newcons = [ TCon [c] | c <- ['a'..], [c] `notElem` cons ]
-                                  sub  = listToSubstitution (zip vars newcons)
-                              in showTwoTypes (sub |-> t1) (sub |-> t2)
+   | allListType
+     = map PPrint.squares (rec (const False) (map (head . snd) spines))
 
-showTwoTypes :: Tp -> Tp -> (PPrint.Doc,PPrint.Doc)
-showTwoTypes t1 t2 = case (leftSpine t1,leftSpine t2) of 
-       ((TCon "->",_),(TCon "->",_)) -> let (listA,tpA)   = functionSpine t1
-                                            (listB,tpB)   = functionSpine t2
-                                            listLength    = length listA `min` length listB
-                                            (listA',tpA') = let (xs,ys) = splitAt listLength listA
-                                                            in (xs,foldr (.->.) tpA ys)
-                                            (listB',tpB') = let (xs,ys) = splitAt listLength listB
-                                                            in (xs,foldr (.->.) tpB ys)
-                                            (adocs,bdocs) = unzip (map (rec (<1)) (zip listA' listB'))
-                                            (adoc ,bdoc ) = rec (const False) (tpA',tpB')
-                                        in (funDocs (adocs++[adoc]),funDocs (bdocs++[bdoc]))
-       ((TVar i,[]),(TVar j,[])) -> let (s1,s2) = sameLength ('v' : show i,'v' : show j)
-                                    in (PPrint.text s1,PPrint.text s2)
-       ((TCon s,[]),(TCon t,[])) -> let (s1,s2) = sameLength (s,t)
-                                    in (PPrint.text s1,PPrint.text s2)
-       ((TCon "[]",[t1]),(TCon "[]",[t2])) -> let (d1,d2) = rec (const False) (t1,t2) 
-                                              in (PPrint.squares d1,PPrint.squares d2) 
-       ((TCon s,ss),(TCon t,tt)) | isTupleConstructor s && s==t && length ss == length tt
-            -> let (ssdocs,ttdocs) = unzip (map (rec (const False)) (zip ss tt))
-               in (tupleDocs ssdocs,tupleDocs ttdocs)
-       ((x@(TCon c),xs),(y@(TCon d),ys)) | c == d && length xs == length ys 
-            -> let (xsdocs,ysdocs) = unzip (map (rec (<2)) (zip (x:xs) (y:ys))) 
-               in (appDocs xsdocs,appDocs ysdocs)
-       _ -> let (s1,s2) = sameLength (show t1,show t2)
-            in (PPrint.text s1,PPrint.text s2)
-       
-    where rec p (t1,t2) = let (s1,s2) = showTwoTypes t1 t2
-                              bool1   = p (priorityOfType t1)
-                              bool2   = p (priorityOfType t2)
-                          in ( (parIf bool1 s1) <> (PPrint.text (if bool2 && not bool1 then "  " else ""))
-                             , (parIf bool2 s2) <> (PPrint.text (if bool1 && not bool2 then "  " else ""))
-                             )
-          parIf True  = PPrint.parens
-          parIf False = id
-          sameLength (s1,s2) = let i = length s1 `max` length s2
-                               in (take i (s1++repeat ' '),take i (s2++repeat ' '))
-
-          funDocs :: [Doc] -> Doc
-          funDocs = PPrint.group . foldl1 (\d1 d2 -> d1 <> line <> text "->" <+> d2)
-
-          appDocs :: [Doc] -> Doc
-          appDocs = foldl1 (\d1 d2 -> PPrint.group $ d1 <> line <> d2)
-
-          tupleDocs :: [Doc] -> Doc
-          tupleDocs [] = PPrint.text "()"
-          tupleDocs ds = PPrint.hang 0 $ PPrint.group  (PPrint.text "(" <> 
-                    foldl1 (\d1 d2 -> d1 <> line <> PPrint.text "," <+> d2) ds) 
-                    <> PPrint.text ")"                               
-
-
-       
+   | allSameTuple
+     = map tupleDocs (recs (const False) (map snd spines))   
+     
+   | allSameConstructor 
+     = map appDocs (recs (<2) [ x:xs | (x, xs) <- spines ])
+           
+   | otherwise 
+     = map PPrint.text $ sameLength $ map show tps
    
+   where spines = map leftSpine tps
+         allSameConstructor = all isTCon (map fst spines)
+                           && allEqual [ s | (TCon s, _) <- spines ]
+                           && allEqual [ length xs | (_, xs) <- spines ]
+         allSameTuple       = all isTCon (map fst spines)
+                           && all isTupleConstructor [ s | (TCon s, _) <- spines ]
+                           && allEqual [ s | (TCon s, _) <- spines ]
+                           && allEqual [ length xs | (_, xs) <- spines ]      
+         allListType        = all isTCon (map fst spines)
+                           && all ("[]"==) [ s | (TCon s, _) <- spines ]
+                           && all (1==) [length xs | (_, xs) <- spines ]
+         allConstant        = all isTCon (map fst spines)
+                           && all null (map snd spines)
+         allVariable        = all isTVar (map fst spines)
+                           && all null (map snd spines)
+         allFunctionType    = all isTCon (map fst spines)
+                           && all ("->"==) [ s | (TCon s, _) <- spines ]
+                           && all (2==) [length xs | (_, xs) <- spines ]
+
+recs :: (Int -> Bool) -> [Tps] -> [[PPrint.Doc]]
+recs predicate = transpose . map (rec predicate) . transpose 
+
+rec :: (Int -> Bool) -> Tps -> [PPrint.Doc]    
+rec predicate tps = 
+   let docs  = typesToAlignedDocs tps     
+       bools = map (predicate . priorityOfType) tps
+       maybeParenthesize (b, doc) 
+          | b         = PPrint.parens doc
+          | or bools  = doc <> PPrint.text "  "
+          | otherwise = doc
+   in map maybeParenthesize (zip bools docs)
+
+showTwoTypesSpecial (t1,t2) = 
+   let [d1,d2] = typesToAlignedDocs [t1,t2]
+   in (d1,d2)
+
+showTwoTypes = showTwoTypesSpecial 
+   
+allEqual :: Eq a => [a] -> Bool
+allEqual []     = True
+allEqual (x:xs) = all (x==) xs
+ 
+sameLength :: [String] -> [String]
+sameLength xs = 
+   let n = maximum (0 : map length xs)  
+       f = take n . (++repeat ' ') 
+   in map f xs
+   
+isTCon :: Tp -> Bool
+isTCon (TCon _) = True
+isTCon _        = False   
+
+isTVar :: Tp -> Bool
+isTVar (TVar _) = True
+isTVar _        = False
+
+appDocs :: [Doc] -> Doc
+appDocs = foldl1 (\d1 d2 -> PPrint.group $ d1 <> line <> d2)
+
+tupleDocs :: [Doc] -> Doc
+tupleDocs [] = PPrint.text "()"
+tupleDocs ds = PPrint.hang 0 $ PPrint.group  (PPrint.text "(" <> 
+          foldl1 (\d1 d2 -> d1 <> line <> PPrint.text "," <+> d2) ds) 
+          <> PPrint.text ")"   
+
+funDocs :: [Doc] -> Doc
+funDocs = PPrint.group . foldl1 (\d1 d2 -> d1 <> line <> text "->" <+> d2)          
