@@ -99,7 +99,7 @@ instance MaybeUnaryMinus ConstraintInfo where
             | show name == "-." ->
                  case literal of
                     Literal_Float _ s -> Just (Right (read s))
-                    _                 -> Nothing
+                    _                 -> Nothing 
          _  -> Nothing
    
 instance MaybeNegation ConstraintInfo where
@@ -113,9 +113,8 @@ instance IsExprVariable ConstraintInfo where -- misleading name?
    isExprVariable cinfo =
       case (self . attribute . localInfo) cinfo of
          UHA_Expr (Expression_Variable _ _) -> 
-            isJust (maybeInstantiatedTypeScheme cinfo)
+            not $ null [ () | InstantiatedTypeScheme _ <- properties cinfo ]
          _ -> False
-      -- or (isJust (maybeImportedName cinfo) : [ True | FromBindingGroup <- properties cinfo ])
       
    isEmptyInfixApplication cinfo =
       case (self . attribute . localInfo) cinfo of

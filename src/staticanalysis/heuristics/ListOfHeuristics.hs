@@ -39,15 +39,15 @@ listOfHeuristics options siblings =
    [ Heuristic (Voting (
         [ siblingFunctions siblings
         , similarLiterals
-        , similarNegation
         , applicationEdge
         , tupleEdge
         , fbHasTooManyArguments
         , variableFunction
-	, unaryMinus
-	, constraintFromUser
+        , constraintFromUser
+        , unaryMinus (Overloading `elem` options)
         ] ++
-        [ unifierVertex | UnifierHeuristics `elem` options ]))
+        [ similarNegation | Overloading `notElem` options ] ++
+        [ unifierVertex   | UnifierHeuristics `elem` options ]))
    | NoRepairHeuristics `notElem` options
    ] ++
    [ inPredicatePath | Overloading `elem` options ] ++

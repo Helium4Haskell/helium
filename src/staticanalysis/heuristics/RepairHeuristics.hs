@@ -174,7 +174,6 @@ applicationEdge =
              case (maybeFunctionType, maybeExpectedType) of
                                   
                (Just functionType, Just expectedType) 
-
                   -- can a permutation of the arguments resolve the type inconsistency
                   | length argumentPermutations == 1 -> 
                        let p = head argumentPermutations
@@ -203,13 +202,12 @@ applicationEdge =
                              expargtp    = fst (functionSpine expandedTp) !! i
                          return $ Just 
                             (3, "incorrect argument of application="++show i, [edge], infoFun info)
-                  
+
                   -- too many arguments are given
                   | maybe False (< numberOfArguments) maximumForFunction && not isPatternApplication ->
                        case typesZippedWithHoles of
-
                           -- there is only one possible set to remove arguments 
-                          [is] | not isBinary && maybe True (> 1) maximumForFunction
+                          [is] | not isBinary && maybe True (>= 1) maximumForFunction
                               -> let hint = fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" argument")
                                  in return $ Just
                                        (4, "too many arguments are given: "++show is, [edge], hint info)
@@ -444,7 +442,7 @@ variableFunction =
               edges1 <- edgesFrom v1
               edges2 <- edgesFrom v2
               let f ((EdgeId v1 v2 _), _) = [v1,v2]
-              let special = concatMap f (filter (isEmptyInfixApplication . (\(_, info) -> info)) (edges1 ++ edges2)) \\ [v1,v2]
+                  special = concatMap f (filter (isEmptyInfixApplication . (\(_, info) -> info)) (edges1 ++ edges2)) \\ [v1,v2]
               edges3 <- mapM edgesFrom special
               let isApplicationEdge = isJust . maybeApplicationEdge
                   application = any (\(_, info) -> isApplicationEdge info) (edges1 ++ edges2 ++ concat edges3)                                                               
@@ -469,8 +467,8 @@ variableFunction =
 class MaybeUnaryMinus a where
    maybeUnaryMinus :: a -> Maybe (Either Int Float)
 
-unaryMinus :: (HasTypeGraph m info, MaybeApplication info, MaybeUnaryMinus info, HasTwoTypes info, WithHints info) => Selector m info
-unaryMinus = 
+unaryMinus :: (HasTypeGraph m info, MaybeApplication info, MaybeUnaryMinus info, HasTwoTypes info, WithHints info) => Bool -> Selector m info
+unaryMinus overloading = 
    Selector ("Unary minus", f) where
 
  f pair@(edge, info) =
@@ -491,10 +489,14 @@ unaryMinus =
                              in return $ Just 
                                    (5, "Unary minus for int", [edge], hint info)
                      (Right float, Just leftTp, Just contextTp) 
-                        | unifiable synonyms leftTp (floatType .->. contextTp) -> 
+                        | unifiable synonyms leftTp (floatType .->. contextTp) && not overloading -> 
                              let hint = possibleHint ("Insert parentheses to negate the float literal: (-."++show float++")")
                              in return $ Just 
                                    (5, "Unary minus for float", [edge], hint info)
+                        | unifiable synonyms leftTp (floatType .->. contextTp) && overloading -> 
+                             let hint = possibleHint ("Insert parentheses to negate the float literal: (-"++show float++")")
+                             in return $ Just 
+                                   (5, "Unary minus for float (overloading)", [edge], hint info)
                      _ -> return Nothing
             _ -> return Nothing
       _ -> return Nothing
