@@ -1,0 +1,13 @@
+Compiling make/Diamond4.hs
+(3,1): Warning: Missing type signature: x :: Int
+Compilation successful with 1 warning
+Compiling make/Diamond2.hs
+(5,1): Warning: Missing type signature: y :: Int
+Compilation successful with 1 warning
+Compiling make/Diamond3.hs
+(5,1): Warning: Missing type signature: z :: Int
+Compilation successful with 1 warning
+Compiling make/Diamond1.hs
+(4,1): Warning: Missing type signature: main :: Int
+Compilation successful with 1 warning
+45

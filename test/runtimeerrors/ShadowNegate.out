@@ -1,0 +1,5 @@
+Compiling runtimeerrors/ShadowNegate.hs
+(4,13): Warning: Definition "negate" is not used
+(4,13): Warning: Variable "negate" shadows the one at Prelude
+Compilation successful with 2 warnings
+(-1)

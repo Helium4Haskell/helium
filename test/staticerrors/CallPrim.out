@@ -1,0 +1,3 @@
+Compiling staticerrors/CallPrim.hs
+(5,8): Undefined variable "primPutStr"
+Compilation failed with 1 error

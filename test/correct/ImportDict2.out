@@ -1,0 +1,5 @@
+Compiling correct/ImportDict2.hs
+(5,1): Warning: Missing type signature: y :: Int
+(6,1): Warning: Missing type signature: x :: Int
+Compilation successful with 2 warnings
+No 'main' function defined in this module

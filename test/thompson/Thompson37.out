@@ -6,9 +6,9 @@ Compilation successful with 2 warnings
 [exception: pattern match failed at function bindings ranging from (2,1) to (2,18) in module thompson/Thompson37.hs.
 
 trace:
-  demanded from "HeliumLang.primMap"
+  demanded from "HeliumLang.$primMap"
   demanded from "HeliumLang.commaList"
-  demanded from "HeliumLang.primAppend"
-  demanded from "HeliumLang.primPutChars"
+  demanded from "HeliumLang.$primAppend"
+  demanded from "HeliumLang.$primPutChars"
   demanded from "LvmLang.bindIO"
   demanded from "LvmLang.unsafePerformIO"

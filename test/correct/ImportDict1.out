@@ -1,0 +1,8 @@
+Compiling correct/ImportDict2.hs
+(5,1): Warning: Missing type signature: y :: Int
+(6,1): Warning: Missing type signature: x :: Int
+Compilation successful with 2 warnings
+Compiling correct/ImportDict1.hs
+(5,1): Warning: Missing type signature: main :: String
+Compilation successful with 1 warning
+"(MkA 3)"
