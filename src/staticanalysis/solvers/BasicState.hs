@@ -11,7 +11,6 @@ module BasicState
 
 import Control.Monad.State
 import Constraints
-import GHC.IOBase (unsafePerformIO)
   
 ---------------------------------------------------------------------
 

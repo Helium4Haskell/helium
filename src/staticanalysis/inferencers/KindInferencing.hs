@@ -61,8 +61,8 @@ performBindingGroup = glueGroups . bindingGroupAnalysis
       glueGroups = foldr op (noAssumptions, noAssumptions, []) 
          where
             op (env, aset, cset) (environment, assumptions, constraints) = 
-               let (cset1,aset')        = (env .===. aset)            (\n _ -> unexpected $ "BindingGroup.same "++show n)
-                   (cset2,assumptions') = (.<==.) [] env assumptions  (\n _ -> unexpected $ "BindingGroup.instance "++show n)
+               let (cset1,aset')        = (env .===. aset)                 (\n _ -> unexpected $ "BindingGroup.same "++show n)
+                   (cset2,assumptions') = (.<==.) emptyFM env assumptions  (\n _ -> unexpected $ "BindingGroup.instance "++show n)
                in ( env `plusFM` environment
                   , aset' `combine` assumptions'
                   , cset1 ++ cset ++ cset2 ++ constraints

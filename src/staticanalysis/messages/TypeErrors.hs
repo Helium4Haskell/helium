@@ -11,7 +11,7 @@ import Types
 import List       (union, intersperse, partition)
 import OneLiner   (OneLineTree(..) )
 import UHA_Syntax (Range, Name)
-import UHA_Range  (getNameRange)
+import UHA_Source
 
 type TypeErrors = [TypeError]
 data TypeError  = TypeError
@@ -133,37 +133,38 @@ checkTypeError synonyms typeError@(TypeError r o table h) =
       _  -> Just typeError
 checkTypeError synonyms typeError = Just typeError
 
-makeNotGeneralEnoughTypeError :: (OneLineTree, Range) -> TpScheme -> TpScheme -> TypeError
-makeNotGeneralEnoughTypeError (tree, range) tpscheme1 tpscheme2 =
+makeNotGeneralEnoughTypeError :: UHA_Source -> TpScheme -> TpScheme -> TypeError
+makeNotGeneralEnoughTypeError source tpscheme1 tpscheme2 =
    let sub      = listToSubstitution (zip (ftv [tpscheme1, tpscheme2]) [ TVar i | i <- [1..] ])
        ts1      = freezeFreeTypeVariables (sub |-> tpscheme1)
        ts2      = freezeFreeTypeVariables (sub |-> tpscheme2)
        oneliner = MessageString "Declared type is too general"
-       table    = NotGeneralEnoughTable tree ts2 ts1
+       table    = NotGeneralEnoughTable (oneLinerSource source) ts2 ts1
        hints    = if null (ftv tpscheme1)
                     then []
                     else [TypeErrorHint "hint" (MessageString "try removing the type signature")]
-   in TypeError range oneliner table hints
+   in TypeError (rangeOfSource source) oneliner table hints
    
-makeUnresolvedOverloadingError :: Range -> OneLineTree -> Predicate -> TypeError
-makeUnresolvedOverloadingError range tree predicate =
-   CustomTypeError [range]
+makeUnresolvedOverloadingError :: UHA_Source -> Predicate -> TypeError
+makeUnresolvedOverloadingError source predicate =
+   CustomTypeError [rangeOfSource source]
       [ MessageOneLiner (MessageString "Unresolved overloading")
       , MessageTable
-           [ (MessageString "function" , MessageOneLineTree tree) 
+           [ (MessageString "function" , MessageOneLineTree (oneLinerSource source)) 
            , (MessageString "predicate", MessagePredicate predicate)
            ]
       ]
       
-makeReductionError :: Range -> OneLineTree -> (TpScheme, Tp) -> ClassEnvironment -> Predicate -> TypeError
-makeReductionError range tree (scheme, tp) classEnvironment predicate@(Predicate className _) =
-   CustomTypeError [range] 
+makeReductionError :: UHA_Source -> (TpScheme, Tp) -> ClassEnvironment -> Predicate -> TypeError
+makeReductionError source (scheme, tp) classEnvironment predicate@(Predicate className predicateTp) =
+   CustomTypeError [rangeOfSource source] 
       [ MessageOneLiner (MessageString "Type error in overloaded function")
       , MessageTable 
-           [ (MessageString "function" , MessageOneLineTree tree) 
-           , (MessageString "type"     , MessageTypeScheme scheme)
-           , (MessageString "used as"  , MessageType ([] :=> tp))
-           , (MessageString "predicate", MessagePredicate predicate)
+           [ (MessageString "function", MessageOneLineTree (oneLinerSource source)) 
+           , (MessageString "type"    , MessageTypeScheme scheme)
+           , (MessageString "used as" , MessageType ([] :=> tp))
+           , (MessageString "problem" , MessageCompose [ MessageType ([] :=> predicateTp)
+                                                       , MessageString (" is not an instance of class "++className)])
            ]
       , MessageOneLiner (MessageString hint)
       ]
@@ -172,7 +173,7 @@ makeReductionError range tree (scheme, tp) classEnvironment predicate@(Predicate
          hint = case valids of
                    []  -> "  hint: there are no valid instances of "++className
                    [x] -> "  hint: valid instance of "++className++" is "++show x
-                   xs  -> "  hint: valid instance of "++className++" are "++andList valids
+                   xs  -> "  hint: valid instances of "++className++" are "++andList valids
          
          andList :: [String] -> String
          andList [x,y]    = x++" and "++y

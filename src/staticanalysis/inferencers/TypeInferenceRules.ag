@@ -5,17 +5,18 @@ SEM Module
 
   | Module  
       loc  -- choose your algorithm to solve the type constraints                                                   
-           -- the default solver is SolverChunks
+           -- the default solver is(was!!!) SolverChunks
            . selectedSolver =                 
                 let select
                        | SolverSimple      `elem` @lhs.options = solveSimple      @orderedTypeSynonyms
                        | SolverGreedy      `elem` @lhs.options = solveGreedy      @orderedTypeSynonyms
                        | SolverCombination `elem` @lhs.options = solveCombination (@orderedTypeSynonyms, @siblings)                                    
                        | SolverTypeGraph   `elem` @lhs.options = solveTypeGraph   (@orderedTypeSynonyms, @siblings)                          
-                       | otherwise = \unique _ ->  
+                       | SolverChunks      `elem` @lhs.options = \unique _ ->  
                                         let options = (@flattening, @orderedTypeSynonyms, @siblings)
                                             chunkConstraints = chunkTree dependencyTypeConstraint @body.constraints
-                                        in solveChunkConstraints options unique chunkConstraints                       
+                                        in solveChunkConstraints options unique chunkConstraints   
+                       | otherwise = solveCombination (@orderedTypeSynonyms, @siblings)  -- solveCombi
                 in select
 
            -- choose your treewalk to flatten the constraint tree
@@ -53,24 +54,20 @@ SEM Module
                                                 [ lookupFM (valueConstructors @lhs.importEnvironment) n
                                                 , lookupFM (typeEnvironment   @lhs.importEnvironment) n
                                                 ]
-                        in map (concatMap f) (getSiblings @lhs.importEnvironment)
-                                       
-           . monomorphics  = ftv (  (eltsFM $ valueConstructors @lhs.importEnvironment) 
-                                 ++ (eltsFM $ typeEnvironment @lhs.importEnvironment)
-                                 )
-           . monos              = map TVar @monomorphics
+                        in map (concatMap f) (getSiblings @lhs.importEnvironment)                                       
+           . monos              = emptyFM
            . checkedSolveErrors = catMaybes (map (checkTypeError @orderedTypeSynonyms . (@substitution |->) . makeTypeError) @solveErrors)
            . typeErrors         = if null @checkedSolveErrors then @body.collectErrors else @checkedSolveErrors
            . warnings           = @body.collectWarnings
            . initialScope       = keysFM (typeEnvironment @lhs.importEnvironment)
-      body . betaUnique         = maximum (0 : @monomorphics) + 1 
+      body . betaUnique         = 0
                                  
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Body
 
 ATTR Body
     [ 
-      monos                 : Tps
+      monos                 : Monos
     | betaUnique            : Int
     | assumptions           : Assumptions
       constraints           : ConstraintSet
@@ -82,14 +79,14 @@ SEM Body
       declarations . bindingGroups       = []
                    
       loc . (aset,cset,inheritedBDG,chunkNr) = 
-               performBindingGroup @lhs.currentChunk @declarations.uniqueChunk @lhs.chunkNumberMap [] @declarations.typeSignatures Nothing @declarations.bindingGroups  
+               performBindingGroup @lhs.currentChunk @declarations.uniqueChunk @lhs.chunkNumberMap @lhs.monos @declarations.typeSignatures Nothing @declarations.bindingGroups  
           . (csetBinds,aset') = (typeEnvironment @lhs.importEnvironment .:::. @aset) @cinfo
           . constraints       = Chunk @lhs.currentChunk @cset [] (dependencyBinds @lhs.chunkNumberMap @csetBinds) emptyTree
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Declaration, Declarations, MaybeDeclarations
 
-ATTR Declaration Declarations MaybeDeclarations [ monos:Tps | betaUnique:Int | ]
+ATTR Declaration Declarations MaybeDeclarations [ monos:Monos | betaUnique:Int | ]
 ATTR Declaration Declarations                   [ inheritedBDG:InheritedBDG | bindingGroups:BindingGroups | ]
 ATTR                          MaybeDeclarations [ | assumptions:Assumptions constraints:ConstraintSet | ]
 
@@ -98,7 +95,7 @@ SEM Declaration
   | FunctionBindings
       lhs      . bindingGroups = @mybdggrp : @lhs.bindingGroups
       bindings . betaUnique    = @lhs.betaUnique + 2 + @bindings.numberOfPatterns
-               . monos         = findMono @bindings.name @lhs.inheritedBDG ++ @lhs.monos               
+               . monos         = findMono @bindings.name @lhs.inheritedBDG `plusFM` @lhs.monos               
       loc      . beta          = TVar @lhs.betaUnique
                . betaRight     = TVar (@lhs.betaUnique + 1)
                . betasLeft     = take @bindings.numberOfPatterns (map TVar [@lhs.betaUnique + 2..])
@@ -114,8 +111,10 @@ SEM Declaration
 
   | PatternBinding
       lhs           . bindingGroups = @mybdggrp : @lhs.bindingGroups
-      righthandside . monos         = findMono (head (keysFM @pattern.environment)) @lhs.inheritedBDG ++ @lhs.monos    
-      loc           . newcon        = [ (@righthandside.beta .==. @pattern.beta) @cinfo ]
+      pattern       . betaUnique    = @lhs.betaUnique + 1
+      righthandside . monos         = findMono (head (keysFM @pattern.environment)) @lhs.inheritedBDG `plusFM` @lhs.monos    
+      loc           . betaRight     = TVar @lhs.betaUnique
+                    . newcon        = [ (@betaRight .==. @pattern.beta) @cinfo ]
                     . mybdggrp      = ( @pattern.environment
                                       , @righthandside.assumptions
                                       , [ @newcon .>.
@@ -139,7 +138,7 @@ SEM MaybeDeclarations
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : FunctionBinding, FunctionBindings
 
-ATTR FunctionBinding FunctionBindings [ betasLeft:Tps betaRight:Tp monos:Tps | betaUnique:Int | assumptions:Assumptions numberOfPatterns:Int name:Name ]
+ATTR FunctionBinding FunctionBindings [ betasLeft:Tps betaRight:Tp monos:Monos | betaUnique:Int | assumptions:Assumptions numberOfPatterns:Int name:Name ]
 ATTR FunctionBinding                  [ | | constraints:ConstraintSet]
 ATTR                 FunctionBindings [ | | constraintslist:ConstraintSets]
 
@@ -147,14 +146,13 @@ SEM FunctionBinding
 
   | FunctionBinding
       lhs           . assumptions = @assumptions'
-      righthandside . monos       = eltsFM @lefthandside.environment ++ getMonos @csetBinds ++ @lhs.monos
+      righthandside . monos       = @lefthandside.environment `plusFM` getMonos @csetBinds `plusFM` @lhs.monos
       loc           . constraints = @csetBinds .>>.
                                     Node [ @conLeft  .<. @lefthandside.constraints
-                                         , @conRight .<. @righthandside.constraints
+                                         , @righthandside.constraints
                                          ]
                     . (csetBinds,assumptions') = (@lefthandside.environment .===. @righthandside.assumptions) @cinfoBind
                     . conLeft     = zipWith3 (\t1 t2 nr -> (t1 .==. t2) (@cinfoLeft nr)) @lefthandside.betas @lhs.betasLeft [0..]
-                    . conRight    = [ (@righthandside.beta .==. @lhs.betaRight) @cinfoRight ]
 
 SEM FunctionBindings
 
@@ -172,9 +170,9 @@ SEM FunctionBindings
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : LeftHandSide, RightHandSide
 
-ATTR LeftHandSide RightHandSide [ | betaUnique:Int | constraints:ConstraintSet ]
+ATTR LeftHandSide RightHandSide [ monos:Monos | betaUnique:Int | constraints:ConstraintSet ]
 ATTR LeftHandSide               [ | | betas:Tps environment:PatternAssumptions numberOfPatterns:Int name:Name ]
-ATTR              RightHandSide [ monos:Tps | | assumptions:Assumptions beta:Tp ]
+ATTR              RightHandSide [ betaRight:Tp | | assumptions:Assumptions ]
 
 SEM LeftHandSide
 
@@ -202,30 +200,27 @@ SEM LeftHandSide
 SEM RightHandSide
 
   | Expression
-     lhs   . assumptions = @where.assumptions           
+     lhs   . assumptions = @where.assumptions   
+           . constraints = @where.constraints        
      where . assumptions = @expression.assumptions
-           . constraints = @expression.constraints
-     loc   . constraints = @where.constraints
+           . constraints = @newcon .>. @expression.constraints
+     loc   . newcon      = [ (@expression.beta .==. @lhs.betaRight) @cinfo ]
+          
 
   | Guarded
      lhs                . assumptions    = @where.assumptions
                         . constraints    = @where.constraints
-     guardedexpressions . betaUnique     = @lhs.betaUnique + 1
-                        . rightBeta      = @beta
-                        . numberOfGuards = length @guardedexpressions.constraintslist
+     guardedexpressions . numberOfGuards = length @guardedexpressions.constraintslist
      where              . assumptions    = @guardedexpressions.assumptions
-     loc                . constraints    = Node @guardedexpressions.constraintslist
-                        . beta           = TVar @lhs.betaUnique
+                        . constraints    = Node @guardedexpressions.constraintslist
 
 ---------------------------------------------------------------------------------------
--- Type Inferencing : Expression, Expressions, MaybeExpression, GuardedExpression, GuardedExpressions
+-- Type Inferencing : Expression, Expressions, MaybeExpression
 
-ATTR Expression Expressions MaybeExpression GuardedExpression GuardedExpressions [ monos:Tps | betaUnique:Int | assumptions:Assumptions ]
-ATTR Expression                             GuardedExpression                    [ | | beta:Tp constraints:ConstraintSet ]
-ATTR            Expressions                                   GuardedExpressions [ | | betas:Tps constraintslist:ConstraintSets ]
-ATTR                        MaybeExpression                                      [ | | beta:Tp constraints:ConstraintSet section:Bool ]
-ATTR                                        GuardedExpression GuardedExpressions [ rightBeta:Tp | | ]
-ATTR GuardedExpressions GuardedExpression [ numberOfGuards:Int | | ]
+ATTR Expression Expressions MaybeExpression [ monos:Monos | betaUnique:Int | assumptions:Assumptions ]
+ATTR Expression                             [ | | beta:Tp constraints:ConstraintSet ]
+ATTR            Expressions                 [ | | betas:Tps constraintslist:ConstraintSets ]
+ATTR                        MaybeExpression [ | | beta:Tp constraints:ConstraintSet section:Bool ]
 
 SEM Expression
 
@@ -292,7 +287,7 @@ SEM Expression
   | Lambda
       lhs        . assumptions = @assumptions'
       patterns   . betaUnique  = @lhs.betaUnique + 1
-      expression . monos       = eltsFM @patterns.environment ++ getMonos @csetBinds ++ @lhs.monos
+      expression . monos       = @patterns.environment `plusFM` getMonos @csetBinds `plusFM` @lhs.monos
       loc        . constraints = @newcon .>. @csetBinds .>>.
                                  Node [ Node @patterns.constraintslist
                                       , @expression.constraints
@@ -306,7 +301,6 @@ SEM Expression
       expression   . betaUnique  = @lhs.betaUnique + 2
       alternatives . betaLeft    = @beta'
                    . betaRight   = @beta
-                   . nrOfAlternatives = length @alternatives.constraintslist
       loc          . constraints = Node [ @newcon .<. @expression.constraints
                                         , Node @alternatives.constraintslist
                                         ]                   
@@ -393,7 +387,7 @@ SEM Expression
                                       tpscheme = lookupWithDefaultFM (typeEnvironment @lhs.importEnvironment) standard (nameFromString "negate")
                                   in [ (@expression.beta .->. @beta .::. tpscheme) @cinfo]
 
-{- only if type inferencing without overloading -}
+{- only for type inference without overloading -}
   | NegateFloat
        expression . betaUnique  = @lhs.betaUnique + 1
        loc        . constraints = @newcon .>. Node [ @expression.constraints ]
@@ -424,34 +418,38 @@ SEM MaybeExpression
           . constraints = emptyTree
       loc . beta        = TVar @lhs.betaUnique
 
+---------------------------------------------------------------------------------------
+-- Type Inferencing : GuardedExpression, GuardedExpressions
+
+ATTR GuardedExpressions GuardedExpression [ numberOfGuards:Int monos:Monos betaRight:Tp | betaUnique:Int | assumptions:Assumptions ]
+ATTR GuardedExpressions                   [ | | constraintslist:ConstraintSets ]
+ATTR                    GuardedExpression [ | | constraints:ConstraintSet      ]
+
 SEM GuardedExpression
 
   | GuardedExpression
-      lhs . beta        = @expression.beta
-          . constraints = Node [ @newconGuard .<. @guard.constraints
+      lhs . constraints = Node [ @newconGuard .<. @guard.constraints
                                , @newconExpr  .<. @expression.constraints
                                ]
           . assumptions = @guard.assumptions `combine` @expression.assumptions
       loc . newconGuard = [ (@guard.beta .==. boolType) @cinfoGuard ]
-          . newconExpr  = [ (@expression.beta .==. @lhs.rightBeta) @cinfoExpr ]
+          . newconExpr  = [ (@expression.beta .==. @lhs.betaRight) @cinfoExpr ]
 
 SEM GuardedExpressions
 
   | Cons
-      lhs . betas           = @hd.beta : @tl.betas
-          . assumptions     = @hd.assumptions `combine` @tl.assumptions
+      lhs . assumptions     = @hd.assumptions `combine` @tl.assumptions
           . constraintslist = @hd.constraints : @tl.constraintslist
 
   | Nil
-      lhs . betas           = []
-          . assumptions     = noAssumptions
+      lhs . assumptions     = noAssumptions
           . constraintslist = []
 
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Pattern
 
-ATTR Pattern Patterns [ | betaUnique:Int | environment:PatternAssumptions ]
+ATTR Pattern Patterns [ monos:Monos | betaUnique:Int | environment:PatternAssumptions ]
 ATTR Pattern          [ | | beta:Tp constraints:ConstraintSet ]
 ATTR         Patterns [ | | betas:Tps constraintslist:ConstraintSets numberOfPatterns:Int ]
 
@@ -566,23 +564,21 @@ SEM Patterns
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Alternative, Alternatives
 
-ATTR Alternative Alternatives [ betaLeft:Tp betaRight:Tp monos:Tps | betaUnique:Int | assumptions:Assumptions ]
+ATTR Alternative Alternatives [ betaLeft:Tp betaRight:Tp monos:Monos | betaUnique:Int | assumptions:Assumptions ]
 ATTR Alternative              [ | | constraints:ConstraintSet ]
 ATTR             Alternatives [ | | constraintslist:ConstraintSets ]
-ATTR Alternative Alternatives [ nrOfAlternatives:Int | | ]
 
 SEM Alternative
 
   | Alternative
       lhs           . assumptions = @assumptions'
-      righthandside . monos       = eltsFM @pattern.environment ++ getMonos @csetBinds ++ @lhs.monos
+      righthandside . monos       = @pattern.environment `plusFM` getMonos @csetBinds `plusFM` @lhs.monos
       loc           . constraints = @csetBinds .>>.
                                     Node [ @conLeft  .<. @pattern.constraints
-                                         , @conRight .<. @righthandside.constraints
+                                         , @righthandside.constraints
                                          ] 
                     . (csetBinds,assumptions') = (@pattern.environment .===. @righthandside.assumptions) @cinfoBind
                     . conLeft     = [ (@pattern.beta .==. @lhs.betaLeft) @cinfoLeft ]
-                    . conRight    = [ (@righthandside.beta .==. @lhs.betaRight) @cinfoRight ]
 
   | Empty
       lhs . assumptions = noAssumptions
@@ -603,8 +599,8 @@ SEM Alternatives
 
 ATTR Statement Statements Qualifier Qualifiers [ | assumptions:Assumptions betaUnique:Int constraints:ConstraintSet | ]
 ATTR Statement Statements                      [ | generatorBeta:{Maybe Tp} | ]
-ATTR Statement            Qualifier Qualifiers [ | monos:Tps | ]
-ATTR           Statements                      [ monos:Tps | | ]
+ATTR Statement            Qualifier Qualifiers [ | monos:Monos | ]
+ATTR           Statements                      [ monos:Monos | | ]
 
 SEM Statement
 
@@ -634,7 +630,7 @@ SEM Statement
       lhs . generatorBeta = Nothing
           . constraints   = @locConstraints
           . assumptions   = @assumptions' `combine` @expression.assumptions
-          . monos         = eltsFM @pattern.environment ++ getMonos @csetBinds ++ @lhs.monos
+          . monos         = @pattern.environment `plusFM` getMonos @csetBinds `plusFM` @lhs.monos
       loc . locConstraints = @newcon .>. @csetBinds .>>.
                                 Node [ @pattern.constraints
                                      , @expression.constraints
@@ -675,7 +671,7 @@ SEM Qualifier
   | Generator
       lhs . assumptions = @assumptions' `combine` @expression.assumptions
           . constraints = @locConstraints
-          . monos       = eltsFM @pattern.environment ++ getMonos @csetBinds ++ @lhs.monos
+          . monos       = @pattern.environment `plusFM` getMonos @csetBinds `plusFM` @lhs.monos
       loc . locConstraints = @newcon .>. @csetBinds .>>.
                                 Node [ @pattern.constraints
                                      , @expression.constraints
@@ -711,6 +707,7 @@ SEM Literal
 {
 type Assumptions        = FiniteMap Name [(Name,Tp)]
 type PatternAssumptions = FiniteMap Name Tp
+type Monos              = FiniteMap Name Tp
 
 noAssumptions :: FiniteMap Name a
 noAssumptions = emptyFM
@@ -721,12 +718,13 @@ combine = plusFM_C (++)
 single :: Name -> Tp -> Assumptions
 single n t = unitFM n [(n,t)]
 
-getMonos :: TypeConstraints info -> Tps
-getMonos = map TVar . mapMaybe variableInConstraint
+getMonos :: TypeConstraints info -> Monos
+getMonos cs = let tps = map TVar (mapMaybe variableInConstraint cs)
+              in unitFM (nameFromString "_") (tupleType tps) -- not so nice
 
 type BindingGroups = [BindingGroup]
 type BindingGroup  = (PatternAssumptions,Assumptions,ConstraintSets)
-type InheritedBDG  = [(Names,(Tps, Int))]
+type InheritedBDG  = [(Names,(Monos, Int))]
 
 emptyBindingGroup :: BindingGroup
 emptyBindingGroup = (noAssumptions, noAssumptions, [])
@@ -737,7 +735,7 @@ combineBindingGroup (e1,a1,c1) (e2,a2,c2) = (e1 `plusFM` e2,a1 `combine` a2,c1++
 concatBindingGroups :: BindingGroups -> BindingGroup
 concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
                     
-performBindingGroup :: Int -> Int -> ChunkNumberMap -> Tps -> FiniteMap Name TpScheme -> Maybe (Assumptions, ConstraintSets) -> BindingGroups -> (Assumptions,ConstraintSet,InheritedBDG,Int)
+performBindingGroup :: Int -> Int -> ChunkNumberMap -> Monos -> FiniteMap Name TpScheme -> Maybe (Assumptions, ConstraintSets) -> BindingGroups -> (Assumptions,ConstraintSet,InheritedBDG,Int)
 performBindingGroup currentChunk uniqueChunk chunkNumberMap monos typeSignatures context groups = 
    variableDependencies 
 
@@ -761,7 +759,7 @@ performBindingGroup currentChunk uniqueChunk chunkNumberMap monos typeSignatures
         
         monomorphicNames :: [Name]
         monomorphicNames = 
-           let initial = let f (e, a, _) = if any (`elem` ftv monos) (ftv $ map snd $ concat $ eltsFM a)
+           let initial = let f (e, a, _) = if any (`elem` ftv (eltsFM monos)) (ftv $ map snd $ concat $ eltsFM a)
                                              then keysFM e
                                              else []
                          in concatMap f groups
@@ -800,10 +798,10 @@ performBindingGroup currentChunk uniqueChunk chunkNumberMap monos typeSignatures
                in  
                   ( a'' `combine` aset'
                   , constraintTree
-                  , (keysFM e,(eltsFM e', if monomorphic then currentChunk else cnr)) : mt                   
+                  , (keysFM e,(e', if monomorphic then currentChunk else cnr)) : mt                   
                   )
 
-findMono :: Name -> InheritedBDG -> Tps
+findMono :: Name -> InheritedBDG -> Monos
 findMono n = let p = elem n . fst
              in fst . snd . head . filter p                  
 

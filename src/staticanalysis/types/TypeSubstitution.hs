@@ -16,7 +16,6 @@ import TypeBasics
 import Array
 import List                 ( (\\), union )
 import Data.FiniteMap
-import Utils                ( internalError )
 
 ----------------------------------------------------------------------
 -- Substitutions and substitutables
@@ -96,24 +95,6 @@ instance (Substitution a,Substitution b) => Substitution (Either a b) where
    restrictDom is = either (Left . restrictDom is) (Right . restrictDom is)
    dom            = either dom dom 
    cod            = either cod cod
-
--- A binary tree as a substitution
-
-data BinTreeSubst = BinTreeSubstSplit Int BinTreeSubst BinTreeSubst 
-                  | BinTreeSubstNode Tp
-                  | BinTreeSubstEmpty
-
-instance Substitution BinTreeSubst where 
-   lookupInt i bintree = case bintree of 
-                           BinTreeSubstSplit j l r 
-                               | i <= j    -> lookupInt i l
-                               | otherwise -> lookupInt i r
-                           BinTreeSubstNode tp     -> tp 
-                           BinTreeSubstEmpty       -> TVar i
-   removeDom   _ = internalError "SATypes.hs" "BinTreeSubst" "removeDom: substitution is static"
-   restrictDom _ = internalError "SATypes.hs" "BinTreeSubst" "restrictDom: substitution is static" 
-   dom            = internalError "SATypes.hs" "BinTreeSubst" "dom: substitution is static" 
-   cod            = internalError "SATypes.hs" "BinTreeSubst" "cod: substitution is static" 
 
 ------------------------------------------------
 -- Fix point Substitution

@@ -2895,7 +2895,7 @@ sem_RecordPatternBinding_RecordPatternBinding :: (T_Range) ->
 sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) (_lhs_collectScopeInfos) (_lhs_namesInScope) =
     let (_self) =
             RecordPatternBinding_RecordPatternBinding _range_self _name_self _pattern_self
-        ((_constructorenv,_betaUnique,_miscerrors,_warnings,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_importEnvironment)) =
+        ((_monos,_constructorenv,_betaUnique,_miscerrors,_warnings,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_importEnvironment)) =
             internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
         ( _range_self) =
             (_range )

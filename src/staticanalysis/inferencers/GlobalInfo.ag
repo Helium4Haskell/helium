@@ -2,14 +2,6 @@
 -- Make a doubly-linked tree from the local information that is    
 -- available.                                 
 
-SEM RightHandSide [ parentTree : InfoTree | | infoTree : InfoTree ]     
-  | Expression   
-       loc . parentTree = node @lhs.parentTree @localInfo (@expression.infoTree : @where.infoTrees)
-       lhs . infoTree   = @parentTree   
-  | Guarded      
-       loc . parentTree = node @lhs.parentTree @localInfo (@guardedexpressions.infoTrees ++ @where.infoTrees)
-       lhs . infoTree   = @parentTree   
-
 ---------------------------------------------------------------------------------------
 -- Expression
 
@@ -106,17 +98,6 @@ SEM Pattern [ parentTree : InfoTree | | infoTree : InfoTree ]
        lhs . infoTree   = @parentTree
 
 ---------------------------------------------------------------------------------------
--- Alternative
-
-SEM Alternative [ parentTree : InfoTree | | infoTree : InfoTree ]
-  | Alternative  
-       loc . parentTree = node @lhs.parentTree @localInfo [@pattern.infoTree, @righthandside.infoTree]
-       lhs . infoTree   = @parentTree      
-  | Empty        
-       loc . parentTree = node @lhs.parentTree @localInfo []
-       lhs . infoTree   = @parentTree  
-
----------------------------------------------------------------------------------------
 -- Statement
 
 SEM Statement [ parentTree : InfoTree | | infoTree : InfoTree ]
@@ -162,6 +143,10 @@ SEM Body [ | | root : InfoTree ]
   | Body         loc . parentTree = root @declInfo @declarations.infoTrees
                  lhs . root       = @parentTree
 
+SEM RightHandSide [ parentTree : InfoTree | | infoTrees : InfoTrees ]     
+  | Expression  lhs . infoTrees  = @expression.infoTree : @where.infoTrees 
+  | Guarded     lhs . infoTrees  = @guardedexpressions.infoTrees ++ @where.infoTrees
+
 SEM Expressions [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Cons   lhs . infoTrees = @hd.infoTree : @tl.infoTrees
   | Nil    lhs . infoTrees = []
@@ -172,11 +157,15 @@ SEM MaybeExpression [ parentTree : InfoTree | | infoTrees : InfoTrees ]
 
 SEM Patterns [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Cons   lhs . infoTrees = @hd.infoTree : @tl.infoTrees
-  | Nil    lhs . infoTrees = []
+  | Nil    lhs . infoTrees = []     
     
 SEM Alternatives [ parentTree : InfoTree | | infoTrees : InfoTrees ]
-  | Cons   lhs . infoTrees = @hd.infoTree : @tl.infoTrees
+  | Cons   lhs . infoTrees = @hd.infoTrees ++ @tl.infoTrees
   | Nil    lhs . infoTrees = []
+
+SEM Alternative [ parentTree : InfoTree | | infoTrees : InfoTrees ]
+  | Alternative   lhs . infoTrees = @pattern.infoTree : @righthandside.infoTrees     
+  | Empty         lhs . infoTrees = []
 
 SEM Statements [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Cons   lhs . infoTrees = @hd.infoTree : @tl.infoTrees
@@ -208,7 +197,7 @@ SEM Declaration [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Data     lhs . infoTrees = []
   | FunctionBindings    loc . parentTree = node @lhs.parentTree @localInfo @bindings.infoTrees
                         lhs . infoTrees  = [@parentTree]
-  | PatternBinding      loc . parentTree = node @lhs.parentTree @localInfo [@pattern.infoTree, @righthandside.infoTree]
+  | PatternBinding      loc . parentTree = node @lhs.parentTree @localInfo (@pattern.infoTree : @righthandside.infoTrees)
                         lhs . infoTrees  = [@parentTree]
   | TypeSignature  lhs . infoTrees = []
   | Fixity         lhs . infoTrees = []
@@ -219,7 +208,7 @@ SEM FunctionBindings [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Nil    lhs . infoTrees = []
 
 SEM FunctionBinding [ parentTree : InfoTree | | infoTree : InfoTree ]
-  | FunctionBinding  loc . parentTree = node @lhs.parentTree @localInfo (@lefthandside.infoTrees ++ [@righthandside.infoTree])
+  | FunctionBinding  loc . parentTree = node @lhs.parentTree @localInfo (@lefthandside.infoTrees ++ @righthandside.infoTrees)
                      lhs . infoTree   = @parentTree   
   
 SEM LeftHandSide [ parentTree : InfoTree | | infoTrees : InfoTrees ]

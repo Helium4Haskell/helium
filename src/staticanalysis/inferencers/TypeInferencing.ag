@@ -27,7 +27,10 @@ INCLUDE "../../syntax/UHA_Syntax.ag"
 
 --- Type Inference Directives (may be turned off)
 INCLUDE "typingstrategies/TS_PatternMatching.ag"
-SEM Module | Module   lhs . debugIO = @debugIO >> putStrLn "Inference Strategies:" >> @body.matchIO
+SEM Module | Module   lhs . debugIO = @debugIO
+                                      >> putStrLn "Inference Strategies:" 
+                                      >> @body.matchIO
+                                      -- browseInfoTree @substitution @body.root
 
 -- Pattern Match Warnings (may be turned off)
 INCLUDE "PatternMatchWarnings.ag"

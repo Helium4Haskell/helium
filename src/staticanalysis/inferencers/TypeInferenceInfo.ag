@@ -24,22 +24,27 @@ SEM Declaration | FunctionBindings loc . cinfo =
 
 SEM Declaration | PatternBinding loc . cinfo =
   orphanConstraint 1 "right hand side" @parentTree
-     [ ]
+     []
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : FunctionBinding
+
 SEM FunctionBinding | FunctionBinding loc . cinfoLeft =
   \num  -> 
   orphanConstraint num "pattern of function binding" @parentTree
-     [ ]
-
-SEM FunctionBinding | FunctionBinding loc . cinfoRight =
-  orphanConstraint 1 "right hand side" @parentTree
-     []                       
+     []                      
 
 SEM FunctionBinding | FunctionBinding loc . cinfoBind =
   \name -> variableConstraint "variable" (nameToSelfExpr name) 
      [FolkloreConstraint]
+
+---------------------------------------------------------------------------------------
+-- Type Inferencing : RightHandSide
+
+-- RightHandSide.Expression
+SEM RightHandSide | Expression loc . cinfo = 
+  resultConstraint "right-hand side" @expression.infoTree
+     []
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Expression
@@ -112,7 +117,7 @@ SEM Expression | Lambda loc . cinfoType =
 -- Expression.Case
 SEM Expression | Case loc . cinfo =
   childConstraint 0 "scrutinee of case expression" @parentTree
-     []
+     [ ]
 
 -- Expression.Let
 SEM Expression | Let loc . cinfoType =
@@ -261,12 +266,8 @@ SEM Pattern | NegateFloat loc . cinfo =
 -- Type Inferencing : Alternative
 
 SEM Alternative | Alternative loc . cinfoLeft =
-  orphanConstraint 0 "case pattern" @parentTree
-     []
-
-SEM Alternative | Alternative loc . cinfoRight =
-  orphanConstraint 1 "right-hand side of case alternative" @parentTree
-     [ HasTrustFactor 10.0 | @lhs.nrOfAlternatives < 2 ]       
+  resultConstraint "case pattern" @pattern.infoTree
+     []     
 
 SEM Alternative | Alternative loc . cinfoBind =
   \name -> variableConstraint "variable" (nameToSelfExpr name) 

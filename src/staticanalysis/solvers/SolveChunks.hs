@@ -68,4 +68,7 @@ combineResults extra (_, FixpointSubstitution s1, ps1, er1, io1) (unique, Fixpoi
    , er1++er2
    , io1 >> putStrLn extra >> io2
    )
-  where notDisjoint _ _ = internalError "SolveChunks.hs" "combineResults" "substitutions from chunks are not disjoint"
+  where notDisjoint _ _ = internalError "SolveChunks.hs" "combineResults" $ "substitutions from chunks are not disjoint"
+          {-  ++ "\n\n" ++ show (fmToList s1)
+            ++ "\n"
+            ++ show (fmToList s2) -}

@@ -30,7 +30,7 @@ ATTR Body [ |  | toplevelTypes : TypeEnvironment ]
   
 SEM Body
   | Body   lhs . toplevelTypes = let (environment, _, _) = concatBindingGroups @declarations.bindingGroups
-                                     monos' = ftv (@lhs.substitution |-> @lhs.monos)
+                                     monos' = ftv (@lhs.substitution |-> eltsFM @lhs.monos)
                                      make _ = generalize monos' @lhs.predicates . (@lhs.substitution |->)
                                  in mapFM make environment
  
@@ -73,10 +73,10 @@ SEM Qualifier
                . localTypes    = getInferredTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups 
 
 {
-getInferredTypes :: Substitution substitution => Tps -> substitution -> Predicates -> BindingGroups -> [(NameWithRange, TpScheme)]
+getInferredTypes :: Substitution substitution => Monos -> substitution -> Predicates -> BindingGroups -> [(NameWithRange, TpScheme)]
 getInferredTypes monos substitution predicates groups = 
    let (environment, _, _) = concatBindingGroups groups
-       monos' = ftv (substitution |-> monos)      
+       monos' = ftv (substitution |-> (eltsFM monos))
    in [ (NameWithRange name, generalize monos' predicates tp')
       | (name, tp) <- fmToList environment 
       , let  tp' = substitution |-> tp
@@ -92,8 +92,8 @@ SEM Module
                  . collectWarnings = []
 
 SEM Expression
-  | Variable   lhs . collectErrors = map (makeUnresolvedOverloadingError @range.self (oneLinerSource $ self @localInfo)) @overloadingErrors ++ @lhs.collectErrors
-  | Negate     lhs . collectErrors = map (makeUnresolvedOverloadingError @range.self (oneLinerSource $ self @localInfo)) @overloadingErrors ++ @expression.collectErrors                              
+  | Variable   lhs . collectErrors = map (makeUnresolvedOverloadingError (self @localInfo)) @overloadingErrors ++ @lhs.collectErrors
+  | Negate     lhs . collectErrors = map (makeUnresolvedOverloadingError (self @localInfo)) @overloadingErrors ++ @expression.collectErrors                              
 
 -- declared type too general / missing type signature
 SEM Body
@@ -112,9 +112,9 @@ SEM Expression
                . collectWarnings    = @warnings ++ @expression.collectWarnings
 
   | Typed  loc . errors             = let scheme = generalize monos' @lhs.predicates tp'
-                                          monos' = ftv (@lhs.substitution |-> @lhs.monos)
+                                          monos' = ftv (@lhs.substitution |-> eltsFM @lhs.monos)
                                           tp'    = @lhs.substitution |-> @expression.beta
-                                          info   = ( (self . attribute) @expression.infoTree, @range.self)
+                                          info   = (self . attribute) @expression.infoTree
                                       in checkNotTooGeneral info @lhs.orderedTypeSynonyms @typeScheme scheme
            lhs . collectErrors      = @errors ++ @expression.collectErrors
 
@@ -138,7 +138,7 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
           
              Just signature ->
                 -- is the signature not too general?
-                let info = (nameToSelfExpr nameOfSignature, getNameRange nameOfSignature)
+                let info = nameToSelfExpr nameOfSignature
                     -- this name has a different range!
                     nameOfSignature = head [ n | n <- keysFM typeSignatures, n == nameWithRangeToName nameWR ]      
                     newErrors = checkNotTooGeneral info synonyms signature scheme             
@@ -152,9 +152,9 @@ checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
                      
              _ -> pair      
 
-checkNotTooGeneral :: (UHA_Source, Range) -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
-checkNotTooGeneral (self, range) synonyms signature scheme = 
-   [ makeNotGeneralEnoughTypeError (oneLinerSource self, range) scheme signature
+checkNotTooGeneral :: UHA_Source -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
+checkNotTooGeneral source synonyms signature scheme = 
+   [ makeNotGeneralEnoughTypeError source scheme signature
    | not (genericInstanceOf synonyms standardClasses signature scheme)
    ]       
 }

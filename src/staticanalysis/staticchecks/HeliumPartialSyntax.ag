@@ -25,7 +25,7 @@ SEM RecordExpressionBinding
   | RecordExpressionBinding  loc . (monos,constructorenv,betaUnique,miscerrors,warnings,kindErrors,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors,importEnvironment) = internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
 
 SEM RecordPatternBinding
-  | RecordPatternBinding    loc . (constructorenv,betaUnique,miscerrors,warnings,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors,importEnvironment) = internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
+  | RecordPatternBinding    loc . (monos,constructorenv,betaUnique,miscerrors,warnings,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors,importEnvironment) = internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
 
 SEM FieldDeclaration
   | FieldDeclaration    loc . (kindErrors,tyconEnv,constructorenv,importEnvironment,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors) = internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
