@@ -436,14 +436,14 @@ endif
 install : smaller
 	# *** Copy sources to library directory
 	$(MKDIR) $(bindir) $(libdir) $(demodir)
-	$(INSTALL) -m 644 ../lib/Prelude.hs ../lib/List.hs ../lib/Maybe.hs $(libdir)
+	$(INSTALL) -m 644 ../lib/simple/Prelude.hs ../lib/simple/List.hs ../lib/simple/Maybe.hs $(libdir)
 	$(INSTALL) -m 755 $(HELIUMBINDIR)/$(MAIN)$(EXE) $(bindir)
 	$(INSTALL) -m 755 $(LVMRUNTIMEDIR)/lvmrun$(EXE) $(bindir)
 	$(INSTALL) -m 755 $(HELIUMBINDIR)/texthint$(EXE) $(bindir)
 	# *** Copying demos to demo directory
 	$(INSTALL) -m 644 ../demo/Calendar.hs ../demo/ParserLibrary.hs ../demo/ParserDemo.hs ../demo/TicTacToe.hs $(demodir)
 	# *** Copy generated lvms and touch them
-	$(INSTALL) -m 644 ../lib/*.lvm $(libdir)
+	$(INSTALL) -m 644 ../lib/simple/*.lvm $(libdir)
 	touch $(libdir)/*.lvm
 
 movetohome: smaller
