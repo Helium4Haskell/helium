@@ -1,9 +1,9 @@
 Compiling thompson/Thompson04.hs
-(1,9): Warning: Suspicous type variable "bool"
+(1,9): Warning: Suspicious type variable "bool"
   Hint: Did you mean the type constructor "Bool" ?
-(1,17): Warning: Suspicous type variable "bool"
+(1,17): Warning: Suspicious type variable "bool"
   Hint: Did you mean the type constructor "Bool" ?
-(1,25): Warning: Suspicous type variable "bool"
+(1,25): Warning: Suspicious type variable "bool"
   Hint: Did you mean the type constructor "Bool" ?
 (1,1): Declared type is too general
  expression       : exOr

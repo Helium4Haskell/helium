@@ -1,9 +1,9 @@
 Compiling staticwarnings/SuspiciousTypeVariable.hs
-(1,6): Warning: Suspicous type variable "int"
+(1,6): Warning: Suspicious type variable "int"
   Hint: Did you mean the type constructor "Int" ?
-(1,13): Warning: Suspicous type variable "bool"
+(1,13): Warning: Suspicious type variable "bool"
   Hint: Did you mean the type constructor "Bool" ?
-(7,10): Warning: Suspicous type variable "tree"
+(7,10): Warning: Suspicious type variable "tree"
   Hint: Did you mean the type constructor "Tree" ?
 (1,1): Declared type is too general
  expression       : f
