@@ -1,4 +1,3 @@
-clear
 bash testP
 bash testSE
 bash testTE

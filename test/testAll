@@ -1,4 +1,9 @@
 clear
+echo SIMPLE TEST. NO OVERLOADING
+cd simple
+bash testAll
+cd ..
+echo OVERLOADING TEST SET
 bash testP
 bash testSE
 bash testTE
