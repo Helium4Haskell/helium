@@ -9438,7 +9438,7 @@ sem_FieldDeclaration_FieldDeclaration (range_) (names_) (type_) =
                 (names_ )
             ( _typeIself,_typeIunboundNames) =
                 (type_ (_typeOnamesInScope))
-            ((_kindErrors@_,_tyconEnv@_,_constructorenv@_,_importEnvironment@_,_valueConstructors@_,_allValueConstructors@_,_typeConstructors@_,_allTypeConstructors@_)) =
+            ((_kindErrors@_,_tyconEnv@_,_constructorenv@_,_importEnvironment@_,_valueConstructors@_,_allValueConstructors@_,_typeConstructors@_,_allTypeConstructors@_,_warnings@_)) =
                 internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
             (_lhsOunboundNames@_) =
                 _typeIunboundNames

@@ -123,7 +123,8 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      Statement Statements Qualifier Qualifiers 
      Alternative Alternatives Constructor Constructors
      GuardedExpressions GuardedExpression FunctionBinding FunctionBindings     
-     LeftHandSide RightHandSide MaybeDeclarations MaybeExpression AnnotatedType AnnotatedTypes
+     LeftHandSide RightHandSide MaybeDeclarations MaybeExpression 
+     Type Types AnnotatedType AnnotatedTypes ContextItem ContextItems
      [ typeConstructors : {FiniteMap Name Int} allTypeConstructors : Names | | ]
                                              
 -------------------------------------------------------

@@ -28,6 +28,7 @@ data Warning  = NoTypeDef Name TpScheme Bool
               | Shadow Name Name
               | Unused Entity Name
               | SimilarFunctionBindings Name {- without typesignature -} Name {- with type signature -}
+	      | SuspiciousTypeVariable Name {- the type variable -} Name {- the type constant -}
               | MissingPatterns Range (Maybe Name) Tp [[Pattern]] String String
               | UnreachablePatternCase Range Pattern
               | UnreachablePatternLHS  LeftHandSide
@@ -41,6 +42,7 @@ instance HasMessage Warning where
       Shadow _ name                 -> [getNameRange name]
       Unused _ name                 -> [getNameRange name]
       SimilarFunctionBindings n1 n2 -> sortRanges [getNameRange n1, getNameRange n2]
+      SuspiciousTypeVariable name _ -> [getNameRange name]
       MissingPatterns rng _ _ _ _ _ -> [rng]
       UnreachablePatternCase rng _  -> [rng]
       UnreachableGuard  rng _       -> [rng]
@@ -68,6 +70,9 @@ showWarning warning = case warning of
       let [n1, n2] = sortNamesByRange [suspect, witness]
       in "Suspicious adjacent functions " ++ (show.show) n1 ++ " and " ++ (show.show) n2
 
+   SuspiciousTypeVariable varName conName ->
+      "Suspicous type variable " ++ (show.show) varName ++ ". Did you mean " ++ (show.show) conName ++ "?"
+      
    MissingPatterns _ Nothing tp pss place sym ->
       "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
       ++ concatMap (("\n  " ++).(++ (sym ++ " ...")).concatMap ((++ " ").show.PP.sem_Pattern)) pss

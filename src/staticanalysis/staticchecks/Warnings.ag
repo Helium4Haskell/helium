@@ -9,13 +9,15 @@
 --    1) Suspicious function bindings (two groups of function bindings are next to each 
 --       other in the program; the names are similar, but only one has an
 --       explicit type signature. Perhaps only one group of function bindings was intended?)
---
+--    2) Suspicious type variable (a type variable with at least length two that resembles a
+--       known type constant)
 -------------------------------------------------------------------------------
 
 ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alternatives
      Statement Statements Declaration Declarations MaybeDeclarations LeftHandSide RightHandSide
      FunctionBinding FunctionBindings Body Qualifier Qualifiers          
-     GuardedExpression GuardedExpressions
+     GuardedExpression GuardedExpressions 
+     Type Types AnnotatedType AnnotatedTypes Constructor Constructors ContextItem ContextItems
      [ | warnings : {[Warning]} | ]
 
 SEM Module
@@ -112,3 +114,15 @@ findSimilarFunctionBindings environment candidates =
 xor :: Bool -> Bool -> Bool
 xor b1 b2 = not (b1 == b2)
 }
+
+-------------------------------------------
+-- Suspicious Type Variables
+
+SEM Type
+  | Variable   lhs . warnings = let xs = [ SuspiciousTypeVariable @name.self tc
+                                         | length (show @name.self) > 1
+                                         , tc <- @lhs.allTypeConstructors
+                                         , capitalize (show @name.self) == (show tc)
+                                         ]
+                                in xs ++ @lhs.warnings
+

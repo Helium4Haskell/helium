@@ -30,7 +30,7 @@ SEM RecordPatternBinding
   | RecordPatternBinding    loc . (monos,constructorenv,betaUnique,miscerrors,warnings,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors,importEnvironment) = internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
 
 SEM FieldDeclaration
-  | FieldDeclaration    loc . (kindErrors,tyconEnv,constructorenv,importEnvironment,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors) = internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
+  | FieldDeclaration    loc . (kindErrors,tyconEnv,constructorenv,importEnvironment,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors,warnings) = internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
 
 SEM ContextItem
   | ContextItem    loc . (tyconEnv) = internalError "PartialSyntax.ag" "n/a" "ContextItem.ContextItem"
