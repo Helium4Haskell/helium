@@ -955,7 +955,11 @@ sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_allPatterns) (_lhs
     let (_typeScheme) =
             makeTpSchemeFromType _type_self
         (_oneLineTree) =
-            intErr "Declaration" "type signature"
+            Node
+                 [ Text (concat . intersperse "," . map show $ _names_self)
+                 , Text " :: "
+                 , Text (show (makeTpSchemeFromType _type_self))
+                 ]
         (_self) =
             Declaration_TypeSignature _range_self _names_self _type_self
         ( _range_self) =

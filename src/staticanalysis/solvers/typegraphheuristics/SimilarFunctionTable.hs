@@ -17,6 +17,7 @@ similarFunctionTable =
    , [ "-"  , "-."  ] 
    , [ "^"  , "^."  ]
    , [ "div" , "/." ]
+   , [ "/"  , "/."  ]
      -- int versus float comparison functioons
    , [ ">=" , ">=." ]
    , [ "<=" , "<=." ]

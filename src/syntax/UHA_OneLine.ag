@@ -145,7 +145,12 @@ SEM Declaration                                  {- *** -}
     --  range                    : Range
     --  pattern                  : Pattern
     --  righthandside            : RightHandSide
-    | TypeSignature     loc.oneLineTree = intErr "Declaration" "type signature"
+    | TypeSignature     loc.oneLineTree = 
+            Node 
+                 [ Text (concat . intersperse "," . map show $ @names.self)
+                 , Text " :: " 
+                 , Text (show (makeTpSchemeFromType @type.self))
+                 ]
     --  range                    : Range
     --  names                    : Names
     --  type                     : Type   -- may have context

@@ -29,8 +29,6 @@ import UHA_Syntax           ( Literal(..), Range(..), Position(..) )
 import Monad                ( unless, when, filterM )
 import Maybe                ( catMaybes, isJust )
 import InfiniteTypeHeuristic  -- (infiniteTypeHeuristic, safeMaximumBy, safeMinimumBy)
- 
-import IOExts -- for debugging
 
 heuristics_MAX        =    120 :: Int
 upperbound_GOODPATHS  =     50 :: Int
@@ -199,7 +197,6 @@ similarFunctions edge@(EdgeID v1 v2) info =
 
                          do unique   <- getUnique
                             mtp      <- safeApplySubst t2
-                            
                             case mtp of 
                                Nothing -> return NotApplicableHeuristic
                                Just tp -> case [ ConcreteHeuristic 10 [SetHint (fixHint ("use "++s++" instead"))] (show string++" is similar to "++show s)
@@ -292,7 +289,7 @@ applicationEdge edge@(EdgeID v1 v2) info =
                  synonyms = getTypeSynonyms options
              mFunctionTp <- safeApplySubst t1
              mExpectedTp <- safeApplySubst t2
-
+             
              case (mFunctionTp,mExpectedTp) of
 
                (Nothing        ,_              ) -> return NotApplicableHeuristic
@@ -485,12 +482,11 @@ doWithoutEdge (edge@(EdgeID v1 v2),info) computation =
                  then let f i = do useSolver (\g -> do e <- equivalenceGroupOf i g ; return e)
                       in mapM f [0..testmax - 1]
                  else return []
-                 
-      deleteEdge edge
-      result <- computation 
+             
+      deleteEdge edge       
+      result <- computation       
       propagateEquality [v1,v2]
-      addEdge edge (Initial info)
-
+      addEdge edge (Initial info) 
       copy2 <- if testMode
                  then let f i = do useSolver (\g -> do e <- equivalenceGroupOf i g ; return e)
                       in mapM f [0..testmax - 1]
@@ -508,30 +504,36 @@ doWithoutEdges :: TypeGraph EquivalenceGroups info => [(EdgeID,info)]
                                                    -> SolveState EquivalenceGroups info result
 doWithoutEdges []     = id        
 doWithoutEdges (x:xs) = doWithoutEdge x . doWithoutEdges xs            
-                                           
+
+{- keep a history to avoid non-termination (for type-graphs that contain an infinite type) -}                                           
 safeApplySubst :: TypeGraph EquivalenceGroups info => Tp -> SolveState EquivalenceGroups info (Maybe Tp)
-safeApplySubst tp = case tp of 
-   TVar i     -> do vertices  <- getVerticesInGroup i
-                    constants <- getConstantsInGroup i
-                    children  <- getChildrenInGroup i
-                    tps       <- case children of
-                                    []       -> return [] 
-                                    (_,is):_ -> mapM safeApplySubst (map TVar is)
-                    let tp = case constants of 
-                                []  -> Just . TVar . fst . head $ vertices
-                                [s] -> Just (TCon s)
-                                _   ->  Nothing
-                    let tapp t1 t2 = case (t1,t2) of 
-                                       (Just t1',Just t2') -> Just (TApp t1' t2')
-                                       _                   -> Nothing
-                    return (foldl tapp tp tps)
-   TCon s     -> return (Just tp)
-   TApp t1 t2 -> do mt1 <- safeApplySubst t1
-                    mt2 <- safeApplySubst t2
-                    case (mt1,mt2) of 
-                      (Just t1',Just t2') -> return (Just $ TApp t1' t2')
-                      _                   -> return Nothing
-                      
+safeApplySubst = rec [] where 
+
+  rec history tp = case tp of 
+    TVar i | i `elem` history 
+               -> return Nothing
+           | otherwise 
+               -> do vertices  <- getVerticesInGroup i
+                     constants <- getConstantsInGroup i
+                     children  <- getChildrenInGroup i
+                     tps       <- case children of
+                                     []       -> return [] 
+                                     (_,is):_ -> mapM (rec (i : history)) (map TVar is)
+                     let tp = case constants of 
+                                 []  -> Just . TVar . fst . head $ vertices
+                                 [s] -> Just (TCon s)
+                                 _   ->  Nothing
+                     let tapp t1 t2 = case (t1,t2) of 
+                                        (Just t1',Just t2') -> Just (TApp t1' t2')
+                                        _                   -> Nothing                                      
+                     return (foldl tapp tp tps)
+    TCon s     -> return (Just tp)
+    TApp t1 t2 -> do mt1 <- rec history t1
+                     mt2 <- rec history t2
+                     case (mt1,mt2) of 
+                       (Just t1',Just t2') -> return (Just $ TApp t1' t2')
+                       _                   -> return Nothing
+                       
 type Permutation = [Int]
 
 permutationsForLength :: Int -> [Permutation]
