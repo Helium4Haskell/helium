@@ -1,12 +1,14 @@
 Versiebeheer
 
-- Pas in makefile target newVersion aan
-- make newVersion
+Pas in makefile target newVersion aan
+./configure --enable-logger
+cd src
+make newVersion
+commit in cvs
 
 BBL versie
 
-./configure --enable-logger
-cd src
+make depend
 make
 cd ../test/simple
 ./testAll

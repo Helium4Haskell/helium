@@ -15,7 +15,6 @@ module Parser
 Absent:
 - records
 - classes (class, instance, default...)
-- irrefutable patterns
 - "newtype"
 - strictness annotations
 - n+k patterns
@@ -978,6 +977,7 @@ apat    ->  var ( "@" apat )?
          |  "_"  (wildcard)  
          |  con  (arity con = 0)  
          |  literal  
+         |  "~" apat    (irrefutable pattern)
 -}
 
 apat :: HParser Pattern
@@ -1013,6 +1013,11 @@ apat = addRange (
     do
         l <- literal
         return $ \r -> Pattern_Literal r l
+    <|>
+    do  
+        lexTILDE
+        p <- apat
+        return $ \r -> Pattern_Irrefutable r p
     ) <?> "pattern"
 
 {-

@@ -16,12 +16,14 @@ HELIUM
     - import Module(N) moet ook de show importeren: import Module (N, showN) ]
 - XML uitvoer van errors en warnings t.b.v. interpreter
 - clashes with HeliumLang ==> clash with built-in (MANUAL)
+	bijvoorbeeld showUnit of data Unit = ... proberen te definieren
 - :t in geval van typeringsfout
 - compilerondersteuning voor interpreter (expressie uitrekenen, type bepalen)
 - Hudak & Thompson & Bird doorlopen
 - deriving
 - class, instance
 - "possible fall through" anders presenteren, bijv. "it is good practice to have otherwise as the last guard"
+- warning bij Let, Where (undefined constructor, hint: did you mean the keyword...?)
 
 LIBRARIES
 - show implementeren met shows, ShowS; efficienter

@@ -1,0 +1,6 @@
+Compiling correct/Irrefutable2.hs
+(3,1): Warning: Missing type signature: main :: (Int, Int)
+(6,1): Warning: Missing pattern in function bindings: 
+  f _ (_,_,_) = ...
+Compilation successful with 2 warnings
+(9,0)

@@ -325,7 +325,7 @@ reservedConSyms =
 
 reservedVarSyms :: [String]
 reservedVarSyms =
-    [ "=>", "->", "<-", "..", "-", "-.", "@", "=", "\\", "|" ]
+    [ "=>", "->", "<-", "..", "-", "-.", "@", "=", "\\", "|", "~" ]
 
 specialsWithoutBrackets :: String
 specialsWithoutBrackets = 

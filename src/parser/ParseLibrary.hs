@@ -124,6 +124,7 @@ lexMINDOT   = lexeme (LexResVarSym "-.")
 lexBSLASH   = lexeme (LexResVarSym "\\")
 lexAT       = lexeme (LexResVarSym "@")
 lexDOTDOT   = lexeme (LexResVarSym "..")
+lexTILDE    = lexeme (LexResVarSym "~")
 
 lexCOLCOL   = lexeme (LexResConSym "::")
 

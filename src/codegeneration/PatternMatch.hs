@@ -154,6 +154,17 @@ patternToCore' (name, pat) continue nr =
                 nr
             where
                 neg = show (-(read v :: Float))
+
+        -- ~p  ====>
+        --   let x = case _u1 of p -> x
+        --       y = case _u1 of p -> y   (for each var in p)
+        --   in continue
+        Pattern_Irrefutable _ p -> 
+            let vars = map idFromName (patternVars p)
+            in withNr nr $ foldr 
+                (\v r -> let_ v (patternToCore (name, p) (Core.Var v)) r)
+                continue
+                vars
         
         _ -> internalError "PatternMatch" "patternToCore'" "unknown pattern kind"
 

@@ -5,13 +5,13 @@
     Stability   :  experimental
     Portability :  portable
 
-	Utilities to extract data from the syntax tree
+    Utilities to extract data from the syntax tree
 -}
 
 module UHA_Utils where
 
 import UHA_Range(noRange, getNameRange)
-import UHA_Syntax(Name(..), ImportDeclaration(..))
+import UHA_Syntax(Name(..), ImportDeclaration(..), Pattern(..))
 import Id(Id, idFromString, stringFromId)
 import Char
 import Top.Types(isTupleConstructor)
@@ -104,3 +104,20 @@ stringFromImportDeclaration importDecl =
 intUnaryMinusName, floatUnaryMinusName :: Name
 intUnaryMinusName   = nameFromString "negate"
 floatUnaryMinusName = nameFromString "floatUnaryMinus"
+
+patternVars :: Pattern -> [Name]
+patternVars p = case p of
+    Pattern_Literal _ _                 -> []
+    Pattern_Variable _ n                -> [n]
+    Pattern_Constructor _ _ ps          -> concatMap patternVars ps
+    Pattern_Parenthesized _ p           -> patternVars p
+    Pattern_InfixConstructor _ p1 _ p2  -> concatMap patternVars [p1, p2]
+    Pattern_List _ ps                   -> concatMap patternVars  ps
+    Pattern_Tuple _ ps                  -> concatMap patternVars  ps
+    Pattern_Negate _ _                  -> []
+    Pattern_As _ n p                    -> n : patternVars p
+    Pattern_Wildcard _                  -> []
+    Pattern_Irrefutable _ p             -> patternVars p
+    Pattern_NegateFloat _ _             -> []
+    _ -> internalError "UHA_Utils" "patternVars" "unsupported kind of pattern"
+    

@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/Irrefutable.hs
+(6,22): Warning: Variable "y" is not used
+(6,15): Type error in pattern of function binding
+ pattern          : (True, y)
+   type           : (Bool , a  )
+   does not match : (Int  , Int)
+
+Compilation failed with 1 error
