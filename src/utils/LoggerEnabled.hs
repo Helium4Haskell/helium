@@ -67,8 +67,8 @@ sendLogString message = withSocketsDo (rec 0)
           `catch`       
               \exception -> 
                  if i+1 >= loggerTRIES 
-                   then debug "Could not make a connection: no send"
-                   else do debug "Could not make a connection: sleeping"
+                   then debug ( "Could not make a connection: no send (" ++ show exception ++ ")" )
+                   else do debug ( "Could not make a connection: sleeping (" ++ show exception ++ ")" )
                            threadDelay loggerDELAY
                            rec (i+1)
                 
