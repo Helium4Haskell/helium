@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
 -- Standard Library: Operations on the Maybe datatype
 --
--- Suitable for use with Helium
+-- Suitable for use with Helium (with overloading)
 -----------------------------------------------------------------------------
 
 module Maybe(

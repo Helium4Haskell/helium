@@ -1,4 +1,4 @@
-{- The Standard Prelude for the Helium Compiler -}
+{- The overloaded Standard Prelude for the Helium Compiler -}
 
 module Prelude(module Prelude, module PreludePrim) where 
 
@@ -177,19 +177,6 @@ signumFloat x =
         LT -> -1
         EQ ->  0
         GT ->  1
-
-{-
-(^.) :: Float -> Int -> Float
-_ ^. 0           = 1.0
-i ^. n  | n > 0  = f i (n-1) i
-          where f :: Float -> Int -> Float -> Float
-                f _ 0 y = y
-                f x m y = g x m
-                          where g :: Float -> Int -> Float
-                                g x' m' | even m'    = g (x' * x') (m' `quot` 2)
-                                        | otherwise  = f x' (m' - 1) (x' * y)
-_ ^. _           = error "Prelude.^.: negative exponent"
--}
 
 pi :: Float
 pi = 3.141592653589793
