@@ -1,21 +1,19 @@
 DOCUMENTATIE
 
-! User manual grafische hint A4
 ! commentaar over List en Maybe
 ! tutorial
 
 INTERPRETER
-(	* functies definieren? )
-(	* autoload feature (zie e-mails van Stephen Milborrow))
-(	* springen naar internet browser bij :i map http://www.cs.uu.nl/~afie/helium/tourofprelude.html#map)
+* functies definieren? 
+* autoload feature (zie e-mails van Stephen Milborrow)?
 
 DAAN
 ! file IO exceptions; * EOF in getChar. How? catch werkt niet
 ! strictheid van error
+! let f x = f (x+1) in f 0
 
 COMPILER
-! installer voor Windows 
-* catchen van exception van writeFile/openFileEx etc.
+* Hint bij "abs -42"
 
 ---- ONBELANGRIJK ----
                 
@@ -35,6 +33,10 @@ COMPILER
 
 ---- DONE ----================================================================================
 
+* springen naar internet browser bij :i map http://www.cs.uu.nl/~afie/helium/tourofprelude.html#map
+! User manual grafische hint A4
+* catchen van exception van writeFile/openFileEx etc.
+! installer voor Windows 
 ! Tour of Haskell syntax controleren
 * hint opties doorspelen naar Helium
 

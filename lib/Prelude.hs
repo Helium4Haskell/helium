@@ -126,6 +126,13 @@ cos   :: Float -> Float
 tan   :: Float -> Float
 -}
 
+signumFloat :: Float -> Int
+signumFloat x =
+    case ordFloat x 0.0 of
+        LT -> -1
+        EQ ->  0
+        GT ->  1
+
 (^.) :: Float -> Int -> Float
 _ ^. 0           = 1.0
 i ^. n  | n > 0  = f i (n-1) i

@@ -86,7 +86,7 @@ sqrt :: Float -> Float
 sqrt x = let! x = x 
               y = float_of_string_extern "0.0"
          in
-            case (>.) x y of
+            case (>=.) x y of
             {   True -> primFloatSqrt x
             ;   _    -> errorPacked "Can't apply sqrt to negative floating-point number"
             }
