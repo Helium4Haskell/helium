@@ -1,32 +1,60 @@
-* Internationalisatie
-* Hints meer vragend brengen: Question: did you mean to use ++ ? o.i.d.
-* Bastiaan: type could be more general warning
-* $main = putStr (show main) (toplevelTypes wordt dan onnodig in code generator)
-* Testscript in Haskell
-* Doc: commentaar over List en Maybe
-* Doc: tutorial
-* Hint: functies definieren? 
-* Hint: autoload feature (zie e-mails van Stephen Milborrow)?
-* Hint: Er mogen niet twee punten in een filenaam zitten
-* TextHint: pijltjestoetsen onder Win95/98/Me en UNIX
-* Daan: file IO exceptions; * EOF in getChar. How? catch werkt niet
-* Daan: let f x = f (x+1) in f 0
-* Compiler: '\128' e.d. ondersteunen
-* Compiler: bij \n\r (of zo) op Unix maar 1 regelovergang tellen
-* Compiler: hint bij "abs -42" (Bastiaan)
-* Compiler: TextHint, lvmrun, coreasm, Hint: paden via command-line
- 
----- ONBELANGRIJK ----
-                
-* bij het exporteren van een functie moeten ook de types geexporteerd worden. Hoe?
+30 Januari 2004
+===============
+
+HELIUM
+- Unit tests voor type classes nalopen (*)
+- Nieuwe tests in simple overbrengen naar type class unit tests (*)
+- Internationalisatie
+- Hints meer vragend brengen: Question: did you mean to use ++ ? o.i.d.
+- Bastiaan: type could be more general warning (heel moeilijk)
+- $main = putStr (show main) (toplevelTypes wordt dan onnodig in code generator)
+- module systeem (paper van Jones etc.)
+  [ * bij het exporteren van een functie moeten ook de types geexporteerd worden. Hoe?
 	we moeten ook weten waar iets oorspronkelijk vandaan komt (definitieplek)
-* import Module(N) moet ook de show importeren: import Module (N, showN)
-! XML uitvoer van errors en warnings t.b.v. interpreter
-! Alle mogelijke fouten/warnings/hints uitleggen adhv voorbeeldje (DICTAAT?)
-* read functies voor andere types dan Int
-* clashes with HeliumLang ==> clash with built-in (MANUAL)
-* generiek maken show voor tupels (Daan)
-* import SomeModule(SomeDataType(..)) is impossible in core
-* show implementeren met shows, ShowS; efficienter
-* Parser.constr    is considered inefficient by Arjan
-* Scope.addToScope is considered inefficient by Arjan
+    * import Module(N) moet ook de show importeren: import Module (N, showN) ]
+- XML uitvoer van errors en warnings t.b.v. interpreter
+- clashes with HeliumLang ==> clash with built-in (MANUAL)
+- :t in geval van typeringsfout
+- compilerondersteuning voor interpreter (expressie uitrekenen, type bepalen)
+- Hudak & Thompson & Bird doorlopen
+- deriving
+- class, instance
+
+LIBRARIES
+- show implementeren met shows, ShowS; efficienter
+- read functies voor andere types dan Int
+
+HINT
+- Hint op Linux & Mac (springen naar regelnummers) (*)
+- Hint in wxHaskell (Arie, Daan)
+- functies definieren? 
+- autoload feature (zie e-mails van Stephen Milborrow)?
+- Er mogen niet twee punten in een filenaam zitten
+- paden via command-line
+- meer features zoals springen naar definitie van functie, documentatie etc...
+- architectuur? communicatie via een pipe (strings, read/show). eerst maar
+  zoals het is.
+
+TEXTHINT
+- pijltjestoetsen onder Win95/98/Me en UNIX
+- paden via command-line
+
+LVM
+- nieuwe core syntax
+- nieuwe directory structuur: coreasm - runtime
+- standaard libraries bij runtime (gedeeld met helium)
+- IORef
+- 1 callback voor wx
+- WX integratie simpel: alleen soegraphics
+- let f x = f (x+1) in f 0 (*)
+- Coreasm en module systeem
+
+DOCUMENTATIE
+- List en Maybe
+- tutorial
+- fouten/warnings/hints uitleggen adhv voorbeeldje
+
+Versie 1.3
+- Haskell mailing lijst
+- Dingen met sterretjes gedaan zijn
+
