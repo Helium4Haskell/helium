@@ -17,6 +17,6 @@ coreToLvm source coremod = do
         asmopt  = asmOptimize asmmod
         lvmmod  = asmToLvm  asmopt
         target  = source ++ ".lvm"
-
+   
     -- putDoc (lvmPretty lvmmod)
     lvmWriteFile target lvmmod

@@ -82,7 +82,7 @@ primOpenInputFile fpath asText
   = let! b     = asText
          m     = prim_input_flags b
          fname = packedFromString fpath
-         fd    = prim_open fname m 0                         
+         fd    = prim_open fname m 0o744                         
     in primOpenInputDescriptor fd
 
 primOpenOutputFile :: FilePath -> Bool -> CreateMode -> Channel Output
@@ -91,7 +91,7 @@ primOpenOutputFile fpath asText cmode
          c     = cmode
          m     = prim_output_flags b c
          fname = packedFromString fpath
-         fd    = prim_open fname m 0
+         fd    = prim_open fname m 0o744
     in primOpenOutputDescriptor fd
 
 

@@ -34,7 +34,7 @@ data Exception
 data RuntimeException
   = PatternFailure    PackedString          -- pattern match failure
   | NonTermination    PackedString          -- non terminating program
-  | OutOfBounds       PackedString          -- field access out of bounds
+  | OutOfBounds       PackedString          -- field access out of bounds                
   | Exit              Int                   -- exiting program
   | InvalidOpcode     Int                   -- invalid opcode
   | LoadError         PackedString PackedString -- runtime loader exception
