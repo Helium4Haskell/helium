@@ -3,7 +3,7 @@ module TypeDebugInfoWriter (writeDebugInfoTree) where
 import Top.Types
 import Top.ComposedSolvers.Tree
 import Top.ComposedSolvers.TreeWalk
-import Top.Constraints.ExtraConstraints
+import Top.Constraints.Polymorphism
 import TypeConstraints
 import TypeErrors
 import ConstraintInfo
@@ -27,7 +27,7 @@ writeDebugInfoTree substitution sigmaMap typeErrors ctree tree fn1 fn2 =
                  in map f (substitution |-> sortMessages typeErrors)
        entries = convertInfoTree substitution sigmaMap expls tree
        cs      = flattenTree topDownTreeWalk ctree
-       expls   = [ (tp, sigma) | TC2 (Instantiate tp sigma _) <- cs ]
+       expls   = [ (tp, sigma) | TC3 (Instantiate tp sigma _) <- cs ]
    in writeTypeDebugInfo fn1 $
       TypeDebugInfo { tiFileName    = show fn2
                     , tiDefinitions = defs

@@ -103,9 +103,10 @@ isFolkloreConstraint :: HasProperties a => a -> Bool
 isFolkloreConstraint a = 
    not $ null [ () | FolkloreConstraint <- getProperties a ]
 
+-- |Returns only type schemes with at least one quantifier
 maybeInstantiatedTypeScheme :: HasProperties a => a -> Maybe TpScheme
 maybeInstantiatedTypeScheme a =
-   maybeHead [ s | InstantiatedTypeScheme s <- getProperties a ]
+   maybeHead [ s | InstantiatedTypeScheme s <- getProperties a, not (withoutQuantors s) ]
    
 maybeSkolemizedTypeScheme :: HasProperties a => a -> Maybe (Tps, TpScheme)
 maybeSkolemizedTypeScheme info =

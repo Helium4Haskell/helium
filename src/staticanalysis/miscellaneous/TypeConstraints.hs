@@ -15,8 +15,8 @@ module TypeConstraints where
 
 import Top.Constraints.Constraints
 import Top.Constraints.Equality hiding ((.==.))
-import Top.Constraints.ExtraConstraints hiding ((.::.))
-import Top.Constraints.Polymorphism hiding ((.<=.))
+import Top.Constraints.ExtraConstraints
+import Top.Constraints.Polymorphism hiding ((.::.))
 import Top.Constraints.TypeConstraintInfo
 import Top.States.BasicState
 import Top.States.TIState
@@ -66,9 +66,8 @@ instance Substitutable (TypeConstraint info) where
 polySubst :: FiniteMap Int (Scheme Predicates) -> TypeConstraint info -> TypeConstraint info
 polySubst schemeMap tc =
    case tc of
-      TC2 (Instantiate tp sigma info)        -> TC2 (Instantiate tp (f sigma) info)
-      TC2 (Skolemize tp (monos, sigma) info) -> TC2 (Skolemize tp (monos, f sigma) info)
-      TC3 (Subsumption s1 (monos, s2) info)  -> TC3 (Subsumption (f s1) (monos, f s2) info)
+      TC3 (Instantiate tp sigma info)        -> TC3 (Instantiate tp (f sigma) info)
+      TC3 (Skolemize tp (monos, sigma) info) -> TC3 (Skolemize tp (monos, f sigma) info)
       _                                      -> tc
       
  where
@@ -82,8 +81,8 @@ spreadFunction :: TypeConstraint info -> Maybe Int
 spreadFunction tc =
    case tc of
       TC1 (Equality t1 t2 info)         -> spreadFromType t2
-      TC2 (Instantiate tp ts info)      -> spreadFromType tp
-      TC2 (Skolemize tp ts info)        -> spreadFromType tp
+      TC3 (Instantiate tp ts info)      -> spreadFromType tp
+      TC3 (Skolemize tp ts info)        -> spreadFromType tp
       TC2 (Implicit t1 (ms, t2) info)   -> spreadFromType t1
       _                                 -> Nothing
 
@@ -116,7 +115,7 @@ tp .::. ts = tp .<=. SigmaScheme ts
 (.:::.) = lift (flip (.::.))
 
 (!::!) :: Tp -> TpScheme -> Tps -> info -> TypeConstraint info
-(tp !::! ts) monos info = TC2 (Skolemize tp (monos, SigmaScheme ts) info)
+(tp !::! ts) monos info = TC3 (Skolemize tp (monos, SigmaScheme ts) info)
 
 (!:::!) :: (Show info, Ord key) => FiniteMap key TpScheme -> FiniteMap key Tp -> Tps -> (Tps -> key -> key -> info) -> ([TypeConstraint info], FiniteMap key Tp)  
 (as !:::! bs) monos info =
@@ -130,7 +129,7 @@ tp .::. ts = tp .<=. SigmaScheme ts
    in foldFM op ([], emptyFM) bs
 
 (.<=.) :: Show info => Tp -> Sigma Predicates -> info -> TypeConstraint info
-(tp .<=. ts) info = TC2 (Instantiate tp ts info)
+(tp .<=. ts) info = TC3 (Instantiate tp ts info)
 
 (.<==.) :: (Show info, Ord key) => FiniteMap key (Sigma Predicates) -> FiniteMap key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info],FiniteMap key [(key,Tp)])  
 (.<==.) = lift (flip (.<=.))

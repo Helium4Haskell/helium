@@ -30,7 +30,7 @@ import Top.ComposedSolvers.ChunkySolver (solveChunkConstraints)
 --- needed for warnForTooSpecificSignatures
 import UHA_Syntax (Name)
 import UHA_Utils (NameWithRange(..), nameWithRangeToName)
-import Top.Constraints.ExtraConstraints (ExtraConstraint(..))
+import Top.Constraints.Polymorphism (PolymorphismConstraint(..))
 import Warnings
 import Data.Maybe
 import Data.List
@@ -126,13 +126,13 @@ warnForTooSpecificSignatures solver classEnv synonyms unique constraints =
       in [ (t1 .==. t2) info | (_, t2) <- rest ]
 
    maybeExplicitlyTyped :: TypeConstraint ConstraintInfo -> Maybe (NameWithRange, Tp)
-   maybeExplicitlyTyped (TC2 (Instantiate tp _ info)) = 
+   maybeExplicitlyTyped (TC3 (Instantiate tp _ info)) = 
       do (monos, name) <- maybeExplicitTypedDefinition info
          return (NameWithRange name, tp)
    maybeExplicitlyTyped _ = Nothing
          
    splitExplicit :: TypeConstraint ConstraintInfo -> Maybe (Tps, Name, Tp, TpScheme)
-   splitExplicit (TC2 (Instantiate tp (SigmaScheme tpscheme) info))
+   splitExplicit (TC3 (Instantiate tp (SigmaScheme tpscheme) info))
       | isExplicitTypedBinding info =
            do (monos, name) <- maybeExplicitTypedDefinition info
               return (monos, name, tp, tpscheme)
