@@ -137,7 +137,6 @@ standardClasses = listToFM
    , ("Ord",  (["Eq"], rules "Ord" ))
    , ("Show", ([],     rules "Show"))
    , ("Num",  (["Eq","Show"], rules "Num"))
-   , ("Real", (["Num", "Ord"], rules "Real"))
    ]
   where rules s = (Predicate s (listType (TVar 0)), [Predicate s (TVar 0)])
                 : [ (Predicate s g, []) | g <- [intType, floatType, boolType, charType]]               

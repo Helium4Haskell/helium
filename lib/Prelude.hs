@@ -29,7 +29,7 @@ negate  :: Num a => a -> a
 fromInt :: Num a => Int -> a
 -}
 
-main = (1.0+1.5,2+3, 'a'=='a', 'a'=='b', 3.0<4.0, [['a','a']]==[['a','b']])
+main = (1.0+1.5,2+3, 'a'=='a', 'a'=='b', 3.0<4.0, []==[])
 
 sum :: Num a => [a] -> a
 sum = foldl' (+) (fromInt 0)
