@@ -1,7 +1,18 @@
+Documentatie todo's
+-------------------
+
+! User manual hi A4
+! User manual helium A4
+! User manual lvmrun A5
+! Alle mogelijke fouten/warnings/hints uitleggen adhv voorbeeldje (DICTAAT?)
+! Tour of Haskell syntax controleren
+! commentaar over List en Maybe
+
 Helium to do lijst
 ------------------
 
 INTERPRETER
+* springen naar internet browser bij :i map http://www.cs.uu.nl/~afie/helium/tourofprelude.html#map
 * interpreter gooit temp files weg a/h begin na iedere expressie
 * hi opties doorspelen naar Helium
 * foutmeldingen over Interpreter.hs afvangen
@@ -12,13 +23,20 @@ INTERPRETER
 * testen of TEMP schrijfbaar is
 * Ctrl-C stopt niet alleen lvmrun maar ook hi
 * JCreator: Rijk-Jan
+* Wat voor een voorzieningen nodig in de compiler?
+
+DAAN
+! file IO exceptions; * EOF in getChar. How? catch werkt niet
+! strictheid van error
 
 COMPILER
 
 ! parse error tests (zie Thompson)
-! file IO exceptions; * EOF in getChar. How?
 ! installer voor Windows
+! environment vars weg
 
+* bij chasing niet de hele module parsen
+* operator definitie in pp haakjes er omheen
 * read functies voor andere types dan Int
 * deriving Eq
 * catchen van exception van writeFile/openFileEx etc.
@@ -35,17 +53,6 @@ COMPILER
 LIBRARIES
 
 * show implementeren met shows, ShowS; efficienter
-* bij chasing niet de hele module parsen
-
-Documentatie todo's
--------------------
-
-! User manual hi
-! User manual helium
-! User manual lvmrun
-! Alle mogelijke fouten/warnings/hints uitleggen adhv voorbeeldje (DICTAAT?)
-! Tour of Haskell syntax controleren
-! Haddock commentaar in Prelude, List en Maybe
 
 ---- ONBELANGRIJK ----
                 
