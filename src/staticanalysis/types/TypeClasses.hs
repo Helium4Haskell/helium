@@ -23,10 +23,10 @@ type Instance         = (Predicate, Predicates)
 
 matchPredicates :: OrderedTypeSynonyms -> Predicate -> Predicate -> Maybe FiniteMapSubstitution
 matchPredicates synonyms (Predicate s1 t1) (Predicate s2 t2)
-   | s1 == s2 = case mgu (freezeVariablesInType t1) t2 of
-        Left _  -> Nothing
-        Right s -> let f _ = unfreezeVariablesInType
-                   in Just (mapFM f s)
+   | s1 == s2 = case mguWithTypeSynonyms synonyms (freezeVariablesInType t1) t2 of
+        Left _       -> Nothing
+        Right (_, s) -> let f _ = unfreezeVariablesInType
+                        in Just (mapFM f s)
    | otherwise = Nothing
                 
 ---------------------------------------------------------------------- 
@@ -111,7 +111,7 @@ contextReduction synonyms classes ps =
                       | otherwise                   = loop (p:rs) ps  
                            
    in (loop [] predicates, errors)
-
+   
 {-
 contextReduction' :: OrderedTypeSynonyms -> ClassEnvironment -> [(Predicate,a)] -> ([(Predicate,a)], [a])
 contextReduction' synonyms classes ps = 
