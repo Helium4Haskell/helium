@@ -1,0 +1,8 @@
+Compiling typeerrors/Examples/RestrictedAndOverloaded.hs
+(2,2): Illegal overloaded type inferred for x
+ variable         : x
+   inferred type  : Eq a => a -> a -> Bool
+ hint             : Only functions and simple patterns can have an overloaded
+                    type
+
+Compilation failed with 1 error
