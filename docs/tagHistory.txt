@@ -1,7 +1,0 @@
-Tag history
-
-stable1: stabiele versie voordat Bastiaan TI en SA uit elkaar trok. Inclusief pattern-match fix.
-
-267 test, 9m43s
-
-na Bastiaan's finitemaps: 6m41

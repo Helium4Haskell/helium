@@ -1,8 +1,9 @@
 HELIUM
-- Hudak & Thompson & Bird doorlopen
+- type Double = Float in Prelude??
+- Hudak & Bird doorlopen
 - warning bij Let, Where (undefined constructor, hint: did you mean the keyword...?)
 - --version vlag (aanroepen bij start van Hint)
-- Internationalisatie
+- Internationalisatie (Beginnetje gemaakt)
 - Bastiaan: type could be more general warning (heel moeilijk)
 - $main = putStr (show main) (toplevelTypes wordt dan onnodig in code generator)
 - XML uitvoer van errors en warnings t.b.v. interpreter
@@ -10,6 +11,7 @@ HELIUM
 	bijvoorbeeld showUnit of data Unit = ... proberen te definieren
 - :t in geval van typeringsfout
 - compilerondersteuning voor interpreter (expressie uitrekenen, type bepalen)
+- show functies mag je niet verbergen (import hiding) maar dit levert nu geen foutmelding op
 
 LIBRARIES
 - show implementeren met shows, ShowS; efficienter
