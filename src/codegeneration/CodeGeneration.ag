@@ -36,6 +36,7 @@ import Top.Types
 
 import PatternMatch
 import DerivingShow
+import DerivingEq
 
 -- Semi-Daan
 import CoreUtils

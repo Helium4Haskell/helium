@@ -2039,11 +2039,11 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
                 , not (null errs)
                 ]
             (_unknCls@_) =
-                [ if show c `elem` [ "Eq", "Num", "Enum", "Ord" ]
+                [ if className `elem` [ "Num", "Enum", "Ord" ]
                    then NonDerivableClass c
                    else UnknownClass c
-                | c <- derivings_
-                , show c /= "Show"
+                | c <- derivings_, let className = show c
+                , className `notElem` ["Show", "Eq"]
                 ]
             (_undef@_) =
                 filter (`notElem` _simpletypeItypevariables)   _constructorsItypevariables

@@ -51,11 +51,11 @@ SEM Declaration
              loc . unused  = filter (`notElem` @constructors.typevariables) @simpletype.typevariables
                  . doubles = filter ((>1) . length) . group . sort $        @simpletype.typevariables
                  . undef   = filter (`notElem` @simpletype.typevariables)   @constructors.typevariables                 
-                 . unknCls = [ if show c `elem` [ "Eq", "Num", "Enum", "Ord" ]
+                 . unknCls = [ if className `elem` [ "Num", "Enum", "Ord" ]
                                 then NonDerivableClass c
                                 else UnknownClass c
-                             | c <- @derivings
-                             , show c /= "Show"
+                             | c <- @derivings, let className = show c
+                             , className `notElem` ["Show", "Eq"]
                              ]
                  . cantDer = [ CannotDerive c [ tp | ReductionError (Predicate _ tp) <- errs ]
                              | c <- @derivings

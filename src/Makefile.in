@@ -159,7 +159,7 @@ UHA = \
 
 CODEGENERATION = \
 	codegeneration/CoreToLvm.hs codegeneration/PatternMatch.hs \
-	codegeneration/DerivingShow.hs codegeneration/CoreUtils.hs \
+	codegeneration/DerivingShow.hs codegeneration/DerivingEq.hs codegeneration/CoreUtils.hs \
         codegeneration/CodeGeneration.hs
 
 UTILS = \

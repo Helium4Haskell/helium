@@ -1,0 +1,4 @@
+Compiling correct/EqSyn.hs
+(6,1): Warning: Missing type signature: main :: Bool
+Compilation successful with 1 warning
+True

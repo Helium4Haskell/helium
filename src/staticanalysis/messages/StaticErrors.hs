@@ -201,7 +201,7 @@ showError anError = case anError of
 
    NonDerivableClass name ->
       ( MessageString ("Cannot derive class " ++ show (show name))
-      , [MessageString "Only Show instances can be derived"]
+      , [MessageString "Only Show and Eq instances can be derived"]
       )   
 
    CannotDerive name tps ->

@@ -19,6 +19,7 @@ import Top.Types
 
 import PatternMatch
 import DerivingShow
+import DerivingEq
 
 -- Semi-Daan
 import CoreUtils
@@ -790,7 +791,17 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
                     }
                 ]
                 ++
-                derivingShow _self
+                [ DerivingShow.dataShowFunction _self ]
+                ++
+                (if "Show" `elem` map show _derivingsIself
+                 then [ DerivingShow.dataDictionary _self ]
+                 else []
+                )
+                ++
+                (if "Eq" `elem` map show _derivingsIself
+                 then [ DerivingEq.dataDictionary _self ]
+                 else []
+                )
             (_constructorsOdataTypeName@_) =
                 _simpletypeIname
             (_constructorsOtag@_) =
@@ -1194,7 +1205,7 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
                     }
                 ]
                 ++
-                derivingShow _self
+                [ DerivingShow.typeShowFunction _self ]
             (_self@_) =
                 Declaration_Type _rangeIself _simpletypeIself _typeIself
             (_lhsOself@_) =

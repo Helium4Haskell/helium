@@ -1,0 +1,4 @@
+Compiling correct/EqInstance.hs
+(8,1): Warning: Missing type signature: main :: (Bool, Bool, Bool, Bool, Bool)
+Compilation successful with 1 warning
+(False,True,False,True,False)

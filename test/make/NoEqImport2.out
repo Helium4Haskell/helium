@@ -1,0 +1,12 @@
+Compiling make/NoEqImport1.hs
+Compilation successful
+Compiling make/NoEqImport2.hs
+(3,12): Type error in overloaded function
+ function         : ==
+   type           : Eq a => a -> a -> Bool
+   used as        :         A -> A -> Bool
+ problem          : A is not an instance of class Eq
+ hint             : valid instances of Eq are Bool, Char, Either a b, Float,
+                    Int, Maybe a, [a] and tuples
+
+Compilation failed with 1 error

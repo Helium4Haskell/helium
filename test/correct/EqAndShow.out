@@ -1,0 +1,4 @@
+Compiling correct/EqAndShow.hs
+(5,1): Warning: Missing type signature: main :: (Bool, String)
+Compilation successful with 1 warning
+(True,"(B 'q')")

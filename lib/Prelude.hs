@@ -208,7 +208,7 @@ otherwise = True
 data Maybe a
     = Nothing
     | Just a
-    deriving Show
+    deriving (Eq, Show)
  
 maybe :: b -> (a -> b) -> Maybe a -> b
 maybe e f m =
@@ -220,7 +220,7 @@ maybe e f m =
  -- Either
  -----------------------------------------------}
 
-data Either a b = Left a | Right b deriving Show
+data Either a b = Left a | Right b deriving (Eq, Show)
 
 either :: (a -> c) -> (b -> c) -> Either a b -> c
 either l r e =

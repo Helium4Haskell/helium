@@ -1,0 +1,8 @@
+Compiling staticerrors/NonDerivableEq.hs
+(1,35): Cannot derive instance for class "Eq"
+  Hint: There is no Eq instance for Int -> Int
+(1,39): Cannot derive instance for class "Show"
+  Hint: There is no Show instance for Int -> Int
+(2,30): Cannot derive instance for class "Eq"
+  Hint: There is no Eq instance for Ordering
+Compilation failed with 3 errors

@@ -38,7 +38,7 @@ SEM Declaration
             }
         ]
         ++
-        derivingShow @self
+        [ DerivingShow.typeShowFunction @self ]
     
     | Data    constructors.tag = 0
               constructors.dataTypeName = @simpletype.name
@@ -53,7 +53,18 @@ SEM Declaration
             }
         ]
         ++
-        derivingShow @self
+        [ DerivingShow.dataShowFunction @self ]
+        ++ 
+        (if "Show" `elem` map show @derivings.self 
+         then [ DerivingShow.dataDictionary @self ]
+         else []
+        )
+        ++
+        (if "Eq" `elem` map show @derivings.self 
+         then [ DerivingEq.dataDictionary @self ]
+         else []
+        )
+        
     --  range                    : Range        
     --  context                  : ContextItems
     --  simpletype               : SimpleType

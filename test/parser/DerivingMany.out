@@ -1,6 +1,4 @@
 Compiling parser/DerivingMany.hs
-(3,20): Cannot derive class "Eq"
-  Hint: Only Show instances can be derived
 (3,24): Cannot derive class "Num"
-  Hint: Only Show instances can be derived
-Compilation failed with 2 errors
+  Hint: Only Show and Eq instances can be derived
+Compilation failed with 1 error
