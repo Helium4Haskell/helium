@@ -36,6 +36,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | IntLiteralTooBig Range String
             | NegateNeeded Range
             | OverloadingDisabled Range
+            | OverloadedRestrPat Name
             
             | AmbiguousContext Name
             | UnknownClass Name
@@ -58,6 +59,7 @@ instance HasMessage Error where
       IntLiteralTooBig range _    -> [range]
       NegateNeeded range          -> [range]
       OverloadingDisabled range   -> [range]
+      OverloadedRestrPat name     -> [getNameRange name]
       
       AmbiguousContext name       -> [getNameRange name]
       UnknownClass name           -> [getNameRange name]
@@ -168,10 +170,15 @@ showError anError = case anError of
       ( MessageString ("\"negate\" from the Prelude is needed for unary minus")
       , []
       )
+   
+   OverloadedRestrPat name ->
+      ( MessageString ("Illegal overloaded type signature for " ++ show (show name))
+      , [MessageString "Only functions and simple patterns can have an overloaded type"]
+      )
       
    OverloadingDisabled range ->
       ( MessageString ("Cannot handle contexts when overloading is disabled")
-      , [ ]
+      , []
       )
 
    AmbiguousContext name ->
@@ -231,6 +238,7 @@ errorLogCode anError = case anError of
           DefArityMismatch _ _ _  -> "da"
           RecursiveTypeSynonyms _ -> "ts"
           PatternDefinesNoVars _  -> "nv"
+          OverloadedRestrPat _    -> "od"
           _                       -> "??"
    where code entity = maybe "??" id
                      . lookup entity 

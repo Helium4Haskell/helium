@@ -320,9 +320,11 @@ primShowFloat x = let! x = x in primPackedToString (stringFromFloat x 6 0)
 
 extern stringFromFloat "string_of_float" :: "aFII"
 
+-- in overloaded version, a negative float is shown as usual (not with "-.")
 showFloat : public [custom "type"  ["Float -> String"]]
-  = \f -> safeMinus (addPointZero (primShowFloat f))
+  = \f -> addPointZero (primShowFloat f)
 
+{- 
 safeMinus : private [custom "type"  ["String -> String"]]
   = \s  -> 
     case s of
@@ -333,6 +335,7 @@ safeMinus : private [custom "type"  ["String -> String"]]
         }
     ; _ -> s
     }
+-}
 
 addPointZero : private [custom "type"  ["String -> String"]]
     = \s ->

@@ -26,7 +26,7 @@ SEM Module
 
 SEM Body 
   | Body   lhs . miscerrors = @typeSignatureErrors ++ @declarations.miscerrors
-           loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
+           loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
 
 -----------------------------------------
 -- Declaration
@@ -61,7 +61,7 @@ SEM Declaration
 SEM MaybeDeclarations
   | Just   lhs . miscerrors = @typeSignatureErrors ++ @declarations.miscerrors
            loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
-           loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
+           loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
 
 {- utility attribute: collecting the arities of the function bindings -}
 ATTR FunctionBindings [ | | arities : { [Int] } ]
@@ -120,7 +120,7 @@ SEM Expression
 
   | Let          lhs . miscerrors = @typeSignatureErrors ++ @expression.miscerrors
                  loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
-                 loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
+                 loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
 
 -----------------------------------------
 -- Pattern
@@ -180,7 +180,7 @@ simplePattern pattern =
  SEM Statement
    | Let        lhs . miscerrors = @typeSignatureErrors ++ @declarations.miscerrors 
                 loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
-                    . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
+                    . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
                        
 -----------------------------------------
 -- Qualifier    
@@ -188,13 +188,14 @@ simplePattern pattern =
 SEM Qualifier
   | Let       lhs . miscerrors = @typeSignatureErrors ++ @declarations.miscerrors
               loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
-                  . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.typeSignatures
+                  . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
 
 {
 -- Type signature but no function definition
 -- Duplicated type signatures
-checkTypeSignatures :: Names -> [(Name,TpScheme)] -> Errors
-checkTypeSignatures declVarNames xs = 
+-- Overloaded type scheme for a restricted pattern
+checkTypeSignatures :: Names -> Names -> [(Name,TpScheme)] -> Errors
+checkTypeSignatures declVarNames restrictedNames xs = 
    let (unique, doubles) = uniqueAppearance (map fst xs)
    in [ Duplicated TypeSignature names 
       | names <- doubles 
@@ -203,6 +204,12 @@ checkTypeSignatures declVarNames xs =
       | name <- unique
       , name `notElem` declVarNames
       ]
+   ++ [ OverloadedRestrPat name
+      | (name, scheme) <- xs
+      , name `elem` unique 
+      , name `elem` restrictedNames     
+      , isOverloaded scheme
+      ] 
 }
 
 -----------------------------------------
@@ -245,4 +252,23 @@ SEM Expression
           else [ NegateNeeded @range.self ]
         )
         ++ @expression.miscerrors
-        
+
+-- context for restricted pattern error
+ATTR Declaration Declarations [ | | restrictedNames USE { ++ } { [] } : Names ]
+
+SEM Declaration
+  | PatternBinding   
+       lhs . restrictedNames = if isSimplePattern @pattern.self
+                                 then []
+                                 else @pattern.patVarNames
+
+{
+isSimplePattern :: Pattern -> Bool
+isSimplePattern pattern =
+   case pattern of
+      Pattern_Variable _ _ -> True
+      Pattern_Parenthesized  _ p -> isSimplePattern p
+      _ -> False
+}
+                                 
+       
