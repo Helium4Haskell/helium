@@ -1,4 +1,4 @@
-module Export(three) where
+module Export where
 
 three :: Int
 three = 3

@@ -1,0 +1,9 @@
+Compiling make/SynExportC.hs
+Compilation successful
+Compiling make/SynExportB.hs
+(6,1): Warning: Missing type signature: x :: A
+Compilation successful with 1 warning
+Compiling make/SynExportE.hs
+(3,1): Warning: Missing type signature: main :: A
+Compilation successful with 1 warning
+A

@@ -1,6 +1,6 @@
 module ImportTwo where
 
-import ImportTwo1(x)
-import ImportTwo2(y)
+import ImportTwo1
+import ImportTwo2
 
 main = x + y

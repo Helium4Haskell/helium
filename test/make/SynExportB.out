@@ -1,0 +1,6 @@
+Compiling make/SynExportC.hs
+Compilation successful
+Compiling make/SynExportB.hs
+(6,1): Warning: Missing type signature: x :: A
+Compilation successful with 1 warning
+No 'main' function defined in this module

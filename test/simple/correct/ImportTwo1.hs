@@ -1,3 +1,3 @@
-module ImportTwo1(x) where
+module ImportTwo1 where
 
 x = 10

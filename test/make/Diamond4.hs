@@ -1,3 +1,3 @@
-module Diamond4(x) where
+module Diamond4 where
 
 x = 42

@@ -1,3 +1,3 @@
-module ImportTwo2(y) where
+module ImportTwo2 where
 
 y = 3

@@ -1,7 +1,5 @@
-module Reexport2( {- x,-} y) where
+module Reexport2 where
 
 import Reexport3
 
-{-x :: Int
-x = y
--}
+q = 4

@@ -1,7 +1,8 @@
 Compiling correct/Reexport3.hs
 Compilation successful
 Compiling correct/Reexport2.hs
-Compilation successful
+(5,1): Warning: Missing type signature: q :: Int
+Compilation successful with 1 warning
 Compiling correct/Reexport.hs
 Compilation successful
 43

@@ -1,4 +1,4 @@
 import Diamond2
-import Diamond3(z)
+import Diamond3
 
-main = z + x
+main = x + y + z

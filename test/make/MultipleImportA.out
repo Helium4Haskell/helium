@@ -5,5 +5,6 @@ Compilation successful
 Compiling make/MultipleImportB.hs
 Compilation successful
 Compiling make/MultipleImportA.hs
-Compilation successful
-12
+Definition "d" imported from multiple modules: MultipleImportB, MultipleImportD
+Definition "e" imported from multiple modules: MultipleImportB, MultipleImportD
+Compilation failed with 2 errors

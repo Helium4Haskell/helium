@@ -1,4 +1,4 @@
-module Reexport3(y) where
+module Reexport3 where
 
 y :: Int
 y = 43

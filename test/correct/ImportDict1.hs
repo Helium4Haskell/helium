@@ -1,6 +1,6 @@
 module ImportDict1 where
 
-import ImportDict2(A(MkA))
+import ImportDict2
 
 main = show (MkA 3)
 

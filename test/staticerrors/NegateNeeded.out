@@ -1,5 +1,0 @@
-Prelude is up to date
-Compiling staticerrors/NegateNeeded.hs
-(3,1): Warning: Missing type signature: main :: (Int, Float)
-Compilation successful with 1 warning
-((-3),-3.0)

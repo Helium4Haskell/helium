@@ -1,5 +1,5 @@
-module Diamond2(x) where
+module Diamond2 where
 
-import Diamond4(x)
+import Diamond4
 
 y = 2

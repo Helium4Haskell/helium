@@ -1,5 +1,5 @@
 Compiling parser/IncorrectModuleName.hs
 (1,11): Syntax error: 
     unexpected operator '.'
-    expecting '(' or keyword 'where'
+    expecting keyword 'where'
 Compilation failed with 1 error

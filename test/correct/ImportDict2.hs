@@ -1,4 +1,4 @@
-module ImportDict2(A(MkA),y) where
+module ImportDict2 where
 
 data A a = MkA a
 

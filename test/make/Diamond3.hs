@@ -1,5 +1,5 @@
-module Diamond3(x,z) where
+module Diamond3 where
 
-import Diamond4(x)
+import Diamond4
 
 z = 3

@@ -1,4 +1,4 @@
-module Export2(Number(Three), three) where
+module Export2 where
 
 data Number = Three
 

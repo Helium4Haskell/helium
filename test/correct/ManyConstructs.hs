@@ -1,9 +1,11 @@
 module ManyConstructs where
 
 -- Check whether we can compile these constructs 
--- without (most of) the Prelude
+-- without (most of) the Prelude. 
 
-import Prelude((>), (+), unsafePerformIO, putChar) -- , dictNumInt, dictOrdInt)
+-- Can't test this anymore because import lists are forbidden...
+
+-- import Prelude((>), (+), unsafePerformIO, putChar) -- , dictNumInt, dictOrdInt)
 
 data A = A Int String
 
