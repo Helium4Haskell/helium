@@ -1,0 +1,6 @@
+Compiling staticerrors/SignatureForRestrPat.hs
+(1,1): Illegal overloaded type signature for "x"
+  Hint: Only functions and simple patterns can have an overloaded type
+(3,1): Illegal overloaded type signature for "z"
+  Hint: Only functions and simple patterns can have an overloaded type
+Compilation failed with 2 errors

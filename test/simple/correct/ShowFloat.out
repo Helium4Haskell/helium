@@ -1,0 +1,4 @@
+Compiling correct/ShowFloat.hs
+(1,1): Warning: Missing type signature: main :: Float
+Compilation successful with 1 warning
+(-.1.0)
