@@ -1,6 +1,7 @@
 module TS_Parser where
 
 import UHA_Syntax
+import UHA_Utils (nameFromString)
 import TS_Syntax
 import TS_CoreSyntax
 import qualified TS_ToCore
@@ -24,7 +25,7 @@ parseTypingStrategies operatorTable filename tokens =
    parseTypingStrategy :: HParser TypingStrategy
    parseTypingStrategy = 
       do lexSIBLINGS
-         names <- commas1 (var <|> varop)
+         names <- commas1 (var <|> varop <|> con <|> conop <|> special)
          lexSEMI         
          return (TypingStrategy_Siblings names)
       <|>   
@@ -69,6 +70,10 @@ parseTypingStrategies operatorTable filename tokens =
          msgLines  <- many1 lexString
          let message = concat (intersperse "\n" msgLines)
          return (UserStatement_Constraint leftType rightType message)
+
+special ::  GenParser (SourcePos,Lexeme) SourcePos Name
+special =  do lexCOL    ; return (nameFromString ":")
+       <|> do lexASGASG ; return (nameFromString "==")
 
 judgementToSimpleJudgement :: Judgement -> SimpleJudgement
 judgementToSimpleJudgement judgement = 

@@ -80,7 +80,7 @@ freezeFreeTypeVariables scheme =
 
 {- unifiableTypeSchemes :: OrderedTypeSynonyms -> TpScheme -> TpScheme -> Bool
 unifiableTypeSchemes typesynonyms s1 s2 =
-   let i       = maximum (0 : ftv s1 ++ ftv s2) + 1
+   let i       = nextFTV [s1, s2]
        (i',_,t1) = instantiate i  s1
        (_ ,_,t2) = instantiate i' s2
    in unifiable typesynonyms t1 t2 -}

@@ -15,7 +15,7 @@ phaseStaticChecks fullName doneModules module_ importEnvs options = do
     let (_, baseName, _) = splitFilePath fullName
 
         (localEnv, errors, _, typeSignatures, warnings) =
-            StaticChecks.sem_Module module_ baseName importEnvs
+            StaticChecks.sem_Module module_ baseName importEnvs options
 
     when (not (null errors)) $ do
         when (DumpInformationForAllModules `elem` options) $

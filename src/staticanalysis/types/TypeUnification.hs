@@ -57,7 +57,9 @@ mguWithTypeSynonyms typesynonyms = rec emptySubst
                                                                     Right (_,sub') -> Right (True,sub') 
                                                Nothing        -> Left ConstantClash
                                                                           
-               _ -> internalError "SATypes.hs" "mguWithTypeSynonyms" "illegal type"            
+               _ -> case (t1, t2) of
+                       (TApp l1 r1, TApp l2 r2) -> recList sub [l1, r1] [l2, r2]
+                       _ ->  internalError "SATypes.hs" "mguWithTypeSynonyms" ("illegal type"++show t1++","++show t2)
 
         recVar :: FiniteMapSubstitution -> Int -> Tp -> Either UnificationError (Bool, FiniteMapSubstitution)
         recVar sub i tp = case lookupFM sub i of
@@ -78,7 +80,7 @@ mguWithTypeSynonyms typesynonyms = rec emptySubst
               Right (b,sub') -> case recList sub' ss tt of
                                    Left uError      -> Left uError
                                    Right (b',sub'') -> Right (b || b', sub'')
-        recList _ _ _ = internalError "SATypes.hs" "mguWithTypeSynonyms" "illegal type"  
+        recList _ _ _ = Left ConstantClash
 
 -- Find the most general type for two types that are equal under type synonyms
 -- (i.e., the least number of expansions)

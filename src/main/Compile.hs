@@ -5,6 +5,7 @@ import PhaseParser
 import PhaseImport
 import PhaseResolveOperators
 import PhaseStaticChecks
+import PhaseKindInferencer
 import PhaseTypingStrategies
 import PhaseTypeInferencer
 import PhaseDesugarer
@@ -12,6 +13,12 @@ import PhaseCodeGenerator
 import CompileUtils
 import Utils
 import Data.IORef
+
+--temp
+import KindInferencing as KI
+import UHA_Utils (nameFromString)
+import Data.FiniteMap
+import Types (showKindScheme)
 
 compile :: String -> [Option] -> [String] -> [String] -> IO ()
 compile fullName options lvmPath doneModules =
@@ -54,15 +61,17 @@ compile fullName options lvmPath doneModules =
             showMessages staticWarnings
 
         stopCompilingIf (StopAfterStaticAnalysis `elem` options)
-        
-        -- Phase 6: Typing Strategies
-        (beforeTypeInferEnv, typingStrategiesDecls) <-
-            phaseTypingStrategies 
-                    fullName 
-                    (foldr combineImportEnvironments localEnv importEnvs) 
-                    typeSignatures options
 
-        -- Phase 7: Type inferencing
+        -- Phase 6: Kind inferencing (by default turned off)
+        let combinedEnv = foldr combineImportEnvironments localEnv importEnvs
+        when (KindInferencing `elem` options) $
+           phaseKindInferencer combinedEnv resolvedModule options
+        
+        -- Phase 7: Type Inference Directives
+        (beforeTypeInferEnv, typingStrategiesDecls) <-
+            phaseTypingStrategies fullName combinedEnv typeSignatures options
+
+        -- Phase 8: Type inferencing
         (dictionaryEnv, afterTypeInferEnv, toplevelTypes, typeWarnings) <- 
             phaseTypeInferencer fullName resolvedModule doneModules localEnv 
                                     beforeTypeInferEnv options
@@ -72,7 +81,7 @@ compile fullName options lvmPath doneModules =
 
         stopCompilingIf (StopAfterTypeInferencing `elem` options)
 
-        -- Phase 8: Desugaring
+        -- Phase 9: Desugaring
         coreModule <-                
             phaseDesugarer dictionaryEnv
                            fullName resolvedModule 
@@ -83,7 +92,7 @@ compile fullName options lvmPath doneModules =
 
         stopCompilingIf (StopAfterDesugar `elem` options)
 
-        -- Phase 9: Code generation
+        -- Phase 10: Code generation
         phaseCodeGenerator fullName coreModule options
         
         unless (NoLogging `elem` options) $ 

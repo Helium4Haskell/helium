@@ -31,6 +31,8 @@ data MessageBlock  = MessageString       String
                    | MessageRange        Range
                    | MessageType         Tp
                    | MessageTypeScheme   TpScheme
+                   | MessageKind         Kind
+                   | MessagePredicate    Predicate                                      
                    | MessageInfoLink     String
                    | MessageOneLineTree  OneLineTree
                    | MessageCompose      MessageBlocks                   
@@ -61,15 +63,18 @@ instance Substitutable MessageBlock where
 
    sub |-> mb = case mb of
                    MessageType tp       -> MessageType (sub |-> tp)
-                   MessageTypeScheme ts -> -- see "substitution is static"
-                                           let sub' = listToSubstitution [ (i, sub |-> TVar i) | i <- ftv ts ]
+                   MessageTypeScheme ts -> let sub' = listToSubstitution [ (i, sub |-> TVar i) | i <- ftv ts ]
                                            in MessageTypeScheme (sub' |-> ts)
+                   MessageKind kind     -> MessageKind (sub |-> kind)
+                   MessagePredicate p   -> MessagePredicate (sub |-> p)
                    MessageCompose mbs   -> MessageCompose (sub |-> mbs) 
                    _                    -> mb
 
    ftv mb = case mb of         
                MessageType tp       -> ftv tp
                MessageTypeScheme ts -> ftv ts
+               MessageKind kind     -> ftv kind
+               MessagePredicate p   -> ftv p           
                MessageCompose mbs   -> ftv mbs
                _                    -> []       
 

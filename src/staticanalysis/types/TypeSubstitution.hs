@@ -37,6 +37,11 @@ class Substitutable a where
    _ |-> a   = a        -- default definition (do nothing)
    ftv _     = []       -- default definition (do nothing)
 
+nextFTV :: Substitutable a => a -> Int
+nextFTV a = case ftv a of
+               [] -> 0
+               is -> maximum is + 1
+
 ----------------------------------------------------------------------
 -- Substitution instances 
 

@@ -46,7 +46,8 @@ processArgs args =
             
             ,   Option "W" ["algorithm-w"] (NoArg AlgorithmW)              "use algorithm W for type inferencing"
             ,   Option "M" ["algorithm-m"] (NoArg AlgorithmM)              "use algorithm M for type inferencing"
-            ,   Option "T" ["directives" ] (NoArg TypeInferenceDirectives) "use type inference directives"
+            ,   Option ""  ["no-directives" ] (NoArg DisableDirectives)    "disable type inference directives"
+            ,   Option "K" ["kind-inferencing"] (NoArg KindInferencing)    "do kind inferencing"
 
             -- available solvers for type inferencing     
             ,   Option "" ["solver-simple"     ] (NoArg SolverSimple     ) "a straightforward implementation"
@@ -98,7 +99,9 @@ data Option
     -- predefined algorithms
     | AlgorithmW | AlgorithmM 
     -- type inference directives
-    | TypeInferenceDirectives    
+    | DisableDirectives    
+    -- do kind inferencing
+    | KindInferencing    
     -- other type inference options
     | RightToLeft | NoSpreading   
     

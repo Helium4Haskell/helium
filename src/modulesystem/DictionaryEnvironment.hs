@@ -2,6 +2,7 @@ module DictionaryEnvironment
    ( DictionaryEnvironment, DictionaryTree(..) 
    , emptyDictionaryEnvironment, addForDeclaration, addForVariable
    , getPredicateForDecl, getDictionaryTrees
+   , makeDictionaryTree, makeDictionaryTrees
    ) where
 
 import Data.FiniteMap
@@ -28,11 +29,10 @@ addForDeclaration name predicates dEnv
    | null predicates = dEnv
    | otherwise       = dEnv { declMap = addToFM (declMap dEnv) (NameWithRange name) predicates }
    
-addForVariable :: Name -> Predicates -> Predicates -> DictionaryEnvironment -> DictionaryEnvironment
-addForVariable name availablePredicates predicates dEnv
-  | null predicates = dEnv  
-  | otherwise       = let tree = makeDictionaryTrees availablePredicates predicates
-                      in dEnv { varMap = addToFM (varMap dEnv) (NameWithRange name) tree }
+addForVariable :: Name -> [DictionaryTree] -> DictionaryEnvironment -> DictionaryEnvironment
+addForVariable name trees dEnv
+  | null trees = dEnv  
+  | otherwise  = dEnv { varMap = addToFM (varMap dEnv) (NameWithRange name) trees }
 
 getPredicateForDecl :: Name -> DictionaryEnvironment -> Predicates
 getPredicateForDecl name dEnv =
@@ -46,24 +46,27 @@ getDictionaryTrees name dEnv =
       Just dt -> dt
       Nothing -> []
 
-makeDictionaryTrees :: Predicates -> Predicates -> [DictionaryTree]
-makeDictionaryTrees ps = map (makeDictionaryTree ps)
+makeDictionaryTrees :: Predicates -> Predicates -> Maybe [DictionaryTree]
+makeDictionaryTrees ps = mapM (makeDictionaryTree ps)
 
-makeDictionaryTree :: Predicates -> Predicate -> DictionaryTree
+makeDictionaryTree :: Predicates -> Predicate -> Maybe DictionaryTree
 makeDictionaryTree availablePredicates p@(Predicate className tp) =      
    case tp of
-      TVar i | p `elem` availablePredicates -> ByPredicate p
+      TVar i | p `elem` availablePredicates -> Just (ByPredicate p)
              | otherwise -> case [ (path, availablePredicate)
                                  | availablePredicate@(Predicate c t) <- availablePredicates
                                  , t == tp
                                  , path <- superclassPaths c className standardClasses
                                  ] of
-                             []     -> internalError "DictionaryEnvironment" "getDictionary" "no path"
+                             []     -> Nothing
                              (path,fromPredicate):_ -> 
-                                foldr (uncurry BySuperClass) (ByPredicate fromPredicate) (reverse (zip path (tail path)))
+                                let list = reverse (zip path (tail path))
+                                    tree = foldr (uncurry BySuperClass) (ByPredicate fromPredicate) list
+                                in Just tree 
                                 
       _      -> case byInstance noOrderedTypeSynonyms standardClasses p of
                    Nothing -> internalError "ToCoreExpr" "getDictionary" "reduction error"
                    Just predicates -> 
-                      let (TCon instanceName, _)  = leftSpine tp
-                      in ByInstance className instanceName (makeDictionaryTrees availablePredicates predicates)
+                      do let (TCon instanceName, _) = leftSpine tp
+                         trees <- makeDictionaryTrees availablePredicates predicates
+                         return (ByInstance className instanceName trees)

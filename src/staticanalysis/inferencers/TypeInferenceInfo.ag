@@ -717,14 +717,6 @@ SEM LeftHandSide [ | | patternTrees:{[OneLineTree]} ]
 {
 convertMaybeOneLineTree :: Maybe OneLineTree -> OneLineTree
 convertMaybeOneLineTree = maybe (OneLineText "") id
-    
-getRHSRange :: RightHandSide -> Range
-getRHSRange (RightHandSide_Expression r _ _) = r
-getRHSRange (RightHandSide_Guarded r _ _) = r
-
-getMaybeExprRange :: MaybeExpression -> Range
-getMaybeExprRange (MaybeExpression_Just expr) = getExprRange expr
-getMaybeExprRange (MaybeExpression_Nothing)   = noRange
 
 tpToInt :: Tp -> Int
 tpToInt tp = case ftv tp of

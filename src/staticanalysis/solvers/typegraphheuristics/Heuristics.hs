@@ -17,9 +17,8 @@ getSubstitutedTypes info =
 doWithoutEdge :: IsTypeGraph m info => (EdgeID,info) -> m result -> m result
 doWithoutEdge (edge@(EdgeID v1 v2),info) computation =
    do deleteEdge edge       
-      result <- computation       
-      propagateEquality [v1,v2]
-      addEdge edge (Initial info) 
+      result <- computation           
+      addEdge edge info
       return result
 
 type HeuristicActions = [HeuristicAction]
@@ -33,24 +32,28 @@ safeApplySubst :: IsTypeGraph m info => Tp -> m (Maybe Tp)
 safeApplySubst = rec [] where 
 
   rec history tp = case tp of 
+  
     TVar i | i `elem` history 
                -> return Nothing
            | otherwise 
-               -> do vertices  <- getVerticesInGroup i
-                     constants <- getConstantsInGroup i
-                     children  <- getChildrenInGroup i
-                     tps       <- case children of
-                                     []       -> return [] 
-                                     (_,is):_ -> mapM (rec (i : history)) (map TVar is)
-                     let tp = case constants of 
-                                 []  -> Just . TVar . fst . head $ vertices
-                                 [s] -> Just (TCon s)
-                                 _   ->  Nothing
-                     let tapp t1 t2 = case (t1,t2) of 
-                                        (Just t1',Just t2') -> Just (TApp t1' t2')
-                                        _                   -> Nothing                                      
-                     return (foldl tapp tp tps)
+               -> do vertices  <- verticesInGroupOf  i
+                     constants <- constantsInGroupOf i
+                     children  <- childrenInGroupOf  i                     
+                     case constants of 
+                        [s] -> return (Just (TCon s))               
+                        []  -> case children of 
+                                  []        -> let rep = fst (head vertices)
+                                               in return (Just (TVar rep))
+                                  (_, (c1, c2)):_ -> 
+                                     do mt1 <- rec (i : history) (TVar c1)
+                                        mt2 <- rec (i : history) (TVar c2)
+                                        return $ 
+                                           do tp1 <- mt1
+                                              tp2 <- mt2
+                                              return (TApp tp1 tp2)
+                        _ -> return Nothing
     TCon s     -> return (Just tp)
+    
     TApp t1 t2 -> do mt1 <- rec history t1
                      mt2 <- rec history t2
                      case (mt1,mt2) of 

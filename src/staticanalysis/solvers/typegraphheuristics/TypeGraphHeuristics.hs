@@ -43,19 +43,30 @@ heuristicsConstantClash is =
    do pathsWithInfo    <- findPathsInTypeGraph is
       let edgeInfoTable = makeEdgeInfoTable pathsWithInfo
           allEdges      = map fst edgeInfoTable
+        
+      addDebug (putStrLn (unlines (map show edgeInfoTable)))
           
-      addDebug . unlines $ 
+      addDebug . putStrLn . unlines $ 
          ("*** Error Paths in Type Graph ***\n") : 
          zipWith (\i p -> "Path #"++show i++"\n"++replicate 25 '='++"\n"++showPath p) [1..] [ p | (p, (_, _, False)) <- pathsWithInfo ]    
 
       maxPhaseEdges          <- applyEdgesFilter constraintPhaseFilter allEdges  
       maybeUserConstraint    <- applyEdgesFilter (maybeUserConstraintFilter pathsWithInfo) maxPhaseEdges
       maxDifferentGroupEdges <- applyEdgesFilter (differentGroupsFilter edgeInfoTable) maybeUserConstraint
+      maxErrorMinGoodPaths   <- applyEdgesFilter (errorPathsFilter edgeInfoTable) maxDifferentGroupEdges
       
+      addDebug . putStrLn $ 
+         ("*** Remaining edges 1\n" ++ unlines (map show (maxPhaseEdges)))
+      addDebug . putStrLn $ 
+         ("*** Remaining edges 2\n" ++ unlines (map show (maybeUserConstraint)))
+      addDebug . putStrLn $ 
+         ("*** Remaining edges 3\n" ++ unlines (map show (maxDifferentGroupEdges)))
+      addDebug . putStrLn $ 
+         ("*** Remaining edges 4\n" ++ unlines (map show (maxErrorMinGoodPaths)))                        
       -- first try heuristics to repair the program
       repairs <- mapM id [ f x y >>= return . fmap (\result -> (result,(x,y)))
                          | 
-                           (x, y) <- maxDifferentGroupEdges
+                           (x, y) <- maxErrorMinGoodPaths
                          , f      <- repairHeuristics
                          ]       
       case reverse (sortBy (\((x,_,_),_) ((y,_,_),_) -> x `compare` y) (catMaybes repairs)) of
@@ -73,11 +84,11 @@ heuristicsConstantClash is =
                   okayEdges <- let edgeFilter edge info = 
                                       do results <- mapM id [ f edge info| f <- filterHeuristics ]
                                          return (all isNothing results)
-                               in applyEdgeFilter edgeFilter maxDifferentGroupEdges  
+                               in applyEdgeFilter edgeFilter maxErrorMinGoodPaths  
 
                   -- use tie breaker heuristics
                   bestEdges <- let edgeFilter edge info = 
-                                      do results <- mapM id [ f edge info| f <- (errorAndGoodPaths edgeInfoTable) : tieBreakerHeuristics ]
+                                      do results <- mapM id [ f edge info| f <- minimizeGoodPaths edgeInfoTable : tieBreakerHeuristics ]
                                          return (product (map fst results))
                                in maximalEdgeFilter edgeFilter okayEdges
                   
@@ -116,15 +127,16 @@ findPathsInTypeGraph is =
                  | s1 /= s2 && ep <= 0           = f (gp,ep) rest
                  | otherwise                     = 
 
-                      do paths <- getPathsFrom i1 [i2]
+                      do paths <- allPaths i1 i2
                          if s1 == s2 
                            then do (r1,r2) <- f (gp - length paths,ep) rest
                                    return ([ (path, ((i1,i2),i,True)) | path <- paths ] ++ r1,r2)
                            else do (r1,r2) <- f (gp,ep - length paths) rest
                                    return (r1,[ (path, ((i1,i2),i,False)) | path <- paths ] ++ r2)
 
-          in do vertices <- getVerticesInGroup i
-                f tuple (combinations [ (i,s) | (i,(Just s,_,_)) <- vertices ] )  
+          in do vertices <- verticesInGroupOf i
+                f tuple (combinations (  [ (i,s)   | (i,(VCon s,_)) <- vertices ]
+                                      ++ [ (i,"@") | (i,(VApp _ _,_)) <- vertices ]) )  
                 
        combinations :: [a] -> [(a,a)]
        combinations []     = []
@@ -174,17 +186,23 @@ differentGroupsFilter edgeInfoTable = maximalEdgeFilter f
    where f edgeID cinfo = return $
             case find ((edgeID==) . fst . fst) edgeInfoTable of 
                Nothing            -> 0
-               Just (_,pathInfos) -> length $ nub $ [ grp | (_, grp, False) <- pathInfos ]
-               
-errorAndGoodPaths :: EdgeInfoTable cinfo -> EdgeID -> info -> TypeGraph info (Float, String)
-errorAndGoodPaths edgeInfoTable edgeID cinfo = 
-   return $ case find ((edgeID==) . fst . fst) edgeInfoTable of 
-      Nothing            -> (1.0, "error and good paths are unknown")
-      Just (_,pathInfos) -> 
-         let inGoodPaths     = length $ nub $ [ reorder src | (src, _, True ) <- pathInfos ]
-             inErrorPaths    = length $ nub $ [ reorder src | (src, _, False) <- pathInfos ]
-             reorder (a,b)   = if a <= b then (a,b) else (b,a)
-         in (0.1 ^ inGoodPaths * 5.0 ^ inErrorPaths, "[good="++show inGoodPaths ++",error="++show inErrorPaths++"]")
+               Just (_,pathInfos) -> length $ nub $ [ grp | (_, grp, False) <- pathInfos ]              
+
+errorPathsFilter :: Monad monad => EdgeInfoTable cinfo -> EdgesFilter monad cinfo
+errorPathsFilter edgeInfoTable = maximalEdgeFilter f 
+   where f edgeID cinfo = return $ 
+            case find ((edgeID==) . fst . fst) edgeInfoTable of 
+               Nothing            -> 0
+               Just (_,pathInfos) -> length $ nub $ [ src | (src, _, False) <- pathInfos ]
+
+minimizeGoodPaths :: Monad monad => EdgeInfoTable cinfo -> (EdgeID -> info -> monad (Float, String)) -- TieBreakerHeuristic  m info
+minimizeGoodPaths edgeInfoTable edgeID cinfo = 
+   case find ((edgeID==) . fst . fst) edgeInfoTable of 
+      Nothing            -> return (1.0, "unknown number of good paths")
+      Just (_,pathInfos) -> let number = 1 + (length $ nub $ [ src | (src, _, True ) <- pathInfos ])
+                            in return ( 1 / fromIntegral number
+                                      , show number ++ " good paths"
+                                      )
          
 maybeUserConstraintFilter :: (Monad monad, TypeGraphConstraintInfo cinfo) => PathsWithInfo cinfo -> EdgesFilter monad cinfo
 maybeUserConstraintFilter pathsWithInfo edges = 

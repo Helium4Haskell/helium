@@ -26,21 +26,32 @@ import Utils (internalError)
 import Data.FiniteMap
 import Maybe
  
-type TypeGraph info   = Fix info () (STMonad (TG info))
-data TG info state = 
-        TG { finiteMapRef   :: STRef state (FiniteMap Int (STRef state (EquivalenceGroup info)))
-           , signaledErrors :: STRef state [(UnificationError,Int)]
-           }  
+type TypeGraph info   = Fix info (TG info)
+
+data TG info = 
+        TG { referenceMap            :: FiniteMap Int Int 
+           , equivalenceGroupMap     :: FiniteMap Int (EquivalenceGroup info)
+           , equivalenceGroupCounter :: Int
+           , signaledErrors          :: [(UnificationError,Int)]
+           }
+
+emptyTG :: TG info           
+emptyTG = TG { referenceMap            = emptyFM
+             , equivalenceGroupMap     = emptyFM
+             , equivalenceGroupCounter = 0 
+             , signaledErrors          = []
+             }
+           
 
 evalTypeGraph :: TypeGraph info result -> result
-evalTypeGraph x = fst $ runSTMonad $ runFix x newState
+evalTypeGraph x = fst . runFix x . extend $ emptyTG
 
 solveTypeGraph :: ( IsTypeGraph (TypeGraph info) info
                   , SolvableConstraint constraint (TypeGraph info)
                   , Show constraint
                   ) => (OrderedTypeSynonyms, [[(String, TpScheme)]]) -> Int -> [constraint]  
                     -> (Int, FixpointSubstitution, Predicates, [info], IO ())
-solveTypeGraph (synonyms, siblings) unique constraints = 
+solveTypeGraph (synonyms, siblings) unique constraints =
    evalTypeGraph $
    do setTypeSynonyms synonyms
       addSiblings siblings
@@ -48,135 +59,145 @@ solveTypeGraph (synonyms, siblings) unique constraints =
       uniqueAtEnd <- getUnique
       errors      <- getErrors
       subst       <- buildSubstitutionTypeGraph
-      predicates  <- getReducedPredicates
+      predicates  <- getPredicates
       debug       <- getDebug
-      return (uniqueAtEnd, subst, map fst predicates, errors, putStrLn debug)
+      return (uniqueAtEnd, subst, map fst predicates, errors, debug)
 
 buildSubstitutionTypeGraph :: IsTypeGraph (TypeGraph info) info => TypeGraph info FixpointSubstitution 
-buildSubstitutionTypeGraph = 
-{-
-   do newUnique <- getUnique
-      bintreesubst <- rec (0, newUnique - 1)
-      return (wrapSubstitution bintreesubst)
-      
-  where
-    rec (a,b) 
-      | a == b    = do tp <- findSubstForVar a
-                       return (BinTreeSubstNode tp)
-      | a < b     = do let split = (a+b) `div` 2
-                       left  <- rec (a,split)
-                       right <- rec (split+1,b)
-                       return (BinTreeSubstSplit split left right)    
-      | otherwise = do return BinTreeSubstEmpty
--}
--- alternative 
-
-   do is  <- liftUse 
-                (\groups -> do fm  <- readSTRef (finiteMapRef groups)
-                               return (keysFM fm))
+buildSubstitutionTypeGraph =
+   do is  <- getFromTG (keysFM . referenceMap)
       tps <- mapM findSubstForVar is
-      return (FixpointSubstitution $ listToFM $ zip is tps)
-     
+      let notIdentity (i, TVar j) = i /= j
+          notIdentity _           = True
+      return (FixpointSubstitution $ listToFM $ filter notIdentity $ zip is tps)
+
+getFromTG :: (TG info -> a) -> TypeGraph info a
+getFromTG = gets . getWith
+
+updateTG :: (TG info -> TG info) -> TypeGraph info ()
+updateTG = modify . liftFunction
+
+instance Show (TG info) where
+   show tg = "<type graph>"
+
 -----------------------------------------------------------------------------------
 
 instance IsTypeGraph (TypeGraph info) info => IsSolver (TypeGraph info) info where
 
-   initialize =
-      do unique <- getUnique
-         initializeTypeGraph
-         newVariables [0..unique-1]
-
    unifyTerms info t1 t2 =
+      debugTrace ("unifyTerms "++show t1++" "++show t2) >>
       do v1 <- makeTermGraph t1
-         v2 <- makeTermGraph t2      
-         propagateEquality [v1,v2]    
-         addEdge (EdgeID v1 v2) (Initial info)
+         v2 <- makeTermGraph t2     
+         addEdge (EdgeID v1 v2) info
 
    makeConsistent =
-      do consistent <- isConsistent
-         if consistent 
+      debugTrace "makeConsistent" >>
+      do conflicts <- getConflicts
+         if (null conflicts) 
            then 
-             do getReducedPredicates               
-                return ()  -- checkErrors
+             do reducePredicates
+                (checkErrors :: IsTypeGraph (TypeGraph a) a => TypeGraph a ())
            else 
-             do (edges, errors) <- getHeuristics                         
-                mapM_ addError errors               
-                mapM_ deleteEdge edges                        
-                addDebug $ "> removed edges "++show edges
+             do applyHeuristics
                 makeConsistent
 
-   newVariables is = 
-      mapM_ (\i -> addVertexWithChildren i (Nothing,[],Nothing)) is
-
-   findSubstForVar i =   
+   findSubstForVar i =
+      debugTrace ("findSubstForVar " ++ show i) >>
       do synonyms  <- getTypeSynonyms
-         vertices  <- getVerticesInGroup i
-         let constants = nubBy (\x y -> fst x == fst y)
-                       $ [ original | (_,(_,_,Just original)) <- vertices ]
-                      ++ [ (s,cs)   | (_,(Just s,cs,Nothing)) <- vertices ] 
-         types <- let f (s,cs) = do ts <- mapM findSubstForVar cs
-                                    return (foldl TApp (TCon s) ts)
-                  in mapM f constants  
-         case types of
-           []     -> return (TVar . fst . head $ vertices)
-           (t:ts) -> let op t1 t2 = case mguWithTypeSynonyms synonyms t1 t2 of
-                                      Left _      -> internalError "SolveTypeGraph.hs" "findSubstForVar" "multiple constants present"
+         eqgroup <- equivalenceGroupOf i
+         let constantsList = constants eqgroup
+             childrenList  = [ (l, r) | (_, (VApp l r, _)) <- vertices eqgroup]
+             originalsList = [ foldl TApp (TCon s) (map TVar is) | (_, (_, Just (s, is))) <- vertices eqgroup ]
+             err = internalError "SolveTypeGraph.hs" "findSubstForVar" "inconsistent type graph"
+         unless (consistent eqgroup) err
+         case originalsList of 
+            t:ts -> let op t1 t2 = case mguWithTypeSynonyms synonyms t1 t2 of
+                                      Left _      -> internalError "SolveTypeGraph.hs" "findSubstForVar" "inconsistent type graph"
                                       Right (b,s) -> equalUnderTypeSynonyms synonyms (s |-> t1) (s |-> t2)
-                     in return (foldr op t ts)
+                    in applySubst (foldr op t ts)
+            [] -> case constantsList of 
+                     [s] -> return (TCon s)
+                     []  -> case childrenList of
+                               (l,r):_ -> applySubst (TApp (TVar l) (TVar r))
+                               []      -> return (TVar (representative eqgroup))
+                     _   -> err                    
 
-equivalenceGroupOf :: Int -> TG info state -> ST state (EquivalenceGroup info)
-equivalenceGroupOf i groups = equivalenceGroupRefOf i groups >>= readSTRef
-     
-equivalenceGroupRefOf :: Int -> TG info state -> ST state (STRef state (EquivalenceGroup info))
-equivalenceGroupRefOf i groups = 
-   do finiteMap <- readSTRef (finiteMapRef groups)
-      case lookupFM finiteMap i of
-         Just ref -> return ref
-         Nothing  -> error "see equivalenceGroupRefOf"
+-----------------------------------------------------------------------------------
 
-updateEquivalenceGroupOf :: Int -> (EquivalenceGroup info -> EquivalenceGroup info) -> TG info state -> ST state ()
-updateEquivalenceGroupOf i f groups = do ref <- equivalenceGroupRefOf i groups
-                                         myModifySTRef ref f
+equivalenceGroupOf :: Int -> TypeGraph info (EquivalenceGroup info)
+equivalenceGroupOf i =
+   do maybeNr <- getFromTG (flip lookupFM i . referenceMap)
+      case maybeNr of 
+         Nothing ->
+            return (insertVertex i (VVar,Nothing) emptyGroup)
+         Just eqnr -> 
+            let err = internalError "SolveTypeGraph.hs" "equivalenceGroupOf" "error in lookup map"
+            in getFromTG (\x -> lookupWithDefaultFM (equivalenceGroupMap x) err eqnr)         
+
+updateEquivalenceGroupOf :: Int -> (EquivalenceGroup info -> EquivalenceGroup info) -> TypeGraph info ()
+updateEquivalenceGroupOf i f = 
+   do eqgrp <- equivalenceGroupOf i 
+      updateTG 
+         (\groups -> let err  = internalError "SolveTypeGraph.hs" "updateEquivalenceGroupOf" "error in lookup map"
+                         eqnr = lookupWithDefaultFM (referenceMap groups) err i
+                     in groups { equivalenceGroupMap = addToFM (equivalenceGroupMap groups) eqnr (f eqgrp) })
+  
+areInTheSameGroup :: Int -> Int -> TypeGraph info Bool
+areInTheSameGroup v1 v2 =
+   getFromTG 
+      (\groups -> let eqnr1 = lookupFM (referenceMap groups) v1
+                      eqnr2 = lookupFM (referenceMap groups) v2
+                  in eqnr1 == eqnr2 && isJust eqnr1)
+
+removeGroup :: EquivalenceGroup info -> TypeGraph info ()
+removeGroup eqgroup = 
+   updateTG
+      (\groups -> let vertexIDs  = map fst (vertices eqgroup)
+                      oldGroupNr = maybe [] (:[]) (lookupFM (referenceMap groups) (head vertexIDs))
+                  in groups { referenceMap        = delListFromFM (referenceMap groups) vertexIDs -- is not necessary
+                            , equivalenceGroupMap = delListFromFM (equivalenceGroupMap groups) oldGroupNr
+                            })
+                                              
+createNewGroup :: EquivalenceGroup info -> TypeGraph info ()
+createNewGroup eqgroup =
+   updateTG
+      (\groups -> let newGroupNumber = equivalenceGroupCounter groups
+                      list = [(i, newGroupNumber) | (i, _) <- vertices eqgroup]
+                  in groups { referenceMap            = addListToFM (referenceMap groups) list
+                            , equivalenceGroupMap     = addToFM (equivalenceGroupMap groups) newGroupNumber eqgroup
+                            , equivalenceGroupCounter = newGroupNumber + 1
+                            })
+            
+-----------------------------------------------------------------------------------
+
+getSignaledErrors :: TypeGraph info [(UnificationError, Int)]
+getSignaledErrors = getFromTG signaledErrors
+
+setSignaledErrors :: [(UnificationError, Int)] -> TypeGraph info ()
+setSignaledErrors xs = updateTG (\x -> x { signaledErrors = xs })
 
 signalInconsistency :: UnificationError -> Int -> TypeGraph info ()
-signalInconsistency u i = liftUse ( flip myModifySTRef ((u,i):) . signaledErrors )
-
-myModifySTRef :: STRef state a -> (a -> a) -> ST state ()  -- see also GHC library
-myModifySTRef ref f = do a <- readSTRef ref
-                         writeSTRef ref (f a)
+signalInconsistency u i = 
+   do xs <- getSignaledErrors
+      setSignaledErrors ((u, i):xs) 
+      
+-----------------------------------------------------------------------------------
    
 combineClasses :: IsTypeGraph (TypeGraph info) info => Int -> Int -> TypeGraph info ()
 combineClasses v1 v2 =
-   do liftUse
-        (\groups -> do ref1 <- equivalenceGroupRefOf v1 groups
-                       ref2 <- equivalenceGroupRefOf v2 groups
-                       unless (ref1 == ref2) $
-                         do fm   <- readSTRef (finiteMapRef groups)
-                            eqc1 <- readSTRef ref1
-                            eqc2 <- readSTRef ref2
-                            let fm' = addListToFM fm [ (i,ref1) | (i,_) <- vertices eqc2 ]
-                            writeSTRef (finiteMapRef groups) fm'
-                            writeSTRef ref1 (combineGroups eqc1 eqc2))
-                            
-      checkConsistencyForGroupOf v1
+   debugTrace ("combineClasses " ++ show v1 ++ " " ++ show v2) >>
+   do condition <- areInTheSameGroup v1 v2
+      unless condition $ 
+         do eqc1 <- equivalenceGroupOf v1
+            eqc2 <- equivalenceGroupOf v2   
+            removeGroup eqc1
+            removeGroup eqc2
+            createNewGroup (combineGroups eqc1 eqc2)  
+            checkConsistencyForGroupOf v1
 
 checkConsistencyForGroupOf :: IsTypeGraph (TypeGraph info) info => Int -> TypeGraph info ()
 checkConsistencyForGroupOf i = 
-   do strings <- getConstantsInGroup i
-      when (length strings > 1) (signalInconsistency ConstantClash i)
-
-removeImpliedClique :: IsTypeGraph (TypeGraph info) info => Cliques -> TypeGraph info ()
-removeImpliedClique clique =
-   do is <- liftUse
-         (\groups -> do let vid = fst . head . head . snd $ clique
-                        eqgroup <- equivalenceGroupOf vid groups
-                        let makeRef eqc = do fm  <- readSTRef (finiteMapRef groups)   
-                                             ref <- newSTRef eqc
-                                             let fm' = addListToFM fm [ (i,ref) | (i,_) <- vertices eqc ]
-                                             writeSTRef (finiteMapRef groups) fm'
-                                             return (representative eqc)
-                                             
-                        mapM makeRef . splitGroup . removeClique clique $ eqgroup)                     
-      cliques <- lookForCliques is
-      mapM_ removeImpliedClique cliques
-      mapM_ checkConsistencyForGroupOf is
+   debugTrace ("checkConsistencyForGroupOf " ++ show i) >>
+   do eqgroup <- equivalenceGroupOf i
+      unless (consistent eqgroup)
+         (signalInconsistency ConstantClash i)

@@ -6,15 +6,11 @@ import Types
 import ConstraintInfo
 
 class (ConstraintInfo info, Monad m) => IsSolver m info | m -> info where
-   initialize        ::                     m ()
    makeConsistent    ::                     m ()
    unifyTerms        :: info -> Tp -> Tp -> m ()
-   newVariables      :: [Int] ->            m ()
    findSubstForVar   :: Int ->              m Tp
    
-   initialize     = return ()    -- default definition (do nothing)
-   makeConsistent = return ()    -- default definition (do nothing)
-   newVariables _ = return ()    -- default definition (do nothing)   
+   makeConsistent = return ()    -- default definition (do nothing)  
 
 solveConstraints :: ( IsSolver m info
                     , MonadState (SolveState m info ext) m
@@ -23,7 +19,6 @@ solveConstraints :: ( IsSolver m info
 solveConstraints unique constraints = 
    do setUnique unique      
       pushConstraints constraints
-      initialize      
       stateDebug
       startSolving
       makeConsistent
@@ -42,8 +37,8 @@ applySubstGeneral scheme =
       let sub = listToSubstitution (zip var tps)                          
       return (sub |-> scheme)   
 
-getReducedPredicates :: (IsSolver m info, MonadState (SolveState m info ext) m) => m [(Predicate, info)]
-getReducedPredicates =
+reducePredicates :: (IsSolver m info, MonadState (SolveState m info ext) m) => m ()
+reducePredicates = 
    do synonyms    <- getTypeSynonyms
       predicates  <- getPredicates
       substituted <- let f (predicate, info) = 
@@ -53,4 +48,3 @@ getReducedPredicates =
       let (reduced, errors) = associatedContextReduction synonyms standardClasses substituted
       mapM_ addError [ setReductionError p info | ReductionError (p, info) <- errors ]
       setPredicates reduced
-      return reduced

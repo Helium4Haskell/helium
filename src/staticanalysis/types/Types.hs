@@ -9,7 +9,6 @@
 --
 -----------------------------------------------------------------------------
 
-
 module Types 
    ( module TypeBasics
    , module QualifiedTypes
@@ -18,6 +17,7 @@ module Types
    , module TypeUnification
    , module TypeClasses
    , module TypeSchemes
+   , module Kinds
    ) where
 
 import TypeBasics
@@ -27,3 +27,4 @@ import TypeSynonyms
 import TypeUnification
 import TypeClasses
 import TypeSchemes
+import Kinds

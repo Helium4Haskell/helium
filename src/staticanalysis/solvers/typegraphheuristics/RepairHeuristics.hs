@@ -296,13 +296,12 @@ fbHasTooManyArguments edge info
       do synonyms <- getTypeSynonyms
          let (t1,t2)         = getTwoTypes info
              maximumExplicit = arityOfTp (expandType (snd synonyms) t1)
-         maybeNumberOfPatterns <- liftUse 
-            (\groups -> do let tvar = head (ftv t2)
-                           eqgroup <- equivalenceGroupOf tvar groups
-                           let edgeinfos = [ info | (EdgeID v1 v2,info) <- edges eqgroup, (v1==tvar || v2==tvar) ] 
-                           case [ i | Just i <- map maybeFunctionBinding edgeinfos] of 
-                             [i] -> return (Just i)                            
-                             _   -> return Nothing)
+             tvar            = head (ftv t2)
+         eqgroup <- equivalenceGroupOf tvar             
+         let edgeinfos       = [ info | (EdgeID v1 v2,info) <- edges eqgroup, (v1==tvar || v2==tvar) ]                      
+             maybeNumberOfPatterns = case [ i | Just i <- map maybeFunctionBinding edgeinfos] of 
+                                        [i] -> Just i
+                                        _   -> Nothing
          case maybeNumberOfPatterns of
             Just n | n > maximumExplicit -> let msg = "the function binding has "++prettyPat n++", but its type signature "++prettyArg maximumExplicit
                                                 prettyPat i = if i == 1 then "1 pattern" else show i++" patterns"
@@ -420,11 +419,10 @@ showNumber i | i <= 10 && i >=0 = list !! i
                 , "six", "seven", "eight", "nine", "ten" ]      
 
 getAdjacentEdges :: Int -> TypeGraph info [(EdgeID, info)]
-getAdjacentEdges vertexID =
-   liftUse
-      (\groups -> do eqc <- equivalenceGroupOf vertexID groups
-                     let predicate (EdgeID v1 v2) = v1 == vertexID || v2 == vertexID
-                     return (filter (predicate . fst) (edges eqc)))   
+getAdjacentEdges vertexID =   
+   do eqc <- equivalenceGroupOf vertexID
+      let predicate (EdgeID v1 v2) = v1 == vertexID || v2 == vertexID
+      return (filter (predicate . fst) (edges eqc))
 
 heuristics_MAX        =    120 :: Int
 

@@ -11,12 +11,13 @@ module BasicState
 
 import Control.Monad.State
 import Constraints
+import GHC.IOBase (unsafePerformIO)
   
 ---------------------------------------------------------------------
 
 data BasicState m err a = 
      S { constraints :: Constraints m
-       , debug       :: ShowS
+       , debug       :: IO ()
        , errors      :: [err]
        , checks      :: [(m Bool, String)]
        , hiddenExt   :: a
@@ -24,7 +25,7 @@ data BasicState m err a =
        
 newState :: BasicState m err ()
 newState = S { constraints = [] 
-             , debug       = id
+             , debug       = return ()
              , errors      = []
              , checks      = []
              , hiddenExt   = ()
@@ -79,15 +80,15 @@ allConstraints     = gets constraints
 ---------------------------------------------------------------------
 
 addDebug   :: MonadState (BasicState monad info a) monad => 
-                 String -> monad ()
+                 IO () -> monad ()
 stateDebug :: (MonadState (BasicState monad info a) monad, Show a) => 
-                 monad ()
+                 monad ()             
 getDebug   :: MonadState (BasicState monad info a) monad => 
-                 monad String
+                 monad (IO ())
 
-addDebug x = modify (\s -> s { debug = (++x) . debug s })  
-stateDebug = get >>= (addDebug . show)
-getDebug   = gets (($ []) . debug)
+addDebug io = modify (\s -> s { debug = debug s >> io })  
+stateDebug  = get >>= (addDebug . putStrLn . show)
+getDebug    = gets debug
 
 ---------------------------------------------------------------------
 

@@ -31,6 +31,7 @@ edges             :: EquivalenceGroup info -> [(EdgeID,info)]
 cliques           :: EquivalenceGroup info -> [Clique]
 constants         :: EquivalenceGroup info -> [String]
 representative    :: EquivalenceGroup info -> VertexID
+consistent        :: EquivalenceGroup info -> Bool
 
 pathsFrom         :: VertexID -> [VertexID] -> EquivalenceGroup info -> Paths info
 
@@ -65,8 +66,8 @@ emptyGroup = EQGroup ([],[],[],[])
 
 insertVertex i info (EQGroup (vs,ss,es,cs)) = (EQGroup ((i,info):vs,ss',es,cs))
    where ss' = case info of 
-                  (Just s,_,_) -> [s] `union` ss
-                  _            -> ss
+                  (VCon s,_) -> [s] `union` ss
+                  _          -> ss
    
 insertEdge i info (EQGroup (vs,ss,es,cs)) = (EQGroup (vs,ss,(i,info):es,cs))  
  
@@ -141,7 +142,13 @@ constants  (EQGroup (vs1,ss1,es1,cs1)) = ss1
 representative (EQGroup (vs1,ss1,es1,cs1)) = case vs1 of
    (vid,_) : _ -> vid
    _           -> internalError "EquivalenceGroup.hs" "representative" "no vertices in group"
-   
+
+consistent eqgroup = 
+   case length (constants eqgroup) of
+      0 -> True
+      1 -> null [ () | (_, (VApp _ _, _)) <- vertices eqgroup ]
+      _ -> False
+    
 ----------------------------------------------------------------------
 -- All paths between two vertices in a group 
 

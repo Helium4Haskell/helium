@@ -3,6 +3,7 @@ module SolveChunks where
 import Constraints
 import IsTypeGraph
 import List              (partition)
+import Utils             (internalError)
 import SolveCombination
 import SolveGreedy
 import SolveTypeGraph
@@ -61,8 +62,10 @@ noResult i = (i, FixpointSubstitution emptyFM, [], [], return ())
 
 combineResults :: String -> Result info -> Result info -> Result info
 combineResults extra (_, FixpointSubstitution s1, ps1, er1, io1) (unique, FixpointSubstitution s2, ps2, er2, io2) = 
-   (unique, FixpointSubstitution (s1 `plusFM` s2), ps1++ps2, er1++er2, io1 >> putStrLn extra >> io2)         
-
--- conversion substitution is VERY expensive
---convert :: WrappedSubstitution -> FiniteMapSubstitution
---convert ws = listToSubstitution [ (i, ws |-> TVar i) | i <- dom ws ]
+   ( unique
+   , FixpointSubstitution (plusFM_C notDisjoint s1 s2)
+   , ps1++ps2
+   , er1++er2
+   , io1 >> putStrLn extra >> io2
+   )
+  where notDisjoint _ _ = internalError "SolveChunks.hs" "combineResults" "substitutions from chunks are not disjoint"

@@ -22,8 +22,7 @@ instance ( IsSolver m info
             do unique <- getUnique
                let (unique',predicates,its) = instantiate unique ts
                    info' (tp,its) = setOriginalTypeScheme ts (info (its,tp))
-               setUnique unique'
-               newVariables [unique..unique'-1]               
+               setUnique unique'              
                pushConstraint  (liftConstraint (tp .==. its $ info'))
                let cs = map (PredicateConstraint (info' (tp,its))) predicates
                pushConstraints (liftConstraints cs)
@@ -32,7 +31,7 @@ instance ( IsSolver m info
             do makeConsistent
                t2' <- applySubst t2
                ms' <- mapM applySubst ms
-               ps  <- getReducedPredicates
+               ps  <- getPredicates
                let scheme = generalize (ftv ms') (map fst ps) t2'
                pushConstraint (liftConstraint (t1 .::. scheme $ info)) 
                
@@ -60,7 +59,7 @@ instance ( IsSolver m info
             do t1' <- applySubst t1
                ms' <- mapM applySubst ms
                t2' <- applySubst t2
-               ps  <- getReducedPredicates
+               ps  <- getPredicates
                let scheme = generalize (ftv ms') [] t2'
                return (isInstanceOf t1' scheme)                            
 

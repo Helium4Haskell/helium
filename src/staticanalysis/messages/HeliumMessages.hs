@@ -36,6 +36,8 @@ instance Show MessageBlock where
    show (MessageRange r      ) = show r
    show (MessageType tp      ) = show tp
    show (MessageTypeScheme ts) = show ts
+   show (MessageKind kind    ) = showKind kind
+   show (MessagePredicate p  ) = show p
    show (MessageOneLineTree t) =  -- see tableWidthRight
                                  OneLiner.showOneLine 58 t
    show (MessageInfoLink s   ) = "" -- "<a link=" ++ s ++ ">[?]</a>"
@@ -90,6 +92,8 @@ isTypeOrTypeSchemeMessage mb =
    case mb of
       MessageType _       -> True
       MessageTypeScheme _ -> True
+      MessageKind _       -> True
+      MessagePredicate _  -> True
       _                   -> False
 
 -- if two types or type schemes follow each other in a table (on the right-hand side)
@@ -110,7 +114,7 @@ renderTypesInRight width table =
   where maybeType :: MessageBlock -> Maybe Tp
         maybeType (MessageType tp      ) = Just tp
         maybeType (MessageTypeScheme ts) | not . hasPredicates . getQualifiedType $ ts
-                                         = Just (unsafeInstantiate ts)
+                                         = Just (unsafeInstantiate ts)                            
         maybeType _                      = Nothing
 
 -- make sure that a string does not exceed a certain width.
@@ -151,7 +155,7 @@ prepareTypesAndTypeSchemes messageLine = newMessageLine
      --step 1
     replaceTypeSchemes :: MessageLine -> (MessageLine, Int, [String])
     replaceTypeSchemes messageLine = 
-       let unique = maximum (0 : ftv messageLine) + 1
+       let unique = nextFTV messageLine
        in case messageLine of
              MessageOneLiner mb -> let (r, i, ns) = f_MessageBlock unique mb
                                    in (MessageOneLiner r, i, ns)

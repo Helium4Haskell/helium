@@ -1,9 +1,6 @@
 -------------------------------------------------------------------------------
 --
 --   *** The Helium Compiler : Static Analysis ***
---               ( Bastiaan Heeren )
---
--- TypeErrors.hs : ...
 -- 
 -------------------------------------------------------------------------------
 
@@ -12,8 +9,9 @@ module TypeErrors where
 import Messages
 import Types
 import List       (union, intersperse, partition)
-import OneLiner   (OneLineTree)
-import UHA_Syntax (Range)
+import OneLiner   (OneLineTree(..) )
+import UHA_Syntax (Range, Name)
+import UHA_Range  (getNameRange)
 
 type TypeErrors = [TypeError]
 data TypeError  = TypeError
@@ -121,7 +119,7 @@ checkTypeError synonyms typeError@(TypeError r o table h) =
       UnificationErrorTable sources type1 type2 ->
          let becauseHint = TypeErrorHint "because" . MessageString
              fun i     = (\(_,_,a) -> a) . instantiate i
-             unique    = maximum (0 : ftv type1 ++ ftv type2) + 1
+             unique    = nextFTV [type1, type2]
              t1        = either id (fun unique) type1
              unique'   = maximum (0 : ftv t1 ++ ftv type2) + 1
              t2        = either id (fun unique') type2
@@ -135,8 +133,8 @@ checkTypeError synonyms typeError@(TypeError r o table h) =
       _  -> Just typeError
 checkTypeError synonyms typeError = Just typeError
 
-makeNotGeneralEnoughTypeError :: Range -> OneLineTree -> TpScheme -> TpScheme -> TypeError
-makeNotGeneralEnoughTypeError range tree tpscheme1 tpscheme2 =
+makeNotGeneralEnoughTypeError :: (OneLineTree, Range) -> TpScheme -> TpScheme -> TypeError
+makeNotGeneralEnoughTypeError (tree, range) tpscheme1 tpscheme2 =
    let sub      = listToSubstitution (zip (ftv [tpscheme1, tpscheme2]) [ TVar i | i <- [1..] ])
        ts1      = freezeFreeTypeVariables (sub |-> tpscheme1)
        ts2      = freezeFreeTypeVariables (sub |-> tpscheme2)
@@ -146,6 +144,19 @@ makeNotGeneralEnoughTypeError range tree tpscheme1 tpscheme2 =
                     then []
                     else [TypeErrorHint "hint" (MessageString "try removing the type signature")]
    in TypeError range oneliner table hints
+   
+makeUnresolvedOverloadingError :: Range -> OneLineTree -> Predicate -> TypeError
+makeUnresolvedOverloadingError range tree (Predicate className classTP) =
+   CustomTypeError [range]
+      [ MessageOneLiner (MessageString "Unresolved overloading")
+      , MessageTable
+           [ (MessageString "function" , MessageOneLineTree tree) 
+           , (MessageString "predicate", MessageCompose [MessageString className, MessageString " ", parensIf (priorityOfType classTP < 2)(MessageType classTP)])
+           ]
+      ]
+   where parensIf :: Bool -> MessageBlock -> MessageBlock
+         parensIf b s = if b then MessageCompose [MessageString "(", s, MessageString ")"] else s
+   
    
 makeReductionError :: Range -> OneLineTree -> (TpScheme, Tp) -> ClassEnvironment -> Predicate -> TypeError
 makeReductionError range tree (scheme, tp) classEnvironment (Predicate className classTP) =

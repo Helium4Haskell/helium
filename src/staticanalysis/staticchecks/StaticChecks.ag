@@ -1,6 +1,7 @@
 ATTR Module
    [ baseName              : String
      importEnvironments    : ImportEnvironments
+     options               : {[Option]}
    |
    | collectEnvironment    : ImportEnvironment  
      errors                : Errors
@@ -10,6 +11,7 @@ ATTR Module
 
 imports {
 import Similarity ( similar )
+import Args
 import UHA_Syntax
 import UHA_Utils
 import UHA_Range
@@ -51,7 +53,7 @@ SEM Module
              loc . allErrors = concat [ @exportErrors
                                       , @scopeErrors
                                       , @miscerrors
-                                      , @kindErrors
+                                      , if KindInferencing `elem` @lhs.options then [] else @kindErrors
                                       , @topLevelErrors
                                       ] 
                  . removedEntities = [ (name,TypeConstructor) | name:_ <- @duplicatedTypeConstructors  ] ++   

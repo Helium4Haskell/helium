@@ -5,17 +5,17 @@ SEM Module
 
   | Module  
       loc  -- choose your algorithm to solve the type constraints                                                   
-           -- the default solver is SolverTypeGraph
+           -- the default solver is SolverChunks
            . selectedSolver =                 
                 let select
-                       | SolverChunks      `elem` @lhs.options = \unique _ ->  
-                                                                    let options = (@flattening, @orderedTypeSynonyms, @siblings)
-                                                                        chunkConstraints = chunkTree dependencyTypeConstraint @body.constraints
-                                                                    in solveChunkConstraints options unique chunkConstraints
                        | SolverSimple      `elem` @lhs.options = solveSimple      @orderedTypeSynonyms
                        | SolverGreedy      `elem` @lhs.options = solveGreedy      @orderedTypeSynonyms
                        | SolverCombination `elem` @lhs.options = solveCombination (@orderedTypeSynonyms, @siblings)                                    
-                       | otherwise                             = solveTypeGraph   (@orderedTypeSynonyms, @siblings)                          
+                       | SolverTypeGraph   `elem` @lhs.options = solveTypeGraph   (@orderedTypeSynonyms, @siblings)                          
+                       | otherwise = \unique _ ->  
+                                        let options = (@flattening, @orderedTypeSynonyms, @siblings)
+                                            chunkConstraints = chunkTree dependencyTypeConstraint @body.constraints
+                                        in solveChunkConstraints options unique chunkConstraints                       
                 in select
 
            -- choose your treewalk to flatten the constraint tree
@@ -41,10 +41,8 @@ SEM Module
                   then id
                   else spreadTree variableInConstraint
 
-           . flattening = flattenTree @selectedTreeWalk . phaseTree . @spreadingOrNot
-           
-                            
-           . constraints = zipWith setPosition [0..] (@flattening @body.constraints)
+           . flattening = zipWith setPosition [0..] . flattenTree @selectedTreeWalk . phaseTree . @spreadingOrNot                                       
+           . constraints = @flattening @body.constraints
            . orderedTypeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment
            
            . (betaUniqueAtTheEnd, substitution, predicates, solveErrors, debugIO) 
@@ -55,29 +53,17 @@ SEM Module
                                                 [ lookupFM (valueConstructors @lhs.importEnvironment) n
                                                 , lookupFM (typeEnvironment   @lhs.importEnvironment) n
                                                 ]
-                        in map (concatMap f) (similarFunctionTable ++ getSiblings @lhs.importEnvironment)
+                        in map (concatMap f) (getSiblings @lhs.importEnvironment)
                                        
            . monomorphics  = ftv (  (eltsFM $ valueConstructors @lhs.importEnvironment) 
                                  ++ (eltsFM $ typeEnvironment @lhs.importEnvironment)
                                  )
-           . monos = map TVar @monomorphics
+           . monos              = map TVar @monomorphics
            . checkedSolveErrors = catMaybes (map (checkTypeError @orderedTypeSynonyms . (@substitution |->) . makeTypeError) @solveErrors)
-           . typeErrors = 
-                if not (null @checkedSolveErrors)
-                  then @checkedSolveErrors
-                  else 
-                       let f ((m,t),s2,(tree,range)) = 
-                              let m' = @substitution |-> m
-                                  t' = @substitution |-> t
-                                  s1 = generalize (ftv m') @predicates t'
-                              in -- not unifiableTypeSchemes   @orderedTypeSynonyms s1 s2 
-                                 if not (genericInstanceOf @orderedTypeSynonyms standardClasses s2 s1)                                    
-                                   then [makeNotGeneralEnoughTypeError range tree s1 s2]
-                                   else []                                                                  
-                       in concatMap f @body.typeAnnotations
-
-           . initialScope = keysFM (typeEnvironment @lhs.importEnvironment)
-      body . betaUnique  = maximum (0 : @monomorphics) + 1 
+           . typeErrors         = if null @checkedSolveErrors then @body.collectErrors else @checkedSolveErrors
+           . warnings           = @body.collectWarnings
+           . initialScope       = keysFM (typeEnvironment @lhs.importEnvironment)
+      body . betaUnique         = maximum (0 : @monomorphics) + 1 
                                  
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Body
@@ -92,13 +78,13 @@ ATTR Body
 
 SEM Body
   | Body
-      lhs          . constraints         = Chunk @lhs.currentChunk @cset [] (dependencyBinds @lhs.chunkNumberMap @csetBinds) emptyTree
-                   . assumptions         = @aset'
+      lhs          . assumptions         = @aset'
       declarations . bindingGroups       = []
                    
       loc . (aset,cset,inheritedBDG,chunkNr) = 
                performBindingGroup @lhs.currentChunk @declarations.uniqueChunk @lhs.chunkNumberMap [] @declarations.typeSignatures Nothing @declarations.bindingGroups  
           . (csetBinds,aset') = (typeEnvironment @lhs.importEnvironment .:::. @aset) @cinfo
+          . constraints       = Chunk @lhs.currentChunk @cset [] (dependencyBinds @lhs.chunkNumberMap @csetBinds) emptyTree
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Declaration, Declarations, MaybeDeclarations
@@ -161,12 +147,12 @@ SEM FunctionBinding
 
   | FunctionBinding
       lhs           . assumptions = @assumptions'
-                    . constraints = @csetBinds .>>.
+      righthandside . monos       = eltsFM @lefthandside.environment ++ getMonos @csetBinds ++ @lhs.monos
+      loc           . constraints = @csetBinds .>>.
                                     Node [ @conLeft  .<. @lefthandside.constraints
                                          , @conRight .<. @righthandside.constraints
                                          ]
-      righthandside . monos       = eltsFM @lefthandside.environment ++ getMonos @csetBinds ++ @lhs.monos
-      loc           . (csetBinds,assumptions') = (@lefthandside.environment .===. @righthandside.assumptions) @cinfoBind
+                    . (csetBinds,assumptions') = (@lefthandside.environment .===. @righthandside.assumptions) @cinfoBind
                     . conLeft     = zipWith4 (\t1 t2 txt nr -> (t1 .==. t2) (@cinfoLeft nr txt)) @lefthandside.betas @lhs.betasLeft @lefthandside.patternTrees [0..]
                     . conRight    = [ (@righthandside.beta .==. @lhs.betaRight) @cinfoRight ]
 
@@ -193,31 +179,33 @@ ATTR              RightHandSide [ monos:Tps | | assumptions:Assumptions beta:Tp 
 SEM LeftHandSide
 
   | Function
-      lhs . constraints      = Node @patterns.constraintslist
-          . name             = @name.self
+      lhs . name             = @name.self
+      loc . constraints      = Node @patterns.constraintslist
+          
 
   | Infix
       lhs . numberOfPatterns = 2
           . environment      = @leftPattern.environment `plusFM` @rightPattern.environment
           . betas            = [@leftPattern.beta,@rightPattern.beta]
-          . constraints      = Node [ @leftPattern.constraints
+          . name             = @operator.self
+      loc . constraints      = Node [ @leftPattern.constraints
                                     , @rightPattern.constraints
                                     ]
-          . name             = @operator.self
+          
 
   | Parenthesized
       lhs . numberOfPatterns = @lefthandside.numberOfPatterns + @patterns.numberOfPatterns
           . environment      = @lefthandside.environment `plusFM` @patterns.environment
           . betas            = @lefthandside.betas ++ @patterns.betas
-          . constraints      = Node ( @lefthandside.constraints : @patterns.constraintslist )
+      loc . constraints      = Node ( @lefthandside.constraints : @patterns.constraintslist )
 
 SEM RightHandSide
 
   | Expression
-     lhs   . assumptions = @where.assumptions
-           . constraints = @where.constraints
+     lhs   . assumptions = @where.assumptions           
      where . assumptions = @expression.assumptions
            . constraints = @expression.constraints
+     loc   . constraints = @where.constraints
 
   | Guarded
      lhs                . assumptions    = @where.assumptions
@@ -226,8 +214,8 @@ SEM RightHandSide
                         . rightBeta      = @beta
                         . numberOfGuards = length @guardedexpressions.constraintslist
      where              . assumptions    = @guardedexpressions.assumptions
-                        . constraints    = Node @guardedexpressions.constraintslist
-     loc                . beta           = TVar @lhs.betaUnique
+     loc                . constraints    = Node @guardedexpressions.constraintslist
+                        . beta           = TVar @lhs.betaUnique
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Expression, Expressions, MaybeExpression, GuardedExpression, GuardedExpressions
@@ -473,24 +461,24 @@ SEM Pattern
   | Literal
       lhs . betaUnique  = @lhs.betaUnique + 1
           . environment = noAssumptions
-          . constraints = unitTree ((@literal.literalType .==. @beta) @cinfo)
-      loc . beta        = TVar @lhs.betaUnique
+      loc . constraints = unitTree ((@literal.literalType .==. @beta) @cinfo)
+          . beta        = TVar @lhs.betaUnique
 
   | Variable
       lhs . betaUnique  = @lhs.betaUnique + 1
           . environment = unitFM @name.self @beta
-          . constraints = Receive @lhs.betaUnique
-      loc . beta        = TVar @lhs.betaUnique
+      loc . constraints = Receive @lhs.betaUnique
+          . beta        = TVar @lhs.betaUnique
 
   | InfixConstructor
-      lhs         . constraints    = @conApply .>.
+      lhs         . environment    = @leftPattern.environment `plusFM` @rightPattern.environment
+      leftPattern . betaUnique     = @lhs.betaUnique + 2
+      loc         . constraints    = @conApply .>.
                                      Node [ listTree @conConstructor
                                           , @leftPattern.constraints
                                           , @rightPattern.constraints
                                           ]
-                  . environment    = @leftPattern.environment `plusFM` @rightPattern.environment
-      leftPattern . betaUnique     = @lhs.betaUnique + 2
-      loc         . beta           = TVar @lhs.betaUnique
+                  . beta           = TVar @lhs.betaUnique
                   . betaCon        = TVar (@lhs.betaUnique + 1)
                   . conApply       = [ (@betaCon .==. @leftPattern.beta .->. @rightPattern.beta .->. @beta) @cinfoApply ]
                   . conConstructor = case lookupFM (valueConstructors @lhs.importEnvironment) @constructorOperator.self  of
@@ -498,12 +486,12 @@ SEM Pattern
                                         Just ctp -> [ (@betaCon .::. ctp) @cinfoConstructor ]
 
   | Constructor
-      lhs      . constraints    = @conApply .>.
+      patterns . betaUnique     = @lhs.betaUnique + 2
+      loc      . constraints    = @conApply .>.
                                   Node [ listTree @conConstructor
                                        , Node @patterns.constraintslist
                                        ]
-      patterns . betaUnique     = @lhs.betaUnique + 2
-      loc      . beta           = TVar (@lhs.betaUnique)
+               . beta           = TVar (@lhs.betaUnique)
                . betaCon        = TVar (@lhs.betaUnique + 1)
                . conApply       = [ (@betaCon .==. foldr (.->.) @beta @patterns.betas) @cinfoApply ]             
                . conConstructor = case lookupFM (valueConstructors @lhs.importEnvironment) @name.self of
@@ -511,42 +499,42 @@ SEM Pattern
                                      Just ctp -> [ (@betaCon .::. ctp) @cinfoConstructor ]
 
   | As
-      lhs     . environment = addToFM @pattern.environment @name.self @beta
-              . constraints = @newcon .>.
+      lhs     . environment = addToFM @pattern.environment @name.self @beta              
+      pattern . betaUnique  = @lhs.betaUnique + 1
+      loc     . constraints = @newcon .>.
                               Node [ Receive @lhs.betaUnique
                                    , @pattern.constraints
                                    ]
-      pattern . betaUnique  = @lhs.betaUnique + 1
-      loc     . beta        = TVar @lhs.betaUnique
+              . beta        = TVar @lhs.betaUnique
               . newcon      = [ (@beta .==. @pattern.beta) @cinfo ]
 
   | Wildcard
       lhs . betaUnique  = @lhs.betaUnique + 1
           . environment = noAssumptions
-          . constraints = emptyTree
-      loc . beta        = TVar @lhs.betaUnique
+      loc . constraints = emptyTree
+          . beta        = TVar @lhs.betaUnique
 
   | List
-      lhs      . constraints  = @newcon .>.
-                                Node (zipWith3 @zipf @patterns.betas @childrenInfo @patterns.constraintslist)
       patterns . betaUnique   = @lhs.betaUnique + 2
-      loc      . beta         = TVar @lhs.betaUnique
+      loc      . constraints  = @newcon .>.
+                                Node (zipWith3 @zipf @patterns.betas @childrenInfo @patterns.constraintslist)
+               . beta         = TVar @lhs.betaUnique
                . beta'        = TVar (@lhs.betaUnique + 1)
                . newcon       = [ (listType @beta' .==. @beta) @cinfoResult ]
                . childrenInfo = zip @patterns.oneLineTree (map getPatRange @patterns.self)
                . zipf         = \tp pair ctree -> [ (tp .==. @beta') (@cinfoElem pair) ] .<. ctree
 
-  | Tuple
-      lhs      . constraints = @newcon .>. Node @patterns.constraintslist
+  | Tuple    
       patterns . betaUnique  = @lhs.betaUnique + 1
-      loc      . beta        = TVar @lhs.betaUnique
+      loc      . constraints = @newcon .>. Node @patterns.constraintslist
+               . beta        = TVar @lhs.betaUnique
                . newcon      = [ (tupleType @patterns.betas .==. @beta) @cinfo ]
 
   | Negate
-      lhs . constraints = listTree @newcon
-          . betaUnique  = @lhs.betaUnique + 1
+      lhs . betaUnique  = @lhs.betaUnique + 1
           . environment = noAssumptions
-      loc . beta        = TVar @lhs.betaUnique
+      loc . constraints = listTree @newcon
+          . beta        = TVar @lhs.betaUnique
           . newcon      = -- The parser only accepts a literal after '-' in a Pattern
                           -- search for the type of 'negate' in the import envionment: otherwise use the default type.
                           let standard = generalize [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
@@ -555,10 +543,10 @@ SEM Pattern
           
 {- only if type inferencing without overloading -}
   | NegateFloat
-      lhs . constraints = listTree @newcon
-          . betaUnique  = @lhs.betaUnique + 1
+      lhs . betaUnique  = @lhs.betaUnique + 1
           . environment = noAssumptions
-      loc . beta        = TVar @lhs.betaUnique
+      loc . constraints = listTree @newcon
+          . beta        = TVar @lhs.betaUnique
           . newcon      = -- The parser only accepts a literal after '-.' in a Pattern
                           [ (floatType .==. @beta) @cinfo ]
 
@@ -587,19 +575,19 @@ ATTR Alternative Alternatives [ nrOfAlternatives:Int | | ]
 SEM Alternative
 
   | Alternative
-      lhs           . constraints = @csetBinds .>>.
+      lhs           . assumptions = @assumptions'
+      righthandside . monos       = eltsFM @pattern.environment ++ getMonos @csetBinds ++ @lhs.monos
+      loc           . constraints = @csetBinds .>>.
                                     Node [ @conLeft  .<. @pattern.constraints
                                          , @conRight .<. @righthandside.constraints
-                                         ]
-                    . assumptions = @assumptions'
-      righthandside . monos       = eltsFM @pattern.environment ++ getMonos @csetBinds ++ @lhs.monos
-      loc           . (csetBinds,assumptions') = (@pattern.environment .===. @righthandside.assumptions) @cinfoBind
+                                         ] 
+                    . (csetBinds,assumptions') = (@pattern.environment .===. @righthandside.assumptions) @cinfoBind
                     . conLeft     = [ (@pattern.beta .==. @lhs.betaLeft) @cinfoLeft ]
                     . conRight    = [ (@righthandside.beta .==. @lhs.betaRight) @cinfoRight ]
 
   | Empty
       lhs . assumptions = noAssumptions
-          . constraints = emptyTree
+      loc . constraints = emptyTree
 
 SEM Alternatives
 
@@ -622,36 +610,38 @@ ATTR           Statements                      [ monos:Tps | | ]
 SEM Statement
 
   | Expression
-      lhs        . generatorBeta = Just @beta
-                 . constraints   = Node [ @newcon .<. @expression.constraints
-                                        , @lhs.constraints
-                                        ]
-                 . assumptions   = @lhs.assumptions `combine` @expression.assumptions
-      expression . betaUnique    = @lhs.betaUnique + 1
-      loc        . beta          = TVar @lhs.betaUnique
-                 . newcon        = [ (@expression.beta .==. ioType @beta) @cinfo ]
+      lhs        . generatorBeta  = Just @beta
+                 . assumptions    = @lhs.assumptions `combine` @expression.assumptions
+                 . constraints    = @locConstraints
+      expression . betaUnique     = @lhs.betaUnique + 1
+      loc        . locConstraints = Node [ @newcon .<. @expression.constraints
+                                         , @lhs.constraints
+                                         ]
+                 . beta           = TVar @lhs.betaUnique
+                 . newcon         = [ (@expression.beta .==. ioType @beta) @cinfo ]
 
   | Let
       lhs          . generatorBeta  = Nothing
                    . assumptions    = @aset
-                   . constraints    = @cset    
+                   . constraints    = @locConstraints  
       declarations . bindingGroups  = []
       
-      loc          . (aset,cset,inheritedBDG,chunkNr) = 
+      loc          . (aset,locConstraints,inheritedBDG,chunkNr) = 
                         performBindingGroup @lhs.currentChunk @declarations.uniqueChunk @lhs.chunkNumberMap @lhs.monos @declarations.typeSignatures @mybdggroup @declarations.bindingGroups
                         
                    . mybdggroup     = Just (@lhs.assumptions, [@lhs.constraints])
 
   | Generator
       lhs . generatorBeta = Nothing
-          . constraints   = @newcon .>. @csetBinds .>>.
-                            Node [ @pattern.constraints
-                                 , @expression.constraints
-                                 , @lhs.constraints
-                                 ]
+          . constraints   = @locConstraints
           . assumptions   = @assumptions' `combine` @expression.assumptions
           . monos         = eltsFM @pattern.environment ++ getMonos @csetBinds ++ @lhs.monos
-      loc . (csetBinds,assumptions') = (@pattern.environment .===. @lhs.assumptions) @cinfoBind
+      loc . locConstraints = @newcon .>. @csetBinds .>>.
+                                Node [ @pattern.constraints
+                                     , @expression.constraints
+                                     , @lhs.constraints
+                                     ]
+          . (csetBinds,assumptions') = (@pattern.environment .===. @lhs.assumptions) @cinfoBind
           . newcon        = [ (@expression.beta .==. ioType @pattern.beta) @cinfoResult ]
 
 SEM Statements
@@ -668,29 +658,31 @@ SEM Qualifier
 
   | Guard
       lhs . assumptions = @lhs.assumptions `combine` @guard.assumptions
-          . constraints = Node [ @newcon .<. @guard.constraints
-                               , @lhs.constraints
-                               ]
-      loc . newcon      = [ (@guard.beta .==. boolType) @cinfo ]
+          . constraints = @locConstraints
+      loc . locConstraints = Node [ @newcon .<. @guard.constraints
+                                  , @lhs.constraints
+                                  ]
+          . newcon      = [ (@guard.beta .==. boolType) @cinfo ]
 
   | Let   lhs          . assumptions    = @aset
-                       . constraints    = @cset
+                       . constraints    = @locConstraints
           declarations . bindingGroups  = []
           
-          loc          . (aset,cset,inheritedBDG,chunkNr) = 
+          loc          . (aset,locConstraints,inheritedBDG,chunkNr) = 
                             performBindingGroup @lhs.currentChunk @declarations.uniqueChunk @lhs.chunkNumberMap @lhs.monos @declarations.typeSignatures @mybdggroup @declarations.bindingGroups
                             
                        . mybdggroup     = Just (@lhs.assumptions, [@lhs.constraints])
 
   | Generator
       lhs . assumptions = @assumptions' `combine` @expression.assumptions
-          . constraints = @newcon .>. @csetBinds .>>.
-                          Node [ @pattern.constraints
-                               , @expression.constraints
-                               , @lhs.constraints
-                               ]
+          . constraints = @locConstraints
           . monos       = eltsFM @pattern.environment ++ getMonos @csetBinds ++ @lhs.monos
-      loc . (csetBinds,assumptions') = (@pattern.environment .===. @lhs.assumptions) @cinfoBind
+      loc . locConstraints = @newcon .>. @csetBinds .>>.
+                                Node [ @pattern.constraints
+                                     , @expression.constraints
+                                     , @lhs.constraints
+                                     ]
+          . (csetBinds,assumptions') = (@pattern.environment .===. @lhs.assumptions) @cinfoBind
           . newcon      = [ (@expression.beta .==. listType @pattern.beta) @cinfoResult ]
 
 SEM Qualifiers

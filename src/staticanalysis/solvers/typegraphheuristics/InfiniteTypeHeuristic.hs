@@ -12,11 +12,11 @@ import EquivalenceGroup
 
 infiniteTypeHeuristic :: IsTypeGraph (TypeGraph info) info => [Int] -> TypeGraph info ([EdgeID], [info])
 infiniteTypeHeuristic is = 
-   do addDebug "Infinite Type"
+   do addDebug (putStrLn "Infinite Type")
       
       infinitePaths <- mapM infinitePaths is
       pathsList <- let f path     = mapM g (shift path) 
-                       g (v1, v2) = getPathsFrom v1 [v2]
+                       g (v1, v2) = allPaths v1 v2
                    in mapM f . nub . map rotateToNormalForm . concat $ infinitePaths
       
       let onlyInitialEdges path = [ (edge, info) | (edge, Initial info) <- path ] 
@@ -87,12 +87,10 @@ moreEdgesFromUser cinfo edgeID =
 allEdgesInTypeGraph :: IsTypeGraph (TypeGraph info) info => TypeGraph info [(EdgeID, info)]
 allEdgesInTypeGraph = 
    do unique  <- getUnique 
-      ints    <- let f i = liftUse
-                              (\groups -> do eqg <- equivalenceGroupOf i groups
-                                             return (representative eqg))
+      ints    <- let f i = do eqg <- equivalenceGroupOf i
+                              return (representative eqg)
                  in mapM f [0..unique-1]
-      results <- let f i = liftUse 
-                              (\groups -> do eqg <- equivalenceGroupOf i groups
-                                             return (edges eqg))
+      results <- let f i = do eqg <- equivalenceGroupOf i
+                              return (edges eqg)
                  in mapM f (nub ints)
       return (concat results)

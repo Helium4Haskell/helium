@@ -11,7 +11,7 @@ phaseTypingStrategies :: String -> ImportEnvironment -> [(Name, TpScheme)] -> [O
                             IO (ImportEnvironment, [CoreDecl])
 phaseTypingStrategies fullName combinedEnv typeSignatures options
 
-   | TypeInferenceDirectives `notElem` options = 
+   | DisableDirectives `elem` options = 
         return (removeTypingStrategies combinedEnv, [])
 
    | otherwise =

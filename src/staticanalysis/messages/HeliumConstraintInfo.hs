@@ -14,12 +14,12 @@ import Maybe
 import Utils (internalError)
 
 data HeliumConstraintInfo =
-   CInfo { info       :: InfoSource
-         , location   :: String
-         , errorrange :: Range
-         , sources    :: [(String, OneLineTree)]
-         , typepair   :: (Tp,Tp)
-         , properties :: Properties          
+   CInfo { info          :: InfoSource
+         , location      :: String
+         , errorrange    :: Range
+         , sources       :: [(String, OneLineTree)]
+         , typepair      :: (Tp,Tp)        
+         , properties    :: Properties          
          }
 
 type Properties = [Property]

@@ -1,19 +1,163 @@
-ATTR Expression Expressions MaybeExpression Patterns Pattern Alternative Alternatives
+-------------------------------------------
+-- Distributition of 
+--   * import environment
+--   * substitution   (result of solving the type constraints)
+--   * predicates     (already substituted)
+--   * inferred types
+--   * ordered type synonyms
+
+ATTR Expression Expressions MaybeExpression Alternative Alternatives
      Statement Statements Declaration Declarations MaybeDeclarations 
-     LeftHandSide RightHandSide Body Qualifier Qualifiers   
+     RightHandSide Body Qualifier Qualifiers   
      GuardedExpression GuardedExpressions  FunctionBinding FunctionBindings          
-     RecordExpressionBinding RecordExpressionBindings RecordPatternBinding RecordPatternBindings        
-        [ importEnvironment : ImportEnvironment 
-          substitution      : FixpointSubstitution  
-          predicates        : Predicates 
-          inferredTypes     : {FiniteMap NameWithRange TpScheme}
-        | 
+     RecordExpressionBinding RecordExpressionBindings      
+        [ importEnvironment   : ImportEnvironment 
+          substitution        : FixpointSubstitution  
+          predicates          : Predicates 
+          inferredTypes       : {FiniteMap NameWithRange TpScheme}
+          orderedTypeSynonyms : OrderedTypeSynonyms
+        | collectErrors       : TypeErrors
+          collectWarnings     : Warnings
         | 
         ]
 
+ATTR LeftHandSide Pattern Patterns [ importEnvironment : ImportEnvironment | | ]
+
+----------------------------------------------------------------------------------------
+-- Collecting inferred top level types
+
+ATTR Body [ |  | toplevelTypes : TypeEnvironment ]   
+  
+SEM Body
+  | Body   lhs . toplevelTypes = let (environment, _, _) = concatBindingGroups @declarations.bindingGroups
+                                     monos' = ftv (@lhs.substitution |-> @lhs.monos)
+                                     make _ = generalize monos' @lhs.predicates . (@lhs.substitution |->)
+                                 in mapFM make environment
+ 
+---------------------------------------------------------
+-- Collecting (polymorphic) inferred types (that are in scope)
+
+{- bug fix 10 september: the inferred types for where-declarations are also "visible" in the expression of the 
+   right-hand side. Therefore, MaybeDeclarations should return a (synthesized) list of localTypes, and then 
+   RightHandSide should distribute it down -}
+
+ATTR MaybeDeclarations [ | | localTypes : {[(NameWithRange, TpScheme)]} ]
+
+SEM Module 
+  | Module  body . inferredTypes = listToFM [ (NameWithRange name, scheme)
+                                            | (name, scheme) <- fmToList (typeEnvironment @lhs.importEnvironment)
+                                            ]
+
+SEM Body
+  | Body   loc . inferredTypes = addListToFM @lhs.inferredTypes @localTypes
+               . localTypes    = getInferredTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups 
+
+SEM MaybeDeclarations
+  | Just     loc . localTypes  = getInferredTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups 
+  | Nothing  loc . localTypes  = []
+
+SEM RightHandSide
+  | Expression  loc . inferredTypes = addListToFM @lhs.inferredTypes @where.localTypes
+  | Guarded     loc . inferredTypes = addListToFM @lhs.inferredTypes @where.localTypes
+
+SEM Expression                    
+  | Let    loc . inferredTypes = addListToFM @lhs.inferredTypes @localTypes
+               . localTypes    = getInferredTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups 
+                                     
+SEM Statement                  
+  | Let    loc . inferredTypes = addListToFM @lhs.inferredTypes @localTypes
+               . localTypes    = getInferredTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups 
+
+SEM Qualifier                    
+  | Let    loc . inferredTypes = addListToFM @lhs.inferredTypes @localTypes
+               . localTypes    = getInferredTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups 
+
+{
+getInferredTypes :: Substitution substitution => Tps -> substitution -> Predicates -> BindingGroups -> [(NameWithRange, TpScheme)]
+getInferredTypes monos substitution predicates groups = 
+   let (environment, _, _) = concatBindingGroups groups
+       monos' = ftv (substitution |-> monos)      
+   in [ (NameWithRange name, generalize monos' predicates tp')
+      | (name, tp) <- fmToList environment 
+      , let  tp' = substitution |-> tp
+      ]
+}
+
+----------------------------------------------------------------------------------------
+-- Collecting additional type errors and warnings
+
+-- unresolved overloading
 SEM Module
-  | Module
-       loc . inferredTypes = addListToFM @body.localTypes [ (NameWithRange n, ts) | (n, ts) <- fmToList @body.toplevelTypes]
+  | Module  body . collectErrors   = []
+                 . collectWarnings = []
+
+SEM Expression
+  | Variable   lhs . collectErrors = map (makeUnresolvedOverloadingError @range.self @oneLineTree) @overloadingErrors ++ @lhs.collectErrors
+  | Negate     lhs . collectErrors = map (makeUnresolvedOverloadingError @range.self @oneLineTree) @overloadingErrors ++ @expression.collectErrors                              
+
+-- declared type too general / missing type signature
+SEM Body
+  | Body   loc . (errors, warnings) = checkAnnotations True @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
+           lhs . collectErrors      = @errors ++ @declarations.collectErrors
+               . collectWarnings    = @warnings ++ @declarations.collectWarnings
+
+SEM MaybeDeclarations
+  | Just   loc . (errors, warnings) = checkAnnotations False @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
+           lhs . collectErrors      = @errors ++ @declarations.collectErrors
+               . collectWarnings    = @warnings ++ @declarations.collectWarnings 
+
+SEM Expression
+  | Let    loc . (errors, warnings) = checkAnnotations False @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
+           lhs . collectErrors      = @errors ++ @expression.collectErrors
+               . collectWarnings    = @warnings ++ @expression.collectWarnings
+
+  | Typed  loc . errors             = let scheme = generalize monos' @lhs.predicates tp'
+                                          monos' = ftv (@lhs.substitution |-> @lhs.monos)
+                                          tp'    = @lhs.substitution |-> @expression.beta
+                                          info   = (@expression.oneLineTree, @range.self)
+                                      in checkNotTooGeneral info @lhs.orderedTypeSynonyms @typeScheme scheme
+           lhs . collectErrors      = @errors ++ @expression.collectErrors
+
+                                     
+SEM Statement                  
+  | Let    loc . (errors, warnings) = checkAnnotations False @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
+           lhs . collectErrors      = @errors ++ @declarations.collectErrors
+               . collectWarnings    = @warnings ++ @declarations.collectWarnings
+
+SEM Qualifier                    
+  | Let    loc . (errors, warnings) = checkAnnotations False @lhs.orderedTypeSynonyms @declarations.typeSignatures @localTypes
+           lhs . collectErrors      = @errors ++ @declarations.collectErrors
+               . collectWarnings    = @warnings ++ @declarations.collectWarnings
+
+{
+checkAnnotations :: Bool -> OrderedTypeSynonyms -> FiniteMap Name TpScheme -> [(NameWithRange, TpScheme)] -> (TypeErrors, Warnings)
+checkAnnotations topLevel synonyms typeSignatures = foldr op ([], [])
+   where   
+       op (nameWR, scheme) pair@(errors, warnings) =
+          case lookupFM typeSignatures (nameWithRangeToName nameWR) of
+          
+             Just signature ->
+                -- is the signature not too general?
+                let info = (OneLineText (show nameOfSignature), getNameRange nameOfSignature)
+                    -- this name has a different range!
+                    nameOfSignature = head [ n | n <- keysFM typeSignatures, n == nameWithRangeToName nameWR ]      
+                    newErrors = checkNotTooGeneral info synonyms signature scheme             
+                in (newErrors ++ errors, warnings)               
+                       
+             Nothing 
+                -- issue a warning for missing type signature (unless monomorphic)
+                | null (ftv scheme) && topLevel ->
+                     let warning = NoTypeDef (nameWithRangeToName nameWR) scheme topLevel
+                     in (errors, warning : warnings)
+                     
+             _ -> pair      
+
+checkNotTooGeneral :: (OneLineTree, Range) -> OrderedTypeSynonyms -> TpScheme -> TpScheme -> TypeErrors
+checkNotTooGeneral info synonyms signature scheme = 
+   [ makeNotGeneralEnoughTypeError info scheme signature
+   | not (genericInstanceOf synonyms standardClasses signature scheme)
+   ]       
+}
 
 -------------------------------------------
 -- Collecting Type Signatures
@@ -30,158 +174,7 @@ SEM Declaration
   | TypeSignature
       lhs . typeSignatures = addListToFM @lhs.typeSignatures [ (name, @typeScheme) | name <- @names.self ]
       loc . typeScheme     = makeTpSchemeFromType @type.self
-
--------------------------------------------
--- Collecting all Type Annotations (or: explicit type signatures)
--- These collected type annotations are checked afterwards.
-
-ATTR Declarations Expression MaybeDeclarations RightHandSide Statement Statements
-     RecordExpressionBindings RecordExpressionBinding Qualifier Qualifiers MaybeExpression
-     GuardedExpression FunctionBinding FunctionBindings GuardedExpressions
-     Expressions Declaration Alternative Alternatives Body
-     [ | typeAnnotations : TypeAnnotations | ]
-
-SEM Module
-  | Module   body . typeAnnotations = []
-
-SEM Expression
-  | Typed  lhs . typeAnnotations = ((@lhs.monos,@expression.beta),@typeScheme,(@expression.oneLineTree,@range.self)) : @expression.typeAnnotations
-  | Let    lhs . typeAnnotations = @anns ++ @expression.typeAnnotations
-
-SEM MaybeDeclarations
-  | Just   lhs . typeAnnotations = @anns ++ @declarations.typeAnnotations
-
-SEM Body
-  | Body   lhs . typeAnnotations = @anns ++ @declarations.typeAnnotations
-
-SEM Statement
-  | Let    lhs . typeAnnotations = @anns ++ @declarations.typeAnnotations
-
-SEM Qualifier
-  | Let    lhs . typeAnnotations = @anns ++ @declarations.typeAnnotations
-
--------------------------------------------
--- Collecting NoTypeDefs
-
-ATTR Declarations Expression MaybeDeclarations RightHandSide Statement Statements
-     RecordExpressionBindings RecordExpressionBinding Qualifier Qualifiers MaybeExpression
-     GuardedExpression FunctionBinding FunctionBindings GuardedExpressions
-     Expressions Declaration Alternative Alternatives Body
-     [ | collectednotypedef : {[(Name,Tps,Tp,Bool)]} | ]
-
-SEM Module
-  | Module  body . collectednotypedef = [] 
-
-SEM Body
-  | Body  lhs . collectednotypedef = @notypedefs ++ @declarations.collectednotypedef
-
-SEM MaybeDeclarations
-  | Just  lhs . collectednotypedef = @notypedefs ++ @declarations.collectednotypedef
-
-SEM Expression 
-  | Let   lhs . collectednotypedef = @notypedefs ++ @declarations.collectednotypedef
-
-SEM Statement
-  | Let   lhs . collectednotypedef = @notypedefs ++ @declarations.collectednotypedef
-
-SEM Qualifier  
-  | Let   lhs . collectednotypedef = @notypedefs ++ @declarations.collectednotypedef
-  
-SEM Module 
-  | Module loc . warnings  = 
-        -- only a warning for top-level type definitions without 
-        -- monomorphic type variables 
-        let f (n,ms,t,isToplevel) = 
-                           let ms'    = @substitution |-> ms
-                               t'     = @substitution |-> t
-                               scheme = generalize (ftv ms') @predicates t'
-                           in if null (ftv scheme) && isToplevel
-                                then [NoTypeDef n scheme isToplevel] 
-                                else []
-        in concatMap f @body.collectednotypedef
-
-----------------------------------------------------------------------------------------
--- Collecting inferred top level types
-
-ATTR Body [ |  | toplevelTypes : TypeEnvironment ]   
-  
-SEM Body
-  | Body   lhs . toplevelTypes = convertToplevelTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups
-  
-{
-convertToplevelTypes :: Substitution substitution => Tps -> substitution -> Predicates -> BindingGroups -> TypeEnvironment
-convertToplevelTypes monos substitution predicates groups = 
-   let (environment, _, _) = concatBindingGroups groups
-       monos' = ftv (substitution |-> monos)      
-   in listToFM [ (name, generalize monos' predicates tp')
-      | (name, tp) <- fmToList environment 
-      , let  tp' = substitution |-> tp
-      ]
-}
-             
-----------------------------------------------------------------------------------------
--- Collecting inferred local types
-
-ATTR Body Declarations Declaration MaybeDeclarations MaybeExpression Expression Expressions 
-     Statement Statements Qualifier Qualifiers RecordExpressionBindings GuardedExpression GuardedExpressions
-     FunctionBinding FunctionBindings Alternative Alternatives RightHandSide RecordExpressionBinding
-        [ | localTypes : {FiniteMap NameWithRange TpScheme} | ]
-        
-SEM Module 
-  | Module  body . localTypes = emptyFM
- 
-SEM MaybeDeclarations
-  | Just    lhs  . localTypes = convertLocalTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups
-                                `plusFM` @declarations.localTypes 
-SEM Expression                    
-  | Let     lhs  . localTypes = convertLocalTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups
-                                `plusFM` @expression.localTypes 
-SEM Statement                  
-  | Let     lhs  . localTypes = convertLocalTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups
-                                `plusFM` @declarations.localTypes 
-SEM Qualifier                    
-  | Let     lhs  . localTypes = convertLocalTypes @lhs.monos @lhs.substitution @lhs.predicates @declarations.bindingGroups
-                                `plusFM` @declarations.localTypes
-                                
-{
-convertLocalTypes :: Substitution substitution => Tps -> substitution -> Predicates -> BindingGroups -> FiniteMap NameWithRange TpScheme
-convertLocalTypes monos substitution predicates groups = 
-   let (environment, _, _) = concatBindingGroups groups
-       monos' = ftv (substitution |-> monos)      
-   in listToFM [ (NameWithRange name, generalize monos' predicates tp')
-               | (name, tp) <- fmToList environment 
-               , let  tp' = substitution |-> tp
-               ]
-}  
-
-
-SEM Body
-  | Body   loc . (anns,notypedefs) = findTypeAnnotations True [] @declarations.typeSignatures @declarations.bindingGroups
-SEM MaybeDeclarations
-  | Just   loc . (anns,notypedefs) = findTypeAnnotations False @lhs.monos @declarations.typeSignatures @declarations.bindingGroups
-SEM Expression                    
-  | Let    loc . (anns,notypedefs) = findTypeAnnotations False @lhs.monos @declarations.typeSignatures @declarations.bindingGroups
-SEM Statement                    
-  | Let    loc . (anns,notypedefs) = findTypeAnnotations False @lhs.monos @declarations.typeSignatures @declarations.bindingGroups
-SEM Qualifier                    
-  | Let    loc . (anns,notypedefs) = findTypeAnnotations False @lhs.monos @declarations.typeSignatures @declarations.bindingGroups   
-
-{ 
-type TypeAnnotations = [((Tps,Tp),TpScheme,(OneLineTree,Range))]
-type NoTypeDefs      = [(Name,Tps,Tp,Bool)]
-
-findTypeAnnotations :: Bool -> Tps -> FiniteMap Name TpScheme -> BindingGroups -> (TypeAnnotations,NoTypeDefs)
-findTypeAnnotations toplevel monos typeSignatures bdgs =
-   let (environment,_,_) = concatBindingGroups bdgs
-       typeAnnotations   = [ ((monos,tp),ts,(OneLineText (show n),getNameRange n))
-                           | (n,(tp,ts)) <- fmToList (intersectFM_C (,) environment typeSignatures)
-                           ]
-       noTypeDefs        = [ (n,monos,tp,toplevel)
-                           | (n,tp) <- fmToList (delListFromFM environment (keysFM typeSignatures))
-                           ]
-   in (typeAnnotations,noTypeDefs)  
-}
-
+           
 --------------------------------
 -- Chunks
 

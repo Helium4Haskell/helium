@@ -78,10 +78,12 @@ STATICANALYSIS = \
 	staticanalysis/messages/HeliumMessages.hs \
 	staticanalysis/messages/StaticErrors.hs \
 	staticanalysis/messages/TypeErrors.hs \
+	staticanalysis/messages/KindErrors.hs \
 	staticanalysis/messages/Warnings.hs \
 	staticanalysis/solvers/BasicState.hs \
 	staticanalysis/solvers/FixpointSolveState.hs \
 	staticanalysis/solvers/TypeConstraintSemantics.hs \
+	staticanalysis/solvers/KindConstraintSemantics.hs \
 	staticanalysis/solvers/IsSolver.hs \
 	staticanalysis/solvers/ConstraintInfo.hs \
 	staticanalysis/solvers/SolveGreedy.hs \
@@ -110,9 +112,11 @@ STATICANALYSIS = \
 	staticanalysis/types/TypeClasses.hs \
 	staticanalysis/types/TypeSchemes.hs \
 	staticanalysis/types/TypesToAlignedDocs.hs \
-        staticanalysis/types/QualifiedTypes.hs \
+	staticanalysis/types/QualifiedTypes.hs \
+	staticanalysis/types/Kinds.hs \
 	staticanalysis/staticchecks/StaticChecks.hs \
 	staticanalysis/inferencers/TypeInferencing.hs \
+	staticanalysis/inferencers/KindInferencing.hs \
         staticanalysis/inferencers/ExpressionTypeInferencer.hs \
         staticanalysis/inferencers/typingstrategies/TS_Parser.hs \
         staticanalysis/inferencers/typingstrategies/TS_Syntax.hs \
@@ -142,8 +146,9 @@ MAINFILES = \
 	main/Main.hs main/Version.hs main/Args.hs main/Compile.hs \
 	main/PhaseLexer.hs main/PhaseParser.hs main/PhaseImport.hs main/PhaseResolveOperators.hs \
 	main/PhaseStaticChecks.hs main/PhaseTypingStrategies.hs main/PhaseTypeInferencer.hs \
-	main/PhaseDesugarer.hs main/PhaseCodeGenerator.hs main/CompileUtils.hs
-
+	main/PhaseDesugarer.hs main/PhaseCodeGenerator.hs main/CompileUtils.hs \
+	main/PhaseKindInferencer.hs
+        
 # Parsec sources
 
 PARSEC = \
@@ -215,7 +220,9 @@ texthint: texthint/Main.hs utils/OSSpecific.hs
 
 # AG sources
 
-ag : utils/PrettyPrinting.hs staticanalysis/staticchecks/StaticChecks.hs staticanalysis/inferencers/TypeInferencing.hs codegeneration/CodeGeneration.hs \
+ag : utils/PrettyPrinting.hs staticanalysis/staticchecks/StaticChecks.hs staticanalysis/inferencers/TypeInferencing.hs \
+     staticanalysis/inferencers/KindInferencing.hs \
+     codegeneration/CodeGeneration.hs \
      syntax/UHA_Syntax.hs modulesystem/ExtractImportDecls.hs staticanalysis/inferencers/typingstrategies/TS_Syntax.hs \
      staticanalysis/inferencers/typingstrategies/TS_Apply.hs staticanalysis/inferencers/typingstrategies/TS_Analyse.hs \
      staticanalysis/inferencers/typingstrategies/TS_ToCore.hs parser/ResolveOperators.hs
@@ -261,7 +268,14 @@ staticanalysis/inferencers/TypeInferencing.hs : \
                 
 	# AG TypeInferencing
 	cd staticanalysis/inferencers;$(AG) $(AG_OPTS) --self TypeInferencing.ag;cd ../..
-        
+
+staticanalysis/inferencers/KindInferencing.hs : \
+		staticanalysis/inferencers/KindInferencing.ag \
+                syntax/UHA_Syntax.ag \
+                
+	# AG TypeInferencing
+	cd staticanalysis/inferencers;$(AG) $(AG_OPTS) --self KindInferencing.ag;cd ../..
+
 codegeneration/CodeGeneration.hs : \
 		codegeneration/CodeGeneration.ag syntax/UHA_Pretty.ag \
 		syntax/UHA_Syntax.ag codegeneration/ToCoreModule.ag codegeneration/ToCoreDecl.ag \
@@ -402,6 +416,10 @@ movetobbl: smaller
 	touch //r/helium/lib/*.lvm # so that they are seen as up to date
 	# DON'T FORGET TO CHECK PERMISSIONS
 	cp //c/docs/helium/hint/release/Hint.jar //r/helium/bin
+
+proxima:
+	# *** Compiling Proxima Type Inferencer Attribute Grammar
+	cd staticanalysis/inferencers;$(AG) $(AG_OPTS) --self ProximaTypeInferencing.ag;cd ../..
 
 # DO NOT DELETE: Beginning of Haskell dependencies
 # DO NOT DELETE: End of Haskell dependencies

@@ -21,13 +21,11 @@ import Utils (internalError)
 import FixpointSolveState
 import ConstraintInfo
 import Data.FiniteMap
-import Maybe
-import List
 
-type Greedy info = Fix info FixpointSubstitution Maybe
+type Greedy info = Fix info FixpointSubstitution
      
 evalGreedy :: Greedy info result -> result
-evalGreedy x = fst . fromJust . runFix x . extend $ (FixpointSubstitution emptyFM)
+evalGreedy x = fst . runFix x . extend $ (FixpointSubstitution emptyFM)
 
 solveGreedy :: ( ConstraintInfo info
                , SolvableConstraint constraint (Greedy info)
@@ -41,9 +39,9 @@ solveGreedy synonyms unique constraints =
       uniqueAtEnd <- getUnique
       errors      <- getErrors
       subst       <- buildSubstitutionGreedy
-      predicates  <- getReducedPredicates
+      predicates  <- getPredicates
       debug       <- getDebug
-      return (uniqueAtEnd, subst, map fst predicates, errors, putStrLn debug)
+      return (uniqueAtEnd, subst, map fst predicates, errors, debug)
 
 instance ConstraintInfo info => IsSolver (Greedy info) info where
  
@@ -70,8 +68,7 @@ instance ConstraintInfo info => IsSolver (Greedy info) info where
         return (lookupInt i sub)
    
    makeConsistent = 
-      do getReducedPredicates
-         return ()
+      do reducePredicates
            
 -- The key idea is as follows:
 -- try to minimize the number of expansions by type synonyms.

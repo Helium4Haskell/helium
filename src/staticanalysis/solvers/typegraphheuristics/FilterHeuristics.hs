@@ -19,7 +19,7 @@ filterHeuristics =
 edgeIsPartOfCycle :: IsTypeGraph m info => FilterHeuristic m info
 edgeIsPartOfCycle edge@(EdgeID v1 v2) info = 
    doWithoutEdge (edge, info) $ 
-      do paths <- getPathsFrom v1 [v2]
+      do paths <- allPaths v1 v2
          if null paths 
            then return Nothing
            else return (Just "part of a cycle")
@@ -56,7 +56,7 @@ onlyNegationResult edge@(EdgeID v1 v2) info =
                case mtp of 
                   Nothing -> return Nothing
                   Just tp -> 
-                     let newtvar = TVar (maximum (0 : ftv tp) + 1)
+                     let newtvar = TVar (nextFTV tp)
                          testtp = (if isIntNegation then intType else floatType) .->. newtvar
                      in if unifiable synonyms tp testtp
                           then return (Just "only result type of negation is incorrect")

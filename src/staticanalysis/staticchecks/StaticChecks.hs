@@ -2,6 +2,7 @@
 module StaticChecks where
 
 import Similarity ( similar )
+import Args
 import UHA_Syntax
 import UHA_Utils
 import UHA_Range
@@ -2193,6 +2194,7 @@ sem_MaybeNames_Nothing  =
 -- semantic domain
 type T_Module = (String) ->
                 (ImportEnvironments) ->
+                ([Option]) ->
                 ( (ImportEnvironment),(Errors),(Module),([(Name,TpScheme)]),(Warnings))
 -- cata
 sem_Module :: (Module) ->
@@ -2204,14 +2206,14 @@ sem_Module_Module :: (T_Range) ->
                      (T_MaybeExports) ->
                      (T_Body) ->
                      (T_Module)
-sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_importEnvironments) =
+sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_importEnvironments) (_lhs_options) =
     let (_self) =
             Module_Module _range_self _name_self _exports_self _body_self
         (_allErrors) =
             concat [ _exportErrors
                    , _scopeErrors
                    , _miscerrors
-                   , _kindErrors
+                   , if KindInferencing `elem` _lhs_options then [] else _kindErrors
                    , _topLevelErrors
                    ]
         (_removedEntities) =

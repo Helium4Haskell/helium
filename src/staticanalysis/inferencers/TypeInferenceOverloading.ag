@@ -1,87 +1,37 @@
 ----------------------------------------------------------------------------------------
 -- extra information for overloading (for code generation)
 
-ATTR Statement Statements Qualifier Qualifiers MaybeExpression Expression Expressions
-     RightHandSide RecordExpressionBinding GuardedExpression GuardedExpressions
-     FunctionBinding FunctionBindings Alternative Alternatives Declaration Declarations
-     MaybeDeclarations Body RecordExpressionBindings
-        [ overloads : Names 
-        | overloadedVars : OverloadedVariables 
-        | 
-        ]
-
-{
-type OverloadedVariables = FiniteMap NameWithRange (NameWithRange, QType)
-}
-
-SEM Module 
-  | Module     body . overloadedVars = emptyFM
-                    . overloads      = [ n 
-                                       | (n, ts) <- fmToList @body.toplevelTypes ++ fmToList (typeEnvironment @lhs.importEnvironment)
-                                       ,  isOverloaded ts
-                                       ] ++
-                                       [ nameWithRangeToName n
-                                       | (n, ts) <- fmToList @body.localTypes  
-                                       , isOverloaded ts
-                                       ]
-                                       
-  
-SEM Expression 
-
-  | Variable   lhs  . overloadedVars = let mName = filter (@name.self==) @lhs.namesInScope
-                                       in case mName of 
-                                             [name] | any (\n -> NameWithRange n == NameWithRange name) @lhs.overloads
-                                               -> let qtype = getQualifiedType (generalize [] @lhs.predicates (@lhs.substitution |-> @beta))
-                                                  in addToFM @lhs.overloadedVars (NameWithRange @name.self) (NameWithRange name, qtype) 
-                                             _ -> @lhs.overloadedVars
-                                             
-  | Negate     lhs . overloadedVars = case filter ((== "negate") . show) (keysFM $ typeEnvironment @lhs.importEnvironment) of
-                                         [nameImport] -> let myName = NameWithRange (setNameRange intUnaryMinusName @range.self)
-                                                             qtype  = getQualifiedType (generalize [] @lhs.predicates subtp)
-                                                             subtp  = @lhs.substitution |->  @expression.beta .->. @beta
-                                                         in addToFM @expression.overloadedVars myName (NameWithRange nameImport, qtype)
-                                         _            -> @expression.overloadedVars
-
-
 ATTR Declarations Declaration Expressions Expression Statements Statement
      Qualifiers Qualifier GuardedExpressions GuardedExpression 
      Alternatives Alternative FunctionBindings FunctionBinding
      RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
-     RecordExpressionBindings
-     [ availablePredicates : Predicates 
-     | dictionaryEnvironment : DictionaryEnvironment
-     | 
-     ]
-     
-ATTR Module Body [ | | dictionaryEnvironment : DictionaryEnvironment ]
-     
-SEM Body
-  | Body   
-       declarations . availablePredicates   = []
-                    . dictionaryEnvironment = emptyDictionaryEnvironment
+     RecordExpressionBindings Body
+        [ availablePredicates   : Predicates 
+        | dictionaryEnvironment : DictionaryEnvironment          
+        | 
+        ]
+          
+SEM Module
+  | Module   body . availablePredicates   = []
+                  . dictionaryEnvironment = emptyDictionaryEnvironment
 
 SEM Declaration   
  
   | FunctionBindings
-       loc           . inferredType = let monos' = ftv (@lhs.substitution |-> @lhs.monos)  
-                                          tp'    = @lhs.substitution |-> @beta
-                                      in generalize monos' @lhs.predicates tp'
-                     . declPredicates = let (predicates :=> _) = getQualifiedType @inferredType   
-                                        in predicates      
-       bindings      . availablePredicates = @declPredicates ++ @lhs.availablePredicates
-       lhs           . dictionaryEnvironment = addForDeclaration @bindings.name @declPredicates @bindings.dictionaryEnvironment
+       loc      . declPredicates        = let scheme = lookupWithDefaultFM @lhs.inferredTypes err (NameWithRange @bindings.name)
+                                              (predicates :=> _) = getQualifiedType scheme
+                                              err = internalError "TypeInferenceOverloading.ag" "n/a" "could not find type for function binding"
+                                          in expandPredicates @lhs.orderedTypeSynonyms predicates      
+       bindings . availablePredicates   = @declPredicates ++ @lhs.availablePredicates
+       lhs      . dictionaryEnvironment = addForDeclaration @bindings.name @declPredicates @bindings.dictionaryEnvironment
        
   | PatternBinding 
        loc           . declPredicates = case @pattern.self of
-                                          Pattern_Variable _ n -> 
-                                             case fmToList @pattern.environment of
-                                                [(name, tp)] ->
-                                                   let monos' = ftv (@lhs.substitution |-> @lhs.monos)  
-                                                       tp'    = @lhs.substitution |-> tp
-                                                       scheme = generalize monos' @lhs.predicates tp'
-                                                       (predicates :=> _) = getQualifiedType scheme
-                                                   in Just (name, predicates)
-                                                _            -> internalError "TypeInferenceOverloading.ag" "n/a" ""
+                                          Pattern_Variable _ name -> 
+                                             let scheme = lookupWithDefaultFM @lhs.inferredTypes err (NameWithRange name)
+                                                 (predicates :=> _) = getQualifiedType scheme
+                                                 err = internalError "TypeInferenceOverloading.ag" "n/a" "could not find type for pattern binding"
+                                             in Just (name, expandPredicates @lhs.orderedTypeSynonyms predicates)
                                           _                  -> Nothing
        righthandside . availablePredicates = case @declPredicates of
                                                 Just (n, ps) -> ps ++ @lhs.availablePredicates
@@ -92,42 +42,51 @@ SEM Declaration
        
 SEM Expression 
 
-  | Variable   lhs . dictionaryEnvironment = addForVariable @name.self @lhs.availablePredicates @requiredDictionaries @lhs.dictionaryEnvironment                                             
-               loc . nameInScope          = case filter (@name.self==) @lhs.namesInScope of 
-                                               [name] -> name
-                                               _      -> internalError "TypeInferenceOverloading.ag" "n/a" "name not in scope"
-                   . inferredTypeScheme   = case lookupFM @lhs.inferredTypes (NameWithRange @nameInScope) of
-                                               Just scheme -> Just scheme
-                                               Nothing     -> 
-                                                  case lookupFM (typeEnvironment @lhs.importEnvironment) @nameInScope of 
-                                                     Just scheme -> Just scheme
-                                                     Nothing     -> Nothing
-                   . requiredDictionaries = case @inferredTypeScheme of
-                                               Nothing -> []
-                                               Just scheme -> 
-                                                  getRequiredDictionaries 
-                                                     (getOrderedTypeSynonyms @lhs.importEnvironment) 
-                                                     (@lhs.substitution |-> @beta)
-                                                     scheme
+  | Variable   lhs . dictionaryEnvironment = @newDEnv              
+               loc . nameInScope           = case filter (@name.self==) @lhs.namesInScope of 
+                                                [name] -> NameWithRange name
+                                                _      -> internalError "TypeInferenceOverloading.ag" "n/a" "name not in scope"
+                   . requiredDictionaries  = case lookupFM @lhs.inferredTypes @nameInScope of
+                                                Nothing     -> [] -- if not in finitemap then this is bound by a monomorphic pattern variable
+                                                Just scheme -> getRequiredDictionaries 
+                                                                  (getOrderedTypeSynonyms @lhs.importEnvironment) 
+                                                                  (@lhs.substitution |-> @beta)
+                                                                  scheme
+                   . (newDEnv, overloadingErrors) = resolveOverloading @name.self @lhs.availablePredicates @requiredDictionaries @lhs.dictionaryEnvironment 
 
-  | Negate     loc . localName = setNameRange intUnaryMinusName @range.self
-                   . negateTypeScheme = case lookupFM (typeEnvironment @lhs.importEnvironment) @localName of 
-                                           Just scheme -> scheme
-                                           Nothing     -> internalError "TypeInferenceOverloading.ag" "n/a" "type of negate unknown"
-               loc . requiredDictionaries = getRequiredDictionaries 
-                                               (getOrderedTypeSynonyms @lhs.importEnvironment) 
-                                               (@lhs.substitution |-> (@expression.beta .->. @beta))
-                                               @negateTypeScheme
-               lhs . dictionaryEnvironment = addForVariable @localName @lhs.availablePredicates @requiredDictionaries @expression.dictionaryEnvironment
-                            
+  | Negate   lhs . dictionaryEnvironment = @newDEnv
+             loc . localName             = setNameRange intUnaryMinusName @range.self
+                 . negateTypeScheme      = case lookupFM (typeEnvironment @lhs.importEnvironment) @localName of 
+                                              Just scheme -> scheme
+                                              Nothing     -> internalError "TypeInferenceOverloading.ag" "n/a" "type of negate unknown"
+                 . requiredDictionaries  = getRequiredDictionaries 
+                                              (getOrderedTypeSynonyms @lhs.importEnvironment) 
+                                              (@lhs.substitution |-> (@expression.beta .->. @beta))
+                                              @negateTypeScheme
+                 . (newDEnv, overloadingErrors) = resolveOverloading @localName @lhs.availablePredicates @requiredDictionaries @expression.dictionaryEnvironment                                              
+             
+
 {         
 getRequiredDictionaries :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
 getRequiredDictionaries synonyms useType defType = 
-   let i  = maximum (0 : ftv useType) + 1
+   let i  = nextFTV useType
        (_, instantiatedPreds, instantiatedType) = instantiate i defType
    in -- one-way unification is necessary!
       case mguWithTypeSynonyms synonyms instantiatedType useType of
          Left _ -> internalError "TypeInferenceOverloading.ag" "getRequiredDictionaries" "no unification"
          Right (_, sub) -> 
-            (sub |-> instantiatedPreds)
-}         
+            expandPredicates synonyms (sub |-> instantiatedPreds)
+            
+resolveOverloading :: Name -> Predicates -> Predicates -> DictionaryEnvironment -> (DictionaryEnvironment, Predicates {- errors -})
+resolveOverloading name availablePredicates predicates dEnv = 
+   let maybeTrees = map (makeDictionaryTree availablePredicates) predicates
+   in if all isJust maybeTrees
+        then (addForVariable name (map fromJust maybeTrees) dEnv, [])
+        else (dEnv, [ predicate | (predicate, mt) <- zip predicates maybeTrees, isNothing mt ])
+
+expandPredicates :: OrderedTypeSynonyms -> Predicates -> Predicates
+expandPredicates synonyms = map (expandPredicate synonyms)
+
+expandPredicate :: OrderedTypeSynonyms -> Predicate -> Predicate
+expandPredicate (_, synonyms) (Predicate className tp) = Predicate className (expandType synonyms tp)
+}

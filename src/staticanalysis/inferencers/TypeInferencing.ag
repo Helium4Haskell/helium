@@ -6,7 +6,7 @@ ATTR Module
      options               : {[Option]}
    |
    | debugIO               : {IO ()}
-     localTypes            : {FiniteMap NameWithRange TpScheme}
+     dictionaryEnvironment : DictionaryEnvironment
      toplevelTypes         : TypeEnvironment
      typeErrors            : TypeErrors
      warnings              : Warnings
@@ -66,11 +66,10 @@ import TypeGraphInstance
 
 -- UHA syntax
 import UHA_Syntax
-import UHA_Range                 (noRange, getNameRange, getExprRange, getPatRange, getLitRange, setNameRange)
+import UHA_Range                 
 import UHA_Utils                 (showNameAsOperator, intUnaryMinusName, NameWithRange(..), nameFromString)
          
 -- other
-import SimilarFunctionTable      (similarFunctionTable)
 import Utils                     (internalError)
 import DerivingShow              (typeOfShowFunction, nameOfShowFunction) 
 import TopSort                   (topSort)
