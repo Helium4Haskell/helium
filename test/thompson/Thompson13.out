@@ -1,0 +1,3 @@
+Compiling thompson/Thompson13.hs
+(1,5), (1,7): Duplicated variable "x"
+Compilation failed with 1 error

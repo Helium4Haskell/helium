@@ -1,0 +1,8 @@
+Compiling parser/LayoutOk8.hs
+(3,1): Missing type signature: f :: Int
+(3,9): Definition "x" is not used
+(3,9): Missing type signature: x :: Int
+(3,16): Definition "y" is not used
+(3,16): Missing type signature: y :: Int
+Compilation successful with 5 warnings
+No 'main' function defined in this module

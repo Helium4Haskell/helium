@@ -1,5 +1,12 @@
 Compiling typeerrors/Heuristics/SimilarNegation.hs
 
+(4,8): Type error in negation
+*** Expression     : -(3.0 +. 6.0)
+*** Term           : (3.0 +. 6.0)
+*** Type           : Float
+*** Does not match : Int  
+*** Probable fix   : use float negation (-.) instead
+
 (7,9): Type error in negation
 *** Expression     : -.3
 *** Term           : 3
@@ -7,20 +14,4 @@ Compiling typeerrors/Heuristics/SimilarNegation.hs
 *** Does not match : Float
 *** Probable fix   : use int negation (-) instead
 
-(10,9): Type error in pattern negation 
-*** Pattern        : -1.0
-*** Term           : 1.0
-*** Type           : Float
-*** Does not match : Int  
-*** Probable fix   : use float negation (-.) instead
-
-(14,10): Type error in pattern negation 
-*** Pattern        : -.1
-*** Term           : 1
-*** Type           : Int  
-*** Does not match : Float
-*** Probable fix   : use int negation (-) instead
-
-(...)
-
-Compilation failed with 4 type errors
+Compilation failed with 2 type errors

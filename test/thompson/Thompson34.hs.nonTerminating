@@ -1,0 +1,5 @@
+main = fun 3
+
+fun n = fun (n + 1)
+
+-- LVM bug

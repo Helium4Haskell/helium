@@ -1,9 +1,5 @@
 Compiling typeerrors/Examples/PatNegatePat.hs
-
-(3,4): Type error in pattern negation 
-*** Pattern        : -"schaap"
-*** Term           : "schaap"
-*** Type           : String
-*** Does not match : Int   
-
-Compilation failed with 1 type error
+(3,6): Syntax error: 
+    unexpected string literal "schaap"
+    expecting integer literal
+Compilation failed with a syntax error

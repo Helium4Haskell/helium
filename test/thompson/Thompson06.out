@@ -1,0 +1,5 @@
+Compiling thompson/Thompson06.hs
+(2,1): Syntax error: 
+    unexpected next in block (based on layout)
+    expecting pattern, '=' or '|'
+Compilation failed with a syntax error

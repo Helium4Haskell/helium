@@ -1,0 +1,5 @@
+Compiling thompson/Thompson05.hs
+(1,12): Syntax error: 
+    unexpected ')'
+    expecting expression, operator, constructor operator, '::', keyword 'where', next in block (based on layout), ';' or end of block (based on layout)
+Compilation failed with a syntax error

@@ -1,0 +1,9 @@
+Compiling thompson/Thompson32.hs
+
+(7,5): Declared type is too general
+*** Expression     : g
+*** Declared type  : b  -> Float
+*** Inferred type  : _1 -> Float
+*** Hint           : Try removing the type signature
+
+Compilation failed with 1 type error

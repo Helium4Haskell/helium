@@ -1,0 +1,5 @@
+Compiling thompson/Thompson31.hs
+(1,6): Recursive type synonym "Fred"
+  HINT - use "data" to write a recursive data type
+(2,6), (3,6): Recursive type synonyms "A" and "B"
+Compilation failed with 2 errors

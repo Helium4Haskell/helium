@@ -1,0 +1,5 @@
+Compiling thompson/Thompson09.hs
+(2,2): Syntax error: 
+    unexpected keyword 'type'
+    expecting expression, operator, constructor operator, '::', keyword 'where', next in block (based on layout), ';' or end of block (based on layout)
+Compilation failed with a syntax error

@@ -1,0 +1,5 @@
+Compiling parser/NonTerminatedChar.hs
+(1,8): Syntax error: 
+    non-terminated character literal
+    correct examples of character literals: 'a', '\n', '%', ' ', '\''
+Compilation failed with a syntax error

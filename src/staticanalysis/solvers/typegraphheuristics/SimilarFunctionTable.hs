@@ -54,4 +54,6 @@ similarFunctionTable =
      ]
      -- Java string concat
    , [ "+", "++" ]
+     -- Char, Int conversions
+   , [ "ord", "chr" ]
    ]

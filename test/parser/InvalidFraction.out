@@ -1,0 +1,5 @@
+Compiling parser/InvalidFraction.hs
+(1,9): Syntax error: 
+    empty fraction in floating-point literal
+    correct examples of float-point literals: 1.0, 3.14159, 100.8, 0.00001
+Compilation failed with a syntax error

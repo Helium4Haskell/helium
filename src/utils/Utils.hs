@@ -168,3 +168,9 @@ doubleSizeOfSTArray unit starray =
                    writeSTArray newarray i value
       mapM_ f [lower..upper]
       return newarray
+
+elemBy :: (a -> a -> Bool) -> a -> [a] -> Bool
+elemBy _ _ [] = False
+elemBy eq x (y:ys) 
+  | x `eq` y = True
+  | otherwise = elemBy eq x ys

@@ -1,0 +1,5 @@
+Compiling staticerrors/ImportNotAtTop.hs
+(5,1): Syntax error: 
+    unexpected keyword 'import'
+    expecting declaration or end of block (based on layout)
+Compilation failed with a syntax error

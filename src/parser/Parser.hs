@@ -14,7 +14,7 @@ Verschillen:
 - geen n+k patterns
 - [] en (,) en (,,,) enz niet toegestaan als (type) constructor
 - vereenvoudigde funlhs ( bijv. x:xs +++ ys = ...   mag niet, ronde haken om x:xs nodig)
-- patroon binding met apat i.p.v. pat0 
+- patroon binding met pat10 i.p.v. pat0 
         e.g. (x:xs) = [1..] (ronde haakjes zijn nodig in Helium)
 
 - geen sections
@@ -32,13 +32,8 @@ import UHA_Utils
 
 import qualified CollectFunctionBindings
 import Utils
-import System
 
--- For printing an error when there are imports that are not on the top
-import IOExts(unsafePerformIO)
-import Messages(showPositions)
-
-parseModule :: String -> IO (Either String Module)
+parseModule :: String -> IO (Either ParseError Module)
 parseModule fullName = parseFile module_ fullName True
 
 parseOnlyImports :: String -> IO [String]
@@ -50,7 +45,7 @@ parseOnlyImports fullName = do
             return ( map stringFromImportDeclaration imports )
 
 -- Parse file
-parseFile :: HParser a -> String -> Bool -> IO (Either String a)
+parseFile :: HParser a -> String -> Bool -> IO (Either ParseError a)
 parseFile parser fullName withEOF =
     do
         contents <- catch (readFile fullName)
@@ -61,7 +56,7 @@ parseFile parser fullName withEOF =
 
         case runHParser parser fullName contents withEOF True {- layout -} of
             Left parseError -> do
-                return (Left ("Parse error: " ++ show parseError))
+                return (Left parseError)
             Right module_ ->
                 return (Right module_)
 
@@ -111,25 +106,14 @@ topdecls  ->  topdecl1 ";" ... ";" topdecln    (n>=0)
 -}
 
 body = addRange $
-    do
-        ts <- withLayout1 topdecl
-        let (is, ds) = splitDecls ts
-            groupedDecls = CollectFunctionBindings.decls ds
+    withBraces' $ \explicit -> do
+        let combinator = if explicit 
+                         then semiSepTerm
+                         else semiOrInsertedSemiSepTerm
+        is <- combinator impdecl
+        ds <- combinator topdecl
+        let groupedDecls = CollectFunctionBindings.decls ds
         return $ \r -> Body_Body r is groupedDecls
-
-splitDecls :: [Either ImportDeclaration Declaration] -> ([ImportDeclaration], [Declaration])
-splitDecls [] = ([], [])
-splitDecls (Left i : rest)  = let (is, ds) = splitDecls rest in (i:is, ds)
-splitDecls (Right d : rest) = 
-    let (is, ds) = splitDecls rest in
-        if not (null is) then
-            unsafePerformIO $ do
-                putStrLn $ (showPositions (map rangeFromImportDeclaration is)) ++
-                    ": Import declarations should all be at the top of the module"
-                System.exitWith (ExitFailure 1)
-        else
-            (is, d:ds)
-
     
 {-
 topdecl  
@@ -143,30 +127,27 @@ simpletype
     ->  tycon tyvar1 ... tyvark  (k>=0)  
 -}
 
-topdecl :: HParser (Either ImportDeclaration Declaration)
-topdecl = 
-    fmap Left impdecl
+topdecl :: HParser Declaration
+topdecl = addRange (
+    do
+        lexDATA
+        st <- simpleType
+        lexASG
+        cs <- constrs
+        return (\r -> Declaration_Data r [] st cs [])
     <|>
-    fmap Right (addRange (
-        do
-            lexDATA
-            st <- simpleType
-            lexASG
-            cs <- constrs
-            return (\r -> Declaration_Data r [] st cs [])
-        <|>
-        do
-            lexTYPE
-            st <- simpleType
-            lexASG
-            t <- type_
-            return $ \r -> Declaration_Type r st t
-        <|>
-        infixdecl
-        )
-        <|>
-        decl
-    ) <?> "declaration"
+    do
+        lexTYPE
+        st <- simpleType
+        lexASG
+        t <- type_
+        return $ \r -> Declaration_Type r st t
+    <|>
+    infixdecl
+    ) 
+    <|>
+    decl
+    <?> "declaration"
 
 simpleType :: HParser SimpleType
 simpleType =
@@ -901,24 +882,34 @@ pat :: HParser Pattern
 pat = addRange $
     do  
         u <- unaryMinusPat
-        p <- pat10
         ps <- fmap concat $ many $
             do
                 o <- do { n <- conop; return (Pattern_Variable noRange n) }
                 u <- unaryMinusPat
-                p <- pat10
-                return ([o] ++ u ++ [p])
-        return $ \r -> Pattern_List noRange (u ++ [p] ++ ps)
+                return (o : u)
+        return $ \r -> Pattern_List noRange (u ++ ps)
         
 unaryMinusPat :: HParser [Pattern]
-unaryMinusPat = option [] $
+unaryMinusPat = 
     do 
-        (_, r) <- withRange (lexMINDOT) 
-        return [Pattern_Variable noRange (Name_Identifier r [] floatUnaryMinusName)]
+        (_, mr) <- withRange (lexMINDOT)
+        (d, dr) <- withRange lexDouble <?> "floating-point literal"
+        return 
+            [ Pattern_Variable noRange (Name_Identifier mr [] floatUnaryMinusName)
+            , Pattern_Literal dr (Literal_Float dr d)
+            ]
     <|>
     do 
-        (_, r) <- withRange (lexMIN) 
-        return [Pattern_Variable noRange (Name_Identifier r [] intUnaryMinusName)]
+        (_, mr) <- withRange (lexMIN) 
+        (i, ir) <- withRange lexInt <?> "integer literal"
+        return 
+            [ Pattern_Variable noRange (Name_Identifier mr [] intUnaryMinusName)
+            , Pattern_Literal ir (Literal_Int ir i)
+            ]
+    <|>
+    do
+        p <- pat10
+        return [p]
     
 {-
 pat10   ->  con apat*

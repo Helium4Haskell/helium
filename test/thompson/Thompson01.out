@@ -1,0 +1,5 @@
+Compiling thompson/Thompson01.hs
+(1,10): Syntax error: 
+    non-terminated character literal
+    correct examples of character literals: 'a', '\n', '%', ' ', '\''
+Compilation failed with a syntax error

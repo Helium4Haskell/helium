@@ -1,7 +1,9 @@
 #!/bin/bash
 clear
-./testC
-./testSW
+./testP
 ./testSE
 ./testTE
 ./testM
+./testTh
+./testC
+./testSW

@@ -1,0 +1,5 @@
+Compiling thompson/Thompson08.hs
+(4,0): Syntax error: 
+    unexpected end of block (based on layout)
+    expecting operator, constructor operator, '::', ',' or ')'
+Compilation failed with a syntax error

@@ -1,0 +1,9 @@
+Compiling thompson/Thompson28.hs
+
+(2,22): Type error in infix application
+*** Expression     : 300 + tail s
+*** Term           : +
+*** Type           : Int -> Int    -> Int   
+*** Does not match : Int -> [Char] -> [Char]
+
+Compilation failed with 1 type error

@@ -1,0 +1,5 @@
+Compiling parser/NewlineInString.hs
+(1,14): Syntax error: 
+    newline in string literal (expecting ")
+    correct examples of string literals: "Helium", "10", "", "fun\nny\""
+Compilation failed with a syntax error

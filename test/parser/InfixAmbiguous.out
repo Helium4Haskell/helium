@@ -1,0 +1,4 @@
+Compiling parser/InfixAmbiguous.hs
+(5,10), (5,14): Ambiguous use of non-associative operator +
+    with non-associative operator +
+Compilation failed with a syntax error

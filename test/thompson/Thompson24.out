@@ -1,0 +1,8 @@
+Compiling thompson/Thompson24.hs
+
+(1,1): Declared type is too general
+*** Expression     : compress
+*** Declared type  : [a  ] -> [a  ]
+*** Inferred type  : [Int] -> [Int]
+
+Compilation failed with 1 type error

@@ -279,6 +279,7 @@ concat = foldr (++) []
 (!!) :: [a] -> Int -> a
 (x:_)  !! 0 = x
 (_:xs) !! n = xs !! (n - 1)
+[]     !! _ = error "Prelude.(!!): index too large"
 
 foldl :: (a -> b -> a) -> a -> [b] -> a
 foldl _ z [] = z
@@ -424,6 +425,9 @@ all p = and . map p
 
 sum :: [Int] -> Int
 sum = foldl' (+) 0
+
+sumFloat :: [Float] -> Float
+sumFloat = foldl' (+.) 0.0
 
 product :: [Int] -> Int
 product = foldl' (*) 1

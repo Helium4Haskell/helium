@@ -62,7 +62,7 @@ AG_OPTS = -mscfr
 PARSER	= \
 	parser/CollectFunctionBindings.hs parser/OperatorTable.hs \
 	parser/Parser.hs parser/ResolveOperators.hs parser/Lexer.hs \
-	parser/ParseLibrary.hs
+	parser/ParseLibrary.hs parser/ParseMessage.hs
 
 MODULESYSTEM = \
 	modulesystem/ImportEnvironment.hs \
@@ -205,9 +205,14 @@ hint: interpreter/Main.hs utils/OSSpecific.hs
 ag : utils/PrettyPrinting.hs staticanalysis/staticchecks/StaticChecks.hs staticanalysis/inferencers/TypeInferencing.hs codegeneration/CodeGeneration.hs \
      syntax/UHA_Syntax.hs modulesystem/ExtractImportDecls.hs staticanalysis/inferencers/typingstrategies/TS_Syntax.hs \
      staticanalysis/inferencers/typingstrategies/TS_Apply.hs staticanalysis/inferencers/typingstrategies/TS_Analyse.hs \
-     staticanalysis/inferencers/typingstrategies/TS_ToCore.hs
+     staticanalysis/inferencers/typingstrategies/TS_ToCore.hs parser/ResolveOperators.hs
 
 ifdef AG
+parser/ResolveOperators.hs : \
+		parser/ResolveOperators.ag syntax/UHA_Syntax.ag
+	# AG ResolveOperators
+	cd parser;$(AG) $(AG_OPTS) ResolveOperators.ag;cd ..
+
 utils/PrettyPrinting.hs : \
 		utils/PrettyPrinting.ag syntax/UHA_Pretty.ag syntax/UHA_Syntax.ag
 	# AG PrettyPrinting

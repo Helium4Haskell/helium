@@ -1,0 +1,3 @@
+Compiling thompson/Thompson20.hs
+(2,1): Definition "elemBy" clashes with definition in imported module Prelude
+Compilation failed with 1 error

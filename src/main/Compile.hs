@@ -15,6 +15,7 @@ import qualified CodeGeneration       (sem_Module)
 
 -- Parser
 import Parser(parseModule)
+import ParseMessage
 import ResolveOperators(resolveOperators, operatorsFromModule)
 import OperatorTable
 import Lexer
@@ -73,15 +74,16 @@ compile fullName options doneModules =
 
         when (DumpTokens `elem` options) $ do
             cont <- readFile fullName
-            putStrLn (show (layout (lexer (1,1) cont)))
+            putStrLn (show (layout (lexer (Pos 1 1) cont)))
         
         parseResult <- {-# SCC "parseModule" #-} 
                        parseModule fullName
         
         mod <- case parseResult of
-            Left errorString -> do
+            Left parseError -> do
                 unless (NoLogging `elem` options) $ logger "P" Nothing
-                putStrLn errorString
+                putStr . sortAndShowMessages $ [parseError]
+                putStrLn ("Compilation failed with a syntax error")
                 exitWith (ExitFailure 1)
             Right m -> 
                 return m
@@ -104,8 +106,13 @@ compile fullName options doneModules =
         
         let importOperatorTable = operatorsFromModule moduleBeforeResolve
                                ++ concatMap operatorTable importEnvironments 
-            module_ = {-# SCC "resolveOperators" #-} 
+            (module_, resolveErrors) = {-# SCC "resolveOperators" #-} 
                       resolveOperators importOperatorTable moduleBeforeResolve
+        
+        when (not (null resolveErrors)) $ do
+                putStr . sortAndShowMessages $ resolveErrors
+                putStrLn ("Compilation failed with a syntax error")
+                exitWith (ExitFailure 1)
 
         when (DumpUHA `elem` options) $ 
             putStrLn $ show $ PrettyPrinting.sem_Module module_  

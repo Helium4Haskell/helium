@@ -18,8 +18,8 @@ import TypesToAlignedDocs  (typesToAlignedDocs)
 import UHA_Utils           (isImportRange)
 import Char                (isSpace)
 
-sortAndShowMessages :: (Show a, HasMessage a) => [a] -> String
-sortAndShowMessages = concatMap show . sortMessages
+sortAndShowMessages :: HasMessage a => [a] -> String
+sortAndShowMessages = concatMap showMessage . sortMessages
 
 lineLength :: Int
 lineLength = 80
@@ -41,15 +41,16 @@ instance Show MessageBlock where
    show (MessageInfoLink s   ) = "<a link=" ++ s ++ ">[?]</a>"
    show (MessageCompose ms   ) = concatMap show ms
 
-instance HasMessage message => Show message where
-   show x = let rangePart = MessageString $ case filter (not . isImportRange) (getRanges x) of
-                               [] -> ""
-                               xs -> showPositions xs ++ ": "
-                documentationLinkPart = maybe (MessageString "") MessageInfoLink (getDocumentationLink x)
-                list = case getMessage x of
-                          MessageOneLiner m:rest -> MessageOneLiner (MessageCompose [rangePart, documentationLinkPart, m]) : rest
-                          xs                     -> MessageOneLiner (MessageCompose [rangePart, documentationLinkPart]) : xs
-            in concatMap show list
+showMessage :: HasMessage message => message -> String
+showMessage x = 
+    let rangePart = MessageString $ case filter (not . isImportRange) (getRanges x) of
+                       [] -> ""
+                       xs -> showPositions xs ++ ": "
+        documentationLinkPart = maybe (MessageString "") MessageInfoLink (getDocumentationLink x)
+        list = case getMessage x of
+                  MessageOneLiner m:rest -> MessageOneLiner (MessageCompose [rangePart, documentationLinkPart, m]) : rest
+                  xs                     -> MessageOneLiner (MessageCompose [rangePart, documentationLinkPart]) : xs
+    in concatMap show list
 
 showHints :: String -> MessageBlocks -> String
 showHints pre ms = 

@@ -1,8 +1,9 @@
-module Lexer -- 568 regels
-    ( Token, Lexeme(..), Pos
+module Lexer
+    ( Token, Lexeme(..), Pos(..)
     , lexer
-    , layout, addLayout
-    , incpos, lexemeLength
+    , layout
+    , lexemeLength
+    , charErrors, stringErrors, floatErrors
     ) where
 
 import Char
@@ -12,84 +13,106 @@ import Char
 -----------------------------------------------------------
 
 layout :: [Token] -> [Token]
-layout  = lay [] . addLayout
+layout input@((pos@(Pos _ col), lexeme):_) = optimise $
+    case lexeme of 
+        LexKeyword "module" -> 
+            lay (Pos 0 0) [] input
+        LexSpecial '{' ->
+            lay (Pos 0 0) [] input
+        _ ->
+            (pos, LexINSERTED_LBRACE) : lay (Pos 0 0) [CtxLay col False] input
+layout [] = []
 
+optimise :: [Token] -> [Token]
+optimise (token1@(_, LexINSERTED_LBRACE) : (_, LexINSERTED_SEMI) : ts) =
+    optimise (token1 : ts)
+optimise (t:ts) = 
+    t : optimise ts
+optimise [] = []
 
-data Context   = CtxLay Int
-               | CtxLet Int
-               | CtxBrace
-               deriving (Eq,Show)
+data Context 
+    = CtxLay Int Bool {- let? -}
+    | CtxBrace
+    deriving (Eq,Show)
+    
+--  position previous token
+--            enclosing contexts
+lay :: Pos -> [Context] -> [Token] -> [Token]
 
+-- If we're in a CtxBrace and we see a '}', we leave that context.
+-- If we see another token, we check to see if we need to add a
+-- new context.
+lay     prev 
+        cc@(CtxBrace:cs) 
+        input@(t@(pos, lexeme):ts)
+    | lexeme == LexSpecial '}' =
+        t : lay pos cs ts
+    | otherwise = 
+        t : addContext pos cc input 
 
-lay :: [Context] -> [Token] -> [Token]
+-- If we're in a let layout context, an 'in' can end
+-- the context, too.
+lay     _ 
+        (CtxLay _ True:cs) 
+        (t@(pos, LexKeyword "in"):ts) 
+    = (pos, LexINSERTED_RBRACE) : t : lay pos cs ts
 
+-- If we're in a layout context and the new token is not on the 
+-- same line as the previous, we check the column against the
+-- context. If the new token is on the same line, we only need
+-- to check whether a context has to be added.
+lay     prev@(Pos prevLine prevCol) 
+        cc@(CtxLay ctxCol _:cs) 
+        input@(t@(pos@(Pos line col), _):ts) 
+    | line > prevLine = -- token on next line?
+        if col > ctxCol then -- indent more => nothing
+            t : addContext pos cc input
+        else if col == ctxCol then -- indent same => insert ';' 
+            (pos, LexINSERTED_SEMI) : t : addContext pos cc input
+        else -- indent less => insert brace, remove context and try again
+            (pos, LexINSERTED_RBRACE) : lay prev cs input
+    | otherwise = -- token on same line
+        t : addContext pos cc input
 
-lay (CtxLet c:cs) ((_,Indent i):t@(pos,LexKeyword "in"):ts)   = (pos,LexINSERTED_RBRACE) : t : lay cs ts
-lay (CtxLet c:cs) (t@(pos,LexKeyword "in"):ts)        = (pos,LexINSERTED_RBRACE) : t : lay cs ts
+lay _ _ [] = []
 
-lay cc@(CtxBrace:cs) ((pos,Indent i):ts)    = lay cc ts
+lay     prev 
+        [] 
+        input@(t@(pos, _):_) = 
+    t : addContext pos [] input
 
-{-
-lay cc@(CtxLet c:cs) tt@(t@(_,LexSEMI):(pos,Indent i):ts)   
-                                            = t : lay cc ts
--}                                            
-lay cc@(CtxLet c:cs) tt@((pos,Indent i):ts) | i == c    = (pos,LexINSERTED_SEMI) : lay cc ts
-                                            | i  < c    = (pos,LexINSERTED_RBRACE) : lay cs tt
-                                            | otherwise = lay cc ts
-{-
-lay cc@(CtxLay c:cs) tt@(t@(_,LexSEMI):(pos,Indent i):ts)   
-                                            | i == c    = t : lay cc ts
-                                            | i  < c    = (pos,LexRBRACE) : lay cs tt
-                                            | otherwise = lay cc ts
--}
-lay cc@(CtxLay c:cs) tt@((pos,Indent i):ts) | i == c    = (pos,LexINSERTED_SEMI) : lay cc ts
-                                            | i  < c    = (pos,LexINSERTED_RBRACE) : lay cs tt
-                                            | otherwise = lay cc ts
-                                            
-lay cs (t@(pos,LexSpecial '{'):ts)               = t : lay (CtxBrace:cs) ts
-lay (CtxBrace:cs) (t@(pos,LexSpecial '}'):ts)    = t : lay cs ts
+addContext :: Pos -> [Context] -> [Token] -> [Token]
 
-lay cs ((pos,Indent i):ts)                  = lay cs ts
-lay cs ((pos,Layout c):ts)                  = (pos,LexINSERTED_LBRACE) : lay (c:cs) ts
+-- If we see a '{' we add a CtxBrace context
+addContext prev cs (t@(pos, LexSpecial '{'):ts) = 
+    lay prev (CtxBrace : cs) ts
 
-lay cs (t:ts)                               = t : lay cs ts
-lay cs []                                   = []
+-- If we see a 'do', 'where', 'of' or 'let' we add a context
+-- and a '{' only if the next token is not a '{'
+addContext prev cs 
+        (t@(pos, LexKeyword keyword):t2@(pos2@(Pos line2 col2), lexeme2):ts) 
+    | keyword `elem` ["do", "where", "of","let"] =
+        if lexeme2 == LexSpecial '{' then
+            lay prev cs (t2:ts)
+        else
+            (pos2, LexINSERTED_LBRACE) :
+            lay prev (CtxLay col2 (keyword == "let") : cs) (t2:ts)
+    | otherwise = 
+        lay prev cs (t2:ts)
 
+addContext prev cs (_:ts) =
+    lay prev cs ts
 
-addLayout tt@((pos,LexKeyword "module"):ts)   = addLay pos tt 
-addLayout tt@((pos,LexSpecial '{'):ts)   = addLay pos tt
-addLayout tt@((pos,_):ts)           = (pos,Layout (CtxLay (snd pos))) : addLay pos tt
-addLayout []                        = []
+addContext _ _ [] = []
 
-addLay :: Pos -> [Token] -> [Token]
-addLay pos []                           = []
---addLay _ (t@(pos,LexIN):ts)             = t : addLay pos ts
-addLay (l,c) (t@(pos,lexeme):ts)   
-            | ln > l     = (pos,Indent col) : t : rest
-            | otherwise  = t : rest
-            where
-              (ln,col)   = pos
-              rest       = case lexeme of 
-                                     LexKeyword "let"   -> newlay CtxLet
-                                     LexKeyword "where" -> newlay CtxLay
-                                     LexKeyword "of"    -> newlay CtxLay
-                                     LexKeyword "do"    -> newlay CtxLay
-                                     _         -> addLay pos ts
-                                                          
-              newlay ctx = case ts of
-                             [] -> []
-                             (u@(pos',LexSpecial '{'):us) 
-                                -> u : addLay pos' us
-                             (u@(pos',lexeme'):us)   
-                                -> (pos',Layout (ctx (snd pos'))) : u : addLay pos' us
-                      
-                      
-                      
 -----------------------------------------------------------
 -- Lexer
 -----------------------------------------------------------
 
-type Pos        = (Int,Int)
+data Pos        = Pos !Int !Int
+instance Show Pos where
+   show (Pos l c) = show (l, c)
+   
 type Token      = (Pos,Lexeme)
 
 data Lexeme     = LexUnknown         Char
@@ -113,9 +136,6 @@ data Lexeme     = LexUnknown         Char
                 | LexINSERTED_SEMI   -- ;
                 
                 | LexEOF
-                
-                | Layout Context
-                | Indent Int
                 deriving Eq
 
 instance Show Lexeme where
@@ -125,8 +145,8 @@ instance Show Lexeme where
         LexError   e        -> e
         LexChar    c        -> "character literal"      ++ " '" ++ c      ++ "'"
         LexString  s        -> "string literal"         ++ " \""++ s      ++ "\""
-        LexInt     i        -> "integer literal"        ++ " '" ++ show i ++ "'"
-        LexFloat   f        -> "floating-point literal" ++ " '" ++ show f ++ "'"
+        LexInt     i        -> "integer literal"        ++ " '" ++ i      ++ "'"
+        LexFloat   f        -> "floating-point literal" ++ " '" ++ f      ++ "'"
         LexVar     n        -> "variable"               ++ " '" ++ n      ++ "'"
         LexVarSym  o        -> "operator"               ++ " '" ++ o      ++ "'"
         LexCon     c        -> "constructor"            ++ " '" ++ c      ++ "'"
@@ -138,8 +158,8 @@ instance Show Lexeme where
         LexSpecial c        -> "'" ++ [c] ++ "'"
         
         LexINSERTED_LBRACE  -> "inserted '{'"
-        LexINSERTED_RBRACE  -> "inserted '}'"
-        LexINSERTED_SEMI    -> "inserted ;"
+        LexINSERTED_RBRACE  -> "end of block (based on layout)"
+        LexINSERTED_SEMI    -> "next in block (based on layout)"
                         
         LexEOF              -> "end of file"
         
@@ -162,8 +182,8 @@ lexemeLength l = case l of
     LexResConSym       s     -> length s
     _                        -> 0
     
-lexer :: (Int, Int) -> [Char] -> [Token]
-lexer (ln,col) []               = [((ln+1, 0), LexEOF)]
+lexer :: Pos -> [Char] -> [Token]
+lexer (Pos ln col) []           = [((Pos (ln+1) 0), LexEOF)]
 
 lexer pos ('-':'-':cs)          = nextinc lexeol pos 2 cs
 lexer pos ('{':'-':cs)          = nextinc (lexComment 0) pos 2 cs
@@ -200,6 +220,7 @@ keywords =
     [ "let", "in", "do", "where", "case", "of", "if"
     , "then", "else", "data", "type", "module", "import"
     , "infix", "infixl", "infixr", "_"
+    , "class", "instance", "default", "deriving", "newtype" -- not supported
     , "phase", "constraints" -- Bastiaan
     ]
 
@@ -225,7 +246,7 @@ nextinc f pos i cs              = let pos' = incpos pos i  in seq pos' (f pos' c
 
 foldl' f x []                   = x
 foldl' f x (y:ys)               = let z = f x y  in seq z (foldl' f z ys)
---- 1m24, 1m26 ./testSE
+
 -----------------------------------------------------------
 -- Numbers
 -----------------------------------------------------------
@@ -241,7 +262,7 @@ lexIntFloat pos input =
                 posBehindDot = incpos posBehindDigits 1
                 posBehindFraction = incpos posBehindDot (length fraction)
             in if null fraction then 
-                (posBehindDigits, LexError "'invalid fraction'") :
+                (posBehindDigits, LexError emptyFraction) :
                 lexer posBehindDot rest2
                else
                 (pos, LexFloat (digits ++ "." ++ fraction)) :
@@ -257,40 +278,40 @@ lexChar pos ('\'':'\\':c:'\'':cs) =
     if c `elem` escapeChars then    
         (pos, LexChar ['\\',c]) : lexer (incpos pos 4) cs
     else
-        (pos, LexError "illegal escape sequence") : lexer (incpos pos 4) cs
+        (pos, LexError illegalEscapeInChar) : lexer (incpos pos 4) cs
 lexChar pos ('\'':'\'':cs) = 
-    (pos, LexError "empty character") : 
+    (pos, LexError emptyChar) : 
     lexer (incpos pos 2) cs
 lexChar pos ('\'':c:'\'':cs) =
     if ord c >= 32 && ord c <= 126 then 
         (pos, LexChar [c]) : lexer (incpos pos 3) cs
     else
-        (pos, LexError "illegal character") : lexer (incpos pos 3) cs
+        (pos, LexError illegalCharInChar) : lexer (incpos pos 3) cs
 lexChar pos ('\'':c:cs) =
-    (pos, LexError "unclosed character") : lexer (incpos pos 2) cs
+    (pos, LexError nonTerminatedChar) : lexer (incpos pos 2) cs
 lexChar pos ['\''] = 
-    (pos, LexError "unexpected end of input in character") : lexer pos []
+    (pos, LexError eofInChar) : lexer pos []
 
 lexString startPos ('"':cs) = lexStringChar (incpos startPos 1) cs ""
   where
     lexStringChar pos [] s = 
-        (pos, LexError "end of input in string") : lexer pos []
+        (pos, LexError eofInString) : lexer pos []
     lexStringChar pos ('\\':c:cs) s =
         if c `elem` escapeChars then
             lexStringChar (incpos pos 2) cs (c:'\\':s)
         else
-            (pos, LexError "illegal escape sequence") : 
+            (pos, LexError illegalEscapeInString) : 
             lexStringChar (incpos pos 2) cs s
     lexStringChar pos ('"':cs) s =
         (startPos, LexString (reverse s)) : lexer (incpos pos 1) cs
     lexStringChar pos ('\n':cs) s =
-        (pos, LexError "newline in string") : 
+        (pos, LexError newlineInString) : 
         lexer (newpos pos '\n') cs
     lexStringChar pos (c:cs) s =
         if ord c >= 32 && ord c <= 126 then
             lexStringChar (incpos pos 1) cs (c:s)
         else
-            (pos, LexError "illegal character in string") : 
+            (pos, LexError illegalCharInString) : 
             lexStringChar (incpos pos 1) cs s
         
 -----------------------------------------------------------
@@ -329,8 +350,25 @@ lexComment level pos []
 -- Positions
 -----------------------------------------------------------
 
-incpos (line,col) i           = (line,col+i)
+incpos (Pos line col) i     = Pos line (col+i)
 
-newpos (line,col) '\n'  = (line + 1,1)
-newpos (line,col) '\t'  = (line, ((((col-1) `div` 8)+1)*8)+1)
-newpos (line,col) c     = (line, col+1)
+newpos (Pos line col) '\n'  = Pos (line + 1) 1
+newpos (Pos line col) '\t'  = Pos line (((((col-1) `div` 8)+1)*8)+1)
+newpos (Pos line col) c     = Pos line (col+1)
+
+nonTerminatedChar     = "non-terminated character literal"
+illegalCharInChar     = "illegal character in character literal"
+emptyChar             = "empty character literal"
+eofInChar             = "end-of-file in character literal"
+illegalEscapeInChar   = "illegal escape sequence in character literal"
+
+newlineInString       = "newline in string literal (expecting \")"
+illegalCharInString   = "illegal character in string literal"
+eofInString           = "end-of-file in string literal"
+illegalEscapeInString = "illegal escape sequence in string literal"
+
+emptyFraction         = "empty fraction in floating-point literal"
+
+charErrors = [ nonTerminatedChar, illegalCharInChar, emptyChar, eofInChar ]
+stringErrors = [ newlineInString, illegalCharInString, eofInString ]
+floatErrors  = [ emptyFraction ]

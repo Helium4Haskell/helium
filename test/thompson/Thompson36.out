@@ -1,0 +1,9 @@
+Compiling thompson/Thompson36.hs
+
+(1,8): Type error in application
+*** Expression     : concat [1,2,3]
+*** Term           : [1,2,3]
+*** Type           : [Int]
+*** Does not match : [[a]]
+
+Compilation failed with 1 type error

@@ -9,7 +9,7 @@ type HParser a = GenParser Token SourcePos a
 
 runHParser :: HParser a -> FilePath -> String -> Bool -> Bool -> Either ParseError a
 runHParser p fname input withEOF withLayout
-  = let tokens = lexer (1, 1) input
+  = let tokens = lexer (Pos 1 1) input
         tokensAfterPossibleLayout = if withLayout then layout tokens else tokens
     in runParser 
         (if withEOF then waitForEOF p else p) 
@@ -246,13 +246,13 @@ satisfy pred
   = superTokenPrim 
         showtok 
         nextpos 
-        (\((line, col),lex) old -> 
+        (\((Pos line col),lex) old -> 
             setSourceColumn (setSourceLine old line) (col+lexemeLength lex)
         ) 
         (\(pos,lex) -> pred lex)
   where
     showtok (pos,lex)   = show lex
-    nextpos pos _ (((line,col),lex):_)
+    nextpos pos _ (((Pos line col),lex):_)
        = setSourceColumn (setSourceLine pos line) col
     nextpos pos _ []
        = pos

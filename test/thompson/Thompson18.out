@@ -1,0 +1,5 @@
+Compiling thompson/Thompson18.hs
+(1,15): Syntax error: 
+    unexpected '::'
+    expecting pattern, '=' or '|'
+Compilation failed with a syntax error

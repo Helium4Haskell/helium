@@ -21,7 +21,6 @@ typeOfShowFunction name names =
     in generalize [] (foldr1 (.->.) (map (.->. stringType) types))
 
 derivingShow :: UHA.Declaration -> CoreDecl
--- !!! commentaar
 derivingShow (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
     let typeString = show (typeOfShowFunction name names)
     in
@@ -124,9 +123,9 @@ checkForPrimitive name =
             let arity = length commasAndClose
             in 
                 if arity > 10 then
-                    error "Limitation: can't generate show function for tuples greater than 10"
+                    error "No show functions for tuples with more than 10 elements"
                 else
-                    "Tuple" ++ show arity -- !!!
+                    "Tuple" ++ show arity
         _ -> name 
         
 idFromNumber :: Int -> Id
