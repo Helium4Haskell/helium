@@ -3,10 +3,13 @@ module PhaseTypingStrategies(phaseTypingStrategies) where
 import CompileUtils
 import Core(CoreDecl)
 import TS_Compile (readTypingStrategiesFromFile)
+import Data.FiniteMap (listToFM)
+import UHA_Syntax (Name)
+import Types (TpScheme)
 
-phaseTypingStrategies :: String -> ImportEnvironment -> [ImportEnvironment] -> [Option] ->
+phaseTypingStrategies :: String -> ImportEnvironment -> [ImportEnvironment] -> [(Name, TpScheme)] -> [Option] ->
                             IO (ImportEnvironment, [CoreDecl])
-phaseTypingStrategies fullName localEnv importEnvs options
+phaseTypingStrategies fullName localEnv importEnvs typeSignatures options
 
    | TypeInferenceDirectives `notElem` options = 
         return (removeTypingStrategies combinedEnvironment, [])
@@ -24,4 +27,4 @@ phaseTypingStrategies fullName localEnv importEnvs options
 
  where 
    combinedEnvironment :: ImportEnvironment
-   combinedEnvironment = foldr combineImportEnvironments localEnv importEnvs
+   combinedEnvironment = foldr combineImportEnvironments (addToTypeEnvironment (listToFM typeSignatures) localEnv) importEnvs

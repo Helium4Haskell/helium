@@ -4,6 +4,7 @@ ATTR Module
    |
    | collectEnvironment    : ImportEnvironment  
      errors                : Errors
+     typeSignatures        : {[(Name,TpScheme)]}
      warnings              : Warnings
    ]
 

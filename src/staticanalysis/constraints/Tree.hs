@@ -1,7 +1,7 @@
 module Tree where
 
 import Data.FiniteMap
-import qualified Set
+import qualified Data.Set as S
 import TreeWalk 
 import Types
 import List (partition)
@@ -98,7 +98,7 @@ spreadTree spreadFunction = fst . rec emptyFM
 
           Node trees -> 
              let (trees', sets) = unzip (map (rec fm) trees)
-             in (Node trees', Set.unions sets)
+             in (Node trees', S.unionManySets sets)
           
           -- also spread the constraints that are stored as
           -- a dependency in this chunk.
@@ -112,25 +112,25 @@ spreadTree spreadFunction = fst . rec emptyFM
           StrictOrder left right -> 
              let (left' , set1) = rec fm left
                  (right', set2) = rec fm right
-             in (StrictOrder left' right', Set.union set1 set2)
+             in (StrictOrder left' right', S.union set1 set2)
           
           Spread direction as tree -> 
              let (tree', set) = rec fmNew tree
                  fmNew = addListToFM_C (++) fm [ (i, [x]) | x <- doSpread, let Just i = spreadFunction x ]
                  (doSpread, noSpread) = 
-                    partition (maybe False (`Set.member` set) . spreadFunction) as
+                    partition (maybe False (`S.elementOf` set) . spreadFunction) as
              in (Spread direction noSpread tree', set)
           
           Receive i -> 
              let tree = case lookupFM fm i of
                            Nothing -> emptyTree
                            Just as -> listTree as
-             in (tree, Set.single i)
+             in (tree, S.unitSet i)
              
           Phase i as ->
-             (tree, Set.empty)
+             (tree, S.emptySet)
              
-          _ -> (tree, Set.empty)
+          _ -> (tree, S.emptySet)
 
 
 phaseTree :: Tree a -> Tree a

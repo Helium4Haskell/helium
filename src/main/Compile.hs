@@ -47,7 +47,7 @@ compile fullName options lvmPath doneModules =
         stopCompilingIf (StopAfterParser `elem` options)
 
         -- Phase 5: Static checking
-        (localEnv, staticWarnings) <-
+        (localEnv, typeSignatures, staticWarnings) <-
             phaseStaticChecks fullName doneModules resolvedModule importEnvs options        
 
         unless (NoWarnings `elem` options) $
@@ -57,7 +57,7 @@ compile fullName options lvmPath doneModules =
 
         -- Phase 6: Typing Strategies
         (completeEnv, typingStrategiesDecls) <-
-            phaseTypingStrategies fullName localEnv importEnvs options
+            phaseTypingStrategies fullName localEnv importEnvs typeSignatures options
 
         -- Phase 7: Type inferencing
         (finalEnv, inferredTypes, overloadedVars, toplevelTypes, typeWarnings) <- 

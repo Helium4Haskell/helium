@@ -2193,7 +2193,7 @@ sem_MaybeNames_Nothing  =
 -- semantic domain
 type T_Module = (String) ->
                 (ImportEnvironments) ->
-                ( (ImportEnvironment),(Errors),(Module),(Warnings))
+                ( (ImportEnvironment),(Errors),(Module),([(Name,TpScheme)]),(Warnings))
 -- cata
 sem_Module :: (Module) ->
               (T_Module)
@@ -2328,6 +2328,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_baseName) (_lhs_impo
          ,filter (\err -> filterRemovedNames _removedEntities err
                        && filterDerivedNames _derivedRanges err) _allErrors
          ,_self
+         ,_body_typeSignatures
          ,_scopeWarnings ++ _warnings
          )
 -- Name --------------------------------------------------------
