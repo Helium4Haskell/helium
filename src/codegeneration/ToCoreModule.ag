@@ -71,7 +71,7 @@ SEM Module
             , emptySet          -- Bool(..); put Bool in @exports.cons as well!
             , @exports.mods     -- module ImportedModule, module ThisModule
             )
-            (makeCoreModule @name.id 
+            (makeCoreModule (fmap idFromName @name.name)
                 ( @body.decls ++ @lhs.additionalDecls
                 ))
     --  range                    : Range
@@ -95,15 +95,15 @@ ATTR MaybeExports Export Exports
     ]
 
 SEM Export
-    | Variable               lhs.values = singleSet @name.id
+    | Variable               lhs.values = singleSet (idFromName @name.self)
                                 .types  = emptySet
                                 .cons   = emptySet
                                 .mods   = emptySet
     --  range                    : Range
     --  name                     : Name
     | TypeOrClass            lhs.values = emptySet
-                                .types  = singleSet @name.id
-                                .cons   = setFromList (maybe [] id @names.ids)
+                                .types  = singleSet (idFromName @name.self)
+                                .cons   = setFromList (maybe [] (map idFromName) @names.names)
                                 .mods   = emptySet
     --  range                    : Range
     --  name                     : Name
@@ -117,7 +117,7 @@ SEM Export
     | Module                 lhs.values = emptySet
                                 .types  = emptySet
                                 .cons   = emptySet
-                                .mods   = singleSet @name.id
+                                .mods   = singleSet (idFromName @name.self)
     --  range                    : Range
     --  name                     : Name   -- this is a module name
 

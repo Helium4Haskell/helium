@@ -8,10 +8,13 @@ import UHA_Syntax(Module(..), Name(..), MaybeName(..))
 import UHA_Range(noRange)
 import ImportEnvironment(TypeEnvironment, ImportEnvironment)
 import qualified CodeGeneration(sem_Module)
+import Types
+import UHA_Utils
+import FiniteMap
 
 phaseDesugarer :: String -> Module -> [CoreDecl] -> 
-                    ImportEnvironment -> TypeEnvironment -> [Option] -> IO CoreModule
-phaseDesugarer fullName module_ extraDecls finalEnv toplevelTypes options = do
+                    ImportEnvironment -> FiniteMap NameWithRange TpScheme {- == LocalTypes -} -> TypeEnvironment -> [Option] -> IO CoreModule
+phaseDesugarer fullName module_ extraDecls finalEnv inferredTypes toplevelTypes options = do
     enterNewPhase "Desugaring" options
 
     let (path, baseName, _) = splitFilePath fullName
@@ -23,6 +26,7 @@ phaseDesugarer fullName module_ extraDecls finalEnv toplevelTypes options = do
             CodeGeneration.sem_Module moduleWithName
                 extraDecls
                 finalEnv
+                inferredTypes
                 toplevelTypes
 
         strippedCoreModule = coreRemoveDead coreModule

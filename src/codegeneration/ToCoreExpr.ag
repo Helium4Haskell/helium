@@ -15,11 +15,11 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  literal                  : Literal
 
-    | Variable           lhs.core = Core.Var @name.id         
+    | Variable           lhs.core = Core.Var (idFromName @name.self)
     --  range                    : Range
     --  name                     : Name
 
-    | Constructor        lhs.core = Core.Con (Core.ConId @name.id)
+    | Constructor        lhs.core = Core.Con (Core.ConId (idFromName @name.self))
     --  range                    : Range
     --  name                     : Name
 

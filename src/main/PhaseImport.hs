@@ -32,7 +32,7 @@ phaseImport fullName module_ lvmPath options = do
 
 chaseImports :: [String] -> Module -> IO [[CoreDecl]]
 chaseImports lvmPath mod = 
-    let coreImportDecls = ExtractImportDecls.sem_Module mod -- Expand imports
+    let (coreImportDecls, _) = ExtractImportDecls.sem_Module mod -- Expand imports
         findModule      = searchPath lvmPath ".lvm" . stringFromId
     in lvmImportDecls findModule coreImportDecls
 

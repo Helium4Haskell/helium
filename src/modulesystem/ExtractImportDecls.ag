@@ -5,6 +5,7 @@ INCLUDE "../codegeneration/ToCoreName.ag"
 
 imports{
 import UHA_Syntax
+import UHA_Utils
 import Id
 import qualified Core
 import Utils (internalError)
@@ -21,11 +22,11 @@ SEM ImportDeclaration
         else
             maybe
                 [ Core.DeclImport
-                    { Core.declName = @name.id
+                    { Core.declName = idFromName @name.self
                     , Core.declAccess =
                         Core.Imported
                             { Core.accessPublic   = False -- private
-                            , Core.importModule   = @name.id
+                            , Core.importModule   = idFromName @name.self
                             , Core.importName     = dummyId
                             , Core.importKind     = Core.DeclKindModule
                             , Core.importMajorVer = 0
@@ -40,7 +41,7 @@ SEM ImportDeclaration
                         , Core.declAccess  =
                             Core.Imported
                                 { Core.accessPublic   = False -- private
-                                , Core.importModule   = @name.id
+                                , Core.importModule   = idFromName @name.self
                                 , Core.importName     = entityId
                                 , Core.importKind     = entityKind
                                 , Core.importMajorVer = 0
@@ -67,7 +68,7 @@ SEM ImportSpecification
 ATTR ImportSpecification Imports Import [ | | imps USE { ++ } { [] } : {[(Id, Core.DeclKind)]} ]
 
 SEM Import
-    | Variable                lhs.imps = [(@name.id, Core.DeclKindValue)]
-    | TypeOrClass             lhs.imps = (@name.id, Core.DeclKindCustom (idFromString "data")) :
-                                         zip (maybe [] id @names.ids) (repeat Core.DeclKindCon)
+    | Variable                lhs.imps = [(idFromName @name.self, Core.DeclKindValue)]
+    | TypeOrClass             lhs.imps = (idFromName  @name.self, Core.DeclKindCustom (idFromString "data")) :
+                                         zip (maybe [] (map idFromName) @names.names) (repeat Core.DeclKindCon)
     | TypeOrClassComplete     lhs.imps = internalError "ExtractImportDecls.ag" "Import.TypeOrClassComplete" "unsupported" 

@@ -12,7 +12,8 @@ import UHA_Syntax
 
 phaseTypeInferencer :: 
     String -> Module -> [String] -> ImportEnvironment -> [ImportEnvironment] -> 
-        ImportEnvironment -> [Option] -> IO (ImportEnvironment, TypeEnvironment, [Warning])
+        ImportEnvironment -> [Option] -> 
+           IO (ImportEnvironment, FiniteMap NameWithRange TpScheme  {- == LocalTypes -}, TypeEnvironment, [Warning])
 phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv options = do
     enterNewPhase "Type inferencing" options
 
@@ -30,9 +31,9 @@ phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv
         -- add the top-level types (including the inferred types)
         finalEnv = addToTypeEnvironment toplevelTypes completeEnv
     
---    putStrLn (unlines ("" : "toplevelTypes: " : map (\(n,ts) -> show n ++ " :: "++show ts) (fmToList toplevelTypes)))
---    putStrLn (unlines ("" : "localTypes:" : map show (fmToList localTypes)))
---    putStrLn (unlines ("" : "overloadedVars:"   : map (\(n,(m,t)) -> show n ++ " in scope of " ++ show m ++" has type " ++ show t) (fmToList overloadedVars)))
+    putStrLn (unlines ("" : "toplevelTypes: " : map (\(n,ts) -> show n ++ " :: "++show (getQualifiedType ts)) (fmToList toplevelTypes)))
+    putStrLn (unlines ("" : "localTypes:" : map show (fmToList localTypes)))
+    putStrLn (unlines ("" : "overloadedVars:"   : map (\(n,(m,t)) -> show n ++ " in scope of " ++ show m ++" has type " ++ show t) (fmToList overloadedVars)))
     
     when (DumpTypeDebug `elem` options) debugTypes
     
@@ -53,14 +54,14 @@ phaseTypeInferencer fullName module_ doneModules localEnv importEnvs completeEnv
              else
                 return ()
 
-    return (finalEnv, toplevelTypes, warnings)
+    return (finalEnv, localTypes, toplevelTypes, warnings)
 
 maximumNumberOfTypeErrors :: Int
 maximumNumberOfTypeErrors = 3
 
 -- temporary: for testing type classes --> also remove extra imports
 adjustIE :: ImportEnvironment -> ImportEnvironment
-adjustIE x = x -- setTypeEnvironment (adjustTE (typeEnvironment x)) x
+adjustIE x = setTypeEnvironment (adjustTE (typeEnvironment x)) x
 
 adjustTE :: FiniteMap Name TpScheme -> FiniteMap Name TpScheme
 adjustTE fm = let op (s,ts) fm = addToFM fm (nameFromString s) ts 

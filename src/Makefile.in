@@ -273,7 +273,7 @@ syntax/UHA_Syntax.hs : syntax/UHA_Syntax.ag
 modulesystem/ExtractImportDecls.hs : \
 		modulesystem/ExtractImportDecls.ag codegeneration/ToCoreName.ag syntax/UHA_Syntax.ag
 	# AG ExtractImportDecls
-	cd modulesystem;$(AG) $(AG_OPTS) ExtractImportDecls.ag;cd ..
+	cd modulesystem;$(AG) $(AG_OPTS) --self ExtractImportDecls.ag;cd ..
         
 staticanalysis/inferencers/typingstrategies/TS_Syntax.hs : \
 	staticanalysis/inferencers/typingstrategies/TS_Syntax.ag

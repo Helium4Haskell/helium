@@ -63,11 +63,11 @@ SEM Declaration
                         bindings.range = @range.self
                         lhs.decls    =
         [ Core.DeclValue
-            { Core.declName    = @bindings.id
+            { Core.declName    = idFromName @bindings.name
             , Core.declAccess  = Core.private
             , Core.valueEnc    = Nothing
-            , Core.valueValue  = foldr Core.Lam @bindings.core @ids
-            , Core.declCustoms = toplevelType (nameFromId @bindings.id) @lhs.importEnv @lhs.isTopLevel
+            , Core.valueValue  = foldr Core.Lam @bindings.core (@bindings.dictionaries ++ @ids)
+            , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv @lhs.isTopLevel
             }
         ]
     --  range                    : Range          
@@ -101,14 +101,14 @@ SEM Declaration
                     }
                 :
                 [ Core.DeclValue
-                    { Core.declName    = v
+                    { Core.declName    = idFromName v
                     , Core.declAccess  = Core.private
                     , Core.valueEnc    = Nothing
                     , Core.valueValue  =
                         (let_ nextClauseId (patternMatchFail "pattern binding" @range.self)
-                            (patternToCore (patBindId, @pattern.self) (Core.Var v))
+                            (patternToCore (patBindId, @pattern.self) (Core.Var (idFromName v)))
                         )
-                    , Core.declCustoms = toplevelType (nameFromId v) @lhs.importEnv @lhs.isTopLevel
+                    , Core.declCustoms = toplevelType v @lhs.importEnv @lhs.isTopLevel
                     }
                 | v <- @pattern.vars
                 ]
@@ -192,21 +192,22 @@ SEM Declaration
 ATTR FunctionBinding FunctionBindings 
     [   ids : { [Id] }
     | 
-    |   id : Id 
-        arity : Int
+    |   arity : Int
+        dictionaries : { [Id] }
     ]
 
 SEM FunctionBindings [ range : Range | | core : {Core.Expr} ]
-    | Cons             lhs.id    = @hd.id
-                          .core  = @hd.core @tl.core
-                          .arity = @hd.arity
-    | Nil              lhs.id    = intErr "FunctionBindings" "empty list of function bindings"
-                          .core  = patternMatchFail "function bindings" @lhs.range
+    | Cons             lhs.core  = @hd.core @tl.core
+    | Nil              lhs.core  = patternMatchFail "function bindings" @lhs.range
                           .arity = intErr "FunctionBindings" "empty list of function bindings"
+                          .dictionaries = intErr "FunctionBindings" "empty list of function bindings"
 
 SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
-    | FunctionBinding  lhs.id = @lefthandside.id
-                       lhs.arity = @lefthandside.arity
+    | FunctionBinding  lhs.arity = @lefthandside.arity
+                       lhs.dictionaries = map predicateToId @predicates
+                       loc.predicates = case lookupFM @lhs.inferredTypes (NameWithRange @lefthandside.name) of
+                                          Nothing -> internalError "ToCoreDecl" "FunctionBinding.core" ""
+                                          Just t -> case getQualifiedType t of (predicates :=> _) -> predicates
                        lhs.core = 
         \nextClause ->
             let thisClause = 
@@ -225,32 +226,33 @@ SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
     --  lefthandside             : LeftHandSide
     --  righthandside            : RightHandSide
 
+{
+predicateToId (Predicate class_ tp) =
+    idFromString $ "$dict" ++ class_ ++ show tp
+}
+
 ATTR LeftHandSide 
     [ 
     | 
-    |   id : Id 
-        arity : Int
+    |   arity : Int
         patterns : Patterns
     ]
 
 SEM LeftHandSide
-    | Function         lhs.id    = @name.id
-                          .arity = @patterns.length
+    | Function         lhs.arity = @patterns.length
                           .patterns = @patterns.self
     --  range                    : Range
     --  name                     : Name
     --  patterns                 : Patterns
 
-    | Infix            lhs.id    = @operator.id
-                          .arity = 2
+    | Infix            lhs.arity = 2
                           .patterns = [@leftPattern.self, @rightPattern.self ]
     --  range                    : Range
     --  leftPattern              : Pattern
     --  operator                 : Name
     --  rightPattern             : Pattern
 
-    | Parenthesized    lhs.id    = @lefthandside.id  
-                          .arity = @lefthandside.arity + @patterns.length
+    | Parenthesized    lhs.arity = @lefthandside.arity + @patterns.length
                           .patterns = @lefthandside.patterns ++ @patterns.self
     --  range                    : Range
     --  lefthandside             : LeftHandSide
@@ -293,8 +295,8 @@ SEM Constructors [ dataTypeName : Name | | ]
 
 SEM Constructor [ dataTypeName : Name | | ]
     | Constructor       lhs.cons = 
-        [ (@constructor.id, Core.DeclCon
-            { Core.declName    = @constructor.id
+        [ (idFromName @constructor.self, Core.DeclCon
+            { Core.declName    = idFromName @constructor.self
             , Core.declAccess  = Core.private
             , Core.declArity   = @types.length
             , Core.conTag      = @lhs.tag
@@ -310,8 +312,8 @@ SEM Constructor [ dataTypeName : Name | | ]
     --  types                    : AnnotatedTypes
     
     | Infix             lhs.cons = 
-        [ (@constructorOperator.id, Core.DeclCon
-            { Core.declName    = @constructorOperator.id
+        [ (idFromName @constructorOperator.self, Core.DeclCon
+            { Core.declName    = idFromName @constructorOperator.self
             , Core.declAccess  = Core.private
             , Core.declArity   = 2
             , Core.conTag      = @lhs.tag

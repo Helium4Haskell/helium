@@ -1,11 +1,22 @@
 ATTR Module
    [   additionalDecls  : { [Core.CoreDecl] }
        importEnv        : ImportEnvironment
+       inferredTypes    : { FiniteMap NameWithRange TpScheme } -- == LocalTypes
        toplevelTypes    : TypeEnvironment
    |
    |   core             : { Core.CoreModule }
    ]
 
+ATTR Body Declarations Declaration Expressions Expression Statements Statement
+     Qualifiers Qualifier GuardedExpressions GuardedExpression 
+     Alternatives Alternative FunctionBindings FunctionBinding
+     RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
+     RecordExpressionBindings
+    [ inferredTypes    : { FiniteMap NameWithRange TpScheme } -- == LocalTypes
+    |
+    |
+    ]
+    
 -- UHA
 INCLUDE "../syntax/UHA_Syntax.ag"
 
@@ -31,6 +42,7 @@ import IdSet
 import Utils(internalError)
 
 import Types
+
 import PatternMatch
 import DerivingShow
 
@@ -54,6 +66,7 @@ type CoreDecl = Core.Decl Core.Expr
 --Collect.ag
 ATTR Body Declaration Declarations Constructors Constructor
         [ importEnv:ImportEnvironment | | ]
+
 
 SEM Expression        | Let  loc.importEnv = intErr "CodeGeneration.ag" "Expression.Let" ""       
 SEM MaybeDeclarations | Just loc.importEnv = intErr "CodeGeneration.ag" "MaybeDeclarations.Just" ""      

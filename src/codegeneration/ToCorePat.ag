@@ -7,7 +7,7 @@ ATTR Patterns
 ATTR Pattern Patterns
     [   
     | 
-    |   vars USE { ++ } { [] } : { [Id] }
+    |   vars USE { ++ } { [] } : { [Name] }
     ]
     
 SEM Patterns
@@ -16,11 +16,11 @@ SEM Patterns
     
 
 SEM Pattern
-    | Variable              lhs.vars    = [ @name.id ]
+    | Variable              lhs.vars    = [ @name.self ]
     --  range                    : Range
     --  name                     : Name
 
-    | As                    lhs.vars    = @name.id : @pattern.vars
+    | As                    lhs.vars    = @name.self : @pattern.vars
     --  range                    : Range
     --  name                     : Name
     --  pattern                  : Pattern

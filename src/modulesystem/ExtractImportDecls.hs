@@ -2,12 +2,13 @@
 module ExtractImportDecls where
 
 import UHA_Syntax
+import UHA_Utils
 import Id
 import qualified Core
 import Utils (internalError)
 -- Alternative -------------------------------------------------
 -- semantic domain
-type T_Alternative = ( )
+type T_Alternative = ( (Alternative))
 -- cata
 sem_Alternative :: (Alternative) ->
                    (T_Alternative)
@@ -20,16 +21,26 @@ sem_Alternative_Alternative :: (T_Range) ->
                                (T_RightHandSide) ->
                                (T_Alternative)
 sem_Alternative_Alternative (_range) (_pattern) (_righthandside) =
-    let 
-    in  ( )
+    let (_self) =
+            Alternative_Alternative _range_self _pattern_self _righthandside_self
+        ( _range_self) =
+            (_range )
+        ( _pattern_self) =
+            (_pattern )
+        ( _righthandside_self) =
+            (_righthandside )
+    in  ( _self)
 sem_Alternative_Empty :: (T_Range) ->
                          (T_Alternative)
 sem_Alternative_Empty (_range) =
-    let 
-    in  ( )
+    let (_self) =
+            Alternative_Empty _range_self
+        ( _range_self) =
+            (_range )
+    in  ( _self)
 -- Alternatives ------------------------------------------------
 -- semantic domain
-type T_Alternatives = ( )
+type T_Alternatives = ( (Alternatives))
 -- cata
 sem_Alternatives :: (Alternatives) ->
                     (T_Alternatives)
@@ -39,15 +50,21 @@ sem_Alternatives_Cons :: (T_Alternative) ->
                          (T_Alternatives) ->
                          (T_Alternatives)
 sem_Alternatives_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_Alternatives_Nil :: (T_Alternatives)
 sem_Alternatives_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- AnnotatedType -----------------------------------------------
 -- semantic domain
-type T_AnnotatedType = ( )
+type T_AnnotatedType = ( (AnnotatedType))
 -- cata
 sem_AnnotatedType :: (AnnotatedType) ->
                      (T_AnnotatedType)
@@ -58,11 +75,16 @@ sem_AnnotatedType_AnnotatedType :: (T_Range) ->
                                    (T_Type) ->
                                    (T_AnnotatedType)
 sem_AnnotatedType_AnnotatedType (_range) (_strict) (_type) =
-    let 
-    in  ( )
+    let (_self) =
+            AnnotatedType_AnnotatedType _range_self _strict _type_self
+        ( _range_self) =
+            (_range )
+        ( _type_self) =
+            (_type )
+    in  ( _self)
 -- AnnotatedTypes ----------------------------------------------
 -- semantic domain
-type T_AnnotatedTypes = ( )
+type T_AnnotatedTypes = ( (AnnotatedTypes))
 -- cata
 sem_AnnotatedTypes :: (AnnotatedTypes) ->
                       (T_AnnotatedTypes)
@@ -72,15 +94,21 @@ sem_AnnotatedTypes_Cons :: (T_AnnotatedType) ->
                            (T_AnnotatedTypes) ->
                            (T_AnnotatedTypes)
 sem_AnnotatedTypes_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_AnnotatedTypes_Nil :: (T_AnnotatedTypes)
 sem_AnnotatedTypes_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- Body --------------------------------------------------------
 -- semantic domain
-type T_Body = ( ( [Core.CoreDecl] ))
+type T_Body = ( ( [Core.CoreDecl] ),(Body))
 -- cata
 sem_Body :: (Body) ->
             (T_Body)
@@ -91,12 +119,18 @@ sem_Body_Body :: (T_Range) ->
                  (T_Declarations) ->
                  (T_Body)
 sem_Body_Body (_range) (_importdeclarations) (_declarations) =
-    let ( _importdeclarations_coreImportDecls) =
+    let (_self) =
+            Body_Body _range_self _importdeclarations_self _declarations_self
+        ( _range_self) =
+            (_range )
+        ( _importdeclarations_coreImportDecls,_importdeclarations_self) =
             (_importdeclarations )
-    in  ( _importdeclarations_coreImportDecls)
+        ( _declarations_self) =
+            (_declarations )
+    in  ( _importdeclarations_coreImportDecls,_self)
 -- Constructor -------------------------------------------------
 -- semantic domain
-type T_Constructor = ( )
+type T_Constructor = ( (Constructor))
 -- cata
 sem_Constructor :: (Constructor) ->
                    (T_Constructor)
@@ -111,29 +145,49 @@ sem_Constructor_Constructor :: (T_Range) ->
                                (T_AnnotatedTypes) ->
                                (T_Constructor)
 sem_Constructor_Constructor (_range) (_constructor) (_types) =
-    let ( _constructor_id) =
+    let (_self) =
+            Constructor_Constructor _range_self _constructor_self _types_self
+        ( _range_self) =
+            (_range )
+        ( _constructor_self) =
             (_constructor )
-    in  ( )
+        ( _types_self) =
+            (_types )
+    in  ( _self)
 sem_Constructor_Infix :: (T_Range) ->
                          (T_AnnotatedType) ->
                          (T_Name) ->
                          (T_AnnotatedType) ->
                          (T_Constructor)
 sem_Constructor_Infix (_range) (_leftType) (_constructorOperator) (_rightType) =
-    let ( _constructorOperator_id) =
+    let (_self) =
+            Constructor_Infix _range_self _leftType_self _constructorOperator_self _rightType_self
+        ( _range_self) =
+            (_range )
+        ( _leftType_self) =
+            (_leftType )
+        ( _constructorOperator_self) =
             (_constructorOperator )
-    in  ( )
+        ( _rightType_self) =
+            (_rightType )
+    in  ( _self)
 sem_Constructor_Record :: (T_Range) ->
                           (T_Name) ->
                           (T_FieldDeclarations) ->
                           (T_Constructor)
 sem_Constructor_Record (_range) (_constructor) (_fieldDeclarations) =
-    let ( _constructor_id) =
+    let (_self) =
+            Constructor_Record _range_self _constructor_self _fieldDeclarations_self
+        ( _range_self) =
+            (_range )
+        ( _constructor_self) =
             (_constructor )
-    in  ( )
+        ( _fieldDeclarations_self) =
+            (_fieldDeclarations )
+    in  ( _self)
 -- Constructors ------------------------------------------------
 -- semantic domain
-type T_Constructors = ( )
+type T_Constructors = ( (Constructors))
 -- cata
 sem_Constructors :: (Constructors) ->
                     (T_Constructors)
@@ -143,15 +197,21 @@ sem_Constructors_Cons :: (T_Constructor) ->
                          (T_Constructors) ->
                          (T_Constructors)
 sem_Constructors_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_Constructors_Nil :: (T_Constructors)
 sem_Constructors_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- ContextItem -------------------------------------------------
 -- semantic domain
-type T_ContextItem = ( )
+type T_ContextItem = ( (ContextItem))
 -- cata
 sem_ContextItem :: (ContextItem) ->
                    (T_ContextItem)
@@ -162,12 +222,18 @@ sem_ContextItem_ContextItem :: (T_Range) ->
                                (T_Types) ->
                                (T_ContextItem)
 sem_ContextItem_ContextItem (_range) (_name) (_types) =
-    let ( _name_id) =
+    let (_self) =
+            ContextItem_ContextItem _range_self _name_self _types_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+        ( _types_self) =
+            (_types )
+    in  ( _self)
 -- ContextItems ------------------------------------------------
 -- semantic domain
-type T_ContextItems = ( )
+type T_ContextItems = ( (ContextItems))
 -- cata
 sem_ContextItems :: (ContextItems) ->
                     (T_ContextItems)
@@ -177,15 +243,21 @@ sem_ContextItems_Cons :: (T_ContextItem) ->
                          (T_ContextItems) ->
                          (T_ContextItems)
 sem_ContextItems_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_ContextItems_Nil :: (T_ContextItems)
 sem_ContextItems_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- Declaration -------------------------------------------------
 -- semantic domain
-type T_Declaration = ( )
+type T_Declaration = ( (Declaration))
 -- cata
 sem_Declaration :: (Declaration) ->
                    (T_Declaration)
@@ -217,8 +289,17 @@ sem_Declaration_Class :: (T_Range) ->
                          (T_MaybeDeclarations) ->
                          (T_Declaration)
 sem_Declaration_Class (_range) (_context) (_simpletype) (_where) =
-    let 
-    in  ( )
+    let (_self) =
+            Declaration_Class _range_self _context_self _simpletype_self _where_self
+        ( _range_self) =
+            (_range )
+        ( _context_self) =
+            (_context )
+        ( _simpletype_self) =
+            (_simpletype )
+        ( _where_self) =
+            (_where )
+    in  ( _self)
 sem_Declaration_Data :: (T_Range) ->
                         (T_ContextItems) ->
                         (T_SimpleType) ->
@@ -226,35 +307,66 @@ sem_Declaration_Data :: (T_Range) ->
                         (T_Names) ->
                         (T_Declaration)
 sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivings) =
-    let ( _derivings_ids) =
+    let (_self) =
+            Declaration_Data _range_self _context_self _simpletype_self _constructors_self _derivings_self
+        ( _range_self) =
+            (_range )
+        ( _context_self) =
+            (_context )
+        ( _simpletype_self) =
+            (_simpletype )
+        ( _constructors_self) =
+            (_constructors )
+        ( _derivings_names,_derivings_self) =
             (_derivings )
-    in  ( )
+    in  ( _self)
 sem_Declaration_Default :: (T_Range) ->
                            (T_Types) ->
                            (T_Declaration)
 sem_Declaration_Default (_range) (_types) =
-    let 
-    in  ( )
+    let (_self) =
+            Declaration_Default _range_self _types_self
+        ( _range_self) =
+            (_range )
+        ( _types_self) =
+            (_types )
+    in  ( _self)
 sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
 sem_Declaration_Empty (_range) =
-    let 
-    in  ( )
+    let (_self) =
+            Declaration_Empty _range_self
+        ( _range_self) =
+            (_range )
+    in  ( _self)
 sem_Declaration_Fixity :: (T_Range) ->
                           (T_Fixity) ->
                           (T_MaybeInt) ->
                           (T_Names) ->
                           (T_Declaration)
 sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) =
-    let ( _operators_ids) =
+    let (_self) =
+            Declaration_Fixity _range_self _fixity_self _priority_self _operators_self
+        ( _range_self) =
+            (_range )
+        ( _fixity_self) =
+            (_fixity )
+        ( _priority_self) =
+            (_priority )
+        ( _operators_names,_operators_self) =
             (_operators )
-    in  ( )
+    in  ( _self)
 sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)
 sem_Declaration_FunctionBindings (_range) (_bindings) =
-    let 
-    in  ( )
+    let (_self) =
+            Declaration_FunctionBindings _range_self _bindings_self
+        ( _range_self) =
+            (_range )
+        ( _bindings_name,_bindings_self) =
+            (_bindings )
+    in  ( _self)
 sem_Declaration_Instance :: (T_Range) ->
                             (T_ContextItems) ->
                             (T_Name) ->
@@ -262,9 +374,19 @@ sem_Declaration_Instance :: (T_Range) ->
                             (T_MaybeDeclarations) ->
                             (T_Declaration)
 sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) =
-    let ( _name_id) =
+    let (_self) =
+            Declaration_Instance _range_self _context_self _name_self _types_self _where_self
+        ( _range_self) =
+            (_range )
+        ( _context_self) =
+            (_context )
+        ( _name_self) =
             (_name )
-    in  ( )
+        ( _types_self) =
+            (_types )
+        ( _where_self) =
+            (_where )
+    in  ( _self)
 sem_Declaration_Newtype :: (T_Range) ->
                            (T_ContextItems) ->
                            (T_SimpleType) ->
@@ -272,34 +394,64 @@ sem_Declaration_Newtype :: (T_Range) ->
                            (T_Names) ->
                            (T_Declaration)
 sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_derivings) =
-    let ( _derivings_ids) =
+    let (_self) =
+            Declaration_Newtype _range_self _context_self _simpletype_self _constructor_self _derivings_self
+        ( _range_self) =
+            (_range )
+        ( _context_self) =
+            (_context )
+        ( _simpletype_self) =
+            (_simpletype )
+        ( _constructor_self) =
+            (_constructor )
+        ( _derivings_names,_derivings_self) =
             (_derivings )
-    in  ( )
+    in  ( _self)
 sem_Declaration_PatternBinding :: (T_Range) ->
                                   (T_Pattern) ->
                                   (T_RightHandSide) ->
                                   (T_Declaration)
 sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) =
-    let 
-    in  ( )
+    let (_self) =
+            Declaration_PatternBinding _range_self _pattern_self _righthandside_self
+        ( _range_self) =
+            (_range )
+        ( _pattern_self) =
+            (_pattern )
+        ( _righthandside_self) =
+            (_righthandside )
+    in  ( _self)
 sem_Declaration_Type :: (T_Range) ->
                         (T_SimpleType) ->
                         (T_Type) ->
                         (T_Declaration)
 sem_Declaration_Type (_range) (_simpletype) (_type) =
-    let 
-    in  ( )
+    let (_self) =
+            Declaration_Type _range_self _simpletype_self _type_self
+        ( _range_self) =
+            (_range )
+        ( _simpletype_self) =
+            (_simpletype )
+        ( _type_self) =
+            (_type )
+    in  ( _self)
 sem_Declaration_TypeSignature :: (T_Range) ->
                                  (T_Names) ->
                                  (T_Type) ->
                                  (T_Declaration)
 sem_Declaration_TypeSignature (_range) (_names) (_type) =
-    let ( _names_ids) =
+    let (_self) =
+            Declaration_TypeSignature _range_self _names_self _type_self
+        ( _range_self) =
+            (_range )
+        ( _names_names,_names_self) =
             (_names )
-    in  ( )
+        ( _type_self) =
+            (_type )
+    in  ( _self)
 -- Declarations ------------------------------------------------
 -- semantic domain
-type T_Declarations = ( )
+type T_Declarations = ( (Declarations))
 -- cata
 sem_Declarations :: (Declarations) ->
                     (T_Declarations)
@@ -309,15 +461,21 @@ sem_Declarations_Cons :: (T_Declaration) ->
                          (T_Declarations) ->
                          (T_Declarations)
 sem_Declarations_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_Declarations_Nil :: (T_Declarations)
 sem_Declarations_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- Export ------------------------------------------------------
 -- semantic domain
-type T_Export = ( )
+type T_Export = ( (Export))
 -- cata
 sem_Export :: (Export) ->
               (T_Export)
@@ -333,36 +491,52 @@ sem_Export_Module :: (T_Range) ->
                      (T_Name) ->
                      (T_Export)
 sem_Export_Module (_range) (_name) =
-    let ( _name_id) =
+    let (_self) =
+            Export_Module _range_self _name_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+    in  ( _self)
 sem_Export_TypeOrClass :: (T_Range) ->
                           (T_Name) ->
                           (T_MaybeNames) ->
                           (T_Export)
 sem_Export_TypeOrClass (_range) (_name) (_names) =
-    let ( _name_id) =
+    let (_self) =
+            Export_TypeOrClass _range_self _name_self _names_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-        ( _names_ids) =
+        ( _names_names,_names_self) =
             (_names )
-    in  ( )
+    in  ( _self)
 sem_Export_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Export)
 sem_Export_TypeOrClassComplete (_range) (_name) =
-    let ( _name_id) =
+    let (_self) =
+            Export_TypeOrClassComplete _range_self _name_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+    in  ( _self)
 sem_Export_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Export)
 sem_Export_Variable (_range) (_name) =
-    let ( _name_id) =
+    let (_self) =
+            Export_Variable _range_self _name_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+    in  ( _self)
 -- Exports -----------------------------------------------------
 -- semantic domain
-type T_Exports = ( )
+type T_Exports = ( (Exports))
 -- cata
 sem_Exports :: (Exports) ->
                (T_Exports)
@@ -372,15 +546,21 @@ sem_Exports_Cons :: (T_Export) ->
                     (T_Exports) ->
                     (T_Exports)
 sem_Exports_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_Exports_Nil :: (T_Exports)
 sem_Exports_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- Expression --------------------------------------------------
 -- semantic domain
-type T_Expression = ( )
+type T_Expression = ( (Expression))
 -- cata
 sem_Expression :: (Expression) ->
                   (T_Expression)
@@ -429,141 +609,266 @@ sem_Expression_Case :: (T_Range) ->
                        (T_Alternatives) ->
                        (T_Expression)
 sem_Expression_Case (_range) (_expression) (_alternatives) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_Case _range_self _expression_self _alternatives_self
+        ( _range_self) =
+            (_range )
+        ( _expression_self) =
+            (_expression )
+        ( _alternatives_self) =
+            (_alternatives )
+    in  ( _self)
 sem_Expression_Comprehension :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Qualifiers) ->
                                 (T_Expression)
 sem_Expression_Comprehension (_range) (_expression) (_qualifiers) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_Comprehension _range_self _expression_self _qualifiers_self
+        ( _range_self) =
+            (_range )
+        ( _expression_self) =
+            (_expression )
+        ( _qualifiers_self) =
+            (_qualifiers )
+    in  ( _self)
 sem_Expression_Constructor :: (T_Range) ->
                               (T_Name) ->
                               (T_Expression)
 sem_Expression_Constructor (_range) (_name) =
-    let ( _name_id) =
+    let (_self) =
+            Expression_Constructor _range_self _name_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+    in  ( _self)
 sem_Expression_Do :: (T_Range) ->
                      (T_Statements) ->
                      (T_Expression)
 sem_Expression_Do (_range) (_statements) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_Do _range_self _statements_self
+        ( _range_self) =
+            (_range )
+        ( _statements_self) =
+            (_statements )
+    in  ( _self)
 sem_Expression_Enum :: (T_Range) ->
                        (T_Expression) ->
                        (T_MaybeExpression) ->
                        (T_MaybeExpression) ->
                        (T_Expression)
 sem_Expression_Enum (_range) (_from) (_then) (_to) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_Enum _range_self _from_self _then_self _to_self
+        ( _range_self) =
+            (_range )
+        ( _from_self) =
+            (_from )
+        ( _then_self) =
+            (_then )
+        ( _to_self) =
+            (_to )
+    in  ( _self)
 sem_Expression_If :: (T_Range) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression)
 sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_If _range_self _guardExpression_self _thenExpression_self _elseExpression_self
+        ( _range_self) =
+            (_range )
+        ( _guardExpression_self) =
+            (_guardExpression )
+        ( _thenExpression_self) =
+            (_thenExpression )
+        ( _elseExpression_self) =
+            (_elseExpression )
+    in  ( _self)
 sem_Expression_InfixApplication :: (T_Range) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression)
 sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightExpression) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_InfixApplication _range_self _leftExpression_self _operator_self _rightExpression_self
+        ( _range_self) =
+            (_range )
+        ( _leftExpression_self) =
+            (_leftExpression )
+        ( _operator_self) =
+            (_operator )
+        ( _rightExpression_self) =
+            (_rightExpression )
+    in  ( _self)
 sem_Expression_Lambda :: (T_Range) ->
                          (T_Patterns) ->
                          (T_Expression) ->
                          (T_Expression)
 sem_Expression_Lambda (_range) (_patterns) (_expression) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_Lambda _range_self _patterns_self _expression_self
+        ( _range_self) =
+            (_range )
+        ( _patterns_self) =
+            (_patterns )
+        ( _expression_self) =
+            (_expression )
+    in  ( _self)
 sem_Expression_Let :: (T_Range) ->
                       (T_Declarations) ->
                       (T_Expression) ->
                       (T_Expression)
 sem_Expression_Let (_range) (_declarations) (_expression) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_Let _range_self _declarations_self _expression_self
+        ( _range_self) =
+            (_range )
+        ( _declarations_self) =
+            (_declarations )
+        ( _expression_self) =
+            (_expression )
+    in  ( _self)
 sem_Expression_List :: (T_Range) ->
                        (T_Expressions) ->
                        (T_Expression)
 sem_Expression_List (_range) (_expressions) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_List _range_self _expressions_self
+        ( _range_self) =
+            (_range )
+        ( _expressions_self) =
+            (_expressions )
+    in  ( _self)
 sem_Expression_Literal :: (T_Range) ->
                           (T_Literal) ->
                           (T_Expression)
 sem_Expression_Literal (_range) (_literal) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_Literal _range_self _literal_self
+        ( _range_self) =
+            (_range )
+        ( _literal_self) =
+            (_literal )
+    in  ( _self)
 sem_Expression_Negate :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
 sem_Expression_Negate (_range) (_expression) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_Negate _range_self _expression_self
+        ( _range_self) =
+            (_range )
+        ( _expression_self) =
+            (_expression )
+    in  ( _self)
 sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
 sem_Expression_NegateFloat (_range) (_expression) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_NegateFloat _range_self _expression_self
+        ( _range_self) =
+            (_range )
+        ( _expression_self) =
+            (_expression )
+    in  ( _self)
 sem_Expression_NormalApplication :: (T_Range) ->
                                     (T_Expression) ->
                                     (T_Expressions) ->
                                     (T_Expression)
 sem_Expression_NormalApplication (_range) (_function) (_arguments) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_NormalApplication _range_self _function_self _arguments_self
+        ( _range_self) =
+            (_range )
+        ( _function_self) =
+            (_function )
+        ( _arguments_self) =
+            (_arguments )
+    in  ( _self)
 sem_Expression_Parenthesized :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Expression)
 sem_Expression_Parenthesized (_range) (_expression) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_Parenthesized _range_self _expression_self
+        ( _range_self) =
+            (_range )
+        ( _expression_self) =
+            (_expression )
+    in  ( _self)
 sem_Expression_RecordConstruction :: (T_Range) ->
                                      (T_Name) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_Expression)
 sem_Expression_RecordConstruction (_range) (_name) (_recordExpressionBindings) =
-    let ( _name_id) =
+    let (_self) =
+            Expression_RecordConstruction _range_self _name_self _recordExpressionBindings_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+        ( _recordExpressionBindings_self) =
+            (_recordExpressionBindings )
+    in  ( _self)
 sem_Expression_RecordUpdate :: (T_Range) ->
                                (T_Expression) ->
                                (T_RecordExpressionBindings) ->
                                (T_Expression)
 sem_Expression_RecordUpdate (_range) (_expression) (_recordExpressionBindings) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_RecordUpdate _range_self _expression_self _recordExpressionBindings_self
+        ( _range_self) =
+            (_range )
+        ( _expression_self) =
+            (_expression )
+        ( _recordExpressionBindings_self) =
+            (_recordExpressionBindings )
+    in  ( _self)
 sem_Expression_Tuple :: (T_Range) ->
                         (T_Expressions) ->
                         (T_Expression)
 sem_Expression_Tuple (_range) (_expressions) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_Tuple _range_self _expressions_self
+        ( _range_self) =
+            (_range )
+        ( _expressions_self) =
+            (_expressions )
+    in  ( _self)
 sem_Expression_Typed :: (T_Range) ->
                         (T_Expression) ->
                         (T_Type) ->
                         (T_Expression)
 sem_Expression_Typed (_range) (_expression) (_type) =
-    let 
-    in  ( )
+    let (_self) =
+            Expression_Typed _range_self _expression_self _type_self
+        ( _range_self) =
+            (_range )
+        ( _expression_self) =
+            (_expression )
+        ( _type_self) =
+            (_type )
+    in  ( _self)
 sem_Expression_Variable :: (T_Range) ->
                            (T_Name) ->
                            (T_Expression)
 sem_Expression_Variable (_range) (_name) =
-    let ( _name_id) =
+    let (_self) =
+            Expression_Variable _range_self _name_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+    in  ( _self)
 -- Expressions -------------------------------------------------
 -- semantic domain
-type T_Expressions = ( )
+type T_Expressions = ( (Expressions))
 -- cata
 sem_Expressions :: (Expressions) ->
                    (T_Expressions)
@@ -573,15 +878,21 @@ sem_Expressions_Cons :: (T_Expression) ->
                         (T_Expressions) ->
                         (T_Expressions)
 sem_Expressions_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_Expressions_Nil :: (T_Expressions)
 sem_Expressions_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- FieldDeclaration --------------------------------------------
 -- semantic domain
-type T_FieldDeclaration = ( )
+type T_FieldDeclaration = ( (FieldDeclaration))
 -- cata
 sem_FieldDeclaration :: (FieldDeclaration) ->
                         (T_FieldDeclaration)
@@ -592,12 +903,18 @@ sem_FieldDeclaration_FieldDeclaration :: (T_Range) ->
                                          (T_AnnotatedType) ->
                                          (T_FieldDeclaration)
 sem_FieldDeclaration_FieldDeclaration (_range) (_names) (_type) =
-    let ( _names_ids) =
+    let (_self) =
+            FieldDeclaration_FieldDeclaration _range_self _names_self _type_self
+        ( _range_self) =
+            (_range )
+        ( _names_names,_names_self) =
             (_names )
-    in  ( )
+        ( _type_self) =
+            (_type )
+    in  ( _self)
 -- FieldDeclarations -------------------------------------------
 -- semantic domain
-type T_FieldDeclarations = ( )
+type T_FieldDeclarations = ( (FieldDeclarations))
 -- cata
 sem_FieldDeclarations :: (FieldDeclarations) ->
                          (T_FieldDeclarations)
@@ -607,15 +924,21 @@ sem_FieldDeclarations_Cons :: (T_FieldDeclaration) ->
                               (T_FieldDeclarations) ->
                               (T_FieldDeclarations)
 sem_FieldDeclarations_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_FieldDeclarations_Nil :: (T_FieldDeclarations)
 sem_FieldDeclarations_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- Fixity ------------------------------------------------------
 -- semantic domain
-type T_Fixity = ( )
+type T_Fixity = ( (Fixity))
 -- cata
 sem_Fixity :: (Fixity) ->
               (T_Fixity)
@@ -628,21 +951,30 @@ sem_Fixity ((Fixity_Infixr (_range))) =
 sem_Fixity_Infix :: (T_Range) ->
                     (T_Fixity)
 sem_Fixity_Infix (_range) =
-    let 
-    in  ( )
+    let (_self) =
+            Fixity_Infix _range_self
+        ( _range_self) =
+            (_range )
+    in  ( _self)
 sem_Fixity_Infixl :: (T_Range) ->
                      (T_Fixity)
 sem_Fixity_Infixl (_range) =
-    let 
-    in  ( )
+    let (_self) =
+            Fixity_Infixl _range_self
+        ( _range_self) =
+            (_range )
+    in  ( _self)
 sem_Fixity_Infixr :: (T_Range) ->
                      (T_Fixity)
 sem_Fixity_Infixr (_range) =
-    let 
-    in  ( )
+    let (_self) =
+            Fixity_Infixr _range_self
+        ( _range_self) =
+            (_range )
+    in  ( _self)
 -- FunctionBinding ---------------------------------------------
 -- semantic domain
-type T_FunctionBinding = ( )
+type T_FunctionBinding = ( (Name),(FunctionBinding))
 -- cata
 sem_FunctionBinding :: (FunctionBinding) ->
                        (T_FunctionBinding)
@@ -653,11 +985,18 @@ sem_FunctionBinding_FunctionBinding :: (T_Range) ->
                                        (T_RightHandSide) ->
                                        (T_FunctionBinding)
 sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) =
-    let 
-    in  ( )
+    let (_self) =
+            FunctionBinding_FunctionBinding _range_self _lefthandside_self _righthandside_self
+        ( _range_self) =
+            (_range )
+        ( _lefthandside_name,_lefthandside_self) =
+            (_lefthandside )
+        ( _righthandside_self) =
+            (_righthandside )
+    in  ( _lefthandside_name,_self)
 -- FunctionBindings --------------------------------------------
 -- semantic domain
-type T_FunctionBindings = ( )
+type T_FunctionBindings = ( (Name),(FunctionBindings))
 -- cata
 sem_FunctionBindings :: (FunctionBindings) ->
                         (T_FunctionBindings)
@@ -667,15 +1006,21 @@ sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
                              (T_FunctionBindings) ->
                              (T_FunctionBindings)
 sem_FunctionBindings_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_name,_hd_self) =
+            (_hd )
+        ( _tl_name,_tl_self) =
+            (_tl )
+    in  ( _hd_name,_self)
 sem_FunctionBindings_Nil :: (T_FunctionBindings)
 sem_FunctionBindings_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( internalError "ToCoreName.ag" "n/a" "empty FunctionBindings",_self)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
-type T_GuardedExpression = ( )
+type T_GuardedExpression = ( (GuardedExpression))
 -- cata
 sem_GuardedExpression :: (GuardedExpression) ->
                          (T_GuardedExpression)
@@ -686,11 +1031,18 @@ sem_GuardedExpression_GuardedExpression :: (T_Range) ->
                                            (T_Expression) ->
                                            (T_GuardedExpression)
 sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) =
-    let 
-    in  ( )
+    let (_self) =
+            GuardedExpression_GuardedExpression _range_self _guard_self _expression_self
+        ( _range_self) =
+            (_range )
+        ( _guard_self) =
+            (_guard )
+        ( _expression_self) =
+            (_expression )
+    in  ( _self)
 -- GuardedExpressions ------------------------------------------
 -- semantic domain
-type T_GuardedExpressions = ( )
+type T_GuardedExpressions = ( (GuardedExpressions))
 -- cata
 sem_GuardedExpressions :: (GuardedExpressions) ->
                           (T_GuardedExpressions)
@@ -700,15 +1052,21 @@ sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
                                (T_GuardedExpressions) ->
                                (T_GuardedExpressions)
 sem_GuardedExpressions_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_GuardedExpressions_Nil :: (T_GuardedExpressions)
 sem_GuardedExpressions_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- Import ------------------------------------------------------
 -- semantic domain
-type T_Import = ( ([(Id, Core.DeclKind)]))
+type T_Import = ( ([(Id, Core.DeclKind)]),(Import))
 -- cata
 sem_Import :: (Import) ->
               (T_Import)
@@ -723,30 +1081,43 @@ sem_Import_TypeOrClass :: (T_Range) ->
                           (T_MaybeNames) ->
                           (T_Import)
 sem_Import_TypeOrClass (_range) (_name) (_names) =
-    let ( _name_id) =
+    let (_self) =
+            Import_TypeOrClass _range_self _name_self _names_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-        ( _names_ids) =
+        ( _names_names,_names_self) =
             (_names )
-    in  ( (_name_id, Core.DeclKindCustom (idFromString "data")) :
-          zip (maybe [] id _names_ids) (repeat Core.DeclKindCon)
+    in  ( (idFromName  _name_self, Core.DeclKindCustom (idFromString "data")) :
+          zip (maybe [] (map idFromName) _names_names) (repeat Core.DeclKindCon)
+         ,_self
          )
 sem_Import_TypeOrClassComplete :: (T_Range) ->
                                   (T_Name) ->
                                   (T_Import)
 sem_Import_TypeOrClassComplete (_range) (_name) =
-    let ( _name_id) =
+    let (_self) =
+            Import_TypeOrClassComplete _range_self _name_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( internalError "ExtractImportDecls.ag" "Import.TypeOrClassComplete" "unsupported")
+    in  ( internalError "ExtractImportDecls.ag" "Import.TypeOrClassComplete" "unsupported",_self)
 sem_Import_Variable :: (T_Range) ->
                        (T_Name) ->
                        (T_Import)
 sem_Import_Variable (_range) (_name) =
-    let ( _name_id) =
+    let (_self) =
+            Import_Variable _range_self _name_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( [(_name_id, Core.DeclKindValue)])
+    in  ( [(idFromName _name_self, Core.DeclKindValue)],_self)
 -- ImportDeclaration -------------------------------------------
 -- semantic domain
-type T_ImportDeclaration = ( ( [Core.CoreDecl] ))
+type T_ImportDeclaration = ( ( [Core.CoreDecl] ),(ImportDeclaration))
 -- cata
 sem_ImportDeclaration :: (ImportDeclaration) ->
                          (T_ImportDeclaration)
@@ -757,8 +1128,11 @@ sem_ImportDeclaration ((ImportDeclaration_Import (_range) (_qualified) (_name) (
 sem_ImportDeclaration_Empty :: (T_Range) ->
                                (T_ImportDeclaration)
 sem_ImportDeclaration_Empty (_range) =
-    let 
-    in  ( [])
+    let (_self) =
+            ImportDeclaration_Empty _range_self
+        ( _range_self) =
+            (_range )
+    in  ( [],_self)
 sem_ImportDeclaration_Import :: (T_Range) ->
                                 (Bool) ->
                                 (T_Name) ->
@@ -766,22 +1140,26 @@ sem_ImportDeclaration_Import :: (T_Range) ->
                                 (T_MaybeImportSpecification) ->
                                 (T_ImportDeclaration)
 sem_ImportDeclaration_Import (_range) (_qualified) (_name) (_asname) (_importspecification) =
-    let ( _name_id) =
+    let (_self) =
+            ImportDeclaration_Import _range_self _qualified _name_self _asname_self _importspecification_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-        ( _asname_id,_asname_isNothing) =
+        ( _asname_isNothing,_asname_name,_asname_self) =
             (_asname )
-        ( _importspecification_imps) =
+        ( _importspecification_imps,_importspecification_self) =
             (_importspecification )
     in  ( if _qualified || not _asname_isNothing then
               internalError "ExtractImportDecls.ag" "ImportDeclaration.Import" "qualified and as-imports not supported yet"
           else
               maybe
                   [ Core.DeclImport
-                      { Core.declName = _name_id
+                      { Core.declName = idFromName _name_self
                       , Core.declAccess =
                           Core.Imported
                               { Core.accessPublic   = False
-                              , Core.importModule   = _name_id
+                              , Core.importModule   = idFromName _name_self
                               , Core.importName     = dummyId
                               , Core.importKind     = Core.DeclKindModule
                               , Core.importMajorVer = 0
@@ -796,7 +1174,7 @@ sem_ImportDeclaration_Import (_range) (_qualified) (_name) (_asname) (_importspe
                           , Core.declAccess  =
                               Core.Imported
                                   { Core.accessPublic   = False
-                                  , Core.importModule   = _name_id
+                                  , Core.importModule   = idFromName _name_self
                                   , Core.importName     = entityId
                                   , Core.importKind     = entityKind
                                   , Core.importMajorVer = 0
@@ -808,10 +1186,11 @@ sem_ImportDeclaration_Import (_range) (_qualified) (_name) (_asname) (_importspe
                       ]
                   )
                   _importspecification_imps
+         ,_self
          )
 -- ImportDeclarations ------------------------------------------
 -- semantic domain
-type T_ImportDeclarations = ( ( [Core.CoreDecl] ))
+type T_ImportDeclarations = ( ( [Core.CoreDecl] ),(ImportDeclarations))
 -- cata
 sem_ImportDeclarations :: (ImportDeclarations) ->
                           (T_ImportDeclarations)
@@ -821,18 +1200,21 @@ sem_ImportDeclarations_Cons :: (T_ImportDeclaration) ->
                                (T_ImportDeclarations) ->
                                (T_ImportDeclarations)
 sem_ImportDeclarations_Cons (_hd) (_tl) =
-    let ( _hd_coreImportDecls) =
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_coreImportDecls,_hd_self) =
             (_hd )
-        ( _tl_coreImportDecls) =
+        ( _tl_coreImportDecls,_tl_self) =
             (_tl )
-    in  ( _hd_coreImportDecls  ++  _tl_coreImportDecls)
+    in  ( _hd_coreImportDecls  ++  _tl_coreImportDecls,_self)
 sem_ImportDeclarations_Nil :: (T_ImportDeclarations)
 sem_ImportDeclarations_Nil  =
-    let 
-    in  ( [])
+    let (_self) =
+            []
+    in  ( [],_self)
 -- ImportSpecification -----------------------------------------
 -- semantic domain
-type T_ImportSpecification = ( ([(Id, Core.DeclKind)]))
+type T_ImportSpecification = ( ([(Id, Core.DeclKind)]),(ImportSpecification))
 -- cata
 sem_ImportSpecification :: (ImportSpecification) ->
                            (T_ImportSpecification)
@@ -843,16 +1225,21 @@ sem_ImportSpecification_Import :: (T_Range) ->
                                   (T_Imports) ->
                                   (T_ImportSpecification)
 sem_ImportSpecification_Import (_range) (_hiding) (_imports) =
-    let ( _imports_imps) =
+    let (_self) =
+            ImportSpecification_Import _range_self _hiding _imports_self
+        ( _range_self) =
+            (_range )
+        ( _imports_imps,_imports_self) =
             (_imports )
     in  ( if _hiding then
               internalError "ExtractImportDecls.ag" "ImportSpecification.Import" "hiding is currently unsupported"
           else
               _imports_imps
+         ,_self
          )
 -- Imports -----------------------------------------------------
 -- semantic domain
-type T_Imports = ( ([(Id, Core.DeclKind)]))
+type T_Imports = ( ([(Id, Core.DeclKind)]),(Imports))
 -- cata
 sem_Imports :: (Imports) ->
                (T_Imports)
@@ -862,18 +1249,21 @@ sem_Imports_Cons :: (T_Import) ->
                     (T_Imports) ->
                     (T_Imports)
 sem_Imports_Cons (_hd) (_tl) =
-    let ( _hd_imps) =
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_imps,_hd_self) =
             (_hd )
-        ( _tl_imps) =
+        ( _tl_imps,_tl_self) =
             (_tl )
-    in  ( _hd_imps  ++  _tl_imps)
+    in  ( _hd_imps  ++  _tl_imps,_self)
 sem_Imports_Nil :: (T_Imports)
 sem_Imports_Nil  =
-    let 
-    in  ( [])
+    let (_self) =
+            []
+    in  ( [],_self)
 -- LeftHandSide ------------------------------------------------
 -- semantic domain
-type T_LeftHandSide = ( )
+type T_LeftHandSide = ( (Name),(LeftHandSide))
 -- cata
 sem_LeftHandSide :: (LeftHandSide) ->
                     (T_LeftHandSide)
@@ -888,28 +1278,49 @@ sem_LeftHandSide_Function :: (T_Range) ->
                              (T_Patterns) ->
                              (T_LeftHandSide)
 sem_LeftHandSide_Function (_range) (_name) (_patterns) =
-    let ( _name_id) =
+    let (_self) =
+            LeftHandSide_Function _range_self _name_self _patterns_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+        ( _patterns_self) =
+            (_patterns )
+    in  ( _name_self,_self)
 sem_LeftHandSide_Infix :: (T_Range) ->
                           (T_Pattern) ->
                           (T_Name) ->
                           (T_Pattern) ->
                           (T_LeftHandSide)
 sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) =
-    let ( _operator_id) =
+    let (_self) =
+            LeftHandSide_Infix _range_self _leftPattern_self _operator_self _rightPattern_self
+        ( _range_self) =
+            (_range )
+        ( _leftPattern_self) =
+            (_leftPattern )
+        ( _operator_self) =
             (_operator )
-    in  ( )
+        ( _rightPattern_self) =
+            (_rightPattern )
+    in  ( _operator_self,_self)
 sem_LeftHandSide_Parenthesized :: (T_Range) ->
                                   (T_LeftHandSide) ->
                                   (T_Patterns) ->
                                   (T_LeftHandSide)
 sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) =
-    let 
-    in  ( )
+    let (_self) =
+            LeftHandSide_Parenthesized _range_self _lefthandside_self _patterns_self
+        ( _range_self) =
+            (_range )
+        ( _lefthandside_name,_lefthandside_self) =
+            (_lefthandside )
+        ( _patterns_self) =
+            (_patterns )
+    in  ( _lefthandside_name,_self)
 -- Literal -----------------------------------------------------
 -- semantic domain
-type T_Literal = ( )
+type T_Literal = ( (Literal))
 -- cata
 sem_Literal :: (Literal) ->
                (T_Literal)
@@ -925,29 +1336,41 @@ sem_Literal_Char :: (T_Range) ->
                     (String) ->
                     (T_Literal)
 sem_Literal_Char (_range) (_value) =
-    let 
-    in  ( )
+    let (_self) =
+            Literal_Char _range_self _value
+        ( _range_self) =
+            (_range )
+    in  ( _self)
 sem_Literal_Float :: (T_Range) ->
                      (String) ->
                      (T_Literal)
 sem_Literal_Float (_range) (_value) =
-    let 
-    in  ( )
+    let (_self) =
+            Literal_Float _range_self _value
+        ( _range_self) =
+            (_range )
+    in  ( _self)
 sem_Literal_Int :: (T_Range) ->
                    (String) ->
                    (T_Literal)
 sem_Literal_Int (_range) (_value) =
-    let 
-    in  ( )
+    let (_self) =
+            Literal_Int _range_self _value
+        ( _range_self) =
+            (_range )
+    in  ( _self)
 sem_Literal_String :: (T_Range) ->
                       (String) ->
                       (T_Literal)
 sem_Literal_String (_range) (_value) =
-    let 
-    in  ( )
+    let (_self) =
+            Literal_String _range_self _value
+        ( _range_self) =
+            (_range )
+    in  ( _self)
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
-type T_MaybeDeclarations = ( )
+type T_MaybeDeclarations = ( (MaybeDeclarations))
 -- cata
 sem_MaybeDeclarations :: (MaybeDeclarations) ->
                          (T_MaybeDeclarations)
@@ -958,15 +1381,19 @@ sem_MaybeDeclarations ((MaybeDeclarations_Nothing )) =
 sem_MaybeDeclarations_Just :: (T_Declarations) ->
                               (T_MaybeDeclarations)
 sem_MaybeDeclarations_Just (_declarations) =
-    let 
-    in  ( )
+    let (_self) =
+            MaybeDeclarations_Just _declarations_self
+        ( _declarations_self) =
+            (_declarations )
+    in  ( _self)
 sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
 sem_MaybeDeclarations_Nothing  =
-    let 
-    in  ( )
+    let (_self) =
+            MaybeDeclarations_Nothing
+    in  ( _self)
 -- MaybeExports ------------------------------------------------
 -- semantic domain
-type T_MaybeExports = ( )
+type T_MaybeExports = ( (MaybeExports))
 -- cata
 sem_MaybeExports :: (MaybeExports) ->
                     (T_MaybeExports)
@@ -977,15 +1404,19 @@ sem_MaybeExports ((MaybeExports_Nothing )) =
 sem_MaybeExports_Just :: (T_Exports) ->
                          (T_MaybeExports)
 sem_MaybeExports_Just (_exports) =
-    let 
-    in  ( )
+    let (_self) =
+            MaybeExports_Just _exports_self
+        ( _exports_self) =
+            (_exports )
+    in  ( _self)
 sem_MaybeExports_Nothing :: (T_MaybeExports)
 sem_MaybeExports_Nothing  =
-    let 
-    in  ( )
+    let (_self) =
+            MaybeExports_Nothing
+    in  ( _self)
 -- MaybeExpression ---------------------------------------------
 -- semantic domain
-type T_MaybeExpression = ( )
+type T_MaybeExpression = ( (MaybeExpression))
 -- cata
 sem_MaybeExpression :: (MaybeExpression) ->
                        (T_MaybeExpression)
@@ -996,15 +1427,19 @@ sem_MaybeExpression ((MaybeExpression_Nothing )) =
 sem_MaybeExpression_Just :: (T_Expression) ->
                             (T_MaybeExpression)
 sem_MaybeExpression_Just (_expression) =
-    let 
-    in  ( )
+    let (_self) =
+            MaybeExpression_Just _expression_self
+        ( _expression_self) =
+            (_expression )
+    in  ( _self)
 sem_MaybeExpression_Nothing :: (T_MaybeExpression)
 sem_MaybeExpression_Nothing  =
-    let 
-    in  ( )
+    let (_self) =
+            MaybeExpression_Nothing
+    in  ( _self)
 -- MaybeImportSpecification ------------------------------------
 -- semantic domain
-type T_MaybeImportSpecification = ( (Maybe [(Id, Core.DeclKind)]))
+type T_MaybeImportSpecification = ( (Maybe [(Id, Core.DeclKind)]),(MaybeImportSpecification))
 -- cata
 sem_MaybeImportSpecification :: (MaybeImportSpecification) ->
                                 (T_MaybeImportSpecification)
@@ -1015,16 +1450,19 @@ sem_MaybeImportSpecification ((MaybeImportSpecification_Nothing )) =
 sem_MaybeImportSpecification_Just :: (T_ImportSpecification) ->
                                      (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Just (_importspecification) =
-    let ( _importspecification_imps) =
+    let (_self) =
+            MaybeImportSpecification_Just _importspecification_self
+        ( _importspecification_imps,_importspecification_self) =
             (_importspecification )
-    in  ( Just _importspecification_imps)
+    in  ( Just _importspecification_imps,_self)
 sem_MaybeImportSpecification_Nothing :: (T_MaybeImportSpecification)
 sem_MaybeImportSpecification_Nothing  =
-    let 
-    in  ( Nothing)
+    let (_self) =
+            MaybeImportSpecification_Nothing
+    in  ( Nothing,_self)
 -- MaybeInt ----------------------------------------------------
 -- semantic domain
-type T_MaybeInt = ( )
+type T_MaybeInt = ( (MaybeInt))
 -- cata
 sem_MaybeInt :: (MaybeInt) ->
                 (T_MaybeInt)
@@ -1035,15 +1473,17 @@ sem_MaybeInt ((MaybeInt_Nothing )) =
 sem_MaybeInt_Just :: (Int) ->
                      (T_MaybeInt)
 sem_MaybeInt_Just (_int) =
-    let 
-    in  ( )
+    let (_self) =
+            MaybeInt_Just _int
+    in  ( _self)
 sem_MaybeInt_Nothing :: (T_MaybeInt)
 sem_MaybeInt_Nothing  =
-    let 
-    in  ( )
+    let (_self) =
+            MaybeInt_Nothing
+    in  ( _self)
 -- MaybeName ---------------------------------------------------
 -- semantic domain
-type T_MaybeName = ( ( Maybe Id ),(Bool))
+type T_MaybeName = ( (Bool),( Maybe Name ),(MaybeName))
 -- cata
 sem_MaybeName :: (MaybeName) ->
                  (T_MaybeName)
@@ -1054,16 +1494,19 @@ sem_MaybeName ((MaybeName_Nothing )) =
 sem_MaybeName_Just :: (T_Name) ->
                       (T_MaybeName)
 sem_MaybeName_Just (_name) =
-    let ( _name_id) =
+    let (_self) =
+            MaybeName_Just _name_self
+        ( _name_self) =
             (_name )
-    in  ( Just _name_id,False)
+    in  ( False,Just _name_self,_self)
 sem_MaybeName_Nothing :: (T_MaybeName)
 sem_MaybeName_Nothing  =
-    let 
-    in  ( Nothing,True)
+    let (_self) =
+            MaybeName_Nothing
+    in  ( True,Nothing,_self)
 -- MaybeNames --------------------------------------------------
 -- semantic domain
-type T_MaybeNames = ( ( Maybe [Id] ))
+type T_MaybeNames = ( ( Maybe [Name] ),(MaybeNames))
 -- cata
 sem_MaybeNames :: (MaybeNames) ->
                   (T_MaybeNames)
@@ -1074,16 +1517,19 @@ sem_MaybeNames ((MaybeNames_Nothing )) =
 sem_MaybeNames_Just :: (T_Names) ->
                        (T_MaybeNames)
 sem_MaybeNames_Just (_names) =
-    let ( _names_ids) =
+    let (_self) =
+            MaybeNames_Just _names_self
+        ( _names_names,_names_self) =
             (_names )
-    in  ( Just _names_ids)
+    in  ( Just _names_names,_self)
 sem_MaybeNames_Nothing :: (T_MaybeNames)
 sem_MaybeNames_Nothing  =
-    let 
-    in  ( Nothing)
+    let (_self) =
+            MaybeNames_Nothing
+    in  ( Nothing,_self)
 -- Module ------------------------------------------------------
 -- semantic domain
-type T_Module = ( ( [Core.CoreDecl] ))
+type T_Module = ( ( [Core.CoreDecl] ),(Module))
 -- cata
 sem_Module :: (Module) ->
               (T_Module)
@@ -1095,14 +1541,20 @@ sem_Module_Module :: (T_Range) ->
                      (T_Body) ->
                      (T_Module)
 sem_Module_Module (_range) (_name) (_exports) (_body) =
-    let ( _name_id,_name_isNothing) =
+    let (_self) =
+            Module_Module _range_self _name_self _exports_self _body_self
+        ( _range_self) =
+            (_range )
+        ( _name_isNothing,_name_name,_name_self) =
             (_name )
-        ( _body_coreImportDecls) =
+        ( _exports_self) =
+            (_exports )
+        ( _body_coreImportDecls,_body_self) =
             (_body )
-    in  ( _body_coreImportDecls)
+    in  ( _body_coreImportDecls,_self)
 -- Name --------------------------------------------------------
 -- semantic domain
-type T_Name = ( (Id))
+type T_Name = ( (Name))
 -- cata
 sem_Name :: (Name) ->
             (T_Name)
@@ -1117,25 +1569,40 @@ sem_Name_Identifier :: (T_Range) ->
                        (String) ->
                        (T_Name)
 sem_Name_Identifier (_range) (_module) (_name) =
-    let 
-    in  ( idFromString _name)
+    let (_self) =
+            Name_Identifier _range_self _module_self _name
+        ( _range_self) =
+            (_range )
+        ( _module_self) =
+            (_module )
+    in  ( _self)
 sem_Name_Operator :: (T_Range) ->
                      (T_Strings) ->
                      (String) ->
                      (T_Name)
 sem_Name_Operator (_range) (_module) (_name) =
-    let 
-    in  ( idFromString _name)
+    let (_self) =
+            Name_Operator _range_self _module_self _name
+        ( _range_self) =
+            (_range )
+        ( _module_self) =
+            (_module )
+    in  ( _self)
 sem_Name_Special :: (T_Range) ->
                     (T_Strings) ->
                     (String) ->
                     (T_Name)
 sem_Name_Special (_range) (_module) (_name) =
-    let 
-    in  ( idFromString _name)
+    let (_self) =
+            Name_Special _range_self _module_self _name
+        ( _range_self) =
+            (_range )
+        ( _module_self) =
+            (_module )
+    in  ( _self)
 -- Names -------------------------------------------------------
 -- semantic domain
-type T_Names = ( ([Id]))
+type T_Names = ( ([Name]),(Names))
 -- cata
 sem_Names :: (Names) ->
              (T_Names)
@@ -1145,18 +1612,21 @@ sem_Names_Cons :: (T_Name) ->
                   (T_Names) ->
                   (T_Names)
 sem_Names_Cons (_hd) (_tl) =
-    let ( _hd_id) =
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
             (_hd )
-        ( _tl_ids) =
+        ( _tl_names,_tl_self) =
             (_tl )
-    in  ( _hd_id : _tl_ids)
+    in  ( _hd_self : _tl_names,_self)
 sem_Names_Nil :: (T_Names)
 sem_Names_Nil  =
-    let 
-    in  ( [])
+    let (_self) =
+            []
+    in  ( [],_self)
 -- Pattern -----------------------------------------------------
 -- semantic domain
-type T_Pattern = ( )
+type T_Pattern = ( (Pattern))
 -- cata
 sem_Pattern :: (Pattern) ->
                (T_Pattern)
@@ -1193,99 +1663,173 @@ sem_Pattern_As :: (T_Range) ->
                   (T_Pattern) ->
                   (T_Pattern)
 sem_Pattern_As (_range) (_name) (_pattern) =
-    let ( _name_id) =
+    let (_self) =
+            Pattern_As _range_self _name_self _pattern_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+        ( _pattern_self) =
+            (_pattern )
+    in  ( _self)
 sem_Pattern_Constructor :: (T_Range) ->
                            (T_Name) ->
                            (T_Patterns) ->
                            (T_Pattern)
 sem_Pattern_Constructor (_range) (_name) (_patterns) =
-    let ( _name_id) =
+    let (_self) =
+            Pattern_Constructor _range_self _name_self _patterns_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+        ( _patterns_self) =
+            (_patterns )
+    in  ( _self)
 sem_Pattern_InfixConstructor :: (T_Range) ->
                                 (T_Pattern) ->
                                 (T_Name) ->
                                 (T_Pattern) ->
                                 (T_Pattern)
 sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_rightPattern) =
-    let ( _constructorOperator_id) =
+    let (_self) =
+            Pattern_InfixConstructor _range_self _leftPattern_self _constructorOperator_self _rightPattern_self
+        ( _range_self) =
+            (_range )
+        ( _leftPattern_self) =
+            (_leftPattern )
+        ( _constructorOperator_self) =
             (_constructorOperator )
-    in  ( )
+        ( _rightPattern_self) =
+            (_rightPattern )
+    in  ( _self)
 sem_Pattern_Irrefutable :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Pattern)
 sem_Pattern_Irrefutable (_range) (_pattern) =
-    let 
-    in  ( )
+    let (_self) =
+            Pattern_Irrefutable _range_self _pattern_self
+        ( _range_self) =
+            (_range )
+        ( _pattern_self) =
+            (_pattern )
+    in  ( _self)
 sem_Pattern_List :: (T_Range) ->
                     (T_Patterns) ->
                     (T_Pattern)
 sem_Pattern_List (_range) (_patterns) =
-    let 
-    in  ( )
+    let (_self) =
+            Pattern_List _range_self _patterns_self
+        ( _range_self) =
+            (_range )
+        ( _patterns_self) =
+            (_patterns )
+    in  ( _self)
 sem_Pattern_Literal :: (T_Range) ->
                        (T_Literal) ->
                        (T_Pattern)
 sem_Pattern_Literal (_range) (_literal) =
-    let 
-    in  ( )
+    let (_self) =
+            Pattern_Literal _range_self _literal_self
+        ( _range_self) =
+            (_range )
+        ( _literal_self) =
+            (_literal )
+    in  ( _self)
 sem_Pattern_Negate :: (T_Range) ->
                       (T_Literal) ->
                       (T_Pattern)
 sem_Pattern_Negate (_range) (_literal) =
-    let 
-    in  ( )
+    let (_self) =
+            Pattern_Negate _range_self _literal_self
+        ( _range_self) =
+            (_range )
+        ( _literal_self) =
+            (_literal )
+    in  ( _self)
 sem_Pattern_NegateFloat :: (T_Range) ->
                            (T_Literal) ->
                            (T_Pattern)
 sem_Pattern_NegateFloat (_range) (_literal) =
-    let 
-    in  ( )
+    let (_self) =
+            Pattern_NegateFloat _range_self _literal_self
+        ( _range_self) =
+            (_range )
+        ( _literal_self) =
+            (_literal )
+    in  ( _self)
 sem_Pattern_Parenthesized :: (T_Range) ->
                              (T_Pattern) ->
                              (T_Pattern)
 sem_Pattern_Parenthesized (_range) (_pattern) =
-    let 
-    in  ( )
+    let (_self) =
+            Pattern_Parenthesized _range_self _pattern_self
+        ( _range_self) =
+            (_range )
+        ( _pattern_self) =
+            (_pattern )
+    in  ( _self)
 sem_Pattern_Record :: (T_Range) ->
                       (T_Name) ->
                       (T_RecordPatternBindings) ->
                       (T_Pattern)
 sem_Pattern_Record (_range) (_name) (_recordPatternBindings) =
-    let ( _name_id) =
+    let (_self) =
+            Pattern_Record _range_self _name_self _recordPatternBindings_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+        ( _recordPatternBindings_self) =
+            (_recordPatternBindings )
+    in  ( _self)
 sem_Pattern_Successor :: (T_Range) ->
                          (T_Name) ->
                          (T_Literal) ->
                          (T_Pattern)
 sem_Pattern_Successor (_range) (_name) (_literal) =
-    let ( _name_id) =
+    let (_self) =
+            Pattern_Successor _range_self _name_self _literal_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+        ( _literal_self) =
+            (_literal )
+    in  ( _self)
 sem_Pattern_Tuple :: (T_Range) ->
                      (T_Patterns) ->
                      (T_Pattern)
 sem_Pattern_Tuple (_range) (_patterns) =
-    let 
-    in  ( )
+    let (_self) =
+            Pattern_Tuple _range_self _patterns_self
+        ( _range_self) =
+            (_range )
+        ( _patterns_self) =
+            (_patterns )
+    in  ( _self)
 sem_Pattern_Variable :: (T_Range) ->
                         (T_Name) ->
                         (T_Pattern)
 sem_Pattern_Variable (_range) (_name) =
-    let ( _name_id) =
+    let (_self) =
+            Pattern_Variable _range_self _name_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+    in  ( _self)
 sem_Pattern_Wildcard :: (T_Range) ->
                         (T_Pattern)
 sem_Pattern_Wildcard (_range) =
-    let 
-    in  ( )
+    let (_self) =
+            Pattern_Wildcard _range_self
+        ( _range_self) =
+            (_range )
+    in  ( _self)
 -- Patterns ----------------------------------------------------
 -- semantic domain
-type T_Patterns = ( )
+type T_Patterns = ( (Patterns))
 -- cata
 sem_Patterns :: (Patterns) ->
                 (T_Patterns)
@@ -1295,15 +1839,21 @@ sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns) ->
                      (T_Patterns)
 sem_Patterns_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_Patterns_Nil :: (T_Patterns)
 sem_Patterns_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- Position ----------------------------------------------------
 -- semantic domain
-type T_Position = ( )
+type T_Position = ( (Position))
 -- cata
 sem_Position :: (Position) ->
                 (T_Position)
@@ -1316,15 +1866,17 @@ sem_Position_Position :: (String) ->
                          (Int) ->
                          (T_Position)
 sem_Position_Position (_filename) (_line) (_column) =
-    let 
-    in  ( )
+    let (_self) =
+            Position_Position _filename _line _column
+    in  ( _self)
 sem_Position_Unknown :: (T_Position)
 sem_Position_Unknown  =
-    let 
-    in  ( )
+    let (_self) =
+            Position_Unknown
+    in  ( _self)
 -- Qualifier ---------------------------------------------------
 -- semantic domain
-type T_Qualifier = ( )
+type T_Qualifier = ( (Qualifier))
 -- cata
 sem_Qualifier :: (Qualifier) ->
                  (T_Qualifier)
@@ -1339,30 +1891,50 @@ sem_Qualifier ((Qualifier_Let (_range) (_declarations))) =
 sem_Qualifier_Empty :: (T_Range) ->
                        (T_Qualifier)
 sem_Qualifier_Empty (_range) =
-    let 
-    in  ( )
+    let (_self) =
+            Qualifier_Empty _range_self
+        ( _range_self) =
+            (_range )
+    in  ( _self)
 sem_Qualifier_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Qualifier)
 sem_Qualifier_Generator (_range) (_pattern) (_expression) =
-    let 
-    in  ( )
+    let (_self) =
+            Qualifier_Generator _range_self _pattern_self _expression_self
+        ( _range_self) =
+            (_range )
+        ( _pattern_self) =
+            (_pattern )
+        ( _expression_self) =
+            (_expression )
+    in  ( _self)
 sem_Qualifier_Guard :: (T_Range) ->
                        (T_Expression) ->
                        (T_Qualifier)
 sem_Qualifier_Guard (_range) (_guard) =
-    let 
-    in  ( )
+    let (_self) =
+            Qualifier_Guard _range_self _guard_self
+        ( _range_self) =
+            (_range )
+        ( _guard_self) =
+            (_guard )
+    in  ( _self)
 sem_Qualifier_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Qualifier)
 sem_Qualifier_Let (_range) (_declarations) =
-    let 
-    in  ( )
+    let (_self) =
+            Qualifier_Let _range_self _declarations_self
+        ( _range_self) =
+            (_range )
+        ( _declarations_self) =
+            (_declarations )
+    in  ( _self)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
-type T_Qualifiers = ( )
+type T_Qualifiers = ( (Qualifiers))
 -- cata
 sem_Qualifiers :: (Qualifiers) ->
                   (T_Qualifiers)
@@ -1372,15 +1944,21 @@ sem_Qualifiers_Cons :: (T_Qualifier) ->
                        (T_Qualifiers) ->
                        (T_Qualifiers)
 sem_Qualifiers_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_Qualifiers_Nil :: (T_Qualifiers)
 sem_Qualifiers_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- Range -------------------------------------------------------
 -- semantic domain
-type T_Range = ( )
+type T_Range = ( (Range))
 -- cata
 sem_Range :: (Range) ->
              (T_Range)
@@ -1390,11 +1968,16 @@ sem_Range_Range :: (T_Position) ->
                    (T_Position) ->
                    (T_Range)
 sem_Range_Range (_start) (_stop) =
-    let 
-    in  ( )
+    let (_self) =
+            Range_Range _start_self _stop_self
+        ( _start_self) =
+            (_start )
+        ( _stop_self) =
+            (_stop )
+    in  ( _self)
 -- RecordExpressionBinding -------------------------------------
 -- semantic domain
-type T_RecordExpressionBinding = ( )
+type T_RecordExpressionBinding = ( (RecordExpressionBinding))
 -- cata
 sem_RecordExpressionBinding :: (RecordExpressionBinding) ->
                                (T_RecordExpressionBinding)
@@ -1405,12 +1988,18 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
                                                        (T_Expression) ->
                                                        (T_RecordExpressionBinding)
 sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expression) =
-    let ( _name_id) =
+    let (_self) =
+            RecordExpressionBinding_RecordExpressionBinding _range_self _name_self _expression_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+        ( _expression_self) =
+            (_expression )
+    in  ( _self)
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
-type T_RecordExpressionBindings = ( )
+type T_RecordExpressionBindings = ( (RecordExpressionBindings))
 -- cata
 sem_RecordExpressionBindings :: (RecordExpressionBindings) ->
                                 (T_RecordExpressionBindings)
@@ -1420,15 +2009,21 @@ sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_RecordExpressionBindings)
 sem_RecordExpressionBindings_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_RecordExpressionBindings_Nil :: (T_RecordExpressionBindings)
 sem_RecordExpressionBindings_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- RecordPatternBinding ----------------------------------------
 -- semantic domain
-type T_RecordPatternBinding = ( )
+type T_RecordPatternBinding = ( (RecordPatternBinding))
 -- cata
 sem_RecordPatternBinding :: (RecordPatternBinding) ->
                             (T_RecordPatternBinding)
@@ -1439,12 +2034,18 @@ sem_RecordPatternBinding_RecordPatternBinding :: (T_Range) ->
                                                  (T_Pattern) ->
                                                  (T_RecordPatternBinding)
 sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) =
-    let ( _name_id) =
+    let (_self) =
+            RecordPatternBinding_RecordPatternBinding _range_self _name_self _pattern_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+        ( _pattern_self) =
+            (_pattern )
+    in  ( _self)
 -- RecordPatternBindings ---------------------------------------
 -- semantic domain
-type T_RecordPatternBindings = ( )
+type T_RecordPatternBindings = ( (RecordPatternBindings))
 -- cata
 sem_RecordPatternBindings :: (RecordPatternBindings) ->
                              (T_RecordPatternBindings)
@@ -1454,15 +2055,21 @@ sem_RecordPatternBindings_Cons :: (T_RecordPatternBinding) ->
                                   (T_RecordPatternBindings) ->
                                   (T_RecordPatternBindings)
 sem_RecordPatternBindings_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_RecordPatternBindings_Nil :: (T_RecordPatternBindings)
 sem_RecordPatternBindings_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- RightHandSide -----------------------------------------------
 -- semantic domain
-type T_RightHandSide = ( )
+type T_RightHandSide = ( (RightHandSide))
 -- cata
 sem_RightHandSide :: (RightHandSide) ->
                      (T_RightHandSide)
@@ -1475,18 +2082,32 @@ sem_RightHandSide_Expression :: (T_Range) ->
                                 (T_MaybeDeclarations) ->
                                 (T_RightHandSide)
 sem_RightHandSide_Expression (_range) (_expression) (_where) =
-    let 
-    in  ( )
+    let (_self) =
+            RightHandSide_Expression _range_self _expression_self _where_self
+        ( _range_self) =
+            (_range )
+        ( _expression_self) =
+            (_expression )
+        ( _where_self) =
+            (_where )
+    in  ( _self)
 sem_RightHandSide_Guarded :: (T_Range) ->
                              (T_GuardedExpressions) ->
                              (T_MaybeDeclarations) ->
                              (T_RightHandSide)
 sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) =
-    let 
-    in  ( )
+    let (_self) =
+            RightHandSide_Guarded _range_self _guardedexpressions_self _where_self
+        ( _range_self) =
+            (_range )
+        ( _guardedexpressions_self) =
+            (_guardedexpressions )
+        ( _where_self) =
+            (_where )
+    in  ( _self)
 -- SimpleType --------------------------------------------------
 -- semantic domain
-type T_SimpleType = ( )
+type T_SimpleType = ( (SimpleType))
 -- cata
 sem_SimpleType :: (SimpleType) ->
                   (T_SimpleType)
@@ -1497,14 +2118,18 @@ sem_SimpleType_SimpleType :: (T_Range) ->
                              (T_Names) ->
                              (T_SimpleType)
 sem_SimpleType_SimpleType (_range) (_name) (_typevariables) =
-    let ( _name_id) =
+    let (_self) =
+            SimpleType_SimpleType _range_self _name_self _typevariables_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-        ( _typevariables_ids) =
+        ( _typevariables_names,_typevariables_self) =
             (_typevariables )
-    in  ( )
+    in  ( _self)
 -- Statement ---------------------------------------------------
 -- semantic domain
-type T_Statement = ( )
+type T_Statement = ( (Statement))
 -- cata
 sem_Statement :: (Statement) ->
                  (T_Statement)
@@ -1519,30 +2144,50 @@ sem_Statement ((Statement_Let (_range) (_declarations))) =
 sem_Statement_Empty :: (T_Range) ->
                        (T_Statement)
 sem_Statement_Empty (_range) =
-    let 
-    in  ( )
+    let (_self) =
+            Statement_Empty _range_self
+        ( _range_self) =
+            (_range )
+    in  ( _self)
 sem_Statement_Expression :: (T_Range) ->
                             (T_Expression) ->
                             (T_Statement)
 sem_Statement_Expression (_range) (_expression) =
-    let 
-    in  ( )
+    let (_self) =
+            Statement_Expression _range_self _expression_self
+        ( _range_self) =
+            (_range )
+        ( _expression_self) =
+            (_expression )
+    in  ( _self)
 sem_Statement_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Statement)
 sem_Statement_Generator (_range) (_pattern) (_expression) =
-    let 
-    in  ( )
+    let (_self) =
+            Statement_Generator _range_self _pattern_self _expression_self
+        ( _range_self) =
+            (_range )
+        ( _pattern_self) =
+            (_pattern )
+        ( _expression_self) =
+            (_expression )
+    in  ( _self)
 sem_Statement_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Statement)
 sem_Statement_Let (_range) (_declarations) =
-    let 
-    in  ( )
+    let (_self) =
+            Statement_Let _range_self _declarations_self
+        ( _range_self) =
+            (_range )
+        ( _declarations_self) =
+            (_declarations )
+    in  ( _self)
 -- Statements --------------------------------------------------
 -- semantic domain
-type T_Statements = ( )
+type T_Statements = ( (Statements))
 -- cata
 sem_Statements :: (Statements) ->
                   (T_Statements)
@@ -1552,15 +2197,21 @@ sem_Statements_Cons :: (T_Statement) ->
                        (T_Statements) ->
                        (T_Statements)
 sem_Statements_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_Statements_Nil :: (T_Statements)
 sem_Statements_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- Strings -----------------------------------------------------
 -- semantic domain
-type T_Strings = ( )
+type T_Strings = ( (Strings))
 -- cata
 sem_Strings :: (Strings) ->
                (T_Strings)
@@ -1570,15 +2221,19 @@ sem_Strings_Cons :: (String) ->
                     (T_Strings) ->
                     (T_Strings)
 sem_Strings_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd _tl_self
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_Strings_Nil :: (T_Strings)
 sem_Strings_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 -- Type --------------------------------------------------------
 -- semantic domain
-type T_Type = ( )
+type T_Type = ( (Type))
 -- cata
 sem_Type :: (Type) ->
             (T_Type)
@@ -1602,54 +2257,93 @@ sem_Type_Application :: (T_Range) ->
                         (T_Types) ->
                         (T_Type)
 sem_Type_Application (_range) (_prefix) (_function) (_arguments) =
-    let 
-    in  ( )
+    let (_self) =
+            Type_Application _range_self _prefix _function_self _arguments_self
+        ( _range_self) =
+            (_range )
+        ( _function_self) =
+            (_function )
+        ( _arguments_self) =
+            (_arguments )
+    in  ( _self)
 sem_Type_Constructor :: (T_Range) ->
                         (T_Name) ->
                         (T_Type)
 sem_Type_Constructor (_range) (_name) =
-    let ( _name_id) =
+    let (_self) =
+            Type_Constructor _range_self _name_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+    in  ( _self)
 sem_Type_Exists :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
 sem_Type_Exists (_range) (_typevariables) (_type) =
-    let ( _typevariables_ids) =
+    let (_self) =
+            Type_Exists _range_self _typevariables_self _type_self
+        ( _range_self) =
+            (_range )
+        ( _typevariables_names,_typevariables_self) =
             (_typevariables )
-    in  ( )
+        ( _type_self) =
+            (_type )
+    in  ( _self)
 sem_Type_Forall :: (T_Range) ->
                    (T_Names) ->
                    (T_Type) ->
                    (T_Type)
 sem_Type_Forall (_range) (_typevariables) (_type) =
-    let ( _typevariables_ids) =
+    let (_self) =
+            Type_Forall _range_self _typevariables_self _type_self
+        ( _range_self) =
+            (_range )
+        ( _typevariables_names,_typevariables_self) =
             (_typevariables )
-    in  ( )
+        ( _type_self) =
+            (_type )
+    in  ( _self)
 sem_Type_Parenthesized :: (T_Range) ->
                           (T_Type) ->
                           (T_Type)
 sem_Type_Parenthesized (_range) (_type) =
-    let 
-    in  ( )
+    let (_self) =
+            Type_Parenthesized _range_self _type_self
+        ( _range_self) =
+            (_range )
+        ( _type_self) =
+            (_type )
+    in  ( _self)
 sem_Type_Qualified :: (T_Range) ->
                       (T_ContextItems) ->
                       (T_Type) ->
                       (T_Type)
 sem_Type_Qualified (_range) (_context) (_type) =
-    let 
-    in  ( )
+    let (_self) =
+            Type_Qualified _range_self _context_self _type_self
+        ( _range_self) =
+            (_range )
+        ( _context_self) =
+            (_context )
+        ( _type_self) =
+            (_type )
+    in  ( _self)
 sem_Type_Variable :: (T_Range) ->
                      (T_Name) ->
                      (T_Type)
 sem_Type_Variable (_range) (_name) =
-    let ( _name_id) =
+    let (_self) =
+            Type_Variable _range_self _name_self
+        ( _range_self) =
+            (_range )
+        ( _name_self) =
             (_name )
-    in  ( )
+    in  ( _self)
 -- Types -------------------------------------------------------
 -- semantic domain
-type T_Types = ( )
+type T_Types = ( (Types))
 -- cata
 sem_Types :: (Types) ->
              (T_Types)
@@ -1659,10 +2353,16 @@ sem_Types_Cons :: (T_Type) ->
                   (T_Types) ->
                   (T_Types)
 sem_Types_Cons (_hd) (_tl) =
-    let 
-    in  ( )
+    let (_self) =
+            (:) _hd_self _tl_self
+        ( _hd_self) =
+            (_hd )
+        ( _tl_self) =
+            (_tl )
+    in  ( _self)
 sem_Types_Nil :: (T_Types)
 sem_Types_Nil  =
-    let 
-    in  ( )
+    let (_self) =
+            []
+    in  ( _self)
 
