@@ -35,6 +35,8 @@ import UHA_Utils               ( showNameAsOperator )
 import ImportEnvironment
 import FiniteMap
 
+import UHA_Utils
+
 import OneLiner
 import Char
 import UHA_Utils (showNameAsOperator)
@@ -194,6 +196,237 @@ sourcePattern     = (,) "pattern"
 sourceOperator    = (,) "operator"
 sourceConstructor = (,) "constructor"
 
+pmError = internalError "PatternMatchWarnings"
+
+
+----------
+-- misc --
+----------
+
+-- lifted or
+(|^|) :: (a -> Bool) -> (a -> Bool) -> a -> Bool
+(|^|) f g x = f x || g x
+
+----------------------------------------------
+--- environments and substitution of types ---
+----------------------------------------------
+
+-- environment of constructors [(type, (constructorname, arguments))]
+type Env = [(Tp, (Name, [Tp]))]
+
+-- return the number of arguments of a constructor
+-- tuples ar not in the Env so they require special treatment
+nrOfArguments :: Env -> String -> Int
+nrOfArguments env con | isTupleConstructor con = length con - 1
+                      | otherwise = case lookup (nameFromString con) $ map snd env
+                                    of Just args -> length args
+                                       Nothing   -> 0 -- pmError "nrOfArguments" "non-existing constructor"
+
+-- convert constructor to fit in an Env
+rearrange :: (Name, TpScheme) -> (Tp, (Name, [Tp]))
+rearrange (name, tpscheme) = let (args, res) = functionSpine $ unqualify $ getQualifiedType tpscheme
+                             in (res, (name, args))
+  where
+    unqualify :: QType -> Tp
+    unqualify (_ :=> tp) = tp
+
+-- get the constructors of a given type out of an Env
+-- tuples ar not in the Env so they require special treatment
+constructors :: Env -> Tp -> [(Name, [Tp])]
+constructors _ (TVar _) = []
+constructors env tp | isTupleConstructor name = [tupleconstructor]
+                    | otherwise               = concatMap (substitute tp) env
+  where
+    name :: String
+    name = unTCon $ fst $ leftSpine tp
+    tupleconstructor :: (Name, [Tp])
+    tupleconstructor = (nameFromString name, snd $ leftSpine tp)
+    unTCon :: Tp -> String
+    unTCon (TCon c) = c
+    unTCon tp = pmError "unTCon" $ "type " ++ show tp ++ " is not a TCon"
+
+-- check of an entry in an Env is a constructor for the given type
+-- if so, return this constructor, but with variables substituted for whatever is in the given type
+-- the list returns zero or one elements
+-- for example: substitute (Maybe Int) (Maybe a, (Just, [a])) will return [(Just, [Int])]
+substitute :: Tp -> (Tp, (Name, [Tp])) -> [(Name, [Tp])]
+substitute t1 (t2, (con, args)) = let (c1, ts1) = leftSpine t1
+                                      (c2, ts2) = leftSpine t2
+                                      sub = listToSubstitution $ zip (map unTVar ts2) ts1
+                                  in if c1 == c2
+                                     then [(con, map (sub |->) args)]
+                                     else []
+  where
+    unTVar :: Tp -> Int
+    unTVar (TVar v) = v
+    unTVar _ = pmError "unTVar" "type is not a TVar"
+
+---------------------------------------------------------------
+--- datastructures and functions for the solution structure ---
+---------------------------------------------------------------
+
+-- a pattern is a list of patternelements
+data PatternElement = WildcardElement | InfiniteElement String | FiniteElement String deriving Eq
+isInfiniteElement :: PatternElement -> Bool
+isInfiniteElement (InfiniteElement _) = True
+isInfiniteElement _                   = False
+elementString :: PatternElement -> String
+elementString (InfiniteElement s) = s
+elementString (  FiniteElement s) = s
+elementString _                   = [] -- pmError "elementString" "Wildcards have no elementString"
+
+-- needed for Pattern_List and Literal_String occurences
+listPat :: [[PatternElement]] -> [PatternElement]
+listPat [] = [FiniteElement "[]"]
+listPat (ps:pss) = FiniteElement ":" : ps ++ listPat pss
+
+stringPat :: String -> [PatternElement]
+stringPat [] = [FiniteElement "[]"]
+stringPat (c:cs) = FiniteElement ":" : InfiniteElement [c] : stringPat cs
+
+-- tree of missing patterns
+data PatternsMissing = PatternsMissing [(PatternElement, PatternsMissing)]
+unMissing :: PatternsMissing -> [(PatternElement, PatternsMissing)]
+unMissing (PatternsMissing l) = l
+
+-- create a branch consisting of only wildcards
+wildMissing :: Int -> PatternsMissing
+wildMissing 0 = PatternsMissing []
+wildMissing n = PatternsMissing [(WildcardElement, wildMissing $ n - 1)]
+
+-- convert a missing patterns tree to a list of seperated missing patterns
+missingList :: PatternsMissing -> [[PatternElement]]
+missingList (PatternsMissing []) = [[]]
+missingList (PatternsMissing [(d,t)]) = map (d:) $ missingList t
+missingList (PatternsMissing (d:ds)) = (missingList $ PatternsMissing [d]) ++ (missingList $ PatternsMissing ds)
+
+-------------------------------------------------------------------
+--- functions to create a UHA_Pattern out of a [PatternElement] ---
+-------------------------------------------------------------------
+
+-- nice creates the actual pattern without parentheses
+-- [Just, True, True, (,), Just, Nothing, False] -> [Just True, True, (Just Nothing, False)]
+nicePattern :: Bool -> Env -> [PatternElement] -> [Pattern]
+nicePattern b env = map (parensPattern b) . nice
+  where
+    nice :: [PatternElement] -> [Pattern]
+    nice []             = []
+    nice (WildcardElement    :ps) = Pattern_Wildcard noRange : nice ps
+    nice (InfiniteElement _  :ps) = pmError "nicePattern" "InfiniteElement in pattern!"
+    nice (FiniteElement con:ps) =
+      let rest = nice ps
+          name = nameFromString con
+          n    = nrOfArguments env con
+      in case name 
+         of Name_Identifier _ _ _                          -> Pattern_Constructor noRange name (take n rest) : drop n rest
+            Name_Operator   _ _ _ | con == ":"             -> case head $ tail rest
+                                                              of Pattern_List _ ps -> Pattern_List noRange (head rest:ps) : (tail $ tail rest)
+                                                                 _ -> Pattern_InfixConstructor noRange (head rest) name (head $ tail rest) : (tail $ tail rest)
+                                  | otherwise              -> Pattern_InfixConstructor noRange (head rest) name (head $ tail rest) : (tail $ tail rest)
+            Name_Special    _ _ _ | isTupleConstructor con -> Pattern_Tuple noRange (take n rest) : drop n rest
+                                  | con == "[]"            -> Pattern_List  noRange [] : rest
+                                  | otherwise              -> Pattern_Constructor noRange name (take n rest) : drop n rest
+
+-- add parentheses to a pattern in the correct places
+-- bool means: if needed, should there be parenthesis around the complete pattern?
+parensPattern :: Bool -> Pattern -> Pattern
+parensPattern b = if b then rap . par else fst . par
+  where
+    par :: Pattern -> (Pattern, Bool) -- Bool means: are parentheses needed around this pattern, shoud it be used in a more complex pattern
+    par p@(Pattern_Literal          _ _    ) = (p, False)
+    par p@(Pattern_Variable         _ _    ) = (p, False)
+    par   (Pattern_Constructor      r n ps ) = (Pattern_Constructor r n $ map (rap.par) ps, length ps > 0)
+    par   (Pattern_Parenthesized    _ p    ) = par p
+    par   (Pattern_InfixConstructor r l n k) = (Pattern_InfixConstructor r (rap $ par l) n (rap $ par k), True)
+    par   (Pattern_List             r ps   ) = (Pattern_List r $ map (fst.par) ps, False)
+    par   (Pattern_Tuple            r ps   ) = (Pattern_Tuple r $ map (fst.par) ps, False)
+    par   (Pattern_Record           _ _ _  ) = pmError "parensPattern" "Records are not supported" 
+    par p@(Pattern_Negate           _ _    ) = (p, True)
+    par p@(Pattern_NegateFloat      _ _    ) = (p, True)
+    par   (Pattern_As               r n p  ) = (Pattern_As r n (rap $ par p), False)
+    par p@(Pattern_Wildcard         _      ) = (p, False)
+    par   (Pattern_Irrefutable      _ _    ) = pmError "parensPattern" "Irrefutable patterns are not supported"  
+    par   (Pattern_Successor        _ _ _  ) = pmError "parensPattern" "Successors are not supported" 
+    rap :: (Pattern, Bool) -> Pattern
+    rap (p, False) = p
+    rap (p, True ) = Pattern_Parenthesized noRange p
+
+--------------------------------------
+--- finally, the algorithm itself! ---
+--------------------------------------
+
+-- returns the tree of missing patterns for a given list of patterns    
+complement :: Env -> [Tp] -> [[PatternElement]] -> PatternsMissing
+complement _   []       _      = PatternsMissing []
+complement _   _        ([]:_) = PatternsMissing []
+complement env (tp:tps) pss    | null $ unMissing anyComplement                              = PatternsMissing []
+                               | all (((== WildcardElement) |^| isInfiniteElement).head) pss = anyComplement
+                               | otherwise                                                   = finComplement
+  where
+    patComplement :: [[PatternElement]] -> PatternElement -> [Tp] -> PatternsMissing
+    patComplement []  current tps = PatternsMissing [(current, wildMissing $ length tps)]
+    patComplement pss current tps = case unMissing $ complement env tps $ map tail $ pss
+                                    of []   -> PatternsMissing []
+                                       tegs -> PatternsMissing [(current, PatternsMissing tegs)]
+    anyComplement :: PatternsMissing
+    anyComplement = patComplement (filter ((== WildcardElement).head) pss) WildcardElement tps
+    conComplement :: (Name, [Tp]) -> PatternsMissing
+    conComplement (con, args) = patComplement (  filter ((== FiniteElement (getNameName con)).head) pss
+                                              ++ map (\ps -> FiniteElement (getNameName con) : replicate (length args) WildcardElement ++ tail ps)
+                                                     (filter ((== WildcardElement).head) pss)
+                                              )
+                                              (FiniteElement (getNameName con)) (args ++ tps)
+    finComplement :: PatternsMissing
+    finComplement = case constructors env tp
+                    of []   -> wildMissing $ 1 + length tps
+                       cons -> PatternsMissing $ concatMap (unMissing.conComplement) cons
+
+----------------------------
+--- unreachable patterns ---
+----------------------------
+
+-- complements the list of reachable patterns
+unreachable :: Env -> [Tp] -> [([PatternElement], Int)] -> [Int]
+unreachable env tps ps = let reach = reachable env tps ps
+                         in  filter (not . flip elem reach) (map snd ps)
+
+-- determines which patterns are reachable
+-- possibly multiple occurances of indices
+reachable :: Env -> [Tp] -> [([PatternElement], Int)] -> [Int]
+reachable _   []       _  = pmError "reachable" "empty type list!"
+reachable env (tp:tps) ps 
+  | all ((== WildcardElement).head.fst) ps = conReachable ps
+  | otherwise                              = concat $ map (conReachable.conPats) $ stop cons
+  where
+    cons :: [PatternElement]
+    cons = thin $ map (head.fst) ps
+    conPats :: PatternElement -> [([PatternElement], Int)]
+    conPats con = map (\(es, i) -> (fill con es, i)) $ filter (((== con) |^| (== WildcardElement)).head.fst) ps
+    fill :: PatternElement -> [PatternElement] -> [PatternElement]
+    fill e@(FiniteElement c) (WildcardElement : es) = e : replicate (nrOfArguments env c) WildcardElement ++ es
+    fill e                   (_               : es) = e : es
+    stop :: [PatternElement] -> [PatternElement]
+    stop es | length (constructors env tp) > length es = FiniteElement "[*]" : es
+            | length (constructors env tp) == 0        = FiniteElement "[*]" : es
+            | otherwise                                = es
+    conReachable :: [([PatternElement], Int)] -> [Int]
+    conReachable [] = []
+    conReachable pats 
+      | null.tail.fst.head $ pats = [snd.head $ pats] -- hier: als deze guards bevat, ook volgende in de lijst, etc
+      | otherwise                 = reachable env (arguments (elementString.head.fst.head $ pats) ++ tps) 
+                                            $ map (\(es, i) -> (tail es, i)) pats
+    arguments :: String -> [Tp]
+    arguments c = maybe [] id $ lookup c $ map (\(n, tps) -> (getNameName n, tps)) $ constructors env tp
+
+-- remove double occurances and wildcards
+thin :: [PatternElement] -> [PatternElement]
+thin []                     = []
+thin (WildcardElement : es) = thin es
+thin (e               : es) | elem e thines =     thines
+                            | otherwise     = e : thines
+  where thines = thin es                            
+                       
+
 
 encloseSep :: String -> String -> String -> [Tree] -> Tree
 encloseSep left sep right [] = Node [Text left, Text right]
@@ -350,9 +583,11 @@ type T_Alternative = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (IO ()) ->
                      (Tps) ->
                      (Int) ->
+                     ([Warning]) ->
+                     (WrappedSubstitution) ->
                      (TypeAnnotations) ->
                      (Int) ->
-                     ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),(Tree),(Alternative),(TypeAnnotations),(Int))
+                     ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),( [PatternElement] ),(IO ()),(Tree),([Warning]),(Alternative),(TypeAnnotations),(Int),(Warning))
 -- cata
 sem_Alternative :: (Alternative) ->
                    (T_Alternative)
@@ -364,7 +599,7 @@ sem_Alternative_Alternative :: (T_Range) ->
                                (T_Pattern) ->
                                (T_RightHandSide) ->
                                (T_Alternative)
-sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_allPatterns) (_lhs_betaLeft) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_nrOfAlternatives) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_allPatterns) (_lhs_betaLeft) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_nrOfAlternatives) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Alternative_Alternative _range_self _pattern_self _righthandside_self
         ((_csetBinds,_assumptions')) =
@@ -398,10 +633,10 @@ sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_allPatter
             Node [ _pattern_oneLineTree, _righthandside_oneLineTree " -> " ]
         ( _range_self) =
             (_range )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_environment,_pattern_oneLineTree,_pattern_self) =
-            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment))
-        ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectednotypedef,_righthandside_constraints,_righthandside_matchIO,_righthandside_oneLineTree,_righthandside_self,_righthandside_typeAnnotations,_righthandside_uniqueSecondRound) =
-            (_righthandside (_lhs_allPatterns) (_pattern_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (eltsFM _pattern_environment ++ _lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patternMatchWarnings,_pattern_self) =
+            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
+        ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectednotypedef,_righthandside_constraints,_righthandside_matchIO,_righthandside_oneLineTree,_righthandside_patternMatchWarnings,_righthandside_self,_righthandside_typeAnnotations,_righthandside_uniqueSecondRound) =
+            (_righthandside (_lhs_allPatterns) (_pattern_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (eltsFM _pattern_environment ++ _lhs_monos) (_pattern_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
     in  ( _assumptions'
          ,_righthandside_betaUnique
          ,_righthandside_collectednotypedef
@@ -409,22 +644,25 @@ sem_Alternative_Alternative (_range) (_pattern) (_righthandside) (_lhs_allPatter
           ctNode [ _conLeft  .<. _pattern_constraints
                  , _conRight .<. _righthandside_constraints
                  ]
+         ,_pattern_elements
          ,_righthandside_matchIO
          ,_oneLineTree
+         ,_righthandside_patternMatchWarnings
          ,_self
          ,_righthandside_typeAnnotations
          ,_righthandside_uniqueSecondRound
+         ,UnreachablePatternCase _range _pattern_self
          )
 sem_Alternative_Empty :: (T_Range) ->
                          (T_Alternative)
-sem_Alternative_Empty (_range) (_lhs_allPatterns) (_lhs_betaLeft) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_nrOfAlternatives) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Alternative_Empty (_range) (_lhs_allPatterns) (_lhs_betaLeft) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_nrOfAlternatives) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Alternative_Empty _range_self
         (_oneLineTree) =
             Text ""
         ( _range_self) =
             (_range )
-    in  ( noAssumptions,_lhs_betaUnique,_lhs_collectednotypedef,ctEmpty,_lhs_matchIO,_oneLineTree,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
+    in  ( noAssumptions,_lhs_betaUnique,_lhs_collectednotypedef,ctEmpty,[],_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound,pmError "Alternative_Empty.unrwar" "empty alternative")
 -- Alternatives ------------------------------------------------
 -- semantic domain
 type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -436,9 +674,11 @@ type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (IO ()) ->
                       (Tps) ->
                       (Int) ->
+                      ([Warning]) ->
+                      (WrappedSubstitution) ->
                       (TypeAnnotations) ->
                       (Int) ->
-                      ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(IO ()),( [ Tree] ),(Alternatives),(TypeAnnotations),(Int))
+                      ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSets),([[PatternElement]]),(IO ()),( [ Tree] ),([Warning]),(Alternatives),(TypeAnnotations),(Int),([Warning]))
 -- cata
 sem_Alternatives :: (Alternatives) ->
                     (T_Alternatives)
@@ -447,19 +687,19 @@ sem_Alternatives (list) =
 sem_Alternatives_Cons :: (T_Alternative) ->
                          (T_Alternatives) ->
                          (T_Alternatives)
-sem_Alternatives_Cons (_hd) (_tl) (_lhs_allPatterns) (_lhs_betaLeft) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_nrOfAlternatives) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Alternatives_Cons (_hd) (_tl) (_lhs_allPatterns) (_lhs_betaLeft) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_nrOfAlternatives) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_assumptions,_hd_betaUnique,_hd_collectednotypedef,_hd_constraints,_hd_matchIO,_hd_oneLineTree,_hd_self,_hd_typeAnnotations,_hd_uniqueSecondRound) =
-            (_hd (_lhs_allPatterns) (_lhs_betaLeft) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_nrOfAlternatives) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _tl_assumptions,_tl_betaUnique,_tl_collectednotypedef,_tl_constraintslist,_tl_matchIO,_tl_oneLineTree,_tl_self,_tl_typeAnnotations,_tl_uniqueSecondRound) =
-            (_tl (_lhs_allPatterns) (_lhs_betaLeft) (_lhs_betaRight) (_hd_betaUnique) (_hd_collectednotypedef) (_lhs_importEnvironment) (_hd_matchIO) (_lhs_monos) (_lhs_nrOfAlternatives) (_hd_typeAnnotations) (_hd_uniqueSecondRound))
-    in  ( _hd_assumptions `combine` _tl_assumptions,_tl_betaUnique,_tl_collectednotypedef,_hd_constraints : _tl_constraintslist,_tl_matchIO,_hd_oneLineTree  :  _tl_oneLineTree,_self,_tl_typeAnnotations,_tl_uniqueSecondRound)
+        ( _hd_assumptions,_hd_betaUnique,_hd_collectednotypedef,_hd_constraints,_hd_elements,_hd_matchIO,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_self,_hd_typeAnnotations,_hd_uniqueSecondRound,_hd_unrwar) =
+            (_hd (_lhs_allPatterns) (_lhs_betaLeft) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_nrOfAlternatives) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _tl_assumptions,_tl_betaUnique,_tl_collectednotypedef,_tl_constraintslist,_tl_elementss,_tl_matchIO,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self,_tl_typeAnnotations,_tl_uniqueSecondRound,_tl_unrwars) =
+            (_tl (_lhs_allPatterns) (_lhs_betaLeft) (_lhs_betaRight) (_hd_betaUnique) (_hd_collectednotypedef) (_lhs_importEnvironment) (_hd_matchIO) (_lhs_monos) (_lhs_nrOfAlternatives) (_hd_patternMatchWarnings) (_lhs_substitution) (_hd_typeAnnotations) (_hd_uniqueSecondRound))
+    in  ( _hd_assumptions `combine` _tl_assumptions,_tl_betaUnique,_tl_collectednotypedef,_hd_constraints : _tl_constraintslist,_hd_elements : _tl_elementss,_tl_matchIO,_hd_oneLineTree  :  _tl_oneLineTree,_tl_patternMatchWarnings,_self,_tl_typeAnnotations,_tl_uniqueSecondRound,_hd_unrwar   : _tl_unrwars)
 sem_Alternatives_Nil :: (T_Alternatives)
-sem_Alternatives_Nil (_lhs_allPatterns) (_lhs_betaLeft) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_nrOfAlternatives) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Alternatives_Nil (_lhs_allPatterns) (_lhs_betaLeft) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_nrOfAlternatives) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             []
-    in  ( noAssumptions,_lhs_betaUnique,_lhs_collectednotypedef,[],_lhs_matchIO,[],_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
+    in  ( noAssumptions,_lhs_betaUnique,_lhs_collectednotypedef,[],[],_lhs_matchIO,[],_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound,[])
 -- AnnotatedType -----------------------------------------------
 -- semantic domain
 type T_AnnotatedType = ( (AnnotatedType))
@@ -512,8 +752,10 @@ type T_Body = ([((Expression, [String]), Core_TypingStrategy)]) ->
               (ImportEnvironment) ->
               (IO ()) ->
               (Tps) ->
+              ([Warning]) ->
+              (WrappedSubstitution) ->
               (TypeAnnotations) ->
-              ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),([(Name,Tp)]),(Body),(TypeAnnotations),(FiniteMap Name TpScheme))
+              ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),([(Name,Tp)]),([Warning]),(Body),(TypeAnnotations),(FiniteMap Name TpScheme))
 -- cata
 sem_Body :: (Body) ->
             (T_Body)
@@ -523,7 +765,7 @@ sem_Body_Body :: (T_Range) ->
                  (T_ImportDeclarations) ->
                  (T_Declarations) ->
                  (T_Body)
-sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) =
+sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) =
     let (_self) =
             Body_Body _range_self _importdeclarations_self _declarations_self
         ((_aset,_cset,_monoTable)) =
@@ -548,9 +790,9 @@ sem_Body_Body (_range) (_importdeclarations) (_declarations) (_lhs_allPatterns) 
             (_range )
         ( _importdeclarations_self) =
             (_importdeclarations )
-        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_matchIO,_declarations_oneLineTree,_declarations_self,_declarations_typeAnnotations,_declarations_typeSignatures,_declarations_uniqueSecondRound) =
-            (_declarations (_lhs_allPatterns) (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (emptyFM) (_declarations_betaUnique))
-    in  ( _aset',_declarations_uniqueSecondRound,_notypedefs ++ _declarations_collectednotypedef,ctNode [ _csetBinds .<<. _cset ],_declarations_matchIO,[ (n,tp) | (n,_,tp,_) <- _notypedefs ],_self,_anns ++ _declarations_typeAnnotations,_declarations_typeSignatures)
+        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_matchIO,_declarations_oneLineTree,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeAnnotations,_declarations_typeSignatures,_declarations_uniqueSecondRound) =
+            (_declarations (_lhs_allPatterns) (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (emptyFM) (_declarations_betaUnique))
+    in  ( _aset',_declarations_uniqueSecondRound,_notypedefs ++ _declarations_collectednotypedef,ctNode [ _csetBinds .<<. _cset ],_declarations_matchIO,[ (n,tp) | (n,_,tp,_) <- _notypedefs ],_declarations_patternMatchWarnings,_self,_anns ++ _declarations_typeAnnotations,_declarations_typeSignatures)
 -- Constructor -------------------------------------------------
 -- semantic domain
 type T_Constructor = ( (Constructor))
@@ -690,10 +932,12 @@ type T_Declaration = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (IO ()) ->
                      (MonoTable) ->
                      (Tps) ->
+                     ([Warning]) ->
+                     (WrappedSubstitution) ->
                      (TypeAnnotations) ->
                      (FiniteMap Name TpScheme) ->
                      (Int) ->
-                     ( (Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(IO ()),(Tree),(Declaration),(TypeAnnotations),(FiniteMap Name TpScheme),(Int))
+                     ( (Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(IO ()),(Tree),([Warning]),(Declaration),(TypeAnnotations),(FiniteMap Name TpScheme),(Int))
 -- cata
 sem_Declaration :: (Declaration) ->
                    (T_Declaration)
@@ -724,7 +968,7 @@ sem_Declaration_Class :: (T_Range) ->
                          (T_SimpleType) ->
                          (T_MaybeDeclarations) ->
                          (T_Declaration)
-sem_Declaration_Class (_range) (_context) (_simpletype) (_where) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
+sem_Declaration_Class (_range) (_context) (_simpletype) (_where) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
     let (_self) =
             Declaration_Class _range_self _context_self _simpletype_self _where_self
         ((_assumptions,_constraints,_unboundNames)) =
@@ -737,16 +981,16 @@ sem_Declaration_Class (_range) (_context) (_simpletype) (_where) (_lhs_allPatter
             (_context )
         ( _simpletype_self) =
             (_simpletype )
-        ( _where_assumptions,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_matchIO,_where_oneLineTree,_where_self,_where_typeAnnotations,_where_uniqueSecondRound) =
-            (_where (_lhs_allPatterns) (_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-    in  ( _where_betaUnique,_lhs_bindingGroups,_where_collectednotypedef,_where_matchIO,_oneLineTree,_self,_where_typeAnnotations,_lhs_typeSignatures,_where_uniqueSecondRound)
+        ( _where_assumptions,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_matchIO,_where_oneLineTree,_where_patternMatchWarnings,_where_self,_where_typeAnnotations,_where_uniqueSecondRound) =
+            (_where (_lhs_allPatterns) (_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+    in  ( _where_betaUnique,_lhs_bindingGroups,_where_collectednotypedef,_where_matchIO,_oneLineTree,_where_patternMatchWarnings,_self,_where_typeAnnotations,_lhs_typeSignatures,_where_uniqueSecondRound)
 sem_Declaration_Data :: (T_Range) ->
                         (T_ContextItems) ->
                         (T_SimpleType) ->
                         (T_Constructors) ->
                         (T_Names) ->
                         (T_Declaration)
-sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivings) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
+sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivings) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
     let (_self) =
             Declaration_Data _range_self _context_self _simpletype_self _constructors_self _derivings_self
         (_oneLineTree) =
@@ -761,11 +1005,11 @@ sem_Declaration_Data (_range) (_context) (_simpletype) (_constructors) (_derivin
             (_constructors )
         ( _derivings_isIdentifier,_derivings_isOperator,_derivings_isSpecial,_derivings_oneLineTree,_derivings_self) =
             (_derivings )
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_self,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_uniqueSecondRound)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_uniqueSecondRound)
 sem_Declaration_Default :: (T_Range) ->
                            (T_Types) ->
                            (T_Declaration)
-sem_Declaration_Default (_range) (_types) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
+sem_Declaration_Default (_range) (_types) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
     let (_self) =
             Declaration_Default _range_self _types_self
         (_oneLineTree) =
@@ -774,23 +1018,23 @@ sem_Declaration_Default (_range) (_types) (_lhs_allPatterns) (_lhs_betaUnique) (
             (_range )
         ( _types_self) =
             (_types )
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_self,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_uniqueSecondRound)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_uniqueSecondRound)
 sem_Declaration_Empty :: (T_Range) ->
                          (T_Declaration)
-sem_Declaration_Empty (_range) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
+sem_Declaration_Empty (_range) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
     let (_self) =
             Declaration_Empty _range_self
         (_oneLineTree) =
             Text ""
         ( _range_self) =
             (_range )
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_self,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_uniqueSecondRound)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_uniqueSecondRound)
 sem_Declaration_Fixity :: (T_Range) ->
                           (T_Fixity) ->
                           (T_MaybeInt) ->
                           (T_Names) ->
                           (T_Declaration)
-sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
+sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
     let (_self) =
             Declaration_Fixity _range_self _fixity_self _priority_self _operators_self
         (_oneLineTree) =
@@ -803,11 +1047,11 @@ sem_Declaration_Fixity (_range) (_fixity) (_priority) (_operators) (_lhs_allPatt
             (_priority )
         ( _operators_isIdentifier,_operators_isOperator,_operators_isSpecial,_operators_oneLineTree,_operators_self) =
             (_operators )
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_self,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_uniqueSecondRound)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_uniqueSecondRound)
 sem_Declaration_FunctionBindings :: (T_Range) ->
                                     (T_FunctionBindings) ->
                                     (T_Declaration)
-sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
+sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
     let (_self) =
             Declaration_FunctionBindings _range_self _bindings_self
         (_beta) =
@@ -839,20 +1083,43 @@ sem_Declaration_FunctionBindings (_range) (_bindings) (_lhs_allPatterns) (_lhs_b
                                  , FuntionBindingEdge _bindings_numberOfPatterns
                                  ]
                   }
+        (_env) =
+            map rearrange $ fmToList $ valueConstructors _lhs_importEnvironment
+        (_exprtype) =
+            expandType (snd (getOrderedTypeSynonyms _lhs_importEnvironment))
+                $ _lhs_substitution |-> _beta
+        (_elementss) =
+            _bindings_elementss
+        (_unreachables) =
+            unreachable _env     (fst $ functionSpine _exprtype    ) (zip _elementss     [0..])
         (_oneLineTree) =
             punctuate ";" _bindings_oneLineTree
         ( _range_self) =
             (_range )
-        ( _bindings_assumptions,_bindings_betaUnique,_bindings_collectednotypedef,_bindings_constraintslist,_bindings_matchIO,_bindings_name,_bindings_numberOfPatterns,_bindings_oneLineTree,_bindings_self,_bindings_typeAnnotations,_bindings_uniqueSecondRound) =
-            (_bindings (_lhs_allPatterns) (_betaRight) (_lhs_betaUnique + 2 + _bindings_numberOfPatterns) (_betasLeft) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (findMono _bindings_name _lhs_monoTable ++ _lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-    in  ( _bindings_betaUnique,_mybdggrp : _lhs_bindingGroups,_bindings_collectednotypedef,_bindings_matchIO,_oneLineTree,_self,_bindings_typeAnnotations,_lhs_typeSignatures,_bindings_uniqueSecondRound)
+        ( _bindings_argcount,_bindings_assumptions,_bindings_betaUnique,_bindings_collectednotypedef,_bindings_constraintslist,_bindings_elementss,_bindings_matchIO,_bindings_name,_bindings_numberOfPatterns,_bindings_oneLineTree,_bindings_patternMatchWarnings,_bindings_self,_bindings_typeAnnotations,_bindings_uniqueSecondRound,_bindings_unrwars) =
+            (_bindings (_lhs_allPatterns) (_betaRight) (_lhs_betaUnique + 2 + _bindings_numberOfPatterns) (_betasLeft) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (findMono _bindings_name _lhs_monoTable ++ _lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+    in  ( _bindings_betaUnique
+         ,_mybdggrp : _lhs_bindingGroups
+         ,_bindings_collectednotypedef
+         ,_bindings_matchIO
+         ,_oneLineTree
+         ,case complement _env     (take _bindings_argcount $ fst $ functionSpine _exprtype    ) _elementss
+          of PatternsMissing [] -> []
+             missing            -> [MissingPatternsLHS _range _bindings_name _exprtype     $ map (nicePattern True _env    ) $ missingList missing]
+          ++ map (_bindings_unrwars !!) _unreachables
+          ++ _bindings_patternMatchWarnings
+         ,_self
+         ,_bindings_typeAnnotations
+         ,_lhs_typeSignatures
+         ,_bindings_uniqueSecondRound
+         )
 sem_Declaration_Instance :: (T_Range) ->
                             (T_ContextItems) ->
                             (T_Name) ->
                             (T_Types) ->
                             (T_MaybeDeclarations) ->
                             (T_Declaration)
-sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
+sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
     let (_self) =
             Declaration_Instance _range_self _context_self _name_self _types_self _where_self
         ((_assumptions,_constraints,_unboundNames)) =
@@ -867,16 +1134,16 @@ sem_Declaration_Instance (_range) (_context) (_name) (_types) (_where) (_lhs_all
             (_name )
         ( _types_self) =
             (_types )
-        ( _where_assumptions,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_matchIO,_where_oneLineTree,_where_self,_where_typeAnnotations,_where_uniqueSecondRound) =
-            (_where (_lhs_allPatterns) (_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-    in  ( _where_betaUnique,_lhs_bindingGroups,_where_collectednotypedef,_where_matchIO,_oneLineTree,_self,_where_typeAnnotations,_lhs_typeSignatures,_where_uniqueSecondRound)
+        ( _where_assumptions,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_matchIO,_where_oneLineTree,_where_patternMatchWarnings,_where_self,_where_typeAnnotations,_where_uniqueSecondRound) =
+            (_where (_lhs_allPatterns) (_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+    in  ( _where_betaUnique,_lhs_bindingGroups,_where_collectednotypedef,_where_matchIO,_oneLineTree,_where_patternMatchWarnings,_self,_where_typeAnnotations,_lhs_typeSignatures,_where_uniqueSecondRound)
 sem_Declaration_Newtype :: (T_Range) ->
                            (T_ContextItems) ->
                            (T_SimpleType) ->
                            (T_Constructor) ->
                            (T_Names) ->
                            (T_Declaration)
-sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_derivings) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
+sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_derivings) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
     let (_self) =
             Declaration_Newtype _range_self _context_self _simpletype_self _constructor_self _derivings_self
         (_oneLineTree) =
@@ -891,12 +1158,12 @@ sem_Declaration_Newtype (_range) (_context) (_simpletype) (_constructor) (_deriv
             (_constructor )
         ( _derivings_isIdentifier,_derivings_isOperator,_derivings_isSpecial,_derivings_oneLineTree,_derivings_self) =
             (_derivings )
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_self,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_uniqueSecondRound)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_uniqueSecondRound)
 sem_Declaration_PatternBinding :: (T_Range) ->
                                   (T_Pattern) ->
                                   (T_RightHandSide) ->
                                   (T_Declaration)
-sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
+sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
     let (_self) =
             Declaration_PatternBinding _range_self _pattern_self _righthandside_self
         (_newcon) =
@@ -926,16 +1193,16 @@ sem_Declaration_PatternBinding (_range) (_pattern) (_righthandside) (_lhs_allPat
                 ]
         ( _range_self) =
             (_range )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_environment,_pattern_oneLineTree,_pattern_self) =
-            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment))
-        ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectednotypedef,_righthandside_constraints,_righthandside_matchIO,_righthandside_oneLineTree,_righthandside_self,_righthandside_typeAnnotations,_righthandside_uniqueSecondRound) =
-            (_righthandside (_lhs_allPatterns) (_pattern_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (findMono (head (keysFM _pattern_environment)) _lhs_monoTable ++ _lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-    in  ( _righthandside_betaUnique,_mybdggrp : _lhs_bindingGroups,_righthandside_collectednotypedef,_righthandside_matchIO,_oneLineTree,_self,_righthandside_typeAnnotations,_lhs_typeSignatures,_righthandside_uniqueSecondRound)
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patternMatchWarnings,_pattern_self) =
+            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
+        ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectednotypedef,_righthandside_constraints,_righthandside_matchIO,_righthandside_oneLineTree,_righthandside_patternMatchWarnings,_righthandside_self,_righthandside_typeAnnotations,_righthandside_uniqueSecondRound) =
+            (_righthandside (_lhs_allPatterns) (_pattern_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (findMono (head (keysFM _pattern_environment)) _lhs_monoTable ++ _lhs_monos) (_pattern_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+    in  ( _righthandside_betaUnique,_mybdggrp : _lhs_bindingGroups,_righthandside_collectednotypedef,_righthandside_matchIO,_oneLineTree,_righthandside_patternMatchWarnings,_self,_righthandside_typeAnnotations,_lhs_typeSignatures,_righthandside_uniqueSecondRound)
 sem_Declaration_Type :: (T_Range) ->
                         (T_SimpleType) ->
                         (T_Type) ->
                         (T_Declaration)
-sem_Declaration_Type (_range) (_simpletype) (_type) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
+sem_Declaration_Type (_range) (_simpletype) (_type) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
     let (_self) =
             Declaration_Type _range_self _simpletype_self _type_self
         (_oneLineTree) =
@@ -946,12 +1213,12 @@ sem_Declaration_Type (_range) (_simpletype) (_type) (_lhs_allPatterns) (_lhs_bet
             (_simpletype )
         ( _type_self) =
             (_type )
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_self,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_uniqueSecondRound)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_uniqueSecondRound)
 sem_Declaration_TypeSignature :: (T_Range) ->
                                  (T_Names) ->
                                  (T_Type) ->
                                  (T_Declaration)
-sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
+sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
     let (_self) =
             Declaration_TypeSignature _range_self _names_self _type_self
         (_typeScheme) =
@@ -968,7 +1235,7 @@ sem_Declaration_TypeSignature (_range) (_names) (_type) (_lhs_allPatterns) (_lhs
             (_names )
         ( _type_self) =
             (_type )
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_self,_lhs_typeAnnotations,addListToFM _lhs_typeSignatures [ (name, _typeScheme) | name <- _names_self ],_lhs_uniqueSecondRound)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,addListToFM _lhs_typeSignatures [ (name, _typeScheme) | name <- _names_self ],_lhs_uniqueSecondRound)
 -- Declarations ------------------------------------------------
 -- semantic domain
 type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -979,10 +1246,12 @@ type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (IO ()) ->
                       (MonoTable) ->
                       (Tps) ->
+                      ([Warning]) ->
+                      (WrappedSubstitution) ->
                       (TypeAnnotations) ->
                       (FiniteMap Name TpScheme) ->
                       (Int) ->
-                      ( (Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(IO ()),( [ Tree] ),(Declarations),(TypeAnnotations),(FiniteMap Name TpScheme),(Int))
+                      ( (Int),(BindingGroups),([(Name,Tps,Tp,Bool)]),(IO ()),( [ Tree] ),([Warning]),(Declarations),(TypeAnnotations),(FiniteMap Name TpScheme),(Int))
 -- cata
 sem_Declarations :: (Declarations) ->
                     (T_Declarations)
@@ -991,19 +1260,19 @@ sem_Declarations (list) =
 sem_Declarations_Cons :: (T_Declaration) ->
                          (T_Declarations) ->
                          (T_Declarations)
-sem_Declarations_Cons (_hd) (_tl) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
+sem_Declarations_Cons (_hd) (_tl) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_betaUnique,_hd_bindingGroups,_hd_collectednotypedef,_hd_matchIO,_hd_oneLineTree,_hd_self,_hd_typeAnnotations,_hd_typeSignatures,_hd_uniqueSecondRound) =
-            (_hd (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound))
-        ( _tl_betaUnique,_tl_bindingGroups,_tl_collectednotypedef,_tl_matchIO,_tl_oneLineTree,_tl_self,_tl_typeAnnotations,_tl_typeSignatures,_tl_uniqueSecondRound) =
-            (_tl (_lhs_allPatterns) (_hd_betaUnique) (_hd_bindingGroups) (_hd_collectednotypedef) (_lhs_importEnvironment) (_hd_matchIO) (_lhs_monoTable) (_lhs_monos) (_hd_typeAnnotations) (_hd_typeSignatures) (_hd_uniqueSecondRound))
-    in  ( _tl_betaUnique,_tl_bindingGroups,_tl_collectednotypedef,_tl_matchIO,_hd_oneLineTree  :  _tl_oneLineTree,_self,_tl_typeAnnotations,_tl_typeSignatures,_tl_uniqueSecondRound)
+        ( _hd_betaUnique,_hd_bindingGroups,_hd_collectednotypedef,_hd_matchIO,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_self,_hd_typeAnnotations,_hd_typeSignatures,_hd_uniqueSecondRound) =
+            (_hd (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound))
+        ( _tl_betaUnique,_tl_bindingGroups,_tl_collectednotypedef,_tl_matchIO,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self,_tl_typeAnnotations,_tl_typeSignatures,_tl_uniqueSecondRound) =
+            (_tl (_lhs_allPatterns) (_hd_betaUnique) (_hd_bindingGroups) (_hd_collectednotypedef) (_lhs_importEnvironment) (_hd_matchIO) (_lhs_monoTable) (_lhs_monos) (_hd_patternMatchWarnings) (_lhs_substitution) (_hd_typeAnnotations) (_hd_typeSignatures) (_hd_uniqueSecondRound))
+    in  ( _tl_betaUnique,_tl_bindingGroups,_tl_collectednotypedef,_tl_matchIO,_hd_oneLineTree  :  _tl_oneLineTree,_tl_patternMatchWarnings,_self,_tl_typeAnnotations,_tl_typeSignatures,_tl_uniqueSecondRound)
 sem_Declarations_Nil :: (T_Declarations)
-sem_Declarations_Nil (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
+sem_Declarations_Nil (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_bindingGroups) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_typeSignatures) (_lhs_uniqueSecondRound) =
     let (_self) =
             []
-    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,[],_self,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_uniqueSecondRound)
+    in  ( _lhs_betaUnique,_lhs_bindingGroups,_lhs_collectednotypedef,_lhs_matchIO,[],_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_typeSignatures,_lhs_uniqueSecondRound)
 -- Export ------------------------------------------------------
 -- semantic domain
 type T_Export = ( (Export))
@@ -1097,10 +1366,12 @@ type T_Expression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (ImportEnvironment) ->
                     (IO ()) ->
                     (Tps) ->
+                    ([Warning]) ->
+                    (WrappedSubstitution) ->
                     ([(Expression     , [String])]) ->
                     (TypeAnnotations) ->
                     (Int) ->
-                    ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),(Tree),(Expression),(TypeAnnotations),(Int))
+                    ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),(Tree),([Warning]),(Expression),(TypeAnnotations),(Int))
 -- cata
 sem_Expression :: (Expression) ->
                   (T_Expression)
@@ -1148,7 +1419,7 @@ sem_Expression_Case :: (T_Range) ->
                        (T_Expression) ->
                        (T_Alternatives) ->
                        (T_Expression)
-sem_Expression_Case (_range) (_expression) (_alternatives) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_Case (_range) (_expression) (_alternatives) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_Case _range_self _expression_self _alternatives_self
         (_constraints) =
@@ -1170,6 +1441,15 @@ sem_Expression_Case (_range) (_expression) (_alternatives) (_lhs_allPatterns) (_
                   , typepair   = tppair
                   , properties = [ SubTermRange (getExprRange _expression_self) ]
                   }
+        (_env) =
+            map rearrange $ fmToList $ valueConstructors _lhs_importEnvironment
+        (_exprtype) =
+            expandType (snd (getOrderedTypeSynonyms _lhs_importEnvironment))
+              (_lhs_substitution |-> _expression_beta)
+        (_elementss) =
+            _alternatives_elementss
+        (_unreachables) =
+            unreachable _env     [_exprtype    ] (zip _elementss     [0..])
         (_oneLineTree) =
             Node
                 [ Text "case "
@@ -1181,16 +1461,32 @@ sem_Expression_Case (_range) (_expression) (_alternatives) (_lhs_allPatterns) (_
             (_constraints, (_beta, _oneLineTree, _range_self))
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_lhs_betaUnique + 2) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _alternatives_assumptions,_alternatives_betaUnique,_alternatives_collectednotypedef,_alternatives_constraintslist,_alternatives_matchIO,_alternatives_oneLineTree,_alternatives_self,_alternatives_typeAnnotations,_alternatives_uniqueSecondRound) =
-            (_alternatives (_lhs_allPatterns) (_beta') (_beta) (_expression_betaUnique) (_expression_collectednotypedef) (_lhs_importEnvironment) (_expression_matchIO) (_lhs_monos) (length _alternatives_constraintslist) (_expression_typeAnnotations) (_expression_uniqueSecondRound))
-    in  ( _expression_assumptions `combine` _alternatives_assumptions,_beta,_alternatives_betaUnique,_alternatives_collectednotypedef,_constraints,_alternatives_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_self,_alternatives_typeAnnotations,_alternatives_uniqueSecondRound)
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_lhs_betaUnique + 2) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _alternatives_assumptions,_alternatives_betaUnique,_alternatives_collectednotypedef,_alternatives_constraintslist,_alternatives_elementss,_alternatives_matchIO,_alternatives_oneLineTree,_alternatives_patternMatchWarnings,_alternatives_self,_alternatives_typeAnnotations,_alternatives_uniqueSecondRound,_alternatives_unrwars) =
+            (_alternatives (_lhs_allPatterns) (_beta') (_beta) (_expression_betaUnique) (_expression_collectednotypedef) (_lhs_importEnvironment) (_expression_matchIO) (_lhs_monos) (length _alternatives_constraintslist) (_expression_patternMatchWarnings) (_lhs_substitution) (_expression_typeAnnotations) (_expression_uniqueSecondRound))
+    in  ( _expression_assumptions `combine` _alternatives_assumptions
+         ,_beta
+         ,_alternatives_betaUnique
+         ,_alternatives_collectednotypedef
+         ,_constraints
+         ,_alternatives_matchIO
+         ,matchOnlyVariable _localInfo _lhs_tryPatterns
+         ,_oneLineTree
+         ,case complement _env     [_exprtype    ] _elementss
+          of PatternsMissing [] -> []
+             missing            -> [MissingPatternsCase _range _exprtype     $ map (head.nicePattern False _env    ) $ missingList missing]
+          ++ map (_alternatives_unrwars !!) _unreachables
+          ++ _lhs_patternMatchWarnings
+         ,_self
+         ,_alternatives_typeAnnotations
+         ,_alternatives_uniqueSecondRound
+         )
 sem_Expression_Comprehension :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Qualifiers) ->
                                 (T_Expression)
-sem_Expression_Comprehension (_range) (_expression) (_qualifiers) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_Comprehension (_range) (_expression) (_qualifiers) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_Comprehension _range_self _expression_self _qualifiers_self
         (_constraints) =
@@ -1220,15 +1516,15 @@ sem_Expression_Comprehension (_range) (_expression) (_qualifiers) (_lhs_allPatte
             (_constraints, (_beta, _oneLineTree, _range_self))
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_qualifiers_monos) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _qualifiers_assumptions,_qualifiers_betaUnique,_qualifiers_collectednotypedef,_qualifiers_constraints,_qualifiers_matchIO,_qualifiers_monos,_qualifiers_oneLineTree,_qualifiers_self,_qualifiers_typeAnnotations,_qualifiers_uniqueSecondRound) =
-            (_qualifiers (_lhs_allPatterns) (_expression_assumptions) (_expression_betaUnique) (_expression_collectednotypedef) (_expression_constraints) (_lhs_importEnvironment) (_expression_matchIO) (_lhs_monos) (_expression_typeAnnotations) (_expression_uniqueSecondRound))
-    in  ( _qualifiers_assumptions,_beta,_qualifiers_betaUnique,_qualifiers_collectednotypedef,_constraints,_qualifiers_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_self,_qualifiers_typeAnnotations,_qualifiers_uniqueSecondRound)
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_qualifiers_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _qualifiers_assumptions,_qualifiers_betaUnique,_qualifiers_collectednotypedef,_qualifiers_constraints,_qualifiers_matchIO,_qualifiers_monos,_qualifiers_oneLineTree,_qualifiers_patternMatchWarnings,_qualifiers_self,_qualifiers_typeAnnotations,_qualifiers_uniqueSecondRound) =
+            (_qualifiers (_lhs_allPatterns) (_expression_assumptions) (_expression_betaUnique) (_expression_collectednotypedef) (_expression_constraints) (_lhs_importEnvironment) (_expression_matchIO) (_lhs_monos) (_expression_patternMatchWarnings) (_lhs_substitution) (_expression_typeAnnotations) (_expression_uniqueSecondRound))
+    in  ( _qualifiers_assumptions,_beta,_qualifiers_betaUnique,_qualifiers_collectednotypedef,_constraints,_qualifiers_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_qualifiers_patternMatchWarnings,_self,_qualifiers_typeAnnotations,_qualifiers_uniqueSecondRound)
 sem_Expression_Constructor :: (T_Range) ->
                               (T_Name) ->
                               (T_Expression)
-sem_Expression_Constructor (_range) (_name) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_Constructor (_range) (_name) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_Constructor _range_self _name_self
         (_constraints) =
@@ -1264,11 +1560,11 @@ sem_Expression_Constructor (_range) (_name) (_lhs_allPatterns) (_lhs_betaUnique)
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
-    in  ( noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,_newConstraintSet,_lhs_matchIO >> _ioMatch,_matches,_oneLineTree,_self,_lhs_typeAnnotations,_newUnique)
+    in  ( noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,_newConstraintSet,_lhs_matchIO >> _ioMatch,_matches,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_newUnique)
 sem_Expression_Do :: (T_Range) ->
                      (T_Statements) ->
                      (T_Expression)
-sem_Expression_Do (_range) (_statements) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_Do (_range) (_statements) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_Do _range_self _statements_self
         (_constraints) =
@@ -1297,15 +1593,15 @@ sem_Expression_Do (_range) (_statements) (_lhs_allPatterns) (_lhs_betaUnique) (_
             (_constraints, (_beta, _oneLineTree, _range_self))
         ( _range_self) =
             (_range )
-        ( _statements_assumptions,_statements_betaUnique,_statements_collectednotypedef,_statements_constraints,_statements_generatorBeta,_statements_matchIO,_statements_oneLineTree,_statements_self,_statements_typeAnnotations,_statements_uniqueSecondRound) =
-            (_statements (_lhs_allPatterns) (noAssumptions) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_constraints) (Nothing) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-    in  ( _statements_assumptions,_beta,_statements_betaUnique,_statements_collectednotypedef,ctNode [ _newcon .<. _statements_constraints ],_statements_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_self,_statements_typeAnnotations,_statements_uniqueSecondRound)
+        ( _statements_assumptions,_statements_betaUnique,_statements_collectednotypedef,_statements_constraints,_statements_generatorBeta,_statements_matchIO,_statements_oneLineTree,_statements_patternMatchWarnings,_statements_self,_statements_typeAnnotations,_statements_uniqueSecondRound) =
+            (_statements (_lhs_allPatterns) (noAssumptions) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_constraints) (Nothing) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+    in  ( _statements_assumptions,_beta,_statements_betaUnique,_statements_collectednotypedef,ctNode [ _newcon .<. _statements_constraints ],_statements_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_statements_patternMatchWarnings,_self,_statements_typeAnnotations,_statements_uniqueSecondRound)
 sem_Expression_Enum :: (T_Range) ->
                        (T_Expression) ->
                        (T_MaybeExpression) ->
                        (T_MaybeExpression) ->
                        (T_Expression)
-sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_Enum _range_self _from_self _then_self _to_self
         (_constraints) =
@@ -1381,19 +1677,19 @@ sem_Expression_Enum (_range) (_from) (_then) (_to) (_lhs_allPatterns) (_lhs_beta
                    [_from_matches, _then_matches, _to_matches]
         ( _range_self) =
             (_range )
-        ( _from_assumptions,_from_beta,_from_betaUnique,_from_collectednotypedef,_from_constraints,_from_matchIO,_from_matches,_from_oneLineTree,_from_self,_from_typeAnnotations,_from_uniqueSecondRound) =
-            (_from (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _then_assumptions,_then_beta,_then_betaUnique,_then_collectednotypedef,_then_constraints,_then_matchIO,_then_matches,_then_oneLineTree,_then_section,_then_self,_then_typeAnnotations,_then_uniqueSecondRound) =
-            (_then (_lhs_allPatterns) (_from_betaUnique) (_from_collectednotypedef) (_lhs_importEnvironment) (_from_matchIO) (_lhs_monos) (_t2) (_from_typeAnnotations) (_from_uniqueSecondRound))
-        ( _to_assumptions,_to_beta,_to_betaUnique,_to_collectednotypedef,_to_constraints,_to_matchIO,_to_matches,_to_oneLineTree,_to_section,_to_self,_to_typeAnnotations,_to_uniqueSecondRound) =
-            (_to (_lhs_allPatterns) (_then_betaUnique) (_then_collectednotypedef) (_lhs_importEnvironment) (_then_matchIO) (_lhs_monos) (_t3) (_then_typeAnnotations) (_then_uniqueSecondRound))
-    in  ( _from_assumptions `combine` _then_assumptions `combine` _to_assumptions,_beta,_to_betaUnique,_to_collectednotypedef,_newConstraintSet,_to_matchIO >> _ioMatch,_matches,_oneLineTree,_self,_to_typeAnnotations,_newUnique)
+        ( _from_assumptions,_from_beta,_from_betaUnique,_from_collectednotypedef,_from_constraints,_from_matchIO,_from_matches,_from_oneLineTree,_from_patternMatchWarnings,_from_self,_from_typeAnnotations,_from_uniqueSecondRound) =
+            (_from (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _then_assumptions,_then_beta,_then_betaUnique,_then_collectednotypedef,_then_constraints,_then_matchIO,_then_matches,_then_oneLineTree,_then_patternMatchWarnings,_then_section,_then_self,_then_typeAnnotations,_then_uniqueSecondRound) =
+            (_then (_lhs_allPatterns) (_from_betaUnique) (_from_collectednotypedef) (_lhs_importEnvironment) (_from_matchIO) (_lhs_monos) (_from_patternMatchWarnings) (_lhs_substitution) (_t2) (_from_typeAnnotations) (_from_uniqueSecondRound))
+        ( _to_assumptions,_to_beta,_to_betaUnique,_to_collectednotypedef,_to_constraints,_to_matchIO,_to_matches,_to_oneLineTree,_to_patternMatchWarnings,_to_section,_to_self,_to_typeAnnotations,_to_uniqueSecondRound) =
+            (_to (_lhs_allPatterns) (_then_betaUnique) (_then_collectednotypedef) (_lhs_importEnvironment) (_then_matchIO) (_lhs_monos) (_then_patternMatchWarnings) (_lhs_substitution) (_t3) (_then_typeAnnotations) (_then_uniqueSecondRound))
+    in  ( _from_assumptions `combine` _then_assumptions `combine` _to_assumptions,_beta,_to_betaUnique,_to_collectednotypedef,_newConstraintSet,_to_matchIO >> _ioMatch,_matches,_oneLineTree,_to_patternMatchWarnings,_self,_to_typeAnnotations,_newUnique)
 sem_Expression_If :: (T_Range) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression) ->
                      (T_Expression)
-sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_If _range_self _guardExpression_self _thenExpression_self _elseExpression_self
         (_constraints) =
@@ -1456,19 +1752,19 @@ sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression
                    [_guardExpression_matches,_thenExpression_matches,_elseExpression_matches]
         ( _range_self) =
             (_range )
-        ( _guardExpression_assumptions,_guardExpression_beta,_guardExpression_betaUnique,_guardExpression_collectednotypedef,_guardExpression_constraints,_guardExpression_matchIO,_guardExpression_matches,_guardExpression_oneLineTree,_guardExpression_self,_guardExpression_typeAnnotations,_guardExpression_uniqueSecondRound) =
-            (_guardExpression (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _thenExpression_assumptions,_thenExpression_beta,_thenExpression_betaUnique,_thenExpression_collectednotypedef,_thenExpression_constraints,_thenExpression_matchIO,_thenExpression_matches,_thenExpression_oneLineTree,_thenExpression_self,_thenExpression_typeAnnotations,_thenExpression_uniqueSecondRound) =
-            (_thenExpression (_lhs_allPatterns) (_guardExpression_betaUnique) (_guardExpression_collectednotypedef) (_lhs_importEnvironment) (_guardExpression_matchIO) (_lhs_monos) (_t2) (_guardExpression_typeAnnotations) (_guardExpression_uniqueSecondRound))
-        ( _elseExpression_assumptions,_elseExpression_beta,_elseExpression_betaUnique,_elseExpression_collectednotypedef,_elseExpression_constraints,_elseExpression_matchIO,_elseExpression_matches,_elseExpression_oneLineTree,_elseExpression_self,_elseExpression_typeAnnotations,_elseExpression_uniqueSecondRound) =
-            (_elseExpression (_lhs_allPatterns) (_thenExpression_betaUnique) (_thenExpression_collectednotypedef) (_lhs_importEnvironment) (_thenExpression_matchIO) (_lhs_monos) (_t3) (_thenExpression_typeAnnotations) (_thenExpression_uniqueSecondRound))
-    in  ( _guardExpression_assumptions `combine` _thenExpression_assumptions `combine` _elseExpression_assumptions,_beta,_elseExpression_betaUnique,_elseExpression_collectednotypedef,_newConstraintSet,_elseExpression_matchIO >> _ioMatch,_matches,_oneLineTree,_self,_elseExpression_typeAnnotations,_newUnique)
+        ( _guardExpression_assumptions,_guardExpression_beta,_guardExpression_betaUnique,_guardExpression_collectednotypedef,_guardExpression_constraints,_guardExpression_matchIO,_guardExpression_matches,_guardExpression_oneLineTree,_guardExpression_patternMatchWarnings,_guardExpression_self,_guardExpression_typeAnnotations,_guardExpression_uniqueSecondRound) =
+            (_guardExpression (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _thenExpression_assumptions,_thenExpression_beta,_thenExpression_betaUnique,_thenExpression_collectednotypedef,_thenExpression_constraints,_thenExpression_matchIO,_thenExpression_matches,_thenExpression_oneLineTree,_thenExpression_patternMatchWarnings,_thenExpression_self,_thenExpression_typeAnnotations,_thenExpression_uniqueSecondRound) =
+            (_thenExpression (_lhs_allPatterns) (_guardExpression_betaUnique) (_guardExpression_collectednotypedef) (_lhs_importEnvironment) (_guardExpression_matchIO) (_lhs_monos) (_guardExpression_patternMatchWarnings) (_lhs_substitution) (_t2) (_guardExpression_typeAnnotations) (_guardExpression_uniqueSecondRound))
+        ( _elseExpression_assumptions,_elseExpression_beta,_elseExpression_betaUnique,_elseExpression_collectednotypedef,_elseExpression_constraints,_elseExpression_matchIO,_elseExpression_matches,_elseExpression_oneLineTree,_elseExpression_patternMatchWarnings,_elseExpression_self,_elseExpression_typeAnnotations,_elseExpression_uniqueSecondRound) =
+            (_elseExpression (_lhs_allPatterns) (_thenExpression_betaUnique) (_thenExpression_collectednotypedef) (_lhs_importEnvironment) (_thenExpression_matchIO) (_lhs_monos) (_thenExpression_patternMatchWarnings) (_lhs_substitution) (_t3) (_thenExpression_typeAnnotations) (_thenExpression_uniqueSecondRound))
+    in  ( _guardExpression_assumptions `combine` _thenExpression_assumptions `combine` _elseExpression_assumptions,_beta,_elseExpression_betaUnique,_elseExpression_collectednotypedef,_newConstraintSet,_elseExpression_matchIO >> _ioMatch,_matches,_oneLineTree,_elseExpression_patternMatchWarnings,_self,_elseExpression_typeAnnotations,_newUnique)
 sem_Expression_InfixApplication :: (T_Range) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression) ->
                                    (T_MaybeExpression) ->
                                    (T_Expression)
-sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightExpression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightExpression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_InfixApplication _range_self _leftExpression_self _operator_self _rightExpression_self
         (_constraints) =
@@ -1568,18 +1864,18 @@ sem_Expression_InfixApplication (_range) (_leftExpression) (_operator) (_rightEx
                    [_leftExpression_matches, _operator_matches,_rightExpression_matches]
         ( _range_self) =
             (_range )
-        ( _leftExpression_assumptions,_leftExpression_beta,_leftExpression_betaUnique,_leftExpression_collectednotypedef,_leftExpression_constraints,_leftExpression_matchIO,_leftExpression_matches,_leftExpression_oneLineTree,_leftExpression_section,_leftExpression_self,_leftExpression_typeAnnotations,_leftExpression_uniqueSecondRound) =
-            (_leftExpression (_lhs_allPatterns) (_lhs_betaUnique + 2) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _operator_assumptions,_operator_beta,_operator_betaUnique,_operator_collectednotypedef,_operator_constraints,_operator_matchIO,_operator_matches,_operator_oneLineTree,_operator_self,_operator_typeAnnotations,_operator_uniqueSecondRound) =
-            (_operator (_lhs_allPatterns) (_leftExpression_betaUnique) (_leftExpression_collectednotypedef) (_lhs_importEnvironment) (_leftExpression_matchIO) (_lhs_monos) (_t2) (_leftExpression_typeAnnotations) (_leftExpression_uniqueSecondRound))
-        ( _rightExpression_assumptions,_rightExpression_beta,_rightExpression_betaUnique,_rightExpression_collectednotypedef,_rightExpression_constraints,_rightExpression_matchIO,_rightExpression_matches,_rightExpression_oneLineTree,_rightExpression_section,_rightExpression_self,_rightExpression_typeAnnotations,_rightExpression_uniqueSecondRound) =
-            (_rightExpression (_lhs_allPatterns) (_operator_betaUnique) (_operator_collectednotypedef) (_lhs_importEnvironment) (_operator_matchIO) (_lhs_monos) (_t3) (_operator_typeAnnotations) (_operator_uniqueSecondRound))
-    in  ( _leftExpression_assumptions `combine` _operator_assumptions `combine` _rightExpression_assumptions,_beta,_rightExpression_betaUnique,_rightExpression_collectednotypedef,_newConstraintSet,_rightExpression_matchIO >> _ioMatch,_matches,_oneLineTree,_self,_rightExpression_typeAnnotations,_newUnique)
+        ( _leftExpression_assumptions,_leftExpression_beta,_leftExpression_betaUnique,_leftExpression_collectednotypedef,_leftExpression_constraints,_leftExpression_matchIO,_leftExpression_matches,_leftExpression_oneLineTree,_leftExpression_patternMatchWarnings,_leftExpression_section,_leftExpression_self,_leftExpression_typeAnnotations,_leftExpression_uniqueSecondRound) =
+            (_leftExpression (_lhs_allPatterns) (_lhs_betaUnique + 2) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _operator_assumptions,_operator_beta,_operator_betaUnique,_operator_collectednotypedef,_operator_constraints,_operator_matchIO,_operator_matches,_operator_oneLineTree,_operator_patternMatchWarnings,_operator_self,_operator_typeAnnotations,_operator_uniqueSecondRound) =
+            (_operator (_lhs_allPatterns) (_leftExpression_betaUnique) (_leftExpression_collectednotypedef) (_lhs_importEnvironment) (_leftExpression_matchIO) (_lhs_monos) (_leftExpression_patternMatchWarnings) (_lhs_substitution) (_t2) (_leftExpression_typeAnnotations) (_leftExpression_uniqueSecondRound))
+        ( _rightExpression_assumptions,_rightExpression_beta,_rightExpression_betaUnique,_rightExpression_collectednotypedef,_rightExpression_constraints,_rightExpression_matchIO,_rightExpression_matches,_rightExpression_oneLineTree,_rightExpression_patternMatchWarnings,_rightExpression_section,_rightExpression_self,_rightExpression_typeAnnotations,_rightExpression_uniqueSecondRound) =
+            (_rightExpression (_lhs_allPatterns) (_operator_betaUnique) (_operator_collectednotypedef) (_lhs_importEnvironment) (_operator_matchIO) (_lhs_monos) (_operator_patternMatchWarnings) (_lhs_substitution) (_t3) (_operator_typeAnnotations) (_operator_uniqueSecondRound))
+    in  ( _leftExpression_assumptions `combine` _operator_assumptions `combine` _rightExpression_assumptions,_beta,_rightExpression_betaUnique,_rightExpression_collectednotypedef,_newConstraintSet,_rightExpression_matchIO >> _ioMatch,_matches,_oneLineTree,_rightExpression_patternMatchWarnings,_self,_rightExpression_typeAnnotations,_newUnique)
 sem_Expression_Lambda :: (T_Range) ->
                          (T_Patterns) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_Lambda _range_self _patterns_self _expression_self
         (_constraints) =
@@ -1614,16 +1910,16 @@ sem_Expression_Lambda (_range) (_patterns) (_expression) (_lhs_allPatterns) (_lh
             (_constraints, (_beta, _oneLineTree, _range_self))
         ( _range_self) =
             (_range )
-        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_self) =
-            (_patterns (_lhs_betaUnique + 1) (_lhs_importEnvironment))
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_patterns_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (eltsFM _patterns_environment ++ _lhs_monos) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-    in  ( _assumptions',_beta,_expression_betaUnique,_expression_collectednotypedef,_constraints,_expression_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_self,_expression_typeAnnotations,_expression_uniqueSecondRound)
+        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_patternMatchWarnings,_patterns_self) =
+            (_patterns (_lhs_betaUnique + 1) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_patterns_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (eltsFM _patterns_environment ++ _lhs_monos) (_patterns_patternMatchWarnings) (_lhs_substitution) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+    in  ( _assumptions',_beta,_expression_betaUnique,_expression_collectednotypedef,_constraints,_expression_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_expression_patternMatchWarnings,_self,_expression_typeAnnotations,_expression_uniqueSecondRound)
 sem_Expression_Let :: (T_Range) ->
                       (T_Declarations) ->
                       (T_Expression) ->
                       (T_Expression)
-sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_Let _range_self _declarations_self _expression_self
         (_constraints) =
@@ -1661,15 +1957,15 @@ sem_Expression_Let (_range) (_declarations) (_expression) (_lhs_allPatterns) (_l
             (_constraints, (_beta, _oneLineTree, _range_self))
         ( _range_self) =
             (_range )
-        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_matchIO,_declarations_oneLineTree,_declarations_self,_declarations_typeAnnotations,_declarations_typeSignatures,_declarations_uniqueSecondRound) =
-            (_declarations (_lhs_allPatterns) (_lhs_betaUnique + 1) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (emptyFM) (_lhs_uniqueSecondRound))
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_declarations_betaUnique) (_declarations_collectednotypedef) (_lhs_importEnvironment) (_declarations_matchIO) (_lhs_monos) ([]) (_declarations_typeAnnotations) (_declarations_uniqueSecondRound))
-    in  ( _aset,_beta,_expression_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_constraints,_expression_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_self,_anns ++ _expression_typeAnnotations,_expression_uniqueSecondRound)
+        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_matchIO,_declarations_oneLineTree,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeAnnotations,_declarations_typeSignatures,_declarations_uniqueSecondRound) =
+            (_declarations (_lhs_allPatterns) (_lhs_betaUnique + 1) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (emptyFM) (_lhs_uniqueSecondRound))
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_declarations_betaUnique) (_declarations_collectednotypedef) (_lhs_importEnvironment) (_declarations_matchIO) (_lhs_monos) (_declarations_patternMatchWarnings) (_lhs_substitution) ([]) (_declarations_typeAnnotations) (_declarations_uniqueSecondRound))
+    in  ( _aset,_beta,_expression_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_constraints,_expression_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_expression_patternMatchWarnings,_self,_anns ++ _expression_typeAnnotations,_expression_uniqueSecondRound)
 sem_Expression_List :: (T_Range) ->
                        (T_Expressions) ->
                        (T_Expression)
-sem_Expression_List (_range) (_expressions) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_List (_range) (_expressions) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_List _range_self _expressions_self
         (_constraints) =
@@ -1715,13 +2011,13 @@ sem_Expression_List (_range) (_expressions) (_lhs_allPatterns) (_lhs_betaUnique)
                [_expressions_matches]
         ( _range_self) =
             (_range )
-        ( _expressions_assumptions,_expressions_betaUnique,_expressions_betas,_expressions_collectednotypedef,_expressions_constraintslist,_expressions_matchIO,_expressions_matches,_expressions_oneLineTree,_expressions_self,_expressions_typeAnnotations,_expressions_uniqueSecondRound) =
-            (_expressions (_lhs_allPatterns) (_lhs_betaUnique + 2) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-    in  ( _expressions_assumptions,_beta,_expressions_betaUnique,_expressions_collectednotypedef,_newConstraintSet,_expressions_matchIO,_matches,_oneLineTree,_self,_expressions_typeAnnotations,_newUnique)
+        ( _expressions_assumptions,_expressions_betaUnique,_expressions_betas,_expressions_collectednotypedef,_expressions_constraintslist,_expressions_matchIO,_expressions_matches,_expressions_oneLineTree,_expressions_patternMatchWarnings,_expressions_self,_expressions_typeAnnotations,_expressions_uniqueSecondRound) =
+            (_expressions (_lhs_allPatterns) (_lhs_betaUnique + 2) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+    in  ( _expressions_assumptions,_beta,_expressions_betaUnique,_expressions_collectednotypedef,_newConstraintSet,_expressions_matchIO,_matches,_oneLineTree,_expressions_patternMatchWarnings,_self,_expressions_typeAnnotations,_newUnique)
 sem_Expression_Literal :: (T_Range) ->
                           (T_Literal) ->
                           (T_Expression)
-sem_Expression_Literal (_range) (_literal) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_Literal (_range) (_literal) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_Literal _range_self _literal_self
         (_constraints) =
@@ -1751,13 +2047,13 @@ sem_Expression_Literal (_range) (_literal) (_lhs_allPatterns) (_lhs_betaUnique) 
                    []
         ( _range_self) =
             (_range )
-        ( _literal_literalType,_literal_oneLineTree,_literal_self) =
+        ( _literal_elements,_literal_literalType,_literal_oneLineTree,_literal_self) =
             (_literal )
-    in  ( noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,_newConstraintSet,_lhs_matchIO >> _ioMatch,_matches,_oneLineTree,_self,_lhs_typeAnnotations,_newUnique)
+    in  ( noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,_newConstraintSet,_lhs_matchIO >> _ioMatch,_matches,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_newUnique)
 sem_Expression_Negate :: (T_Range) ->
                          (T_Expression) ->
                          (T_Expression)
-sem_Expression_Negate (_range) (_expression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_Negate (_range) (_expression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_Negate _range_self _expression_self
         (_constraints) =
@@ -1786,13 +2082,13 @@ sem_Expression_Negate (_range) (_expression) (_lhs_allPatterns) (_lhs_betaUnique
                    [_expression_matches]
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-    in  ( _expression_assumptions,_beta,_expression_betaUnique,_expression_collectednotypedef,_newConstraintSet,_expression_matchIO >> _ioMatch,_matches,_oneLineTree,_self,_expression_typeAnnotations,_newUnique)
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+    in  ( _expression_assumptions,_beta,_expression_betaUnique,_expression_collectednotypedef,_newConstraintSet,_expression_matchIO >> _ioMatch,_matches,_oneLineTree,_expression_patternMatchWarnings,_self,_expression_typeAnnotations,_newUnique)
 sem_Expression_NegateFloat :: (T_Range) ->
                               (T_Expression) ->
                               (T_Expression)
-sem_Expression_NegateFloat (_range) (_expression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_NegateFloat (_range) (_expression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_NegateFloat _range_self _expression_self
         (_constraints) =
@@ -1821,14 +2117,14 @@ sem_Expression_NegateFloat (_range) (_expression) (_lhs_allPatterns) (_lhs_betaU
                    [_expression_matches]
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-    in  ( _expression_assumptions,_beta,_expression_betaUnique,_expression_collectednotypedef,_newConstraintSet,_expression_matchIO >> _ioMatch,_matches,_oneLineTree,_self,_expression_typeAnnotations,_newUnique)
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+    in  ( _expression_assumptions,_beta,_expression_betaUnique,_expression_collectednotypedef,_newConstraintSet,_expression_matchIO >> _ioMatch,_matches,_oneLineTree,_expression_patternMatchWarnings,_self,_expression_typeAnnotations,_newUnique)
 sem_Expression_NormalApplication :: (T_Range) ->
                                     (T_Expression) ->
                                     (T_Expressions) ->
                                     (T_Expression)
-sem_Expression_NormalApplication (_range) (_function) (_arguments) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_NormalApplication (_range) (_function) (_arguments) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_NormalApplication _range_self _function_self _arguments_self
         (_constraints) =
@@ -1865,29 +2161,29 @@ sem_Expression_NormalApplication (_range) (_function) (_arguments) (_lhs_allPatt
                    [_function_matches, _arguments_matches]
         ( _range_self) =
             (_range )
-        ( _function_assumptions,_function_beta,_function_betaUnique,_function_collectednotypedef,_function_constraints,_function_matchIO,_function_matches,_function_oneLineTree,_function_self,_function_typeAnnotations,_function_uniqueSecondRound) =
-            (_function (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _arguments_assumptions,_arguments_betaUnique,_arguments_betas,_arguments_collectednotypedef,_arguments_constraintslist,_arguments_matchIO,_arguments_matches,_arguments_oneLineTree,_arguments_self,_arguments_typeAnnotations,_arguments_uniqueSecondRound) =
-            (_arguments (_lhs_allPatterns) (_function_betaUnique) (_function_collectednotypedef) (_lhs_importEnvironment) (_function_matchIO) (_lhs_monos) (_t2) (_function_typeAnnotations) (_function_uniqueSecondRound))
-    in  ( _function_assumptions `combine` _arguments_assumptions,_beta,_arguments_betaUnique,_arguments_collectednotypedef,_newConstraintSet,_arguments_matchIO >> _ioMatch,_matches,_oneLineTree,_self,_arguments_typeAnnotations,_newUnique)
+        ( _function_assumptions,_function_beta,_function_betaUnique,_function_collectednotypedef,_function_constraints,_function_matchIO,_function_matches,_function_oneLineTree,_function_patternMatchWarnings,_function_self,_function_typeAnnotations,_function_uniqueSecondRound) =
+            (_function (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _arguments_assumptions,_arguments_betaUnique,_arguments_betas,_arguments_collectednotypedef,_arguments_constraintslist,_arguments_matchIO,_arguments_matches,_arguments_oneLineTree,_arguments_patternMatchWarnings,_arguments_self,_arguments_typeAnnotations,_arguments_uniqueSecondRound) =
+            (_arguments (_lhs_allPatterns) (_function_betaUnique) (_function_collectednotypedef) (_lhs_importEnvironment) (_function_matchIO) (_lhs_monos) (_function_patternMatchWarnings) (_lhs_substitution) (_t2) (_function_typeAnnotations) (_function_uniqueSecondRound))
+    in  ( _function_assumptions `combine` _arguments_assumptions,_beta,_arguments_betaUnique,_arguments_collectednotypedef,_newConstraintSet,_arguments_matchIO >> _ioMatch,_matches,_oneLineTree,_arguments_patternMatchWarnings,_self,_arguments_typeAnnotations,_newUnique)
 sem_Expression_Parenthesized :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_Expression)
-sem_Expression_Parenthesized (_range) (_expression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_Parenthesized (_range) (_expression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_Parenthesized _range_self _expression_self
         (_oneLineTree) =
             parens _expression_oneLineTree
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-    in  ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_oneLineTree,_self,_expression_typeAnnotations,_expression_uniqueSecondRound)
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+    in  ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_oneLineTree,_expression_patternMatchWarnings,_self,_expression_typeAnnotations,_expression_uniqueSecondRound)
 sem_Expression_RecordConstruction :: (T_Range) ->
                                      (T_Name) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_Expression)
-sem_Expression_RecordConstruction (_range) (_name) (_recordExpressionBindings) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_RecordConstruction (_range) (_name) (_recordExpressionBindings) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_RecordConstruction _range_self _name_self _recordExpressionBindings_self
         ((_assumptions,_constraints,_beta)) =
@@ -1900,29 +2196,29 @@ sem_Expression_RecordConstruction (_range) (_name) (_recordExpressionBindings) (
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
-        ( _recordExpressionBindings_collectednotypedef,_recordExpressionBindings_self,_recordExpressionBindings_typeAnnotations) =
-            (_recordExpressionBindings (_lhs_collectednotypedef) (_lhs_typeAnnotations))
-    in  ( _assumptions,_beta,_lhs_betaUnique,_recordExpressionBindings_collectednotypedef,_constraints,_lhs_matchIO,_matches,_oneLineTree,_self,_recordExpressionBindings_typeAnnotations,_lhs_uniqueSecondRound)
+        ( _recordExpressionBindings_collectednotypedef,_recordExpressionBindings_patternMatchWarnings,_recordExpressionBindings_self,_recordExpressionBindings_typeAnnotations) =
+            (_recordExpressionBindings (_lhs_collectednotypedef) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations))
+    in  ( _assumptions,_beta,_lhs_betaUnique,_recordExpressionBindings_collectednotypedef,_constraints,_lhs_matchIO,_matches,_oneLineTree,_recordExpressionBindings_patternMatchWarnings,_self,_recordExpressionBindings_typeAnnotations,_lhs_uniqueSecondRound)
 sem_Expression_RecordUpdate :: (T_Range) ->
                                (T_Expression) ->
                                (T_RecordExpressionBindings) ->
                                (T_Expression)
-sem_Expression_RecordUpdate (_range) (_expression) (_recordExpressionBindings) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_RecordUpdate (_range) (_expression) (_recordExpressionBindings) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_RecordUpdate _range_self _expression_self _recordExpressionBindings_self
         (_oneLineTree) =
             intErr "Expression" "record update"
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _recordExpressionBindings_collectednotypedef,_recordExpressionBindings_self,_recordExpressionBindings_typeAnnotations) =
-            (_recordExpressionBindings (_expression_collectednotypedef) (_expression_typeAnnotations))
-    in  ( _expression_assumptions,_expression_beta,_expression_betaUnique,_recordExpressionBindings_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_oneLineTree,_self,_recordExpressionBindings_typeAnnotations,_expression_uniqueSecondRound)
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _recordExpressionBindings_collectednotypedef,_recordExpressionBindings_patternMatchWarnings,_recordExpressionBindings_self,_recordExpressionBindings_typeAnnotations) =
+            (_recordExpressionBindings (_expression_collectednotypedef) (_expression_patternMatchWarnings) (_lhs_substitution) (_expression_typeAnnotations))
+    in  ( _expression_assumptions,_expression_beta,_expression_betaUnique,_recordExpressionBindings_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_oneLineTree,_recordExpressionBindings_patternMatchWarnings,_self,_recordExpressionBindings_typeAnnotations,_expression_uniqueSecondRound)
 sem_Expression_Tuple :: (T_Range) ->
                         (T_Expressions) ->
                         (T_Expression)
-sem_Expression_Tuple (_range) (_expressions) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_Tuple (_range) (_expressions) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_Tuple _range_self _expressions_self
         (_constraints) =
@@ -1952,14 +2248,14 @@ sem_Expression_Tuple (_range) (_expressions) (_lhs_allPatterns) (_lhs_betaUnique
                    [_expressions_matches]
         ( _range_self) =
             (_range )
-        ( _expressions_assumptions,_expressions_betaUnique,_expressions_betas,_expressions_collectednotypedef,_expressions_constraintslist,_expressions_matchIO,_expressions_matches,_expressions_oneLineTree,_expressions_self,_expressions_typeAnnotations,_expressions_uniqueSecondRound) =
-            (_expressions (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-    in  ( _expressions_assumptions,_beta,_expressions_betaUnique,_expressions_collectednotypedef,_newConstraintSet,_expressions_matchIO >> _ioMatch,_matches,_oneLineTree,_self,_expressions_typeAnnotations,_newUnique)
+        ( _expressions_assumptions,_expressions_betaUnique,_expressions_betas,_expressions_collectednotypedef,_expressions_constraintslist,_expressions_matchIO,_expressions_matches,_expressions_oneLineTree,_expressions_patternMatchWarnings,_expressions_self,_expressions_typeAnnotations,_expressions_uniqueSecondRound) =
+            (_expressions (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+    in  ( _expressions_assumptions,_beta,_expressions_betaUnique,_expressions_collectednotypedef,_newConstraintSet,_expressions_matchIO >> _ioMatch,_matches,_oneLineTree,_expressions_patternMatchWarnings,_self,_expressions_typeAnnotations,_newUnique)
 sem_Expression_Typed :: (T_Range) ->
                         (T_Expression) ->
                         (T_Type) ->
                         (T_Expression)
-sem_Expression_Typed (_range) (_expression) (_type) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_Typed (_range) (_expression) (_type) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_Typed _range_self _expression_self _type_self
         (_constraints) =
@@ -2001,15 +2297,15 @@ sem_Expression_Typed (_range) (_expression) (_type) (_lhs_allPatterns) (_lhs_bet
             (_constraints, (_beta, _oneLineTree, _range_self))
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
         ( _type_self) =
             (_type )
-    in  ( _expression_assumptions,_beta,_expression_betaUnique,_expression_collectednotypedef,_constraints,_expression_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_self,((_lhs_monos,_expression_beta),_typeScheme,(_expression_oneLineTree,_range_self)) : _expression_typeAnnotations,_expression_uniqueSecondRound)
+    in  ( _expression_assumptions,_beta,_expression_betaUnique,_expression_collectednotypedef,_constraints,_expression_matchIO,matchOnlyVariable _localInfo _lhs_tryPatterns,_oneLineTree,_expression_patternMatchWarnings,_self,((_lhs_monos,_expression_beta),_typeScheme,(_expression_oneLineTree,_range_self)) : _expression_typeAnnotations,_expression_uniqueSecondRound)
 sem_Expression_Variable :: (T_Range) ->
                            (T_Name) ->
                            (T_Expression)
-sem_Expression_Variable (_range) (_name) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expression_Variable (_range) (_name) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Expression_Variable _range_self _name_self
         (_constraints) =
@@ -2029,7 +2325,7 @@ sem_Expression_Variable (_range) (_name) (_lhs_allPatterns) (_lhs_betaUnique) (_
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
-    in  ( _name_self `single` _beta,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,_newConstraintSet,_lhs_matchIO >> _ioMatch,_matches,_oneLineTree,_self,_lhs_typeAnnotations,_newUnique)
+    in  ( _name_self `single` _beta,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,_newConstraintSet,_lhs_matchIO >> _ioMatch,_matches,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_newUnique)
 -- Expressions -------------------------------------------------
 -- semantic domain
 type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -2038,10 +2334,12 @@ type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (ImportEnvironment) ->
                      (IO ()) ->
                      (Tps) ->
+                     ([Warning]) ->
+                     (WrappedSubstitution) ->
                      ([(Expressions    , [String])]) ->
                      (TypeAnnotations) ->
                      (Int) ->
-                     ( (Assumptions),(Int),(Tps),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),( [ Tree] ),(Expressions),(TypeAnnotations),(Int))
+                     ( (Assumptions),(Int),(Tps),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),( [ Tree] ),([Warning]),(Expressions),(TypeAnnotations),(Int))
 -- cata
 sem_Expressions :: (Expressions) ->
                    (T_Expressions)
@@ -2050,23 +2348,23 @@ sem_Expressions (list) =
 sem_Expressions_Cons :: (T_Expression) ->
                         (T_Expressions) ->
                         (T_Expressions)
-sem_Expressions_Cons (_hd) (_tl) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expressions_Cons (_hd) (_tl) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             (:) _hd_self _tl_self
         (((_t1,_t2),_matches,_,_,_)) =
             match2' match_Expressions_Cons _lhs_tryPatterns [] [_hd_matches, _tl_matches]
-        ( _hd_assumptions,_hd_beta,_hd_betaUnique,_hd_collectednotypedef,_hd_constraints,_hd_matchIO,_hd_matches,_hd_oneLineTree,_hd_self,_hd_typeAnnotations,_hd_uniqueSecondRound) =
-            (_hd (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _tl_assumptions,_tl_betaUnique,_tl_betas,_tl_collectednotypedef,_tl_constraintslist,_tl_matchIO,_tl_matches,_tl_oneLineTree,_tl_self,_tl_typeAnnotations,_tl_uniqueSecondRound) =
-            (_tl (_lhs_allPatterns) (_hd_betaUnique) (_hd_collectednotypedef) (_lhs_importEnvironment) (_hd_matchIO) (_lhs_monos) (_t2) (_hd_typeAnnotations) (_hd_uniqueSecondRound))
-    in  ( _hd_assumptions `combine` _tl_assumptions,_tl_betaUnique,_hd_beta : _tl_betas,_tl_collectednotypedef,_hd_constraints : _tl_constraintslist,_tl_matchIO,_matches,_hd_oneLineTree  :  _tl_oneLineTree,_self,_tl_typeAnnotations,_tl_uniqueSecondRound)
+        ( _hd_assumptions,_hd_beta,_hd_betaUnique,_hd_collectednotypedef,_hd_constraints,_hd_matchIO,_hd_matches,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_self,_hd_typeAnnotations,_hd_uniqueSecondRound) =
+            (_hd (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _tl_assumptions,_tl_betaUnique,_tl_betas,_tl_collectednotypedef,_tl_constraintslist,_tl_matchIO,_tl_matches,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self,_tl_typeAnnotations,_tl_uniqueSecondRound) =
+            (_tl (_lhs_allPatterns) (_hd_betaUnique) (_hd_collectednotypedef) (_lhs_importEnvironment) (_hd_matchIO) (_lhs_monos) (_hd_patternMatchWarnings) (_lhs_substitution) (_t2) (_hd_typeAnnotations) (_hd_uniqueSecondRound))
+    in  ( _hd_assumptions `combine` _tl_assumptions,_tl_betaUnique,_hd_beta : _tl_betas,_tl_collectednotypedef,_hd_constraints : _tl_constraintslist,_tl_matchIO,_matches,_hd_oneLineTree  :  _tl_oneLineTree,_tl_patternMatchWarnings,_self,_tl_typeAnnotations,_tl_uniqueSecondRound)
 sem_Expressions_Nil :: (T_Expressions)
-sem_Expressions_Nil (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Expressions_Nil (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             []
         (((),_matches,_,_,_)) =
             match0' match_Expressions_Nil _lhs_tryPatterns [] []
-    in  ( noAssumptions,_lhs_betaUnique,[],_lhs_collectednotypedef,[],_lhs_matchIO,_matches,[],_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
+    in  ( noAssumptions,_lhs_betaUnique,[],_lhs_collectednotypedef,[],_lhs_matchIO,_matches,[],_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
 -- FieldDeclaration --------------------------------------------
 -- semantic domain
 type T_FieldDeclaration = ( (FieldDeclaration))
@@ -2161,9 +2459,11 @@ type T_FunctionBinding = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (ImportEnvironment) ->
                          (IO ()) ->
                          (Tps) ->
+                         ([Warning]) ->
+                         (WrappedSubstitution) ->
                          (TypeAnnotations) ->
                          (Int) ->
-                         ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),(Name),(Int),(Tree),(FunctionBinding),(TypeAnnotations),(Int))
+                         ( (Int),(Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),( [PatternElement] ),(IO ()),(Name),(Int),(Tree),([Warning]),(FunctionBinding),(TypeAnnotations),(Int),(Warning))
 -- cata
 sem_FunctionBinding :: (FunctionBinding) ->
                        (T_FunctionBinding)
@@ -2173,7 +2473,7 @@ sem_FunctionBinding_FunctionBinding :: (T_Range) ->
                                        (T_LeftHandSide) ->
                                        (T_RightHandSide) ->
                                        (T_FunctionBinding)
-sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_lhs_allPatterns) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_betasLeft) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_lhs_allPatterns) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_betasLeft) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             FunctionBinding_FunctionBinding _range_self _lefthandside_self _righthandside_self
         ((_csetBinds,_assumptions')) =
@@ -2206,24 +2506,28 @@ sem_FunctionBinding_FunctionBinding (_range) (_lefthandside) (_righthandside) (_
             Node [_lefthandside_oneLineTree, _righthandside_oneLineTree " = " ]
         ( _range_self) =
             (_range )
-        ( _lefthandside_betaUnique,_lefthandside_betas,_lefthandside_constraints,_lefthandside_environment,_lefthandside_name,_lefthandside_numberOfPatterns,_lefthandside_oneLineTree,_lefthandside_patternTrees,_lefthandside_self) =
-            (_lefthandside (_lhs_betaUnique) (_lhs_importEnvironment))
-        ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectednotypedef,_righthandside_constraints,_righthandside_matchIO,_righthandside_oneLineTree,_righthandside_self,_righthandside_typeAnnotations,_righthandside_uniqueSecondRound) =
-            (_righthandside (_lhs_allPatterns) (_lefthandside_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (eltsFM _lefthandside_environment ++ _lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-    in  ( _assumptions'
+        ( _lefthandside_argcount,_lefthandside_betaUnique,_lefthandside_betas,_lefthandside_constraints,_lefthandside_elements,_lefthandside_environment,_lefthandside_name,_lefthandside_numberOfPatterns,_lefthandside_oneLineTree,_lefthandside_patternMatchWarnings,_lefthandside_patternTrees,_lefthandside_self) =
+            (_lefthandside (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
+        ( _righthandside_assumptions,_righthandside_beta,_righthandside_betaUnique,_righthandside_collectednotypedef,_righthandside_constraints,_righthandside_matchIO,_righthandside_oneLineTree,_righthandside_patternMatchWarnings,_righthandside_self,_righthandside_typeAnnotations,_righthandside_uniqueSecondRound) =
+            (_righthandside (_lhs_allPatterns) (_lefthandside_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (eltsFM _lefthandside_environment ++ _lhs_monos) (_lefthandside_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+    in  ( _lefthandside_argcount
+         ,_assumptions'
          ,_righthandside_betaUnique
          ,_righthandside_collectednotypedef
          ,_csetBinds .>>.
           ctNode [ _conLeft  .<. _lefthandside_constraints
                  , _conRight .<. _righthandside_constraints
                  ]
+         ,_lefthandside_elements
          ,_righthandside_matchIO
          ,_lefthandside_name
          ,_lefthandside_numberOfPatterns
          ,_oneLineTree
+         ,_righthandside_patternMatchWarnings
          ,_self
          ,_righthandside_typeAnnotations
          ,_righthandside_uniqueSecondRound
+         ,UnreachablePatternLHS _lefthandside_self
          )
 -- FunctionBindings --------------------------------------------
 -- semantic domain
@@ -2235,9 +2539,11 @@ type T_FunctionBindings = ([((Expression, [String]), Core_TypingStrategy)]) ->
                           (ImportEnvironment) ->
                           (IO ()) ->
                           (Tps) ->
+                          ([Warning]) ->
+                          (WrappedSubstitution) ->
                           (TypeAnnotations) ->
                           (Int) ->
-                          ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(IO ()),(Name),(Int),( [ Tree] ),(FunctionBindings),(TypeAnnotations),(Int))
+                          ( (Int),(Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSets),([[PatternElement]]),(IO ()),(Name),(Int),( [ Tree] ),([Warning]),(FunctionBindings),(TypeAnnotations),(Int),([Warning]))
 -- cata
 sem_FunctionBindings :: (FunctionBindings) ->
                         (T_FunctionBindings)
@@ -2246,19 +2552,19 @@ sem_FunctionBindings (list) =
 sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
                              (T_FunctionBindings) ->
                              (T_FunctionBindings)
-sem_FunctionBindings_Cons (_hd) (_tl) (_lhs_allPatterns) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_betasLeft) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_FunctionBindings_Cons (_hd) (_tl) (_lhs_allPatterns) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_betasLeft) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_assumptions,_hd_betaUnique,_hd_collectednotypedef,_hd_constraints,_hd_matchIO,_hd_name,_hd_numberOfPatterns,_hd_oneLineTree,_hd_self,_hd_typeAnnotations,_hd_uniqueSecondRound) =
-            (_hd (_lhs_allPatterns) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_betasLeft) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _tl_assumptions,_tl_betaUnique,_tl_collectednotypedef,_tl_constraintslist,_tl_matchIO,_tl_name,_tl_numberOfPatterns,_tl_oneLineTree,_tl_self,_tl_typeAnnotations,_tl_uniqueSecondRound) =
-            (_tl (_lhs_allPatterns) (_lhs_betaRight) (_hd_betaUnique) (_lhs_betasLeft) (_hd_collectednotypedef) (_lhs_importEnvironment) (_hd_matchIO) (_lhs_monos) (_hd_typeAnnotations) (_hd_uniqueSecondRound))
-    in  ( _hd_assumptions `combine` _tl_assumptions,_tl_betaUnique,_tl_collectednotypedef,_hd_constraints : _tl_constraintslist,_tl_matchIO,_hd_name,_hd_numberOfPatterns,_hd_oneLineTree  :  _tl_oneLineTree,_self,_tl_typeAnnotations,_tl_uniqueSecondRound)
+        ( _hd_argcount,_hd_assumptions,_hd_betaUnique,_hd_collectednotypedef,_hd_constraints,_hd_elements,_hd_matchIO,_hd_name,_hd_numberOfPatterns,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_self,_hd_typeAnnotations,_hd_uniqueSecondRound,_hd_unrwar) =
+            (_hd (_lhs_allPatterns) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_betasLeft) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _tl_argcount,_tl_assumptions,_tl_betaUnique,_tl_collectednotypedef,_tl_constraintslist,_tl_elementss,_tl_matchIO,_tl_name,_tl_numberOfPatterns,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self,_tl_typeAnnotations,_tl_uniqueSecondRound,_tl_unrwars) =
+            (_tl (_lhs_allPatterns) (_lhs_betaRight) (_hd_betaUnique) (_lhs_betasLeft) (_hd_collectednotypedef) (_lhs_importEnvironment) (_hd_matchIO) (_lhs_monos) (_hd_patternMatchWarnings) (_lhs_substitution) (_hd_typeAnnotations) (_hd_uniqueSecondRound))
+    in  ( _hd_argcount,_hd_assumptions `combine` _tl_assumptions,_tl_betaUnique,_tl_collectednotypedef,_hd_constraints : _tl_constraintslist,_hd_elements : _tl_elementss,_tl_matchIO,_hd_name,_hd_numberOfPatterns,_hd_oneLineTree  :  _tl_oneLineTree,_tl_patternMatchWarnings,_self,_tl_typeAnnotations,_tl_uniqueSecondRound,_hd_unrwar   : _tl_unrwars)
 sem_FunctionBindings_Nil :: (T_FunctionBindings)
-sem_FunctionBindings_Nil (_lhs_allPatterns) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_betasLeft) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_FunctionBindings_Nil (_lhs_allPatterns) (_lhs_betaRight) (_lhs_betaUnique) (_lhs_betasLeft) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             []
-    in  ( noAssumptions,_lhs_betaUnique,_lhs_collectednotypedef,[],_lhs_matchIO,internalError "TypeInferencing.ag" "n/a" "FunctionBindings(2)",internalError "TypeInferencing.ag" "n/a" "FunctionBindings(1)",[],_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
+    in  ( pmError "FunctionBindings_Nil.argcount" "?empty list of functionbindings?",noAssumptions,_lhs_betaUnique,_lhs_collectednotypedef,[],[],_lhs_matchIO,internalError "TypeInferencing.ag" "n/a" "FunctionBindings(2)",internalError "TypeInferencing.ag" "n/a" "FunctionBindings(1)",[],_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound,[])
 -- GuardedExpression -------------------------------------------
 -- semantic domain
 type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -2268,10 +2574,12 @@ type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (IO ()) ->
                            (Tps) ->
                            (Int) ->
+                           ([Warning]) ->
                            (Tp) ->
+                           (WrappedSubstitution) ->
                            (TypeAnnotations) ->
                            (Int) ->
-                           ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),( String -> Tree ),(GuardedExpression),(TypeAnnotations),(Int))
+                           ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),( String -> Tree ),([Warning]),(GuardedExpression),(TypeAnnotations),(Int))
 -- cata
 sem_GuardedExpression :: (GuardedExpression) ->
                          (T_GuardedExpression)
@@ -2281,7 +2589,7 @@ sem_GuardedExpression_GuardedExpression :: (T_Range) ->
                                            (T_Expression) ->
                                            (T_Expression) ->
                                            (T_GuardedExpression)
-sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_numberOfGuards) (_lhs_rightBeta) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_numberOfGuards) (_lhs_patternMatchWarnings) (_lhs_rightBeta) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             GuardedExpression_GuardedExpression _range_self _guard_self _expression_self
         (_newconGuard) =
@@ -2310,10 +2618,10 @@ sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_al
             \assign -> Node [ _guard_oneLineTree, Text assign, _expression_oneLineTree ]
         ( _range_self) =
             (_range )
-        ( _guard_assumptions,_guard_beta,_guard_betaUnique,_guard_collectednotypedef,_guard_constraints,_guard_matchIO,_guard_matches,_guard_oneLineTree,_guard_self,_guard_typeAnnotations,_guard_uniqueSecondRound) =
-            (_guard (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_guard_betaUnique) (_guard_collectednotypedef) (_lhs_importEnvironment) (_guard_matchIO) (_lhs_monos) ([]) (_guard_typeAnnotations) (_guard_uniqueSecondRound))
+        ( _guard_assumptions,_guard_beta,_guard_betaUnique,_guard_collectednotypedef,_guard_constraints,_guard_matchIO,_guard_matches,_guard_oneLineTree,_guard_patternMatchWarnings,_guard_self,_guard_typeAnnotations,_guard_uniqueSecondRound) =
+            (_guard (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_guard_betaUnique) (_guard_collectednotypedef) (_lhs_importEnvironment) (_guard_matchIO) (_lhs_monos) (_guard_patternMatchWarnings) (_lhs_substitution) ([]) (_guard_typeAnnotations) (_guard_uniqueSecondRound))
     in  ( _guard_assumptions `combine` _expression_assumptions
          ,_expression_beta
          ,_expression_betaUnique
@@ -2323,6 +2631,7 @@ sem_GuardedExpression_GuardedExpression (_range) (_guard) (_expression) (_lhs_al
                  ]
          ,_expression_matchIO
          ,_oneLineTree
+         ,_expression_patternMatchWarnings
          ,_self
          ,_expression_typeAnnotations
          ,_expression_uniqueSecondRound
@@ -2336,10 +2645,12 @@ type T_GuardedExpressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                             (IO ()) ->
                             (Tps) ->
                             (Int) ->
+                            ([Warning]) ->
                             (Tp) ->
+                            (WrappedSubstitution) ->
                             (TypeAnnotations) ->
                             (Int) ->
-                            ( (Assumptions),(Int),(Tps),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(IO ()),( [ String -> Tree ] ),(GuardedExpressions),(TypeAnnotations),(Int))
+                            ( (Assumptions),(Int),(Tps),([(Name,Tps,Tp,Bool)]),(ConstraintSets),(IO ()),( [ String -> Tree ] ),([Warning]),(GuardedExpressions),(TypeAnnotations),(Int))
 -- cata
 sem_GuardedExpressions :: (GuardedExpressions) ->
                           (T_GuardedExpressions)
@@ -2348,19 +2659,19 @@ sem_GuardedExpressions (list) =
 sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
                                (T_GuardedExpressions) ->
                                (T_GuardedExpressions)
-sem_GuardedExpressions_Cons (_hd) (_tl) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_numberOfGuards) (_lhs_rightBeta) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_GuardedExpressions_Cons (_hd) (_tl) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_numberOfGuards) (_lhs_patternMatchWarnings) (_lhs_rightBeta) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_assumptions,_hd_beta,_hd_betaUnique,_hd_collectednotypedef,_hd_constraints,_hd_matchIO,_hd_oneLineTree,_hd_self,_hd_typeAnnotations,_hd_uniqueSecondRound) =
-            (_hd (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_numberOfGuards) (_lhs_rightBeta) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _tl_assumptions,_tl_betaUnique,_tl_betas,_tl_collectednotypedef,_tl_constraintslist,_tl_matchIO,_tl_oneLineTree,_tl_self,_tl_typeAnnotations,_tl_uniqueSecondRound) =
-            (_tl (_lhs_allPatterns) (_hd_betaUnique) (_hd_collectednotypedef) (_lhs_importEnvironment) (_hd_matchIO) (_lhs_monos) (_lhs_numberOfGuards) (_lhs_rightBeta) (_hd_typeAnnotations) (_hd_uniqueSecondRound))
-    in  ( _hd_assumptions `combine` _tl_assumptions,_tl_betaUnique,_hd_beta : _tl_betas,_tl_collectednotypedef,_hd_constraints : _tl_constraintslist,_tl_matchIO,_hd_oneLineTree  :  _tl_oneLineTree,_self,_tl_typeAnnotations,_tl_uniqueSecondRound)
+        ( _hd_assumptions,_hd_beta,_hd_betaUnique,_hd_collectednotypedef,_hd_constraints,_hd_matchIO,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_self,_hd_typeAnnotations,_hd_uniqueSecondRound) =
+            (_hd (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_numberOfGuards) (_lhs_patternMatchWarnings) (_lhs_rightBeta) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _tl_assumptions,_tl_betaUnique,_tl_betas,_tl_collectednotypedef,_tl_constraintslist,_tl_matchIO,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self,_tl_typeAnnotations,_tl_uniqueSecondRound) =
+            (_tl (_lhs_allPatterns) (_hd_betaUnique) (_hd_collectednotypedef) (_lhs_importEnvironment) (_hd_matchIO) (_lhs_monos) (_lhs_numberOfGuards) (_hd_patternMatchWarnings) (_lhs_rightBeta) (_lhs_substitution) (_hd_typeAnnotations) (_hd_uniqueSecondRound))
+    in  ( _hd_assumptions `combine` _tl_assumptions,_tl_betaUnique,_hd_beta : _tl_betas,_tl_collectednotypedef,_hd_constraints : _tl_constraintslist,_tl_matchIO,_hd_oneLineTree  :  _tl_oneLineTree,_tl_patternMatchWarnings,_self,_tl_typeAnnotations,_tl_uniqueSecondRound)
 sem_GuardedExpressions_Nil :: (T_GuardedExpressions)
-sem_GuardedExpressions_Nil (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_numberOfGuards) (_lhs_rightBeta) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_GuardedExpressions_Nil (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_numberOfGuards) (_lhs_patternMatchWarnings) (_lhs_rightBeta) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             []
-    in  ( noAssumptions,_lhs_betaUnique,[],_lhs_collectednotypedef,[],_lhs_matchIO,[],_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
+    in  ( noAssumptions,_lhs_betaUnique,[],_lhs_collectednotypedef,[],_lhs_matchIO,[],_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
 -- Import ------------------------------------------------------
 -- semantic domain
 type T_Import = ( (Import))
@@ -2517,7 +2828,9 @@ sem_Imports_Nil  =
 -- semantic domain
 type T_LeftHandSide = (Int) ->
                       (ImportEnvironment) ->
-                      ( (Int),(Tps),(ConstraintSet),(PatternAssumptions),(Name),(Int),(Tree),([Tree]),(LeftHandSide))
+                      ([Warning]) ->
+                      (WrappedSubstitution) ->
+                      ( (Int),(Int),(Tps),(ConstraintSet),( [PatternElement] ),(PatternAssumptions),(Name),(Int),(Tree),([Warning]),([Tree]),(LeftHandSide))
 -- cata
 sem_LeftHandSide :: (LeftHandSide) ->
                     (T_LeftHandSide)
@@ -2531,7 +2844,7 @@ sem_LeftHandSide_Function :: (T_Range) ->
                              (T_Name) ->
                              (T_Patterns) ->
                              (T_LeftHandSide)
-sem_LeftHandSide_Function (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_LeftHandSide_Function (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             LeftHandSide_Function _range_self _name_self _patterns_self
         (_oneLineTree) =
@@ -2540,15 +2853,15 @@ sem_LeftHandSide_Function (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_i
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
-        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_self) =
-            (_patterns (_lhs_betaUnique) (_lhs_importEnvironment))
-    in  ( _patterns_betaUnique,_patterns_betas,ctNode _patterns_constraintslist,_patterns_environment,_name_self,_patterns_numberOfPatterns,_oneLineTree,_patterns_oneLineTree,_self)
+        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_patternMatchWarnings,_patterns_self) =
+            (_patterns (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
+    in  ( length _patterns_self,_patterns_betaUnique,_patterns_betas,ctNode _patterns_constraintslist,concat _patterns_elementss,_patterns_environment,_name_self,_patterns_numberOfPatterns,_oneLineTree,_patterns_patternMatchWarnings,_patterns_oneLineTree,_self)
 sem_LeftHandSide_Infix :: (T_Range) ->
                           (T_Pattern) ->
                           (T_Name) ->
                           (T_Pattern) ->
                           (T_LeftHandSide)
-sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             LeftHandSide_Infix _range_self _leftPattern_self _operator_self _rightPattern_self
         (_operatorName) =
@@ -2557,21 +2870,24 @@ sem_LeftHandSide_Infix (_range) (_leftPattern) (_operator) (_rightPattern) (_lhs
             punctuate " " [_leftPattern_oneLineTree, _operatorName, _rightPattern_oneLineTree]
         ( _range_self) =
             (_range )
-        ( _leftPattern_beta,_leftPattern_betaUnique,_leftPattern_constraints,_leftPattern_environment,_leftPattern_oneLineTree,_leftPattern_self) =
-            (_leftPattern (_lhs_betaUnique) (_lhs_importEnvironment))
+        ( _leftPattern_beta,_leftPattern_betaUnique,_leftPattern_constraints,_leftPattern_elements,_leftPattern_environment,_leftPattern_oneLineTree,_leftPattern_patternMatchWarnings,_leftPattern_self) =
+            (_leftPattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
         ( _operator_isIdentifier,_operator_isOperator,_operator_isSpecial,_operator_oneLineTree,_operator_self) =
             (_operator )
-        ( _rightPattern_beta,_rightPattern_betaUnique,_rightPattern_constraints,_rightPattern_environment,_rightPattern_oneLineTree,_rightPattern_self) =
-            (_rightPattern (_leftPattern_betaUnique) (_lhs_importEnvironment))
-    in  ( _rightPattern_betaUnique
+        ( _rightPattern_beta,_rightPattern_betaUnique,_rightPattern_constraints,_rightPattern_elements,_rightPattern_environment,_rightPattern_oneLineTree,_rightPattern_patternMatchWarnings,_rightPattern_self) =
+            (_rightPattern (_leftPattern_betaUnique) (_lhs_importEnvironment) (_leftPattern_patternMatchWarnings) (_lhs_substitution))
+    in  ( 2
+         ,_rightPattern_betaUnique
          ,[_leftPattern_beta,_rightPattern_beta]
          ,ctNode [ _leftPattern_constraints
                  , _rightPattern_constraints
                  ]
+         ,_leftPattern_elements ++ _rightPattern_elements
          ,_leftPattern_environment `plusFM` _rightPattern_environment
          ,_operator_self
          ,2
          ,_oneLineTree
+         ,_rightPattern_patternMatchWarnings
          ,[_leftPattern_oneLineTree, _rightPattern_oneLineTree]
          ,_self
          )
@@ -2579,21 +2895,21 @@ sem_LeftHandSide_Parenthesized :: (T_Range) ->
                                   (T_LeftHandSide) ->
                                   (T_Patterns) ->
                                   (T_LeftHandSide)
-sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_LeftHandSide_Parenthesized (_range) (_lefthandside) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             LeftHandSide_Parenthesized _range_self _lefthandside_self _patterns_self
         (_oneLineTree) =
             punctuate " " ( parens _lefthandside_oneLineTree : _patterns_oneLineTree )
         ( _range_self) =
             (_range )
-        ( _lefthandside_betaUnique,_lefthandside_betas,_lefthandside_constraints,_lefthandside_environment,_lefthandside_name,_lefthandside_numberOfPatterns,_lefthandside_oneLineTree,_lefthandside_patternTrees,_lefthandside_self) =
-            (_lefthandside (_lhs_betaUnique) (_lhs_importEnvironment))
-        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_self) =
-            (_patterns (_lefthandside_betaUnique) (_lhs_importEnvironment))
-    in  ( _patterns_betaUnique,_lefthandside_betas ++ _patterns_betas,ctNode ( _lefthandside_constraints : _patterns_constraintslist ),_lefthandside_environment `plusFM` _patterns_environment,_lefthandside_name,_lefthandside_numberOfPatterns + _patterns_numberOfPatterns,_oneLineTree,_lefthandside_patternTrees ++ _patterns_oneLineTree,_self)
+        ( _lefthandside_argcount,_lefthandside_betaUnique,_lefthandside_betas,_lefthandside_constraints,_lefthandside_elements,_lefthandside_environment,_lefthandside_name,_lefthandside_numberOfPatterns,_lefthandside_oneLineTree,_lefthandside_patternMatchWarnings,_lefthandside_patternTrees,_lefthandside_self) =
+            (_lefthandside (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
+        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_patternMatchWarnings,_patterns_self) =
+            (_patterns (_lefthandside_betaUnique) (_lhs_importEnvironment) (_lefthandside_patternMatchWarnings) (_lhs_substitution))
+    in  ( _lefthandside_argcount,_patterns_betaUnique,_lefthandside_betas ++ _patterns_betas,ctNode ( _lefthandside_constraints : _patterns_constraintslist ),_lefthandside_elements,_lefthandside_environment `plusFM` _patterns_environment,_lefthandside_name,_lefthandside_numberOfPatterns + _patterns_numberOfPatterns,_oneLineTree,_patterns_patternMatchWarnings,_lefthandside_patternTrees ++ _patterns_oneLineTree,_self)
 -- Literal -----------------------------------------------------
 -- semantic domain
-type T_Literal = ( (Tp),(Tree),(Literal))
+type T_Literal = ( ( [PatternElement] ),(Tp),(Tree),(Literal))
 -- cata
 sem_Literal :: (Literal) ->
                (T_Literal)
@@ -2615,7 +2931,7 @@ sem_Literal_Char (_range) (_value) =
             Text ("'" ++ _value ++ "'")
         ( _range_self) =
             (_range )
-    in  ( charType,_oneLineTree,_self)
+    in  ( [InfiniteElement _value],charType,_oneLineTree,_self)
 sem_Literal_Float :: (T_Range) ->
                      (String) ->
                      (T_Literal)
@@ -2626,7 +2942,7 @@ sem_Literal_Float (_range) (_value) =
             Text _value
         ( _range_self) =
             (_range )
-    in  ( floatType,_oneLineTree,_self)
+    in  ( [InfiniteElement _value],floatType,_oneLineTree,_self)
 sem_Literal_Int :: (T_Range) ->
                    (String) ->
                    (T_Literal)
@@ -2637,7 +2953,7 @@ sem_Literal_Int (_range) (_value) =
             Text _value
         ( _range_self) =
             (_range )
-    in  ( intType,_oneLineTree,_self)
+    in  ( [InfiniteElement _value],intType,_oneLineTree,_self)
 sem_Literal_String :: (T_Range) ->
                       (String) ->
                       (T_Literal)
@@ -2648,7 +2964,7 @@ sem_Literal_String (_range) (_value) =
             Text ("\"" ++ _value ++ "\"")
         ( _range_self) =
             (_range )
-    in  ( stringType,_oneLineTree,_self)
+    in  ( stringPat _value,stringType,_oneLineTree,_self)
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
 type T_MaybeDeclarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -2659,9 +2975,11 @@ type T_MaybeDeclarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (ImportEnvironment) ->
                            (IO ()) ->
                            (Tps) ->
+                           ([Warning]) ->
+                           (WrappedSubstitution) ->
                            (TypeAnnotations) ->
                            (Int) ->
-                           ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),( Maybe [Tree] ),(MaybeDeclarations),(TypeAnnotations),(Int))
+                           ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),( Maybe [Tree] ),([Warning]),(MaybeDeclarations),(TypeAnnotations),(Int))
 -- cata
 sem_MaybeDeclarations :: (MaybeDeclarations) ->
                          (T_MaybeDeclarations)
@@ -2671,7 +2989,7 @@ sem_MaybeDeclarations ((MaybeDeclarations_Nothing )) =
     (sem_MaybeDeclarations_Nothing )
 sem_MaybeDeclarations_Just :: (T_Declarations) ->
                               (T_MaybeDeclarations)
-sem_MaybeDeclarations_Just (_declarations) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_MaybeDeclarations_Just (_declarations) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             MaybeDeclarations_Just _declarations_self
         ((_aset,_cset,_monoTable)) =
@@ -2684,16 +3002,16 @@ sem_MaybeDeclarations_Just (_declarations) (_lhs_allPatterns) (_lhs_assumptions)
             internalError "PartialSyntax.ag" "n/a" "toplevel MaybeDeclaration"
         (_oneLineTree) =
             Just _declarations_oneLineTree
-        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_matchIO,_declarations_oneLineTree,_declarations_self,_declarations_typeAnnotations,_declarations_typeSignatures,_declarations_uniqueSecondRound) =
-            (_declarations (_lhs_allPatterns) (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (emptyFM) (_lhs_uniqueSecondRound))
-    in  ( _aset,_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_cset,_declarations_matchIO,_oneLineTree,_self,_anns ++ _declarations_typeAnnotations,_declarations_uniqueSecondRound)
+        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_matchIO,_declarations_oneLineTree,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeAnnotations,_declarations_typeSignatures,_declarations_uniqueSecondRound) =
+            (_declarations (_lhs_allPatterns) (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (emptyFM) (_lhs_uniqueSecondRound))
+    in  ( _aset,_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_cset,_declarations_matchIO,_oneLineTree,_declarations_patternMatchWarnings,_self,_anns ++ _declarations_typeAnnotations,_declarations_uniqueSecondRound)
 sem_MaybeDeclarations_Nothing :: (T_MaybeDeclarations)
-sem_MaybeDeclarations_Nothing (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_MaybeDeclarations_Nothing (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             MaybeDeclarations_Nothing
         (_oneLineTree) =
             Nothing
-    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectednotypedef,_lhs_constraints,_lhs_matchIO,_oneLineTree,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
+    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectednotypedef,_lhs_constraints,_lhs_matchIO,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
 -- MaybeExports ------------------------------------------------
 -- semantic domain
 type T_MaybeExports = ( (MaybeExports))
@@ -2725,10 +3043,12 @@ type T_MaybeExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (ImportEnvironment) ->
                          (IO ()) ->
                          (Tps) ->
+                         ([Warning]) ->
+                         (WrappedSubstitution) ->
                          ([(MaybeExpression, [String])]) ->
                          (TypeAnnotations) ->
                          (Int) ->
-                         ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),( Maybe Tree ),(Bool),(MaybeExpression),(TypeAnnotations),(Int))
+                         ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),([Maybe (MetaVariableTable MetaVariableInfo)]),( Maybe Tree ),([Warning]),(Bool),(MaybeExpression),(TypeAnnotations),(Int))
 -- cata
 sem_MaybeExpression :: (MaybeExpression) ->
                        (T_MaybeExpression)
@@ -2738,18 +3058,18 @@ sem_MaybeExpression ((MaybeExpression_Nothing )) =
     (sem_MaybeExpression_Nothing )
 sem_MaybeExpression_Just :: (T_Expression) ->
                             (T_MaybeExpression)
-sem_MaybeExpression_Just (_expression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_MaybeExpression_Just (_expression) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             MaybeExpression_Just _expression_self
         (_oneLineTree) =
             Just _expression_oneLineTree
         ((_t1,_matches,_,_,_)) =
             match1' match_MaybeExpression_Just _lhs_tryPatterns [] [_expression_matches]
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-    in  ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_matches,_oneLineTree,False,_self,_expression_typeAnnotations,_expression_uniqueSecondRound)
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_t1) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+    in  ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_matches,_oneLineTree,_expression_patternMatchWarnings,False,_self,_expression_typeAnnotations,_expression_uniqueSecondRound)
 sem_MaybeExpression_Nothing :: (T_MaybeExpression)
-sem_MaybeExpression_Nothing (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_MaybeExpression_Nothing (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_tryPatterns) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             MaybeExpression_Nothing
         (_beta) =
@@ -2758,7 +3078,7 @@ sem_MaybeExpression_Nothing (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collected
             Nothing
         (((),_matches,_,_,_)) =
             match0' match_MaybeExpression_Nothing _lhs_tryPatterns [] []
-    in  ( noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,ctEmpty,_lhs_matchIO,_matches,_oneLineTree,True,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
+    in  ( noAssumptions,_beta,_lhs_betaUnique + 1,_lhs_collectednotypedef,ctEmpty,_lhs_matchIO,_matches,_oneLineTree,_lhs_patternMatchWarnings,True,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
 -- MaybeImportSpecification ------------------------------------
 -- semantic domain
 type T_MaybeImportSpecification = ( (MaybeImportSpecification))
@@ -2934,7 +3254,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
             (_name )
         ( _exports_self) =
             (_exports )
-        ( _body_assumptions,_body_betaUnique,_body_collectednotypedef,_body_constraints,_body_matchIO,_body_namesWithoutTypeDef,_body_self,_body_typeAnnotations,_body_typeSignatures) =
+        ( _body_assumptions,_body_betaUnique,_body_collectednotypedef,_body_constraints,_body_matchIO,_body_namesWithoutTypeDef,_body_patternMatchWarnings,_body_self,_body_typeAnnotations,_body_typeSignatures) =
             (_body ([ (matchInfo, typingStrategy)
                     | typingStrategy <- typingStrategies _lhs_importEnvironment
                     , matchInfo      <- matchInformation
@@ -2946,8 +3266,10 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
                    (_lhs_importEnvironment)
                    (return ())
                    (_monos)
+                   ([])
+                   (_substitution)
                    ([]))
-    in  ( _debugIO >> putStrLn "Inference Strategies:" >> _body_matchIO,_self,_toplevelTypes,_typeErrors,_warnings)
+    in  ( _debugIO >> putStrLn "Inference Strategies:" >> _body_matchIO,_self,_toplevelTypes,_typeErrors,_warnings     ++ _body_patternMatchWarnings)
 -- Name --------------------------------------------------------
 -- semantic domain
 type T_Name = ( (Bool),(Bool),(Bool),(Tree),(Name))
@@ -3030,7 +3352,9 @@ sem_Names_Nil  =
 -- semantic domain
 type T_Pattern = (Int) ->
                  (ImportEnvironment) ->
-                 ( (Tp),(Int),(ConstraintSet),(PatternAssumptions),(Tree),(Pattern))
+                 ([Warning]) ->
+                 (WrappedSubstitution) ->
+                 ( (Tp),(Int),(ConstraintSet),( [PatternElement] ),(PatternAssumptions),(Tree),([Warning]),(Pattern))
 -- cata
 sem_Pattern :: (Pattern) ->
                (T_Pattern)
@@ -3066,7 +3390,7 @@ sem_Pattern_As :: (T_Range) ->
                   (T_Name) ->
                   (T_Pattern) ->
                   (T_Pattern)
-sem_Pattern_As (_range) (_name) (_pattern) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Pattern_As (_range) (_name) (_pattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             Pattern_As _range_self _name_self _pattern_self
         (_beta) =
@@ -3092,23 +3416,25 @@ sem_Pattern_As (_range) (_name) (_pattern) (_lhs_betaUnique) (_lhs_importEnviron
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_environment,_pattern_oneLineTree,_pattern_self) =
-            (_pattern (_lhs_betaUnique + 1) (_lhs_importEnvironment))
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patternMatchWarnings,_pattern_self) =
+            (_pattern (_lhs_betaUnique + 1) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
     in  ( _beta
          ,_pattern_betaUnique
          ,_newcon .>.
           ctNode [ ctVariable _lhs_betaUnique
                  , _pattern_constraints
                  ]
+         ,_pattern_elements
          ,addToFM _pattern_environment _name_self _beta
          ,_oneLineTree
+         ,_pattern_patternMatchWarnings
          ,_self
          )
 sem_Pattern_Constructor :: (T_Range) ->
                            (T_Name) ->
                            (T_Patterns) ->
                            (T_Pattern)
-sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             Pattern_Constructor _range_self _name_self _patterns_self
         (_beta) =
@@ -3161,16 +3487,18 @@ sem_Pattern_Constructor (_range) (_name) (_patterns) (_lhs_betaUnique) (_lhs_imp
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
-        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_self) =
-            (_patterns (_lhs_betaUnique + 2) (_lhs_importEnvironment))
+        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_patternMatchWarnings,_patterns_self) =
+            (_patterns (_lhs_betaUnique + 2) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
     in  ( _beta
          ,_patterns_betaUnique
          ,_conApply .>.
           ctNode [ ctSingle _conConstructor
                  , ctNode _patterns_constraintslist
                  ]
+         ,FiniteElement (getNameName _name_self) : concat _patterns_elementss
          ,_patterns_environment
          ,_oneLineTree
+         ,_patterns_patternMatchWarnings
          ,_self
          )
 sem_Pattern_InfixConstructor :: (T_Range) ->
@@ -3178,7 +3506,7 @@ sem_Pattern_InfixConstructor :: (T_Range) ->
                                 (T_Name) ->
                                 (T_Pattern) ->
                                 (T_Pattern)
-sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_rightPattern) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_rightPattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             Pattern_InfixConstructor _range_self _leftPattern_self _constructorOperator_self _rightPattern_self
         (_beta) =
@@ -3229,12 +3557,12 @@ sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_ri
                 ]
         ( _range_self) =
             (_range )
-        ( _leftPattern_beta,_leftPattern_betaUnique,_leftPattern_constraints,_leftPattern_environment,_leftPattern_oneLineTree,_leftPattern_self) =
-            (_leftPattern (_lhs_betaUnique + 2) (_lhs_importEnvironment))
+        ( _leftPattern_beta,_leftPattern_betaUnique,_leftPattern_constraints,_leftPattern_elements,_leftPattern_environment,_leftPattern_oneLineTree,_leftPattern_patternMatchWarnings,_leftPattern_self) =
+            (_leftPattern (_lhs_betaUnique + 2) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
         ( _constructorOperator_isIdentifier,_constructorOperator_isOperator,_constructorOperator_isSpecial,_constructorOperator_oneLineTree,_constructorOperator_self) =
             (_constructorOperator )
-        ( _rightPattern_beta,_rightPattern_betaUnique,_rightPattern_constraints,_rightPattern_environment,_rightPattern_oneLineTree,_rightPattern_self) =
-            (_rightPattern (_leftPattern_betaUnique) (_lhs_importEnvironment))
+        ( _rightPattern_beta,_rightPattern_betaUnique,_rightPattern_constraints,_rightPattern_elements,_rightPattern_environment,_rightPattern_oneLineTree,_rightPattern_patternMatchWarnings,_rightPattern_self) =
+            (_rightPattern (_leftPattern_betaUnique) (_lhs_importEnvironment) (_leftPattern_patternMatchWarnings) (_lhs_substitution))
     in  ( _beta
          ,_rightPattern_betaUnique
          ,_conApply .>.
@@ -3242,27 +3570,29 @@ sem_Pattern_InfixConstructor (_range) (_leftPattern) (_constructorOperator) (_ri
                  , _leftPattern_constraints
                  , _rightPattern_constraints
                  ]
+         ,FiniteElement (getNameName _constructorOperator_self) : _leftPattern_elements ++ _rightPattern_elements
          ,_leftPattern_environment `plusFM` _rightPattern_environment
          ,_oneLineTree
+         ,_rightPattern_patternMatchWarnings
          ,_self
          )
 sem_Pattern_Irrefutable :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Pattern)
-sem_Pattern_Irrefutable (_range) (_pattern) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Pattern_Irrefutable (_range) (_pattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             Pattern_Irrefutable _range_self _pattern_self
         (_oneLineTree) =
             intErr "pattern" "irrefutable"
         ( _range_self) =
             (_range )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_environment,_pattern_oneLineTree,_pattern_self) =
-            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment))
-    in  ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_environment,_oneLineTree,_self)
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patternMatchWarnings,_pattern_self) =
+            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
+    in  ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_oneLineTree,_pattern_patternMatchWarnings,_self)
 sem_Pattern_List :: (T_Range) ->
                     (T_Patterns) ->
                     (T_Pattern)
-sem_Pattern_List (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Pattern_List (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             Pattern_List _range_self _patterns_self
         (_beta) =
@@ -3298,20 +3628,22 @@ sem_Pattern_List (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment)
             encloseSep "[" ", " "]" _patterns_oneLineTree
         ( _range_self) =
             (_range )
-        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_self) =
-            (_patterns (_lhs_betaUnique + 2) (_lhs_importEnvironment))
+        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_patternMatchWarnings,_patterns_self) =
+            (_patterns (_lhs_betaUnique + 2) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
     in  ( _beta
          ,_patterns_betaUnique
          ,_newcon .>.
           ctNode (zipWith3 _zipf _patterns_betas _childrenInfo _patterns_constraintslist)
+         ,listPat _patterns_elementss
          ,_patterns_environment
          ,_oneLineTree
+         ,_patterns_patternMatchWarnings
          ,_self
          )
 sem_Pattern_Literal :: (T_Range) ->
                        (T_Literal) ->
                        (T_Pattern)
-sem_Pattern_Literal (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Pattern_Literal (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             Pattern_Literal _range_self _literal_self
         (_beta) =
@@ -3332,13 +3664,13 @@ sem_Pattern_Literal (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironmen
             _literal_oneLineTree
         ( _range_self) =
             (_range )
-        ( _literal_literalType,_literal_oneLineTree,_literal_self) =
+        ( _literal_elements,_literal_literalType,_literal_oneLineTree,_literal_self) =
             (_literal )
-    in  ( _beta,_lhs_betaUnique + 1,ctSingle [ (_literal_literalType .==. _beta) _cinfo ],noAssumptions,_oneLineTree,_self)
+    in  ( _beta,_lhs_betaUnique + 1,ctSingle [ (_literal_literalType .==. _beta) _cinfo ],_literal_elements,noAssumptions,_oneLineTree,_lhs_patternMatchWarnings,_self)
 sem_Pattern_Negate :: (T_Range) ->
                       (T_Literal) ->
                       (T_Pattern)
-sem_Pattern_Negate (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Pattern_Negate (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             Pattern_Negate _range_self _literal_self
         (_beta) =
@@ -3358,13 +3690,13 @@ sem_Pattern_Negate (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment
             Node [ Text "-", _literal_oneLineTree ]
         ( _range_self) =
             (_range )
-        ( _literal_literalType,_literal_oneLineTree,_literal_self) =
+        ( _literal_elements,_literal_literalType,_literal_oneLineTree,_literal_self) =
             (_literal )
-    in  ( _beta,_lhs_betaUnique + 1,ctSingle _newcon,noAssumptions,_oneLineTree,_self)
+    in  ( _beta,_lhs_betaUnique + 1,ctSingle _newcon,_literal_elements,noAssumptions,_oneLineTree,_lhs_patternMatchWarnings,_self)
 sem_Pattern_NegateFloat :: (T_Range) ->
                            (T_Literal) ->
                            (T_Pattern)
-sem_Pattern_NegateFloat (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Pattern_NegateFloat (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             Pattern_NegateFloat _range_self _literal_self
         (_beta) =
@@ -3386,27 +3718,27 @@ sem_Pattern_NegateFloat (_range) (_literal) (_lhs_betaUnique) (_lhs_importEnviro
             Node [ Text "-." , _literal_oneLineTree ]
         ( _range_self) =
             (_range )
-        ( _literal_literalType,_literal_oneLineTree,_literal_self) =
+        ( _literal_elements,_literal_literalType,_literal_oneLineTree,_literal_self) =
             (_literal )
-    in  ( _beta,_lhs_betaUnique + 1,ctSingle _newcon,noAssumptions,_oneLineTree,_self)
+    in  ( _beta,_lhs_betaUnique + 1,ctSingle _newcon,_literal_elements,noAssumptions,_oneLineTree,_lhs_patternMatchWarnings,_self)
 sem_Pattern_Parenthesized :: (T_Range) ->
                              (T_Pattern) ->
                              (T_Pattern)
-sem_Pattern_Parenthesized (_range) (_pattern) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Pattern_Parenthesized (_range) (_pattern) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             Pattern_Parenthesized _range_self _pattern_self
         (_oneLineTree) =
             parens _pattern_oneLineTree
         ( _range_self) =
             (_range )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_environment,_pattern_oneLineTree,_pattern_self) =
-            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment))
-    in  ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_environment,_oneLineTree,_self)
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patternMatchWarnings,_pattern_self) =
+            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
+    in  ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_oneLineTree,_pattern_patternMatchWarnings,_self)
 sem_Pattern_Record :: (T_Range) ->
                       (T_Name) ->
                       (T_RecordPatternBindings) ->
                       (T_Pattern)
-sem_Pattern_Record (_range) (_name) (_recordPatternBindings) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Pattern_Record (_range) (_name) (_recordPatternBindings) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             Pattern_Record _range_self _name_self _recordPatternBindings_self
         ((_beta,_constraints,_environment)) =
@@ -3417,14 +3749,14 @@ sem_Pattern_Record (_range) (_name) (_recordPatternBindings) (_lhs_betaUnique) (
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
-        ( _recordPatternBindings_self) =
-            (_recordPatternBindings )
-    in  ( _beta,_lhs_betaUnique,_constraints,_environment,_oneLineTree,_self)
+        ( _recordPatternBindings_patternMatchWarnings,_recordPatternBindings_self) =
+            (_recordPatternBindings (_lhs_patternMatchWarnings) (_lhs_substitution))
+    in  ( _beta,_lhs_betaUnique,_constraints,pmError "Pattern_Record.elements" "Records are not supported",_environment,_oneLineTree,_recordPatternBindings_patternMatchWarnings,_self)
 sem_Pattern_Successor :: (T_Range) ->
                          (T_Name) ->
                          (T_Literal) ->
                          (T_Pattern)
-sem_Pattern_Successor (_range) (_name) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Pattern_Successor (_range) (_name) (_literal) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             Pattern_Successor _range_self _name_self _literal_self
         ((_beta,_constraints,_environment)) =
@@ -3435,13 +3767,13 @@ sem_Pattern_Successor (_range) (_name) (_literal) (_lhs_betaUnique) (_lhs_import
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
-        ( _literal_literalType,_literal_oneLineTree,_literal_self) =
+        ( _literal_elements,_literal_literalType,_literal_oneLineTree,_literal_self) =
             (_literal )
-    in  ( _beta,_lhs_betaUnique,_constraints,_environment,_oneLineTree,_self)
+    in  ( _beta,_lhs_betaUnique,_constraints,pmError "Pattern_Successor.elements" "Successors are not supported",_environment,_oneLineTree,_lhs_patternMatchWarnings,_self)
 sem_Pattern_Tuple :: (T_Range) ->
                      (T_Patterns) ->
                      (T_Pattern)
-sem_Pattern_Tuple (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Pattern_Tuple (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             Pattern_Tuple _range_self _patterns_self
         (_beta) =
@@ -3463,13 +3795,13 @@ sem_Pattern_Tuple (_range) (_patterns) (_lhs_betaUnique) (_lhs_importEnvironment
             encloseSep "(" ", " ")" _patterns_oneLineTree
         ( _range_self) =
             (_range )
-        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_self) =
-            (_patterns (_lhs_betaUnique + 1) (_lhs_importEnvironment))
-    in  ( _beta,_patterns_betaUnique,_newcon .>. ctNode _patterns_constraintslist,_patterns_environment,_oneLineTree,_self)
+        ( _patterns_betaUnique,_patterns_betas,_patterns_constraintslist,_patterns_elementss,_patterns_environment,_patterns_numberOfPatterns,_patterns_oneLineTree,_patterns_patternMatchWarnings,_patterns_self) =
+            (_patterns (_lhs_betaUnique + 1) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
+    in  ( _beta,_patterns_betaUnique,_newcon .>. ctNode _patterns_constraintslist,FiniteElement ("(" ++ replicate (length $ tail _patterns_self) ',' ++ ")") : concat _patterns_elementss,_patterns_environment,_oneLineTree,_patterns_patternMatchWarnings,_self)
 sem_Pattern_Variable :: (T_Range) ->
                         (T_Name) ->
                         (T_Pattern)
-sem_Pattern_Variable (_range) (_name) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Pattern_Variable (_range) (_name) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             Pattern_Variable _range_self _name_self
         (_beta) =
@@ -3480,10 +3812,10 @@ sem_Pattern_Variable (_range) (_name) (_lhs_betaUnique) (_lhs_importEnvironment)
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
-    in  ( _beta,_lhs_betaUnique + 1,ctVariable _lhs_betaUnique,unitFM _name_self _beta,_oneLineTree,_self)
+    in  ( _beta,_lhs_betaUnique + 1,ctVariable _lhs_betaUnique,[WildcardElement],unitFM _name_self _beta,_oneLineTree,_lhs_patternMatchWarnings,_self)
 sem_Pattern_Wildcard :: (T_Range) ->
                         (T_Pattern)
-sem_Pattern_Wildcard (_range) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Pattern_Wildcard (_range) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             Pattern_Wildcard _range_self
         (_beta) =
@@ -3492,12 +3824,14 @@ sem_Pattern_Wildcard (_range) (_lhs_betaUnique) (_lhs_importEnvironment) =
             Text "_"
         ( _range_self) =
             (_range )
-    in  ( _beta,_lhs_betaUnique + 1,ctEmpty,noAssumptions,_oneLineTree,_self)
+    in  ( _beta,_lhs_betaUnique + 1,ctEmpty,[WildcardElement],noAssumptions,_oneLineTree,_lhs_patternMatchWarnings,_self)
 -- Patterns ----------------------------------------------------
 -- semantic domain
 type T_Patterns = (Int) ->
                   (ImportEnvironment) ->
-                  ( (Int),(Tps),(ConstraintSets),(PatternAssumptions),(Int),( [ Tree] ),(Patterns))
+                  ([Warning]) ->
+                  (WrappedSubstitution) ->
+                  ( (Int),(Tps),(ConstraintSets),([[PatternElement]]),(PatternAssumptions),(Int),( [ Tree] ),([Warning]),(Patterns))
 -- cata
 sem_Patterns :: (Patterns) ->
                 (T_Patterns)
@@ -3506,19 +3840,19 @@ sem_Patterns (list) =
 sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns) ->
                      (T_Patterns)
-sem_Patterns_Cons (_hd) (_tl) (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Patterns_Cons (_hd) (_tl) (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_beta,_hd_betaUnique,_hd_constraints,_hd_environment,_hd_oneLineTree,_hd_self) =
-            (_hd (_lhs_betaUnique) (_lhs_importEnvironment))
-        ( _tl_betaUnique,_tl_betas,_tl_constraintslist,_tl_environment,_tl_numberOfPatterns,_tl_oneLineTree,_tl_self) =
-            (_tl (_hd_betaUnique) (_lhs_importEnvironment))
-    in  ( _tl_betaUnique,_hd_beta : _tl_betas,_hd_constraints : _tl_constraintslist,_hd_environment `plusFM` _tl_environment,1 + _tl_numberOfPatterns,_hd_oneLineTree  :  _tl_oneLineTree,_self)
+        ( _hd_beta,_hd_betaUnique,_hd_constraints,_hd_elements,_hd_environment,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_self) =
+            (_hd (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
+        ( _tl_betaUnique,_tl_betas,_tl_constraintslist,_tl_elementss,_tl_environment,_tl_numberOfPatterns,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self) =
+            (_tl (_hd_betaUnique) (_lhs_importEnvironment) (_hd_patternMatchWarnings) (_lhs_substitution))
+    in  ( _tl_betaUnique,_hd_beta : _tl_betas,_hd_constraints : _tl_constraintslist,_hd_elements : _tl_elementss,_hd_environment `plusFM` _tl_environment,1 + _tl_numberOfPatterns,_hd_oneLineTree  :  _tl_oneLineTree,_tl_patternMatchWarnings,_self)
 sem_Patterns_Nil :: (T_Patterns)
-sem_Patterns_Nil (_lhs_betaUnique) (_lhs_importEnvironment) =
+sem_Patterns_Nil (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             []
-    in  ( _lhs_betaUnique,[],[],noAssumptions,0,[],_self)
+    in  ( _lhs_betaUnique,[],[],[],noAssumptions,0,[],_lhs_patternMatchWarnings,_self)
 -- Position ----------------------------------------------------
 -- semantic domain
 type T_Position = ( (Position))
@@ -3552,9 +3886,11 @@ type T_Qualifier = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (ImportEnvironment) ->
                    (IO ()) ->
                    (Tps) ->
+                   ([Warning]) ->
+                   (WrappedSubstitution) ->
                    (TypeAnnotations) ->
                    (Int) ->
-                   ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),(Tps),(Tree),(Qualifier),(TypeAnnotations),(Int))
+                   ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),(Tps),(Tree),([Warning]),(Qualifier),(TypeAnnotations),(Int))
 -- cata
 sem_Qualifier :: (Qualifier) ->
                  (T_Qualifier)
@@ -3568,19 +3904,19 @@ sem_Qualifier ((Qualifier_Let (_range) (_declarations))) =
     (sem_Qualifier_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Qualifier_Empty :: (T_Range) ->
                        (T_Qualifier)
-sem_Qualifier_Empty (_range) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Qualifier_Empty (_range) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Qualifier_Empty _range_self
         (_oneLineTree) =
             Text ""
         ( _range_self) =
             (_range )
-    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectednotypedef,_lhs_constraints,_lhs_matchIO,_lhs_monos,_oneLineTree,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
+    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectednotypedef,_lhs_constraints,_lhs_matchIO,_lhs_monos,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
 sem_Qualifier_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Qualifier)
-sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Qualifier_Generator _range_self _pattern_self _expression_self
         ((_csetBinds,_assumptions')) =
@@ -3602,10 +3938,10 @@ sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_l
             Node [ _pattern_oneLineTree, Text " <- ", _expression_oneLineTree ]
         ( _range_self) =
             (_range )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_environment,_pattern_oneLineTree,_pattern_self) =
-            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment))
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_pattern_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patternMatchWarnings,_pattern_self) =
+            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_pattern_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_pattern_patternMatchWarnings) (_lhs_substitution) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
     in  ( _assumptions' `combine` _expression_assumptions
          ,_expression_betaUnique
          ,_expression_collectednotypedef
@@ -3617,6 +3953,7 @@ sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_l
          ,_expression_matchIO
          ,eltsFM _pattern_environment ++ _lhs_monos
          ,_oneLineTree
+         ,_expression_patternMatchWarnings
          ,_self
          ,_expression_typeAnnotations
          ,_expression_uniqueSecondRound
@@ -3624,7 +3961,7 @@ sem_Qualifier_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_l
 sem_Qualifier_Guard :: (T_Range) ->
                        (T_Expression) ->
                        (T_Qualifier)
-sem_Qualifier_Guard (_range) (_guard) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Qualifier_Guard (_range) (_guard) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Qualifier_Guard _range_self _guard_self
         (_newcon) =
@@ -3642,8 +3979,8 @@ sem_Qualifier_Guard (_range) (_guard) (_lhs_allPatterns) (_lhs_assumptions) (_lh
             _guard_oneLineTree
         ( _range_self) =
             (_range )
-        ( _guard_assumptions,_guard_beta,_guard_betaUnique,_guard_collectednotypedef,_guard_constraints,_guard_matchIO,_guard_matches,_guard_oneLineTree,_guard_self,_guard_typeAnnotations,_guard_uniqueSecondRound) =
-            (_guard (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _guard_assumptions,_guard_beta,_guard_betaUnique,_guard_collectednotypedef,_guard_constraints,_guard_matchIO,_guard_matches,_guard_oneLineTree,_guard_patternMatchWarnings,_guard_self,_guard_typeAnnotations,_guard_uniqueSecondRound) =
+            (_guard (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
     in  ( _lhs_assumptions `combine` _guard_assumptions
          ,_guard_betaUnique
          ,_guard_collectednotypedef
@@ -3653,6 +3990,7 @@ sem_Qualifier_Guard (_range) (_guard) (_lhs_allPatterns) (_lhs_assumptions) (_lh
          ,_guard_matchIO
          ,_lhs_monos
          ,_oneLineTree
+         ,_guard_patternMatchWarnings
          ,_self
          ,_guard_typeAnnotations
          ,_guard_uniqueSecondRound
@@ -3660,7 +3998,7 @@ sem_Qualifier_Guard (_range) (_guard) (_lhs_allPatterns) (_lhs_assumptions) (_lh
 sem_Qualifier_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Qualifier)
-sem_Qualifier_Let (_range) (_declarations) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Qualifier_Let (_range) (_declarations) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Qualifier_Let _range_self _declarations_self
         ((_aset,_cset,_monoTable)) =
@@ -3675,9 +4013,9 @@ sem_Qualifier_Let (_range) (_declarations) (_lhs_allPatterns) (_lhs_assumptions)
             Node [ Text "let ", encloseSep "{" "; " "}" _declarations_oneLineTree ]
         ( _range_self) =
             (_range )
-        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_matchIO,_declarations_oneLineTree,_declarations_self,_declarations_typeAnnotations,_declarations_typeSignatures,_declarations_uniqueSecondRound) =
-            (_declarations (_lhs_allPatterns) (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (emptyFM) (_lhs_uniqueSecondRound))
-    in  ( _aset,_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_cset,_declarations_matchIO,_lhs_monos,_oneLineTree,_self,_anns ++ _declarations_typeAnnotations,_declarations_uniqueSecondRound)
+        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_matchIO,_declarations_oneLineTree,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeAnnotations,_declarations_typeSignatures,_declarations_uniqueSecondRound) =
+            (_declarations (_lhs_allPatterns) (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (emptyFM) (_lhs_uniqueSecondRound))
+    in  ( _aset,_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_cset,_declarations_matchIO,_lhs_monos,_oneLineTree,_declarations_patternMatchWarnings,_self,_anns ++ _declarations_typeAnnotations,_declarations_uniqueSecondRound)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
 type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -3688,9 +4026,11 @@ type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (ImportEnvironment) ->
                     (IO ()) ->
                     (Tps) ->
+                    ([Warning]) ->
+                    (WrappedSubstitution) ->
                     (TypeAnnotations) ->
                     (Int) ->
-                    ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),(Tps),( [ Tree] ),(Qualifiers),(TypeAnnotations),(Int))
+                    ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),(Tps),( [ Tree] ),([Warning]),(Qualifiers),(TypeAnnotations),(Int))
 -- cata
 sem_Qualifiers :: (Qualifiers) ->
                   (T_Qualifiers)
@@ -3699,19 +4039,19 @@ sem_Qualifiers (list) =
 sem_Qualifiers_Cons :: (T_Qualifier) ->
                        (T_Qualifiers) ->
                        (T_Qualifiers)
-sem_Qualifiers_Cons (_hd) (_tl) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Qualifiers_Cons (_hd) (_tl) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_assumptions,_hd_betaUnique,_hd_collectednotypedef,_hd_constraints,_hd_matchIO,_hd_monos,_hd_oneLineTree,_hd_self,_hd_typeAnnotations,_hd_uniqueSecondRound) =
-            (_hd (_lhs_allPatterns) (_tl_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_tl_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _tl_assumptions,_tl_betaUnique,_tl_collectednotypedef,_tl_constraints,_tl_matchIO,_tl_monos,_tl_oneLineTree,_tl_self,_tl_typeAnnotations,_tl_uniqueSecondRound) =
-            (_tl (_lhs_allPatterns) (_lhs_assumptions) (_hd_betaUnique) (_hd_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_hd_matchIO) (_hd_monos) (_hd_typeAnnotations) (_hd_uniqueSecondRound))
-    in  ( _hd_assumptions,_tl_betaUnique,_tl_collectednotypedef,_hd_constraints,_tl_matchIO,_tl_monos,_hd_oneLineTree  :  _tl_oneLineTree,_self,_tl_typeAnnotations,_tl_uniqueSecondRound)
+        ( _hd_assumptions,_hd_betaUnique,_hd_collectednotypedef,_hd_constraints,_hd_matchIO,_hd_monos,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_self,_hd_typeAnnotations,_hd_uniqueSecondRound) =
+            (_hd (_lhs_allPatterns) (_tl_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_tl_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _tl_assumptions,_tl_betaUnique,_tl_collectednotypedef,_tl_constraints,_tl_matchIO,_tl_monos,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self,_tl_typeAnnotations,_tl_uniqueSecondRound) =
+            (_tl (_lhs_allPatterns) (_lhs_assumptions) (_hd_betaUnique) (_hd_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_hd_matchIO) (_hd_monos) (_hd_patternMatchWarnings) (_lhs_substitution) (_hd_typeAnnotations) (_hd_uniqueSecondRound))
+    in  ( _hd_assumptions,_tl_betaUnique,_tl_collectednotypedef,_hd_constraints,_tl_matchIO,_tl_monos,_hd_oneLineTree  :  _tl_oneLineTree,_tl_patternMatchWarnings,_self,_tl_typeAnnotations,_tl_uniqueSecondRound)
 sem_Qualifiers_Nil :: (T_Qualifiers)
-sem_Qualifiers_Nil (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Qualifiers_Nil (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             []
-    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectednotypedef,_lhs_constraints,_lhs_matchIO,_lhs_monos,[],_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
+    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectednotypedef,_lhs_constraints,_lhs_matchIO,_lhs_monos,[],_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
 -- Range -------------------------------------------------------
 -- semantic domain
 type T_Range = ( (Range))
@@ -3734,8 +4074,10 @@ sem_Range_Range (_start) (_stop) =
 -- RecordExpressionBinding -------------------------------------
 -- semantic domain
 type T_RecordExpressionBinding = ([(Name,Tps,Tp,Bool)]) ->
+                                 ([Warning]) ->
+                                 (WrappedSubstitution) ->
                                  (TypeAnnotations) ->
-                                 ( ([(Name,Tps,Tp,Bool)]),(RecordExpressionBinding),(TypeAnnotations))
+                                 ( ([(Name,Tps,Tp,Bool)]),([Warning]),(RecordExpressionBinding),(TypeAnnotations))
 -- cata
 sem_RecordExpressionBinding :: (RecordExpressionBinding) ->
                                (T_RecordExpressionBinding)
@@ -3745,7 +4087,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: (T_Range) ->
                                                        (T_Name) ->
                                                        (T_Expression) ->
                                                        (T_RecordExpressionBinding)
-sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expression) (_lhs_collectednotypedef) (_lhs_typeAnnotations) =
+sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expression) (_lhs_collectednotypedef) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) =
     let (_self) =
             RecordExpressionBinding_RecordExpressionBinding _range_self _name_self _expression_self
         ((_monos,_constructorenv,_betaUnique,_miscerrors,_warnings,_kindErrors,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_importEnvironment)) =
@@ -3756,14 +4098,16 @@ sem_RecordExpressionBinding_RecordExpressionBinding (_range) (_name) (_expressio
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_allPatterns) (_betaUnique) (_lhs_collectednotypedef) (_importEnvironment) (_matchIO) (_monos) (_tryPatterns) (_lhs_typeAnnotations) (_uniqueSecondRound))
-    in  ( _expression_collectednotypedef,_self,_expression_typeAnnotations)
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_allPatterns) (_betaUnique) (_lhs_collectednotypedef) (_importEnvironment) (_matchIO) (_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_tryPatterns) (_lhs_typeAnnotations) (_uniqueSecondRound))
+    in  ( _expression_collectednotypedef,_expression_patternMatchWarnings,_self,_expression_typeAnnotations)
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
 type T_RecordExpressionBindings = ([(Name,Tps,Tp,Bool)]) ->
+                                  ([Warning]) ->
+                                  (WrappedSubstitution) ->
                                   (TypeAnnotations) ->
-                                  ( ([(Name,Tps,Tp,Bool)]),(RecordExpressionBindings),(TypeAnnotations))
+                                  ( ([(Name,Tps,Tp,Bool)]),([Warning]),(RecordExpressionBindings),(TypeAnnotations))
 -- cata
 sem_RecordExpressionBindings :: (RecordExpressionBindings) ->
                                 (T_RecordExpressionBindings)
@@ -3772,22 +4116,24 @@ sem_RecordExpressionBindings (list) =
 sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_RecordExpressionBindings)
-sem_RecordExpressionBindings_Cons (_hd) (_tl) (_lhs_collectednotypedef) (_lhs_typeAnnotations) =
+sem_RecordExpressionBindings_Cons (_hd) (_tl) (_lhs_collectednotypedef) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_collectednotypedef,_hd_self,_hd_typeAnnotations) =
-            (_hd (_lhs_collectednotypedef) (_lhs_typeAnnotations))
-        ( _tl_collectednotypedef,_tl_self,_tl_typeAnnotations) =
-            (_tl (_hd_collectednotypedef) (_hd_typeAnnotations))
-    in  ( _tl_collectednotypedef,_self,_tl_typeAnnotations)
+        ( _hd_collectednotypedef,_hd_patternMatchWarnings,_hd_self,_hd_typeAnnotations) =
+            (_hd (_lhs_collectednotypedef) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations))
+        ( _tl_collectednotypedef,_tl_patternMatchWarnings,_tl_self,_tl_typeAnnotations) =
+            (_tl (_hd_collectednotypedef) (_hd_patternMatchWarnings) (_lhs_substitution) (_hd_typeAnnotations))
+    in  ( _tl_collectednotypedef,_tl_patternMatchWarnings,_self,_tl_typeAnnotations)
 sem_RecordExpressionBindings_Nil :: (T_RecordExpressionBindings)
-sem_RecordExpressionBindings_Nil (_lhs_collectednotypedef) (_lhs_typeAnnotations) =
+sem_RecordExpressionBindings_Nil (_lhs_collectednotypedef) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) =
     let (_self) =
             []
-    in  ( _lhs_collectednotypedef,_self,_lhs_typeAnnotations)
+    in  ( _lhs_collectednotypedef,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations)
 -- RecordPatternBinding ----------------------------------------
 -- semantic domain
-type T_RecordPatternBinding = ( (RecordPatternBinding))
+type T_RecordPatternBinding = ([Warning]) ->
+                              (WrappedSubstitution) ->
+                              ( ([Warning]),(RecordPatternBinding))
 -- cata
 sem_RecordPatternBinding :: (RecordPatternBinding) ->
                             (T_RecordPatternBinding)
@@ -3797,7 +4143,7 @@ sem_RecordPatternBinding_RecordPatternBinding :: (T_Range) ->
                                                  (T_Name) ->
                                                  (T_Pattern) ->
                                                  (T_RecordPatternBinding)
-sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) =
+sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             RecordPatternBinding_RecordPatternBinding _range_self _name_self _pattern_self
         ((_constructorenv,_betaUnique,_miscerrors,_warnings,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_importEnvironment)) =
@@ -3806,12 +4152,14 @@ sem_RecordPatternBinding_RecordPatternBinding (_range) (_name) (_pattern) =
             (_range )
         ( _name_isIdentifier,_name_isOperator,_name_isSpecial,_name_oneLineTree,_name_self) =
             (_name )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_environment,_pattern_oneLineTree,_pattern_self) =
-            (_pattern (_betaUnique) (_importEnvironment))
-    in  ( _self)
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patternMatchWarnings,_pattern_self) =
+            (_pattern (_betaUnique) (_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
+    in  ( _pattern_patternMatchWarnings,_self)
 -- RecordPatternBindings ---------------------------------------
 -- semantic domain
-type T_RecordPatternBindings = ( (RecordPatternBindings))
+type T_RecordPatternBindings = ([Warning]) ->
+                               (WrappedSubstitution) ->
+                               ( ([Warning]),(RecordPatternBindings))
 -- cata
 sem_RecordPatternBindings :: (RecordPatternBindings) ->
                              (T_RecordPatternBindings)
@@ -3820,19 +4168,19 @@ sem_RecordPatternBindings (list) =
 sem_RecordPatternBindings_Cons :: (T_RecordPatternBinding) ->
                                   (T_RecordPatternBindings) ->
                                   (T_RecordPatternBindings)
-sem_RecordPatternBindings_Cons (_hd) (_tl) =
+sem_RecordPatternBindings_Cons (_hd) (_tl) (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_self) =
-            (_hd )
-        ( _tl_self) =
-            (_tl )
-    in  ( _self)
+        ( _hd_patternMatchWarnings,_hd_self) =
+            (_hd (_lhs_patternMatchWarnings) (_lhs_substitution))
+        ( _tl_patternMatchWarnings,_tl_self) =
+            (_tl (_hd_patternMatchWarnings) (_lhs_substitution))
+    in  ( _tl_patternMatchWarnings,_self)
 sem_RecordPatternBindings_Nil :: (T_RecordPatternBindings)
-sem_RecordPatternBindings_Nil  =
+sem_RecordPatternBindings_Nil (_lhs_patternMatchWarnings) (_lhs_substitution) =
     let (_self) =
             []
-    in  ( _self)
+    in  ( _lhs_patternMatchWarnings,_self)
 -- RightHandSide -----------------------------------------------
 -- semantic domain
 type T_RightHandSide = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -3841,9 +4189,11 @@ type T_RightHandSide = ([((Expression, [String]), Core_TypingStrategy)]) ->
                        (ImportEnvironment) ->
                        (IO ()) ->
                        (Tps) ->
+                       ([Warning]) ->
+                       (WrappedSubstitution) ->
                        (TypeAnnotations) ->
                        (Int) ->
-                       ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),( String -> Tree ),(RightHandSide),(TypeAnnotations),(Int))
+                       ( (Assumptions),(Tp),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(IO ()),( String -> Tree ),([Warning]),(RightHandSide),(TypeAnnotations),(Int))
 -- cata
 sem_RightHandSide :: (RightHandSide) ->
                      (T_RightHandSide)
@@ -3855,7 +4205,7 @@ sem_RightHandSide_Expression :: (T_Range) ->
                                 (T_Expression) ->
                                 (T_MaybeDeclarations) ->
                                 (T_RightHandSide)
-sem_RightHandSide_Expression (_range) (_expression) (_where) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_RightHandSide_Expression (_range) (_expression) (_where) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             RightHandSide_Expression _range_self _expression_self _where_self
         (_oneLineTree) =
@@ -3867,16 +4217,16 @@ sem_RightHandSide_Expression (_range) (_expression) (_where) (_lhs_allPatterns) 
                 )
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _where_assumptions,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_matchIO,_where_oneLineTree,_where_self,_where_typeAnnotations,_where_uniqueSecondRound) =
-            (_where (_lhs_allPatterns) (_expression_assumptions) (_expression_betaUnique) (_expression_collectednotypedef) (_expression_constraints) (_lhs_importEnvironment) (_expression_matchIO) (_lhs_monos) (_expression_typeAnnotations) (_expression_uniqueSecondRound))
-    in  ( _where_assumptions,_expression_beta,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_matchIO,_oneLineTree,_self,_where_typeAnnotations,_where_uniqueSecondRound)
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _where_assumptions,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_matchIO,_where_oneLineTree,_where_patternMatchWarnings,_where_self,_where_typeAnnotations,_where_uniqueSecondRound) =
+            (_where (_lhs_allPatterns) (_expression_assumptions) (_expression_betaUnique) (_expression_collectednotypedef) (_expression_constraints) (_lhs_importEnvironment) (_expression_matchIO) (_lhs_monos) (_expression_patternMatchWarnings) (_lhs_substitution) (_expression_typeAnnotations) (_expression_uniqueSecondRound))
+    in  ( _where_assumptions,_expression_beta,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_matchIO,_oneLineTree,_where_patternMatchWarnings,_self,_where_typeAnnotations,_where_uniqueSecondRound)
 sem_RightHandSide_Guarded :: (T_Range) ->
                              (T_GuardedExpressions) ->
                              (T_MaybeDeclarations) ->
                              (T_RightHandSide)
-sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) (_lhs_allPatterns) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             RightHandSide_Guarded _range_self _guardedexpressions_self _where_self
         (_beta) =
@@ -3890,11 +4240,11 @@ sem_RightHandSide_Guarded (_range) (_guardedexpressions) (_where) (_lhs_allPatte
                 )
         ( _range_self) =
             (_range )
-        ( _guardedexpressions_assumptions,_guardedexpressions_betaUnique,_guardedexpressions_betas,_guardedexpressions_collectednotypedef,_guardedexpressions_constraintslist,_guardedexpressions_matchIO,_guardedexpressions_oneLineTree,_guardedexpressions_self,_guardedexpressions_typeAnnotations,_guardedexpressions_uniqueSecondRound) =
-            (_guardedexpressions (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (length _guardedexpressions_constraintslist) (_beta) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _where_assumptions,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_matchIO,_where_oneLineTree,_where_self,_where_typeAnnotations,_where_uniqueSecondRound) =
-            (_where (_lhs_allPatterns) (_guardedexpressions_assumptions) (_guardedexpressions_betaUnique) (_guardedexpressions_collectednotypedef) (ctNode _guardedexpressions_constraintslist) (_lhs_importEnvironment) (_guardedexpressions_matchIO) (_lhs_monos) (_guardedexpressions_typeAnnotations) (_guardedexpressions_uniqueSecondRound))
-    in  ( _where_assumptions,_beta,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_matchIO,_oneLineTree,_self,_where_typeAnnotations,_where_uniqueSecondRound)
+        ( _guardedexpressions_assumptions,_guardedexpressions_betaUnique,_guardedexpressions_betas,_guardedexpressions_collectednotypedef,_guardedexpressions_constraintslist,_guardedexpressions_matchIO,_guardedexpressions_oneLineTree,_guardedexpressions_patternMatchWarnings,_guardedexpressions_self,_guardedexpressions_typeAnnotations,_guardedexpressions_uniqueSecondRound) =
+            (_guardedexpressions (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (length _guardedexpressions_constraintslist) (_lhs_patternMatchWarnings) (_beta) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _where_assumptions,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_matchIO,_where_oneLineTree,_where_patternMatchWarnings,_where_self,_where_typeAnnotations,_where_uniqueSecondRound) =
+            (_where (_lhs_allPatterns) (_guardedexpressions_assumptions) (_guardedexpressions_betaUnique) (_guardedexpressions_collectednotypedef) (ctNode _guardedexpressions_constraintslist) (_lhs_importEnvironment) (_guardedexpressions_matchIO) (_lhs_monos) (_guardedexpressions_patternMatchWarnings) (_lhs_substitution) (_guardedexpressions_typeAnnotations) (_guardedexpressions_uniqueSecondRound))
+    in  ( _where_assumptions,_beta,_where_betaUnique,_where_collectednotypedef,_where_constraints,_where_matchIO,_oneLineTree,_where_patternMatchWarnings,_self,_where_typeAnnotations,_where_uniqueSecondRound)
 -- SimpleType --------------------------------------------------
 -- semantic domain
 type T_SimpleType = ( (SimpleType))
@@ -3928,9 +4278,11 @@ type T_Statement = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (ImportEnvironment) ->
                    (IO ()) ->
                    (Tps) ->
+                   ([Warning]) ->
+                   (WrappedSubstitution) ->
                    (TypeAnnotations) ->
                    (Int) ->
-                   ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Maybe Tp),(IO ()),(Tps),(Tree),(Statement),(TypeAnnotations),(Int))
+                   ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Maybe Tp),(IO ()),(Tps),(Tree),([Warning]),(Statement),(TypeAnnotations),(Int))
 -- cata
 sem_Statement :: (Statement) ->
                  (T_Statement)
@@ -3944,18 +4296,18 @@ sem_Statement ((Statement_Let (_range) (_declarations))) =
     (sem_Statement_Let ((sem_Range (_range))) ((sem_Declarations (_declarations))))
 sem_Statement_Empty :: (T_Range) ->
                        (T_Statement)
-sem_Statement_Empty (_range) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Statement_Empty (_range) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Statement_Empty _range_self
         (_oneLineTree) =
             Text ""
         ( _range_self) =
             (_range )
-    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectednotypedef,_lhs_constraints,_lhs_generatorBeta,_lhs_matchIO,_lhs_monos,_oneLineTree,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
+    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectednotypedef,_lhs_constraints,_lhs_generatorBeta,_lhs_matchIO,_lhs_monos,_oneLineTree,_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
 sem_Statement_Expression :: (T_Range) ->
                             (T_Expression) ->
                             (T_Statement)
-sem_Statement_Expression (_range) (_expression) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Statement_Expression (_range) (_expression) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Statement_Expression _range_self _expression_self
         (_beta) =
@@ -3975,8 +4327,8 @@ sem_Statement_Expression (_range) (_expression) (_lhs_allPatterns) (_lhs_assumpt
             _expression_oneLineTree
         ( _range_self) =
             (_range )
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_lhs_betaUnique + 1) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
     in  ( _lhs_assumptions `combine` _expression_assumptions
          ,_expression_betaUnique
          ,_expression_collectednotypedef
@@ -3987,6 +4339,7 @@ sem_Statement_Expression (_range) (_expression) (_lhs_allPatterns) (_lhs_assumpt
          ,_expression_matchIO
          ,_lhs_monos
          ,_oneLineTree
+         ,_expression_patternMatchWarnings
          ,_self
          ,_expression_typeAnnotations
          ,_expression_uniqueSecondRound
@@ -3995,7 +4348,7 @@ sem_Statement_Generator :: (T_Range) ->
                            (T_Pattern) ->
                            (T_Expression) ->
                            (T_Statement)
-sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Statement_Generator _range_self _pattern_self _expression_self
         ((_csetBinds,_assumptions')) =
@@ -4017,10 +4370,10 @@ sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_l
             Node [ _pattern_oneLineTree, Text " <- ", _expression_oneLineTree ]
         ( _range_self) =
             (_range )
-        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_environment,_pattern_oneLineTree,_pattern_self) =
-            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment))
-        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
-            (_expression (_lhs_allPatterns) (_pattern_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _pattern_beta,_pattern_betaUnique,_pattern_constraints,_pattern_elements,_pattern_environment,_pattern_oneLineTree,_pattern_patternMatchWarnings,_pattern_self) =
+            (_pattern (_lhs_betaUnique) (_lhs_importEnvironment) (_lhs_patternMatchWarnings) (_lhs_substitution))
+        ( _expression_assumptions,_expression_beta,_expression_betaUnique,_expression_collectednotypedef,_expression_constraints,_expression_matchIO,_expression_matches,_expression_oneLineTree,_expression_patternMatchWarnings,_expression_self,_expression_typeAnnotations,_expression_uniqueSecondRound) =
+            (_expression (_lhs_allPatterns) (_pattern_betaUnique) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_pattern_patternMatchWarnings) (_lhs_substitution) ([]) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
     in  ( _assumptions' `combine` _expression_assumptions
          ,_expression_betaUnique
          ,_expression_collectednotypedef
@@ -4033,6 +4386,7 @@ sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_l
          ,_expression_matchIO
          ,eltsFM _pattern_environment ++ _lhs_monos
          ,_oneLineTree
+         ,_expression_patternMatchWarnings
          ,_self
          ,_expression_typeAnnotations
          ,_expression_uniqueSecondRound
@@ -4040,7 +4394,7 @@ sem_Statement_Generator (_range) (_pattern) (_expression) (_lhs_allPatterns) (_l
 sem_Statement_Let :: (T_Range) ->
                      (T_Declarations) ->
                      (T_Statement)
-sem_Statement_Let (_range) (_declarations) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Statement_Let (_range) (_declarations) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             Statement_Let _range_self _declarations_self
         ((_aset,_cset,_monoTable)) =
@@ -4055,9 +4409,9 @@ sem_Statement_Let (_range) (_declarations) (_lhs_allPatterns) (_lhs_assumptions)
             Node [ Text "let ", encloseSep "{" "; " "}" _declarations_oneLineTree ]
         ( _range_self) =
             (_range )
-        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_matchIO,_declarations_oneLineTree,_declarations_self,_declarations_typeAnnotations,_declarations_typeSignatures,_declarations_uniqueSecondRound) =
-            (_declarations (_lhs_allPatterns) (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_monoTable) (_lhs_monos) (_lhs_typeAnnotations) (emptyFM) (_lhs_uniqueSecondRound))
-    in  ( _aset,_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_cset,Nothing,_declarations_matchIO,_lhs_monos,_oneLineTree,_self,_anns ++ _declarations_typeAnnotations,_declarations_uniqueSecondRound)
+        ( _declarations_betaUnique,_declarations_bindingGroups,_declarations_collectednotypedef,_declarations_matchIO,_declarations_oneLineTree,_declarations_patternMatchWarnings,_declarations_self,_declarations_typeAnnotations,_declarations_typeSignatures,_declarations_uniqueSecondRound) =
+            (_declarations (_lhs_allPatterns) (_lhs_betaUnique) ([]) (_lhs_collectednotypedef) (_lhs_importEnvironment) (_lhs_matchIO) (_monoTable) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (emptyFM) (_lhs_uniqueSecondRound))
+    in  ( _aset,_declarations_betaUnique,_notypedefs ++ _declarations_collectednotypedef,_cset,Nothing,_declarations_matchIO,_lhs_monos,_oneLineTree,_declarations_patternMatchWarnings,_self,_anns ++ _declarations_typeAnnotations,_declarations_uniqueSecondRound)
 -- Statements --------------------------------------------------
 -- semantic domain
 type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
@@ -4069,9 +4423,11 @@ type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (ImportEnvironment) ->
                     (IO ()) ->
                     (Tps) ->
+                    ([Warning]) ->
+                    (WrappedSubstitution) ->
                     (TypeAnnotations) ->
                     (Int) ->
-                    ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Maybe Tp),(IO ()),( [ Tree] ),(Statements),(TypeAnnotations),(Int))
+                    ( (Assumptions),(Int),([(Name,Tps,Tp,Bool)]),(ConstraintSet),(Maybe Tp),(IO ()),( [ Tree] ),([Warning]),(Statements),(TypeAnnotations),(Int))
 -- cata
 sem_Statements :: (Statements) ->
                   (T_Statements)
@@ -4080,19 +4436,19 @@ sem_Statements (list) =
 sem_Statements_Cons :: (T_Statement) ->
                        (T_Statements) ->
                        (T_Statements)
-sem_Statements_Cons (_hd) (_tl) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Statements_Cons (_hd) (_tl) (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             (:) _hd_self _tl_self
-        ( _hd_assumptions,_hd_betaUnique,_hd_collectednotypedef,_hd_constraints,_hd_generatorBeta,_hd_matchIO,_hd_monos,_hd_oneLineTree,_hd_self,_hd_typeAnnotations,_hd_uniqueSecondRound) =
-            (_hd (_lhs_allPatterns) (_tl_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_tl_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
-        ( _tl_assumptions,_tl_betaUnique,_tl_collectednotypedef,_tl_constraints,_tl_generatorBeta,_tl_matchIO,_tl_oneLineTree,_tl_self,_tl_typeAnnotations,_tl_uniqueSecondRound) =
-            (_tl (_lhs_allPatterns) (_lhs_assumptions) (_hd_betaUnique) (_hd_collectednotypedef) (_lhs_constraints) (_hd_generatorBeta) (_lhs_importEnvironment) (_hd_matchIO) (_hd_monos) (_hd_typeAnnotations) (_hd_uniqueSecondRound))
-    in  ( _hd_assumptions,_tl_betaUnique,_tl_collectednotypedef,_hd_constraints,_tl_generatorBeta,_tl_matchIO,_hd_oneLineTree  :  _tl_oneLineTree,_self,_tl_typeAnnotations,_tl_uniqueSecondRound)
+        ( _hd_assumptions,_hd_betaUnique,_hd_collectednotypedef,_hd_constraints,_hd_generatorBeta,_hd_matchIO,_hd_monos,_hd_oneLineTree,_hd_patternMatchWarnings,_hd_self,_hd_typeAnnotations,_hd_uniqueSecondRound) =
+            (_hd (_lhs_allPatterns) (_tl_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_tl_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound))
+        ( _tl_assumptions,_tl_betaUnique,_tl_collectednotypedef,_tl_constraints,_tl_generatorBeta,_tl_matchIO,_tl_oneLineTree,_tl_patternMatchWarnings,_tl_self,_tl_typeAnnotations,_tl_uniqueSecondRound) =
+            (_tl (_lhs_allPatterns) (_lhs_assumptions) (_hd_betaUnique) (_hd_collectednotypedef) (_lhs_constraints) (_hd_generatorBeta) (_lhs_importEnvironment) (_hd_matchIO) (_hd_monos) (_hd_patternMatchWarnings) (_lhs_substitution) (_hd_typeAnnotations) (_hd_uniqueSecondRound))
+    in  ( _hd_assumptions,_tl_betaUnique,_tl_collectednotypedef,_hd_constraints,_tl_generatorBeta,_tl_matchIO,_hd_oneLineTree  :  _tl_oneLineTree,_tl_patternMatchWarnings,_self,_tl_typeAnnotations,_tl_uniqueSecondRound)
 sem_Statements_Nil :: (T_Statements)
-sem_Statements_Nil (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
+sem_Statements_Nil (_lhs_allPatterns) (_lhs_assumptions) (_lhs_betaUnique) (_lhs_collectednotypedef) (_lhs_constraints) (_lhs_generatorBeta) (_lhs_importEnvironment) (_lhs_matchIO) (_lhs_monos) (_lhs_patternMatchWarnings) (_lhs_substitution) (_lhs_typeAnnotations) (_lhs_uniqueSecondRound) =
     let (_self) =
             []
-    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectednotypedef,_lhs_constraints,_lhs_generatorBeta,_lhs_matchIO,[],_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
+    in  ( _lhs_assumptions,_lhs_betaUnique,_lhs_collectednotypedef,_lhs_constraints,_lhs_generatorBeta,_lhs_matchIO,[],_lhs_patternMatchWarnings,_self,_lhs_typeAnnotations,_lhs_uniqueSecondRound)
 -- Strings -----------------------------------------------------
 -- semantic domain
 type T_Strings = ( ( [ Tree] ),(Strings))

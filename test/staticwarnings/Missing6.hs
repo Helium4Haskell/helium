@@ -1,0 +1,3 @@
+
+main :: String -> ()
+main "hello" = ()

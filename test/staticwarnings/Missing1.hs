@@ -1,0 +1,3 @@
+
+main :: Bool -> ()
+main True = ()
