@@ -80,6 +80,8 @@ STATICANALYSIS = \
 	staticanalysis/messages/TypeErrors.hs \
 	staticanalysis/messages/KindErrors.hs \
 	staticanalysis/messages/Warnings.hs \
+	staticanalysis/messages/UHA_Source.hs \
+	staticanalysis/messages/DoublyLinkedTree.hs \
 	staticanalysis/solvers/BasicState.hs \
 	staticanalysis/solvers/FixpointSolveState.hs \
 	staticanalysis/solvers/TypeConstraintSemantics.hs \
