@@ -1,0 +1,10 @@
+Compiling typeerrors/Examples/TypeBug7.hs
+
+(5,36): Type error in application
+*** Expression     : g (tail a)
+*** Term           : g
+*** Type           : [[a]] -> b       
+*** Does not match : [a  ] -> [String]
+*** Because        : unification would give infinite type
+
+Compilation failed with 1 type error
