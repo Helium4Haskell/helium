@@ -1,0 +1,2 @@
+#!/bin/bash
+for f in correct/*.hs          ; do echo $f; ./MakeOutput ${f%.hs} ; done

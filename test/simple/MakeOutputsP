@@ -1,0 +1,2 @@
+#!/bin/bash
+for f in parser/*.hs          ; do echo $f; ./MakeOutput ${f%.hs} ; done

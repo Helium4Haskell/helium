@@ -214,7 +214,9 @@ OBJS = $(SRCS:.hs=.o)
 
 # The main target
 compiler: $(OBJS)
-	# GHC Helium compiler
+	@echo "****************************************************"
+	@echo "  Helium: the Helium compiler"
+	@echo "****************************************************"
 	$(HC)	-o $(HELIUMBINDIR)/$(MAIN)$(EXE) $(HC_OPTS) $(OBJS)
 ifdef STRIP
 	$(STRIP) $(HELIUMBINDIR)/$(MAIN)$(EXE)
@@ -223,11 +225,15 @@ endif
 all: ag compiler coreasm lvmrun libraries texthint status
 
 coreasm:
-	# make core assembler
+	@echo "****************************************************"
+	@echo "  COREASM: the Core code compiler"
+	@echo "****************************************************"
 	cd $(LVMLIBDIR); $(MAKE) EXTRA_HC_OPTS="$(EXTRA_HC_OPTS)"
 
 lvmrun:
-	# make lvmrun
+	@echo "****************************************************"
+	@echo "  LVMRUN: the bytecode interpreter"
+	@echo "****************************************************"
 	cd $(LVMRUNTIMEDIR); $(MAKE)
 
 .SUFFIXES : .o .hs .hi .lhs .hc	.s .ag
@@ -237,12 +243,19 @@ $(LVMLIBDIR)/common/ghc/Special.hi: $(LVMLIBDIR)/common/ghc/Special.hs
 	$(HC) -c $< -cpp -fglasgow-exts $(HC_OPTS) 
 
 libraries:
-	# Building libraries
+	@echo "****************************************************"
+	@echo "  Libraries (with overloading)"
+	@echo "****************************************************"
 	cd ../lib; $(MAKE) 
+	@echo "****************************************************"
+	@echo "  Simple libraries (without overloading)"
+	@echo "****************************************************"
 	cd ../lib/simple; $(MAKE) 
 
 texthint: texthint/Main.hs utils/OSSpecific.hs
-	# GHC HeliumInterpreter
+	@echo "****************************************************"
+	@echo "  TextHint: the textual Helium interpreter"
+	@echo "****************************************************"
 	$(HC) $(HC_OPTS) --make -iutils -o $(HELIUMBINDIR)/texthint$(EXE) texthint/Main.hs 
 	$(STRIP) $(HELIUMBINDIR)/texthint$(EXE)
 

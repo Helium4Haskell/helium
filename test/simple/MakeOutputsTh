@@ -1,0 +1,2 @@
+#!/bin/bash
+for f in thompson/*.hs          ; do echo $f; ./MakeOutput ${f%.hs} ; done
