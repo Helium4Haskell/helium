@@ -6,5 +6,6 @@ Compiling typeerrors/Examples/InfiniteType3.hs
    type           : (a -> a -> Bool) -> a   -> [a] -> [a]
    does not match : b                -> [b] -> [b]       
  because          : unification would give infinite type
+ probable fix     : insert a first argument
 
 Compilation failed with 1 error

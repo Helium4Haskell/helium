@@ -1,22 +1,21 @@
 Compiling typeerrors/Edinburgh/Ex16.hs
-(3,16): Type error in infix application
- expression       : x + 1
- operator         : +
-   type           : Int  -> Int -> Int   
-   does not match : Bool -> Int -> a -> b
+(3,15): Type error in application
+ expression       : (x + 1) (if x then x + 1 else x - 2.2)
+ term             : x + 1
+   type           : Int     
+   does not match : Int -> a
+ because          : it is not a function
 
-(3,31): Type error in infix application
- expression       : x + 1
- operator         : +
-   type           : Int -> Int -> Int
- left operand     : x
-   type           : Bool
-   does not match : Int 
+(3,24): Type error in conditional
+ expression       : if x then x + 1 else x - 2.2
+ term             : x
+   type           : Int 
+   does not match : Bool
 
-(3,41): Type error in infix application
- expression       : x - 2.2
- operator         : -
-   type           : Int  -> Int   -> Int
-   does not match : Bool -> Float -> a  
+(3,42): Type error in literal
+ expression       : 2.2
+   type           : Float
+   expected type  : Int  
+ probable fix     : use an int literal instead
 
 Compilation failed with 3 errors

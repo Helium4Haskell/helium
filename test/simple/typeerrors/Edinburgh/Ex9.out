@@ -1,17 +1,14 @@
 Compiling typeerrors/Edinburgh/Ex9.hs
 (3,6): Warning: Variable "n" is not used
-(4,11): Type error in infix application
+(4,13): Type error in infix application
  expression       : m ^^^ n
  operator         : ^^^
    type           : String -> String -> String
- left operand     : m
-   type           : Int   
-   does not match : String
+   does not match : Int    -> a      -> b     
 
-(4,22): Type error in application
- expression       : f5 (m - 1)
- term             : f5
+(4,22): Type error in variable
+ expression       : f5
    type           : Int -> a -> [b]
-   does not match : Int -> [b]     
+   expected type  : Int -> [b]     
 
 Compilation failed with 2 errors
