@@ -4,6 +4,7 @@
 
 imports{
 import Byte(bytesFromString)
+import IOExts
 }
 
 {
@@ -60,20 +61,28 @@ SEM Module
                 lhs.core = @module_ { Module.moduleDecls = 
                                 insertedMain @lhs.toplevelTypes : Module.moduleDecls @module_ }
                 loc.module_ = 
-        CoreParse.modulePublic
-            ( case @exports.self of
-                MaybeExports_Nothing -> True
-                _                    -> False
-            )
-            ( @exports.values {- `unionSet` localValuePrims @body.decls -} -- NOTE: generated stuff is already public  -- map, filter
-            , @exports.cons     -- True, False
-            , @exports.types    -- Bool, Int
-            , emptySet          -- Bool(..); put Bool in @exports.cons as well!
-            , @exports.mods     -- module ImportedModule, module ThisModule
-            )
-            (makeCoreModule (fmap idFromName @name.name)
-                ( @body.decls ++ @lhs.extraDecls
-                ))
+
+                    everythingPublicButPrelude
+                        (makeCoreModule (fmap idFromName @name.name)
+                            ( @body.decls ++ @lhs.extraDecls
+                            ))
+
+{
+-- set the public bit of all declarations except those that are imported from
+-- Prelude or HeliumLang. I.e. export everything everywhere
+everythingPublicButPrelude :: Core.CoreModule -> Core.CoreModule
+everythingPublicButPrelude mod = mod { Core.moduleDecls = map setPublic (Core.moduleDecls mod) }
+  where
+    setPublic decl = 
+        let accessRecord = Core.declAccess decl
+            public = case Core.declAccess decl of 
+                    Core.Defined _ -> True
+                    Core.Imported { Core.importModule = m } -> 
+                        stringFromId m `notElem` ["Prelude", "HeliumLang"] 
+        in 
+        decl{ Core.declAccess = 
+                  (Core.declAccess decl){ Core.accessPublic = public } }
+}
 
 {-
 {

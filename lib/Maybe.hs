@@ -4,11 +4,7 @@
 -- Suitable for use with Helium (with overloading)
 -----------------------------------------------------------------------------
 
-module Maybe(
-    isJust, isNothing,
-    fromJust, fromMaybe, listToMaybe, maybeToList,
-    catMaybes, mapMaybe
-    ) where
+module Maybe where
 
 isJust            :: Maybe a -> Bool
 isJust (Just _)        = True

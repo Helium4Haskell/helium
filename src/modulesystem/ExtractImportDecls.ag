@@ -57,6 +57,8 @@ SEM ImportDeclaration
                   )
                   @importspecification.imps
                   -}
+      -- import specifications are always Nothing since the
+      -- parser does not allow import lists
         loc.filterFun = case @importspecification.imps of
                           Nothing    -> id  -- everything
                           Just imps  -> \decls -> [decl | decl <- decls, isImported imps decl]

@@ -21,7 +21,7 @@ Absent:
 - [] and (,) and (,,,) etc as (type) constructor
 - empty declarations, qualifiers, alternatives or statements
 - hiding, qualified, as in imports
-- (..) in imports and exports
+- import and export lists
 
 Simplified:
 - funlhs 
@@ -45,6 +45,8 @@ import UHA_Range
 
 import qualified CollectFunctionBindings
 import Utils
+
+import IOExts
 
 parseOnlyImports :: String -> IO [String]
 parseOnlyImports fullName = do
@@ -73,11 +75,21 @@ module_ = addRange $
     do
         lexMODULE
         n <- modid
-        mes <- option MaybeExports_Nothing (fmap MaybeExports_Just exports)
+        let mes = MaybeExports_Nothing -- no support for export lists; mes <- option MaybeExports_Nothing (fmap MaybeExports_Just exports)
         lexWHERE
         b <- body
         return (\r ->
-            Module_Module r (MaybeName_Just n) mes b)
+                Module_Module 
+                    r 
+                    (MaybeName_Just n)
+                    -- TODO: hack so that Prelude still exports PreludePrim
+                    (if getNameName n == "Prelude" then MaybeExports_Just 
+                                            [ Export_Module noRange (Name_Identifier noRange [] "Prelude")
+                                            , Export_Module noRange (Name_Identifier noRange [] "PreludePrim")
+                                            ]
+                                       else mes) 
+                    b
+               )
     <|>
     do 
         b <- body
@@ -89,7 +101,7 @@ onlyImports =
     do
         lexMODULE
         modid
-        option MaybeExports_Nothing (fmap MaybeExports_Just exports)
+        let mes = MaybeExports_Nothing -- no support for export lists; mes <- option MaybeExports_Nothing (fmap MaybeExports_Just exports)
         lexWHERE
         lexLBRACE <|> lexINSERTED_LBRACE
         many (do { i <- impdecl; semicolon; return i })
@@ -108,14 +120,25 @@ topdecls  ->  topdecl1 ";" ... ";" topdecln    (n>=0)
 -}
 
 body = addRange $
-    withBraces' $ \explicit -> do
-        let combinator = if explicit 
-                         then semiSepTerm
-                         else semiOrInsertedSemiSepTerm
-        is <- combinator impdecl
-        ds <- combinator topdecl
-        let groupedDecls = CollectFunctionBindings.decls ds
-        return $ \r -> Body_Body r is groupedDecls
+    withBraces' $ \explicit -> 
+      do{ (is, ds) <- importsThenTopdecls explicit
+        ; let groupedDecls = CollectFunctionBindings.decls ds
+        ; return $ \r -> Body_Body r is groupedDecls
+        }
+
+importsThenTopdecls explicit =
+    do
+        is <- many (do { i <- impdecl
+                       ; if explicit then lexSEMI else lexSEMI <|> lexINSERTED_SEMI 
+                       ; return i
+                       } )
+        ds <- topdeclCombinator topdecl
+        return (is, ds)
+        
+  where
+    topdeclCombinator = if explicit then semiSepTerm else semiOrInsertedSemiSepTerm
+
+        
     
 {-
 topdecl  
@@ -222,6 +245,11 @@ constr = addRange $
         
 
 {-
+
+simplified import:
+impdecl -> "import" modid
+
+In comments you can still find the code for:
 impdecl     ->  "import" "qualified"? modid ( "as" modid )? impspec
 impspec     ->  "hiding"? "(" import1 "," ... "," importn ")"    (n>=0)  
              |      (empty)
@@ -240,7 +268,7 @@ impdecl = addRange (
         let q = False
 
         m <- modid
-        
+     
         {- currently no support for "as"
         a <- option MaybeName_Nothing $
             do 
@@ -250,17 +278,21 @@ impdecl = addRange (
         -}
         let a = MaybeName_Nothing
         
-        i <- option MaybeImportSpecification_Nothing 
-                (fmap MaybeImportSpecification_Just impspec)
+        let i = MaybeImportSpecification_Nothing 
+            -- currently no support for import lists
+            --   option MaybeImportSpecification_Nothing 
+            --     (fmap MaybeImportSpecification_Just impspec)
         return $ \r -> ImportDeclaration_Import r q m a i
     ) <?> "import declaration"
+
+{-
 
 impspec :: HParser ImportSpecification
 impspec = addRange $
     do  
--- Currently, no "hiding" support        h <- option False (do { reserved "hiding"; return True })
+        h <- option False (do { reserved "hiding"; return True })
         is <- parens (commas import_)
-        return $ \r -> ImportSpecification_Import r False is
+        return $ \r -> ImportSpecification_Import r h is
 
 import_ :: HParser Import
 import_ = addRange $
@@ -275,15 +307,15 @@ import_ = addRange $
 
 import1 :: Name -> HParser (Range -> Import)
 import1 n =
-{- Currently no support for ".." notation
     do
         lexDotDot
         return $ \r -> Import_TypeOrClassComplete r n
-    <|> -}
+    <|> 
     do 
         ns <- commas cname
         return $ \r -> Import_TypeOrClass r n (MaybeNames_Just ns)
-    
+-}
+
 {-
 exports ->  "(" export1 "," ... "," exportn ")"    (n>=0)  
 export  ->  var  
@@ -291,7 +323,6 @@ export  ->  var
          |  conid ( "(" export1 ")" )?    (n>=0)
 export1 -> ".." | cname1 "," ... "," cnamen 
 cname   ->  var | con  
--}
 
 exports :: HParser Exports
 exports =
@@ -315,17 +346,17 @@ export_ = addRange (
     )
 export1 :: Name -> HParser (Range -> Export)
 export1 n =
-{- Currently no support for ".." notation
     do
         lexDOTDOT
         return $ \r -> Export_TypeOrClassComplete r n
-    <|>-}
+    <|>
     do 
         ns <- commas cname
         return $ \r -> Export_TypeOrClass r n (MaybeNames_Just ns)
 
 cname :: HParser Name
 cname = try var <|> con
+-}
     
 {-
 decls   ->  "{" decl1 ";" ... ";" decln "}"    (n>=0)  

@@ -4,18 +4,9 @@
 -- Suitable for use with Helium
 -----------------------------------------------------------------------------
 
-module List ( 
-    find, findIndex, findIndices,
-    nubBy, deleteBy, deleteFirstsBy,
-    unionBy, intersectBy,
-    intersperse, transpose, partition, groupBy,
-    inits, tails,
-    mapAccumL, mapAccumR,
-    sortBy, insertBy, maximumBy, minimumBy,
-    unfoldr
-    ) where
+module List where
 
-import Maybe( listToMaybe )
+import Maybe
 
 find                    :: (a -> Bool) -> [a] -> Maybe a
 find p                   = listToMaybe . filter p

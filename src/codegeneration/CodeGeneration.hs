@@ -30,6 +30,7 @@ import qualified Byte
 import qualified CoreParse
 
 import Byte(bytesFromString)
+import IOExts
 
 
 type CoreDecl = Core.Decl Core.Expr
@@ -80,6 +81,33 @@ insertedMain toplevelTypes =
     where
         unsafePIO = var "$primUnsafePerformIO"    
                 
+
+-- set the public bit of all declarations except those that are imported from
+-- Prelude or HeliumLang. I.e. export everything everywhere
+everythingPublicButPrelude :: Core.CoreModule -> Core.CoreModule
+everythingPublicButPrelude mod = mod { Core.moduleDecls = map setPublic (Core.moduleDecls mod) }
+  where
+    setPublic decl = 
+        let accessRecord = Core.declAccess decl
+            public = case Core.declAccess decl of 
+                    Core.Defined _ -> True
+                    Core.Imported { Core.importModule = m } -> 
+                        let p = stringFromId m `notElem` ["Prelude", "HeliumLang"] 
+                        in p
+--                            trace (show (Core.declName decl) ++", public: " ++ show p ++ ", imported from: " ++ show m ++ "\n") p
+                        
+        in 
+        decl{ Core.declAccess = 
+                  (Core.declAccess decl){ Core.accessPublic = public } }
+
+{-
+data Access
+  = Defined  { accessPublic :: !Bool }
+  | Imported { accessPublic :: !Bool, importModule :: Id, importName :: Id, importKind :: !DeclKind
+             , importMajorVer :: !Int, importMinorVer :: !Int }
+            
+-}
+
 
 predicateToId :: Predicate -> Id
 predicateToId (Predicate class_ tp) =
@@ -3284,17 +3312,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             ( _bodyIdecls,_bodyIself) =
                 (body_ (_bodyOdictionaryEnv) (_bodyOimportEnv))
             (_module_@_) =
-                CoreParse.modulePublic
-                    ( case _exportsIself of
-                        MaybeExports_Nothing -> True
-                        _                    -> False
-                    )
-                    ( _exportsIvalues
-                    , _exportsIcons
-                    , _exportsItypes
-                    , emptySet
-                    , _exportsImods
-                    )
+                everythingPublicButPrelude
                     (makeCoreModule (fmap idFromName _nameIname)
                         ( _bodyIdecls ++ _lhsIextraDecls
                         ))

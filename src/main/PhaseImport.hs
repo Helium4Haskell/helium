@@ -9,7 +9,7 @@
 module PhaseImport(phaseImport) where
 
 import CompileUtils
-import Core(CoreDecl)
+import qualified Core
 import UHA_Syntax
 import UHA_Utils
 import UHA_Range(noRange)
@@ -18,9 +18,10 @@ import LvmImport(lvmImportDecls)
 import Id(stringFromId)
 import CoreToImportEnv(getImportEnvironment)
 import qualified ExtractImportDecls(sem_Module)
+import CorePretty
 
 phaseImport :: String -> Module -> [String] -> [Option] -> 
-                    IO ([CoreDecl], [ImportEnvironment])
+                    IO ([Core.CoreDecl], [ImportEnvironment])
 phaseImport fullName module_ lvmPath options = do
     enterNewPhase "Importing" options
 
@@ -28,7 +29,7 @@ phaseImport fullName module_ lvmPath options = do
 
     -- Add HeliumLang and Prelude import
     let moduleWithExtraImports = addImplicitImports module_
-
+                    
     -- Chase imports
     chasedImpsList <- chaseImports lvmPath moduleWithExtraImports
 
@@ -38,16 +39,16 @@ phaseImport fullName module_ lvmPath options = do
     
     return (indirectionDecls, importEnvs)
 
-chaseImports :: [String] -> Module -> IO [[CoreDecl]]
+chaseImports :: [String] -> Module -> IO [[Core.CoreDecl]]
 chaseImports lvmPath mod = 
     let (coreImports,_)   = ExtractImportDecls.sem_Module mod -- Expand imports
         findModule    = searchPath lvmPath ".lvm" . stringFromId
-        doImport :: (CoreDecl,[CoreDecl] -> [CoreDecl]) -> IO [CoreDecl]
+        doImport :: (Core.CoreDecl,[Core.CoreDecl] -> [Core.CoreDecl]) -> IO [Core.CoreDecl]
         doImport (importDecl,filterDecls)
           = do decls <- lvmImportDecls findModule [importDecl]
                return (filterDecls (concat decls))
 
-    in  mapM doImport coreImports
+    in mapM doImport coreImports
         -- zipWith ($) filterImports (lvmImportDecls findModule coreImportDecls)
 
 -- Add "import Prelude" if
