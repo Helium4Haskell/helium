@@ -170,11 +170,8 @@ getLitRange (Literal_Int    r _) = r
 getLitRange (Literal_String r _) = r
 
 showRanges :: [Range] -> String
-showRanges rs = showRanges' (sort rs)
-  where
-    showRanges' :: [Range] -> String
-    showRanges' (range:ranges) = show range ++ concatMap ((", " ++) . show) ranges
-    showRanges' [] = "<unknownNR>"
+showRanges (range:ranges) = show range ++ concatMap ((", " ++) . show) ranges
+showRanges [] = ""
 
 -- !!!! In the special case that the range corresponds to the import range,
 -- the module name of the second position should be printed

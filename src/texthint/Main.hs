@@ -350,7 +350,7 @@ removeEvidence =
         let (upToColon, rest) = span (/= ':') line
         in if not (all isSpace upToColon) &&
                 all (\c -> isDigit c || c `elem` "(), ") upToColon then
-            "<expression>" ++ rest
+            safeTail rest
            else 
             line
 
@@ -384,5 +384,5 @@ splitFilePath :: String -> (String, String, String)
 splitFilePath filePath = 
     let slashes = "\\/"
         (revFileName, revPath) = span (`notElem` slashes) (reverse filePath)
-        (revExt, revBaseName)  = span (/= '.') revFileName
-    in (reverse revPath, reverse (dropWhile (== '.') revBaseName), reverse revExt)
+        (baseName, ext)  = span (/= '.') (reverse revFileName)
+    in (reverse revPath, baseName, dropWhile (== '.') ext)

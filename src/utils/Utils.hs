@@ -74,6 +74,7 @@ combinePathAndFile path file =
 -- Split file name
 -- e.g. /docs/haskell/Hello.hs =>
 --   filePath = /docs/haskell  baseName = Hello  ext = hs
+-- IMPORTANT!!! There is one more copy of splitFilePath in texthint and a similar function in LoggerEnabled
 splitFilePath :: String -> (String, String, String)
 splitFilePath filePath = 
     let slashes = "\\/"

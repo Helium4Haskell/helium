@@ -4,9 +4,9 @@ import CompileUtils
 import ResolveOperators(resolveOperators, operatorsFromModule)
 import qualified PrettyPrinting(sem_Module)
 
-phaseResolveOperators :: Module -> [ImportEnvironment] -> 
+phaseResolveOperators :: String -> [String] -> Module -> [ImportEnvironment] -> 
                             [Option] -> IO Module
-phaseResolveOperators moduleBeforeResolve importEnvs options = do
+phaseResolveOperators fullName doneModules moduleBeforeResolve importEnvs options = do
     enterNewPhase "Resolving operators" options
 
     let importOperatorTable = operatorsFromModule moduleBeforeResolve
@@ -16,7 +16,7 @@ phaseResolveOperators moduleBeforeResolve importEnvs options = do
 
     when (not (null resolveErrors)) $ do
         unless (NoLogging `elem` options) $ 
-            logger "R" Nothing
+            logger "R" (Just (doneModules,fullName))
         showErrorsAndExit resolveErrors 20 options
 
     when (DumpUHA `elem` options) $

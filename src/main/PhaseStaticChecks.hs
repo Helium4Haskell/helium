@@ -5,9 +5,9 @@ import Warnings(Warning)
 import StaticErrors(errorsLogCode)
 import qualified StaticChecks(sem_Module)
 
-phaseStaticChecks :: String -> Module -> [ImportEnvironment] -> 
+phaseStaticChecks :: String -> [String] -> Module -> [ImportEnvironment] -> 
                         [Option] -> IO (ImportEnvironment, [Warning])
-phaseStaticChecks fullName module_ importEnvs options = do
+phaseStaticChecks fullName doneModules module_ importEnvs options = do
     enterNewPhase "Static checking" options
 
     let (_, baseName, _) = splitFilePath fullName
@@ -20,7 +20,7 @@ phaseStaticChecks fullName module_ importEnvs options = do
             putStrLn (show (foldr combineImportEnvironments 
                 emptyEnvironment importEnvs))
         unless (NoLogging `elem` options) $ 
-            logger ("S"++errorsLogCode errors) Nothing
+            logger ("S"++errorsLogCode errors) (Just (doneModules,fullName))
         showErrorsAndExit errors 20 options
     
     return (localEnv, warnings)

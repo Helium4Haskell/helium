@@ -9,7 +9,7 @@
 
 module Warnings where
 
-import UHA_Range    (getNameRange, showRange)
+import UHA_Range    (getNameRange, showRange, sortRanges)
 import UHA_Syntax
 import UHA_Utils    (showNameAsVariable)
 import Types
@@ -31,7 +31,7 @@ instance HasMessage Warning where
       NoTypeDef name _ _            -> [getNameRange name]
       Shadow _ name                 -> [getNameRange name]
       Unused _ name _               -> [getNameRange name]
-      SimilarFunctionBindings n1 n2 -> [getNameRange n1, getNameRange n2]
+      SimilarFunctionBindings n1 n2 -> sortRanges [getNameRange n1, getNameRange n2]
       _                             -> internalError "Messages.hs" 
                                                       "instance IsMessage Warning" 
                                                       "unknown type of Warning"
@@ -49,8 +49,8 @@ showWarning warning = case warning of
       capitalize (show entity) ++ " " ++ show (show name) ++ " is not used"
     
    SimilarFunctionBindings suspect witness ->
-      let [n1, n2] = sortNamesByRange [suspect, witness] 
-      in "Suspicious adjacent functions "++ show (show n1) ++ " and " ++ show (show n2)
+      let [n1, n2] = sortNamesByRange [suspect, witness]
+      in "Suspicious adjacent functions "++ (show.show) n1 ++ " and " ++ (show.show) n2
    
    _ -> internalError "Messages" "showWarning" "unknown type of Warning"
    

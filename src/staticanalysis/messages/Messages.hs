@@ -91,10 +91,10 @@ data Entity = TypeSignature
     deriving Eq
 
 sortMessages :: HasMessage a => [a] -> [a]
-sortMessages = let f x y = compare (sortRanges (getRanges x)) 
-                                   (sortRanges (getRanges y))
+sortMessages = let f x y = compare (getRanges x)
+                                   (getRanges y)
                in sortBy f
-
+               
 sortNamesByRange :: Names -> Names
 sortNamesByRange names =
    let tupleList = [ (name, getNameRange name) | name <- names ]

@@ -27,14 +27,14 @@ compile fullName options doneModules =
 
         -- Phase 1: Lexing
         (lexerWarnings, tokens) <- 
-            phaseLexer fullName contents options
+            phaseLexer fullName doneModules contents options
                         
         unless (NoWarnings `elem` options) $
             showMessages lexerWarnings
 
         -- Phase 2: Parsing
         parsedModule <- 
-            phaseParser fullName tokens options
+            phaseParser fullName doneModules tokens options
 
         -- Phase 3: Importing
         (indirectionDecls, importEnvs) <-
@@ -42,13 +42,13 @@ compile fullName options doneModules =
         
         -- Phase 4: Resolving operators
         resolvedModule <- 
-            phaseResolveOperators parsedModule importEnvs options
+            phaseResolveOperators fullName doneModules parsedModule importEnvs options
             
         stopCompilingIf (StopAfterParser `elem` options)
 
         -- Phase 5: Static checking
         (localEnv, staticWarnings) <-
-            phaseStaticChecks fullName resolvedModule importEnvs options        
+            phaseStaticChecks fullName doneModules resolvedModule importEnvs options        
 
         unless (NoWarnings `elem` options) $
             showMessages staticWarnings
@@ -80,7 +80,8 @@ compile fullName options doneModules =
         -- Phase 9: Code generation
         phaseCodeGenerator fullName coreModule options
         
-        unless (NoLogging `elem` options) $ logger "C" Nothing
+        unless (NoLogging `elem` options) $ 
+            logger "C" (Just (doneModules,fullName))
 
         let number = length staticWarnings + length typeWarnings + length lexerWarnings
         putStrLn $ "Compilation successful" ++

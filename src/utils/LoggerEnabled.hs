@@ -28,28 +28,33 @@ loggerUSERNAME    = "USERNAME"
 -- The function to send a message to a socket
 
 logger :: String -> Maybe ([String],String) -> IO ()
-logger logcode maybeSources | not loggerENABLED = return ()
-                            | otherwise      = 
-                            
-   do username <- (getEnv loggerUSERNAME) `catch` (\exception -> return "unknown")
-      sources  <- case maybeSources of 
-            Nothing               -> return (loggerNOPROGRAMS)
+logger logcode maybeSources 
+    | not loggerENABLED || isInterpreterModule maybeSources = return ()
+    | otherwise      = do
+        username <- (getEnv loggerUSERNAME) `catch` (\exception -> return "unknown")
+        sources  <- case maybeSources of 
+            Nothing -> 
+                return (loggerNOPROGRAMS)
             Just (imports,hsFile) -> 
-               let f name = do program <- readFile name                                                        
-                               return (  baseNameOf name
+               let f name = do debug ("Logging file " ++ name)
+                               program <- readFile name                                                        
+                               return (  fileNameWithoutPath name
                                       ++ "\n" 
                                       ++ program                
                                       ++ loggerSPLITSTRING 
                                       )
                    nrOfFiles = show (1 + length imports)
-               in 
-                  do xs <- mapM f imports
-                     x  <- f hsFile
-                     return (concat (loggerSPLITSTRING:x:xs))
-               
-                       `catch` (\exception -> return (loggerNOPROGRAMS) )
-                         
-      sendLogString (username++":"++logcode++":"++version++sources)
+               in (do 
+                    xs <- mapM f imports
+                    x  <- f hsFile
+                    return (concat (loggerSPLITSTRING:x:xs)) 
+                   ) `catch` (\exception -> return (loggerNOPROGRAMS) )
+
+        sendLogString (username++":"++logcode++":"++version++sources)
+
+isInterpreterModule :: Maybe ([String],String) -> Bool
+isInterpreterModule Nothing = False
+isInterpreterModule (Just (_, hsFile)) = fileNameWithoutPath hsFile == "Interpreter.hs"
 
 sendLogString :: String -> IO ()
 sendLogString message = withSocketsDo (rec 0)
@@ -67,21 +72,17 @@ sendLogString message = withSocketsDo (rec 0)
                            threadDelay loggerDELAY
                            rec (i+1)
                 
-  debug :: String -> IO ()
-  debug s = when loggerDEBUGMODE (putStrLn s)
+debug :: String -> IO ()
+debug s = when loggerDEBUGMODE (putStrLn s)
 
 {- from Utils.hs.....because of the import-dependencies, it is not possible to import 
    this function directly -}
 
-splitFilePath :: String -> (String, String, String)
-splitFilePath filePath = 
+fileNameWithoutPath :: String -> String
+fileNameWithoutPath filePath = 
     let slashes = "\\/"
-        (revFileName, revPath) = span (`notElem` slashes) (reverse filePath)
-        (revExt, revBaseName)  = span (/= '.') revFileName
-    in (reverse revPath, reverse (dropWhile (== '.') revBaseName), reverse revExt)
-
-baseNameOf :: String -> String
-baseNameOf fullName = let (_, baseName, _) = splitFilePath fullName in baseName
+        (revFileName, _) = span (`notElem` slashes) (reverse filePath)
+    in reverse revFileName
 
 {-
 sendToAndFlush :: Hostname      -- Hostname

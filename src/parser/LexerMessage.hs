@@ -6,7 +6,9 @@ import Messages
 
 instance HasMessage LexerError where
     getRanges (LexerError pos (StillOpenAtEOF brackets)) =
-        map (sourcePosToRange . fst) brackets
+        reverse (map (sourcePosToRange . fst) brackets)
+    getRanges (LexerError pos (UnexpectedClose _ pos2 _)) =
+        map sourcePosToRange [pos, pos2]
     getRanges (LexerError pos _) =
         [ sourcePosToRange pos ]
     getMessage (LexerError _ info) = 
@@ -67,8 +69,7 @@ showLexerErrorInfo info =
         TooManyClose c -> ["Close bracket " ++ show c ++ " but no open bracket"]
         UnexpectedClose c1 pos2 c2 -> 
             [ "Unexpected close bracket " ++ show c1
-            , "Expecting a close bracket for " ++ show c2 ++ 
-                " that was opened at " ++ showPosAsTuple pos2
+            , "Expecting a close bracket for " ++ show c2 
             ]
         StillOpenAtEOF [b] -> ["Bracket " ++ show (snd b) ++ " is never closed"]
         StillOpenAtEOF bs -> ["The following brackets are never closed: " ++
@@ -89,9 +90,7 @@ commasAnd (x:xs) = x ++ concatMap (", " ++) (init xs) ++ " and " ++ last xs
 
 instance HasMessage LexerWarning where
     getRanges (LexerWarning pos _) =
-        let name = sourceName pos; line = sourceLine pos; col = sourceColumn pos
-            position = Position_Position name line col
-        in [ Range_Range position position ]
+        [ sourcePosToRange pos ]
     getMessage (LexerWarning _ info) = 
         let (line:rest) = showLexerWarningInfo info
         in MessageOneLiner (MessageString ("Warning: " ++ line)) :

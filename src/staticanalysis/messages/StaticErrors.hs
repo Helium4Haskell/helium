@@ -39,13 +39,13 @@ instance HasMessage Error where
    
       NoFunDef _ name _           -> [getNameRange name]
       Undefined _ name _ _        -> [getNameRange name]
-      Duplicated _ names          -> map getNameRange names
+      Duplicated _ names          -> sortRanges (map getNameRange names)
       LastStatementNotExpr range  -> [range]
       WrongFileName _ _ range     -> [range]
       TypeVarApplication name     -> [getNameRange name]
       ArityMismatch _ name _ _    -> [getNameRange name]             
       DefArityMismatch _ _ range  -> [range]
-      RecursiveTypeSynonyms names -> map getNameRange names
+      RecursiveTypeSynonyms names -> sortRanges (map getNameRange names)
       PatternDefinesNoVars range  -> [range]
       _                           -> internalError "Messages.hs" 
                                                    "instance IsMessage Error" 
