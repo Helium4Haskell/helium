@@ -21,13 +21,13 @@ import TypeErrors
 import Types
 import List
 import ConstraintInfo
-import SolverOptions        ( getTypeSynonyms, getTypeSignatures )
+import SolverOptions        ( getTypeSynonyms, getTypeSignatures, getExtraSiblings )
 import Utils                ( internalError, fst4 )
 import SimilarFunctionTable ( similarFunctionTable )
 import UHA_Utils            ( nameFromString )
 import UHA_Syntax           ( Literal(..), Range(..), Position(..) )
 import Monad                ( unless, when, filterM )
-import Maybe                ( catMaybes, isJust )
+import Maybe                ( catMaybes, isJust, isNothing )
 import InfiniteTypeHeuristic  -- (infiniteTypeHeuristic, safeMaximumBy, safeMinimumBy)
 
 heuristics_MAX        =    120 :: Int
@@ -58,7 +58,7 @@ heuristicsConstantClash is =
 
       maxPhaseEdges          <- applyEdgesFilter constraintPhaseFilter allEdges  
       maybeUserConstraint    <- applyEdgesFilter (maybeUserConstraintFilter pathsWithInfo) maxPhaseEdges
-      maxDifferentGroupEdges <- applyEdgesFilter (differentGroupsFilter edgeInfoTable) maybeUserConstraint                           
+      maxDifferentGroupEdges <- applyEdgesFilter (differentGroupsFilter edgeInfoTable) maybeUserConstraint
           
       let applyHeuristicsToEdge (edge, info) = 
              do xs <- mapM (\heuristic -> heuristic edge info) (errorAndGoodPaths edgeInfoTable : edgeheuristics)
@@ -143,6 +143,7 @@ edgeheuristics = [ orderOfUnification
                  , tupleEdge
                  , similarFunctions                 
                  , applicationEdge
+                 , variableFunction                 
                  ]
 
 orderOfUnification :: TypeGraphConstraintInfo info => EdgeHeuristic info
@@ -180,31 +181,32 @@ similarFunctions edge@(EdgeID v1 v2) info =
       Nothing   -> return NotApplicableHeuristic
       Just name ->
       
-         let (t1,t2)   = getTwoTypes info
-             string    = show name
-             functions = filter (string /=)
-                       . concat
-                       . filter (string `elem`) 
-                       $ similarFunctionTable
-         in if null functions 
+         do options <- getSolverOptions
+            let (t1,t2)   = getTwoTypes info
+                string    = show name
+                extras    = getExtraSiblings options
+                functions = filter (string /=)
+                          . concat
+                          . filter (string `elem`) 
+                          $ extras ++ similarFunctionTable 
+            if null functions 
               then return NotApplicableHeuristic
-              else do options <- getSolverOptions
-                      let tryFunctions = map (\s -> (s, lookup s importedFunctions)) functions  
-                          importedFunctions = getTypeSignatures options 
-                          synonyms = getTypeSynonyms options
-                                                                 
-                      doWithoutEdge (edge,info) $ 
+              else let tryFunctions = map (\s -> (s, lookup s importedFunctions)) functions  
+                       importedFunctions = getTypeSignatures options 
+                       synonyms = getTypeSynonyms options
+                                                              
+                   in doWithoutEdge (edge,info) $ 
 
-                         do unique   <- getUnique
-                            mtp      <- safeApplySubst t2
-                            case mtp of 
-                               Nothing -> return NotApplicableHeuristic
-                               Just tp -> case [ ConcreteHeuristic 10 [SetHint (fixHint ("use "++s++" instead"))] (show string++" is similar to "++show s)
-                                               | (s,Just scheme) <- tryFunctions                                                   
-                                               , unifiable synonyms tp (unsafeInstantiate scheme)
-                                               ] of
-                                            []  -> return NotApplicableHeuristic
-                                            t:_ -> return t
+                      do unique   <- getUnique
+                         mtp      <- safeApplySubst t2
+                         case mtp of 
+                            Nothing -> return NotApplicableHeuristic
+                            Just tp -> case [ ConcreteHeuristic 10 [SetHint (fixHint ("use "++s++" instead"))] (show string++" is similar to "++show s)
+                                            | (s,Just scheme) <- tryFunctions                                                   
+                                            , unifiable synonyms tp (unsafeInstantiate scheme)
+                                            ] of
+                                         []  -> return NotApplicableHeuristic
+                                         t:_ -> return t
 
 similarLiterals :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
 similarLiterals edge@(EdgeID v1 v2) info = 
@@ -284,84 +286,130 @@ applicationEdge edge@(EdgeID v1 v2) info =
 
        doWithoutEdge (edge,info) $
 
-          do options     <- getSolverOptions
-             let (t1,t2)  = getTwoTypes info
-                 synonyms = getTypeSynonyms options
-             mFunctionTp <- safeApplySubst t1
-             mExpectedTp <- safeApplySubst t2
+          do options                 <- getSolverOptions
+             let (t1,t2)              = getTwoTypes info
+                 synonyms             = getTypeSynonyms options
+                 isPatternApplication = isPattern info 
+             maybeFunctionType       <- safeApplySubst t1
+             maybeExpectedType       <- safeApplySubst t2
              
-             case (mFunctionTp,mExpectedTp) of
+             case (maybeFunctionType,maybeExpectedType) of
 
-               (Nothing        ,_              ) -> return NotApplicableHeuristic
-               (_              ,Nothing        ) -> return NotApplicableHeuristic
-               (Just functionTp,Just expectedTp) ->
+               (Just functionType,Just expectedType) 
 
-                  let [(ftps,resFunction), (etps,resExpected)] = spineOfFunctionTypesWithSameLength [functionTp,expectedTp]
-                      predicate = uncurry (unifiable synonyms)
-                                . applyBoth tupleType
-                                . unzip
-                                . ((resFunction,resExpected):)
-                      onlyArgumentsMatch = unifiable synonyms (tupleType ftps) (tupleType etps)
-                      isPatternApplication = isPattern info 
-                  in case compare (length ftps) (length etps) of
+                  -- the expression to which arguments are given does not have a function type
+                  | maybe False (<= 0) maximumForFunction && not isBinary && not isPatternApplication ->                       
+                       let hint = SetHint (becauseHint "it is not a function")
+                       in return (ConcreteHeuristic 6 [hint] "no function")
+                  
+                  -- function used as infix that expects < 2 arguments
+                  | maybe False (<= 1) maximumForFunction && isBinary && not isPatternApplication ->
+                       let hint = SetHint (becauseHint "it is not a binary function")
+                       in return (ConcreteHeuristic 6 [hint] "no binary function")
 
-                        LT | null ftps && not isBinary && not isPatternApplication -> -- the expression to which arguments are given does not have a function type
-                                let hint = SetHint (becauseHint "it is not a function")
-                                in return (ConcreteHeuristic 6 [hint] "no function")
+                  -- can a permutation of the arguments resolve the type inconsistency
+                  | length argumentPermutations == 1 -> 
+                       let p = head argumentPermutations
+                       in 
+                         if p==[1,0] && isBinary
+                            then 
+                                 let hint = SetHint (fixHint "swap the two arguments")
+                                 in return (ConcreteHeuristic 3 [hint] "swap the two arguments")
+                            else                                       
+                                  let hint = SetHint (fixHint "re-order arguments")
+                                  in return (ConcreteHeuristic 1 [hint] ("application: permute with "++show p))
+                                
+                  -- is there one particular argument that is inconsistent
+                  | length incorrectArguments == 1  ->
+                       do let i = head incorrectArguments
+                          expfulltp <- applySubst t1
+                          let (oneLiner,tp,range) = tuplesForArguments !! i
+                              typeError     = makeTypeErrorForTerm (isBinary,isPatternApplication) i oneLiner (tp,expargtp) range info
+                              expargtp      = fst (functionSpine expfulltp) !! i
+                          return (ConcreteHeuristic 3 [SetTypeError typeError] ("incorrect argument of application="++show i))                          
+                  
+                  -- too many arguments are given
+                  | maybe False (< numberOfArguments) maximumForFunction && not isPatternApplication ->
+                       case typesZippedWithHoles of
 
-                           | length ftps < 2 && isBinary && not isPatternApplication -> --function used as infix that expects < 2 arguments
-                                let hint = SetHint (becauseHint "it is not a binary function")
-                                in return (ConcreteHeuristic 6 [hint] "no binary function")
+                          -- there is only one possible set to remove arguments 
+                          [is] | not isBinary
+                              -> let hint = SetHint (fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" argument"))
+                                 in return (ConcreteHeuristic 4 [hint] ("too many arguments are given: "++show is))
 
-                        EQ | onlyArgumentsMatch && length ftps >= length tuplesForArguments -> -- error in result
-                                return (ModifierHeuristic 0.000001 "application: only result is incorrect")
+                          -- more than one or no possible set of arguments to be removed
+                          _   -> let hint = SetHint (becauseHint "too many arguments are given")
+                                 in return (ConcreteHeuristic 2 [hint] "too many arguments are given")
+                                          
+                  -- not enough arguments are given
+                  | minimumForContext > numberOfArguments && not isPatternApplication && contextIsUnifiable ->
+                       case typesZippedWithHoles of
 
-                           | not onlyArgumentsMatch -> -- test if there is one argument in particular that is incorrect
-                           case ([ p
-                                 | p <- take heuristics_MAX (permutationsForLength (length ftps))
-                                 , predicate (zip ftps (permute p etps))
-                                 ]
-                                 ,[ i
-                                 | i <- [0..length ftps-1]
-                                 , predicate (deleteIndex i (zip ftps etps))
-                                 , not (unifiable synonyms (ftps !! i) (etps !! i))
-                                 -- , not (unifiable synonyms functionTp expectedTp)     -- more liberal, but incorrect (edge is re-inserted)
-                                 ]) of
+                          [is] | not isBinary 
+                              -> let hint = SetHint (fixHint ("insert a "++prettyAndList (map (ordinal True . (+1)) is)++" argument"))
+                                 in return (ConcreteHeuristic 4 [hint] ("not enough arguments are given"++show is))
 
-                             ([p],_)
-                                 | p==[1,0] && isBinary -> let hint = SetHint (fixHint "swap the two arguments")
-                                                           in return (ConcreteHeuristic 3 [hint] "swap the two arguments")
-                                 | otherwise            -> let hint = SetHint (fixHint "re-order arguments")
-                                                           in return (ConcreteHeuristic 1 [hint] ("application: permute with "++show p))
+                          _   -> let hint = SetHint (becauseHint "not enough arguments are given")
+                                 in return (ConcreteHeuristic 2 [hint] "not enough arguments are given")
+                  
+                  -- only the result type is incorrect
+                  | argumentsAreUnifiable ->
+                      return (ModifierHeuristic 0.000001 "application: only result is incorrect")                        
 
-                             (_,[i]) | i < length tuplesForArguments
-                                  -> do expfulltp <- applySubst t1
-                                        let (oneLiner,tp,range) = tuplesForArguments !! i
-                                            typeError     = makeTypeErrorForTerm (isBinary,isPatternApplication) i oneLiner (tp,expargtp) range info
-                                            expargtp      = fst (functionSpine expfulltp) !! i
-                                        return (ConcreteHeuristic 3 [SetTypeError typeError] ("incorrect argument of application="++show i))
-                             _    -> return NotApplicableHeuristic
+                where unifiableTypeLists :: Tps -> Tps -> Bool
+                      unifiableTypeLists xs ys = unifiable synonyms (tupleType xs) (tupleType ys)   
 
-                        ordering -> -- the number of arguments is incorrect. (LT -> too many ; GT -> not enough)
-                           case ( [ is | (is,zl) <- take heuristics_MAX (zipWithHoles ftps etps), predicate zl ] , ordering ) of
+                      -- number of arguments for this function application
+                      numberOfArguments = length tuplesForArguments         
+                                
+                      -- (->) spines for function type and expected type for the given number of arguments
+                      (functionArguments, functionResult) = functionSpineOfLength numberOfArguments functionType
+                      (expectedArguments, expectedResult) = functionSpineOfLength numberOfArguments expectedType
 
-                             ([is],LT) | not isBinary && not isPatternApplication && maximum is < length tuplesForArguments
-                                -> let hint = SetHint (fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" argument"))
-                                   in return (ConcreteHeuristic 4 [hint] ("too many arguments are given: "++show is))
+                      -- (->) spines for function type and expected type ignoring the given number of arguments                      
+                      (allFunctionArgs, allFunctionRes) = functionSpine functionType
+                      (allExpectedArgs, allExpectedRes) = functionSpine expectedType
+                      
+                      -- maximum number of arguments for the function type (result type should not be polymorphic!)
+                      --   e.g.: (a -> b) -> [a] -> [b]             yields (Just 2)
+                      --         (a -> b -> b) -> b -> [a] -> b     yields Nothing
+                      maximumForFunction = case functionSpine functionType of
+                                              (_, TVar _) -> Nothing
+                                              (tps, _   ) -> Just (length tps)
+                      
+                      -- minimum number of arguments that should be applied to the function to meet the expected context type
+                      minimumForContext = length allFunctionArgs + numberOfArguments - length allExpectedArgs
+                      
+                      -- are the arguments or the context unifiable?
+                      argumentsAreUnifiable = unifiableTypeLists functionArguments expectedArguments
+                      contextIsUnifiable    = unifiable synonyms expectedResult (snd (functionSpineOfLength minimumForContext functionType))
 
-                             (_ ,LT) | not isPatternApplication
-                                -> let hint = SetHint (becauseHint "too many arguments are given")
-                                   in return (ConcreteHeuristic 2 [hint] "too many arguments are given")
+                      -- is there one argument in particular that is incorrect?                                  
+                      incorrectArguments = [ i 
+                                           | length functionArguments == length expectedArguments 
+                                           , i <- [0..numberOfArguments-1]
+                                           , not (unifiable synonyms (functionArguments !! i) (expectedArguments !! i))
+                                           , unifiableTypeLists (functionResult : deleteIndex i functionArguments) 
+                                                                (expectedResult : deleteIndex i expectedArguments)
+                                           ]
 
-                             ([is],GT) | not isBinary && not isPatternApplication
-                                -> let hint = SetHint (fixHint ("insert a "++prettyAndList (map (ordinal True . (+1)) is)++" argument"))
-                                   in return (ConcreteHeuristic 4 [hint] ("not enough arguments are given"++show is))
+                      -- is there a permutation of the arguments that resolves the type inconsistency?
+                      argumentPermutations = [ p 
+                                             | length functionArguments == length expectedArguments 
+                                             , p <- take heuristics_MAX (permutationsForLength numberOfArguments)
+                                             , unifiableTypeLists (functionResult : functionArguments) 
+                                                                  (expectedResult : permute p expectedArguments) 
+                                             ]                                                                         
 
-                             (_ ,GT) | not isPatternApplication
-                                -> let hint = SetHint (becauseHint "not enough arguments are given")
-                                   in return (ConcreteHeuristic 2 [hint] "not enough arguments are given")
- 
-                             _         -> return NotApplicableHeuristic
+                      -- at which locations should an extra argument be inserted?
+                      typesZippedWithHoles  = [ is 
+                                              | (is,zl) <- take heuristics_MAX (zipWithHoles allFunctionArgs allExpectedArgs)
+                                              , let (as,bs) = unzip zl
+                                              , unifiableTypeLists (allFunctionRes : as) 
+                                                                   (allExpectedRes : bs)
+                                              ]                     
+
+               _ -> return NotApplicableHeuristic
                                                        
 tupleEdge :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
 tupleEdge edge@(EdgeID v1 v2) info
@@ -392,7 +440,7 @@ tupleEdge edge@(EdgeID v1 v2) info
             
                compare -> case [ is 
                                | (is,zl) <- take heuristics_MAX (zipWithHoles tupleTps expectedTps)
-                               , uncurry (unifiable synonyms) . applyBoth tupleType . unzip $ zl
+                               , let (xs, ys) = unzip zl in unifiable synonyms (tupleType xs) (tupleType ys)
                                ] of
                        [is] -> case compare of
                                  LT -> let hint = SetHint (fixHint ("insert a "++prettyAndList (map (ordinal True. (+1)) is)++" element to the tuple"))
@@ -428,37 +476,156 @@ fbHasTooManyArguments edge info
                                             in return (ConcreteHeuristic 8 [hint] "function binding has too many arguments")
             _                            -> return NotApplicableHeuristic
 
-spineOfFunctionTypesWithSameLength :: Tps -> [(Tps,Tp)]
-spineOfFunctionTypesWithSameLength = rec . map ((\(xs,x) -> xs ++ [x]) . functionSpine)
-    
-    where rec :: [Tps] -> [(Tps,Tp)]
-          rec tpsList = if any ((==1) . length) tpsList 
-                          then if allTheSame (map length (filter (not . isTVar) tpsList)) 
-                                  then map (\tps -> ([],foldr1 (.->.) tps)) tpsList
-                                  else map initAndLast tpsList
-                          else zipWith zipf (map head tpsList) (rec $ map tail tpsList)
-          
-          isTVar [TVar _] = True
-          isTVar _        = False
-          
-          zipf t1 (tps,t2) = (t1:tps,t2)
+variableFunction :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => EdgeHeuristic info
+variableFunction edge info
+   | (nt, alt) /= (NTBindingGroup, AltBindingGroup) && (nt, alt) /= (NTBody, AltBody) 
+        = return NotApplicableHeuristic
+   | otherwise 
+        = doWithoutEdge (edge,info) $ 
+            
+           do options     <- getSolverOptions
+              let (t1,t2)  = getTwoTypes info
+                  synonyms = getTypeSynonyms options
+              
+              -- is this variable involved in an application?
+              let EdgeID v1 v2 = edge
+              edges1 <- getAdjacentEdges v1
+              edges2 <- getAdjacentEdges v2
+              let predicate x = 
+                     let (a,b,c,_) = getInfoSource x -- Empty InfixApplication 
+                     in (a,b,c) == (NTExpression, AltInfixApplication, 4)
+                  f (EdgeID v1 v2) = [v1,v2]
+              let special = concatMap (f . fst) (filter (predicate . snd) (edges1 ++ edges2)) \\ [v1,v2]
+              edges3 <- mapM getAdjacentEdges special
+              let isApplicationEdge = isJust . maybeApplicationEdge
+                  application = any (isApplicationEdge . snd) (edges1 ++ edges2 ++ concat edges3)                 
+                                
+              mt1         <- safeApplySubst t1
+              mt2         <- safeApplySubst t2
+              case (mt1, mt2) of
+                 (Just functionType, Just expectedType) | not application -> 
+                    let maxArgumentsForFunction = length (fst (functionSpine functionType))
+                        minArgumentsForContext  = maxArgumentsForFunction - length (fst (functionSpine expectedType)) 
+                        contextIsUnifiable      = unifiable synonyms 
+                                                     (snd $ functionSpineOfLength minArgumentsForContext functionType)
+                                                     expectedType
+                    in if minArgumentsForContext <= 0 || not contextIsUnifiable
+                         then return NotApplicableHeuristic
+                         else let hint = SetHint (fixHint ("insert "++showNumber minArgumentsForContext++" argument"++
+                                              if minArgumentsForContext <= 1 then "" else "s"))
+                              in return (ConcreteHeuristic 4 [hint] ("insert arguments to function variable"))                     
+                 _                       -> return NotApplicableHeuristic                   
 
-          allTheSame []     = True
-          allTheSame (x:xs) = all (x==) xs
-                        
-applyBoth :: (a -> b) -> (a,a) -> (b,b)
-applyBoth f (a,b) = (f a,f b)
+  where (nt, alt, _, _) = getInfoSource info
+
+{-
+considerUnifierVertices :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => 
+                               [(EdgeID, info)] -> SolveState EquivalenceGroups info [(HeuristicResult, (EdgeID, info))]
+considerUnifierVertices xs = 
+   do let is = nub [ i | Just i <- map (maybeUnifier . snd) xs ]
+      results <- mapM unifierVertex is
+      return (concat results)
+
+ where
+  unifierVertex :: (TypeGraph EquivalenceGroups info,TypeGraphConstraintInfo info) => 
+                       Int -> SolveState EquivalenceGroups info [(HeuristicResult, (EdgeID, info))]
+  unifierVertex unifier =
+     do allEdgesAdjacentToUnifier <- getAdjacentEdges unifier
+        doWithoutEdges allEdgesAdjacentToUnifier $
+
+           do options     <- getSolverOptions
+              let synonyms = getTypeSynonyms options
+              
+              allMaybePairs <- let f pair@((EdgeID v1 v2), _) = 
+                                      do let tp | v1 == unifier = TVar v2
+                                                | otherwise     = TVar v1
+                                         mtp <- safeApplySubst tp
+                                         return (mtp, pair) 
+                               in mapM f allEdgesAdjacentToUnifier 
+              if any (isNothing . fst) allMaybePairs                   
+                then return []
+                else let allPairs = [ (x, y) | (Just x, y) <- allMaybePairs ] 
+                         (typeVariablePairs, rest) = partition (isTVar . fst) allPairs
+                         allConstantGroupsSorted@(firstGroup : otherGroups) = 
+                            let rec []     = []
+                                rec (x:xs) = let (as,bs) = foldr op ([x],[]) xs
+                                             in as : rec bs
+                                op p (as,bs) 
+                                   | unifiableTps synonyms (map fst (p:as)) = (p:as,bs)
+                                   | otherwise                              = (as,p:bs)
+                                comparer xs ys = length ys `compare` length xs -- reversed!
+                            in sortBy comparer (rec rest)
+                            
+                         predicate = maybe False (unifier==) . maybeUnifier . snd . snd
+                         majority  = not (null otherGroups) && length firstGroup > length (concat otherGroups)
+                         result 
+                          | null otherGroups
+                               = []
+                          | majority
+                               = let (incorrectBranch, incorrectContext) = partition predicate (concat otherGroups)
+                                 in case length incorrectBranch of
+                                       0 -> []
+                                       1 -> if null incorrectContext
+                                              then [(ModifierHeuristic 100.0 "only branch incorrect in majority", snd $ head incorrectBranch)]
+                                              else undefined
+                                       n -> error "n"
+                                     -- 0 branches (alleen contexten)
+                                     -- alleen 1 branch
+                                     -- > 1 branch (takeover)
+                          | otherwise 
+                               = error "there is no majority"
+                                  
+                         
+                     in return result
+-}                       
+
+unifiableTps :: OrderedTypeSynonyms -> Tps -> Bool
+unifiableTps ots = either (const False) (const True) . mguForTps ots
+
+mguForTps :: OrderedTypeSynonyms -> Tps -> Either UnificationError (Bool,FiniteMapSubstitution)
+mguForTps orderedTypeSynonyms tps = 
+   let e  = Right (False, emptySubst)
+       op t1 t2 result = case result of
+          Left uError   -> result
+          Right (b,sub) -> let t1' = sub |-> t1
+                               t2' = sub |-> t2
+                               res = mguWithTypeSynonyms orderedTypeSynonyms t1' t2'
+                               combine (b', sub') = Right (b' || b, sub' @@ sub)
+                           in either Left combine res                              
+   in case tps of
+         []     -> e
+         tp:tps -> foldr (op tp) e tps
+
+getAdjacentEdges :: Int -> SolveState EquivalenceGroups info [(EdgeID, info)]
+getAdjacentEdges vertexID =
+   useSolver
+      (\groups -> do eqc <- equivalenceGroupOf vertexID groups
+                     let predicate (EdgeID v1 v2) = v1 == vertexID || v2 == vertexID
+                     return (filter (predicate . fst) (edges eqc)))
+         
+
+-- see TypesToAllignedDocs      
+isTVar :: Tp -> Bool
+isTVar (TVar _) = True
+isTVar _        = False
+                     
+
+showNumber :: Int -> String
+showNumber i | i <= 10 && i >=0 = list !! i
+             | otherwise        = show i
+   where list = [ "zero", "one", "two", "three", "four", "five"
+                , "six", "seven", "eight", "nine", "ten" ]            
+
+functionSpineOfLength :: Int -> Tp -> (Tps, Tp)
+functionSpineOfLength i tp = 
+   let (as, a ) = functionSpine tp
+       (bs, cs) = splitAt i as
+   in (bs, foldr (.->.) a cs)
 
 deleteIndex :: Int -> [a] -> [a]
 deleteIndex _ []     = []
 deleteIndex 0 (a:as) = as
 deleteIndex i (a:as) = a : deleteIndex (i-1) as
-
-initAndLast :: [a] -> ([a],a)
-initAndLast []    = internalError "TypeGraphHeuristics.hs" "initAndLast" "unexpected empty list"
-initAndLast [t]   = ([],t)
-initAndLast (h:t) = let (xs,x) = initAndLast t
-                    in (h:xs,x)
 
 zipWithHoles :: [a] -> [b] -> [ ( [Int] , [(a,b)] ) ] 
 zipWithHoles = rec 0 where
@@ -498,12 +665,13 @@ doWithoutEdge (edge@(EdgeID v1 v2),info) computation =
               internalError "TypeGraphHeuristics.hs" "doWithoutEdge" "security test failed"
     
       return result
-                                             
+ 
+                                           
 doWithoutEdges :: TypeGraph EquivalenceGroups info => [(EdgeID,info)]
                                                    -> SolveState EquivalenceGroups info result
                                                    -> SolveState EquivalenceGroups info result
 doWithoutEdges []     = id        
-doWithoutEdges (x:xs) = doWithoutEdge x . doWithoutEdges xs            
+doWithoutEdges (x:xs) = doWithoutEdge x . doWithoutEdges xs      
 
 {- keep a history to avoid non-termination (for type-graphs that contain an infinite type) -}                                           
 safeApplySubst :: TypeGraph EquivalenceGroups info => Tp -> SolveState EquivalenceGroups info (Maybe Tp)

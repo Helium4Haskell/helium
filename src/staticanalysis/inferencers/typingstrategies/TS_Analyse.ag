@@ -32,6 +32,7 @@ import ExpressionTypeInferencer (expressionTypeInferencer)
 import FiniteMap
 import Char (isAlphaNum)
 import Utils (internalError)
+import qualified PrettyPrinting as PP
 }
 
 ATTR TypingStrategy  [ importEnvironment : ImportEnvironment
@@ -40,9 +41,14 @@ ATTR TypingStrategy  [ importEnvironment : ImportEnvironment
                        warnings          : TS_Warnings  
                      ]
 
-SEM TypingStrategy
-  | TypingStrategy 
-       loc . nameMap      = zip @uniqueTypevariables (map TVar [0..])
+SEM TypingStrategy  
+  | Siblings             -- no analysis for siblings (yet)
+       lhs . errors       = []
+           . warnings     = []
+           
+  | TypingStrategy  
+       loc . name         = show (PP.sem_Expression @typerule.conclusionExpression)
+           . nameMap      = zip @uniqueTypevariables (map TVar [0..])
            . errors       = @staticErrors ++ @soundnessErrors 
            . staticErrors = [ InconsistentConstraint @name x | x <- @solveErrors ] ++
                             [ UndefinedTS @name name entity 

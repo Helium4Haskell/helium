@@ -36,6 +36,7 @@ class (Show constraintinfo,ConstraintInfo constraintinfo) =>
    maybeFunctionBinding    :: constraintinfo -> Maybe Int
    maybeOriginalTypeScheme :: constraintinfo -> Maybe (Bool,TpScheme)
    maybeUserConstraint     :: constraintinfo -> Maybe (Int, Int)
+   maybeUnifier            :: constraintinfo -> Maybe Int
    setFolkloreConstraint   :: constraintinfo -> constraintinfo
    setNewTypeError         :: TypeError -> constraintinfo -> constraintinfo
    setNewHint              :: TypeErrorInfo -> constraintinfo -> constraintinfo

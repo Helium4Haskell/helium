@@ -4,33 +4,16 @@ import UHA_Syntax
 import TS_Syntax
 import TS_CoreSyntax
 import qualified TS_ToCore
-
+import List (intersperse)
 import IOExts
 import Char
-
--- Parsing
+import qualified PrettyPrinting as PP
 import qualified ResolveOperators
 import Parser
 import Parsec
-import ParseLibrary
+import ParseLibrary hiding (satisfy)
 import Lexer
 import OperatorTable
-
-{-
---ultimate :: Core_TypingStrategy
-ultimate = let ts = head (map TS_ToCore.typingStrategyToCore tmp)
-               ts2 :: Core_TypingStrategy
-               ts2 = read $ show $ head $ map TS_ToCore.typingStrategyToCore tmp :: Core_TypingStrategy
-           in show ts == show ts2 
-
-s = "TypingStrategy (TypeRule [Judgement \"f\" (TVar 0),Judgement \"p\" (TVar 1),Judgement \"q\" (TVar 2)] Judgement \"f <$> p <*> q\" (TVar 3)) [Constraint (TCon \"Int\") (TCon \"Int\") \"???\",MetaVariableConstraints \"f\",Constraint (TVar 0) (TApp (TApp (TCon \"->\") (TVar 4)) (TApp (TApp (TCon \"->\") (TVar 5)) (TVar 6))) \"combi(1)\",Phase 5,Constraint (TVar 1) (TApp (TApp (TCon \"Parser\") (TVar 7)) (TVar 4)) \"combi(2)\",Constraint (TVar 2) (TApp (TApp (TCon \"Parser\") (TVar 7)) (TVar 5)) \"@@ @f.pp@ @p.pp@ @q.pp@ \\n@f.range@ @p.range@ @q.range@ \\n@f.type@ @p.type@ @q.type@ \\n{@t1@} {@t2@} {@t3@} {@t4@} {@s@} {@c@} {@a@} {@b@}\",Constraint (TCon \"Char\") (TCon \"Char\") \"???\",Phase 3,MetaVariableConstraints \"q\",Constraint (TVar 3) (TApp (TApp (TCon \"Parser\") (TVar 7)) (TVar 6)) \"combi(4)\",Constraint (TCon \"Bool\") (TCon \"Bool\") \"???\"]"
-s1 = "Judgement \"f\" (TVar 0)"
-s2 = "[Constraint (TCon \"Int\") (TCon \"Int\") \"???\",MetaVariableConstraints \"f\",Constraint (TVar 0) (TApp (TApp (TCon \"->\") (TVar 4)) (TApp (TApp (TCon \"->\") (TVar 5)) (TVar 6))) \"combi(1)\",Phase 5,Constraint (TVar 1) (TApp (TApp (TCon \"Parser\") (TVar 7)) (TVar 4)) \"combi(2)\",Constraint (TVar 2) (TApp (TApp (TCon \"Parser\") (TVar 7)) (TVar 5)) \"@@ @f.pp@ @p.pp@ @q.pp@ \\n@f.range@ @p.range@ @q.range@ \\n@f.type@ @p.type@ @q.type@ \\n{@t1@} {@t2@} {@t3@} {@t4@} {@s@} {@c@} {@a@} {@b@}\",Constraint (TCon \"Char\") (TCon \"Char\") \"???\",Phase 3,MetaVariableConstraints \"q\",Constraint (TVar 3) (TApp (TApp (TCon \"Parser\") (TVar 7)) (TVar 6)) \"combi(4)\",Constraint (TCon \"Bool\") (TCon \"Bool\") \"???\"]"
-s3 = "(TypeRule [Judgement \"f\" (TVar 0),Judgement \"p\" (TVar 1),Judgement \"q\" (TVar 2)] (Judgement \"f <$> p <*> q\" (TVar 3)))"
-tmp = unsafePerformIO 
-     (do input <- readFile "Test.type"
-         let Right ts = parseTypingStrategies [] "" input 
-         return ts)-}
 
 parseTypingStrategies :: OperatorTable -> String -> [Token] -> Either ParseError TypingStrategies
 parseTypingStrategies operatorTable filename tokens = 
@@ -40,12 +23,16 @@ parseTypingStrategies operatorTable filename tokens =
 
    parseTypingStrategy :: HParser TypingStrategy
    parseTypingStrategy = 
-      do name        <- lexString
-         typerule    <- parseTypeRule 
+      do lexSIBLINGS
+         names <- commas1 (var <|> varop)
+         lexSEMI         
+         return (TypingStrategy_Siblings names)
+      <|>   
+      do typerule    <- parseTypeRule 
          constraints <- many parseConstraint
          lexSEMI  
-         return (TypingStrategy_TypingStrategy name typerule constraints)
-
+         return (TypingStrategy_TypingStrategy typerule constraints)
+      
    parseTypeRule :: HParser TypeRule
    parseTypeRule =         
       do judgements <- many1 parseJudgement
@@ -55,10 +42,12 @@ parseTypingStrategies operatorTable filename tokens =
 
    parseJudgement :: HParser Judgement
    parseJudgement =         
-      do expression <- exp_ 
+      do expression <- exp0 
+         lexCOLCOL
+         exprType   <- type_
          lexSEMI      
          let resolvedExpression = ResolveOperators.expression operatorTable expression
-         return (expressionToJudgement resolvedExpression)     
+         return (Judgement_Judgement resolvedExpression exprType)     
 
    parseConstraint :: HParser UserStatement
    parseConstraint = 
@@ -77,17 +66,17 @@ parseTypingStrategies operatorTable filename tokens =
          lexASGASG
          rightType <- type_
          lexCOL
-         message   <- lexString
+         msgLines  <- many1 lexString
+         let message = concat (intersperse "\n" msgLines)
          return (UserStatement_Constraint leftType rightType message)
 
 judgementToSimpleJudgement :: Judgement -> SimpleJudgement
 judgementToSimpleJudgement judgement = 
    case judgement of
-      Judgement_Judgement (Expression_Variable _ name) tp -> SimpleJudgement_SimpleJudgement name tp
-      _                                                   -> error "judgementToSimpleJudgement"
+      Judgement_Judgement (Expression_Variable _ name) tp 
+         -> SimpleJudgement_SimpleJudgement name tp
+      Judgement_Judgement expression                   tp 
+         -> error ("the following expression should have been a meta-variable: "++showExpression expression)
       
-expressionToJudgement :: Expression -> Judgement
-expressionToJudgement expression =
-   case expression of
-      Expression_Typed _ expression tp -> Judgement_Judgement expression tp
-      _                                -> error "expressionToJudgement"
+showExpression :: Expression -> String
+showExpression = show . PP.sem_Expression

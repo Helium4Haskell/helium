@@ -34,7 +34,7 @@ SEM Module
   | Module
        body . allPatterns = [ (matchInfo, typingStrategy)
                             | typingStrategy <- typingStrategies @lhs.importEnvironment 
-                            , let matchInfo = matchInformation 
+                            , matchInfo      <- matchInformation 
                                                  @lhs.importEnvironment 
                                                  typingStrategy
                             ] 

@@ -17,6 +17,7 @@ import HeliumConstraintInfo
 import Constraints
 import TypeGraphConstraintInfo
 import UHA_Range (noRange)
+import UHA_Utils (getNameName)
 import TypeConversion
 import Utils (internalError)
 import List
@@ -26,6 +27,8 @@ import TS_Attributes
 }
 
 SEM TypingStrategy [ | | core : Core_TypingStrategy ]
+  | Siblings
+      lhs . core = Siblings (map getNameName @names.self)
   | TypingStrategy
       lhs . core = TypingStrategy @typerule.core @statements.core    
       loc . nameMap = zip @uniqueTypevariables (map TVar [0..])

@@ -50,7 +50,7 @@ readTypingStrategiesFromFile options filename importEnvironment =
 
                         let number = length typingStrategies
                         when (Args.Verbose `elem` options && number > 0) $
-                           putStrLn ("Typing strategies...   (" ++ 
+                           putStrLn ("   (" ++ 
                               (if number == 1
                                  then "1 strategy is included)"
                                  else show number ++ " strategies are included)")) 

@@ -1425,7 +1425,8 @@ sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm _thenExpression_oneLineTree ]
                   , typepair   = tppair
-                  , properties = [ SubTermRange (getExprRange _thenExpression_self) ]
+                  , properties = [ SubTermRange (getExprRange _thenExpression_self)
+                                 , Unifier (tpToInt _beta) ]
                   }
         (_cinfoElse) =
             \tppair ->
@@ -1434,7 +1435,8 @@ sem_Expression_If (_range) (_guardExpression) (_thenExpression) (_elseExpression
                   , errorrange = _range_self
                   , sources    = [ sourceExpression _oneLineTree, sourceTerm _elseExpression_oneLineTree ]
                   , typepair   = tppair
-                  , properties = [ SubTermRange (getExprRange _elseExpression_self) ]
+                  , properties = [ SubTermRange (getExprRange _elseExpression_self)
+                                 , Unifier (tpToInt _beta) ]
                   }
         (_oneLineTree) =
             Node
@@ -2880,12 +2882,14 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
             getOrderedTypeSynonyms _lhs_importEnvironment
         ((_betaUniqueAtTheEnd,_substitution,_solveErrors,_solveDebug)) =
             (if _lhs_useTypeGraph then solveEquivalenceGroups else solveGreedy)
-               _body_betaUnique [ SolveWithTypeSynonyms _orderedTypeSynonyms
-                                , SolveWithTypeSignatures . map (\(n,ts) -> (show n,ts)) $
-                                     (  fmToList (valueConstructors _lhs_importEnvironment)
-                                     ++ fmToList (typeEnvironment _lhs_importEnvironment)
-                                     )
-                                ]
+               _body_betaUnique ([ SolveWithTypeSynonyms _orderedTypeSynonyms
+                                 , SolveWithTypeSignatures . map (\(n,ts) -> (show n,ts)) $
+                                      (  fmToList (valueConstructors _lhs_importEnvironment)
+                                      ++ fmToList (typeEnvironment _lhs_importEnvironment)
+                                      )
+                                 ] ++
+                                 [ SolveWithSiblings xs | Siblings xs <- typingStrategies _lhs_importEnvironment ]
+                                )
                                 _constraints
         (_monomorphics) =
             ftv (  (eltsFM $ valueConstructors _lhs_importEnvironment)
@@ -2933,7 +2937,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
         ( _body_assumptions,_body_betaUnique,_body_collectednotypedef,_body_constraints,_body_matchIO,_body_namesWithoutTypeDef,_body_self,_body_typeAnnotations,_body_typeSignatures) =
             (_body ([ (matchInfo, typingStrategy)
                     | typingStrategy <- typingStrategies _lhs_importEnvironment
-                    , let matchInfo = matchInformation
+                    , matchInfo      <- matchInformation
                                          _lhs_importEnvironment
                                          typingStrategy
                     ])

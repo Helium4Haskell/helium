@@ -1,6 +1,6 @@
 module Parser
-    ( module_, exp_, type_
-    , parseOnlyImports
+    ( module_, exp_, exp0
+    , type_, parseOnlyImports
     ) where
 
 {-

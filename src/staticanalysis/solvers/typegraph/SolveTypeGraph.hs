@@ -223,7 +223,7 @@ infinitePaths i = do xs <- rec [] i
                               []  -> return [] {- this should never occur: INTERNAL ERROR ! -}
                               b:_ ->  return $ reverse (as++[b])
 
-checkErrors :: (TypeGraphConstraintInfo info, TypeGraph typegraph info) => SolveState typegraph info ()
+checkErrors :: (TypeGraphConstraintInfo info, ConstraintSolver typegraph info) => SolveState typegraph info ()
 checkErrors =
    do errors  <- getErrors
       options <- getSolverOptions

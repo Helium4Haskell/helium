@@ -59,10 +59,13 @@ showTS_Error tsError = case tsError of
        --  show (getMessage typeError)
 
    (Soundness rule inferred strategy) ->
-      "The Strategy rule "++show rule++" is not sound:\n" ++
-      "*** strategy rule   : "++show strategy++"\n" ++
-      "*** type inferencer : "++show inferred++"\n"
-      
+      unlines [ "The type rule for " ++ show rule ++ " is not correct"
+              , "  the type according to the type rule is"
+              , "    " ++ show strategy
+              , "  whereas the standard type rules infer the type"
+              , "    " ++ show inferred
+              ]
+              
    _   -> "<TS_Error>"
    
 showTS_Warning :: TS_Warning -> String

@@ -19,6 +19,7 @@ import ExpressionTypeInferencer (expressionTypeInferencer)
 import FiniteMap
 import Char (isAlphaNum)
 import Utils (internalError)
+import qualified PrettyPrinting as PP
 
 import UHA_Syntax
 
@@ -2484,15 +2485,26 @@ type T_TypingStrategy = (ImportEnvironment) ->
 -- cata
 sem_TypingStrategy :: (TypingStrategy) ->
                       (T_TypingStrategy)
-sem_TypingStrategy ((TypingStrategy_TypingStrategy (_name) (_typerule) (_statements))) =
-    (sem_TypingStrategy_TypingStrategy (_name) ((sem_TypeRule (_typerule))) ((sem_UserStatements (_statements))))
-sem_TypingStrategy_TypingStrategy :: (String) ->
-                                     (T_TypeRule) ->
+sem_TypingStrategy ((TypingStrategy_Siblings (_names))) =
+    (sem_TypingStrategy_Siblings ((sem_Names (_names))))
+sem_TypingStrategy ((TypingStrategy_TypingStrategy (_typerule) (_statements))) =
+    (sem_TypingStrategy_TypingStrategy ((sem_TypeRule (_typerule))) ((sem_UserStatements (_statements))))
+sem_TypingStrategy_Siblings :: (T_Names) ->
+                               (T_TypingStrategy)
+sem_TypingStrategy_Siblings (_names) (_lhs_importEnvironment) =
+    let (_self) =
+            TypingStrategy_Siblings _names_self
+        ( _names_self) =
+            (_names )
+    in  ( [],_self,[])
+sem_TypingStrategy_TypingStrategy :: (T_TypeRule) ->
                                      (T_UserStatements) ->
                                      (T_TypingStrategy)
-sem_TypingStrategy_TypingStrategy (_name) (_typerule) (_statements) (_lhs_importEnvironment) =
+sem_TypingStrategy_TypingStrategy (_typerule) (_statements) (_lhs_importEnvironment) =
     let (_self) =
-            TypingStrategy_TypingStrategy _name _typerule_self _statements_self
+            TypingStrategy_TypingStrategy _typerule_self _statements_self
+        (_name) =
+            show (PP.sem_Expression _typerule_conclusionExpression)
         (_nameMap) =
             zip _uniqueTypevariables (map TVar [0..])
         (_errors) =

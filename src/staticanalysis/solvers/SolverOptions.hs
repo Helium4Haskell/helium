@@ -14,6 +14,7 @@ import Types
 type SolverOptions = [SolverOption]
 data SolverOption  = SolveWithTypeSynonyms      OrderedTypeSynonyms
                    | SolveWithTypeSignatures    [(String, TpScheme)]
+                   | SolveWithSiblings          [String]
 
 getTypeSynonyms :: SolverOptions -> OrderedTypeSynonyms
 getTypeSynonyms options = 
@@ -23,3 +24,6 @@ getTypeSynonyms options =
 
 getTypeSignatures :: SolverOptions -> [(String, TpScheme)]
 getTypeSignatures options = concat [ xs | SolveWithTypeSignatures xs <- options ]
+
+getExtraSiblings :: SolverOptions -> [[String]]
+getExtraSiblings options = [ xs | SolveWithSiblings xs <- options]

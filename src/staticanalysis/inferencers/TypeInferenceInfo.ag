@@ -208,7 +208,8 @@ SEM Expression | If loc . cinfoThen =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm @thenExpression.oneLineTree ]
         , typepair   = tppair
-        , properties = [ SubTermRange (getExprRange @thenExpression.self) ]
+        , properties = [ SubTermRange (getExprRange @thenExpression.self) 
+                       , Unifier (tpToInt @beta) ]
         }
 
 SEM Expression | If loc . cinfoElse =
@@ -218,7 +219,8 @@ SEM Expression | If loc . cinfoElse =
         , errorrange = @range.self
         , sources    = [ sourceExpression @oneLineTree, sourceTerm @elseExpression.oneLineTree ]
         , typepair   = tppair
-        , properties = [ SubTermRange (getExprRange @elseExpression.self) ]
+        , properties = [ SubTermRange (getExprRange @elseExpression.self) 
+                       , Unifier (tpToInt @beta) ]
         }
 
 -- Expression.Lambda

@@ -5,8 +5,9 @@ import UHA_Syntax
 TYPE TypingStrategies = [TypingStrategy] 
 
 DATA TypingStrategy 
+   | Siblings 
+        names       : Names
    | TypingStrategy       
-        name        : String
         typerule    : TypeRule
         statements  : UserStatements
         

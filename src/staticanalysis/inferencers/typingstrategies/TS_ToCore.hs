@@ -9,6 +9,7 @@ import HeliumConstraintInfo
 import Constraints
 import TypeGraphConstraintInfo
 import UHA_Range (noRange)
+import UHA_Utils (getNameName)
 import TypeConversion
 import Utils (internalError)
 import List
@@ -2742,15 +2743,24 @@ type T_TypingStrategy = ( (Core_TypingStrategy),(TypingStrategy))
 -- cata
 sem_TypingStrategy :: (TypingStrategy) ->
                       (T_TypingStrategy)
-sem_TypingStrategy ((TypingStrategy_TypingStrategy (_name) (_typerule) (_statements))) =
-    (sem_TypingStrategy_TypingStrategy (_name) ((sem_TypeRule (_typerule))) ((sem_UserStatements (_statements))))
-sem_TypingStrategy_TypingStrategy :: (String) ->
-                                     (T_TypeRule) ->
+sem_TypingStrategy ((TypingStrategy_Siblings (_names))) =
+    (sem_TypingStrategy_Siblings ((sem_Names (_names))))
+sem_TypingStrategy ((TypingStrategy_TypingStrategy (_typerule) (_statements))) =
+    (sem_TypingStrategy_TypingStrategy ((sem_TypeRule (_typerule))) ((sem_UserStatements (_statements))))
+sem_TypingStrategy_Siblings :: (T_Names) ->
+                               (T_TypingStrategy)
+sem_TypingStrategy_Siblings (_names) =
+    let (_self) =
+            TypingStrategy_Siblings _names_self
+        ( _names_isIdentifier,_names_isOperator,_names_isSpecial,_names_oneLineTree,_names_self) =
+            (_names )
+    in  ( Siblings (map getNameName _names_self),_self)
+sem_TypingStrategy_TypingStrategy :: (T_TypeRule) ->
                                      (T_UserStatements) ->
                                      (T_TypingStrategy)
-sem_TypingStrategy_TypingStrategy (_name) (_typerule) (_statements) =
+sem_TypingStrategy_TypingStrategy (_typerule) (_statements) =
     let (_self) =
-            TypingStrategy_TypingStrategy _name _typerule_self _statements_self
+            TypingStrategy_TypingStrategy _typerule_self _statements_self
         (_nameMap) =
             zip _uniqueTypevariables (map TVar [0..])
         (_uniqueTypevariables) =

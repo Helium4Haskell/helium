@@ -10,7 +10,7 @@ import TypeGraphConstraintInfo
 import Types
 import List
 import UHA_Range (noRange)
-import Utils (internalError)
+import Utils (internalError, fst3)
 import OneLiner
 import Messages
 import TypeErrors
@@ -30,15 +30,15 @@ type MetaVariableInfo = (Tp, Tree, Range)
 applyTypingStrategy :: Core_TypingStrategy -> (ConstraintSet, MetaVariableInfo) -> MetaVariableTable MetaVariableInfo -> Int -> (ConstraintSet, IO (), Int)
 applyTypingStrategy = sem_Core_TypingStrategy
 
-matchInformation :: ImportEnvironment -> Core_TypingStrategy -> (Expression, [String])
+matchInformation :: ImportEnvironment -> Core_TypingStrategy -> [(Expression, [String])]
 matchInformation importEnvironment typingStrategy = 
    case typingStrategy of 
       TypingStrategy (TypeRule premises conclusion) _ -> 
          let Judgement exprstring _ = conclusion
              expression = expressionParser (operatorTable importEnvironment) exprstring
              metas      = [ s | Judgement s t <- premises ]
-         in (expression, metas)
-      _ -> internalError "TS_Apply.ag" "n/a" "unknown TypingStrategy"
+         in [(expression, metas)]
+      _ -> []
       
 expressionParser :: OperatorTable -> String -> Expression
 expressionParser operatorTable string = 
@@ -53,7 +53,6 @@ expressionParser operatorTable string =
     intErr = internalError "TS_Apply.ag" "n/a" ("unparsable expression: "++show string)
 }
 
-
 ATTR Core_TypingStrategy 
      [ localInfo         : {(ConstraintSet, MetaVariableInfo)}
        metaVariableTable : {MetaVariableTable MetaVariableInfo}  
@@ -63,12 +62,33 @@ ATTR Core_TypingStrategy
      ] 
           
 SEM Core_TypingStrategy 
+  | Siblings     
+       lhs . constraintSet = ctEmpty
+           . debugIO       = return ()
   | TypingStrategy     
        lhs . constraintSet = ctNode @allConstraintTrees
-           . unique        = length @ftv + @lhs.unique
+           . unique        = length @normalTV + @lhs.unique
            . debugIO       = putStrLn "applying typing strategy"
-       loc . substitution  = listToSubstitution (zip @ftv (map TVar [@lhs.unique..]))
-           . ftv           = @typerule.ftv `union` @statements.ftv
+       loc . substitution  = listToSubstitution (@standardSubst ++ @specialSubst)
+           . allTV         = @typerule.ftv `union` @statements.ftv
+
+{- type variables that occur exactly once in a judgement should not introduce a new constraint -}           
+           . specialTV     = concat . exactlyOnce . map ftv . filter isTVar . map snd $ @typerule.judgements
+           . normalTV      = @allTV \\ @specialTV
+           
+           . standardSubst = zip @normalTV (map TVar [@lhs.unique..])
+           . specialSubst  = let conclusionVar = case snd (last @typerule.judgements) of
+                                                    TVar i -> Just i
+                                                    _      -> Nothing
+                                 find i | Just i == conclusionVar = [(i, fst3 (snd @lhs.localInfo))]
+                                        | otherwise               = [ (i,tp)
+                                                                    | (s1, TVar j)       <- @typerule.judgements
+                                                                    , i == j
+                                                                    , (s2, (_,(tp,_,_))) <- @lhs.metaVariableTable
+                                                                    , s1 == s2
+                                                                    ]
+                             in concatMap find @specialTV
+                             
 
 ATTR Core_TypeRule
      Core_Judgements Core_Judgement
@@ -110,8 +130,9 @@ SEM Core_UserStatement
   | Constraint
        lhs . currentPosition    = (\(x, y) -> (x, y+1)) @lhs.currentPosition 
            . collectConstraints = case @lhs.currentPhase of
-                                     Just phase -> ctPhased phase [ @newConstraint ] : @lhs.collectConstraints
-                                     Nothing    -> ctSingle       [ @newConstraint ] : @lhs.collectConstraints
+                                     Just phase | phase /= 5 
+                                                -> ctPhased (phase - 5) [ @newConstraint ] : @lhs.collectConstraints
+                                     _          -> ctSingle             [ @newConstraint ] : @lhs.collectConstraints
        
   | MetaVariableConstraints        
        lhs . metavarConstraints = filter ((@name /=) . fst) @lhs.metavarConstraints
@@ -148,28 +169,48 @@ ATTR Core_TypeRule [ | | constraints : {Constraints HeliumConstraintInfo} ]
 
 SEM Core_TypeRule             
   | TypeRule        
-       lhs .  constraints = [ (@lhs.substitution |-> tp1 .==. tp2) (typeRuleCInfo "conclusion" mvinfo)
-                            | (s1, tp1) <- @conclusion.judgements
-                            , let (_, mvinfo@(tp2,_,_)) = @lhs.localInfo
-                            ]
-                            ++
-                            [ (@lhs.substitution |-> tp1 .==. tp2) (typeRuleCInfo s1 mvinfo)
-                            | (s1, tp1)                   <- @premises.judgements 
-                            , (s2, (_, mvinfo@(tp2,_,_))) <- @lhs.metaVariableTable
-                            , s1 == s2
-                            ]
+       lhs .  constraints = let localInfo@(localType, localTree, _) = snd @lhs.localInfo
+                                localLocation = "expression" -- not very precise
+                            in [ (@lhs.substitution |-> tp1 .==. localType) 
+                                    (typeRuleCInfo localLocation Nothing localInfo)
+                               | (s1, tp1) <- @conclusion.judgements
+                               ]
+                               ++
+                               [ (tp2 .==. @lhs.substitution |-> tp1) 
+                                    (typeRuleCInfo localLocation (Just (s1, localTree)) mvinfo)
+                               | (s1, tp1)                   <- @premises.judgements 
+                               , (s2, (_, mvinfo@(tp2,_,_))) <- @lhs.metaVariableTable
+                               , s1 == s2
+                               ]
 
 {
-typeRuleCInfo :: String -> MetaVariableInfo -> (Tp, Tp) -> HeliumConstraintInfo
-typeRuleCInfo = 
-   \string (tp1,tree,range) tppair ->
-      CInfo { info       = (NTBody, AltBody, (-1), "Typing Strategy, meta-typevariable " ++ string)
-            , location   = "Typing Strategy"
-            , errorrange = noRange
-            , sources    = [ ]
-            , typepair   = tppair
-            , properties = [ HighlyTrusted ] 
-            }
+typeRuleCInfo :: String -> Maybe (String, Tree) -> MetaVariableInfo -> (Tp, Tp) -> HeliumConstraintInfo
+typeRuleCInfo loc mTuple (tp1,tree,range) tppair =
+   CInfo { info       = (NTBody, AltBody, (-1), "Typing Strategy, " ++ infoString)
+         , location   = loc
+         , errorrange = range
+         , sources    = srcs
+         , typepair   = tppair
+         , properties = props
+         }
+ where (infoString, srcs, props) = case mTuple of 
+          Just (s,t) -> ("meta variable "++s, [sourceExpression t, sourceTerm tree], [])
+          Nothing    -> ("conclusion", [sourceExpression tree], [FolkloreConstraint])
+
+-- see TypeInferenceInfo.ag
+sourceTerm, sourceExpression :: Tree -> (String, Tree)
+sourceTerm        = (,) "term"
+sourceExpression  = (,) "expression"
+
+-- see TypesToAlignedDocs.hs
+isTVar :: Tp -> Bool
+isTVar (TVar _) = True
+isTVar _        = False
+
+exactlyOnce :: Eq a => [a] -> [a]
+exactlyOnce []     = []
+exactlyOnce (x:xs) | x `elem` xs = exactlyOnce . filter (/= x) $ xs
+                   | otherwise   = x : exactlyOnce xs
 
 setCustomTypeError :: MetaVariableInfo -> HeliumConstraintInfo -> HeliumConstraintInfo
 setCustomTypeError (tp, tree, range) cinfo =
@@ -207,9 +248,7 @@ makeAttributeTable local table substitution =
    ++ [ ((show i, Nothing), MessageType (substitution |-> TVar i)) | i <- dom substitution ]  
 }
 
-ATTR Core_Judgements Core_Judgement [ | | judgements USE {++} {[]} : {[(String, Tp)]} ]
-
-
+ATTR Core_Judgements Core_Judgement Core_TypeRule [ | | judgements USE {++} {[]} : {[(String, Tp)]} ]
 
 SEM Core_Judgement
   | Judgement

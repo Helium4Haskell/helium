@@ -14,7 +14,8 @@ type Core_Judgements = [(Core_Judgement)]
 data Core_TypeRule = TypeRule (Core_Judgements) (Core_Judgement)
    deriving (Show, Read)
 -- Core_TypingStrategy -----------------------------------------
-data Core_TypingStrategy = TypingStrategy (Core_TypeRule) (Core_UserStatements)
+data Core_TypingStrategy = Siblings [String] 
+                         | TypingStrategy (Core_TypeRule) (Core_UserStatements)
    deriving (Show, Read)
 -- Core_UserStatement ------------------------------------------
 data Core_UserStatement = Constraint (Tp) (Tp) (String)

@@ -39,6 +39,7 @@ data Property   = FolkloreConstraint
                 | WithTypeError TypeError
                 | WithHint TypeErrorInfo
                 | SubTermRange Range
+                | Unifier Int {- the unifier -}
 
 instance Show HeliumConstraintInfo where
    show = show . getInfoSource
@@ -95,6 +96,9 @@ instance TypeGraphConstraintInfo HeliumConstraintInfo where
              []  -> Nothing
              t:_ -> Just t            
    maybeNegation cinfo = case [ i | Negation i <- properties cinfo ] of
+             []  -> Nothing
+             t:_ -> Just t            
+   maybeUnifier cinfo = case [ i | Unifier i <- properties cinfo ] of
              []  -> Nothing
              t:_ -> Just t            
    getTwoTypes = typepair

@@ -32,12 +32,14 @@ SEM Module
            . (betaUniqueAtTheEnd,substitution,solveErrors,solveDebug) 
                   = -- choose your algorithm to solve the type constraints
                     (if @lhs.useTypeGraph then solveEquivalenceGroups else solveGreedy) 
-                       @body.betaUnique [ SolveWithTypeSynonyms @orderedTypeSynonyms 
-                                        , SolveWithTypeSignatures . map (\(n,ts) -> (show n,ts)) $
-                                             (  fmToList (valueConstructors @lhs.importEnvironment)
-                                             ++ fmToList (typeEnvironment @lhs.importEnvironment)
-                                             )
-                                        ]
+                       @body.betaUnique ([ SolveWithTypeSynonyms @orderedTypeSynonyms 
+                                         , SolveWithTypeSignatures . map (\(n,ts) -> (show n,ts)) $
+                                              (  fmToList (valueConstructors @lhs.importEnvironment)
+                                              ++ fmToList (typeEnvironment @lhs.importEnvironment)
+                                              )
+                                         ] ++
+                                         [ SolveWithSiblings xs | Siblings xs <- typingStrategies @lhs.importEnvironment ]
+                                        )
                                         @constraints
            . monomorphics  = ftv (  (eltsFM $ valueConstructors @lhs.importEnvironment) 
                                  ++ (eltsFM $ typeEnvironment @lhs.importEnvironment)

@@ -1,4 +1,6 @@
 DATA Core_TypingStrategy 
+   | Siblings
+         functions  : {[String]}
    | TypingStrategy       
         typerule    : Core_TypeRule
         statements  : Core_UserStatements
