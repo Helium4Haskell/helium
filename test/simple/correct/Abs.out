@@ -1,4 +1,0 @@
-Compiling correct/Abs.hs
-(3,1): Warning: Missing type signature: main :: (Int, Int, Float, Float)
-Compilation successful with 1 warning
-(3,4,4.0,2.0)

@@ -1,3 +1,0 @@
-Compiling staticerrors/SynRec.hs
-(3,6), (4,6), (5,6), (6,6): Recursive type synonyms "A", "B", "C" and "D"
-Compilation failed with 1 error

@@ -1,4 +1,0 @@
-Compiling staticwarnings/SynUnusedTyvar.hs
-(3,8): Warning: Type variable "a" is not used
-Compilation successful with 1 warning
-No 'main' function defined in this module

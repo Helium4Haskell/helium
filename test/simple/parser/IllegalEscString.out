@@ -1,4 +1,0 @@
-Compiling parser/IllegalEscString.hs
-(1,9): Illegal escape sequence in string literal
-  Hint: Correct examples of Strings: "Helium is cool" "abc\ndef" ""
-Compilation failed with 1 error

@@ -1,3 +1,0 @@
-Circular import chain: 
-	SelfImport imports SelfImport
-

@@ -1,8 +1,0 @@
-Compiling correct/Case1.hs
-(6,14): Warning: Variable "ys" is not used
-(7,10): Warning: Variable "x" is not used
-(7,12): Warning: Variable "xs" is not used
-(5,5): Warning: Missing pattern in case expression: 
-  [] -> ...
-Compilation successful with 4 warnings
-32

@@ -1,8 +1,0 @@
-Compiling typeerrors/Examples/FbRight.hs
-(4,3): Warning: Variable "x" is not used
-(4,7): Type error in right-hand side
- expression       : True
-   type           : Bool  
-   does not match : String
-
-Compilation failed with 1 error

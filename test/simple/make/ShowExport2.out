@@ -1,6 +1,0 @@
-Compiling make/ShowExport3.hs
-Compilation successful
-Compiling make/ShowExport2.hs
-(5,1): Warning: Missing type signature: x :: A
-Compilation successful with 1 warning
-No 'main' function defined in this module

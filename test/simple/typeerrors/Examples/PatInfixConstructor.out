@@ -1,9 +1,0 @@
-Compiling typeerrors/Examples/PatInfixConstructor.hs
-(4,4): Warning: Variable "x" is not used
-(4,8): Warning: Variable "xs" is not used
-(4,4): Type error in pattern of function binding
- pattern          : x : xs
-   type           : [a] 
-   does not match : Bool
-
-Compilation failed with 1 error

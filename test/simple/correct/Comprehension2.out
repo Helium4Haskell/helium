@@ -1,5 +1,0 @@
-Compiling correct/Comprehension2.hs
-(4,20): Warning: Missing pattern in generator: 
-  _ <- ...
-Compilation successful with 1 warning
-["axa","aya"]

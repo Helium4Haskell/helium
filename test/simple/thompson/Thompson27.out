@@ -1,8 +1,0 @@
-Compiling thompson/Thompson27.hs
-(1,11): Type error in variable
- expression       : ++
-   type           : [a] -> [a] -> [a]
-   expected type  : b   -> Int -> c  
- probable fix     : use + instead
-
-Compilation failed with 1 error

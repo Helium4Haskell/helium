@@ -1,8 +1,0 @@
-Compiling typeerrors/Examples/PatAs.hs
-(4,2): Type error in as pattern
- pattern          : a@[y]
- term             : a
-   type           : Int
-   does not match : [a]
-
-Compilation failed with 1 error

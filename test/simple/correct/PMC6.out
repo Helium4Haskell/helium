@@ -1,5 +1,0 @@
-Compiling correct/PMC6.hs
-(9,1): Warning: Missing pattern in function bindings: 
-  headAndList [] = ...
-Compilation successful with 1 warning
-0

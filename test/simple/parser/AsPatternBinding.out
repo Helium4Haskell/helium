@@ -1,7 +1,0 @@
-Compiling parser/AsPatternBinding.hs
-(2,9): Warning: Definition "a" is not used
-(2,12): Warning: Definition "b" is not used
-(2,15): Warning: Definition "c" is not used
-(1,1): Warning: Missing type signature: test :: IO ()
-Compilation successful with 4 warnings
-No 'main' function defined in this module

@@ -1,9 +1,0 @@
-Compiling typeerrors/Heuristics/AppSwap2.hs
-(6,24): Type error in infix application
- expression       : dictionary ? 0
- operator         : ?
-   type           : Int             -> IntTable a -> a     
-   does not match : IntTable String -> Int        -> String
- probable fix     : swap the two arguments
-
-Compilation failed with 1 error

@@ -1,0 +1,15 @@
+for f in $1/*.hs ; 
+do 
+diff $f ../$f 2>/dev/null >/dev/null
+hs=$?
+diff ${f%.hs}.out ../${f%.hs}.out 2>/dev/null >/dev/null
+out=$?
+case "$hs" in
+  0 ) case "$out" in
+        0 ) rm $f
+            rm ${f%.hs}.out
+            cvs remove $f
+            cvs remove ${f%.hs}.out
+      esac
+esac
+done

@@ -1,3 +1,0 @@
-Compiling staticerrors/TypeAppTyvar.hs
-(5,9): Type variable "a" cannot be applied to another type
-Compilation failed with 1 error

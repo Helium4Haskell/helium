@@ -1,9 +1,0 @@
-Compiling typeerrors/Examples/ExprNormalApplication.hs
-(3,5): Type error in application
- expression       : "geit" "gans"
- term             : "geit"
-   type           : String     
-   does not match : String -> a
- because          : it is not a function
-
-Compilation failed with 1 error

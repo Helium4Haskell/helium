@@ -1,3 +1,0 @@
-Compiling staticerrors/FunArity3.hs
-(5,1): Arity mismatch in function bindings for "mymap"
-Compilation failed with 1 error

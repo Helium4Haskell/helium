@@ -1,6 +1,0 @@
-Compiling parser/PatUnaryMinOk.hs
-(1,1): Warning: Missing type signature: f :: Float -> Int
-(1,1): Warning: Missing pattern in function bindings: 
-  f _ = ...
-Compilation successful with 2 warnings
-No 'main' function defined in this module

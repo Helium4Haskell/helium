@@ -1,3 +1,0 @@
-Compiling staticerrors/DataDupCon2.hs
-(3,10), (4,10): Duplicated constructor "A"
-Compilation failed with 1 error

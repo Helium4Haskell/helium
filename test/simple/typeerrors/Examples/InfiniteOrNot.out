@@ -1,7 +1,0 @@
-Compiling typeerrors/Examples/InfiniteOrNot.hs
-(7,15): Type error in right-hand side
- expression       : [sum x, main xs]
-   type           : [Int]
-   does not match : Int  
-
-Compilation failed with 1 error

@@ -1,7 +1,0 @@
-Compiling typeerrors/Examples/AltVarBind.hs
-(5,16): Type error in right-hand side
- expression       : x
-   type           : Bool
-   does not match : Int 
-
-Compilation failed with 1 error

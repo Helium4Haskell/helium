@@ -1,3 +1,0 @@
-Compiling staticerrors/ExprUndefVar.hs
-(3,8): Undefined variable "a"
-Compilation failed with 1 error

@@ -1,8 +1,0 @@
-Compiling typeerrors/Examples/QualGenerator.hs
-(4,18): Type error in generator
- qualifier        : a <- x
- term             : x
-   type           : Int  
-   does not match : [Int]
-
-Compilation failed with 1 error

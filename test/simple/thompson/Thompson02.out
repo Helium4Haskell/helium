@@ -1,4 +1,0 @@
-Compiling thompson/Thompson02.hs
-(4,1): Arity mismatch in function bindings for "card"
-(5,7): Constructor "Node" should have 3 parameters, but has 1
-Compilation failed with 2 errors

@@ -1,9 +1,0 @@
-Compiling typeerrors/Heuristics/AppReorder1.hs
-(4,8): Type error in application
- expression       : map [1 .. 10] fac
- term             : map
-   type           : (a -> b) -> [a]          -> [b  ]
-   does not match : [Int]    -> (Int -> Int) -> [Int]
- probable fix     : re-order arguments
-
-Compilation failed with 1 error

@@ -1,5 +1,0 @@
-Compiling staticerrors/TestCollectFunBinds.hs
-(8,1), (14,1): Duplicated definition "a"
-(11,1), (12,1): Duplicated definition "b"
-(20,9), (20,16): Duplicated definition "x"
-Compilation failed with 3 errors

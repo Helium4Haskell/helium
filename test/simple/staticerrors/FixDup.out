@@ -1,3 +1,0 @@
-Compiling staticerrors/FixDup.hs
-(5,9), (6,10): Duplicated infix declaration "+++"
-Compilation failed with 1 error

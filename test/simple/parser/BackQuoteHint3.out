@@ -1,5 +1,0 @@
-Compiling parser/BackQuoteHint3.hs
-(1,10): Non-terminated character literal
-  Hint: Correct examples of Chars: 'a' '\n' '&'
-        To write a function in infix notation, use backquotes: `Cons`
-Compilation failed with 1 error

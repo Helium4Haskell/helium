@@ -1,8 +1,0 @@
-Compiling typeerrors/Examples/TooGenTypeSig.hs
-(3,14): Type signature is too general
- function         : f
-   declared type  : a  -> [a ]
-   inferred type  : _1 -> [_1]
- hint             : try removing the type signature
-
-Compilation failed with 1 error

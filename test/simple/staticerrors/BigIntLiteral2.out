@@ -1,4 +1,0 @@
-Compiling staticerrors/BigIntLiteral2.hs
-(1,9): Integer literal (12345678901) too big
-  Hint: Maximum is 1073741823
-Compilation failed with 1 error

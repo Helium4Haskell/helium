@@ -1,3 +1,0 @@
-Compiling staticerrors/TypeArityTycon3.hs
-(5,9): Type constructor "A" should have 1 parameter, but has none
-Compilation failed with 1 error

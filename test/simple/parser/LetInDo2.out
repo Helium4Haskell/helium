@@ -1,4 +1,0 @@
-Compiling parser/LetInDo2.hs
-(1,1): Warning: Missing type signature: main :: IO ()
-Compilation successful with 1 warning
-hello

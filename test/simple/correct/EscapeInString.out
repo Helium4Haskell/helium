@@ -1,8 +1,0 @@
-Compiling correct/EscapeInString.hs
-(1,1): Warning: Missing type signature: main :: Int
-(3,1): Warning: Missing type signature: f :: String -> Int
-(3,1): Warning: Missing patterns in function bindings: 
-  f (_ : _) = ...
-  f [] = ...
-Compilation successful with 3 warnings
-3

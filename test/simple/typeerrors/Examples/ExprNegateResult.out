@@ -1,7 +1,0 @@
-Compiling typeerrors/Examples/ExprNegateResult.hs
-(4,5): Type error in right-hand side
- expression       : -13
-   type           : Int 
-   does not match : Bool
-
-Compilation failed with 1 error

@@ -1,9 +1,0 @@
-Compiling typeerrors/Examples/BgExplicitTypedBinding.hs
-(4,1): Type error in explicitly typed binding
- definition       : f
-   inferred type  : Int -> Int
-   declared type  : Bool      
- because          : the function binding has 1 pattern, but its type signature
-                    does not allow patterns
-
-Compilation failed with 1 error

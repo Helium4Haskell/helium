@@ -1,6 +1,0 @@
-Compiling parser/ContainsTab.hs
-(2,1): Warning: Tab character encountered; may cause problems with the layout rule
-  Hint: Configure your editor to replace tabs by spaces
-(1,1): Warning: Missing type signature: main :: Int
-Compilation successful with 2 warnings
-3

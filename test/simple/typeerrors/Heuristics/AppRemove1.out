@@ -1,9 +1,0 @@
-Compiling typeerrors/Heuristics/AppRemove1.hs
-(3,8): Type error in application
- expression       : map 3 even [1 .. 10]
- term             : map
-   type           : (a -> b) -> [a]           -> [b]       
-   does not match : Int      -> (Int -> Bool) -> [Int] -> c
- probable fix     : remove first argument
-
-Compilation failed with 1 error

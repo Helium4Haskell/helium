@@ -1,5 +1,0 @@
-Compiling correct/ExprDoPat1.hs
-(6,9): Warning: Missing pattern in generator: 
-  [] <- ...
-Compilation successful with 1 warning
-1

@@ -1,7 +1,0 @@
-Compiling parser/CommentOrOperator6.hs
-(2,8): Warning: Syntax colouring usually can not handle names containing --
-  Hint: If you wanted to start a comment, write spaces around --
-(2,8): Syntax error: 
-    unexpected operator '--++'
-    expecting expression
-Compilation failed with 1 error

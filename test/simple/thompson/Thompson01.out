@@ -1,5 +1,0 @@
-Compiling thompson/Thompson01.hs
-(1,10): Non-terminated character literal
-  Hint: Correct examples of Chars: 'a' '\n' '&'
-        To write a function in infix notation, use backquotes: `div`
-Compilation failed with 1 error

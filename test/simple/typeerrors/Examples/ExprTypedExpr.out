@@ -1,8 +1,0 @@
-Compiling typeerrors/Examples/ExprTypedExpr.hs
-(3,6): Type error in type annotation
- expression       : 5 :: Bool
- term             : 5
-   inferred type  : Int 
-   declared type  : Bool
-
-Compilation failed with 1 error

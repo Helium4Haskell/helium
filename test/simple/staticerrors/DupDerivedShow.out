@@ -1,5 +1,0 @@
-Compiling staticerrors/DupDerivedShow.hs
-(3,6), (4,6), (5,6): Duplicated type constructor "A"
-(3,6), (4,6), (5,6), (8,1), (11,1): Duplicated definition "showA"
-(7,1), (10,1): Duplicated type signature "showA"
-Compilation failed with 3 errors

@@ -1,8 +1,0 @@
-Compiling typeerrors/Heuristics/TupleRemove1.hs
-(7,17): Type error in tuple
- expression       : (True, a + b, a)
-   type           : (Bool, Int, Int)
-   expected type  : (Int, Int)      
- probable fix     : remove first element of tuple
-
-Compilation failed with 1 error

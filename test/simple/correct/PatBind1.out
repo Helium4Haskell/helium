@@ -1,7 +1,0 @@
-Compiling correct/PatBind1.hs
-(8,1): Warning: Missing pattern in pattern binding: 
-  [] = ...
-(12,1): Warning: Missing pattern in pattern binding: 
-  [] = ...
-Compilation successful with 2 warnings
-5

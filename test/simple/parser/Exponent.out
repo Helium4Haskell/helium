@@ -1,4 +1,0 @@
-Compiling parser/Exponent.hs
-(1,1): Warning: Missing type signature: main :: (Float, Float, Float, Float, Float, Float, Float)
-Compilation successful with 1 warning
-(1e+010,0.0003,450.0,0.0001,20000.0,30000.0,4e-020)

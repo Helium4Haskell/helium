@@ -1,4 +1,0 @@
-Compiling parser/StrategiesKeyword3.hs
-(1,1): Warning: Missing type signature: siblings :: Int
-Compilation successful with 1 warning
-No 'main' function defined in this module

@@ -1,7 +1,0 @@
-Compiling typeerrors/Examples/ExprListResult.hs
-(4,5): Type error in right-hand side
- expression       : [5]
-   type           : [Int]
-   does not match : Int  
-
-Compilation failed with 1 error

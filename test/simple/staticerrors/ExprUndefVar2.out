@@ -1,4 +1,0 @@
-Compiling staticerrors/ExprUndefVar2.hs
-(3,8): Undefined variable "mian"
-  Hint: Did you mean "main" or "min" ?
-Compilation failed with 1 error

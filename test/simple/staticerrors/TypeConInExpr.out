@@ -1,9 +1,0 @@
-Compiling staticerrors/TypeConInExpr.hs
-(6,11): Undefined constructor "Bool"
-  Hint: Type constructor "Bool" cannot be used in an expression
-(8,8): Undefined constructor "MyTree"
-  Hint: Type constructor "MyTree" cannot be used in a pattern
-(10,8): Undefined constructor "Maybe"
-  Hint: Type constructor "Maybe" cannot be used in an expression
-        Did you mean "maybe" ?
-Compilation failed with 3 errors

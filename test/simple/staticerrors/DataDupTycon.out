@@ -1,3 +1,0 @@
-Compiling staticerrors/DataDupTycon.hs
-(3,6), (4,6): Duplicated type constructor "A"
-Compilation failed with 1 error

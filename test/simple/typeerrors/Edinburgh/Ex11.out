@@ -1,8 +1,0 @@
-Compiling typeerrors/Edinburgh/Ex11.hs
-(5,20): Type error in literal
- expression       : 2.0
-   type           : Float
-   expected type  : Int  
- probable fix     : use an int literal instead
-
-Compilation failed with 1 error
