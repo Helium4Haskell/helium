@@ -10,14 +10,24 @@ import Utils
 import CoreUtils
 
 patternsToCore :: [(Id, Pattern)] -> Core.Expr -> Core.Expr
-patternsToCore nps continue =
-    foldr patternToCore continue nps
+patternsToCore nps continue = fst (patternsToCore' nps continue 0)
+
+patternsToCore' :: [(Id, Pattern)] -> Core.Expr -> Int -> (Core.Expr, Int)
+patternsToCore' [] continue nr = (continue, nr)
+patternsToCore' (np:nps) continue nr =
+    let (expr, nr') = patternsToCore' nps continue nr
+    in patternToCore' np expr nr'
     
 patternToCore :: (Id, Pattern) -> Core.Expr -> Core.Expr
-patternToCore (name, pat) continue = 
+patternToCore np continue = fst (patternToCore' np continue 0)
+    
+withNr nr e = (e, nr)
+
+patternToCore' :: (Id, Pattern) -> Core.Expr -> Int -> (Core.Expr, Int)
+patternToCore' (name, pat) continue nr = 
     case pat of
         -- let x = _u1 in ...
-        Pattern_Variable _ n -> 
+        Pattern_Variable _ n -> withNr nr $
             if name == wildcardId || name == idFromName n then
                 continue
             else 
@@ -27,44 +37,38 @@ patternToCore (name, pat) continue =
         --             _         -> _next
         Pattern_Constructor _ n ps -> 
             let 
-                ids =
+                (ids, nr') =
                     if all isSimple ps then 
-                        map getIdOfSimplePattern ps 
+                        (map getIdOfSimplePattern ps, nr)
                     else 
-                        freshIds "l$" (length ps)
-            in
+                        freshIds' "l$" nr (length ps)
+                (expr, nr'') =
+                    patternsToCore' (zip ids ps) continue nr'
+            in withNr nr'' $
                 case_ name
                 [ Core.Alt 
                     (Core.PatCon (Core.ConId (idFromName n)) ids) 
-                    (patternsToCore (zip ids ps) continue)
+                    expr
                 ]
 
         -- case _u1 of _l1 : _l2 -> ...
         --             _         -> _next
         Pattern_InfixConstructor _ p1 n p2 ->
-            let 
-                ps = [p1, p2]
-                ids =
-                    if all isSimple ps then 
-                        map getIdOfSimplePattern ps 
-                    else freshIds "l$" (length ps)
-            in
-                case_ name
-                [ Core.Alt 
-                    (Core.PatCon (Core.ConId (idFromName n)) ids) 
-                    (patternsToCore (zip ids [p1, p2]) continue)
-                ]
+            let ie = internalError "PatternMatch" "patternToCore'" "shouldn't look at range"
+            in patternToCore' (name, Pattern_Constructor ie n [p1, p2]) continue nr
                 
         Pattern_Parenthesized _ p ->
-            patternToCore (name, p) continue
+            patternToCore' (name, p) continue nr
 
         -- let n = _u1 in ...
         Pattern_As _ n p -> 
-            let_ 
-                (idFromName n) (Core.Var name) 
-                (patternToCore (name, p) continue)
+            let (expr, nr') = patternToCore' (name, p) continue nr
+            in withNr nr' $
+                let_ 
+                    (idFromName n) (Core.Var name) 
+                    expr
 
-        Pattern_Wildcard _ ->
+        Pattern_Wildcard _ -> withNr nr $
             continue
                 
         -- case _u1 of 42 -> ...
@@ -72,61 +76,66 @@ patternToCore (name, pat) continue =
 
         Pattern_Literal _ l ->  
             case l of
-                Literal_Int _ i -> 
+                Literal_Int _ i -> withNr nr $
                     case_ name [ Core.Alt (Core.PatLit (Core.LitInt (read i))) continue ]
-                Literal_Char _ [c] -> 
+                Literal_Char _ [c] -> withNr nr $
                     case_ name 
                     [ Core.Alt 
                         (Core.PatLit (Core.LitInt (ord c)))
                         continue 
                     ]
-                Literal_Float _ f -> 
+                Literal_Float _ f -> withNr nr $
                     if_ (var "primEqFloat" `app_` float f `app_` Core.Var name)
                         continue
                         (Core.Var nextClauseId)
 -- !!! if we would have MATCHFLOAT instruction it could be: 
 --  case_ name [ Core.Alt (Core.PatLit (Core.LitDouble (read f))) continue ]
                 Literal_String _ s -> 
-                    patternToCore 
+                    patternToCore' 
                         ( name
                         , Pattern_List undefined 
                             (map (\c -> Pattern_Literal undefined (Literal_Char undefined [c])) s) 
                         )
                         continue
+                        nr
             
         Pattern_List _ ps -> 
-            patternToCore (name, expandPatList ps) continue
+            patternToCore' (name, expandPatList ps) continue nr
         
         Pattern_Tuple _ ps ->
             let
-                ids =
+                (ids, nr') =
                     if all isSimple ps then 
-                        map getIdOfSimplePattern ps 
+                        (map getIdOfSimplePattern ps, nr)
                     else 
-                        freshIds "l$" (length ps)
-            in
+                        freshIds' "l$" nr (length ps)
+                (expr, nr'') = 
+                    patternsToCore' (zip ids ps) continue nr'
+            in withNr nr'' $
                 case_ name
                 [ Core.Alt 
                     (Core.PatCon (Core.ConTag 0 (length ps)) ids) 
-                    (patternsToCore (zip ids ps) continue)
+                    expr
                 ]
             
         
-        Pattern_Negate _ (Literal_Int r v) ->
-            patternToCore 
+        Pattern_Negate _ (Literal_Int r v) -> 
+            patternToCore' 
                 (name, Pattern_Literal r (Literal_Int r neg))
                 continue
+                nr
             where
                 neg = show (-(read v :: Int))
             
         Pattern_NegateFloat _ (Literal_Float r v) -> 
-            patternToCore 
+            patternToCore'
                 (name, Pattern_Literal r (Literal_Float r neg))
                 continue
+                nr
             where
                 neg = show (-(read v :: Float))
         
-        _ -> internalError "PatternMatch" "patternToCore" "unknown pattern kind"
+        _ -> internalError "PatternMatch" "patternToCore'" "unknown pattern kind"
 
 -- [1, 2, 3] ==> 1 : (2 : (3 : [] ) )
 expandPatList :: [Pattern] -> Pattern
@@ -153,12 +162,14 @@ getIdOfSimplePattern p =
         Pattern_Wildcard _ -> wildcardId
         _ -> internalError "PatternMatch" "getIdOfSimplePattern" "not a simple pattern"
         
-
 freshIds :: String -> Int -> [Id]
-freshIds prefix nr = 
-    [ idFromString (prefix ++ show i)
-    | i <- [1..nr]
-    ]
+freshIds prefix number = fst (freshIds' prefix 0 number)
+
+freshIds' :: String -> Int -> Int -> ([Id], Int)
+freshIds' prefix start number = 
+    ( take number [ idFromString (prefix ++ show i) | i <- [start..] ]
+    , number + start
+    )
 
 nextClauseAlternative :: Core.Alt
 nextClauseAlternative =

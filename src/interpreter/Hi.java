@@ -8,10 +8,7 @@ class Hi extends Frame
 	TextArea outputArea;
 	Label   statusLabel;
 	TextField inputField;
-	Button interruptButton;
-
-	Process process;
-	boolean done;
+	StdIOProcess process;
 
 	Hi()
 	{
@@ -24,6 +21,7 @@ class Hi extends Frame
 				handleUserInput(inputField.getText());
 			}});
 
+/*
 		interruptButton = new Button("Interrupt");
 		interruptButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent ae) {
@@ -34,14 +32,29 @@ class Hi extends Frame
 					try { Thread.sleep(100); } catch (InterruptedException ie) {}
 				statusLabel.setText("Done");
 			}});
+*/
 
-	 LogoCanvas logoCanvas = new LogoCanvas();
+	 	LogoCanvas logoCanvas = new LogoCanvas();
 
-		Panel inputAndInterrupt = new Panel();
-		inputAndInterrupt.setLayout(new FlowLayout());
-		inputAndInterrupt.add(inputField);
-		inputAndInterrupt.add(interruptButton);
-		inputAndInterrupt.add(logoCanvas);
+		final TextField runtimeInput = new TextField(60);
+		runtimeInput.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent ae) {
+				if (process != null)
+					process.sendInput(runtimeInput.getText());
+			}});
+
+		Panel northWestPanel = new Panel();
+		northWestPanel.setLayout(new FlowLayout());
+		northWestPanel.add(new Label("Expression: "));
+		northWestPanel.add(inputField);
+//		northWestPanel.add(interruptButton);
+		northWestPanel.add(new Label("Runtime input: "));
+		northWestPanel.add(runtimeInput);
+
+		Panel northPanel = new Panel();
+		northPanel.setLayout(new FlowLayout());
+		northPanel.add(northWestPanel);
+		northPanel.add(logoCanvas);
 
 		outputArea = new TextArea(25, 80);
 		outputArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
@@ -50,7 +63,7 @@ class Hi extends Frame
 		statusLabel = new Label();
 
 		setLayout(new BorderLayout());
-		add(inputAndInterrupt, BorderLayout.NORTH);
+		add(northPanel, BorderLayout.NORTH);
 		add(outputArea, BorderLayout.CENTER);
 		add(statusLabel, BorderLayout.SOUTH);
 
@@ -59,7 +72,6 @@ class Hi extends Frame
 				System.exit(0);
 			}});
 
-		setExecuting(false);
 		setVisible(true);
 	}
 
@@ -78,7 +90,6 @@ class Hi extends Frame
 
 	private final static String HI_TEMP_MODULE = "HiTemp";
 	private final static String MAIN_FUNCTION = "interpreter_main";
-	private final static int OUTPUT_WIDTH = 80;
 
 	void handleUserInput(String input)
 	{
@@ -103,89 +114,26 @@ class Hi extends Frame
 
 		statusLabel.setText("Running Helium compiler");
 
-		RunProgramResult result;
-		try
-		{
-			result = runProgram("helium " + hiTempFile, null);
-		} catch (IOException e)
-		{
-			statusLabel.setText("Failed to run Helium compiler");
-			return;
-		}
+		process = new StdIOProcess("helium " + hiTempFile, outputArea);
+		process.waitUntilDone();
 
-		outputArea.append(result.output + "\n");
-
-		if (result.exitValue != 0)
+		if (process.exitValue() != 0)
 			return;
 
 		statusLabel.setText("Running generated code");
-		setExecuting(true);
-		Thread thread = new Thread(new Runnable() {
-			public void run() {
-				try
-				{
-					runProgram("lvmrun " + HI_TEMP_MODULE + ".lvm", outputArea);
-				} catch (IOException e)
-				{
-					statusLabel.setText("Failed to run generated code");
-				}
-				outputArea.append("\n");
-				setExecuting(false);
-			}});
-		thread.start();
+		process = new StdIOProcess("lvmrun " + HI_TEMP_MODULE + ".lvm", outputArea);
+		outputArea.append("\n");
 	}
 
+/*
 	void setExecuting(boolean executing)
 	{
 		interruptButton.setEnabled(executing);
 		inputField.setEditable(!executing);
 		done = !executing;
 	}
+*/
 
-	RunProgramResult runProgram(String command, TextArea outputArea)
-		throws IOException
-	{
-		StringBuffer outputString = new StringBuffer();
-		Runtime runtime = Runtime.getRuntime();
-
-		process = runtime.exec(command);
-		BufferedInputStream bis =
-			new BufferedInputStream(process.getInputStream());
-		int ch, count = 0;
-		while ((ch = bis.read()) != -1)
-		{
-			if (outputArea != null)
-			{
-				outputArea.append("" + (char) ch);
-				count++;
-				if (count % OUTPUT_WIDTH == 0) outputArea.append("\n");
-			}
-			else
-				outputString.append((char) ch);
-		}
-		try
-		{
-			process.waitFor();
-		} catch (InterruptedException ie)
-		{
-			statusLabel.setText("Waiting for command \"" + command + "\" was interrupted");
-			System.exit(0);
-		}
-
-		return new RunProgramResult(process.exitValue(), outputString.toString());
-	}
-
-}
-
-class RunProgramResult
-{
-	int exitValue;
-	String output;
-	RunProgramResult(int exitValue, String output)
-	{
-		this.exitValue = exitValue;
-		this.output = output;
-	}
 }
 
 class LogoCanvas extends Canvas
@@ -208,6 +156,77 @@ class LogoCanvas extends Canvas
 	public void paint(Graphics g)
 	{
 		g.drawImage(logoImage, 0, 0, null);
+	}
+
+}
+
+class StdIOProcess implements Runnable
+{
+	TextArea outputArea;
+
+	Process process;
+	PrintWriter stdin;
+	BufferedInputStream stdout;
+
+	private final static int OUTPUT_WIDTH = 80;
+	int count = 0;
+
+	StdIOProcess(String command, TextArea outputArea)
+	{
+		Runtime runtime = Runtime.getRuntime();
+		try {
+			process = runtime.exec(command);
+		} catch (IOException ie) {
+			System.out.println("StdIOProcess.StdIOProcess: " + ie);
+			System.exit(1);
+		}
+
+		this.outputArea = outputArea;
+		stdin = new PrintWriter(process.getOutputStream(), true);
+		stdout = new BufferedInputStream(process.getInputStream());
+		Thread thread = new Thread(this);
+		thread.start();
+	}
+
+	void sendInput(String s)
+	{
+		outputArea.append(s + "\n");
+		stdin.println(s);
+		count = 0;
+	}
+
+	public void run()
+	{
+		int ch;
+		try {
+			while ((ch = stdout.read()) != -1) {
+				outputArea.append("" + (char) ch);
+				if (ch == 10 || ch == 13)
+					count = 0;
+				else {
+					count++;
+					if (count % OUTPUT_WIDTH == 0) { outputArea.append("\n"); count = 0; }
+				}
+			}
+		} catch (IOException ie) {
+			System.out.println("StdIOProcess.run: " + ie);
+			System.exit(1);
+		}
+	}
+
+	void waitUntilDone()
+	{
+		try {
+			process.waitFor();
+		} catch (InterruptedException ie) {
+			System.out.println("StdIOProcess.waitUntilDone: " + ie);
+			System.exit(1);
+		}
+	}
+
+	int exitValue()
+	{
+		return process.exitValue();
 	}
 
 }
