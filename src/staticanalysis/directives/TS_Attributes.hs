@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- |The Helium Compiler : Static Analysis
+-- The Helium Compiler : Static Analysis
 --
 -- Maintainer  :  bastiaan@cs.uu.nl
 -- Stability   :  experimental

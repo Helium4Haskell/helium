@@ -164,11 +164,11 @@ make fullName lvmPath chain options doneRef =
                     make importFullName lvmPath (chain ++ [importModuleName]) options doneRef
 
             -- Recompile the current module if:
-            -- * any of the children was recompiled
-            -- * the build all option (-B) was on the command line
-            -- * the build one option (-b) was there and we are 
+            --  * any of the children was recompiled
+            --  * the build all option (-B) was on the command line
+            --  * the build one option (-b) was there and we are 
             --      compiling the top-most module (head of chain)
-            -- * the module is not up to date (.hs newer than .lvm)
+            --  * the module is not up to date (.hs newer than .lvm)
             let (filePath, moduleName, _) = splitFilePath fullName
             upToDate <- upToDateCheck (combinePathAndFile filePath moduleName)
             newDone <- readIORef doneRef

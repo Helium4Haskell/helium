@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- |The Helium Compiler : Static Analysis
+-- The Helium Compiler : Static Analysis
 -- 
 -- Maintainer  :  bastiaan@cs.uu.nl
 -- Stability   :  experimental
@@ -457,7 +457,9 @@ unaryMinus =
 			_ -> return Nothing
 	    _ -> return Nothing
       
-      {- | isBinary && isInfixMinus info ->
+      {- waarom staat dit nog in commentaar, vraagt Arjan; haddock zeurde er over vanwege
+         commentaar en dan een verticale streep
+         | isBinary && isInfixMinus info ->
         $
        
           do undefined-}
@@ -484,19 +486,19 @@ zipWithHoles = rec 0 where
 type Permutation = [Int]
 
 permutationsForLength :: Int -> [Permutation]
-permutationsForLength 0     = [ [] ]
-permutationsForLength (i+1) = [ ys | xs <- permutationsForLength i, ys <- insertSomewhere i xs ]
-
-   where insertSomewhere i []     = [ [i] ]
-         insertSomewhere i (x:xs) = (i:x:xs) : map (x:) (insertSomewhere i xs)
+permutationsForLength 0 = [ [] ]
+permutationsForLength i = [ ys | xs <- permutationsForLength (i-1), ys <- insertSomewhere (i-1) xs ]
+  where
+	insertSomewhere i []     = [ [i] ]
+	insertSomewhere i (x:xs) = (i:x:xs) : map (x:) (insertSomewhere i xs)
          
-permute :: Permutation -> [a] -> [a]
-permute is as = map (as !!) is
-
 deleteIndex :: Int -> [a] -> [a]
 deleteIndex _ []     = []
 deleteIndex 0 (a:as) = as
 deleteIndex i (a:as) = a : deleteIndex (i-1) as
+
+permute :: Permutation -> [a] -> [a]
+permute is as = map (as !!) is
 
 class WithHints a where
    addHint          :: String -> String -> a -> a

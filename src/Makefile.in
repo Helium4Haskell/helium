@@ -402,10 +402,19 @@ endif
 
 # Documentation target (use Haddock 0.5 in combination with GHC 6.0.1) Ê
 doc:
- Ê Ê Ê Êhaddock +RTS -K8M -RTS \
- Ê Ê Ê Ê Ê Ê Ê Ê-h -o ../docs/haddock --lib /usr/local/lib/haddock-0.5 \
- Ê Ê Ê Ê Ê Ê Ê Ê--read-interface http://haskell.cs.yale.edu/ghc/docs/latest/html/libraries/base,C:\apps\ghc\doc\html\base\base.haddock \
- Ê Ê Ê Ê Ê Ê Ê Ê$(SRCS)
+	haddock +RTS -K8M -RTS \
+		-h -o ../docs/haddock --lib /usr/local/lib/haddock-0.5 \
+		--read-interface http://www.haskell.org/ghc/docs/6.0.1/html/base/,../../base.haddock \
+		$(PARSER) $(STATICANALYSIS) $(UHA) $(CODEGENERATION) $(UTILS) \
+		$(LVM) $(ASM) $(CORE) $(PARSEC) $(MAINFILES) $(MODULESYSTEM) \
+		$(LVMLIBDIR)/common/Id.hs $(LVMLIBDIR)/common/IdMap.hs $(LVMLIBDIR)/common/IdSet.hs $(LVMLIBDIR)/common/IntMap.hs \
+		$(LVMLIBDIR)/common/Byte.hs $(LVMLIBDIR)/common/Standard.hs \
+		$(LVMLIBDIR)/common/TopSort.hs $(LVMLIBDIR)/common/Set.hs \
+		$(LVMLIBDIR)/common/PPrint.hs
+
+# feed all sources but Special.hs (ifdefs) to haddock
+
+
 
 
 # Clean	up

@@ -1,5 +1,5 @@
------------------------------------------------------------------------------
--- |The Helium Compiler : Static Analysis
+-- ---------------------------------------------------------------------------
+-- The Helium Compiler : Static Analysis
 -- 
 -- Maintainer  :  bastiaan@cs.uu.nl
 -- Stability   :  experimental
@@ -9,7 +9,7 @@
 -- MessageBlock, which contains (atomic) pieces of information that are
 -- reported in the error messages such as types, ranges and code fragments.
 --
------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
 
 module Messages where
 
