@@ -2386,7 +2386,6 @@ sem_Type_Qualified :: (T_Range) ->
 sem_Type_Qualified (_range) (_context) (_type) =
     let (_text) =
             case _context_text of
-              [] -> _type_text
               [ct] -> ct <+> text "=>" <+> _type_text
               cts -> parens (commas cts) <+> text "=>" <+> _type_text
         ( _range_text) =

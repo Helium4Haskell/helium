@@ -16,6 +16,7 @@ import Messages
 import List        (intersperse, sort, partition, isSuffixOf, isPrefixOf)
 import Maybe       (fromJust)
 import Utils       (commaList, internalError, minInt, maxInt)
+import Types
 
 -------------------------------------------------------------
 -- (Static) Errors
@@ -32,6 +33,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | RecursiveTypeSynonyms Names
             | PatternDefinesNoVars Range
             | IntLiteralTooBig Range String
+            | AmbiguousContext Name
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -49,6 +51,7 @@ instance HasMessage Error where
       RecursiveTypeSynonyms names -> sortRanges (map getNameRange names)
       PatternDefinesNoVars range  -> [range]
       IntLiteralTooBig range _    -> [range]
+      AmbiguousContext name       -> [getNameRange name]
       _                           -> internalError "Messages.hs" 
                                                    "instance IsMessage Error" 
                                                    "unknown type of Error"
@@ -150,6 +153,11 @@ showError anError = case anError of
    IntLiteralTooBig _ value ->
       ( MessageString ("Integer literal (" ++ value ++ ") too big")
       , [ MessageString $ "Maximum is " ++ show maxInt ]
+      )
+      
+   AmbiguousContext name ->
+      ( MessageString ("Type variable " ++ show (show name) ++ " appears in the context but not in the type")
+      , []
       )
 
    _ -> internalError "Messages.hs" "showError" "unknown type of Error"

@@ -10,7 +10,9 @@
 ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alternatives
      Statement Statements Declaration Declarations MaybeDeclarations LeftHandSide RightHandSide
      FunctionBinding FunctionBindings Body Qualifier Qualifiers          
-     GuardedExpression GuardedExpressions Literal
+     GuardedExpression GuardedExpressions Literal 
+     Type Types AnnotatedTypes AnnotatedType ContextItem ContextItems Constructors Constructor FieldDeclaration
+     FieldDeclarations
      [ | miscerrors : {[Error]} | ]
 
 SEM Module
@@ -213,3 +215,16 @@ SEM Literal
                     []
         lhs . miscerrors = @intLiteralTooBigErrors ++ @lhs.miscerrors
         
+-- Qualified types
+
+SEM Type -- does every type variable in the contexts appear in the type?
+  | Qualified lhs.miscerrors =
+        [ AmbiguousContext v | v <-  @context.contextVars, v `notElem` @type.typevariables ]
+        ++ 
+        @type.miscerrors
+                
+ATTR ContextItems ContextItem [ | | contextVars USE { ++ } { [] } : {[Name]} ]
+
+SEM ContextItem
+  | ContextItem lhs.contextVars = @types.typevariables
+  

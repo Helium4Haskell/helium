@@ -352,7 +352,6 @@ SEM Type                                         {- *** -}
     --  range                    : Range
     --  name                     : Name
     | Qualified                loc.text = case @context.text of
-                                            [] -> @type.text
                                             [ct] -> ct <+> text "=>" <+> @type.text
                                             cts -> parens (commas cts) <+> text "=>" <+> @type.text
     --  range                    : Range

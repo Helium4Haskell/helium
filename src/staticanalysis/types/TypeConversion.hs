@@ -29,9 +29,9 @@ namesInType uhaType = case uhaType of
       Type_Variable _ name          -> [name]      
       Type_Constructor _ _          -> []
       Type_Parenthesized _ t        -> namesInType t                    
-      Type_Qualified _ _ _          -> internalError "SATypes.hs" "namesInType" "qualified types are currently not supported"
-      Type_Forall _ _ _             -> internalError "SATypes.hs" "namesInType" "universal types are currently not supported"            
-      Type_Exists _ _ _             -> internalError "SATypes.hs" "namesInType" "existential types are currently not supported"
+      Type_Qualified _ _ t          -> namesInType t
+      Type_Forall _ _ _             -> internalError "TypeConversion.hs" "namesInType" "universal types are currently not supported"            
+      Type_Exists _ _ _             -> internalError "TypeConversion.hs" "namesInType" "existential types are currently not supported"
       
 -- name maps play an important role in converting since they map UHA type variables (string) to TVar's (int)  
 makeNameMap :: Names -> [(Name,Tp)]
@@ -39,9 +39,21 @@ makeNameMap = flip zip (map TVar [0..])
 
 makeTpSchemeFromType :: Type -> TpScheme
 makeTpSchemeFromType uhaType = 
-   let nameMap = makeNameMap (namesInType uhaType)
+   let context = predicatesFromContext nameMap uhaType
+       nameMap = makeNameMap (namesInType uhaType)
        tp = makeTpFromType nameMap uhaType
-   in TpScheme (ftv tp) [ (i,getNameName n) | (n,TVar i) <- nameMap] ([] :=> tp)
+   in TpScheme (ftv tp) [ (i,getNameName n) | (n,TVar i) <- nameMap] (context :=> tp)
+
+predicatesFromContext :: [(Name,Tp)] -> Type -> Predicates
+predicatesFromContext nameMap (Type_Qualified _ is _) =
+   concatMap predicateFromContext is
+   where
+     predicateFromContext (ContextItem_ContextItem _ cn [Type_Variable _ vn]) =
+       case lookup vn nameMap of
+         Nothing -> []
+         Just tp -> [Predicate (getNameName cn) tp]
+     predicateFromContext _ = internalError "TypeConversion.hs" "predicateFromContext" "malformed type in context"
+predicatesFromContext nameMap _ = []
 
 makeTpFromType :: [(Name,Tp)] -> Type -> Tp    
 makeTpFromType nameMap = rec 
@@ -52,9 +64,9 @@ makeTpFromType nameMap = rec
              Type_Variable _ name          -> maybe (TCon "???") id (lookup name nameMap)                                                      
              Type_Constructor _ name       -> TCon (getNameName name)
              Type_Parenthesized _ t        -> rec t                                                 
-             Type_Qualified _ _ _          -> internalError "SATypes.hs" "makeTpFromType" "qualified types are currently not supported"
-             Type_Forall _ _ _             -> internalError "SATypes.hs" "makeTpFromType" "universal types are currently not supported"            
-             Type_Exists _ _ _             -> internalError "SATypes.hs" "makeTpFromType" "existential types are currently not supported"
+             Type_Qualified _ cs t         -> rec t
+             Type_Forall _ _ _             -> internalError "TypeConversion.hs" "makeTpFromType" "universal types are currently not supported"            
+             Type_Exists _ _ _             -> internalError "TypeConversion.hs" "makeTpFromType" "existential types are currently not supported"
 
 convertFromSimpleTypeAndTypes :: SimpleType -> Types -> (Tp,Tps)
 convertFromSimpleTypeAndTypes stp  tps = 

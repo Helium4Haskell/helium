@@ -66,6 +66,8 @@ walkSpine t =
             let (t, ys) = walkSpine f
             in (t, ys ++ xs)
         Type_Parenthesized _ t -> walkSpine t
+        Type_Qualified _ _ t -> walkSpine t
+        _ -> internalError "StaticAnalysis" "walkSpine" "unexpected type"
 
 checkKind :: Name -> FiniteMap Name Int -> Int -> Names -> [Error]
 checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity namesInScope =
