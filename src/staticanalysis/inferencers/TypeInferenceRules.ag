@@ -29,7 +29,7 @@ SEM Module
                                 
       loc  . constraints = zipWith setPosition [0..] (ctRoot @body.constraints @lhs.strategy)
            . orderedTypeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment
-           . (betaUniqueAtTheEnd,substitution,solveErrors,solveDebug) 
+           . (betaUniqueAtTheEnd,substitution,finalPredicates,solveErrors,solveDebug) 
                   = -- choose your algorithm to solve the type constraints
                     (if @lhs.useTypeGraph then solveEquivalenceGroups else solveGreedy) 
                        @body.betaUnique ([ SolveWithTypeSynonyms @orderedTypeSynonyms 

@@ -16,7 +16,7 @@ SEM Declaration
             -- done much easier.
             (t1,[t2])   = convertFromSimpleTypeAndTypes @simpletype.self [@type.self]
             allTypeVars = ftv [t1,t2]
-            (ts1,ts2)   = (Scheme allTypeVars [] t1,Scheme allTypeVars [] t2) 
+            (ts1,ts2)   = (TpScheme allTypeVars [] [] t1,TpScheme allTypeVars [] [] t2) 
         in
         [ Core.DeclCustom
             { Core.declName    = idFromString (getNameName @simpletype.name)

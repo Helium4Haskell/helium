@@ -2880,7 +2880,7 @@ sem_Module_Module (_range) (_name) (_exports) (_body) (_lhs_importEnvironment) (
             zipWith setPosition [0..] (ctRoot _body_constraints _lhs_strategy)
         (_orderedTypeSynonyms) =
             getOrderedTypeSynonyms _lhs_importEnvironment
-        ((_betaUniqueAtTheEnd,_substitution,_solveErrors,_solveDebug)) =
+        ((_betaUniqueAtTheEnd,_substitution,_finalPredicates,_solveErrors,_solveDebug)) =
             (if _lhs_useTypeGraph then solveEquivalenceGroups else solveGreedy)
                _body_betaUnique ([ SolveWithTypeSynonyms _orderedTypeSynonyms
                                  , SolveWithTypeSignatures . map (\(n,ts) -> (show n,ts)) $

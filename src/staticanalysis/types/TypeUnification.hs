@@ -11,7 +11,6 @@
 module TypeUnification where
 
 import TypeSubstitution
-import TypeRepresentation
 import TypeBasics
 import TypeSynonyms
 import Utils               ( internalError )
@@ -89,30 +88,9 @@ equalUnderTypeSynonyms typesynonyms t1 t2 =
                     | otherwise -> case expandOneStepOrdered typesynonyms (t1, t2) of
                                       Just (t1', t2') -> equalUnderTypeSynonyms  typesynonyms t1' t2'
                                       Nothing         -> internalError "SATypes.hs" "equalUnderTypeSynonyms" "invalid types"
-
-genericInstanceOf :: OrderedTypeSynonyms -> TpScheme -> TpScheme -> Bool
-genericInstanceOf typesynonyms scheme1@(Scheme qs1 nm1 t1) scheme2@(Scheme qs2 nm2 t2) =
-      let [Scheme qs1 _ tp1,scheme2'] = freezeMonosInTypeSchemes [scheme1,scheme2]
-          sub    = listToSubstitution (zip (ftv [scheme1,scheme2]) [ TCon ('_':show i) | i <- [0..]])
-          sub'   = listToSubstitution (zip qs1 [ TCon ('+':show i) | i <- [0..]])
-          t1'    = sub' |-> tp1
-          t2'    = unsafeInstantiate scheme2'
-      in unifiable typesynonyms t1' t2'
-
-freezeMonosInTypeSchemes :: [TpScheme] -> [TpScheme]
-freezeMonosInTypeSchemes xs = let sub = listToSubstitution (zip (ftv xs) [ TCon ('_':show i) | i <- [1..]] )
-                              in sub |-> xs
                               
 unifiable :: OrderedTypeSynonyms -> Tp -> Tp -> Bool
 unifiable typesynonyms t1 t2 =
    case mguWithTypeSynonyms typesynonyms t1 t2 of
       Left  _ -> False
       Right _ -> True
-
-
-unifiableTypeSchemes :: OrderedTypeSynonyms -> TpScheme -> TpScheme -> Bool
-unifiableTypeSchemes typesynonyms s1 s2 =
-   let i       = maximum (0 : ftv s1 ++ ftv s2) + 1
-       (i',t1) = instantiate i  s1
-       (_ ,t2) = instantiate i' s2
-   in unifiable typesynonyms t1 t2

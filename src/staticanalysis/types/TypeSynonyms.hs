@@ -10,7 +10,6 @@
 module TypeSynonyms where
 
 import TypeBasics
-import TypeRepresentation
 import FiniteMap
 import TopSort               ( topSort       ) 
 import Utils                 ( internalError )

@@ -2531,7 +2531,7 @@ sem_TypingStrategy_TypingStrategy (_typerule) (_statements) (_lhs_importEnvironm
             ]
         (_warnings) =
             []
-        ((_,_substitution,_solveErrors,_)) =
+        ((_,_substitution,_,_solveErrors,_)) =
             solveGreedy (length _uniqueTypevariables) [] (reverse _statements_userConstraints)
         (_soundnessErrors) =
             if not (null _staticErrors)

@@ -8,15 +8,17 @@
 -------------------------------------------------------------------------------
 
 module Types 
-   ( module TypeRepresentation
-   , module TypeSubstitution
-   , module TypeBasics         
+   ( module TypeBasics
+   , module TypeSubstitution      
    , module TypeSynonyms     
    , module TypeUnification
+   , module TypeClasses
+   , module TypeSchemeBasics
    ) where
 
-import TypeRepresentation
-import TypeSubstitution
-import TypeBasics         
+import TypeBasics
+import TypeSubstitution      
 import TypeSynonyms    
 import TypeUnification
+import TypeClasses
+import TypeSchemeBasics

@@ -10,9 +10,9 @@
 
 module TypeSubstitution where
 
+import TypeBasics
 import Array
 import List                 ( (\\), union )
-import TypeRepresentation
 import FiniteMap
 import Utils                ( internalError )
 
@@ -120,10 +120,6 @@ instance Substitutable Tp where
                TVar i     -> [i]
                TCon _     -> []
                TApp t1 t2 -> ftv t1 `union` ftv t2   
-    
-instance Substitutable TpScheme where    
-   sub |-> (Scheme monos nm tp) = Scheme monos nm (removeDom monos sub |-> tp)
-   ftv     (Scheme monos _  tp) = ftv tp \\ monos
 
 instance Substitutable a => Substitutable [a] where
    sub |-> as  = map (sub |->) as

@@ -74,7 +74,7 @@ SEM TypingStrategy
                               xs -> [ MetaVariableConstraintsNotExplicit @name xs ]  -}
 
            -- Solve the constraint set.           
-           . (_, substitution, solveErrors, _) = solveGreedy (length @uniqueTypevariables) [] (reverse @statements.userConstraints)
+           . (_, substitution, _, solveErrors, _) = solveGreedy (length @uniqueTypevariables) [] (reverse @statements.userConstraints)
                                    
            . soundnessErrors = 
                 if not (null @staticErrors)

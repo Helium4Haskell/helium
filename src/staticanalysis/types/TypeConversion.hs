@@ -38,9 +38,10 @@ makeNameMap :: Names -> [(Name,Tp)]
 makeNameMap = flip zip (map TVar [0..])
 
 makeTpSchemeFromType :: Type -> TpScheme
-makeTpSchemeFromType uhaType = let nameMap = makeNameMap (namesInType uhaType)
-                                   tp = makeTpFromType nameMap uhaType
-                               in Scheme (ftv tp) [ (i,getNameName n) | (n,TVar i) <- nameMap] tp
+makeTpSchemeFromType uhaType = 
+   let nameMap = makeNameMap (namesInType uhaType)
+       tp = makeTpFromType nameMap uhaType
+   in TpScheme (ftv tp) [] [ (i,getNameName n) | (n,TVar i) <- nameMap] tp
 
 makeTpFromType :: [(Name,Tp)] -> Type -> Tp    
 makeTpFromType nameMap = rec 

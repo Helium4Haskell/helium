@@ -12,7 +12,8 @@
 
 module SolveConstraints
    ( ConstraintSolver(..), module SolveState
-   , applySubst, runSolver, RunnableSolver
+   , applySubst, getReducedClassPredicates
+   , runSolver, RunnableSolver
    , SolverOption(..), SolverOptions
    ) where
    
@@ -52,9 +53,10 @@ solveOne constraint =
 
    ExplInstance info tp ts -> 
       do unique <- getUnique
-         let (unique',its) = instantiate unique ts
-             info'         = setOriginalTypeScheme ts (info (its,tp))
+         let (unique',predicates,its) = inst' unique ts
+             info'                    = setOriginalTypeScheme ts (info (its,tp))
          setUnique unique'
+         addClassPredicates predicates
          newVariables [unique..unique'-1]
          solveOne (Equiv info' tp its)
 
@@ -62,11 +64,25 @@ solveOne constraint =
       do makeConsistent
          t2' <- applySubst t2
          m'  <- mapM applySubst m
-         let scheme = generalize (ftv m') t2'
+         ps  <- getReducedClassPredicates
+         let scheme = gen' (ftv m') ps t2'
          solveOne (ExplInstance info t1 scheme)
+
+   Predicate info predicate ->
+      do addClassPredicates [predicate]
          
    MakeConsistent -> 
-      do makeConsistent 
+      do makeConsistent
+
+getReducedClassPredicates :: ConstraintSolver solver info => SolveState solver info ClassPredicates
+getReducedClassPredicates = 
+   do predicates  <- getClassPredicates
+      substituted <- let f (s,tps) = do tps' <- mapM applySubst tps
+                                        return (s,tps')
+                     in mapM f predicates
+      let reduced  = contextReduction standardInstanceRules substituted
+      setClassPredicates reduced
+      return reduced                  
    
 applySubst :: ConstraintSolver solver info => Tp -> SolveState solver info Tp
 applySubst (TVar i)     = findSubstForVar i
@@ -80,6 +96,7 @@ type RunnableSolver info = Int                  -- unique type variable counter
                         -> Constraints info     -- list of type constraints
                         -> ( Int                -- unique counter after solving
                            , Subst              -- substitution 
+                           , ClassPredicates    -- type class predicates
                            , [info]             -- type errors to be reported
                            , IO ()              -- debug information 
                            )                      
@@ -93,8 +110,9 @@ runSolver buildSubstitution unique options constraints =
                  s  <- buildSubstitution 
                  e  <- getErrors
                  -- e' <- mapM substitute e
+                 ps <- getReducedClassPredicates
                  d  <- getDebug                  
-                 return (u,s,e,d)                                
+                 return (u,s,ps,e,d)                               
             )           
 {-
     where substitute :: (ConstraintSolver solver info,Substitutable info) => info -> SolveState solver info info
