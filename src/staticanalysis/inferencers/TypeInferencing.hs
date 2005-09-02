@@ -53,9 +53,16 @@ import UHA_Utils
 typeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (IO (), DictionaryEnvironment, String -> String -> IO (), TypeEnvironment, TypeErrors, Warnings)
 typeInferencing options importEnv module_ =
-   let (_, debugIO, dictionaryEnv, inspectorIO, _, toplevelTypes, typeErrors, warnings) =
+   let (_, debugIO, dictionaryEnv, _, inspectorIO, _, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_ importEnv options
    in (debugIO, dictionaryEnv, inspectorIO, toplevelTypes, typeErrors, warnings)
+
+proximaTypeInferencing :: [Option] -> ImportEnvironment -> Module
+                      -> (TypeErrors, Warnings, TypeEnvironment, [(Range, TpScheme)])  
+proximaTypeInferencing options importEnv module_ =
+   let (_, _, _, infoTree, _, _, toplevelTypes, typeErrors, warnings) =
+            TypeInferencing.sem_Module module_ importEnv options
+   in (typeErrors, warnings, toplevelTypes, typeSchemesInInfoTree [] infoTree)
          
 getRequiredDictionaries :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
 getRequiredDictionaries synonyms useType defType =
@@ -1272,7 +1279,7 @@ type T_Body = ([((Expression, [String]), Core_TypingStrategy)]) ->
               (FixpointSubstitution) ->
               (FiniteMap Int (Scheme Predicates)) ->
               (Int) ->
-              ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(Names),(DictionaryEnvironment),(IO ()),([Warning]),(InfoTree),(Body),(TypeEnvironment),(Names),(Int))
+              ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(Names),(DictionaryEnvironment),(InfoTree),(IO ()),([Warning]),(Body),(TypeEnvironment),(Names),(Int))
 -- cata
 sem_Body :: (Body) ->
             (T_Body)
@@ -1309,9 +1316,9 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdeclVarNames :: (Names)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
+            _lhsOinfoTree :: (InfoTree)
             _lhsOmatchIO :: (IO ())
             _lhsOpatternMatchWarnings :: ([Warning])
-            _lhsOroot :: (InfoTree)
             _lhsOself :: (Body)
             _lhsOtoplevelTypes :: (TypeEnvironment)
             _lhsOunboundNames :: (Names)
@@ -1434,7 +1441,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                           , assignedType = Nothing
                           , monos = _lhsImonos
                           }
-            (_lhsOroot@_) =
+            (_lhsOinfoTree@_) =
                 _parentTree
             (_parentTree@_) =
                 root _declInfo _declarationsIinfoTrees
@@ -1496,7 +1503,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
                 _lhsItypeschemeMap
             (_declarationsOuniqueChunk@_) =
                 _lhsIuniqueChunk
-        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOroot,_lhsOself,_lhsOtoplevelTypes,_lhsOunboundNames,_lhsOuniqueChunk)
+        in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOtoplevelTypes,_lhsOunboundNames,_lhsOuniqueChunk)
 -- Constructor -------------------------------------------------
 -- semantic domain
 type T_Constructor = (Names) ->
@@ -12097,7 +12104,7 @@ sem_MaybeNames_Nothing  =
 -- semantic domain
 type T_Module = (ImportEnvironment) ->
                 ([Option]) ->
-                ( (Assumptions),(IO ()),(DictionaryEnvironment),(String -> String -> IO ()),(Module),(TypeEnvironment),(TypeErrors),(Warnings))
+                ( (Assumptions),(IO ()),(DictionaryEnvironment),(InfoTree),(String -> String -> IO ()),(Module),(TypeEnvironment),(TypeErrors),(Warnings))
 -- cata
 sem_Module :: (Module) ->
               (T_Module)
@@ -12114,6 +12121,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsOdebugIO :: (IO ())
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
+            _lhsOinfoTree :: (InfoTree)
             _lhsOinspectorIO :: (String -> String -> IO ())
             _lhsOself :: (Module)
             _lhsOtoplevelTypes :: (TypeEnvironment)
@@ -12130,9 +12138,9 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             _bodyIconstraints :: (ConstraintSet)
             _bodyIdeclVarNames :: (Names)
             _bodyIdictionaryEnvironment :: (DictionaryEnvironment)
+            _bodyIinfoTree :: (InfoTree)
             _bodyImatchIO :: (IO ())
             _bodyIpatternMatchWarnings :: ([Warning])
-            _bodyIroot :: (InfoTree)
             _bodyIself :: (Body)
             _bodyItoplevelTypes :: (TypeEnvironment)
             _bodyIunboundNames :: (Names)
@@ -12161,12 +12169,12 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 (name_ )
             ( _exportsIself) =
                 (exports_ )
-            ( _bodyIassumptions,_bodyIbetaUnique,_bodyIcollectErrors,_bodyIcollectInstances,_bodyIcollectWarnings,_bodyIconstraints,_bodyIdeclVarNames,_bodyIdictionaryEnvironment,_bodyImatchIO,_bodyIpatternMatchWarnings,_bodyIroot,_bodyIself,_bodyItoplevelTypes,_bodyIunboundNames,_bodyIuniqueChunk) =
+            ( _bodyIassumptions,_bodyIbetaUnique,_bodyIcollectErrors,_bodyIcollectInstances,_bodyIcollectWarnings,_bodyIconstraints,_bodyIdeclVarNames,_bodyIdictionaryEnvironment,_bodyIinfoTree,_bodyImatchIO,_bodyIpatternMatchWarnings,_bodyIself,_bodyItoplevelTypes,_bodyIunboundNames,_bodyIuniqueChunk) =
                 (body_ (_bodyOallPatterns) (_bodyOallTypeSchemes) (_bodyOavailablePredicates) (_bodyObetaUnique) (_bodyOclassEnvironment) (_bodyOcollectErrors) (_bodyOcollectWarnings) (_bodyOcurrentChunk) (_bodyOdictionaryEnvironment) (_bodyOimportEnvironment) (_bodyOmatchIO) (_bodyOmonos) (_bodyOnamesInScope) (_bodyOorderedTypeSynonyms) (_bodyOpatternMatchWarnings) (_bodyOsubstitution) (_bodyOtypeschemeMap) (_bodyOuniqueChunk))
             (_lhsOdebugIO@_) =
                 _debugIO >> putStrLn "Inference Strategies:" >> _bodyImatchIO
             (_lhsOinspectorIO@_) =
-                writeDebugInfoTree _substitution _typeschemeMap _typeErrors _bodyIconstraints _bodyIroot
+                writeDebugInfoTree _substitution _typeschemeMap _typeErrors _bodyIconstraints _bodyIinfoTree
             (_lhsOwarnings@_) =
                 _warnings     ++ _bodyIpatternMatchWarnings
             (_bodyObetaUnique@_) =
@@ -12243,6 +12251,8 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 _self
             (_lhsOassumptions@_) =
                 _assumptions
+            (_lhsOinfoTree@_) =
+                _bodyIinfoTree
             (_lhsOtoplevelTypes@_) =
                 _bodyItoplevelTypes
             (_lhsOtypeErrors@_) =
@@ -12259,7 +12269,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 _substitution
             (_bodyOtypeschemeMap@_) =
                 _typeschemeMap
-        in  ( _lhsOassumptions,_lhsOdebugIO,_lhsOdictionaryEnvironment,_lhsOinspectorIO,_lhsOself,_lhsOtoplevelTypes,_lhsOtypeErrors,_lhsOwarnings)
+        in  ( _lhsOassumptions,_lhsOdebugIO,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOinspectorIO,_lhsOself,_lhsOtoplevelTypes,_lhsOtypeErrors,_lhsOwarnings)
 -- Name --------------------------------------------------------
 -- semantic domain
 type T_Name = ( (Name))

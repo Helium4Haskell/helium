@@ -13,11 +13,18 @@
 typeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (IO (), DictionaryEnvironment, String -> String -> IO (), TypeEnvironment, TypeErrors, Warnings)
 typeInferencing options importEnv module_ =
-   let (_, debugIO, dictionaryEnv, inspectorIO, _, toplevelTypes, typeErrors, warnings) =
+   let (_, debugIO, dictionaryEnv, _, inspectorIO, _, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_ importEnv options
    in (debugIO, dictionaryEnv, inspectorIO, toplevelTypes, typeErrors, warnings)
+
+proximaTypeInferencing :: [Option] -> ImportEnvironment -> Module
+                      -> (TypeErrors, Warnings, TypeEnvironment, [(Range, TpScheme)])  
+proximaTypeInferencing options importEnv module_ =
+   let (_, _, _, infoTree, _, _, toplevelTypes, typeErrors, warnings) =
+            TypeInferencing.sem_Module module_ importEnv options
+   in (typeErrors, warnings, toplevelTypes, typeSchemesInInfoTree [] infoTree)
 }
-  
+
 -------------------------------------------------------------------------------
 -- Attributes for type inferencing
 
@@ -28,6 +35,7 @@ ATTR Module
    | assumptions           : Assumptions
      debugIO               : {IO ()}
      dictionaryEnvironment : DictionaryEnvironment
+     infoTree              : InfoTree
      inspectorIO           : {String -> String -> IO ()}
      toplevelTypes         : TypeEnvironment
      typeErrors            : TypeErrors
@@ -49,7 +57,7 @@ INCLUDE "../../syntax/UHA_Syntax.ag"
 
 --- Type Inference Directives (may be turned off)
 INCLUDE "../directives/TS_PatternMatching.ag"
-SEM Module | Module   lhs . inspectorIO = writeDebugInfoTree @substitution @typeschemeMap @typeErrors @body.constraints @body.root
+SEM Module | Module   lhs . inspectorIO = writeDebugInfoTree @substitution @typeschemeMap @typeErrors @body.constraints @body.infoTree
                           . debugIO     = @debugIO >> putStrLn "Inference Strategies:" >> @body.matchIO
 
 -- Pattern Match Warnings (may be turned off)

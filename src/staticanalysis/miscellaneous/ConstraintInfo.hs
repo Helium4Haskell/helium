@@ -227,7 +227,18 @@ data LocalInfo =
                , assignedType   :: Maybe Tp
                , monos          :: Tps
                }
-            
+
+-- For Proxima
+typeSchemesInInfoTree :: Predicates -> InfoTree -> [(Range, TpScheme)]
+typeSchemesInInfoTree ps infoTree =
+   let local = attribute infoTree
+       rest  = concatMap (typeSchemesInInfoTree ps) (children infoTree)
+   in case assignedType local of 
+         Just tp -> let is  = ftv tp 
+                        ps' = filter (any (`elem` is) . ftv) ps
+                    in (rangeOfSource (self local), generalizeAll $ ps' .=>. tp) : rest
+         Nothing -> rest
+
 type ConstraintSet  = Tree  (TypeConstraint ConstraintInfo)
 type ConstraintSets = Trees (TypeConstraint ConstraintInfo)
 	   

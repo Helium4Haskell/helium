@@ -158,9 +158,9 @@ SEM Qualifier [ parentTree : InfoTree | | infoTree : InfoTree ]
 ---------------------------------------------------------------------------------------
 -- Combining sub-trees without introducing a new node
 
-SEM Body [ | | root : InfoTree ]
+SEM Body [ | | infoTree : InfoTree ]
   | Body         loc . parentTree = root @declInfo @declarations.infoTrees
-                 lhs . root       = @parentTree
+                 lhs . infoTree   = @parentTree
 
 SEM Expressions [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Cons   lhs . infoTrees = @hd.infoTree : @tl.infoTrees
