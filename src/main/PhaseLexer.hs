@@ -13,22 +13,22 @@ import LexerToken(Token)
 import Lexer
 import LayoutRule(layout)
 
-phaseLexer :: String -> [String] -> String -> [Option] -> 
-                IO ([LexerWarning], [Token])
-phaseLexer fullName doneModules contents options = do
+phaseLexer :: 
+   String -> String -> [Option] -> 
+   Phase LexerError ([LexerWarning], [Token])
+
+phaseLexer fullName contents options = do
     enterNewPhase "Lexing" options
 
     case lexer fullName contents of 
-        Left lexError -> do
-            unless (NoLogging `elem` options) $ 
-                sendLog "L" fullName doneModules options
-            showErrorsAndExit [lexError] 1 options
+        Left lexError ->
+           return (Left [lexError])
         Right (tokens, lexerWarnings) -> do
             let tokensWithLayout = layout tokens
             when (DumpTokens `elem` options) $ do
                 putStrLn (show tokensWithLayout)
             let warnings = filterLooksLikeFloatWarnings lexerWarnings tokensWithLayout
-            return (warnings, tokensWithLayout)
+            return (Right (warnings, tokensWithLayout))
 
 -- Throw away the looks like float warnings between the keywords "module"
 -- and "where".

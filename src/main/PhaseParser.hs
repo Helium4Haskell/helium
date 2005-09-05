@@ -12,17 +12,15 @@ import CompileUtils
 import LexerToken(Token)
 import qualified Parser(module_)
 import ParseLibrary(runHParser)
-import ParseMessage()
+import Text.ParserCombinators.Parsec.Error (ParseError)
 
-phaseParser :: String -> [String] -> [Token] -> [Option] -> IO Module
-phaseParser fullName doneModules tokens options = do
+phaseParser :: 
+   String -> [Token] -> [Option] -> 
+   Phase ParseError Module
+phaseParser fullName tokens options = do
     enterNewPhase "Parsing" options
-
     case runHParser Parser.module_ fullName tokens True of
         Left parseError -> do
-            unless (NoLogging `elem` options) $ 
-                sendLog "P" fullName doneModules options
-            showErrorsAndExit [parseError] 1 options
+            return (Left [parseError])
         Right m ->
-            return m
-
+            return (Right m)

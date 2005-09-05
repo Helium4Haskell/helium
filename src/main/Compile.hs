@@ -21,10 +21,12 @@ import PhaseCodeGenerator
 import CompileUtils
 import Utils
 import Data.IORef
+import StaticErrors(errorsLogCode)
 
 compile :: String -> [Option] -> [String] -> [String] -> IO ()
 compile fullName options lvmPath doneModules =
     do
+        let compileOptions = (options, fullName, doneModules)
         putStrLn ("Compiling " ++ fullName)
 
         -- Store the current module file-name and its context in
@@ -36,14 +38,16 @@ compile fullName options lvmPath doneModules =
 
         -- Phase 1: Lexing
         (lexerWarnings, tokens) <- 
-            phaseLexer fullName doneModules contents options
+            doPhaseWithExit 20 (const "L") compileOptions $
+               phaseLexer fullName contents options
         
         unless (NoWarnings `elem` options) $
             showMessages lexerWarnings
 
         -- Phase 2: Parsing
         parsedModule <- 
-            phaseParser fullName doneModules tokens options
+            doPhaseWithExit 20 (const "P") compileOptions $
+               phaseParser fullName tokens options
 
         -- Phase 3: Importing
         (indirectionDecls, importEnvs) <-
@@ -51,13 +55,15 @@ compile fullName options lvmPath doneModules =
         
         -- Phase 4: Resolving operators
         resolvedModule <- 
-            phaseResolveOperators fullName doneModules parsedModule importEnvs options
+            doPhaseWithExit 20 (const "R") compileOptions $
+               phaseResolveOperators parsedModule importEnvs options
             
         stopCompilingIf (StopAfterParser `elem` options)
 
         -- Phase 5: Static checking
         (localEnv, typeSignatures, staticWarnings) <-
-            phaseStaticChecks fullName doneModules resolvedModule importEnvs options        
+            doPhaseWithExit 20 (("S"++) . errorsLogCode) compileOptions $
+               phaseStaticChecks fullName resolvedModule importEnvs options        
 
         unless (NoWarnings `elem` options) $
             showMessages staticWarnings
@@ -67,16 +73,17 @@ compile fullName options lvmPath doneModules =
         -- Phase 6: Kind inferencing (by default turned off)
         let combinedEnv = foldr combineImportEnvironments localEnv importEnvs
         when (KindInferencing `elem` options) $
-           phaseKindInferencer combinedEnv resolvedModule options
-        
+           doPhaseWithExit maximumNumberOfKindErrors (const "K") compileOptions $
+              phaseKindInferencer combinedEnv resolvedModule options
+              
         -- Phase 7: Type Inference Directives
         (beforeTypeInferEnv, typingStrategiesDecls) <-
             phaseTypingStrategies fullName combinedEnv typeSignatures options
 
         -- Phase 8: Type inferencing
         (dictionaryEnv, afterTypeInferEnv, toplevelTypes, typeWarnings) <- 
-            phaseTypeInferencer fullName resolvedModule doneModules localEnv 
-                                    beforeTypeInferEnv options
+            doPhaseWithExit maximumNumberOfTypeErrors (const "T") compileOptions $ 
+               phaseTypeInferencer fullName resolvedModule {-doneModules-} localEnv beforeTypeInferEnv options
 
         unless (NoWarnings `elem` options) $
             showMessages typeWarnings
@@ -117,3 +124,9 @@ safeReadFile fullName =
 
 stopCompilingIf :: Bool -> IO ()
 stopCompilingIf bool = when bool (exitWith (ExitFailure 1))
+
+maximumNumberOfTypeErrors :: Int
+maximumNumberOfTypeErrors = 3
+
+maximumNumberOfKindErrors :: Int
+maximumNumberOfKindErrors = 1

@@ -12,18 +12,14 @@ import CompileUtils
 import Warnings(Warning)
 import TypeInferencing(typeInferencing)
 import DictionaryEnvironment (DictionaryEnvironment)
-import Top.Types
-import Data.FiniteMap
-import UHA_Utils
 import UHA_Syntax
+import TypeErrors
 
 phaseTypeInferencer :: 
-    String -> Module -> [String] -> ImportEnvironment ->
-        ImportEnvironment -> [Option] -> 
-           IO ( DictionaryEnvironment,
-               ImportEnvironment, 
-               TypeEnvironment, [Warning])
-phaseTypeInferencer fullName module_ doneModules localEnv completeEnv options = do
+    String -> Module -> ImportEnvironment -> ImportEnvironment -> [Option] -> 
+    Phase TypeError (DictionaryEnvironment, ImportEnvironment, TypeEnvironment, [Warning])
+
+phaseTypeInferencer fullName module_ localEnv completeEnv options = do
     enterNewPhase "Type inferencing" options
 
     -- 'W' and 'M' are predefined type inference algorithms
@@ -47,24 +43,18 @@ phaseTypeInferencer fullName module_ doneModules localEnv completeEnv options = 
     when (DumpTypeInspector `elem` options) $
        inspectorIO "typedebuginfo" fullName
 
-    when (not (null typeErrors)) $ do
-        when (DumpInformationForAllModules `elem` options) $
-            putStr (show completeEnv)
-        unless (NoLogging `elem` options) $ 
-            sendLog "T" fullName doneModules options
-        showErrorsAndExit (reverse typeErrors) maximumNumberOfTypeErrors options
-
-    -- Dump information
-    if (DumpInformationForAllModules `elem` options)
-      then
-         putStrLn (show finalEnv)
-      else if (DumpInformationForThisModule `elem` options)
-             then
-                putStrLn (show (addToTypeEnvironment toplevelTypes localEnv))
-             else
-                return ()
-
-    return (dictionaryEnv, finalEnv, toplevelTypes, warnings)
-
-maximumNumberOfTypeErrors :: Int
-maximumNumberOfTypeErrors = 3
+    case typeErrors of 
+       
+       _:_ ->
+          do when (DumpInformationForAllModules `elem` options) $
+                putStr (show completeEnv)
+             return (Left typeErrors)
+          
+       [] -> 
+          do -- Dump information
+             when (DumpInformationForAllModules `elem` options) $ 
+                putStrLn (show finalEnv)
+             when (  DumpInformationForThisModule `elem` options 
+                  && DumpInformationForAllModules `notElem` options) $ 
+                        putStrLn (show (addToTypeEnvironment toplevelTypes localEnv))
+             return (Right (dictionaryEnv, finalEnv, toplevelTypes, warnings))

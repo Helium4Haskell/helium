@@ -8,7 +8,7 @@
     Select the type constraint solver of your own liking
 -}
 
-module SelectConstraintSolver (selectConstraintSolver) where
+module SelectConstraintSolver (selectConstraintSolver, HeliumSolveResult) where
 
 import Args (Option(..))
 import ConstraintInfo
@@ -36,8 +36,9 @@ import Warnings
 import Data.Maybe
 import Data.List
 
+type HeliumSolveResult = SolveResult ConstraintInfo Predicates Warnings
 type TreeSolver = ClassEnvironment -> OrderedTypeSynonyms -> Int 
-                       -> Tree (TypeConstraint ConstraintInfo) -> (SolveResult ConstraintInfo Predicates Warnings)
+                       -> Tree (TypeConstraint ConstraintInfo) -> HeliumSolveResult
 
 selectConstraintSolver :: [Option] -> ImportEnvironment -> TreeSolver
 selectConstraintSolver options importenv classEnv synonyms unique constraintTree =

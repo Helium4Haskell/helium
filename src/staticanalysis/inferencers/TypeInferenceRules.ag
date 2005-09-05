@@ -16,7 +16,8 @@ SEM Module
 
   | Module
       loc  -- Solve the type constraints.
-           . (SolveResult betaUniqueAtTheEnd substitution typeschemeMap _ solveErrors debugString tooSpecificWarnings) =
+           . (SolveResult betaUniqueAtTheEnd substitution typeschemeMap _ solveErrors debugString tooSpecificWarnings) = @solveResult
+           . solveResult =
                 (selectConstraintSolver @lhs.options @lhs.importEnvironment) 
                    @classEnv
                    @orderedTypeSynonyms 
@@ -31,9 +32,8 @@ SEM Module
                                          @body.collectInstances
            . typeErrors          = case makeTypeErrors @classEnv @orderedTypeSynonyms @substitution @solveErrors of
                                       []   -> @body.collectErrors
-                                      errs -> errs
+                                      errs -> reverse errs
            . warnings            = @body.collectWarnings ++ @tooSpecificWarnings
-           . debugIO             = putStrLn @debugString
            . assumptions         = let f _ xs = [ (n, @substitution |-> tp) | (n, tp) <- xs ] 
                                    in mapFM f @body.assumptions
            . initialScope        = keysFM (typeEnvironment @lhs.importEnvironment)           

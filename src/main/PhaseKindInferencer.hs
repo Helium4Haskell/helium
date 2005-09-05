@@ -14,16 +14,18 @@ import KindInferencing as KI
 import ImportEnvironment
 import Data.FiniteMap
 import Top.Types
+import KindErrors
 
-phaseKindInferencer :: ImportEnvironment -> Module -> [Option] -> IO ()
+phaseKindInferencer :: ImportEnvironment -> Module -> [Option] -> Phase KindError ()
 phaseKindInferencer importEnvironment module_ options =
    do enterNewPhase "Kind inferencing" options
       let (debugIO, kindEnv, kindErrors, _) = KI.sem_Module module_ importEnvironment options 
       when (DumpTypeDebug `elem` options) $ 
          do debugIO  
             putStrLn . unlines . map (\(n,ks) -> show n++" :: "++showKindScheme ks) . fmToList $ kindEnv
-      unless (null kindErrors) $
-         showErrorsAndExit (reverse kindErrors) maximumNumberOfKindErrors options            
-
-maximumNumberOfKindErrors :: Int
-maximumNumberOfKindErrors = 1
+      case kindErrors of
+      
+         _:_ ->
+            return (Left kindErrors)
+         [] ->
+            return (Right ())

@@ -9,13 +9,15 @@
 module PhaseResolveOperators(phaseResolveOperators) where
 
 import CompileUtils
-import ResolveOperators(resolveOperators, operatorsFromModule)
+import ResolveOperators(resolveOperators, operatorsFromModule, ResolveError)
 import qualified UHA_Pretty as PP(sem_Module)
 import Data.FiniteMap
 
-phaseResolveOperators :: String -> [String] -> Module -> [ImportEnvironment] -> 
-                            [Option] -> IO Module
-phaseResolveOperators fullName doneModules moduleBeforeResolve importEnvs options = do
+phaseResolveOperators :: 
+   Module -> [ImportEnvironment] -> [Option] -> 
+   Phase ResolveError Module
+
+phaseResolveOperators moduleBeforeResolve importEnvs options = do
     enterNewPhase "Resolving operators" options
 
     let importOperatorTable = 
@@ -25,13 +27,16 @@ phaseResolveOperators fullName doneModules moduleBeforeResolve importEnvs option
         (module_, resolveErrors) = 
                   resolveOperators importOperatorTable moduleBeforeResolve
 
-    when (not (null resolveErrors)) $ do
-        unless (NoLogging `elem` options) $ 
-            sendLog "R" fullName doneModules options
-        showErrorsAndExit resolveErrors 20 options
-
-    when (DumpUHA `elem` options) $
-        putStrLn $ show $ PP.sem_Module module_
+    case resolveErrors of
+       
+       _:_ ->
+          return (Left resolveErrors)
+          
+       [] ->
+          do when (DumpUHA `elem` options) $
+                putStrLn $ show $ PP.sem_Module module_
     
-    return module_
+             return (Right module_)
+
+    
 

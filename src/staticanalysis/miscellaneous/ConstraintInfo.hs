@@ -229,14 +229,15 @@ data LocalInfo =
                }
 
 -- For Proxima
-typeSchemesInInfoTree :: Predicates -> InfoTree -> [(Range, TpScheme)]
-typeSchemesInInfoTree ps infoTree =
+typeSchemesInInfoTree :: FixpointSubstitution -> Predicates -> InfoTree -> [(Range, TpScheme)]
+typeSchemesInInfoTree subst ps infoTree =
    let local = attribute infoTree
-       rest  = concatMap (typeSchemesInInfoTree ps) (children infoTree)
+       rest  = concatMap (typeSchemesInInfoTree subst ps) (children infoTree)
    in case assignedType local of 
-         Just tp -> let is  = ftv tp 
-                        ps' = filter (any (`elem` is) . ftv) ps
-                    in (rangeOfSource (self local), generalizeAll $ ps' .=>. tp) : rest
+         Just tp -> let is     = ftv tp 
+                        ps'    = filter (any (`elem` is) . ftv) ps
+                        scheme = generalizeAll (subst |-> (ps' .=>. tp))
+                    in (rangeOfSource (self local), scheme) : rest
          Nothing -> rest
 
 type ConstraintSet  = Tree  (TypeConstraint ConstraintInfo)
