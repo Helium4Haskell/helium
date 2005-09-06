@@ -43,7 +43,11 @@ class HasMessage a where
    
    -- default definitions
    getRanges            _ = []
-     
+
+instance (HasMessage a, HasMessage b) => HasMessage (Either a b) where
+   getRanges  = either getRanges  getRanges
+   getMessage = either getMessage getMessage
+
 instance Substitutable MessageLine where
 
    sub |-> ml = case ml of   

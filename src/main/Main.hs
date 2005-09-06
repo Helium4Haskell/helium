@@ -10,12 +10,11 @@ module Main where
 import Compile(compile)
 import Parser(parseOnlyImports)
 
-import Monad(when, unless)
 import List(nub, elemIndex, isSuffixOf, intersperse)
-import System(exitWith, ExitCode(..), getArgs)
 import Maybe(fromJust, isNothing)
 import Standard(searchPathMaybe,getLvmPath, splitPath)
 import Directory(doesFileExist, getModificationTime)
+import CompileUtils
 import Data.IORef
 import Args
 import Utils
@@ -208,28 +207,7 @@ circularityCheck (import_:imports) chain =
         Nothing -> circularityCheck imports chain
 circularityCheck [] chain = Nothing
 
-checkExistence :: [String] -> String -> IO ()
-checkExistence path name =
-    do
-        maybeLocation <- resolve path name
-        when (isNothing maybeLocation) $ do
-            putStr
-                (  "Cannot find "
-                ++ name
-                ++ ".hs (or .lvm) in search path:\n"
-                ++ unlines (map ("\t" ++) path)
-                ++ "See the installation manual on setting the environment variable LVMPATH\n"
-                )
-            exitWith (ExitFailure 1)
-
 foreach = flip mapM
-
-resolve :: [String] -> String -> IO (Maybe String)
-resolve path name = 
-    do maybeFullName <- searchPathMaybe path ".hs" name
-       case maybeFullName of
-           Just fullName -> return (Just fullName)
-           Nothing       -> searchPathMaybe path ".lvm" name
 
 -- | upToDateCheck returns true if the .lvm is newer than the .hs
 upToDateCheck :: String -> IO Bool
