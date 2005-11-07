@@ -223,6 +223,16 @@ SRCS = $(PARSER) $(STATICANALYSIS) $(UHA) $(CODEGENERATION) $(UTILS) $(LVMCOMMON
 	$(LVM) $(ASM) $(CORE) $(PARSEC) $(MAINFILES) $(MODULESYSTEM)
 OBJS = $(SRCS:.hs=.o)
 
+HELIUMOBJSFILE = heliumObjs.txt
+
+objectsfile: Makefile
+	@echo $(OBJS) | \
+	sed -e s/main\\/Main.o//g | \
+	sed -e s/\\\([^\ ][^\ ]*\\\)/$$\(HELIUMSRCDIR\)\\/\\1/g > $(HELIUMOBJSFILE)
+
+# Puts all objects except main\Main.o in the text file $(HELIUMOBJSFILE), while prepending
+# each file path with "$(HELIUMSRCDIR)/"
+
 # The main target
 compiler: $(OBJS)
 	@echo "****************************************************"
