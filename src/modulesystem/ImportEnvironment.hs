@@ -20,8 +20,6 @@ import TS_CoreSyntax
 import Data.List 
 import Data.Maybe (catMaybes)
 
-import IOExts
-
 type TypeEnvironment             = FiniteMap Name TpScheme
 type ValueConstructorEnvironment = FiniteMap Name TpScheme
 type TypeConstructorEnvironment  = FiniteMap Name Int

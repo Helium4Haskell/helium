@@ -4,7 +4,6 @@
 
 imports{
 import Byte(bytesFromString)
-import IOExts
 }
 
 {

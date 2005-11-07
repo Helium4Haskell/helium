@@ -31,7 +31,6 @@ import qualified Byte
 import qualified CoreParse
 
 import Byte(bytesFromString)
-import IOExts
 
 
 type CoreDecl = Core.Decl Core.Expr

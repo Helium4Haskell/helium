@@ -47,8 +47,6 @@ import UHA_Range
 import qualified CollectFunctionBindings
 import Utils
 
-import IOExts
-
 parseOnlyImports :: String -> IO [String]
 parseOnlyImports fullName = do
     contents <- catch (readFile fullName)

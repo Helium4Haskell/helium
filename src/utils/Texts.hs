@@ -1,6 +1,7 @@
 module Texts where
 
-import IOExts 
+import Data.IORef
+import System.IO.Unsafe
 
 data Language = English | Dutch deriving Eq
 
