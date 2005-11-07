@@ -49,7 +49,7 @@ PACKAGENET = -package net
 else
 PACKAGENET = 
 endif
-HC_OPTS = -static -fglasgow-exts \
+HC_OPTS = -static -fglasgow-exts -cpp \
 		$(PACKAGENET) -package lang -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
