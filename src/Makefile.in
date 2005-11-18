@@ -429,6 +429,12 @@ doc:
 		$(PARSER) $(STATICANALYSIS) $(UHA) $(CODEGENERATION) $(UTILS) \
 		$(MAINFILES) $(MODULESYSTEM)
 
+# Ignoring files for SVN repository
+
+ignore :
+        svn propset -R svn:ignore -F ../svn-ignore ..
+
+
 # Clean	up
 clean:
 	$(RM) `find . -name "*.o" -print`
