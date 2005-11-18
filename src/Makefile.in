@@ -432,7 +432,7 @@ doc:
 # Ignoring files for SVN repository
 
 ignore :
-        svn propset -R svn:ignore -F ../svn-ignore ..
+	svn propset -R svn:ignore -F ../svn-ignore ..
 
 
 # Clean	up
