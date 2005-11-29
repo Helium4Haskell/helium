@@ -32,7 +32,7 @@ expressionTypeInferencer importEnvironment expression =
        pat_    = Pattern_Variable noRange functionName
        rhs_    = RightHandSide_Expression noRange expression MaybeDeclarations_Nothing
                          
-       (assumptions, _, _, _, _, _, typeEnvironment, errors, _) =
+       (assumptions, _, _, _, _, typeEnvironment, errors, _) =
           sem_Module module_ importEnvironment []
                      
        inferredType = let err = internalError "ExpressionTypeInferencer.hs" "expressionTypeInferencer" "cannot find inferred type"

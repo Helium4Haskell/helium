@@ -83,7 +83,6 @@ processArgs args =
       , Option "" ["solver-chunks"     ]   (NoArg SolverChunks) "solves chunks of constraints (default)"
       , Option "" ["unifier-heuristics"]   (NoArg UnifierHeuristics)  "use unifier heuristics (experimental)"
       , Option "" ["select-cnr"]           (ReqArg selectCNR "CNR") "select constraint number to be reported"
-      , Option "" ["dump-type-inspector"]  (NoArg DumpTypeInspector)  "dump information for TypeInspector (experimental)"
       ]
 
 data Option 
@@ -99,7 +98,7 @@ data Option
    | TreeWalkTopDown | TreeWalkBottomUp | TreeWalkInorderTopFirstPre | TreeWalkInorderTopLastPre
    | TreeWalkInorderTopFirstPost | TreeWalkInorderTopLastPost | SolverSimple | SolverGreedy
    | SolverTypeGraph | SolverCombination | SolverChunks | UnifierHeuristics
-   | SelectConstraintNumber Int | DumpTypeInspector
+   | SelectConstraintNumber Int
  deriving Eq
 
 lvmPathFromOptions :: [Option] -> Maybe String

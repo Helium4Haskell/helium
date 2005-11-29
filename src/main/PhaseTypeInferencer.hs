@@ -31,17 +31,13 @@ phaseTypeInferencer fullName module_ localEnv completeEnv options = do
                         else id)
                    $ options
                    
-        (debugIO, dictionaryEnv, inspectorIO, toplevelTypes, typeErrors, warnings) =
+        (debugIO, dictionaryEnv, toplevelTypes, typeErrors, warnings) =
            typeInferencing newOptions completeEnv module_
 
         -- add the top-level types (including the inferred types)
         finalEnv = addToTypeEnvironment toplevelTypes completeEnv
     
     when (DumpTypeDebug `elem` options) debugIO      
-    
-    -- dump information for the TypeInspector
-    when (DumpTypeInspector `elem` options) $
-       inspectorIO "typedebuginfo" fullName
 
     case typeErrors of 
        

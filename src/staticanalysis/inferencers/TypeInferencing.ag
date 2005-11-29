@@ -11,17 +11,17 @@
 
 {
 typeInferencing :: [Option] -> ImportEnvironment -> Module
-                      -> (IO (), DictionaryEnvironment, String -> String -> IO (), TypeEnvironment, TypeErrors, Warnings)
+                      -> (IO (), DictionaryEnvironment, TypeEnvironment, TypeErrors, Warnings)
 typeInferencing options importEnv module_ =
-   let (_, dictionaryEnv, _, inspectorIO, _, solveResult, toplevelTypes, typeErrors, warnings) =
+   let (_, dictionaryEnv, _, _, solveResult, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_ importEnv options
        debugIO = putStrLn (debugFromResult solveResult)
-   in (debugIO, dictionaryEnv, inspectorIO, toplevelTypes, typeErrors, warnings)
+   in (debugIO, dictionaryEnv, toplevelTypes, typeErrors, warnings)
 
 proximaTypeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (TypeErrors, Warnings, TypeEnvironment, [(Range, TpScheme)])  
 proximaTypeInferencing options importEnv module_ =
-   let (_, _, infoTree, _, _, solveResult, toplevelTypes, typeErrors, warnings) =
+   let (_, _, infoTree, _, solveResult, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_ importEnv options
        localTypeSchemes = typeSchemesInInfoTree (substitutionFromResult solveResult)
                                                 (qualifiersFromResult solveResult) 
@@ -39,7 +39,6 @@ ATTR Module
    | assumptions           : Assumptions
      dictionaryEnvironment : DictionaryEnvironment
      infoTree              : InfoTree
-     inspectorIO           : {String -> String -> IO ()}
      solveResult           : HeliumSolveResult
      toplevelTypes         : TypeEnvironment
      typeErrors            : TypeErrors
@@ -61,8 +60,7 @@ INCLUDE "../../syntax/UHA_Syntax.ag"
 
 --- Type Inference Directives (may be turned off)
 INCLUDE "../directives/TS_PatternMatching.ag"
-SEM Module | Module   lhs . inspectorIO = writeDebugInfoTree @substitution @typeschemeMap @typeErrors @body.constraints @body.infoTree
-                          . solveResult = @solveResult { debugFromResult =  debugFromResult @solveResult 
+SEM Module | Module   lhs . solveResult = @solveResult { debugFromResult =  debugFromResult @solveResult 
                                                                          ++ "Inference Strategies:" 
                                                                          } -- ++ [ ] @body.matchIO }
 
@@ -105,7 +103,6 @@ import UHA_Utils                 (showNameAsOperator, intUnaryMinusName, NameWit
 -- other
 import Utils                     (internalError)
 import DerivingShow              (typeOfShowFunction, nameOfShowFunction)
-import TypeDebugInfoWriter       (writeDebugInfoTree)
 import ImportEnvironment  hiding (setTypeSynonyms)
 import DictionaryEnvironment
 import Args

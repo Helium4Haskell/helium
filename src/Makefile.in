@@ -103,8 +103,6 @@ STATICANALYSIS = \
         staticanalysis/miscellaneous/TypesToAlignedDocs.hs \
         staticanalysis/miscellaneous/TypeConversion.hs \
         staticanalysis/miscellaneous/UHA_Source.hs \
-        staticanalysis/miscellaneous/TypeDebugInfo.hs \
-        staticanalysis/miscellaneous/TypeDebugInfoWriter.hs \
         $(TOPDIR)/Types/Basics.hs \
         $(TOPDIR)/Types/Quantification.hs \
         $(TOPDIR)/Types/Qualification.hs \
@@ -517,10 +515,6 @@ movetobbl: smaller
 	touch /cygdrive/r/helium/lib/*.lvm # so that they are seen as up to date
 	# DON'T FORGET TO CHECK PERMISSIONS
 	cp ../../hint/release/Hint.jar /cygdrive/r/helium/bin
-
-proxima:
-	# *** Compiling Proxima Type Inferencer Attribute Grammar
-	cd staticanalysis/inferencers;$(AG) $(AG_OPTS) --self ProximaTypeInferencing.ag;cd ../..
 
 # DO NOT DELETE: Beginning of Haskell dependencies
 # DO NOT DELETE: End of Haskell dependencies
