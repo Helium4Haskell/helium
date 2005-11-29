@@ -55,7 +55,7 @@ type T_Alternatives = ( (Alternatives))
 sem_Alternatives :: (Alternatives) ->
                     (T_Alternatives)
 sem_Alternatives (list) =
-    (foldr (sem_Alternatives_Cons) (sem_Alternatives_Nil) ((map sem_Alternative list)))
+    (Prelude.foldr (sem_Alternatives_Cons) (sem_Alternatives_Nil) ((Prelude.map sem_Alternative list)))
 sem_Alternatives_Cons :: (T_Alternative) ->
                          (T_Alternatives) ->
                          (T_Alternatives)
@@ -112,7 +112,7 @@ type T_AnnotatedTypes = ( (AnnotatedTypes))
 sem_AnnotatedTypes :: (AnnotatedTypes) ->
                       (T_AnnotatedTypes)
 sem_AnnotatedTypes (list) =
-    (foldr (sem_AnnotatedTypes_Cons) (sem_AnnotatedTypes_Nil) ((map sem_AnnotatedType list)))
+    (Prelude.foldr (sem_AnnotatedTypes_Cons) (sem_AnnotatedTypes_Nil) ((Prelude.map sem_AnnotatedType list)))
 sem_AnnotatedTypes_Cons :: (T_AnnotatedType) ->
                            (T_AnnotatedTypes) ->
                            (T_AnnotatedTypes)
@@ -252,7 +252,7 @@ type T_Constructors = ( (Constructors))
 sem_Constructors :: (Constructors) ->
                     (T_Constructors)
 sem_Constructors (list) =
-    (foldr (sem_Constructors_Cons) (sem_Constructors_Nil) ((map sem_Constructor list)))
+    (Prelude.foldr (sem_Constructors_Cons) (sem_Constructors_Nil) ((Prelude.map sem_Constructor list)))
 sem_Constructors_Cons :: (T_Constructor) ->
                          (T_Constructors) ->
                          (T_Constructors)
@@ -312,7 +312,7 @@ type T_ContextItems = ( (ContextItems))
 sem_ContextItems :: (ContextItems) ->
                     (T_ContextItems)
 sem_ContextItems (list) =
-    (foldr (sem_ContextItems_Cons) (sem_ContextItems_Nil) ((map sem_ContextItem list)))
+    (Prelude.foldr (sem_ContextItems_Cons) (sem_ContextItems_Nil) ((Prelude.map sem_ContextItem list)))
 sem_ContextItems_Cons :: (T_ContextItem) ->
                          (T_ContextItems) ->
                          (T_ContextItems)
@@ -613,7 +613,7 @@ type T_Declarations = ( (Declarations))
 sem_Declarations :: (Declarations) ->
                     (T_Declarations)
 sem_Declarations (list) =
-    (foldr (sem_Declarations_Cons) (sem_Declarations_Nil) ((map sem_Declaration list)))
+    (Prelude.foldr (sem_Declarations_Cons) (sem_Declarations_Nil) ((Prelude.map sem_Declaration list)))
 sem_Declarations_Cons :: (T_Declaration) ->
                          (T_Declarations) ->
                          (T_Declarations)
@@ -728,7 +728,7 @@ type T_Exports = ( (Exports))
 sem_Exports :: (Exports) ->
                (T_Exports)
 sem_Exports (list) =
-    (foldr (sem_Exports_Cons) (sem_Exports_Nil) ((map sem_Export list)))
+    (Prelude.foldr (sem_Exports_Cons) (sem_Exports_Nil) ((Prelude.map sem_Export list)))
 sem_Exports_Cons :: (T_Export) ->
                     (T_Exports) ->
                     (T_Exports)
@@ -1182,7 +1182,7 @@ type T_Expressions = ( (Expressions))
 sem_Expressions :: (Expressions) ->
                    (T_Expressions)
 sem_Expressions (list) =
-    (foldr (sem_Expressions_Cons) (sem_Expressions_Nil) ((map sem_Expression list)))
+    (Prelude.foldr (sem_Expressions_Cons) (sem_Expressions_Nil) ((Prelude.map sem_Expression list)))
 sem_Expressions_Cons :: (T_Expression) ->
                         (T_Expressions) ->
                         (T_Expressions)
@@ -1243,7 +1243,7 @@ type T_FieldDeclarations = ( (FieldDeclarations))
 sem_FieldDeclarations :: (FieldDeclarations) ->
                          (T_FieldDeclarations)
 sem_FieldDeclarations (list) =
-    (foldr (sem_FieldDeclarations_Cons) (sem_FieldDeclarations_Nil) ((map sem_FieldDeclaration list)))
+    (Prelude.foldr (sem_FieldDeclarations_Cons) (sem_FieldDeclarations_Nil) ((Prelude.map sem_FieldDeclaration list)))
 sem_FieldDeclarations_Cons :: (T_FieldDeclaration) ->
                               (T_FieldDeclarations) ->
                               (T_FieldDeclarations)
@@ -1355,7 +1355,7 @@ type T_FunctionBindings = ( (Name),(FunctionBindings))
 sem_FunctionBindings :: (FunctionBindings) ->
                         (T_FunctionBindings)
 sem_FunctionBindings (list) =
-    (foldr (sem_FunctionBindings_Cons) (sem_FunctionBindings_Nil) ((map sem_FunctionBinding list)))
+    (Prelude.foldr (sem_FunctionBindings_Cons) (sem_FunctionBindings_Nil) ((Prelude.map sem_FunctionBinding list)))
 sem_FunctionBindings_Cons :: (T_FunctionBinding) ->
                              (T_FunctionBindings) ->
                              (T_FunctionBindings)
@@ -1423,7 +1423,7 @@ type T_GuardedExpressions = ( (GuardedExpressions))
 sem_GuardedExpressions :: (GuardedExpressions) ->
                           (T_GuardedExpressions)
 sem_GuardedExpressions (list) =
-    (foldr (sem_GuardedExpressions_Cons) (sem_GuardedExpressions_Nil) ((map sem_GuardedExpression list)))
+    (Prelude.foldr (sem_GuardedExpressions_Cons) (sem_GuardedExpressions_Nil) ((Prelude.map sem_GuardedExpression list)))
 sem_GuardedExpressions_Cons :: (T_GuardedExpression) ->
                                (T_GuardedExpressions) ->
                                (T_GuardedExpressions)
@@ -1604,7 +1604,7 @@ type T_ImportDeclarations = ( ( [(Core.CoreDecl,[Id])] ),(ImportDeclarations))
 sem_ImportDeclarations :: (ImportDeclarations) ->
                           (T_ImportDeclarations)
 sem_ImportDeclarations (list) =
-    (foldr (sem_ImportDeclarations_Cons) (sem_ImportDeclarations_Nil) ((map sem_ImportDeclaration list)))
+    (Prelude.foldr (sem_ImportDeclarations_Cons) (sem_ImportDeclarations_Nil) ((Prelude.map sem_ImportDeclaration list)))
 sem_ImportDeclarations_Cons :: (T_ImportDeclaration) ->
                                (T_ImportDeclarations) ->
                                (T_ImportDeclarations)
@@ -1676,7 +1676,7 @@ type T_Imports = ( ([Id]),(Imports))
 sem_Imports :: (Imports) ->
                (T_Imports)
 sem_Imports (list) =
-    (foldr (sem_Imports_Cons) (sem_Imports_Nil) ((map sem_Import list)))
+    (Prelude.foldr (sem_Imports_Cons) (sem_Imports_Nil) ((Prelude.map sem_Import list)))
 sem_Imports_Cons :: (T_Import) ->
                     (T_Imports) ->
                     (T_Imports)
@@ -2202,7 +2202,7 @@ type T_Names = ( ([Name]),(Names))
 sem_Names :: (Names) ->
              (T_Names)
 sem_Names (list) =
-    (foldr (sem_Names_Cons) (sem_Names_Nil) ((map sem_Name list)))
+    (Prelude.foldr (sem_Names_Cons) (sem_Names_Nil) ((Prelude.map sem_Name list)))
 sem_Names_Cons :: (T_Name) ->
                   (T_Names) ->
                   (T_Names)
@@ -2519,7 +2519,7 @@ type T_Patterns = ( (Patterns))
 sem_Patterns :: (Patterns) ->
                 (T_Patterns)
 sem_Patterns (list) =
-    (foldr (sem_Patterns_Cons) (sem_Patterns_Nil) ((map sem_Pattern list)))
+    (Prelude.foldr (sem_Patterns_Cons) (sem_Patterns_Nil) ((Prelude.map sem_Pattern list)))
 sem_Patterns_Cons :: (T_Pattern) ->
                      (T_Patterns) ->
                      (T_Patterns)
@@ -2658,7 +2658,7 @@ type T_Qualifiers = ( (Qualifiers))
 sem_Qualifiers :: (Qualifiers) ->
                   (T_Qualifiers)
 sem_Qualifiers (list) =
-    (foldr (sem_Qualifiers_Cons) (sem_Qualifiers_Nil) ((map sem_Qualifier list)))
+    (Prelude.foldr (sem_Qualifiers_Cons) (sem_Qualifiers_Nil) ((Prelude.map sem_Qualifier list)))
 sem_Qualifiers_Cons :: (T_Qualifier) ->
                        (T_Qualifiers) ->
                        (T_Qualifiers)
@@ -2742,7 +2742,7 @@ type T_RecordExpressionBindings = ( (RecordExpressionBindings))
 sem_RecordExpressionBindings :: (RecordExpressionBindings) ->
                                 (T_RecordExpressionBindings)
 sem_RecordExpressionBindings (list) =
-    (foldr (sem_RecordExpressionBindings_Cons) (sem_RecordExpressionBindings_Nil) ((map sem_RecordExpressionBinding list)))
+    (Prelude.foldr (sem_RecordExpressionBindings_Cons) (sem_RecordExpressionBindings_Nil) ((Prelude.map sem_RecordExpressionBinding list)))
 sem_RecordExpressionBindings_Cons :: (T_RecordExpressionBinding) ->
                                      (T_RecordExpressionBindings) ->
                                      (T_RecordExpressionBindings)
@@ -2802,7 +2802,7 @@ type T_RecordPatternBindings = ( (RecordPatternBindings))
 sem_RecordPatternBindings :: (RecordPatternBindings) ->
                              (T_RecordPatternBindings)
 sem_RecordPatternBindings (list) =
-    (foldr (sem_RecordPatternBindings_Cons) (sem_RecordPatternBindings_Nil) ((map sem_RecordPatternBinding list)))
+    (Prelude.foldr (sem_RecordPatternBindings_Cons) (sem_RecordPatternBindings_Nil) ((Prelude.map sem_RecordPatternBinding list)))
 sem_RecordPatternBindings_Cons :: (T_RecordPatternBinding) ->
                                   (T_RecordPatternBindings) ->
                                   (T_RecordPatternBindings)
@@ -2991,7 +2991,7 @@ type T_Statements = ( (Statements))
 sem_Statements :: (Statements) ->
                   (T_Statements)
 sem_Statements (list) =
-    (foldr (sem_Statements_Cons) (sem_Statements_Nil) ((map sem_Statement list)))
+    (Prelude.foldr (sem_Statements_Cons) (sem_Statements_Nil) ((Prelude.map sem_Statement list)))
 sem_Statements_Cons :: (T_Statement) ->
                        (T_Statements) ->
                        (T_Statements)
@@ -3023,7 +3023,7 @@ type T_Strings = ( (Strings))
 sem_Strings :: (Strings) ->
                (T_Strings)
 sem_Strings (list) =
-    (foldr (sem_Strings_Cons) (sem_Strings_Nil) (list))
+    (Prelude.foldr (sem_Strings_Cons) (sem_Strings_Nil) (list))
 sem_Strings_Cons :: (String) ->
                     (T_Strings) ->
                     (T_Strings)
@@ -3203,7 +3203,7 @@ type T_Types = ( (Types))
 sem_Types :: (Types) ->
              (T_Types)
 sem_Types (list) =
-    (foldr (sem_Types_Cons) (sem_Types_Nil) ((map sem_Type list)))
+    (Prelude.foldr (sem_Types_Cons) (sem_Types_Nil) ((Prelude.map sem_Type list)))
 sem_Types_Cons :: (T_Type) ->
                   (T_Types) ->
                   (T_Types)

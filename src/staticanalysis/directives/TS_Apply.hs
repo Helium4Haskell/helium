@@ -95,7 +95,7 @@ type T_Core_Judgements = (MetaVariableInfo) ->
 sem_Core_Judgements :: (Core_Judgements) ->
                        (T_Core_Judgements)
 sem_Core_Judgements (list) =
-    (foldr (sem_Core_Judgements_Cons) (sem_Core_Judgements_Nil) ((map sem_Core_Judgement list)))
+    (Prelude.foldr (sem_Core_Judgements_Cons) (sem_Core_Judgements_Nil) ((Prelude.map sem_Core_Judgement list)))
 sem_Core_Judgements_Cons :: (T_Core_Judgement) ->
                             (T_Core_Judgements) ->
                             (T_Core_Judgements)
@@ -528,7 +528,7 @@ type T_Core_UserStatements = (Trees (TypeConstraint ConstraintInfo)) ->
 sem_Core_UserStatements :: (Core_UserStatements) ->
                            (T_Core_UserStatements)
 sem_Core_UserStatements (list) =
-    (foldr (sem_Core_UserStatements_Cons) (sem_Core_UserStatements_Nil) ((map sem_Core_UserStatement list)))
+    (Prelude.foldr (sem_Core_UserStatements_Cons) (sem_Core_UserStatements_Nil) ((Prelude.map sem_Core_UserStatement list)))
 sem_Core_UserStatements_Cons :: (T_Core_UserStatement) ->
                                 (T_Core_UserStatements) ->
                                 (T_Core_UserStatements)
