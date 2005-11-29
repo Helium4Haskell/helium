@@ -13,8 +13,6 @@ default: all
 
 #directories
 HELIUMBINDIR = ../bin
-PARSECDIR = ../../parsec
-PARSECIMPDIR = $(PARSECDIR)/Text/ParserCombinators
 LVMLIBDIR  = ../../lvm/src/lib
 LVMRUNTIMEDIR  = ../../lvm/src/runtime
 TOPDIR = ../../Top/src/Top
@@ -50,7 +48,7 @@ else
 PACKAGENET = 
 endif
 HC_OPTS = -static -fglasgow-exts -cpp \
-		$(PACKAGENET) -package lang -i$(IFACES) $(EXTRA_HC_OPTS)
+		$(PACKAGENET) -package lang -package text -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
 AG_OPTS = -mscfr
@@ -175,14 +173,7 @@ MAINFILES = \
 	main/PhaseStaticChecks.hs main/PhaseTypingStrategies.hs main/PhaseTypeInferencer.hs \
 	main/PhaseDesugarer.hs main/PhaseCodeGenerator.hs main/CompileUtils.hs \
 	main/PhaseKindInferencer.hs
-        
-# Parsec sources
-
-PARSEC = \
-	$(PARSECIMPDIR)/Parsec.hs $(PARSECIMPDIR)/Parsec/Char.hs $(PARSECIMPDIR)/Parsec/Combinator.hs $(PARSECIMPDIR)/Parsec/Error.hs $(PARSECIMPDIR)/Parsec/Expr.hs \
-	$(PARSECIMPDIR)/Parsec/Language.hs $(PARSECIMPDIR)/Parsec/Perm.hs $(PARSECIMPDIR)/Parsec/Pos.hs $(PARSECIMPDIR)/Parsec/Prim.hs $(PARSECIMPDIR)/Parsec/Token.hs
-
-
+       
 # LVM sources
 
 LVMCOMMON = \
@@ -204,7 +195,7 @@ CORE	= $(LVMLIBDIR)/core/Core.hs $(LVMLIBDIR)/core/CorePretty.hs $(LVMLIBDIR)/co
 	  $(LVMLIBDIR)/core/CoreNoShadow.hs $(LVMLIBDIR)/core/CoreFreeVar.hs $(LVMLIBDIR)/core/CoreLetSort.hs \
 	  $(LVMLIBDIR)/core/CoreLift.hs $(LVMLIBDIR)/core/CoreSaturate.hs
 
-IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:$(PARSECDIR):./parser:./staticanalysis/miscellaneous:./staticanalysis/inferencers:./staticanalysis/directives:./staticanalysis/staticchecks:./staticanalysis/heuristics:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem:$(TOPDIR):../../Top/src
+IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:./parser:./staticanalysis/miscellaneous:./staticanalysis/inferencers:./staticanalysis/directives:./staticanalysis/staticchecks:./staticanalysis/heuristics:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem:$(TOPDIR):../../Top/src
 
 # AG sources
 AGSOURCES = \
@@ -219,7 +210,7 @@ AGSOURCES = \
 
 #Sources and object files
 SRCS = $(PARSER) $(STATICANALYSIS) $(UHA) $(CODEGENERATION) $(UTILS) $(LVMCOMMON) \
-	$(LVM) $(ASM) $(CORE) $(PARSEC) $(MAINFILES) $(MODULESYSTEM)
+	$(LVM) $(ASM) $(CORE) $(MAINFILES) $(MODULESYSTEM)
 OBJS = $(SRCS:.hs=.o)
 
 HELIUMOBJSFILE = heliumObjs.txt
@@ -443,8 +434,6 @@ clean:
 	$(RM) ../lib/simple/*.lvm
 	$(RM) $(HELIUMBINDIR)/$(MAIN)$(EXE)
 	$(RM) $(HELIUMBINDIR)/texthint$(EXE)	
-	cd $(PARSECIMPDIR); $(RM) `find . -name "*.o" -print`
-	cd $(PARSECIMPDIR); $(RM) `find . -name "*.hi" -print`
 	cd $(LVMLIBDIR); $(MAKE) clean
 	cd $(LVMRUNTIMEDIR); $(MAKE) clean
 	cd $(TOPDIR)/..; $(MAKE) clean 
