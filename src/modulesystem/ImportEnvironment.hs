@@ -8,22 +8,21 @@
 
 module ImportEnvironment where
 
-import Data.FiniteMap
 import qualified Data.Map as M
 import Utils (internalError)
-import UHA_Syntax  ( Names, Name )
+import UHA_Syntax  (Name)
 import UHA_Utils
 import Top.Types
 import OperatorTable
-import Messages -- instance Show Name
+import Messages () -- instance Show Name
 import RepairHeuristics (Siblings)
 import TS_CoreSyntax
 import Data.List 
 import Data.Maybe (catMaybes)
 
-type TypeEnvironment             = FiniteMap Name TpScheme
-type ValueConstructorEnvironment = FiniteMap Name TpScheme
-type TypeConstructorEnvironment  = FiniteMap Name Int
+type TypeEnvironment             = M.Map Name TpScheme
+type ValueConstructorEnvironment = M.Map Name TpScheme
+type TypeConstructorEnvironment  = M.Map Name Int
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
 
 type ImportEnvironments = [ImportEnvironment]
@@ -43,52 +42,52 @@ data ImportEnvironment  =
 
 emptyEnvironment :: ImportEnvironment
 emptyEnvironment = ImportEnvironment 
-   { typeConstructors  = emptyFM
+   { typeConstructors  = M.empty
    , typeSynonyms      = M.empty
-   , typeEnvironment   = emptyFM
-   , valueConstructors = emptyFM
-   , operatorTable     = emptyFM
+   , typeEnvironment   = M.empty
+   , valueConstructors = M.empty
+   , operatorTable     = M.empty
 --   , classEnvironment  = emptyClassEnvironment
    , typingStrategies  = [] 
    }
                                               
 addTypeConstructor :: Name -> Int -> ImportEnvironment -> ImportEnvironment                      
 addTypeConstructor name int importenv = 
-   importenv {typeConstructors = addToFM (typeConstructors importenv) name int} 
+   importenv {typeConstructors = M.insert name int (typeConstructors importenv)} 
 
 -- add a type synonym also to the type constructor environment   
 addTypeSynonym :: Name -> (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment                      
 addTypeSynonym name (arity, function) importenv = 
    importenv { typeSynonyms     = M.insert name (arity, function) (typeSynonyms importenv)
-             , typeConstructors = addToFM (typeConstructors importenv) name arity 
+             , typeConstructors = M.insert name arity (typeConstructors importenv)
              } 
 
 addType :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment                      
 addType name tpscheme importenv = 
-   importenv {typeEnvironment = addToFM (typeEnvironment importenv) name tpscheme} 
+   importenv {typeEnvironment = M.insert name tpscheme (typeEnvironment importenv)}
 
 addToTypeEnvironment :: TypeEnvironment -> ImportEnvironment -> ImportEnvironment
 addToTypeEnvironment new importenv =
-   importenv {typeEnvironment = typeEnvironment importenv `plusFM` new} 
+   importenv {typeEnvironment = typeEnvironment importenv `M.union` new} 
    
 addValueConstructor :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment                      
 addValueConstructor name tpscheme importenv = 
-   importenv {valueConstructors = addToFM (valueConstructors importenv) name tpscheme} 
+   importenv {valueConstructors = M.insert name tpscheme (valueConstructors importenv)}
 
 addOperator :: Name -> (Int,Assoc) -> ImportEnvironment -> ImportEnvironment  
 addOperator name pair importenv = 
-   importenv {operatorTable = addToFM (operatorTable importenv) name pair  } 
+   importenv {operatorTable = M.insert name pair (operatorTable importenv) } 
    
-setValueConstructors :: FiniteMap Name TpScheme -> ImportEnvironment -> ImportEnvironment  
+setValueConstructors :: M.Map Name TpScheme -> ImportEnvironment -> ImportEnvironment  
 setValueConstructors new importenv = importenv {valueConstructors = new} 
 
-setTypeConstructors :: FiniteMap Name Int -> ImportEnvironment -> ImportEnvironment     
+setTypeConstructors :: M.Map Name Int -> ImportEnvironment -> ImportEnvironment     
 setTypeConstructors new importenv = importenv {typeConstructors = new}
 
 setTypeSynonyms :: M.Map Name (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment  
 setTypeSynonyms new importenv = importenv {typeSynonyms = new}
 
-setTypeEnvironment :: FiniteMap Name TpScheme -> ImportEnvironment -> ImportEnvironment 
+setTypeEnvironment :: M.Map Name TpScheme -> ImportEnvironment -> ImportEnvironment 
 setTypeEnvironment new importenv = importenv {typeEnvironment = new}
 
 setOperatorTable :: OperatorTable -> ImportEnvironment -> ImportEnvironment 
@@ -120,20 +119,19 @@ getSiblings :: ImportEnvironment -> Siblings
 getSiblings importenv =
    let f s = [ (s, ts) | ts <- findTpScheme (nameFromString s) ]
        findTpScheme n = 
-          catMaybes [ lookupFM (valueConstructors importenv) n
-                    , lookupFM (typeEnvironment   importenv) n
+          catMaybes [ M.lookup n (valueConstructors importenv)
+                    , M.lookup n (typeEnvironment   importenv)
                     ]
    in map (concatMap f) (getSiblingGroups importenv) 
          
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
 combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 xs2) = 
    ImportEnvironment 
-      (tcs1 `plusFM` tcs2) 
+      (tcs1 `M.union` tcs2) 
       (tss1 `M.union` tss2)
-      (te1  `plusFM` te2 )
-      (vcs1 `plusFM` vcs2)
-      (ot1  `plusFM` ot2)
---      (plusFM_C combineClassDecls ce1 ce2) 
+      (te1  `M.union` te2 )
+      (vcs1 `M.union` vcs2)
+      (ot1  `M.union` ot2)
       (xs1 ++ xs2)
 
 {-
@@ -157,8 +155,8 @@ combineClassDecls (super1, inst1) (super2, inst2)
 createClassEnvironment :: ImportEnvironment -> ClassEnvironment
 createClassEnvironment importenv = 
     let  dicts = map (drop (length dictPrefix) . show) 
-               . keysFM 
-               . filterFM isDict 
+               . M.keys 
+               . M.filterWithKey isDict 
                $ typeEnvironment importenv
          isDict n _ = dictPrefix `isPrefixOf` show n
          dictPrefix = "$dict"
@@ -173,9 +171,10 @@ createClassEnvironment importenv =
          splitDictName x = internalError "ImportEnvironment" "splitDictName" ("illegal dictionary: " ++ show x)
          arity s | s == "()" = 0
                  | isTupleConstructor s = length s - 1
-                 | otherwise = lookupWithDefaultFM (typeConstructors importenv) 
-                        (internalError "ImportEnvironment" "splitDictName" ("unknown type constructor: " ++ show s))                            
-                        (nameFromString s)
+                 | otherwise = M.findWithDefault
+                                  (internalError "ImportEnvironment" "splitDictName" ("unknown type constructor: " ++ show s))                            
+                                  (nameFromString s)
+                                  (typeConstructors importenv) 
          dictTuples = [ (c, makeInstance c (arity t) t) 
                       | d <- dicts, let (c, t) = splitDictName d 
                       ]
@@ -185,15 +184,7 @@ createClassEnvironment importenv =
                     superClassRelation 
                     dictTuples
     in classEnv
-{-
-    trace (show (fmToList classEnv)) $
-   let donts = [ "IO", "IOMode", "Handle", "->" ] -- not in Show
-       stds  = [ "()", "Int", "Float", "Bool", "Char", "[]" ] -- standard in Show
-       fm    = delListFromFM (typeConstructors importenv)
-             $ keysFM (typeSynonyms importenv) ++ map nameFromString (donts ++ stds)
-       extraShowInstances = [ makeInstance "Show" nrOfArgs (show name) | (name, nrOfArgs) <- fmToList fm ]
-   in addToFM_C combineClassDecls standardClasses "Show" ([], extraShowInstances)
--}
+
 superClassRelation :: ClassEnvironment
 superClassRelation = M.fromList $ 
    [ ("Num",  ( ["Eq","Show"],   []))
@@ -222,7 +213,7 @@ instance Show ImportEnvironment where
     
        fixities =    
           let sorted  = let cmp (name, (prio, assoc)) = (10 - prio, assoc, not (isOperatorName name), name)
-                        in sortBy (\x y -> cmp x `compare` cmp y) (fmToList ot)
+                        in sortBy (\x y -> cmp x `compare` cmp y) (M.assocs ot)
               grouped = groupBy (\x y -> snd x == snd y) sorted
               list = let f ((name, (prio, assoc)) : rest) =
                             let names  = name : map fst rest 
@@ -236,7 +227,7 @@ instance Show ImportEnvironment where
           in showWithTitle "Fixity declarations" list
        
        datatypes = 
-          let allDatas = filter ((`notElem` M.keys tss). fst) (fmToList tcs)
+          let allDatas = filter ((`notElem` M.keys tss). fst) (M.assocs tcs)
               (xs, ys) = partition (isIdentifierName . fst) allDatas
               list     = map f (ys++xs)
               f (n,i)  = unwords ("data" : (showNameAsVariable n) : take i variableList)
@@ -250,12 +241,12 @@ instance Show ImportEnvironment where
           in showWithTitle "Type synonyms" list  
                  
        valueConstructors =
-          let (xs, ys) = partition (isIdentifierName . fst) (fmToList vcs)
+          let (xs, ys) = partition (isIdentifierName . fst) (M.assocs vcs)
               list     = map (\(n,t) -> showNameAsVariable n ++ " :: "++show t) (ys++xs)         
           in showWithTitle "Value constructors" list    
                  
        functions = 
-          let (xs, ys) = partition (isIdentifierName . fst) (fmToList te)
+          let (xs, ys) = partition (isIdentifierName . fst) (M.assocs te)
               list     = map (\(n,t) -> showNameAsVariable n ++ " :: "++show t) (ys++xs)
           in showWithTitle "Functions" list                  
        

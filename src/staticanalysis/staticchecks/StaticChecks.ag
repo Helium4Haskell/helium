@@ -48,7 +48,6 @@ import Utils ( internalError, fst3, minInt, maxInt )
 import TypeConversion
 import DerivingShow
 import TypeConstraints
-import Data.FiniteMap
 import qualified Data.Map as M
 import ImportEnvironment
 import OperatorTable
@@ -71,7 +70,7 @@ SEM Module
                                      [ (name,Constructor    ) | name:_ <- @duplicatedValueConstructors ]
                  . derivedRanges   = map getNameRange (map fst @derivedFunctions)
                  . initialScope    = map fst @derivedFunctions ++ 
-                                     concatMap (keysFM . typeEnvironment) @lhs.importEnvironments                 
+                                     concatMap (M.keys . typeEnvironment) @lhs.importEnvironments                 
 {
 -- filter undefined errors that are caused by the removal of a duplicate definition
 filterRemovedNames :: [(Name,Entity)] -> Error -> Bool

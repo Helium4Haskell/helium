@@ -11,7 +11,7 @@
 -----------------------------------------------------------------------------
 imports {
 import ExpressionTypeInferencer (expressionTypeInferencer)
-import Data.FiniteMap
+import qualified Data.Map as M
 }
 
 -- Collect all type variables 

@@ -17,15 +17,15 @@ import TypeErrors
 import TS_Messages
 import ImportEnvironment hiding (setTypeSynonyms)
 import ExpressionTypeInferencer (expressionTypeInferencer)
-import Data.FiniteMap
 import Char (isAlphaNum)
 import Utils (internalError)
 import qualified UHA_Pretty as PP
+import qualified Data.Map as M
 
 import UHA_Syntax
 
 import ExpressionTypeInferencer (expressionTypeInferencer)
-import Data.FiniteMap
+import qualified Data.Map as M
 
 analyseTypingStrategies :: TypingStrategies -> ImportEnvironment -> (TS_Errors, TS_Warnings)
 analyseTypingStrategies list ie = 
@@ -3636,8 +3636,8 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
             (_name@_) =
                 show (PP.sem_Expression _typeruleIconclusionExpression)
             (_allImportedVariables@_) =
-                keysFM (typeEnvironment   _lhsIimportEnvironment) ++
-                keysFM (valueConstructors _lhsIimportEnvironment)
+                M.keys (typeEnvironment   _lhsIimportEnvironment) ++
+                M.keys (valueConstructors _lhsIimportEnvironment)
             (_uniqueTypevariables@_) =
                 nub (_typeruleItypevariables ++ _statementsItypevariables)
             (_statementsOuserPredicates@_) =

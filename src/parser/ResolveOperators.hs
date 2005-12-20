@@ -8,8 +8,7 @@ import OperatorTable
 import Char
 import Utils
 import Messages
-import Data.FiniteMap
-
+import qualified Data.Map as M
 
 data ResolveError = 
     Ambiguous Assoc Name Assoc Name
@@ -47,7 +46,7 @@ expression opTable e = -- !!! errors ignored
 
 operatorsFromModule :: Module -> OperatorTable
 operatorsFromModule m =
-    listToFM (concatMap declToOps (collectInfixdecls m))
+    M.fromList (concatMap declToOps (collectInfixdecls m))
   where
     declToOps (Declaration_Fixity _ f (MaybeInt_Just p) os) = 
         [ (o, (p, fixityToAssoc f)) | o <- os ]

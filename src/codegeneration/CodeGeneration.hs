@@ -7,7 +7,7 @@ import UHA_Range
 import List (union)
 import ImportEnvironment
 import DictionaryEnvironment
-import Data.FiniteMap
+import qualified Data.Map as M
 import TypeConversion
 import Char (ord)
 
@@ -55,10 +55,10 @@ interpreterMain = "interpreter_main"
 insertedMain :: TypeEnvironment -> CoreDecl
 insertedMain toplevelTypes =
     let maybeWrapMainAndType = 
-            case lookupFM toplevelTypes (Name_Identifier noRange [] "main")  of -- !!!Name
+            case M.lookup (Name_Identifier noRange [] "main") toplevelTypes of -- !!!Name
                 Just t -> Just ("main", t)
                 Nothing ->
-                    case lookupFM toplevelTypes (Name_Identifier noRange [] interpreterMain) of -- !!!Name
+                    case M.lookup (Name_Identifier noRange [] interpreterMain) toplevelTypes of -- !!!Name
                         Just t -> Just (interpreterMain, t)
                         Nothing -> Nothing
     in
@@ -128,7 +128,7 @@ toplevelType name ie isTopLevel
         typeString = maybe
             (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name))
             show
-            (lookupFM (typeEnvironment ie) name)
+            (M.lookup name (typeEnvironment ie))
 
 constructorCustoms :: Name -> Name -> ValueConstructorEnvironment -> [Core.Custom]
 constructorCustoms dataTypeName name env =
@@ -141,7 +141,7 @@ constructorCustoms dataTypeName name env =
                     (Core.DeclKindCustom (idFromString "data"))
             ]
         )
-        (lookupFM env name)
+        (M.lookup name env)
 
 
 -- Function "bind" is used in the translation of do-expressions

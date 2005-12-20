@@ -42,10 +42,10 @@ import TypeErrors
 import TS_Messages
 import ImportEnvironment hiding (setTypeSynonyms)
 import ExpressionTypeInferencer (expressionTypeInferencer)
-import Data.FiniteMap
 import Char (isAlphaNum)
 import Utils (internalError)
 import qualified UHA_Pretty as PP
+import qualified Data.Map as M
 }
 
 ATTR TypingStrategy  [ importEnvironment : ImportEnvironment
@@ -133,8 +133,8 @@ SEM TypeRule | TypeRule lhs . conclusionAllVariables = @conclusion.allVariables
 SEM TypingStrategy 
   | TypingStrategy  
        loc.allImportedVariables = 
-          keysFM (typeEnvironment   @lhs.importEnvironment) ++
-          keysFM (valueConstructors @lhs.importEnvironment)
+          M.keys (typeEnvironment   @lhs.importEnvironment) ++
+          M.keys (valueConstructors @lhs.importEnvironment)
 
 
 

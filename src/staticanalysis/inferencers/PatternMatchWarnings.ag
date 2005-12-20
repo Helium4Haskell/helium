@@ -250,7 +250,7 @@ SEM GuardedExpression
 
 -- environment of constructors [(type, (constructorname, arguments))]
 type Env = [(Tp, (Name, [Tp]))]
-importEnvironmentToEnv = map rearrange . fmToList . valueConstructors
+importEnvironmentToEnv = map rearrange . M.assocs . valueConstructors
 
 -- return the number of arguments of a constructor
 -- tuples ar not in the Env so they require special treatment

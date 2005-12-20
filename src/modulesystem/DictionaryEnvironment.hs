@@ -13,7 +13,6 @@ module DictionaryEnvironment
    , makeDictionaryTree, makeDictionaryTrees
    ) where
 
-import Data.FiniteMap
 import qualified Data.Map as M
 import UHA_Syntax (Name)
 import UHA_Utils (NameWithRange(..) )
@@ -21,8 +20,8 @@ import Utils (internalError)
 import Top.Types
 
 data DictionaryEnvironment = 
-     DEnv { declMap :: FiniteMap NameWithRange Predicates
-          , varMap  :: FiniteMap NameWithRange [DictionaryTree]
+     DEnv { declMap :: M.Map NameWithRange Predicates
+          , varMap  :: M.Map NameWithRange [DictionaryTree]
           }
           
 data DictionaryTree = ByPredicate Predicate
@@ -32,32 +31,32 @@ data DictionaryTree = ByPredicate Predicate
    
 instance Show DictionaryEnvironment where
    show denv = 
-      "{ declMap = " ++ show (fmToList $ declMap denv) ++
-      ", varMap = "  ++ show (fmToList $ varMap denv) ++ "}"
+      "{ declMap = " ++ show (M.assocs $ declMap denv) ++
+      ", varMap = "  ++ show (M.assocs $ varMap denv) ++ "}"
        
 emptyDictionaryEnvironment :: DictionaryEnvironment
 emptyDictionaryEnvironment = 
-   DEnv { declMap = emptyFM, varMap = emptyFM }
+   DEnv { declMap = M.empty, varMap = M.empty }
  
 addForDeclaration :: Name -> Predicates -> DictionaryEnvironment -> DictionaryEnvironment
 addForDeclaration name predicates dEnv
    | null predicates = dEnv
-   | otherwise       = dEnv { declMap = addToFM (declMap dEnv) (NameWithRange name) predicates }
+   | otherwise       = dEnv { declMap = M.insert (NameWithRange name) predicates (declMap dEnv) }
    
 addForVariable :: Name -> [DictionaryTree] -> DictionaryEnvironment -> DictionaryEnvironment
 addForVariable name trees dEnv
   | null trees = dEnv  
-  | otherwise  = dEnv { varMap = addToFM (varMap dEnv) (NameWithRange name) trees }
+  | otherwise  = dEnv { varMap = M.insert (NameWithRange name) trees (varMap dEnv) }
 
 getPredicateForDecl :: Name -> DictionaryEnvironment -> Predicates
 getPredicateForDecl name dEnv =
-   case lookupFM (declMap dEnv) (NameWithRange name) of
+   case M.lookup (NameWithRange name) (declMap dEnv) of
       Just ps -> ps
       Nothing -> []
 
 getDictionaryTrees :: Name -> DictionaryEnvironment -> [DictionaryTree]
 getDictionaryTrees name dEnv = 
-   case lookupFM (varMap dEnv) (NameWithRange name) of
+   case M.lookup (NameWithRange name) (varMap dEnv) of
       Just dt -> dt
       Nothing -> []
 
@@ -67,7 +66,7 @@ makeDictionaryTrees classEnv ps = mapM (makeDictionaryTree classEnv ps)
 makeDictionaryTree :: ClassEnvironment -> Predicates -> Predicate -> Maybe DictionaryTree
 makeDictionaryTree classEnv availablePredicates p@(Predicate className tp) =      
    case tp of
-      TVar i | p `elem` availablePredicates -> Just (ByPredicate p)
+      TVar _ | p `elem` availablePredicates -> Just (ByPredicate p)
              | otherwise -> case [ (path, availablePredicate)
                                  | availablePredicate@(Predicate c t) <- availablePredicates
                                  , t == tp

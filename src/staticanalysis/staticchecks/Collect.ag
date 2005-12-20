@@ -19,11 +19,11 @@
 -------------------------------------------------------------------------------
 
 SEM Module
-  | Module   loc . collectEnvironment = setValueConstructors   (listToFM @body.collectValueConstructors)
-                                        . setTypeConstructors  (listToFM @body.collectTypeConstructors)
+  | Module   loc . collectEnvironment = setValueConstructors   (M.fromList @body.collectValueConstructors)
+                                        . setTypeConstructors  (M.fromList @body.collectTypeConstructors)
                                         . setTypeSynonyms      (M.fromList @body.collectTypeSynonyms)          
-                                        . setOperatorTable     (listToFM @body.operatorFixities)
-                                        . addToTypeEnvironment (listToFM @derivedFunctions)
+                                        . setOperatorTable     (M.fromList @body.operatorFixities)
+                                        . addToTypeEnvironment (M.fromList @derivedFunctions)
                                         -- . setClassEnvironment  @derivedInstances
                                         $ emptyEnvironment 
                                         -- the type environment will be added after type inferencing.
@@ -110,17 +110,17 @@ SEM Declaration
 SEM Module
   | Module   loc . (uniqueValueConstructors,duplicatedValueConstructors) = 
                       uniqueKeys (  @body.collectValueConstructors 
-                                 ++ concatMap (fmToList . valueConstructors) @lhs.importEnvironments
+                                 ++ concatMap (M.assocs . valueConstructors) @lhs.importEnvironments
                                  )
                  . allValueConstructors = map fst @uniqueValueConstructors ++ map head @duplicatedValueConstructors
-                 . valueConstructors    = listToFM @uniqueValueConstructors
+                 . valueConstructors    = M.fromList @uniqueValueConstructors
 
 ATTR Body Declarations Declaration Expressions Expression Patterns Pattern 
      Statement Statements Qualifier Qualifiers
      Alternative Alternatives Constructor Constructors
      GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression AnnotatedType AnnotatedTypes
-     [ valueConstructors : {FiniteMap Name TpScheme} allValueConstructors : Names | | ]
+     [ valueConstructors : {M.Map Name TpScheme} allValueConstructors : Names | | ]
 
 -------------------------------------------
 -- 6) Distributing Type Constructors
@@ -128,11 +128,11 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
 SEM Module
   | Module loc . (uniqueTypeConstructors,duplicatedTypeConstructors) =
                     uniqueKeys (  @body.collectTypeConstructors
-                               ++ concatMap (fmToList . typeConstructors) @lhs.importEnvironments
+                               ++ concatMap (M.assocs . typeConstructors) @lhs.importEnvironments
                                ++ [ (n,i) | (n,(i,f)) <- @body.collectTypeSynonyms ]
                                )
                . allTypeConstructors = map fst @uniqueTypeConstructors ++ map head @duplicatedTypeConstructors
-               . typeConstructors    = listToFM @uniqueTypeConstructors
+               . typeConstructors    = M.fromList @uniqueTypeConstructors
 
 ATTR Body Declarations Declaration Expressions Expression Patterns Pattern    
      Statement Statements Qualifier Qualifiers 
@@ -140,7 +140,7 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      GuardedExpressions GuardedExpression FunctionBinding FunctionBindings     
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression 
      Type Types AnnotatedType AnnotatedTypes ContextItem ContextItems
-     [ typeConstructors : {FiniteMap Name Int} allTypeConstructors : Names | | ]
+     [ typeConstructors : {M.Map Name Int} allTypeConstructors : Names | | ]
 
 -------------------------------------------
 -- 7) Distributing Type Synonyms

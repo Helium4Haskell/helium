@@ -128,7 +128,7 @@ SEM Expression
                                                     in [ LastStatementNotExpr range ]  
                                                 
   | Constructor  lhs . miscerrors = @undefinedConstructorErrors ++ @lhs.miscerrors
-                 loc . undefinedConstructorErrors = case lookupFM @lhs.valueConstructors @name.self of
+                 loc . undefinedConstructorErrors = case M.lookup @name.self @lhs.valueConstructors of
                                                        Nothing -> [ undefinedConstructorInExpr @name.self (@lhs.namesInScope ++ @lhs.allValueConstructors) @lhs.allTypeConstructors ]
                                                        Just _  -> []
 
@@ -148,11 +148,11 @@ SEM Expression
 SEM Pattern
     | Constructor        lhs . miscerrors = @patConstructorErrors ++ @patterns.miscerrors
                          loc . patConstructorErrors = patternConstructorErrors @maybetp @name.self @lhs.allValueConstructors @patterns.numberOfPatterns @lhs.lhsPattern @lhs.allTypeConstructors
-                             . maybetp    = lookupFM @lhs.valueConstructors @name.self
+                             . maybetp    = M.lookup @name.self @lhs.valueConstructors
 
     | InfixConstructor   lhs . miscerrors = @patConstructorErrors ++ @rightPattern.miscerrors
                          loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self @lhs.allValueConstructors 2 False @lhs.allTypeConstructors
-                             . maybetp    = lookupFM @lhs.valueConstructors @constructorOperator.self
+                             . maybetp    = M.lookup @constructorOperator.self @lhs.valueConstructors
 
 
 {

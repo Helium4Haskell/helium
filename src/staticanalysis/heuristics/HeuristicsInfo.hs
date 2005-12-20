@@ -29,7 +29,7 @@ import Top.Types
 import Top.Implementation.TypeGraph.Heuristic
 import Data.Maybe
 import Data.Char
-import Data.FiniteMap
+import qualified Data.Map as M
 
 instance HasTrustFactor ConstraintInfo where
    trustFactor cinfo =
@@ -148,9 +148,9 @@ instance IsUnifier ConstraintInfo where
          []  -> Nothing
          t:_ -> Just t
 
-makeUnifier :: Name -> String -> FiniteMap Name Tp -> InfoTree -> Property
+makeUnifier :: Name -> String -> M.Map Name Tp -> InfoTree -> Property
 makeUnifier name location environment infoTree = 
-   let unifier = maybe (-1) (head . ftv) (lookupFM environment name)
+   let unifier = maybe (-1) (head . ftv) (M.lookup name environment)
        tuple   = ("variable of "++location, attribute (findVariableInPat name infoTree), "variable")
    in Unifier unifier tuple
  

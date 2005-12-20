@@ -19,11 +19,11 @@ import Parser (exp_)
 import Lexer (strategiesLexer)
 import ParseLibrary (runHParser)
 import qualified ResolveOperators
+import qualified Data.Map as M
 import TS_Attributes
 import TS_CoreSyntax
 import Top.Ordering.Tree
 import UHA_Source
-import Data.FiniteMap
 import DoublyLinkedTree (root)
 
 import Top.Types
@@ -327,8 +327,8 @@ sem_Core_TypingStrategy_TypingStrategy (typeEnv_) (typerule_) (statements_) =
             (_statementsOcollectConstraints@_) =
                 []
             (_patchConstraints@_) =
-                let parent     = concat (eltsFM (getAssumptions _lhsIinfoTuple))
-                    children   = concat (concatMap (eltsFM . getAssumptions . snd) _lhsImetaVariableTable)
+                let parent     = concat (M.elems (getAssumptions _lhsIinfoTuple))
+                    children   = concat (concatMap (M.elems . getAssumptions . snd) _lhsImetaVariableTable)
                     (ns, tps1) = unzip (parent \\ children)
                     (ss, tps2) = unzip typeEnv_
                     zipF t1 t2 = (t1 .==. _substitution |-> t2) infoF

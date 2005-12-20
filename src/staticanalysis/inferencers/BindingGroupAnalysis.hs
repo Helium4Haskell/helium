@@ -18,25 +18,25 @@ import ConstraintInfo
 import TopSort (topSort)
 import Top.Types
 import Top.Ordering.Tree
-import Data.FiniteMap
+import qualified Data.Map as M
 import Data.List
 
-type Assumptions        = FiniteMap Name [(Name,Tp)]
-type PatternAssumptions = FiniteMap Name Tp
+type Assumptions        = M.Map Name [(Name,Tp)]
+type PatternAssumptions = M.Map Name Tp
 type Monos              = Tps
 
-noAssumptions :: FiniteMap Name a
-noAssumptions = emptyFM
+noAssumptions :: M.Map Name a
+noAssumptions = M.empty
 
 listToAssumptions :: [(Name, Tp)] -> Assumptions
 listToAssumptions list =
-   foldr combine noAssumptions [ listToFM [(n, [tuple])] | tuple@(n, _) <- list ]
+   foldr combine noAssumptions [ M.fromList [(n, [tuple])] | tuple@(n, _) <- list ]
 
 combine :: Assumptions -> Assumptions -> Assumptions
-combine = plusFM_C (++)
+combine = M.unionWith (++)
 
 single :: Name -> Tp -> Assumptions
-single n t = unitFM n [(n,t)]
+single n t = M.singleton n [(n,t)]
 
 type BindingGroups = [BindingGroup]
 type BindingGroup  = (PatternAssumptions, Assumptions, ConstraintSets)
@@ -48,14 +48,14 @@ emptyBindingGroup =
 
 combineBindingGroup :: BindingGroup -> BindingGroup -> BindingGroup
 combineBindingGroup (e1,a1,c1) (e2,a2,c2) = 
-   (e1 `plusFM` e2, a1 `combine` a2, c1++c2)
+   (e1 `M.union` e2, a1 `combine` a2, c1++c2)
 
 concatBindingGroups :: BindingGroups -> BindingGroup
 concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
 
 -- |Input for binding group analysis
-type InputBDG     = (Bool, Int, Int, Monos, FiniteMap Name TpScheme, Maybe (Assumptions, ConstraintSets), Int)
-type OutputBDG    = (Assumptions, ConstraintSet, InheritedBDG, Int, Int, FiniteMap Name (Sigma Predicates))
+type InputBDG     = (Bool, Int, Int, Monos, M.Map Name TpScheme, Maybe (Assumptions, ConstraintSets), Int)
+type OutputBDG    = (Assumptions, ConstraintSet, InheritedBDG, Int, Int, M.Map Name (Sigma Predicates))
 
 performBindingGroup :: InputBDG -> BindingGroups -> OutputBDG
 performBindingGroup (topLevel, currentChunk, uniqueChunk, monos, typeSignatures, chunkContext, unique) groups = 
@@ -64,11 +64,11 @@ performBindingGroup (topLevel, currentChunk, uniqueChunk, monos, typeSignatures,
    where   
         bindingGroupAnalysis :: BindingGroups -> BindingGroups
         bindingGroupAnalysis cs =
-           let explicits = keysFM typeSignatures
+           let explicits = M.keys typeSignatures
                indexMap = concat (zipWith f cs [0..])
-               f (env,_,_) i = [ (n,i) | n <- keysFM env, n `notElem` explicits ]
+               f (env,_,_) i = [ (n,i) | n <- M.keys env, n `notElem` explicits ]
                edges    = concat (zipWith f' cs [0..])
-               f' (_,ass,_) i = [ (i,j)| n <- keysFM ass, (n',j) <- indexMap, n==n' ]
+               f' (_,ass,_) i = [ (i,j)| n <- M.keys ass, (n',j) <- indexMap, n==n' ]
                list = topSort (length cs-1) edges
            in map (concatBindingGroups . map (cs !!)) list
 
@@ -77,18 +77,18 @@ performBindingGroup (topLevel, currentChunk, uniqueChunk, monos, typeSignatures,
            zip [uniqueChunk..] (bindingGroupAnalysis groups) ++ 
            case chunkContext of 
               Nothing     -> []
-              Just (a, c) -> [(currentChunk, (emptyFM, a, c))]
+              Just (a, c) -> [(currentChunk, (M.empty, a, c))]
         
         monomorphicNames :: [Name]
         monomorphicNames = 
-           let initial = let f (e, a, _) = if any (`elem` ftv monos) (ftv $ map snd $ concat $ eltsFM a)
-                                             then keysFM e
+           let initial = let f (e, a, _) = if any (`elem` ftv monos) (ftv $ map snd $ concat $ M.elems a)
+                                             then M.keys e
                                              else []
                          in concatMap f groups
                expand [] _       = []
                expand (n:ns) gps = let (xs, ys)  = partition p gps
-                                       p (_,a,_) = n `elem` keysFM a
-                                       f (e,_,_) = keysFM e
+                                       p (_,a,_) = n `elem` M.keys a
+                                       f (e,_,_) = M.keys e
                                    in n : expand (concatMap f xs ++ ns) ys
            in expand initial groups
                           
@@ -98,15 +98,15 @@ performBindingGroup (topLevel, currentChunk, uniqueChunk, monos, typeSignatures,
            in (aset, cset, mt, uniqueChunk + length groups, newUnique, fm)
 
           where        
-            initial = (noAssumptions, emptyTree, [], unique, emptyFM)
+            initial = (noAssumptions, emptyTree, [], unique, M.empty)
           
             op (cnr, (e, a, c)) (aset, cset, mt, un, fm) =
                let (cset1,e'   )  = (typeSignatures !:::! e) monos cinfoBindingGroupExplicitTypedBinding                
-                   (cset2,a'   )  = (typeSignatures .:::. a) (cinfoBindingGroupExplicit monos (keysFM e))
+                   (cset2,a'   )  = (typeSignatures .:::. a) (cinfoBindingGroupExplicit monos (M.keys e))
                    (cset3,a''  )  = (e' .===. a')            cinfoSameBindingGroup
                    
-                   implicits      = zip [un..] (fmToList e')
-                   implicitsFM    = listToFM [ (name, SigmaVar sv) | (sv, (name, _)) <- implicits ]
+                   implicits      = zip [un..] (M.assocs e')
+                   implicitsFM    = M.fromList [ (name, SigmaVar sv) | (sv, (name, _)) <- implicits ]
                    cset4          = genConstraints monos cinfoGeneralize implicits                   
                    (cset5, aset') = (implicitsFM .<==. aset) cinfoBindingGroupImplicit
                                     
@@ -123,9 +123,9 @@ performBindingGroup (topLevel, currentChunk, uniqueChunk, monos, typeSignatures,
                in
                   ( a'' `combine` aset'
                   , constraintTree
-                  , (keysFM e, (eltsFM e', if monomorphic then currentChunk else cnr)) : mt
-                  , un + sizeFM e'
-                  , implicitsFM `plusFM` fm
+                  , (M.keys e, (M.elems e', if monomorphic then currentChunk else cnr)) : mt
+                  , un + M.size e'
+                  , implicitsFM `M.union` fm
                   ) 
 
 findMono :: Name -> InheritedBDG -> Monos

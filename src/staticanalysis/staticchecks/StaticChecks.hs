@@ -15,7 +15,6 @@ import Utils ( internalError, fst3, minInt, maxInt )
 import TypeConversion
 import DerivingShow
 import TypeConstraints
-import Data.FiniteMap
 import qualified Data.Map as M
 import ImportEnvironment
 import OperatorTable
@@ -64,7 +63,7 @@ uniqueAppearance = foldr insert ([],[]) . group . sort
    where insert [x] (as,bs) = (x:as,bs)
          insert xs  (as,bs) = (as,xs:bs)
 
-checkType :: FiniteMap Name Int -> Names -> Type -> [Error]
+checkType :: M.Map Name Int -> Names -> Type -> [Error]
 checkType typeConstructors namesInScope t =
     let (f, xs) = walkSpine t
         xsErrors = concatMap (checkType typeConstructors namesInScope) xs
@@ -99,7 +98,7 @@ walkSpine t =
         Type_Qualified _ _ t -> walkSpine t
         _ -> internalError "StaticAnalysis" "walkSpine" "unexpected type"
 
-checkKind :: Name -> FiniteMap Name Int -> Int -> Names -> [Error]
+checkKind :: Name -> M.Map Name Int -> Int -> Names -> [Error]
 checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity namesInScope = -- !!!Name
     if expected == useArity then
         []
@@ -112,12 +111,12 @@ checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity namesInScope = -- !!!
                  n -> n + 1 -- (,) (,,) ...
 
 checkKind tycon typeConstructors useArity namesInScope =
-    case lookupFM typeConstructors tycon of
+    case M.lookup tycon typeConstructors of
         Nothing ->
             let hint = [ "Constructor "++show (show tycon)++" cannot be used in a type"
                        | tycon `elem` namesInScope
                        ]
-            in [ Undefined TypeConstructor tycon (keysFM typeConstructors) hint ]
+            in [ Undefined TypeConstructor tycon (M.keys typeConstructors) hint ]
         Just defArity ->
             if useArity /= defArity then
                 [ ArityMismatch TypeConstructor tycon defArity useArity ]
@@ -241,8 +240,8 @@ type T_Alternative = (Names) ->
                      (Names) ->
                      ([Option]) ->
                      (OrderedTypeSynonyms) ->
-                     (FiniteMap Name Int) ->
-                     (FiniteMap Name TpScheme) ->
+                     (M.Map Name Int) ->
+                     (M.Map Name TpScheme) ->
                      ([Warning]) ->
                      ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),(Alternative),(Names),([Warning]))
 -- cata
@@ -289,8 +288,8 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
             _patternOlhsPattern :: (Bool)
             _patternOmiscerrors :: ([Error])
             _patternOnamesInScope :: (Names)
-            _patternOtypeConstructors :: (FiniteMap Name Int)
-            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOtypeConstructors :: (M.Map Name Int)
+            _patternOvalueConstructors :: (M.Map Name TpScheme)
             _patternOwarnings :: ([Warning])
             _righthandsideIcollectInstances :: ([(Name, Instance)])
             _righthandsideIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -308,8 +307,8 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
             _righthandsideOnamesInScope :: (Names)
             _righthandsideOoptions :: ([Option])
             _righthandsideOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _righthandsideOtypeConstructors :: (FiniteMap Name Int)
-            _righthandsideOvalueConstructors :: (FiniteMap Name TpScheme)
+            _righthandsideOtypeConstructors :: (M.Map Name Int)
+            _righthandsideOvalueConstructors :: (M.Map Name TpScheme)
             _righthandsideOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -431,8 +430,8 @@ type T_Alternatives = (Names) ->
                       (Names) ->
                       ([Option]) ->
                       (OrderedTypeSynonyms) ->
-                      (FiniteMap Name Int) ->
-                      (FiniteMap Name TpScheme) ->
+                      (M.Map Name Int) ->
+                      (M.Map Name TpScheme) ->
                       ([Warning]) ->
                       ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),(Alternatives),(Names),([Warning]))
 -- cata
@@ -479,8 +478,8 @@ sem_Alternatives_Cons (hd_) (tl_) =
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
             _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _hdOtypeConstructors :: (FiniteMap Name Int)
-            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOtypeConstructors :: (M.Map Name Int)
+            _hdOvalueConstructors :: (M.Map Name TpScheme)
             _hdOwarnings :: ([Warning])
             _tlIcollectInstances :: ([(Name, Instance)])
             _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -498,8 +497,8 @@ sem_Alternatives_Cons (hd_) (tl_) =
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
             _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _tlOtypeConstructors :: (FiniteMap Name Int)
-            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOtypeConstructors :: (M.Map Name Int)
+            _tlOvalueConstructors :: (M.Map Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIcollectInstances,_hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOclassEnvironment) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOorderedTypeSynonyms) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
@@ -616,8 +615,8 @@ type T_AnnotatedType = (Names) ->
                        ([Error]) ->
                        (Names) ->
                        ([Option]) ->
-                       (FiniteMap Name Int) ->
-                       (FiniteMap Name TpScheme) ->
+                       (M.Map Name Int) ->
+                       (M.Map Name TpScheme) ->
                        ([Warning]) ->
                        ( ([Error]),([Error]),(AnnotatedType),(Type),(Names),(Names),([Warning]))
 -- cata
@@ -655,7 +654,7 @@ sem_AnnotatedType_AnnotatedType (range_) (strict_) (type_) =
             _typeOallTypeConstructors :: (Names)
             _typeOmiscerrors :: ([Error])
             _typeOoptions :: ([Option])
-            _typeOtypeConstructors :: (FiniteMap Name Int)
+            _typeOtypeConstructors :: (M.Map Name Int)
             _typeOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -698,8 +697,8 @@ type T_AnnotatedTypes = (Names) ->
                         ([Error]) ->
                         (Names) ->
                         ([Option]) ->
-                        (FiniteMap Name Int) ->
-                        (FiniteMap Name TpScheme) ->
+                        (M.Map Name Int) ->
+                        (M.Map Name TpScheme) ->
                         ([Warning]) ->
                         ( ([Error]),([Error]),(AnnotatedTypes),(Types),(Names),(Names),([Warning]))
 -- cata
@@ -740,8 +739,8 @@ sem_AnnotatedTypes_Cons (hd_) (tl_) =
             _hdOmiscerrors :: ([Error])
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
-            _hdOtypeConstructors :: (FiniteMap Name Int)
-            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOtypeConstructors :: (M.Map Name Int)
+            _hdOvalueConstructors :: (M.Map Name TpScheme)
             _hdOwarnings :: ([Warning])
             _tlIkindErrors :: ([Error])
             _tlImiscerrors :: ([Error])
@@ -756,8 +755,8 @@ sem_AnnotatedTypes_Cons (hd_) (tl_) =
             _tlOmiscerrors :: ([Error])
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
-            _tlOtypeConstructors :: (FiniteMap Name Int)
-            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOtypeConstructors :: (M.Map Name Int)
+            _tlOvalueConstructors :: (M.Map Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIkindErrors,_hdImiscerrors,_hdIself,_hdItype,_hdItypevariables,_hdIunboundNames,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
@@ -866,8 +865,8 @@ type T_Body = (Names) ->
               ([(Name,(Int,Assoc))]) ->
               ([Option]) ->
               (OrderedTypeSynonyms) ->
-              (FiniteMap Name Int) ->
-              (FiniteMap Name TpScheme) ->
+              (M.Map Name Int) ->
+              (M.Map Name TpScheme) ->
               ([Warning]) ->
               ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),(Names),(Names),([Error]),([Error]),([(Name,(Int,Assoc))]),(Body),([(Name,TpScheme)]),(Names),([Warning]))
 -- cata
@@ -945,9 +944,9 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             _declarationsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _declarationsOpreviousWasAlsoFB :: (Maybe Name)
             _declarationsOsuspiciousFBs :: ([(Name,Name)])
-            _declarationsOtypeConstructors :: (FiniteMap Name Int)
+            _declarationsOtypeConstructors :: (M.Map Name Int)
             _declarationsOtypeSignatures :: ([(Name,TpScheme)])
-            _declarationsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _declarationsOvalueConstructors :: (M.Map Name TpScheme)
             _declarationsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -1075,8 +1074,8 @@ type T_Constructor = (Names) ->
                      (Names) ->
                      ([Option]) ->
                      (SimpleType) ->
-                     (FiniteMap Name Int) ->
-                     (FiniteMap Name TpScheme) ->
+                     (M.Map Name Int) ->
+                     (M.Map Name TpScheme) ->
                      ([Warning]) ->
                      ( ([(Name,TpScheme)]),([Error]),([Error]),(Tps),(Constructor),(Names),(Names),([Warning]))
 -- cata
@@ -1127,8 +1126,8 @@ sem_Constructor_Constructor (range_) (constructor_) (types_) =
             _typesOmiscerrors :: ([Error])
             _typesOnamesInScope :: (Names)
             _typesOoptions :: ([Option])
-            _typesOtypeConstructors :: (FiniteMap Name Int)
-            _typesOvalueConstructors :: (FiniteMap Name TpScheme)
+            _typesOtypeConstructors :: (M.Map Name Int)
+            _typesOvalueConstructors :: (M.Map Name TpScheme)
             _typesOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -1216,8 +1215,8 @@ sem_Constructor_Infix (range_) (leftType_) (constructorOperator_) (rightType_) =
             _leftTypeOmiscerrors :: ([Error])
             _leftTypeOnamesInScope :: (Names)
             _leftTypeOoptions :: ([Option])
-            _leftTypeOtypeConstructors :: (FiniteMap Name Int)
-            _leftTypeOvalueConstructors :: (FiniteMap Name TpScheme)
+            _leftTypeOtypeConstructors :: (M.Map Name Int)
+            _leftTypeOvalueConstructors :: (M.Map Name TpScheme)
             _leftTypeOwarnings :: ([Warning])
             _constructorOperatorIself :: (Name)
             _rightTypeIkindErrors :: ([Error])
@@ -1233,8 +1232,8 @@ sem_Constructor_Infix (range_) (leftType_) (constructorOperator_) (rightType_) =
             _rightTypeOmiscerrors :: ([Error])
             _rightTypeOnamesInScope :: (Names)
             _rightTypeOoptions :: ([Option])
-            _rightTypeOtypeConstructors :: (FiniteMap Name Int)
-            _rightTypeOvalueConstructors :: (FiniteMap Name TpScheme)
+            _rightTypeOtypeConstructors :: (M.Map Name Int)
+            _rightTypeOvalueConstructors :: (M.Map Name TpScheme)
             _rightTypeOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -1376,8 +1375,8 @@ type T_Constructors = (Names) ->
                       (Names) ->
                       ([Option]) ->
                       (SimpleType) ->
-                      (FiniteMap Name Int) ->
-                      (FiniteMap Name TpScheme) ->
+                      (M.Map Name Int) ->
+                      (M.Map Name TpScheme) ->
                       ([Warning]) ->
                       ( ([(Name,TpScheme)]),([Error]),([Error]),(Tps),(Constructors),(Names),(Names),([Warning]))
 -- cata
@@ -1424,8 +1423,8 @@ sem_Constructors_Cons (hd_) (tl_) =
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
             _hdOsimpletype :: (SimpleType)
-            _hdOtypeConstructors :: (FiniteMap Name Int)
-            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOtypeConstructors :: (M.Map Name Int)
+            _hdOvalueConstructors :: (M.Map Name TpScheme)
             _hdOwarnings :: ([Warning])
             _tlIcollectValueConstructors :: ([(Name,TpScheme)])
             _tlIkindErrors :: ([Error])
@@ -1443,8 +1442,8 @@ sem_Constructors_Cons (hd_) (tl_) =
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
             _tlOsimpletype :: (SimpleType)
-            _tlOtypeConstructors :: (FiniteMap Name Int)
-            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOtypeConstructors :: (M.Map Name Int)
+            _tlOvalueConstructors :: (M.Map Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIcollectValueConstructors,_hdIkindErrors,_hdImiscerrors,_hdIparameterTypes,_hdIself,_hdItypevariables,_hdIunboundNames,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectValueConstructors) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOsimpletype) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
@@ -1558,7 +1557,7 @@ sem_Constructors_Nil  =
 type T_ContextItem = (Names) ->
                      ([Error]) ->
                      ([Option]) ->
-                     (FiniteMap Name Int) ->
+                     (M.Map Name Int) ->
                      ([Warning]) ->
                      ( ([Range]),([Name]),([Error]),(ContextItem),([Warning]))
 -- cata
@@ -1590,7 +1589,7 @@ sem_ContextItem_ContextItem (range_) (name_) (types_) =
             _typesOallTypeConstructors :: (Names)
             _typesOmiscerrors :: ([Error])
             _typesOoptions :: ([Option])
-            _typesOtypeConstructors :: (FiniteMap Name Int)
+            _typesOtypeConstructors :: (M.Map Name Int)
             _typesOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -1630,7 +1629,7 @@ sem_ContextItem_ContextItem (range_) (name_) (types_) =
 type T_ContextItems = (Names) ->
                       ([Error]) ->
                       ([Option]) ->
-                      (FiniteMap Name Int) ->
+                      (M.Map Name Int) ->
                       ([Warning]) ->
                       ( ([Range]),([Name]),([Error]),(ContextItems),([Warning]))
 -- cata
@@ -1660,7 +1659,7 @@ sem_ContextItems_Cons (hd_) (tl_) =
             _hdOallTypeConstructors :: (Names)
             _hdOmiscerrors :: ([Error])
             _hdOoptions :: ([Option])
-            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOtypeConstructors :: (M.Map Name Int)
             _hdOwarnings :: ([Warning])
             _tlIcontextRanges :: ([Range])
             _tlIcontextVars :: ([Name])
@@ -1670,7 +1669,7 @@ sem_ContextItems_Cons (hd_) (tl_) =
             _tlOallTypeConstructors :: (Names)
             _tlOmiscerrors :: ([Error])
             _tlOoptions :: ([Option])
-            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOtypeConstructors :: (M.Map Name Int)
             _tlOwarnings :: ([Warning])
             ( _hdIcontextRanges,_hdIcontextVars,_hdImiscerrors,_hdIself,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors) (_hdOmiscerrors) (_hdOoptions) (_hdOtypeConstructors) (_hdOwarnings))
@@ -1751,9 +1750,9 @@ type T_Declaration = (Names) ->
                      (OrderedTypeSynonyms) ->
                      (Maybe Name) ->
                      ([(Name,Name)]) ->
-                     (FiniteMap Name Int) ->
+                     (M.Map Name Int) ->
                      ([(Name,TpScheme)]) ->
-                     (FiniteMap Name TpScheme) ->
+                     (M.Map Name TpScheme) ->
                      ([Warning]) ->
                      ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),(Names),([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),(Names),(Declaration),([(Name,Name)]),([(Name,TpScheme)]),(Names),([Warning]))
 -- cata
@@ -1831,7 +1830,7 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
             _contextOallTypeConstructors :: (Names)
             _contextOmiscerrors :: ([Error])
             _contextOoptions :: ([Option])
-            _contextOtypeConstructors :: (FiniteMap Name Int)
+            _contextOtypeConstructors :: (M.Map Name Int)
             _contextOwarnings :: ([Warning])
             _simpletypeIname :: (Name)
             _simpletypeIself :: (SimpleType)
@@ -1853,9 +1852,9 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
             _whereOnamesInScope :: (Names)
             _whereOoptions :: ([Option])
             _whereOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _whereOtypeConstructors :: (FiniteMap Name Int)
+            _whereOtypeConstructors :: (M.Map Name Int)
             _whereOunboundNames :: (Names)
-            _whereOvalueConstructors :: (FiniteMap Name TpScheme)
+            _whereOvalueConstructors :: (M.Map Name TpScheme)
             _whereOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -1989,7 +1988,7 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
             _contextOallTypeConstructors :: (Names)
             _contextOmiscerrors :: ([Error])
             _contextOoptions :: ([Option])
-            _contextOtypeConstructors :: (FiniteMap Name Int)
+            _contextOtypeConstructors :: (M.Map Name Int)
             _contextOwarnings :: ([Warning])
             _simpletypeIname :: (Name)
             _simpletypeIself :: (SimpleType)
@@ -2010,8 +2009,8 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
             _constructorsOnamesInScope :: (Names)
             _constructorsOoptions :: ([Option])
             _constructorsOsimpletype :: (SimpleType)
-            _constructorsOtypeConstructors :: (FiniteMap Name Int)
-            _constructorsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _constructorsOtypeConstructors :: (M.Map Name Int)
+            _constructorsOvalueConstructors :: (M.Map Name TpScheme)
             _constructorsOwarnings :: ([Warning])
             _derivingsIself :: (Names)
             ( _rangeIself) =
@@ -2165,7 +2164,7 @@ sem_Declaration_Default (range_) (types_) =
             _typesOallTypeConstructors :: (Names)
             _typesOmiscerrors :: ([Error])
             _typesOoptions :: ([Option])
-            _typesOtypeConstructors :: (FiniteMap Name Int)
+            _typesOtypeConstructors :: (M.Map Name Int)
             _typesOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -2445,8 +2444,8 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
             _bindingsOnamesInScope :: (Names)
             _bindingsOoptions :: ([Option])
             _bindingsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _bindingsOtypeConstructors :: (FiniteMap Name Int)
-            _bindingsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _bindingsOtypeConstructors :: (M.Map Name Int)
+            _bindingsOvalueConstructors :: (M.Map Name TpScheme)
             _bindingsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -2569,7 +2568,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
             _contextOallTypeConstructors :: (Names)
             _contextOmiscerrors :: ([Error])
             _contextOoptions :: ([Option])
-            _contextOtypeConstructors :: (FiniteMap Name Int)
+            _contextOtypeConstructors :: (M.Map Name Int)
             _contextOwarnings :: ([Warning])
             _nameIself :: (Name)
             _typesImiscerrors :: ([Error])
@@ -2579,7 +2578,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
             _typesOallTypeConstructors :: (Names)
             _typesOmiscerrors :: ([Error])
             _typesOoptions :: ([Option])
-            _typesOtypeConstructors :: (FiniteMap Name Int)
+            _typesOtypeConstructors :: (M.Map Name Int)
             _typesOwarnings :: ([Warning])
             _whereIcollectInstances :: ([(Name, Instance)])
             _whereIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -2598,9 +2597,9 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
             _whereOnamesInScope :: (Names)
             _whereOoptions :: ([Option])
             _whereOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _whereOtypeConstructors :: (FiniteMap Name Int)
+            _whereOtypeConstructors :: (M.Map Name Int)
             _whereOunboundNames :: (Names)
-            _whereOvalueConstructors :: (FiniteMap Name TpScheme)
+            _whereOvalueConstructors :: (M.Map Name TpScheme)
             _whereOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -2746,7 +2745,7 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
             _contextOallTypeConstructors :: (Names)
             _contextOmiscerrors :: ([Error])
             _contextOoptions :: ([Option])
-            _contextOtypeConstructors :: (FiniteMap Name Int)
+            _contextOtypeConstructors :: (M.Map Name Int)
             _contextOwarnings :: ([Warning])
             _simpletypeIname :: (Name)
             _simpletypeIself :: (SimpleType)
@@ -2767,8 +2766,8 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
             _constructorOnamesInScope :: (Names)
             _constructorOoptions :: ([Option])
             _constructorOsimpletype :: (SimpleType)
-            _constructorOtypeConstructors :: (FiniteMap Name Int)
-            _constructorOvalueConstructors :: (FiniteMap Name TpScheme)
+            _constructorOtypeConstructors :: (M.Map Name Int)
+            _constructorOvalueConstructors :: (M.Map Name TpScheme)
             _constructorOwarnings :: ([Warning])
             _derivingsIself :: (Names)
             ( _rangeIself) =
@@ -2901,8 +2900,8 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             _patternOlhsPattern :: (Bool)
             _patternOmiscerrors :: ([Error])
             _patternOnamesInScope :: (Names)
-            _patternOtypeConstructors :: (FiniteMap Name Int)
-            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOtypeConstructors :: (M.Map Name Int)
+            _patternOvalueConstructors :: (M.Map Name TpScheme)
             _patternOwarnings :: ([Warning])
             _righthandsideIcollectInstances :: ([(Name, Instance)])
             _righthandsideIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -2920,8 +2919,8 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             _righthandsideOnamesInScope :: (Names)
             _righthandsideOoptions :: ([Option])
             _righthandsideOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _righthandsideOtypeConstructors :: (FiniteMap Name Int)
-            _righthandsideOvalueConstructors :: (FiniteMap Name TpScheme)
+            _righthandsideOtypeConstructors :: (M.Map Name Int)
+            _righthandsideOvalueConstructors :: (M.Map Name TpScheme)
             _righthandsideOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -3064,7 +3063,7 @@ sem_Declaration_Type (range_) (simpletype_) (type_) =
             _typeOallTypeConstructors :: (Names)
             _typeOmiscerrors :: ([Error])
             _typeOoptions :: ([Option])
-            _typeOtypeConstructors :: (FiniteMap Name Int)
+            _typeOtypeConstructors :: (M.Map Name Int)
             _typeOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -3180,7 +3179,7 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
             _typeOallTypeConstructors :: (Names)
             _typeOmiscerrors :: ([Error])
             _typeOoptions :: ([Option])
-            _typeOtypeConstructors :: (FiniteMap Name Int)
+            _typeOtypeConstructors :: (M.Map Name Int)
             _typeOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -3254,9 +3253,9 @@ type T_Declarations = (Names) ->
                       (OrderedTypeSynonyms) ->
                       (Maybe Name) ->
                       ([(Name,Name)]) ->
-                      (FiniteMap Name Int) ->
+                      (M.Map Name Int) ->
                       ([(Name,TpScheme)]) ->
-                      (FiniteMap Name TpScheme) ->
+                      (M.Map Name TpScheme) ->
                       ([Warning]) ->
                       ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),(Names),([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),(Names),(Declarations),([(Name,Name)]),([(Name,TpScheme)]),(Names),([Warning]))
 -- cata
@@ -3334,9 +3333,9 @@ sem_Declarations_Cons (hd_) (tl_) =
             _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _hdOpreviousWasAlsoFB :: (Maybe Name)
             _hdOsuspiciousFBs :: ([(Name,Name)])
-            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOtypeConstructors :: (M.Map Name Int)
             _hdOtypeSignatures :: ([(Name,TpScheme)])
-            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOvalueConstructors :: (M.Map Name TpScheme)
             _hdOwarnings :: ([Warning])
             _tlIcollectInstances :: ([(Name, Instance)])
             _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -3369,9 +3368,9 @@ sem_Declarations_Cons (hd_) (tl_) =
             _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _tlOpreviousWasAlsoFB :: (Maybe Name)
             _tlOsuspiciousFBs :: ([(Name,Name)])
-            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOtypeConstructors :: (M.Map Name Int)
             _tlOtypeSignatures :: ([(Name,TpScheme)])
-            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOvalueConstructors :: (M.Map Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIcollectInstances,_hdIcollectScopeInfos,_hdIcollectTypeConstructors,_hdIcollectTypeSynonyms,_hdIcollectValueConstructors,_hdIdeclVarNames,_hdIkindErrors,_hdImiscerrors,_hdIoperatorFixities,_hdIpreviousWasAlsoFB,_hdIrestrictedNames,_hdIself,_hdIsuspiciousFBs,_hdItypeSignatures,_hdIunboundNames,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors)
@@ -3799,8 +3798,8 @@ type T_Expression = (Names) ->
                     (Names) ->
                     ([Option]) ->
                     (OrderedTypeSynonyms) ->
-                    (FiniteMap Name Int) ->
-                    (FiniteMap Name TpScheme) ->
+                    (M.Map Name Int) ->
+                    (M.Map Name TpScheme) ->
                     ([Warning]) ->
                     ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),(Expression),(Names),([Warning]))
 -- cata
@@ -3887,8 +3886,8 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             _alternativesIcollectInstances :: ([(Name, Instance)])
             _alternativesIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -3906,8 +3905,8 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _alternativesOnamesInScope :: (Names)
             _alternativesOoptions :: ([Option])
             _alternativesOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _alternativesOtypeConstructors :: (FiniteMap Name Int)
-            _alternativesOvalueConstructors :: (FiniteMap Name TpScheme)
+            _alternativesOtypeConstructors :: (M.Map Name Int)
+            _alternativesOvalueConstructors :: (M.Map Name TpScheme)
             _alternativesOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -4021,8 +4020,8 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             _qualifiersIcollectInstances :: ([(Name, Instance)])
             _qualifiersIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -4041,9 +4040,9 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _qualifiersOnamesInScope :: (Names)
             _qualifiersOoptions :: ([Option])
             _qualifiersOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _qualifiersOtypeConstructors :: (FiniteMap Name Int)
+            _qualifiersOtypeConstructors :: (M.Map Name Int)
             _qualifiersOunboundNames :: (Names)
-            _qualifiersOvalueConstructors :: (FiniteMap Name TpScheme)
+            _qualifiersOvalueConstructors :: (M.Map Name TpScheme)
             _qualifiersOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -4148,7 +4147,7 @@ sem_Expression_Constructor (range_) (name_) =
             ( _nameIself) =
                 (name_ )
             (_undefinedConstructorErrors@_) =
-                case lookupFM _lhsIvalueConstructors _nameIself of
+                case M.lookup _nameIself _lhsIvalueConstructors of
                    Nothing -> [ undefinedConstructorInExpr _nameIself (_lhsInamesInScope ++ _lhsIallValueConstructors) _lhsIallTypeConstructors ]
                    Just _  -> []
             (_lhsOmiscerrors@_) =
@@ -4211,9 +4210,9 @@ sem_Expression_Do (range_) (statements_) =
             _statementsOnamesInScope :: (Names)
             _statementsOoptions :: ([Option])
             _statementsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _statementsOtypeConstructors :: (FiniteMap Name Int)
+            _statementsOtypeConstructors :: (M.Map Name Int)
             _statementsOunboundNames :: (Names)
-            _statementsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _statementsOvalueConstructors :: (M.Map Name TpScheme)
             _statementsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -4311,8 +4310,8 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _fromOnamesInScope :: (Names)
             _fromOoptions :: ([Option])
             _fromOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _fromOtypeConstructors :: (FiniteMap Name Int)
-            _fromOvalueConstructors :: (FiniteMap Name TpScheme)
+            _fromOtypeConstructors :: (M.Map Name Int)
+            _fromOvalueConstructors :: (M.Map Name TpScheme)
             _fromOwarnings :: ([Warning])
             _thenIcollectInstances :: ([(Name, Instance)])
             _thenIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -4330,8 +4329,8 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _thenOnamesInScope :: (Names)
             _thenOoptions :: ([Option])
             _thenOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _thenOtypeConstructors :: (FiniteMap Name Int)
-            _thenOvalueConstructors :: (FiniteMap Name TpScheme)
+            _thenOtypeConstructors :: (M.Map Name Int)
+            _thenOvalueConstructors :: (M.Map Name TpScheme)
             _thenOwarnings :: ([Warning])
             _toIcollectInstances :: ([(Name, Instance)])
             _toIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -4349,8 +4348,8 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _toOnamesInScope :: (Names)
             _toOoptions :: ([Option])
             _toOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _toOtypeConstructors :: (FiniteMap Name Int)
-            _toOvalueConstructors :: (FiniteMap Name TpScheme)
+            _toOtypeConstructors :: (M.Map Name Int)
+            _toOvalueConstructors :: (M.Map Name TpScheme)
             _toOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -4491,8 +4490,8 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _guardExpressionOnamesInScope :: (Names)
             _guardExpressionOoptions :: ([Option])
             _guardExpressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _guardExpressionOtypeConstructors :: (FiniteMap Name Int)
-            _guardExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _guardExpressionOtypeConstructors :: (M.Map Name Int)
+            _guardExpressionOvalueConstructors :: (M.Map Name TpScheme)
             _guardExpressionOwarnings :: ([Warning])
             _thenExpressionIcollectInstances :: ([(Name, Instance)])
             _thenExpressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -4510,8 +4509,8 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _thenExpressionOnamesInScope :: (Names)
             _thenExpressionOoptions :: ([Option])
             _thenExpressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _thenExpressionOtypeConstructors :: (FiniteMap Name Int)
-            _thenExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _thenExpressionOtypeConstructors :: (M.Map Name Int)
+            _thenExpressionOvalueConstructors :: (M.Map Name TpScheme)
             _thenExpressionOwarnings :: ([Warning])
             _elseExpressionIcollectInstances :: ([(Name, Instance)])
             _elseExpressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -4529,8 +4528,8 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _elseExpressionOnamesInScope :: (Names)
             _elseExpressionOoptions :: ([Option])
             _elseExpressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _elseExpressionOtypeConstructors :: (FiniteMap Name Int)
-            _elseExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _elseExpressionOtypeConstructors :: (M.Map Name Int)
+            _elseExpressionOvalueConstructors :: (M.Map Name TpScheme)
             _elseExpressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -4671,8 +4670,8 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _leftExpressionOnamesInScope :: (Names)
             _leftExpressionOoptions :: ([Option])
             _leftExpressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _leftExpressionOtypeConstructors :: (FiniteMap Name Int)
-            _leftExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _leftExpressionOtypeConstructors :: (M.Map Name Int)
+            _leftExpressionOvalueConstructors :: (M.Map Name TpScheme)
             _leftExpressionOwarnings :: ([Warning])
             _operatorIcollectInstances :: ([(Name, Instance)])
             _operatorIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -4690,8 +4689,8 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _operatorOnamesInScope :: (Names)
             _operatorOoptions :: ([Option])
             _operatorOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _operatorOtypeConstructors :: (FiniteMap Name Int)
-            _operatorOvalueConstructors :: (FiniteMap Name TpScheme)
+            _operatorOtypeConstructors :: (M.Map Name Int)
+            _operatorOvalueConstructors :: (M.Map Name TpScheme)
             _operatorOwarnings :: ([Warning])
             _rightExpressionIcollectInstances :: ([(Name, Instance)])
             _rightExpressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -4709,8 +4708,8 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _rightExpressionOnamesInScope :: (Names)
             _rightExpressionOoptions :: ([Option])
             _rightExpressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _rightExpressionOtypeConstructors :: (FiniteMap Name Int)
-            _rightExpressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _rightExpressionOtypeConstructors :: (M.Map Name Int)
+            _rightExpressionOvalueConstructors :: (M.Map Name TpScheme)
             _rightExpressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -4847,8 +4846,8 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
             _patternsOlhsPattern :: (Bool)
             _patternsOmiscerrors :: ([Error])
             _patternsOnamesInScope :: (Names)
-            _patternsOtypeConstructors :: (FiniteMap Name Int)
-            _patternsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternsOtypeConstructors :: (M.Map Name Int)
+            _patternsOvalueConstructors :: (M.Map Name TpScheme)
             _patternsOwarnings :: ([Warning])
             _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -4866,8 +4865,8 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -4992,9 +4991,9 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _declarationsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _declarationsOpreviousWasAlsoFB :: (Maybe Name)
             _declarationsOsuspiciousFBs :: ([(Name,Name)])
-            _declarationsOtypeConstructors :: (FiniteMap Name Int)
+            _declarationsOtypeConstructors :: (M.Map Name Int)
             _declarationsOtypeSignatures :: ([(Name,TpScheme)])
-            _declarationsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _declarationsOvalueConstructors :: (M.Map Name TpScheme)
             _declarationsOwarnings :: ([Warning])
             _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -5012,8 +5011,8 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -5185,8 +5184,8 @@ sem_Expression_List (range_) (expressions_) =
             _expressionsOnamesInScope :: (Names)
             _expressionsOoptions :: ([Option])
             _expressionsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionsOtypeConstructors :: (FiniteMap Name Int)
-            _expressionsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionsOtypeConstructors :: (M.Map Name Int)
+            _expressionsOvalueConstructors :: (M.Map Name TpScheme)
             _expressionsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -5327,8 +5326,8 @@ sem_Expression_Negate (range_) (expression_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -5415,8 +5414,8 @@ sem_Expression_NegateFloat (range_) (expression_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -5504,8 +5503,8 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _functionOnamesInScope :: (Names)
             _functionOoptions :: ([Option])
             _functionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _functionOtypeConstructors :: (FiniteMap Name Int)
-            _functionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _functionOtypeConstructors :: (M.Map Name Int)
+            _functionOvalueConstructors :: (M.Map Name TpScheme)
             _functionOwarnings :: ([Warning])
             _argumentsIcollectInstances :: ([(Name, Instance)])
             _argumentsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -5523,8 +5522,8 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _argumentsOnamesInScope :: (Names)
             _argumentsOoptions :: ([Option])
             _argumentsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _argumentsOtypeConstructors :: (FiniteMap Name Int)
-            _argumentsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _argumentsOtypeConstructors :: (M.Map Name Int)
+            _argumentsOvalueConstructors :: (M.Map Name TpScheme)
             _argumentsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -5637,8 +5636,8 @@ sem_Expression_Parenthesized (range_) (expression_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -5796,8 +5795,8 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             _recordExpressionBindingsIcollectInstances :: ([(Name, Instance)])
             _recordExpressionBindingsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -5905,8 +5904,8 @@ sem_Expression_Tuple (range_) (expressions_) =
             _expressionsOnamesInScope :: (Names)
             _expressionsOoptions :: ([Option])
             _expressionsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionsOtypeConstructors :: (FiniteMap Name Int)
-            _expressionsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionsOtypeConstructors :: (M.Map Name Int)
+            _expressionsOvalueConstructors :: (M.Map Name TpScheme)
             _expressionsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -5998,8 +5997,8 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             _typeIcontextRange :: (Range)
             _typeImiscerrors :: ([Error])
@@ -6009,7 +6008,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             _typeOallTypeConstructors :: (Names)
             _typeOmiscerrors :: ([Error])
             _typeOoptions :: ([Option])
-            _typeOtypeConstructors :: (FiniteMap Name Int)
+            _typeOtypeConstructors :: (M.Map Name Int)
             _typeOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -6131,8 +6130,8 @@ type T_Expressions = (Names) ->
                      (Names) ->
                      ([Option]) ->
                      (OrderedTypeSynonyms) ->
-                     (FiniteMap Name Int) ->
-                     (FiniteMap Name TpScheme) ->
+                     (M.Map Name Int) ->
+                     (M.Map Name TpScheme) ->
                      ([Warning]) ->
                      ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),(Expressions),(Names),([Warning]))
 -- cata
@@ -6179,8 +6178,8 @@ sem_Expressions_Cons (hd_) (tl_) =
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
             _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _hdOtypeConstructors :: (FiniteMap Name Int)
-            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOtypeConstructors :: (M.Map Name Int)
+            _hdOvalueConstructors :: (M.Map Name TpScheme)
             _hdOwarnings :: ([Warning])
             _tlIcollectInstances :: ([(Name, Instance)])
             _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -6198,8 +6197,8 @@ sem_Expressions_Cons (hd_) (tl_) =
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
             _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _tlOtypeConstructors :: (FiniteMap Name Int)
-            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOtypeConstructors :: (M.Map Name Int)
+            _tlOvalueConstructors :: (M.Map Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIcollectInstances,_hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOclassEnvironment) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOorderedTypeSynonyms) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
@@ -6345,8 +6344,8 @@ sem_FieldDeclaration_FieldDeclaration (range_) (names_) (type_) =
             _typeOmiscerrors :: ([Error])
             _typeOnamesInScope :: (Names)
             _typeOoptions :: ([Option])
-            _typeOtypeConstructors :: (FiniteMap Name Int)
-            _typeOvalueConstructors :: (FiniteMap Name TpScheme)
+            _typeOtypeConstructors :: (M.Map Name Int)
+            _typeOvalueConstructors :: (M.Map Name TpScheme)
             _typeOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -6517,8 +6516,8 @@ type T_FunctionBinding = (Names) ->
                          (Names) ->
                          ([Option]) ->
                          (OrderedTypeSynonyms) ->
-                         (FiniteMap Name Int) ->
-                         (FiniteMap Name TpScheme) ->
+                         (M.Map Name Int) ->
+                         (M.Map Name TpScheme) ->
                          ([Warning]) ->
                          ( (Int),([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),(Name),(FunctionBinding),(Names),([Warning]))
 -- cata
@@ -6566,8 +6565,8 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
             _lefthandsideOcollectScopeInfos :: ([(ScopeInfo, Entity)])
             _lefthandsideOmiscerrors :: ([Error])
             _lefthandsideOnamesInScope :: (Names)
-            _lefthandsideOtypeConstructors :: (FiniteMap Name Int)
-            _lefthandsideOvalueConstructors :: (FiniteMap Name TpScheme)
+            _lefthandsideOtypeConstructors :: (M.Map Name Int)
+            _lefthandsideOvalueConstructors :: (M.Map Name TpScheme)
             _lefthandsideOwarnings :: ([Warning])
             _righthandsideIcollectInstances :: ([(Name, Instance)])
             _righthandsideIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -6585,8 +6584,8 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
             _righthandsideOnamesInScope :: (Names)
             _righthandsideOoptions :: ([Option])
             _righthandsideOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _righthandsideOtypeConstructors :: (FiniteMap Name Int)
-            _righthandsideOvalueConstructors :: (FiniteMap Name TpScheme)
+            _righthandsideOtypeConstructors :: (M.Map Name Int)
+            _righthandsideOvalueConstructors :: (M.Map Name TpScheme)
             _righthandsideOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -6668,8 +6667,8 @@ type T_FunctionBindings = (Names) ->
                           (Names) ->
                           ([Option]) ->
                           (OrderedTypeSynonyms) ->
-                          (FiniteMap Name Int) ->
-                          (FiniteMap Name TpScheme) ->
+                          (M.Map Name Int) ->
+                          (M.Map Name TpScheme) ->
                           ([Warning]) ->
                           ( ( [Int] ),([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),(Name),(FunctionBindings),(Names),([Warning]))
 -- cata
@@ -6720,8 +6719,8 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
             _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _hdOtypeConstructors :: (FiniteMap Name Int)
-            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOtypeConstructors :: (M.Map Name Int)
+            _hdOvalueConstructors :: (M.Map Name TpScheme)
             _hdOwarnings :: ([Warning])
             _tlIarities :: ( [Int] )
             _tlIcollectInstances :: ([(Name, Instance)])
@@ -6741,8 +6740,8 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
             _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _tlOtypeConstructors :: (FiniteMap Name Int)
-            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOtypeConstructors :: (M.Map Name Int)
+            _tlOvalueConstructors :: (M.Map Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIarity,_hdIcollectInstances,_hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIname,_hdIself,_hdIunboundNames,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOclassEnvironment) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOorderedTypeSynonyms) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
@@ -6872,8 +6871,8 @@ type T_GuardedExpression = (Names) ->
                            (Names) ->
                            ([Option]) ->
                            (OrderedTypeSynonyms) ->
-                           (FiniteMap Name Int) ->
-                           (FiniteMap Name TpScheme) ->
+                           (M.Map Name Int) ->
+                           (M.Map Name TpScheme) ->
                            ([Warning]) ->
                            ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),(GuardedExpression),(Names),([Warning]))
 -- cata
@@ -6922,8 +6921,8 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _guardOnamesInScope :: (Names)
             _guardOoptions :: ([Option])
             _guardOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _guardOtypeConstructors :: (FiniteMap Name Int)
-            _guardOvalueConstructors :: (FiniteMap Name TpScheme)
+            _guardOtypeConstructors :: (M.Map Name Int)
+            _guardOvalueConstructors :: (M.Map Name TpScheme)
             _guardOwarnings :: ([Warning])
             _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -6941,8 +6940,8 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -7026,8 +7025,8 @@ type T_GuardedExpressions = (Names) ->
                             (Names) ->
                             ([Option]) ->
                             (OrderedTypeSynonyms) ->
-                            (FiniteMap Name Int) ->
-                            (FiniteMap Name TpScheme) ->
+                            (M.Map Name Int) ->
+                            (M.Map Name TpScheme) ->
                             ([Warning]) ->
                             ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),(GuardedExpressions),(Names),([Warning]))
 -- cata
@@ -7074,8 +7073,8 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
             _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _hdOtypeConstructors :: (FiniteMap Name Int)
-            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOtypeConstructors :: (M.Map Name Int)
+            _hdOvalueConstructors :: (M.Map Name TpScheme)
             _hdOwarnings :: ([Warning])
             _tlIcollectInstances :: ([(Name, Instance)])
             _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -7093,8 +7092,8 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
             _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _tlOtypeConstructors :: (FiniteMap Name Int)
-            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOtypeConstructors :: (M.Map Name Int)
+            _tlOvalueConstructors :: (M.Map Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIcollectInstances,_hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOclassEnvironment) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOorderedTypeSynonyms) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
@@ -7436,8 +7435,8 @@ type T_LeftHandSide = (Names) ->
                       ([(ScopeInfo, Entity)]) ->
                       ([Error]) ->
                       (Names) ->
-                      (FiniteMap Name Int) ->
-                      (FiniteMap Name TpScheme) ->
+                      (M.Map Name Int) ->
+                      (M.Map Name TpScheme) ->
                       ([Warning]) ->
                       ( ([(ScopeInfo, Entity)]),([Error]),(Name),(Int),(Names),(LeftHandSide),(Names),([Warning]))
 -- cata
@@ -7485,8 +7484,8 @@ sem_LeftHandSide_Function (range_) (name_) (patterns_) =
             _patternsOlhsPattern :: (Bool)
             _patternsOmiscerrors :: ([Error])
             _patternsOnamesInScope :: (Names)
-            _patternsOtypeConstructors :: (FiniteMap Name Int)
-            _patternsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternsOtypeConstructors :: (M.Map Name Int)
+            _patternsOvalueConstructors :: (M.Map Name TpScheme)
             _patternsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -7566,8 +7565,8 @@ sem_LeftHandSide_Infix (range_) (leftPattern_) (operator_) (rightPattern_) =
             _leftPatternOlhsPattern :: (Bool)
             _leftPatternOmiscerrors :: ([Error])
             _leftPatternOnamesInScope :: (Names)
-            _leftPatternOtypeConstructors :: (FiniteMap Name Int)
-            _leftPatternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _leftPatternOtypeConstructors :: (M.Map Name Int)
+            _leftPatternOvalueConstructors :: (M.Map Name TpScheme)
             _leftPatternOwarnings :: ([Warning])
             _operatorIself :: (Name)
             _rightPatternIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -7582,8 +7581,8 @@ sem_LeftHandSide_Infix (range_) (leftPattern_) (operator_) (rightPattern_) =
             _rightPatternOlhsPattern :: (Bool)
             _rightPatternOmiscerrors :: ([Error])
             _rightPatternOnamesInScope :: (Names)
-            _rightPatternOtypeConstructors :: (FiniteMap Name Int)
-            _rightPatternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _rightPatternOtypeConstructors :: (M.Map Name Int)
+            _rightPatternOvalueConstructors :: (M.Map Name TpScheme)
             _rightPatternOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -7683,8 +7682,8 @@ sem_LeftHandSide_Parenthesized (range_) (lefthandside_) (patterns_) =
             _lefthandsideOcollectScopeInfos :: ([(ScopeInfo, Entity)])
             _lefthandsideOmiscerrors :: ([Error])
             _lefthandsideOnamesInScope :: (Names)
-            _lefthandsideOtypeConstructors :: (FiniteMap Name Int)
-            _lefthandsideOvalueConstructors :: (FiniteMap Name TpScheme)
+            _lefthandsideOtypeConstructors :: (M.Map Name Int)
+            _lefthandsideOvalueConstructors :: (M.Map Name TpScheme)
             _lefthandsideOwarnings :: ([Warning])
             _patternsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
             _patternsImiscerrors :: ([Error])
@@ -7699,8 +7698,8 @@ sem_LeftHandSide_Parenthesized (range_) (lefthandside_) (patterns_) =
             _patternsOlhsPattern :: (Bool)
             _patternsOmiscerrors :: ([Error])
             _patternsOnamesInScope :: (Names)
-            _patternsOtypeConstructors :: (FiniteMap Name Int)
-            _patternsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternsOtypeConstructors :: (M.Map Name Int)
+            _patternsOvalueConstructors :: (M.Map Name TpScheme)
             _patternsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -7878,9 +7877,9 @@ type T_MaybeDeclarations = (Names) ->
                            (Names) ->
                            ([Option]) ->
                            (OrderedTypeSynonyms) ->
-                           (FiniteMap Name Int) ->
+                           (M.Map Name Int) ->
                            (Names) ->
-                           (FiniteMap Name TpScheme) ->
+                           (M.Map Name TpScheme) ->
                            ([Warning]) ->
                            ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),(Names),(MaybeDeclarations),(Names),([Warning]))
 -- cata
@@ -7945,9 +7944,9 @@ sem_MaybeDeclarations_Just (declarations_) =
             _declarationsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _declarationsOpreviousWasAlsoFB :: (Maybe Name)
             _declarationsOsuspiciousFBs :: ([(Name,Name)])
-            _declarationsOtypeConstructors :: (FiniteMap Name Int)
+            _declarationsOtypeConstructors :: (M.Map Name Int)
             _declarationsOtypeSignatures :: ([(Name,TpScheme)])
-            _declarationsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _declarationsOvalueConstructors :: (M.Map Name TpScheme)
             _declarationsOwarnings :: ([Warning])
             ( _declarationsIcollectInstances
              ,_declarationsIcollectScopeInfos
@@ -8167,8 +8166,8 @@ type T_MaybeExpression = (Names) ->
                          (Names) ->
                          ([Option]) ->
                          (OrderedTypeSynonyms) ->
-                         (FiniteMap Name Int) ->
-                         (FiniteMap Name TpScheme) ->
+                         (M.Map Name Int) ->
+                         (M.Map Name TpScheme) ->
                          ([Warning]) ->
                          ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),(MaybeExpression),(Names),([Warning]))
 -- cata
@@ -8216,8 +8215,8 @@ sem_MaybeExpression_Just (expression_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
                 (expression_ (_expressionOallTypeConstructors) (_expressionOallValueConstructors) (_expressionOclassEnvironment) (_expressionOcollectScopeInfos) (_expressionOkindErrors) (_expressionOmiscerrors) (_expressionOnamesInScope) (_expressionOoptions) (_expressionOorderedTypeSynonyms) (_expressionOtypeConstructors) (_expressionOvalueConstructors) (_expressionOwarnings))
@@ -8477,8 +8476,8 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             _bodyOoperatorFixities :: ([(Name,(Int,Assoc))])
             _bodyOoptions :: ([Option])
             _bodyOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _bodyOtypeConstructors :: (FiniteMap Name Int)
-            _bodyOvalueConstructors :: (FiniteMap Name TpScheme)
+            _bodyOtypeConstructors :: (M.Map Name Int)
+            _bodyOvalueConstructors :: (M.Map Name TpScheme)
             _bodyOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -8490,7 +8489,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 (body_ (_bodyOallTypeConstructors) (_bodyOallValueConstructors) (_bodyOclassEnvironment) (_bodyOcollectScopeInfos) (_bodyOcollectTypeConstructors) (_bodyOcollectTypeSynonyms) (_bodyOcollectValueConstructors) (_bodyOkindErrors) (_bodyOmiscerrors) (_bodyOnamesInScope) (_bodyOoperatorFixities) (_bodyOoptions) (_bodyOorderedTypeSynonyms) (_bodyOtypeConstructors) (_bodyOvalueConstructors) (_bodyOwarnings))
             (_initialScope@_) =
                 map fst _derivedFunctions ++
-                concatMap (keysFM . typeEnvironment) _lhsIimportEnvironments
+                concatMap (M.keys . typeEnvironment) _lhsIimportEnvironments
             (_derivedRanges@_) =
                 map getNameRange (map fst _derivedFunctions)
             (_removedEntities@_) =
@@ -8516,11 +8515,11 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 in map f _bodyIcollectTypeConstructors ++
                    map g _bodyIcollectTypeSynonyms
             (_collectEnvironment@_) =
-                setValueConstructors   (listToFM _bodyIcollectValueConstructors)
-                . setTypeConstructors  (listToFM _bodyIcollectTypeConstructors)
+                setValueConstructors   (M.fromList _bodyIcollectValueConstructors)
+                . setTypeConstructors  (M.fromList _bodyIcollectTypeConstructors)
                 . setTypeSynonyms      (M.fromList _bodyIcollectTypeSynonyms)
-                . setOperatorTable     (listToFM _bodyIoperatorFixities)
-                . addToTypeEnvironment (listToFM _derivedFunctions)
+                . setOperatorTable     (M.fromList _bodyIoperatorFixities)
+                . addToTypeEnvironment (M.fromList _derivedFunctions)
                 $ emptyEnvironment
             (_bodyOcollectTypeConstructors@_) =
                 []
@@ -8531,20 +8530,20 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             (_bodyOoperatorFixities@_) =
                 []
             (_valueConstructors@_) =
-                listToFM _uniqueValueConstructors
+                M.fromList _uniqueValueConstructors
             (_allValueConstructors@_) =
                 map fst _uniqueValueConstructors ++ map head _duplicatedValueConstructors
             ((_uniqueValueConstructors@_,_duplicatedValueConstructors@_)) =
                 uniqueKeys (  _bodyIcollectValueConstructors
-                           ++ concatMap (fmToList . valueConstructors) _lhsIimportEnvironments
+                           ++ concatMap (M.assocs . valueConstructors) _lhsIimportEnvironments
                            )
             (_typeConstructors@_) =
-                listToFM _uniqueTypeConstructors
+                M.fromList _uniqueTypeConstructors
             (_allTypeConstructors@_) =
                 map fst _uniqueTypeConstructors ++ map head _duplicatedTypeConstructors
             ((_uniqueTypeConstructors@_,_duplicatedTypeConstructors@_)) =
                 uniqueKeys (  _bodyIcollectTypeConstructors
-                           ++ concatMap (fmToList . typeConstructors) _lhsIimportEnvironments
+                           ++ concatMap (M.assocs . typeConstructors) _lhsIimportEnvironments
                            ++ [ (n,i) | (n,(i,f)) <- _bodyIcollectTypeSynonyms ]
                            )
             (_bodyOorderedTypeSynonyms@_) =
@@ -8592,7 +8591,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             (_wrongFlagErrors@_) =
                 [ WrongOverloadingFlag flag
                 | let flag = Overloading `elem` _lhsIoptions
-                      imp  = any isOverloaded (concatMap (eltsFM . typeEnvironment) _lhsIimportEnvironments)
+                      imp  = any isOverloaded (concatMap (M.elems . typeEnvironment) _lhsIimportEnvironments)
                 , flag /= imp
                 ]
             (_recursiveTypeSynonymErrors@_) =
@@ -8629,7 +8628,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 (_moduleName : _fileName : _bodyIimportedModules)
             (_exportsOnamesInScop@_) =
                 concat [ _bodyIdeclVarNames
-                        , concatMap (keysFM . typeEnvironment) _lhsIimportEnvironments
+                        , concatMap (M.keys . typeEnvironment) _lhsIimportEnvironments
                         , map fst _derivedFunctions
                         ]
             (_exportErrors@_) =
@@ -8766,8 +8765,8 @@ type T_Pattern = (Names) ->
                  (Bool) ->
                  ([Error]) ->
                  (Names) ->
-                 (FiniteMap Name Int) ->
-                 (FiniteMap Name TpScheme) ->
+                 (M.Map Name Int) ->
+                 (M.Map Name TpScheme) ->
                  ([Warning]) ->
                  ( ([(ScopeInfo, Entity)]),([Error]),(Names),(Pattern),(Names),([Warning]))
 -- cata
@@ -8835,8 +8834,8 @@ sem_Pattern_As (range_) (name_) (pattern_) =
             _patternOlhsPattern :: (Bool)
             _patternOmiscerrors :: ([Error])
             _patternOnamesInScope :: (Names)
-            _patternOtypeConstructors :: (FiniteMap Name Int)
-            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOtypeConstructors :: (M.Map Name Int)
+            _patternOvalueConstructors :: (M.Map Name TpScheme)
             _patternOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -8912,8 +8911,8 @@ sem_Pattern_Constructor (range_) (name_) (patterns_) =
             _patternsOlhsPattern :: (Bool)
             _patternsOmiscerrors :: ([Error])
             _patternsOnamesInScope :: (Names)
-            _patternsOtypeConstructors :: (FiniteMap Name Int)
-            _patternsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternsOtypeConstructors :: (M.Map Name Int)
+            _patternsOvalueConstructors :: (M.Map Name TpScheme)
             _patternsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -8922,7 +8921,7 @@ sem_Pattern_Constructor (range_) (name_) (patterns_) =
             ( _patternsIcollectScopeInfos,_patternsImiscerrors,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIself,_patternsIunboundNames,_patternsIwarnings) =
                 (patterns_ (_patternsOallTypeConstructors) (_patternsOallValueConstructors) (_patternsOcollectScopeInfos) (_patternsOlhsPattern) (_patternsOmiscerrors) (_patternsOnamesInScope) (_patternsOtypeConstructors) (_patternsOvalueConstructors) (_patternsOwarnings))
             (_maybetp@_) =
-                lookupFM _lhsIvalueConstructors _nameIself
+                M.lookup _nameIself _lhsIvalueConstructors
             (_patConstructorErrors@_) =
                 patternConstructorErrors _maybetp _nameIself _lhsIallValueConstructors _patternsInumberOfPatterns _lhsIlhsPattern _lhsIallTypeConstructors
             (_lhsOmiscerrors@_) =
@@ -8992,8 +8991,8 @@ sem_Pattern_InfixConstructor (range_) (leftPattern_) (constructorOperator_) (rig
             _leftPatternOlhsPattern :: (Bool)
             _leftPatternOmiscerrors :: ([Error])
             _leftPatternOnamesInScope :: (Names)
-            _leftPatternOtypeConstructors :: (FiniteMap Name Int)
-            _leftPatternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _leftPatternOtypeConstructors :: (M.Map Name Int)
+            _leftPatternOvalueConstructors :: (M.Map Name TpScheme)
             _leftPatternOwarnings :: ([Warning])
             _constructorOperatorIself :: (Name)
             _rightPatternIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -9008,8 +9007,8 @@ sem_Pattern_InfixConstructor (range_) (leftPattern_) (constructorOperator_) (rig
             _rightPatternOlhsPattern :: (Bool)
             _rightPatternOmiscerrors :: ([Error])
             _rightPatternOnamesInScope :: (Names)
-            _rightPatternOtypeConstructors :: (FiniteMap Name Int)
-            _rightPatternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _rightPatternOtypeConstructors :: (M.Map Name Int)
+            _rightPatternOvalueConstructors :: (M.Map Name TpScheme)
             _rightPatternOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -9020,7 +9019,7 @@ sem_Pattern_InfixConstructor (range_) (leftPattern_) (constructorOperator_) (rig
             ( _rightPatternIcollectScopeInfos,_rightPatternImiscerrors,_rightPatternIpatVarNames,_rightPatternIself,_rightPatternIunboundNames,_rightPatternIwarnings) =
                 (rightPattern_ (_rightPatternOallTypeConstructors) (_rightPatternOallValueConstructors) (_rightPatternOcollectScopeInfos) (_rightPatternOlhsPattern) (_rightPatternOmiscerrors) (_rightPatternOnamesInScope) (_rightPatternOtypeConstructors) (_rightPatternOvalueConstructors) (_rightPatternOwarnings))
             (_maybetp@_) =
-                lookupFM _lhsIvalueConstructors _constructorOperatorIself
+                M.lookup _constructorOperatorIself _lhsIvalueConstructors
             (_patConstructorErrors@_) =
                 patternConstructorErrors _maybetp _constructorOperatorIself _lhsIallValueConstructors 2 False _lhsIallTypeConstructors
             (_lhsOmiscerrors@_) =
@@ -9106,8 +9105,8 @@ sem_Pattern_Irrefutable (range_) (pattern_) =
             _patternOlhsPattern :: (Bool)
             _patternOmiscerrors :: ([Error])
             _patternOnamesInScope :: (Names)
-            _patternOtypeConstructors :: (FiniteMap Name Int)
-            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOtypeConstructors :: (M.Map Name Int)
+            _patternOvalueConstructors :: (M.Map Name TpScheme)
             _patternOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -9179,8 +9178,8 @@ sem_Pattern_List (range_) (patterns_) =
             _patternsOlhsPattern :: (Bool)
             _patternsOmiscerrors :: ([Error])
             _patternsOnamesInScope :: (Names)
-            _patternsOtypeConstructors :: (FiniteMap Name Int)
-            _patternsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternsOtypeConstructors :: (M.Map Name Int)
+            _patternsOvalueConstructors :: (M.Map Name TpScheme)
             _patternsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -9395,8 +9394,8 @@ sem_Pattern_Parenthesized (range_) (pattern_) =
             _patternOlhsPattern :: (Bool)
             _patternOmiscerrors :: ([Error])
             _patternOnamesInScope :: (Names)
-            _patternOtypeConstructors :: (FiniteMap Name Int)
-            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOtypeConstructors :: (M.Map Name Int)
+            _patternOvalueConstructors :: (M.Map Name TpScheme)
             _patternOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -9576,8 +9575,8 @@ sem_Pattern_Tuple (range_) (patterns_) =
             _patternsOlhsPattern :: (Bool)
             _patternsOmiscerrors :: ([Error])
             _patternsOnamesInScope :: (Names)
-            _patternsOtypeConstructors :: (FiniteMap Name Int)
-            _patternsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternsOtypeConstructors :: (M.Map Name Int)
+            _patternsOvalueConstructors :: (M.Map Name TpScheme)
             _patternsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -9700,8 +9699,8 @@ type T_Patterns = (Names) ->
                   (Bool) ->
                   ([Error]) ->
                   (Names) ->
-                  (FiniteMap Name Int) ->
-                  (FiniteMap Name TpScheme) ->
+                  (M.Map Name Int) ->
+                  (M.Map Name TpScheme) ->
                   ([Warning]) ->
                   ( ([(ScopeInfo, Entity)]),([Error]),(Int),(Names),(Patterns),(Names),([Warning]))
 -- cata
@@ -9741,8 +9740,8 @@ sem_Patterns_Cons (hd_) (tl_) =
             _hdOlhsPattern :: (Bool)
             _hdOmiscerrors :: ([Error])
             _hdOnamesInScope :: (Names)
-            _hdOtypeConstructors :: (FiniteMap Name Int)
-            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOtypeConstructors :: (M.Map Name Int)
+            _hdOvalueConstructors :: (M.Map Name TpScheme)
             _hdOwarnings :: ([Warning])
             _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
             _tlImiscerrors :: ([Error])
@@ -9757,8 +9756,8 @@ sem_Patterns_Cons (hd_) (tl_) =
             _tlOlhsPattern :: (Bool)
             _tlOmiscerrors :: ([Error])
             _tlOnamesInScope :: (Names)
-            _tlOtypeConstructors :: (FiniteMap Name Int)
-            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOtypeConstructors :: (M.Map Name Int)
+            _tlOvalueConstructors :: (M.Map Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIcollectScopeInfos,_hdImiscerrors,_hdIpatVarNames,_hdIself,_hdIunboundNames,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOcollectScopeInfos) (_hdOlhsPattern) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOtypeConstructors) (_hdOvalueConstructors) (_hdOwarnings))
@@ -9892,9 +9891,9 @@ type T_Qualifier = (Names) ->
                    (Names) ->
                    ([Option]) ->
                    (OrderedTypeSynonyms) ->
-                   (FiniteMap Name Int) ->
+                   (M.Map Name Int) ->
                    (Names) ->
-                   (FiniteMap Name TpScheme) ->
+                   (M.Map Name TpScheme) ->
                    ([Warning]) ->
                    ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),(Names),(Qualifier),(Names),([Warning]))
 -- cata
@@ -9993,8 +9992,8 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
             _patternOlhsPattern :: (Bool)
             _patternOmiscerrors :: ([Error])
             _patternOnamesInScope :: (Names)
-            _patternOtypeConstructors :: (FiniteMap Name Int)
-            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOtypeConstructors :: (M.Map Name Int)
+            _patternOvalueConstructors :: (M.Map Name TpScheme)
             _patternOwarnings :: ([Warning])
             _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -10012,8 +10011,8 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -10126,8 +10125,8 @@ sem_Qualifier_Guard (range_) (guard_) =
             _guardOnamesInScope :: (Names)
             _guardOoptions :: ([Option])
             _guardOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _guardOtypeConstructors :: (FiniteMap Name Int)
-            _guardOvalueConstructors :: (FiniteMap Name TpScheme)
+            _guardOtypeConstructors :: (M.Map Name Int)
+            _guardOvalueConstructors :: (M.Map Name TpScheme)
             _guardOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -10233,9 +10232,9 @@ sem_Qualifier_Let (range_) (declarations_) =
             _declarationsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _declarationsOpreviousWasAlsoFB :: (Maybe Name)
             _declarationsOsuspiciousFBs :: ([(Name,Name)])
-            _declarationsOtypeConstructors :: (FiniteMap Name Int)
+            _declarationsOtypeConstructors :: (M.Map Name Int)
             _declarationsOtypeSignatures :: ([(Name,TpScheme)])
-            _declarationsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _declarationsOvalueConstructors :: (M.Map Name TpScheme)
             _declarationsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -10354,9 +10353,9 @@ type T_Qualifiers = (Names) ->
                     (Names) ->
                     ([Option]) ->
                     (OrderedTypeSynonyms) ->
-                    (FiniteMap Name Int) ->
+                    (M.Map Name Int) ->
                     (Names) ->
-                    (FiniteMap Name TpScheme) ->
+                    (M.Map Name TpScheme) ->
                     ([Warning]) ->
                     ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),(Names),(Qualifiers),(Names),([Warning]))
 -- cata
@@ -10406,9 +10405,9 @@ sem_Qualifiers_Cons (hd_) (tl_) =
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
             _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOtypeConstructors :: (M.Map Name Int)
             _hdOunboundNames :: (Names)
-            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOvalueConstructors :: (M.Map Name TpScheme)
             _hdOwarnings :: ([Warning])
             _tlIcollectInstances :: ([(Name, Instance)])
             _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -10427,9 +10426,9 @@ sem_Qualifiers_Cons (hd_) (tl_) =
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
             _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOtypeConstructors :: (M.Map Name Int)
             _tlOunboundNames :: (Names)
-            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOvalueConstructors :: (M.Map Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIcollectInstances,_hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdInamesInScope,_hdIself,_hdIunboundNames,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOclassEnvironment) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOorderedTypeSynonyms) (_hdOtypeConstructors) (_hdOunboundNames) (_hdOvalueConstructors) (_hdOwarnings))
@@ -10617,8 +10616,8 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -10798,8 +10797,8 @@ sem_RecordPatternBinding_RecordPatternBinding (range_) (name_) (pattern_) =
             _patternOlhsPattern :: (Bool)
             _patternOmiscerrors :: ([Error])
             _patternOnamesInScope :: (Names)
-            _patternOtypeConstructors :: (FiniteMap Name Int)
-            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOtypeConstructors :: (M.Map Name Int)
+            _patternOvalueConstructors :: (M.Map Name TpScheme)
             _patternOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -10913,8 +10912,8 @@ type T_RightHandSide = (Names) ->
                        (Names) ->
                        ([Option]) ->
                        (OrderedTypeSynonyms) ->
-                       (FiniteMap Name Int) ->
-                       (FiniteMap Name TpScheme) ->
+                       (M.Map Name Int) ->
+                       (M.Map Name TpScheme) ->
                        ([Warning]) ->
                        ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),(RightHandSide),(Names),([Warning]))
 -- cata
@@ -10965,8 +10964,8 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             _whereIcollectInstances :: ([(Name, Instance)])
             _whereIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -10985,9 +10984,9 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _whereOnamesInScope :: (Names)
             _whereOoptions :: ([Option])
             _whereOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _whereOtypeConstructors :: (FiniteMap Name Int)
+            _whereOtypeConstructors :: (M.Map Name Int)
             _whereOunboundNames :: (Names)
-            _whereOvalueConstructors :: (FiniteMap Name TpScheme)
+            _whereOvalueConstructors :: (M.Map Name TpScheme)
             _whereOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -11103,8 +11102,8 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _guardedexpressionsOnamesInScope :: (Names)
             _guardedexpressionsOoptions :: ([Option])
             _guardedexpressionsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _guardedexpressionsOtypeConstructors :: (FiniteMap Name Int)
-            _guardedexpressionsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _guardedexpressionsOtypeConstructors :: (M.Map Name Int)
+            _guardedexpressionsOvalueConstructors :: (M.Map Name TpScheme)
             _guardedexpressionsOwarnings :: ([Warning])
             _whereIcollectInstances :: ([(Name, Instance)])
             _whereIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -11123,9 +11122,9 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _whereOnamesInScope :: (Names)
             _whereOoptions :: ([Option])
             _whereOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _whereOtypeConstructors :: (FiniteMap Name Int)
+            _whereOtypeConstructors :: (M.Map Name Int)
             _whereOunboundNames :: (Names)
-            _whereOvalueConstructors :: (FiniteMap Name TpScheme)
+            _whereOvalueConstructors :: (M.Map Name TpScheme)
             _whereOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -11257,9 +11256,9 @@ type T_Statement = (Names) ->
                    (Names) ->
                    ([Option]) ->
                    (OrderedTypeSynonyms) ->
-                   (FiniteMap Name Int) ->
+                   (M.Map Name Int) ->
                    (Names) ->
-                   (FiniteMap Name TpScheme) ->
+                   (M.Map Name TpScheme) ->
                    ([Warning]) ->
                    ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),(Bool),([Error]),(Names),(Statement),(Names),([Warning]))
 -- cata
@@ -11367,8 +11366,8 @@ sem_Statement_Expression (range_) (expression_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -11460,8 +11459,8 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
             _patternOlhsPattern :: (Bool)
             _patternOmiscerrors :: ([Error])
             _patternOnamesInScope :: (Names)
-            _patternOtypeConstructors :: (FiniteMap Name Int)
-            _patternOvalueConstructors :: (FiniteMap Name TpScheme)
+            _patternOtypeConstructors :: (M.Map Name Int)
+            _patternOvalueConstructors :: (M.Map Name TpScheme)
             _patternOwarnings :: ([Warning])
             _expressionIcollectInstances :: ([(Name, Instance)])
             _expressionIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -11479,8 +11478,8 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
             _expressionOnamesInScope :: (Names)
             _expressionOoptions :: ([Option])
             _expressionOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _expressionOtypeConstructors :: (FiniteMap Name Int)
-            _expressionOvalueConstructors :: (FiniteMap Name TpScheme)
+            _expressionOtypeConstructors :: (M.Map Name Int)
+            _expressionOvalueConstructors :: (M.Map Name TpScheme)
             _expressionOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -11612,9 +11611,9 @@ sem_Statement_Let (range_) (declarations_) =
             _declarationsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _declarationsOpreviousWasAlsoFB :: (Maybe Name)
             _declarationsOsuspiciousFBs :: ([(Name,Name)])
-            _declarationsOtypeConstructors :: (FiniteMap Name Int)
+            _declarationsOtypeConstructors :: (M.Map Name Int)
             _declarationsOtypeSignatures :: ([(Name,TpScheme)])
-            _declarationsOvalueConstructors :: (FiniteMap Name TpScheme)
+            _declarationsOvalueConstructors :: (M.Map Name TpScheme)
             _declarationsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -11736,9 +11735,9 @@ type T_Statements = (Names) ->
                     (Names) ->
                     ([Option]) ->
                     (OrderedTypeSynonyms) ->
-                    (FiniteMap Name Int) ->
+                    (M.Map Name Int) ->
                     (Names) ->
-                    (FiniteMap Name TpScheme) ->
+                    (M.Map Name TpScheme) ->
                     ([Warning]) ->
                     ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),(Bool),([Error]),(Names),(Statements),(Names),([Warning]))
 -- cata
@@ -11792,9 +11791,9 @@ sem_Statements_Cons (hd_) (tl_) =
             _hdOnamesInScope :: (Names)
             _hdOoptions :: ([Option])
             _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOtypeConstructors :: (M.Map Name Int)
             _hdOunboundNames :: (Names)
-            _hdOvalueConstructors :: (FiniteMap Name TpScheme)
+            _hdOvalueConstructors :: (M.Map Name TpScheme)
             _hdOwarnings :: ([Warning])
             _tlIcollectInstances :: ([(Name, Instance)])
             _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -11815,9 +11814,9 @@ sem_Statements_Cons (hd_) (tl_) =
             _tlOnamesInScope :: (Names)
             _tlOoptions :: ([Option])
             _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
-            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOtypeConstructors :: (M.Map Name Int)
             _tlOunboundNames :: (Names)
-            _tlOvalueConstructors :: (FiniteMap Name TpScheme)
+            _tlOvalueConstructors :: (M.Map Name TpScheme)
             _tlOwarnings :: ([Warning])
             ( _hdIcollectInstances,_hdIcollectScopeInfos,_hdIkindErrors,_hdIlastStatementIsExpr,_hdImiscerrors,_hdInamesInScope,_hdIself,_hdIunboundNames,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors) (_hdOallValueConstructors) (_hdOclassEnvironment) (_hdOcollectScopeInfos) (_hdOkindErrors) (_hdOlastStatementIsExpr) (_hdOmiscerrors) (_hdOnamesInScope) (_hdOoptions) (_hdOorderedTypeSynonyms) (_hdOtypeConstructors) (_hdOunboundNames) (_hdOvalueConstructors) (_hdOwarnings))
@@ -11980,7 +11979,7 @@ sem_Strings_Nil  =
 type T_Type = (Names) ->
               ([Error]) ->
               ([Option]) ->
-              (FiniteMap Name Int) ->
+              (M.Map Name Int) ->
               ([Warning]) ->
               ( (Range),([Error]),(Type),(Names),([Warning]))
 -- cata
@@ -12025,7 +12024,7 @@ sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
             _functionOallTypeConstructors :: (Names)
             _functionOmiscerrors :: ([Error])
             _functionOoptions :: ([Option])
-            _functionOtypeConstructors :: (FiniteMap Name Int)
+            _functionOtypeConstructors :: (M.Map Name Int)
             _functionOwarnings :: ([Warning])
             _argumentsImiscerrors :: ([Error])
             _argumentsIself :: (Types)
@@ -12034,7 +12033,7 @@ sem_Type_Application (range_) (prefix_) (function_) (arguments_) =
             _argumentsOallTypeConstructors :: (Names)
             _argumentsOmiscerrors :: ([Error])
             _argumentsOoptions :: ([Option])
-            _argumentsOtypeConstructors :: (FiniteMap Name Int)
+            _argumentsOtypeConstructors :: (M.Map Name Int)
             _argumentsOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -12133,7 +12132,7 @@ sem_Type_Exists (range_) (typevariables_) (type_) =
             _typeOallTypeConstructors :: (Names)
             _typeOmiscerrors :: ([Error])
             _typeOoptions :: ([Option])
-            _typeOtypeConstructors :: (FiniteMap Name Int)
+            _typeOtypeConstructors :: (M.Map Name Int)
             _typeOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -12189,7 +12188,7 @@ sem_Type_Forall (range_) (typevariables_) (type_) =
             _typeOallTypeConstructors :: (Names)
             _typeOmiscerrors :: ([Error])
             _typeOoptions :: ([Option])
-            _typeOtypeConstructors :: (FiniteMap Name Int)
+            _typeOtypeConstructors :: (M.Map Name Int)
             _typeOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -12243,7 +12242,7 @@ sem_Type_Parenthesized (range_) (type_) =
             _typeOallTypeConstructors :: (Names)
             _typeOmiscerrors :: ([Error])
             _typeOoptions :: ([Option])
-            _typeOtypeConstructors :: (FiniteMap Name Int)
+            _typeOtypeConstructors :: (M.Map Name Int)
             _typeOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -12296,7 +12295,7 @@ sem_Type_Qualified (range_) (context_) (type_) =
             _contextOallTypeConstructors :: (Names)
             _contextOmiscerrors :: ([Error])
             _contextOoptions :: ([Option])
-            _contextOtypeConstructors :: (FiniteMap Name Int)
+            _contextOtypeConstructors :: (M.Map Name Int)
             _contextOwarnings :: ([Warning])
             _typeIcontextRange :: (Range)
             _typeImiscerrors :: ([Error])
@@ -12306,7 +12305,7 @@ sem_Type_Qualified (range_) (context_) (type_) =
             _typeOallTypeConstructors :: (Names)
             _typeOmiscerrors :: ([Error])
             _typeOoptions :: ([Option])
-            _typeOtypeConstructors :: (FiniteMap Name Int)
+            _typeOtypeConstructors :: (M.Map Name Int)
             _typeOwarnings :: ([Warning])
             ( _rangeIself) =
                 (range_ )
@@ -12398,7 +12397,7 @@ sem_Type_Variable (range_) (name_) =
 type T_Types = (Names) ->
                ([Error]) ->
                ([Option]) ->
-               (FiniteMap Name Int) ->
+               (M.Map Name Int) ->
                ([Warning]) ->
                ( ([Error]),(Types),(Names),([Warning]))
 -- cata
@@ -12427,7 +12426,7 @@ sem_Types_Cons (hd_) (tl_) =
             _hdOallTypeConstructors :: (Names)
             _hdOmiscerrors :: ([Error])
             _hdOoptions :: ([Option])
-            _hdOtypeConstructors :: (FiniteMap Name Int)
+            _hdOtypeConstructors :: (M.Map Name Int)
             _hdOwarnings :: ([Warning])
             _tlImiscerrors :: ([Error])
             _tlIself :: (Types)
@@ -12436,7 +12435,7 @@ sem_Types_Cons (hd_) (tl_) =
             _tlOallTypeConstructors :: (Names)
             _tlOmiscerrors :: ([Error])
             _tlOoptions :: ([Option])
-            _tlOtypeConstructors :: (FiniteMap Name Int)
+            _tlOtypeConstructors :: (M.Map Name Int)
             _tlOwarnings :: ([Warning])
             ( _hdIcontextRange,_hdImiscerrors,_hdIself,_hdItypevariables,_hdIwarnings) =
                 (hd_ (_hdOallTypeConstructors) (_hdOmiscerrors) (_hdOoptions) (_hdOtypeConstructors) (_hdOwarnings))

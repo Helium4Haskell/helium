@@ -11,7 +11,7 @@ module PhaseTypingStrategies(phaseTypingStrategies) where
 import CompileUtils
 import Core(CoreDecl)
 import TS_Compile (readTypingStrategiesFromFile)
-import Data.FiniteMap (listToFM)
+import qualified Data.Map as M
 import UHA_Syntax (Name)
 import Top.Types (TpScheme)
 
@@ -28,7 +28,7 @@ phaseTypingStrategies fullName combinedEnv typeSignatures options
         in do enterNewPhase "Type inference directives" options
               (typingStrategies, typingStrategiesDecls) <-
                  readTypingStrategiesFromFile options (fullNameNoExt ++ ".type")        
-                            (addToTypeEnvironment (listToFM typeSignatures) combinedEnv)
+                            (addToTypeEnvironment (M.fromList typeSignatures) combinedEnv)
               return 
                  ( addTypingStrategies typingStrategies combinedEnv
                  , typingStrategiesDecls

@@ -22,7 +22,7 @@ import TypeConstraints
 import UHA_Syntax
 
 import ExpressionTypeInferencer (expressionTypeInferencer)
-import Data.FiniteMap
+import qualified Data.Map as M
 
 typingStrategyToCore :: ImportEnvironment -> TypingStrategy -> Core_TypingStrategy
 typingStrategyToCore importEnv strategy = 
@@ -3486,7 +3486,7 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
                        let list = [ (nameFromString s, toTpScheme $ freezeVariablesInType tp)
                                   | (s, tp) <- ("$$conclusion", _typeruleIconclusionType) : _typeruleIsimpleJudgements
                                   ]
-                       in _lhsIimportEnvironment { typeEnvironment = listToFM list }
+                       in _lhsIimportEnvironment { typeEnvironment = M.fromList list }
                     (inferredType, freeVariables, _) = expressionTypeInferencer newEnvironment _typeruleIconclusionExpression
                     monoType = unqualify (unquantify inferredType)
                     synonyms = getOrderedTypeSynonyms _lhsIimportEnvironment
@@ -3494,7 +3494,7 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
                              Left _       -> internalError "TS_ToCore.ag" "n/a" "no unification possible"
                              Right (_, s) -> s
                 in [ (show name, unfreezeVariablesInType (sub |-> tp))
-                   | (name, tp) <- concat (eltsFM freeVariables)
+                   | (name, tp) <- concat (M.elems freeVariables)
                    ]
             (_uniqueTypevariables@_) =
                 nub (_typeruleItypevariables ++ _statementsItypevariables)

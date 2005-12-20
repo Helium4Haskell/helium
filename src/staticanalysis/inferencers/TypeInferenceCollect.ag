@@ -20,8 +20,8 @@ ATTR Expression Expressions MaybeExpression Alternative Alternatives
      RecordExpressionBinding RecordExpressionBindings      
         [ importEnvironment   : ImportEnvironment 
           substitution        : FixpointSubstitution
-          typeschemeMap       : {FiniteMap Int (Scheme Predicates)}
-          allTypeSchemes      : {FiniteMap NameWithRange TpScheme}
+          typeschemeMap       : {M.Map Int (Scheme Predicates)}
+          allTypeSchemes      : {M.Map NameWithRange TpScheme}
           orderedTypeSynonyms : OrderedTypeSynonyms
         | collectWarnings     : Warnings
           collectErrors       : TypeErrors
@@ -73,13 +73,13 @@ SEM Qualifier
                                       ++ @declarations.collectErrors
                                       
 {
-findInferredTypes :: FiniteMap Int (Scheme Predicates) -> FiniteMap Name (Sigma Predicates) -> TypeEnvironment
+findInferredTypes :: M.Map Int (Scheme Predicates) -> M.Map Name (Sigma Predicates) -> TypeEnvironment
 findInferredTypes typeschemeMap =
    let err = internalError "TypeInferenceCollect.ag" "findInferredTypes" "could not find type scheme variable"
-       f :: a -> Sigma Predicates -> TpScheme
-       f _ (SigmaVar i)     = lookupWithDefaultFM typeschemeMap err i
-       f _ (SigmaScheme ts) = ts
-   in mapFM f
+       f :: Sigma Predicates -> TpScheme
+       f (SigmaVar i)     = M.findWithDefault err i typeschemeMap
+       f (SigmaScheme ts) = ts
+   in M.map f
    
 missingTypeSignature :: Bool -> Names -> TypeEnvironment -> Warnings
 missingTypeSignature topLevel simplePats = 
@@ -87,11 +87,11 @@ missingTypeSignature topLevel simplePats =
       makeWarning (name, scheme) =
          let fromSimple = name `elem` simplePats && isOverloaded scheme
          in [ NoTypeDef name scheme topLevel fromSimple | null (ftv scheme) && (topLevel || fromSimple)  ]
-   in concatMap makeWarning . fmToList
+   in concatMap makeWarning . M.assocs
    
 restrictedNameErrors :: TypeEnvironment -> Names -> TypeErrors
 restrictedNameErrors env = 
-   let f name = case lookupFM env name of
+   let f name = case M.lookup name env of
                    Just scheme -> [ makeRestrictedButOverloadedError name scheme | isOverloaded scheme ]
                    Nothing     -> []
    in concatMap f
@@ -104,7 +104,7 @@ restrictedNameErrors env =
 ATTR Body [ |  | toplevelTypes : TypeEnvironment ]   
   
 SEM Body
-  | Body   lhs . toplevelTypes = @declarations.typeSignatures `plusFM` @inferredTypes
+  | Body   lhs . toplevelTypes = @declarations.typeSignatures `M.union` @inferredTypes
  
 ---------------------------------------------------------
 -- Collecting all the type schemes that are in scope
@@ -113,43 +113,43 @@ SEM Body
    right-hand side. Therefore, MaybeDeclarations should return a (synthesized) list of localTypes, and then 
    RightHandSide should distribute it down -}
 
-ATTR MaybeDeclarations [ | | localTypes : {FiniteMap NameWithRange TpScheme} ]
+ATTR MaybeDeclarations [ | | localTypes : {M.Map NameWithRange TpScheme} ]
 
 SEM Module 
-  | Module  body . allTypeSchemes = listToFM [ (NameWithRange name, scheme) | (name, scheme) <- fmToList (typeEnvironment @lhs.importEnvironment) ]
+  | Module  body . allTypeSchemes = M.fromList [ (NameWithRange name, scheme) | (name, scheme) <- M.assocs (typeEnvironment @lhs.importEnvironment) ]
 
 SEM Body
-  | Body   loc . allTypeSchemes = @localTypes `plusFM` @lhs.allTypeSchemes
-               . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `plusFM` @inferredTypes) @declarations.bindingGroups
+  | Body   loc . allTypeSchemes = @localTypes `M.union` @lhs.allTypeSchemes
+               . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `M.union` @inferredTypes) @declarations.bindingGroups
 
 SEM MaybeDeclarations
-  | Just     lhs . localTypes  = makeLocalTypeEnv (@declarations.typeSignatures `plusFM` @inferredTypes) @declarations.bindingGroups
-  | Nothing  lhs . localTypes  = emptyFM
+  | Just     lhs . localTypes  = makeLocalTypeEnv (@declarations.typeSignatures `M.union` @inferredTypes) @declarations.bindingGroups
+  | Nothing  lhs . localTypes  = M.empty
 
 SEM RightHandSide
-  | Expression  loc . allTypeSchemes = @where.localTypes `plusFM` @lhs.allTypeSchemes 
-  | Guarded     loc . allTypeSchemes = @where.localTypes `plusFM` @lhs.allTypeSchemes 
+  | Expression  loc . allTypeSchemes = @where.localTypes `M.union` @lhs.allTypeSchemes 
+  | Guarded     loc . allTypeSchemes = @where.localTypes `M.union` @lhs.allTypeSchemes 
 
 SEM Expression                    
-  | Let    loc . allTypeSchemes = @localTypes `plusFM` @lhs.allTypeSchemes
-               . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `plusFM` @inferredTypes) @declarations.bindingGroups
+  | Let    loc . allTypeSchemes = @localTypes `M.union` @lhs.allTypeSchemes
+               . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `M.union` @inferredTypes) @declarations.bindingGroups
                                      
 SEM Statement                  
-  | Let    loc . allTypeSchemes = @localTypes `plusFM` @lhs.allTypeSchemes
-               . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `plusFM` @inferredTypes) @declarations.bindingGroups
+  | Let    loc . allTypeSchemes = @localTypes `M.union` @lhs.allTypeSchemes
+               . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `M.union` @inferredTypes) @declarations.bindingGroups
 
 SEM Qualifier                    
-  | Let    loc . allTypeSchemes = @localTypes `plusFM` @lhs.allTypeSchemes
-               . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `plusFM` @inferredTypes) @declarations.bindingGroups
+  | Let    loc . allTypeSchemes = @localTypes `M.union` @lhs.allTypeSchemes
+               . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `M.union` @inferredTypes) @declarations.bindingGroups
 
 {
-makeLocalTypeEnv :: TypeEnvironment -> BindingGroups -> FiniteMap NameWithRange TpScheme
+makeLocalTypeEnv :: TypeEnvironment -> BindingGroups -> M.Map NameWithRange TpScheme
 makeLocalTypeEnv local groups =
    let (environment, _, _) = concatBindingGroups groups
-       names = keysFM environment
+       names = M.keys environment
        f x   = maybe err id (find (==x) names) 
        err   = internalError "TypeInferenceCollect.ag" "makeLocalTypeEnv" "could not find name"
-   in listToFM [ (NameWithRange (f name), scheme) | (name, scheme) <- fmToList local ]
+   in M.fromList [ (NameWithRange (f name), scheme) | (name, scheme) <- M.assocs local ]
 }
 
 -- context for restricted pattern error
@@ -177,15 +177,15 @@ isSimplePattern pattern =
 
 ATTR Declaration Declarations [ | typeSignatures:TypeEnvironment | ]
 
-SEM Body              | Body    declarations . typeSignatures = emptyFM
-SEM Expression        | Let     declarations . typeSignatures = emptyFM
-SEM Statement         | Let     declarations . typeSignatures = emptyFM
-SEM Qualifier         | Let     declarations . typeSignatures = emptyFM
-SEM MaybeDeclarations | Just    declarations . typeSignatures = emptyFM
+SEM Body              | Body    declarations . typeSignatures = M.empty
+SEM Expression        | Let     declarations . typeSignatures = M.empty
+SEM Statement         | Let     declarations . typeSignatures = M.empty
+SEM Qualifier         | Let     declarations . typeSignatures = M.empty
+SEM MaybeDeclarations | Just    declarations . typeSignatures = M.empty
 
 SEM Declaration
   | TypeSignature
-      lhs . typeSignatures = addListToFM @lhs.typeSignatures [ (name, @typeScheme) | name <- @names.self ]
+      lhs . typeSignatures = @lhs.typeSignatures `M.union` (M.fromList [ (name, @typeScheme) | name <- @names.self ])
       loc . typeScheme     = makeTpSchemeFromType @type.self
 
 --------------------------------
@@ -227,4 +227,4 @@ SEM Qualifier         | Let    lhs . uniqueChunk = @chunkNr
 
 SEM Declaration 
   | FunctionBindings   bindings      . currentChunk = findCurrentChunk @bindings.name @lhs.inheritedBDG -- from binding groups
-  | PatternBinding     righthandside . currentChunk = findCurrentChunk (head (keysFM @pattern.environment)) @lhs.inheritedBDG
+  | PatternBinding     righthandside . currentChunk = findCurrentChunk (head (M.keys @pattern.environment)) @lhs.inheritedBDG

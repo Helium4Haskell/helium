@@ -13,10 +13,10 @@ module OperatorTable
     ) where
 
 import UHA_Syntax
-import UHA_Utils
-import Data.FiniteMap
+import UHA_Utils ()
+import qualified Data.Map as M
 
-type OperatorTable = FiniteMap Name (Int, Assoc)
+type OperatorTable = M.Map Name (Int, Assoc)
 
 -- From ParsecExpr
 data Assoc              = AssocNone
@@ -25,13 +25,13 @@ data Assoc              = AssocNone
 
 assoc :: OperatorTable -> Name -> Assoc
 assoc ops name = 
-    case lookupFM ops name of
+    case M.lookup name ops of
         Nothing -> AssocLeft -- default associativity, if unspecified
         Just (_, a) -> a
 
 prio :: OperatorTable -> Name -> Int
 prio ops name = 
-    case lookupFM ops name of
+    case M.lookup name ops of
         Nothing        -> 9 -- default priority, if unspecified
         Just    (p, _) -> p
 

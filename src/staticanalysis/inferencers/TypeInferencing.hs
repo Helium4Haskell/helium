@@ -37,7 +37,6 @@ import DictionaryEnvironment
 import Args
 
 -- standard
-import Data.FiniteMap
 import qualified Data.Map as M
 import Data.Maybe 
 import Data.List
@@ -95,13 +94,13 @@ expandPredicates synonyms = map (expandPredicate synonyms)
 expandPredicate :: OrderedTypeSynonyms -> Predicate -> Predicate
 expandPredicate (_, synonyms) (Predicate className tp) = Predicate className (expandType synonyms tp)
 
-findInferredTypes :: FiniteMap Int (Scheme Predicates) -> FiniteMap Name (Sigma Predicates) -> TypeEnvironment
+findInferredTypes :: M.Map Int (Scheme Predicates) -> M.Map Name (Sigma Predicates) -> TypeEnvironment
 findInferredTypes typeschemeMap =
    let err = internalError "TypeInferenceCollect.ag" "findInferredTypes" "could not find type scheme variable"
-       f :: a -> Sigma Predicates -> TpScheme
-       f _ (SigmaVar i)     = lookupWithDefaultFM typeschemeMap err i
-       f _ (SigmaScheme ts) = ts
-   in mapFM f
+       f :: Sigma Predicates -> TpScheme
+       f (SigmaVar i)     = M.findWithDefault err i typeschemeMap
+       f (SigmaScheme ts) = ts
+   in M.map f
    
 missingTypeSignature :: Bool -> Names -> TypeEnvironment -> Warnings
 missingTypeSignature topLevel simplePats = 
@@ -109,23 +108,23 @@ missingTypeSignature topLevel simplePats =
       makeWarning (name, scheme) =
          let fromSimple = name `elem` simplePats && isOverloaded scheme
          in [ NoTypeDef name scheme topLevel fromSimple | null (ftv scheme) && (topLevel || fromSimple)  ]
-   in concatMap makeWarning . fmToList
+   in concatMap makeWarning . M.assocs
    
 restrictedNameErrors :: TypeEnvironment -> Names -> TypeErrors
 restrictedNameErrors env = 
-   let f name = case lookupFM env name of
+   let f name = case M.lookup name env of
                    Just scheme -> [ makeRestrictedButOverloadedError name scheme | isOverloaded scheme ]
                    Nothing     -> []
    in concatMap f
 
 
-makeLocalTypeEnv :: TypeEnvironment -> BindingGroups -> FiniteMap NameWithRange TpScheme
+makeLocalTypeEnv :: TypeEnvironment -> BindingGroups -> M.Map NameWithRange TpScheme
 makeLocalTypeEnv local groups =
    let (environment, _, _) = concatBindingGroups groups
-       names = keysFM environment
+       names = M.keys environment
        f x   = maybe err id (find (==x) names) 
        err   = internalError "TypeInferenceCollect.ag" "makeLocalTypeEnv" "could not find name"
-   in listToFM [ (NameWithRange (f name), scheme) | (name, scheme) <- fmToList local ]
+   in M.fromList [ (NameWithRange (f name), scheme) | (name, scheme) <- M.assocs local ]
 
 isSimplePattern :: Pattern -> Bool
 isSimplePattern pattern =
@@ -311,7 +310,7 @@ patternMatchWarnings impenv sub tp strip elementss rng name parens unrwars place
 
 -- environment of constructors [(type, (constructorname, arguments))]
 type Env = [(Tp, (Name, [Tp]))]
-importEnvironmentToEnv = map rearrange . fmToList . valueConstructors
+importEnvironmentToEnv = map rearrange . M.assocs . valueConstructors
 
 -- return the number of arguments of a constructor
 -- tuples ar not in the Env so they require special treatment
@@ -527,7 +526,7 @@ thin (e               : es) | elem e thines =     thines
 -- Alternative -------------------------------------------------
 -- semantic domain
 type T_Alternative = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                     (FiniteMap NameWithRange TpScheme) ->
+                     (M.Map NameWithRange TpScheme) ->
                      (Predicates) ->
                      (Tp) ->
                      (Tp) ->
@@ -545,7 +544,7 @@ type T_Alternative = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (InfoTree) ->
                      ([Warning]) ->
                      (FixpointSubstitution) ->
-                     (FiniteMap Int (Scheme Predicates)) ->
+                     (M.Map Int (Scheme Predicates)) ->
                      (Int) ->
                      ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),( ([PatternElement], Bool) ),(InfoTrees),(IO ()),([Warning]),(Alternative),(Names),(Int),(Warning))
 -- cata
@@ -628,7 +627,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
             _righthandsideIunboundNames :: (Names)
             _righthandsideIuniqueChunk :: (Int)
             _righthandsideOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _righthandsideOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _righthandsideOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _righthandsideOavailablePredicates :: (Predicates)
             _righthandsideObetaRight :: (Tp)
             _righthandsideObetaUnique :: (Int)
@@ -645,7 +644,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
             _righthandsideOparentTree :: (InfoTree)
             _righthandsideOpatternMatchWarnings :: ([Warning])
             _righthandsideOsubstitution :: (FixpointSubstitution)
-            _righthandsideOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _righthandsideOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _righthandsideOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
@@ -682,7 +681,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
                      , _righthandsideIconstraints
                      ]
             (_righthandsideOmonos@_) =
-                eltsFM _patternIenvironment ++ getMonos _csetBinds ++ _lhsImonos
+                M.elems _patternIenvironment ++ getMonos _csetBinds ++ _lhsImonos
             (_cinfoLeft@_) =
                 resultConstraint "case pattern" _patternIinfoTree
                    [ Unifier (head (ftv _lhsIbetaLeft)) ("case patterns", attribute _lhsIparentTree, "case pattern") ]
@@ -854,7 +853,7 @@ sem_Alternative_Empty (range_) =
 -- Alternatives ------------------------------------------------
 -- semantic domain
 type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                      (FiniteMap NameWithRange TpScheme) ->
+                      (M.Map NameWithRange TpScheme) ->
                       (Predicates) ->
                       (Tp) ->
                       (Tp) ->
@@ -872,7 +871,7 @@ type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (InfoTree) ->
                       ([Warning]) ->
                       (FixpointSubstitution) ->
-                      (FiniteMap Int (Scheme Predicates)) ->
+                      (M.Map Int (Scheme Predicates)) ->
                       (Int) ->
                       ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSets),(DictionaryEnvironment),([([PatternElement], Bool)]),(InfoTrees),(IO ()),([Warning]),(Alternatives),(Names),(Int),([Warning]))
 -- cata
@@ -936,7 +935,7 @@ sem_Alternatives_Cons (hd_) (tl_) =
             _hdIuniqueChunk :: (Int)
             _hdIunrwar :: (Warning)
             _hdOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _hdOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _hdOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _hdOavailablePredicates :: (Predicates)
             _hdObetaLeft :: (Tp)
             _hdObetaRight :: (Tp)
@@ -954,7 +953,7 @@ sem_Alternatives_Cons (hd_) (tl_) =
             _hdOparentTree :: (InfoTree)
             _hdOpatternMatchWarnings :: ([Warning])
             _hdOsubstitution :: (FixpointSubstitution)
-            _hdOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _hdOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _hdOuniqueChunk :: (Int)
             _tlIassumptions :: (Assumptions)
             _tlIbetaUnique :: (Int)
@@ -972,7 +971,7 @@ sem_Alternatives_Cons (hd_) (tl_) =
             _tlIuniqueChunk :: (Int)
             _tlIunrwars :: ([Warning])
             _tlOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _tlOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _tlOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _tlOavailablePredicates :: (Predicates)
             _tlObetaLeft :: (Tp)
             _tlObetaRight :: (Tp)
@@ -990,7 +989,7 @@ sem_Alternatives_Cons (hd_) (tl_) =
             _tlOparentTree :: (InfoTree)
             _tlOpatternMatchWarnings :: ([Warning])
             _tlOsubstitution :: (FixpointSubstitution)
-            _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _tlOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _tlOuniqueChunk :: (Int)
             ( _hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIelements,_hdIinfoTrees,_hdImatchIO,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIunrwar) =
                 (hd_ (_hdOallPatterns) (_hdOallTypeSchemes) (_hdOavailablePredicates) (_hdObetaLeft) (_hdObetaRight) (_hdObetaUnique) (_hdOclassEnvironment) (_hdOcollectErrors) (_hdOcollectWarnings) (_hdOcurrentChunk) (_hdOdictionaryEnvironment) (_hdOimportEnvironment) (_hdOmatchIO) (_hdOmonos) (_hdOnamesInScope) (_hdOorderedTypeSynonyms) (_hdOparentTree) (_hdOpatternMatchWarnings) (_hdOsubstitution) (_hdOtypeschemeMap) (_hdOuniqueChunk))
@@ -1266,7 +1265,7 @@ sem_AnnotatedTypes_Nil  =
 -- Body --------------------------------------------------------
 -- semantic domain
 type T_Body = ([((Expression, [String]), Core_TypingStrategy)]) ->
-              (FiniteMap NameWithRange TpScheme) ->
+              (M.Map NameWithRange TpScheme) ->
               (Predicates) ->
               (Int) ->
               (ClassEnvironment) ->
@@ -1281,7 +1280,7 @@ type T_Body = ([((Expression, [String]), Core_TypingStrategy)]) ->
               (OrderedTypeSynonyms) ->
               ([Warning]) ->
               (FixpointSubstitution) ->
-              (FiniteMap Int (Scheme Predicates)) ->
+              (M.Map Int (Scheme Predicates)) ->
               (Int) ->
               ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(Names),(DictionaryEnvironment),(InfoTree),(IO ()),([Warning]),(Body),(TypeEnvironment),(Names),(Int))
 -- cata
@@ -1346,7 +1345,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             _declarationsIunboundNames :: (Names)
             _declarationsIuniqueChunk :: (Int)
             _declarationsOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _declarationsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _declarationsOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _declarationsOavailablePredicates :: (Predicates)
             _declarationsObetaUnique :: (Int)
             _declarationsObindingGroups :: (BindingGroups)
@@ -1365,7 +1364,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             _declarationsOpatternMatchWarnings :: ([Warning])
             _declarationsOsubstitution :: (FixpointSubstitution)
             _declarationsOtypeSignatures :: (TypeEnvironment)
-            _declarationsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _declarationsOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _declarationsOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
@@ -1428,13 +1427,13 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             (_inferredTypes@_) =
                 findInferredTypes _lhsItypeschemeMap _implicitsFM
             (_lhsOtoplevelTypes@_) =
-                _declarationsItypeSignatures `plusFM` _inferredTypes
+                _declarationsItypeSignatures `M.union` _inferredTypes
             (_localTypes@_) =
-                makeLocalTypeEnv (_declarationsItypeSignatures `plusFM` _inferredTypes) _declarationsIbindingGroups
+                makeLocalTypeEnv (_declarationsItypeSignatures `M.union` _inferredTypes) _declarationsIbindingGroups
             (_allTypeSchemes@_) =
-                _localTypes `plusFM` _lhsIallTypeSchemes
+                _localTypes `M.union` _lhsIallTypeSchemes
             (_declarationsOtypeSignatures@_) =
-                emptyFM
+                M.empty
             (_lhsOuniqueChunk@_) =
                 _chunkNr
             (_cinfo@_) =
@@ -1727,7 +1726,7 @@ sem_ContextItems_Nil  =
 -- Declaration -------------------------------------------------
 -- semantic domain
 type T_Declaration = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                     (FiniteMap NameWithRange TpScheme) ->
+                     (M.Map NameWithRange TpScheme) ->
                      (Predicates) ->
                      (Int) ->
                      (BindingGroups) ->
@@ -1746,7 +1745,7 @@ type T_Declaration = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      ([Warning]) ->
                      (FixpointSubstitution) ->
                      (TypeEnvironment) ->
-                     (FiniteMap Int (Scheme Predicates)) ->
+                     (M.Map Int (Scheme Predicates)) ->
                      (Int) ->
                      ( (Int),(BindingGroups),(TypeErrors),([(Name, Instance)]),(Warnings),(Names),(DictionaryEnvironment),(InfoTrees),(IO ()),([Warning]),(Names),(Declaration),(Names),(TypeEnvironment),(Names),(Int))
 -- cata
@@ -1831,7 +1830,7 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
             _whereIconstraints :: (ConstraintSet)
             _whereIdictionaryEnvironment :: (DictionaryEnvironment)
             _whereIinfoTrees :: (InfoTrees)
-            _whereIlocalTypes :: (FiniteMap NameWithRange TpScheme)
+            _whereIlocalTypes :: (M.Map NameWithRange TpScheme)
             _whereImatchIO :: (IO ())
             _whereInamesInScope :: (Names)
             _whereIpatternMatchWarnings :: ([Warning])
@@ -1839,7 +1838,7 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
             _whereIunboundNames :: (Names)
             _whereIuniqueChunk :: (Int)
             _whereOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _whereOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _whereOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _whereOassumptions :: (Assumptions)
             _whereOavailablePredicates :: (Predicates)
             _whereObetaUnique :: (Int)
@@ -1857,7 +1856,7 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
             _whereOparentTree :: (InfoTree)
             _whereOpatternMatchWarnings :: ([Warning])
             _whereOsubstitution :: (FixpointSubstitution)
-            _whereOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _whereOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _whereOunboundNames :: (Names)
             _whereOuniqueChunk :: (Int)
             ( _rangeIself) =
@@ -2390,7 +2389,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
             _bindingsIuniqueChunk :: (Int)
             _bindingsIunrwars :: ([Warning])
             _bindingsOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _bindingsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _bindingsOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _bindingsOavailablePredicates :: (Predicates)
             _bindingsObetaRight :: (Tp)
             _bindingsObetaUnique :: (Int)
@@ -2408,7 +2407,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
             _bindingsOparentTree :: (InfoTree)
             _bindingsOpatternMatchWarnings :: ([Warning])
             _bindingsOsubstitution :: (FixpointSubstitution)
-            _bindingsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _bindingsOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _bindingsOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
@@ -2435,7 +2434,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
                            (_bindingsOtypeschemeMap)
                            (_bindingsOuniqueChunk))
             (_mybdggrp@_) =
-                ( unitFM _bindingsIname _beta
+                ( M.singleton _bindingsIname _beta
                 , _bindingsIassumptions
                 , [ Node [ Phase (-1) [_newcon]
                          , Receive _lhsIbetaUnique
@@ -2462,7 +2461,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
             (_bindingsOavailablePredicates@_) =
                 _declPredicates ++ _lhsIavailablePredicates
             (_declPredicates@_) =
-                let scheme     = lookupWithDefaultFM _lhsIallTypeSchemes err (NameWithRange _bindingsIname)
+                let scheme     = M.findWithDefault err (NameWithRange _bindingsIname) _lhsIallTypeSchemes
                     predicates = matchTypeWithScheme _lhsIorderedTypeSynonyms
                                     (_lhsIsubstitution |-> _beta)
                                     (_lhsIsubstitution |-> scheme)
@@ -2613,7 +2612,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
             _whereIconstraints :: (ConstraintSet)
             _whereIdictionaryEnvironment :: (DictionaryEnvironment)
             _whereIinfoTrees :: (InfoTrees)
-            _whereIlocalTypes :: (FiniteMap NameWithRange TpScheme)
+            _whereIlocalTypes :: (M.Map NameWithRange TpScheme)
             _whereImatchIO :: (IO ())
             _whereInamesInScope :: (Names)
             _whereIpatternMatchWarnings :: ([Warning])
@@ -2621,7 +2620,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
             _whereIunboundNames :: (Names)
             _whereIuniqueChunk :: (Int)
             _whereOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _whereOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _whereOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _whereOassumptions :: (Assumptions)
             _whereOavailablePredicates :: (Predicates)
             _whereObetaUnique :: (Int)
@@ -2639,7 +2638,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
             _whereOparentTree :: (InfoTree)
             _whereOpatternMatchWarnings :: ([Warning])
             _whereOsubstitution :: (FixpointSubstitution)
-            _whereOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _whereOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _whereOunboundNames :: (Names)
             _whereOuniqueChunk :: (Int)
             ( _rangeIself) =
@@ -2932,7 +2931,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             _righthandsideIunboundNames :: (Names)
             _righthandsideIuniqueChunk :: (Int)
             _righthandsideOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _righthandsideOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _righthandsideOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _righthandsideOavailablePredicates :: (Predicates)
             _righthandsideObetaRight :: (Tp)
             _righthandsideObetaUnique :: (Int)
@@ -2949,7 +2948,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             _righthandsideOparentTree :: (InfoTree)
             _righthandsideOpatternMatchWarnings :: ([Warning])
             _righthandsideOsubstitution :: (FixpointSubstitution)
-            _righthandsideOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _righthandsideOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _righthandsideOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
@@ -2990,7 +2989,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             (_betaRight@_) =
                 TVar _lhsIbetaUnique
             (_righthandsideOmonos@_) =
-                findMono (head (keysFM _patternIenvironment)) _lhsIinheritedBDG ++ _lhsImonos
+                findMono (head (M.keys _patternIenvironment)) _lhsIinheritedBDG ++ _lhsImonos
             (_patternObetaUnique@_) =
                 _lhsIbetaUnique + 1
             (_lhsObindingGroups@_) =
@@ -3006,7 +3005,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             (_declPredicates@_) =
                 case _patternIself of
                   Pattern_Variable _ name ->
-                     let scheme     = lookupWithDefaultFM _lhsIallTypeSchemes err (NameWithRange name)
+                     let scheme     = M.findWithDefault err (NameWithRange name) _lhsIallTypeSchemes
                          predicates = matchTypeWithScheme _lhsIorderedTypeSynonyms
                                          (_lhsIsubstitution |-> _betaRight)
                                          (_lhsIsubstitution |-> scheme)
@@ -3018,7 +3017,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
                   then ([], _patternIpatVarNames)
                   else (_patternIpatVarNames, [])
             (_righthandsideOcurrentChunk@_) =
-                findCurrentChunk (head (keysFM _patternIenvironment)) _lhsIinheritedBDG
+                findCurrentChunk (head (M.keys _patternIenvironment)) _lhsIinheritedBDG
             (_cinfo@_) =
                 orphanConstraint 1 "right hand side" _parentTree
                    []
@@ -3255,7 +3254,7 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
             (_typeScheme@_) =
                 makeTpSchemeFromType _typeIself
             (_lhsOtypeSignatures@_) =
-                addListToFM _lhsItypeSignatures [ (name, _typeScheme) | name <- _namesIself ]
+                _lhsItypeSignatures `M.union` (M.fromList [ (name, _typeScheme) | name <- _namesIself ])
             (_lhsOinfoTrees@_) =
                 []
             (_lhsOcollectInstances@_) =
@@ -3292,7 +3291,7 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
 -- Declarations ------------------------------------------------
 -- semantic domain
 type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                      (FiniteMap NameWithRange TpScheme) ->
+                      (M.Map NameWithRange TpScheme) ->
                       (Predicates) ->
                       (Int) ->
                       (BindingGroups) ->
@@ -3311,7 +3310,7 @@ type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       ([Warning]) ->
                       (FixpointSubstitution) ->
                       (TypeEnvironment) ->
-                      (FiniteMap Int (Scheme Predicates)) ->
+                      (M.Map Int (Scheme Predicates)) ->
                       (Int) ->
                       ( (Int),(BindingGroups),(TypeErrors),([(Name, Instance)]),(Warnings),(Names),(DictionaryEnvironment),(InfoTrees),(IO ()),([Warning]),(Names),(Declarations),(Names),(TypeEnvironment),(Names),(Int))
 -- cata
@@ -3378,7 +3377,7 @@ sem_Declarations_Cons (hd_) (tl_) =
             _hdIunboundNames :: (Names)
             _hdIuniqueChunk :: (Int)
             _hdOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _hdOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _hdOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _hdOavailablePredicates :: (Predicates)
             _hdObetaUnique :: (Int)
             _hdObindingGroups :: (BindingGroups)
@@ -3397,7 +3396,7 @@ sem_Declarations_Cons (hd_) (tl_) =
             _hdOpatternMatchWarnings :: ([Warning])
             _hdOsubstitution :: (FixpointSubstitution)
             _hdOtypeSignatures :: (TypeEnvironment)
-            _hdOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _hdOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _hdOuniqueChunk :: (Int)
             _tlIbetaUnique :: (Int)
             _tlIbindingGroups :: (BindingGroups)
@@ -3416,7 +3415,7 @@ sem_Declarations_Cons (hd_) (tl_) =
             _tlIunboundNames :: (Names)
             _tlIuniqueChunk :: (Int)
             _tlOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _tlOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _tlOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _tlOavailablePredicates :: (Predicates)
             _tlObetaUnique :: (Int)
             _tlObindingGroups :: (BindingGroups)
@@ -3435,7 +3434,7 @@ sem_Declarations_Cons (hd_) (tl_) =
             _tlOpatternMatchWarnings :: ([Warning])
             _tlOsubstitution :: (FixpointSubstitution)
             _tlOtypeSignatures :: (TypeEnvironment)
-            _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _tlOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _tlOuniqueChunk :: (Int)
             ( _hdIbetaUnique,_hdIbindingGroups,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIdeclVarNames,_hdIdictionaryEnvironment,_hdIinfoTrees,_hdImatchIO,_hdIpatternMatchWarnings,_hdIrestrictedNames,_hdIself,_hdIsimplePatNames,_hdItypeSignatures,_hdIunboundNames,_hdIuniqueChunk) =
                 (hd_ (_hdOallPatterns)
@@ -3798,7 +3797,7 @@ sem_Exports_Nil  =
 -- Expression --------------------------------------------------
 -- semantic domain
 type T_Expression = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                    (FiniteMap NameWithRange TpScheme) ->
+                    (M.Map NameWithRange TpScheme) ->
                     (Predicates) ->
                     (Int) ->
                     (ClassEnvironment) ->
@@ -3815,7 +3814,7 @@ type T_Expression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     ([Warning]) ->
                     (FixpointSubstitution) ->
                     ([(Expression     , [String])]) ->
-                    (FiniteMap Int (Scheme Predicates)) ->
+                    (M.Map Int (Scheme Predicates)) ->
                     (Int) ->
                     (Int) ->
                     ( (Assumptions),(Tp),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTree),(IO ()),([Maybe MetaVariableTable]),([Warning]),(Expression),(Names),(Int),(Int))
@@ -3922,7 +3921,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -3939,7 +3938,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             _alternativesIassumptions :: (Assumptions)
@@ -3958,7 +3957,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _alternativesIuniqueChunk :: (Int)
             _alternativesIunrwars :: ([Warning])
             _alternativesOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _alternativesOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _alternativesOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _alternativesOavailablePredicates :: (Predicates)
             _alternativesObetaLeft :: (Tp)
             _alternativesObetaRight :: (Tp)
@@ -3976,7 +3975,7 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _alternativesOparentTree :: (InfoTree)
             _alternativesOpatternMatchWarnings :: ([Warning])
             _alternativesOsubstitution :: (FixpointSubstitution)
-            _alternativesOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _alternativesOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _alternativesOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
@@ -4237,7 +4236,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -4254,7 +4253,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             _qualifiersIassumptions :: (Assumptions)
@@ -4274,7 +4273,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _qualifiersIuniqueChunk :: (Int)
             _qualifiersIuniqueSecondRound :: (Int)
             _qualifiersOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _qualifiersOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _qualifiersOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _qualifiersOassumptions :: (Assumptions)
             _qualifiersOavailablePredicates :: (Predicates)
             _qualifiersObetaUnique :: (Int)
@@ -4292,7 +4291,7 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _qualifiersOparentTree :: (InfoTree)
             _qualifiersOpatternMatchWarnings :: ([Warning])
             _qualifiersOsubstitution :: (FixpointSubstitution)
-            _qualifiersOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _qualifiersOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _qualifiersOunboundNames :: (Names)
             _qualifiersOuniqueChunk :: (Int)
             _qualifiersOuniqueSecondRound :: (Int)
@@ -4534,7 +4533,7 @@ sem_Expression_Constructor (range_) (name_) =
             ( _nameIself) =
                 (name_ )
             (_newcon@_) =
-                case lookupFM (valueConstructors _lhsIimportEnvironment) _nameIself of
+                case M.lookup _nameIself (valueConstructors _lhsIimportEnvironment) of
                    Nothing  -> []
                    Just ctp -> [ (_beta .::. ctp) _cinfo ]
             (_beta@_) =
@@ -4645,7 +4644,7 @@ sem_Expression_Do (range_) (statements_) =
             _statementsIuniqueChunk :: (Int)
             _statementsIuniqueSecondRound :: (Int)
             _statementsOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _statementsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _statementsOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _statementsOassumptions :: (Assumptions)
             _statementsOavailablePredicates :: (Predicates)
             _statementsObetaUnique :: (Int)
@@ -4664,7 +4663,7 @@ sem_Expression_Do (range_) (statements_) =
             _statementsOparentTree :: (InfoTree)
             _statementsOpatternMatchWarnings :: ([Warning])
             _statementsOsubstitution :: (FixpointSubstitution)
-            _statementsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _statementsOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _statementsOunboundNames :: (Names)
             _statementsOuniqueChunk :: (Int)
             _statementsOuniqueSecondRound :: (Int)
@@ -4860,7 +4859,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _fromIuniqueChunk :: (Int)
             _fromIuniqueSecondRound :: (Int)
             _fromOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _fromOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _fromOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _fromOavailablePredicates :: (Predicates)
             _fromObetaUnique :: (Int)
             _fromOclassEnvironment :: (ClassEnvironment)
@@ -4877,7 +4876,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _fromOpatternMatchWarnings :: ([Warning])
             _fromOsubstitution :: (FixpointSubstitution)
             _fromOtryPatterns :: ([(Expression     , [String])])
-            _fromOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _fromOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _fromOuniqueChunk :: (Int)
             _fromOuniqueSecondRound :: (Int)
             _thenIassumptions :: (Assumptions)
@@ -4898,7 +4897,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _thenIuniqueChunk :: (Int)
             _thenIuniqueSecondRound :: (Int)
             _thenOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _thenOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _thenOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _thenOavailablePredicates :: (Predicates)
             _thenObetaUnique :: (Int)
             _thenOclassEnvironment :: (ClassEnvironment)
@@ -4915,7 +4914,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _thenOpatternMatchWarnings :: ([Warning])
             _thenOsubstitution :: (FixpointSubstitution)
             _thenOtryPatterns :: ([(MaybeExpression, [String])])
-            _thenOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _thenOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _thenOuniqueChunk :: (Int)
             _thenOuniqueSecondRound :: (Int)
             _toIassumptions :: (Assumptions)
@@ -4936,7 +4935,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _toIuniqueChunk :: (Int)
             _toIuniqueSecondRound :: (Int)
             _toOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _toOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _toOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _toOavailablePredicates :: (Predicates)
             _toObetaUnique :: (Int)
             _toOclassEnvironment :: (ClassEnvironment)
@@ -4953,7 +4952,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _toOpatternMatchWarnings :: ([Warning])
             _toOsubstitution :: (FixpointSubstitution)
             _toOtryPatterns :: ([(MaybeExpression, [String])])
-            _toOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _toOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _toOuniqueChunk :: (Int)
             _toOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -5037,7 +5036,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             (_elementType@_) =
                 if _overloaded then TVar (_lhsIbetaUnique + 1) else intType
             (_overloaded@_) =
-                case lookupFM (typeEnvironment _lhsIimportEnvironment) enumFromName of
+                case M.lookup enumFromName (typeEnvironment _lhsIimportEnvironment) of
                    Just scheme -> isOverloaded scheme
                    Nothing     -> False
             (_beta@_) =
@@ -5302,7 +5301,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _guardExpressionIuniqueChunk :: (Int)
             _guardExpressionIuniqueSecondRound :: (Int)
             _guardExpressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _guardExpressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _guardExpressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _guardExpressionOavailablePredicates :: (Predicates)
             _guardExpressionObetaUnique :: (Int)
             _guardExpressionOclassEnvironment :: (ClassEnvironment)
@@ -5319,7 +5318,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _guardExpressionOpatternMatchWarnings :: ([Warning])
             _guardExpressionOsubstitution :: (FixpointSubstitution)
             _guardExpressionOtryPatterns :: ([(Expression     , [String])])
-            _guardExpressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _guardExpressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _guardExpressionOuniqueChunk :: (Int)
             _guardExpressionOuniqueSecondRound :: (Int)
             _thenExpressionIassumptions :: (Assumptions)
@@ -5339,7 +5338,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _thenExpressionIuniqueChunk :: (Int)
             _thenExpressionIuniqueSecondRound :: (Int)
             _thenExpressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _thenExpressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _thenExpressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _thenExpressionOavailablePredicates :: (Predicates)
             _thenExpressionObetaUnique :: (Int)
             _thenExpressionOclassEnvironment :: (ClassEnvironment)
@@ -5356,7 +5355,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _thenExpressionOpatternMatchWarnings :: ([Warning])
             _thenExpressionOsubstitution :: (FixpointSubstitution)
             _thenExpressionOtryPatterns :: ([(Expression     , [String])])
-            _thenExpressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _thenExpressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _thenExpressionOuniqueChunk :: (Int)
             _thenExpressionOuniqueSecondRound :: (Int)
             _elseExpressionIassumptions :: (Assumptions)
@@ -5376,7 +5375,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _elseExpressionIuniqueChunk :: (Int)
             _elseExpressionIuniqueSecondRound :: (Int)
             _elseExpressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _elseExpressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _elseExpressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _elseExpressionOavailablePredicates :: (Predicates)
             _elseExpressionObetaUnique :: (Int)
             _elseExpressionOclassEnvironment :: (ClassEnvironment)
@@ -5393,7 +5392,7 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _elseExpressionOpatternMatchWarnings :: ([Warning])
             _elseExpressionOsubstitution :: (FixpointSubstitution)
             _elseExpressionOtryPatterns :: ([(Expression     , [String])])
-            _elseExpressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _elseExpressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _elseExpressionOuniqueChunk :: (Int)
             _elseExpressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -5758,7 +5757,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _leftExpressionIuniqueChunk :: (Int)
             _leftExpressionIuniqueSecondRound :: (Int)
             _leftExpressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _leftExpressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _leftExpressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _leftExpressionOavailablePredicates :: (Predicates)
             _leftExpressionObetaUnique :: (Int)
             _leftExpressionOclassEnvironment :: (ClassEnvironment)
@@ -5775,7 +5774,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _leftExpressionOpatternMatchWarnings :: ([Warning])
             _leftExpressionOsubstitution :: (FixpointSubstitution)
             _leftExpressionOtryPatterns :: ([(MaybeExpression, [String])])
-            _leftExpressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _leftExpressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _leftExpressionOuniqueChunk :: (Int)
             _leftExpressionOuniqueSecondRound :: (Int)
             _operatorIassumptions :: (Assumptions)
@@ -5795,7 +5794,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _operatorIuniqueChunk :: (Int)
             _operatorIuniqueSecondRound :: (Int)
             _operatorOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _operatorOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _operatorOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _operatorOavailablePredicates :: (Predicates)
             _operatorObetaUnique :: (Int)
             _operatorOclassEnvironment :: (ClassEnvironment)
@@ -5812,7 +5811,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _operatorOpatternMatchWarnings :: ([Warning])
             _operatorOsubstitution :: (FixpointSubstitution)
             _operatorOtryPatterns :: ([(Expression     , [String])])
-            _operatorOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _operatorOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _operatorOuniqueChunk :: (Int)
             _operatorOuniqueSecondRound :: (Int)
             _rightExpressionIassumptions :: (Assumptions)
@@ -5833,7 +5832,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _rightExpressionIuniqueChunk :: (Int)
             _rightExpressionIuniqueSecondRound :: (Int)
             _rightExpressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _rightExpressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _rightExpressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _rightExpressionOavailablePredicates :: (Predicates)
             _rightExpressionObetaUnique :: (Int)
             _rightExpressionOclassEnvironment :: (ClassEnvironment)
@@ -5850,7 +5849,7 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _rightExpressionOpatternMatchWarnings :: ([Warning])
             _rightExpressionOsubstitution :: (FixpointSubstitution)
             _rightExpressionOtryPatterns :: ([(MaybeExpression, [String])])
-            _rightExpressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _rightExpressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _rightExpressionOuniqueChunk :: (Int)
             _rightExpressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -6236,7 +6235,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -6253,7 +6252,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -6294,7 +6293,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
                      , _expressionIconstraints
                      ]
             (_expressionOmonos@_) =
-                eltsFM _patternsIenvironment ++ getMonos _csetBinds ++ _lhsImonos
+                M.elems _patternsIenvironment ++ getMonos _csetBinds ++ _lhsImonos
             (_patternsObetaUnique@_) =
                 _lhsIbetaUnique + 1
             (_cinfoBind@_) =
@@ -6471,7 +6470,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _declarationsIunboundNames :: (Names)
             _declarationsIuniqueChunk :: (Int)
             _declarationsOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _declarationsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _declarationsOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _declarationsOavailablePredicates :: (Predicates)
             _declarationsObetaUnique :: (Int)
             _declarationsObindingGroups :: (BindingGroups)
@@ -6490,7 +6489,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _declarationsOpatternMatchWarnings :: ([Warning])
             _declarationsOsubstitution :: (FixpointSubstitution)
             _declarationsOtypeSignatures :: (TypeEnvironment)
-            _declarationsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _declarationsOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _declarationsOuniqueChunk :: (Int)
             _expressionIassumptions :: (Assumptions)
             _expressionIbeta :: (Tp)
@@ -6509,7 +6508,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -6526,7 +6525,7 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -6613,11 +6612,11 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             (_inferredTypes@_) =
                 findInferredTypes _lhsItypeschemeMap _implicitsFM
             (_localTypes@_) =
-                makeLocalTypeEnv (_declarationsItypeSignatures `plusFM` _inferredTypes) _declarationsIbindingGroups
+                makeLocalTypeEnv (_declarationsItypeSignatures `M.union` _inferredTypes) _declarationsIbindingGroups
             (_allTypeSchemes@_) =
-                _localTypes `plusFM` _lhsIallTypeSchemes
+                _localTypes `M.union` _lhsIallTypeSchemes
             (_declarationsOtypeSignatures@_) =
-                emptyFM
+                M.empty
             (_lhsOuniqueChunk@_) =
                 _chunkNr
             (_cinfoType@_) =
@@ -6808,7 +6807,7 @@ sem_Expression_List (range_) (expressions_) =
             _expressionsIuniqueChunk :: (Int)
             _expressionsIuniqueSecondRound :: (Int)
             _expressionsOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionsOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionsOavailablePredicates :: (Predicates)
             _expressionsObetaUnique :: (Int)
             _expressionsOclassEnvironment :: (ClassEnvironment)
@@ -6825,7 +6824,7 @@ sem_Expression_List (range_) (expressions_) =
             _expressionsOpatternMatchWarnings :: ([Warning])
             _expressionsOsubstitution :: (FixpointSubstitution)
             _expressionsOtryPatterns :: ([(Expressions    , [String])])
-            _expressionsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionsOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionsOuniqueChunk :: (Int)
             _expressionsOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -7108,7 +7107,7 @@ sem_Expression_Negate (range_) (expression_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -7125,7 +7124,7 @@ sem_Expression_Negate (range_) (expression_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -7154,7 +7153,7 @@ sem_Expression_Negate (range_) (expression_) =
                              (_expressionOuniqueSecondRound))
             (_newcon@_) =
                 let standard = makeScheme [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
-                    tpscheme = lookupWithDefaultFM (typeEnvironment _lhsIimportEnvironment) standard (nameFromString "negate")
+                    tpscheme = M.findWithDefault standard (nameFromString "negate") (typeEnvironment _lhsIimportEnvironment)
                 in [ (_expressionIbeta .->. _beta .::. tpscheme) _cinfo]
             (_beta@_) =
                 TVar _lhsIbetaUnique
@@ -7175,7 +7174,7 @@ sem_Expression_Negate (range_) (expression_) =
                    (_lhsIsubstitution |-> _usedAsType)
                    (_lhsIsubstitution |-> _negateTypeScheme)
             (_negateTypeScheme@_) =
-                case lookupFM (typeEnvironment _lhsIimportEnvironment) _localName of
+                case M.lookup _localName (typeEnvironment _lhsIimportEnvironment) of
                    Just scheme -> scheme
                    Nothing     -> internalError "TypeInferenceOverloading.ag" "n/a" "type of negate unknown"
             (_localName@_) =
@@ -7321,7 +7320,7 @@ sem_Expression_NegateFloat (range_) (expression_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -7338,7 +7337,7 @@ sem_Expression_NegateFloat (range_) (expression_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -7515,7 +7514,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _functionIuniqueChunk :: (Int)
             _functionIuniqueSecondRound :: (Int)
             _functionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _functionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _functionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _functionOavailablePredicates :: (Predicates)
             _functionObetaUnique :: (Int)
             _functionOclassEnvironment :: (ClassEnvironment)
@@ -7532,7 +7531,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _functionOpatternMatchWarnings :: ([Warning])
             _functionOsubstitution :: (FixpointSubstitution)
             _functionOtryPatterns :: ([(Expression     , [String])])
-            _functionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _functionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _functionOuniqueChunk :: (Int)
             _functionOuniqueSecondRound :: (Int)
             _argumentsIassumptions :: (Assumptions)
@@ -7552,7 +7551,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _argumentsIuniqueChunk :: (Int)
             _argumentsIuniqueSecondRound :: (Int)
             _argumentsOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _argumentsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _argumentsOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _argumentsOavailablePredicates :: (Predicates)
             _argumentsObetaUnique :: (Int)
             _argumentsOclassEnvironment :: (ClassEnvironment)
@@ -7569,7 +7568,7 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _argumentsOpatternMatchWarnings :: ([Warning])
             _argumentsOsubstitution :: (FixpointSubstitution)
             _argumentsOtryPatterns :: ([(Expressions    , [String])])
-            _argumentsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _argumentsOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _argumentsOuniqueChunk :: (Int)
             _argumentsOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -7811,7 +7810,7 @@ sem_Expression_Parenthesized (range_) (expression_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -7828,7 +7827,7 @@ sem_Expression_Parenthesized (range_) (expression_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -7984,7 +7983,7 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
             _recordExpressionBindingsIself :: (RecordExpressionBindings)
             _recordExpressionBindingsIunboundNames :: (Names)
             _recordExpressionBindingsIuniqueChunk :: (Int)
-            _recordExpressionBindingsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _recordExpressionBindingsOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _recordExpressionBindingsOavailablePredicates :: (Predicates)
             _recordExpressionBindingsOclassEnvironment :: (ClassEnvironment)
             _recordExpressionBindingsOcollectErrors :: (TypeErrors)
@@ -7996,7 +7995,7 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
             _recordExpressionBindingsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _recordExpressionBindingsOpatternMatchWarnings :: ([Warning])
             _recordExpressionBindingsOsubstitution :: (FixpointSubstitution)
-            _recordExpressionBindingsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _recordExpressionBindingsOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _recordExpressionBindingsOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
@@ -8146,7 +8145,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -8163,7 +8162,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             _recordExpressionBindingsIcollectErrors :: (TypeErrors)
@@ -8174,7 +8173,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _recordExpressionBindingsIself :: (RecordExpressionBindings)
             _recordExpressionBindingsIunboundNames :: (Names)
             _recordExpressionBindingsIuniqueChunk :: (Int)
-            _recordExpressionBindingsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _recordExpressionBindingsOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _recordExpressionBindingsOavailablePredicates :: (Predicates)
             _recordExpressionBindingsOclassEnvironment :: (ClassEnvironment)
             _recordExpressionBindingsOcollectErrors :: (TypeErrors)
@@ -8186,7 +8185,7 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _recordExpressionBindingsOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _recordExpressionBindingsOpatternMatchWarnings :: ([Warning])
             _recordExpressionBindingsOsubstitution :: (FixpointSubstitution)
-            _recordExpressionBindingsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _recordExpressionBindingsOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _recordExpressionBindingsOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
@@ -8391,7 +8390,7 @@ sem_Expression_Tuple (range_) (expressions_) =
             _expressionsIuniqueChunk :: (Int)
             _expressionsIuniqueSecondRound :: (Int)
             _expressionsOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionsOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionsOavailablePredicates :: (Predicates)
             _expressionsObetaUnique :: (Int)
             _expressionsOclassEnvironment :: (ClassEnvironment)
@@ -8408,7 +8407,7 @@ sem_Expression_Tuple (range_) (expressions_) =
             _expressionsOpatternMatchWarnings :: ([Warning])
             _expressionsOsubstitution :: (FixpointSubstitution)
             _expressionsOtryPatterns :: ([(Expressions    , [String])])
-            _expressionsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionsOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionsOuniqueChunk :: (Int)
             _expressionsOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -8584,7 +8583,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -8601,7 +8600,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             _typeIself :: (Type)
@@ -8806,7 +8805,7 @@ sem_Expression_Variable (range_) (name_) =
                                      (_lhsIsubstitution |-> _usedAsType)
                                      (_lhsIsubstitution |-> scheme)
             (_maybeInferredType@_) =
-                lookupFM _lhsIallTypeSchemes _nameInScope
+                M.lookup _nameInScope _lhsIallTypeSchemes
             (_nameInScope@_) =
                 case filter (_nameIself==) _lhsInamesInScope of
                    [name] -> NameWithRange name
@@ -8852,7 +8851,7 @@ sem_Expression_Variable (range_) (name_) =
 -- Expressions -------------------------------------------------
 -- semantic domain
 type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                     (FiniteMap NameWithRange TpScheme) ->
+                     (M.Map NameWithRange TpScheme) ->
                      (Predicates) ->
                      (Int) ->
                      (ClassEnvironment) ->
@@ -8869,7 +8868,7 @@ type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      ([Warning]) ->
                      (FixpointSubstitution) ->
                      ([(Expressions    , [String])]) ->
-                     (FiniteMap Int (Scheme Predicates)) ->
+                     (M.Map Int (Scheme Predicates)) ->
                      (Int) ->
                      (Int) ->
                      ( (Assumptions),(Int),(Tps),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSets),(DictionaryEnvironment),(InfoTrees),(IO ()),([Maybe MetaVariableTable]),([Warning]),(Expressions),(Names),(Int),(Int))
@@ -8936,7 +8935,7 @@ sem_Expressions_Cons (hd_) (tl_) =
             _hdIuniqueChunk :: (Int)
             _hdIuniqueSecondRound :: (Int)
             _hdOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _hdOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _hdOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _hdOavailablePredicates :: (Predicates)
             _hdObetaUnique :: (Int)
             _hdOclassEnvironment :: (ClassEnvironment)
@@ -8953,7 +8952,7 @@ sem_Expressions_Cons (hd_) (tl_) =
             _hdOpatternMatchWarnings :: ([Warning])
             _hdOsubstitution :: (FixpointSubstitution)
             _hdOtryPatterns :: ([(Expression     , [String])])
-            _hdOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _hdOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _hdOuniqueChunk :: (Int)
             _hdOuniqueSecondRound :: (Int)
             _tlIassumptions :: (Assumptions)
@@ -8973,7 +8972,7 @@ sem_Expressions_Cons (hd_) (tl_) =
             _tlIuniqueChunk :: (Int)
             _tlIuniqueSecondRound :: (Int)
             _tlOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _tlOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _tlOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _tlOavailablePredicates :: (Predicates)
             _tlObetaUnique :: (Int)
             _tlOclassEnvironment :: (ClassEnvironment)
@@ -8990,7 +8989,7 @@ sem_Expressions_Cons (hd_) (tl_) =
             _tlOpatternMatchWarnings :: ([Warning])
             _tlOsubstitution :: (FixpointSubstitution)
             _tlOtryPatterns :: ([(Expressions    , [String])])
-            _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _tlOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _tlOuniqueChunk :: (Int)
             _tlOuniqueSecondRound :: (Int)
             ( _hdIassumptions,_hdIbeta,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIinfoTree,_hdImatchIO,_hdImatches,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIuniqueSecondRound) =
@@ -9365,7 +9364,7 @@ sem_Fixity_Infixr (range_) =
 -- FunctionBinding ---------------------------------------------
 -- semantic domain
 type T_FunctionBinding = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                         (FiniteMap NameWithRange TpScheme) ->
+                         (M.Map NameWithRange TpScheme) ->
                          (Predicates) ->
                          (Tp) ->
                          (Int) ->
@@ -9383,7 +9382,7 @@ type T_FunctionBinding = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (InfoTree) ->
                          ([Warning]) ->
                          (FixpointSubstitution) ->
-                         (FiniteMap Int (Scheme Predicates)) ->
+                         (M.Map Int (Scheme Predicates)) ->
                          (Int) ->
                          ( (Int),(Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),( ([PatternElement], Bool) ),(InfoTree),(IO ()),(Name),(Int),([Warning]),(FunctionBinding),(Names),(Int),(Warning))
 -- cata
@@ -9470,7 +9469,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
             _righthandsideIunboundNames :: (Names)
             _righthandsideIuniqueChunk :: (Int)
             _righthandsideOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _righthandsideOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _righthandsideOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _righthandsideOavailablePredicates :: (Predicates)
             _righthandsideObetaRight :: (Tp)
             _righthandsideObetaUnique :: (Int)
@@ -9487,7 +9486,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
             _righthandsideOparentTree :: (InfoTree)
             _righthandsideOpatternMatchWarnings :: ([Warning])
             _righthandsideOsubstitution :: (FixpointSubstitution)
-            _righthandsideOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _righthandsideOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _righthandsideOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
@@ -9524,7 +9523,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
                      , _righthandsideIconstraints
                      ]
             (_righthandsideOmonos@_) =
-                eltsFM _lefthandsideIenvironment ++ getMonos _csetBinds ++ _lhsImonos
+                M.elems _lefthandsideIenvironment ++ getMonos _csetBinds ++ _lhsImonos
             (_cinfoLeft@_) =
                 \num  ->
                 orphanConstraint num "pattern of function binding" _parentTree
@@ -9633,7 +9632,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
 -- FunctionBindings --------------------------------------------
 -- semantic domain
 type T_FunctionBindings = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                          (FiniteMap NameWithRange TpScheme) ->
+                          (M.Map NameWithRange TpScheme) ->
                           (Predicates) ->
                           (Tp) ->
                           (Int) ->
@@ -9651,7 +9650,7 @@ type T_FunctionBindings = ([((Expression, [String]), Core_TypingStrategy)]) ->
                           (InfoTree) ->
                           ([Warning]) ->
                           (FixpointSubstitution) ->
-                          (FiniteMap Int (Scheme Predicates)) ->
+                          (M.Map Int (Scheme Predicates)) ->
                           (Int) ->
                           ( (Int),(Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSets),(DictionaryEnvironment),([([PatternElement], Bool)]),(InfoTrees),(IO ()),(Name),(Int),([Warning]),(FunctionBindings),(Names),(Int),([Warning]))
 -- cata
@@ -9721,7 +9720,7 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _hdIuniqueChunk :: (Int)
             _hdIunrwar :: (Warning)
             _hdOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _hdOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _hdOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _hdOavailablePredicates :: (Predicates)
             _hdObetaRight :: (Tp)
             _hdObetaUnique :: (Int)
@@ -9739,7 +9738,7 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _hdOparentTree :: (InfoTree)
             _hdOpatternMatchWarnings :: ([Warning])
             _hdOsubstitution :: (FixpointSubstitution)
-            _hdOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _hdOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _hdOuniqueChunk :: (Int)
             _tlIargcount :: (Int)
             _tlIassumptions :: (Assumptions)
@@ -9760,7 +9759,7 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _tlIuniqueChunk :: (Int)
             _tlIunrwars :: ([Warning])
             _tlOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _tlOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _tlOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _tlOavailablePredicates :: (Predicates)
             _tlObetaRight :: (Tp)
             _tlObetaUnique :: (Int)
@@ -9778,7 +9777,7 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _tlOparentTree :: (InfoTree)
             _tlOpatternMatchWarnings :: ([Warning])
             _tlOsubstitution :: (FixpointSubstitution)
-            _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _tlOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _tlOuniqueChunk :: (Int)
             ( _hdIargcount,_hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIelements,_hdIinfoTree,_hdImatchIO,_hdIname,_hdInumberOfPatterns,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIunrwar) =
                 (hd_ (_hdOallPatterns) (_hdOallTypeSchemes) (_hdOavailablePredicates) (_hdObetaRight) (_hdObetaUnique) (_hdObetasLeft) (_hdOclassEnvironment) (_hdOcollectErrors) (_hdOcollectWarnings) (_hdOcurrentChunk) (_hdOdictionaryEnvironment) (_hdOimportEnvironment) (_hdOmatchIO) (_hdOmonos) (_hdOnamesInScope) (_hdOorderedTypeSynonyms) (_hdOparentTree) (_hdOpatternMatchWarnings) (_hdOsubstitution) (_hdOtypeschemeMap) (_hdOuniqueChunk))
@@ -9990,7 +9989,7 @@ sem_FunctionBindings_Nil  =
 -- GuardedExpression -------------------------------------------
 -- semantic domain
 type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                           (FiniteMap NameWithRange TpScheme) ->
+                           (M.Map NameWithRange TpScheme) ->
                            (Predicates) ->
                            (Tp) ->
                            (Int) ->
@@ -10008,7 +10007,7 @@ type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (InfoTree) ->
                            ([Warning]) ->
                            (FixpointSubstitution) ->
-                           (FiniteMap Int (Scheme Predicates)) ->
+                           (M.Map Int (Scheme Predicates)) ->
                            (Int) ->
                            (Int) ->
                            ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Bool),(InfoTrees),(IO ()),([Warning]),(Range),(GuardedExpression),(Names),(Int),(Int),(Warning))
@@ -10079,7 +10078,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _guardIuniqueChunk :: (Int)
             _guardIuniqueSecondRound :: (Int)
             _guardOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _guardOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _guardOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _guardOavailablePredicates :: (Predicates)
             _guardObetaUnique :: (Int)
             _guardOclassEnvironment :: (ClassEnvironment)
@@ -10096,7 +10095,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _guardOpatternMatchWarnings :: ([Warning])
             _guardOsubstitution :: (FixpointSubstitution)
             _guardOtryPatterns :: ([(Expression     , [String])])
-            _guardOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _guardOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _guardOuniqueChunk :: (Int)
             _guardOuniqueSecondRound :: (Int)
             _expressionIassumptions :: (Assumptions)
@@ -10116,7 +10115,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -10133,7 +10132,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -10322,7 +10321,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
 -- GuardedExpressions ------------------------------------------
 -- semantic domain
 type T_GuardedExpressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                            (FiniteMap NameWithRange TpScheme) ->
+                            (M.Map NameWithRange TpScheme) ->
                             (Predicates) ->
                             (Tp) ->
                             (Int) ->
@@ -10341,7 +10340,7 @@ type T_GuardedExpressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                             (InfoTree) ->
                             ([Warning]) ->
                             (FixpointSubstitution) ->
-                            (FiniteMap Int (Scheme Predicates)) ->
+                            (M.Map Int (Scheme Predicates)) ->
                             (Int) ->
                             (Int) ->
                             ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSets),(DictionaryEnvironment),(Bool),(InfoTrees),(IO ()),([Warning]),(GuardedExpressions),(Names),(Int),(Int))
@@ -10410,7 +10409,7 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
             _hdIuniqueSecondRound :: (Int)
             _hdIunrwar :: (Warning)
             _hdOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _hdOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _hdOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _hdOavailablePredicates :: (Predicates)
             _hdObetaRight :: (Tp)
             _hdObetaUnique :: (Int)
@@ -10428,7 +10427,7 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
             _hdOparentTree :: (InfoTree)
             _hdOpatternMatchWarnings :: ([Warning])
             _hdOsubstitution :: (FixpointSubstitution)
-            _hdOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _hdOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _hdOuniqueChunk :: (Int)
             _hdOuniqueSecondRound :: (Int)
             _tlIassumptions :: (Assumptions)
@@ -10447,7 +10446,7 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
             _tlIuniqueChunk :: (Int)
             _tlIuniqueSecondRound :: (Int)
             _tlOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _tlOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _tlOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _tlOavailablePredicates :: (Predicates)
             _tlObetaRight :: (Tp)
             _tlObetaUnique :: (Int)
@@ -10466,7 +10465,7 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
             _tlOparentTree :: (InfoTree)
             _tlOpatternMatchWarnings :: ([Warning])
             _tlOsubstitution :: (FixpointSubstitution)
-            _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _tlOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _tlOuniqueChunk :: (Int)
             _tlOuniqueSecondRound :: (Int)
             ( _hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIfallthrough,_hdIinfoTrees,_hdImatchIO,_hdIpatternMatchWarnings,_hdIrange,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIuniqueSecondRound,_hdIunrwar) =
@@ -11099,7 +11098,7 @@ sem_LeftHandSide_Infix (range_) (leftPattern_) (operator_) (rightPattern_) =
             (_lhsObetas@_) =
                 [_leftPatternIbeta,_rightPatternIbeta]
             (_lhsOenvironment@_) =
-                _leftPatternIenvironment `plusFM` _rightPatternIenvironment
+                _leftPatternIenvironment `M.union` _rightPatternIenvironment
             (_lhsOnumberOfPatterns@_) =
                 2
             (_lhsOinfoTrees@_) =
@@ -11219,7 +11218,7 @@ sem_LeftHandSide_Parenthesized (range_) (lefthandside_) (patterns_) =
             (_lhsObetas@_) =
                 _lefthandsideIbetas ++ _patternsIbetas
             (_lhsOenvironment@_) =
-                _lefthandsideIenvironment `plusFM` _patternsIenvironment
+                _lefthandsideIenvironment `M.union` _patternsIenvironment
             (_lhsOnumberOfPatterns@_) =
                 _lefthandsideInumberOfPatterns + _patternsInumberOfPatterns
             (_lhsOinfoTrees@_) =
@@ -11362,7 +11361,7 @@ sem_Literal_String (range_) (value_) =
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
 type T_MaybeDeclarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                           (FiniteMap NameWithRange TpScheme) ->
+                           (M.Map NameWithRange TpScheme) ->
                            (Assumptions) ->
                            (Predicates) ->
                            (Int) ->
@@ -11380,10 +11379,10 @@ type T_MaybeDeclarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (InfoTree) ->
                            ([Warning]) ->
                            (FixpointSubstitution) ->
-                           (FiniteMap Int (Scheme Predicates)) ->
+                           (M.Map Int (Scheme Predicates)) ->
                            (Names) ->
                            (Int) ->
-                           ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTrees),(FiniteMap NameWithRange TpScheme),(IO ()),(Names),([Warning]),(MaybeDeclarations),(Names),(Int))
+                           ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTrees),(M.Map NameWithRange TpScheme),(IO ()),(Names),([Warning]),(MaybeDeclarations),(Names),(Int))
 -- cata
 sem_MaybeDeclarations :: (MaybeDeclarations) ->
                          (T_MaybeDeclarations)
@@ -11424,7 +11423,7 @@ sem_MaybeDeclarations_Just (declarations_) =
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTrees :: (InfoTrees)
-            _lhsOlocalTypes :: (FiniteMap NameWithRange TpScheme)
+            _lhsOlocalTypes :: (M.Map NameWithRange TpScheme)
             _lhsOmatchIO :: (IO ())
             _lhsOnamesInScope :: (Names)
             _lhsOpatternMatchWarnings :: ([Warning])
@@ -11448,7 +11447,7 @@ sem_MaybeDeclarations_Just (declarations_) =
             _declarationsIunboundNames :: (Names)
             _declarationsIuniqueChunk :: (Int)
             _declarationsOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _declarationsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _declarationsOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _declarationsOavailablePredicates :: (Predicates)
             _declarationsObetaUnique :: (Int)
             _declarationsObindingGroups :: (BindingGroups)
@@ -11467,7 +11466,7 @@ sem_MaybeDeclarations_Just (declarations_) =
             _declarationsOpatternMatchWarnings :: ([Warning])
             _declarationsOsubstitution :: (FixpointSubstitution)
             _declarationsOtypeSignatures :: (TypeEnvironment)
-            _declarationsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _declarationsOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _declarationsOuniqueChunk :: (Int)
             ( _declarationsIbetaUnique
              ,_declarationsIbindingGroups
@@ -11523,9 +11522,9 @@ sem_MaybeDeclarations_Just (declarations_) =
             (_inferredTypes@_) =
                 findInferredTypes _lhsItypeschemeMap _implicitsFM
             (_lhsOlocalTypes@_) =
-                makeLocalTypeEnv (_declarationsItypeSignatures `plusFM` _inferredTypes) _declarationsIbindingGroups
+                makeLocalTypeEnv (_declarationsItypeSignatures `M.union` _inferredTypes) _declarationsIbindingGroups
             (_declarationsOtypeSignatures@_) =
-                emptyFM
+                M.empty
             (_lhsOuniqueChunk@_) =
                 _chunkNr
             (_declInfo@_) =
@@ -11630,7 +11629,7 @@ sem_MaybeDeclarations_Nothing  =
             _lhsOconstraints :: (ConstraintSet)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTrees :: (InfoTrees)
-            _lhsOlocalTypes :: (FiniteMap NameWithRange TpScheme)
+            _lhsOlocalTypes :: (M.Map NameWithRange TpScheme)
             _lhsOmatchIO :: (IO ())
             _lhsOnamesInScope :: (Names)
             _lhsOpatternMatchWarnings :: ([Warning])
@@ -11638,7 +11637,7 @@ sem_MaybeDeclarations_Nothing  =
             _lhsOunboundNames :: (Names)
             _lhsOuniqueChunk :: (Int)
             (_lhsOlocalTypes@_) =
-                emptyFM
+                M.empty
             (_lhsOinfoTrees@_) =
                 []
             (_lhsOcollectInstances@_) =
@@ -11703,7 +11702,7 @@ sem_MaybeExports_Nothing  =
 -- MaybeExpression ---------------------------------------------
 -- semantic domain
 type T_MaybeExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                         (FiniteMap NameWithRange TpScheme) ->
+                         (M.Map NameWithRange TpScheme) ->
                          (Predicates) ->
                          (Int) ->
                          (ClassEnvironment) ->
@@ -11720,7 +11719,7 @@ type T_MaybeExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          ([Warning]) ->
                          (FixpointSubstitution) ->
                          ([(MaybeExpression, [String])]) ->
-                         (FiniteMap Int (Scheme Predicates)) ->
+                         (M.Map Int (Scheme Predicates)) ->
                          (Int) ->
                          (Int) ->
                          ( (Assumptions),(Tp),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(InfoTrees),(IO ()),([Maybe MetaVariableTable]),([Warning]),(Bool),(MaybeExpression),(Names),(Int),(Int))
@@ -11789,7 +11788,7 @@ sem_MaybeExpression_Just (expression_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -11806,7 +11805,7 @@ sem_MaybeExpression_Just (expression_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
@@ -12150,7 +12149,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             _bodyIunboundNames :: (Names)
             _bodyIuniqueChunk :: (Int)
             _bodyOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _bodyOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _bodyOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _bodyOavailablePredicates :: (Predicates)
             _bodyObetaUnique :: (Int)
             _bodyOclassEnvironment :: (ClassEnvironment)
@@ -12165,7 +12164,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             _bodyOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _bodyOpatternMatchWarnings :: ([Warning])
             _bodyOsubstitution :: (FixpointSubstitution)
-            _bodyOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _bodyOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _bodyOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
@@ -12182,18 +12181,18 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                   then 0
                   else maximum _monomorphics + 1
             (_bodyOtypeschemeMap@_) =
-                listToFM (M.assocs _typeschemeMap)
+                M.fromList (M.assocs _typeschemeMap)
             (_monomorphics@_) =
-                ftv (  (eltsFM $ valueConstructors _lhsIimportEnvironment)
-                    ++ (eltsFM $ typeEnvironment   _lhsIimportEnvironment)
+                ftv (  (M.elems $ valueConstructors _lhsIimportEnvironment)
+                    ++ (M.elems $ typeEnvironment   _lhsIimportEnvironment)
                     )
             (_monos@_) =
                 map TVar _monomorphics
             (_initialScope@_) =
-                keysFM (typeEnvironment _lhsIimportEnvironment)
+                M.keys (typeEnvironment _lhsIimportEnvironment)
             (_assumptions@_) =
-                let f _ xs = [ (n, _substitution |-> tp) | (n, tp) <- xs ]
-                in mapFM f _bodyIassumptions
+                let f xs = [ (n, _substitution |-> tp) | (n, tp) <- xs ]
+                in M.map f _bodyIassumptions
             (_warnings@_) =
                 _bodyIcollectWarnings
             (_typeErrors@_) =
@@ -12229,7 +12228,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             (_bodyOcollectWarnings@_) =
                 []
             (_bodyOallTypeSchemes@_) =
-                listToFM [ (NameWithRange name, scheme) | (name, scheme) <- fmToList (typeEnvironment _lhsIimportEnvironment) ]
+                M.fromList [ (NameWithRange name, scheme) | (name, scheme) <- M.assocs (typeEnvironment _lhsIimportEnvironment) ]
             (_bodyOuniqueChunk@_) =
                 1
             (_bodyOcurrentChunk@_) =
@@ -12466,7 +12465,7 @@ sem_Pattern_As (range_) (name_) (pattern_) =
             (_patternObetaUnique@_) =
                 _lhsIbetaUnique + 1
             (_lhsOenvironment@_) =
-                addToFM _patternIenvironment _nameIself _beta
+                M.insert _nameIself _beta _patternIenvironment
             (_cinfo@_) =
                 specialConstraint "as pattern" _parentTree
                    (self _localInfo, Just $ nameToUHA_Pat _nameIself)
@@ -12556,7 +12555,7 @@ sem_Pattern_Constructor (range_) (name_) (patterns_) =
             ( _patternsIbetaUnique,_patternsIbetas,_patternsIconstraintslist,_patternsIelementss,_patternsIenvironment,_patternsIinfoTrees,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIpatternMatchWarnings,_patternsIself,_patternsIunboundNames) =
                 (patterns_ (_patternsObetaUnique) (_patternsOimportEnvironment) (_patternsOmonos) (_patternsOnamesInScope) (_patternsOparentTree) (_patternsOpatternMatchWarnings))
             (_conConstructor@_) =
-                case lookupFM (valueConstructors _lhsIimportEnvironment) _nameIself of
+                case M.lookup _nameIself (valueConstructors _lhsIimportEnvironment) of
                    Nothing  -> []
                    Just ctp -> [ (_betaCon .::. ctp) _cinfoConstructor ]
             (_conApply@_) =
@@ -12688,7 +12687,7 @@ sem_Pattern_InfixConstructor (range_) (leftPattern_) (constructorOperator_) (rig
             ( _rightPatternIbeta,_rightPatternIbetaUnique,_rightPatternIconstraints,_rightPatternIelements,_rightPatternIenvironment,_rightPatternIinfoTree,_rightPatternIpatVarNames,_rightPatternIpatternMatchWarnings,_rightPatternIself,_rightPatternIunboundNames) =
                 (rightPattern_ (_rightPatternObetaUnique) (_rightPatternOimportEnvironment) (_rightPatternOmonos) (_rightPatternOnamesInScope) (_rightPatternOparentTree) (_rightPatternOpatternMatchWarnings))
             (_conConstructor@_) =
-                case lookupFM (valueConstructors _lhsIimportEnvironment) _constructorOperatorIself  of
+                case M.lookup _constructorOperatorIself (valueConstructors _lhsIimportEnvironment) of
                    Nothing  -> []
                    Just ctp -> [ (_betaCon .::. ctp) _cinfoConstructor ]
             (_conApply@_) =
@@ -12706,7 +12705,7 @@ sem_Pattern_InfixConstructor (range_) (leftPattern_) (constructorOperator_) (rig
             (_leftPatternObetaUnique@_) =
                 _lhsIbetaUnique + 2
             (_lhsOenvironment@_) =
-                _leftPatternIenvironment `plusFM` _rightPatternIenvironment
+                _leftPatternIenvironment `M.union` _rightPatternIenvironment
             (_cinfoConstructor@_) =
                 variableConstraint "pattern constructor" (nameToUHA_Pat _constructorOperatorIself)
                    [ FolkloreConstraint, HasTrustFactor 10.0 ]
@@ -13038,7 +13037,7 @@ sem_Pattern_Negate (range_) (literal_) =
                 (literal_ )
             (_newcon@_) =
                 let standard = makeScheme [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
-                    tpscheme = lookupWithDefaultFM (typeEnvironment _lhsIimportEnvironment) standard (nameFromString "negate")
+                    tpscheme = M.findWithDefault standard (nameFromString "negate") (typeEnvironment _lhsIimportEnvironment)
                 in [ (_literalIliteralType .->. _beta .::. tpscheme) _cinfo]
             (_beta@_) =
                 TVar _lhsIbetaUnique
@@ -13468,7 +13467,7 @@ sem_Pattern_Variable (range_) (name_) =
             (_constraints@_) =
                 Receive _lhsIbetaUnique
             (_lhsOenvironment@_) =
-                unitFM _nameIself _beta
+                M.singleton _nameIself _beta
             (_lhsObetaUnique@_) =
                 _lhsIbetaUnique + 1
             (_localInfo@_) =
@@ -13630,7 +13629,7 @@ sem_Patterns_Cons (hd_) (tl_) =
             (_lhsOnumberOfPatterns@_) =
                 1 + _tlInumberOfPatterns
             (_lhsOenvironment@_) =
-                _hdIenvironment `plusFM` _tlIenvironment
+                _hdIenvironment `M.union` _tlIenvironment
             (_lhsObetas@_) =
                 _hdIbeta : _tlIbetas
             (_lhsOinfoTrees@_) =
@@ -13750,7 +13749,7 @@ sem_Position_Unknown  =
 -- Qualifier ---------------------------------------------------
 -- semantic domain
 type T_Qualifier = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                   (FiniteMap NameWithRange TpScheme) ->
+                   (M.Map NameWithRange TpScheme) ->
                    (Assumptions) ->
                    (Predicates) ->
                    (Int) ->
@@ -13768,7 +13767,7 @@ type T_Qualifier = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (InfoTree) ->
                    ([Warning]) ->
                    (FixpointSubstitution) ->
-                   (FiniteMap Int (Scheme Predicates)) ->
+                   (M.Map Int (Scheme Predicates)) ->
                    (Names) ->
                    (Int) ->
                    (Int) ->
@@ -13949,7 +13948,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -13966,7 +13965,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -14006,7 +14005,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
                         , _lhsIconstraints
                         ]
             (_lhsOmonos@_) =
-                eltsFM _patternIenvironment ++ getMonos _csetBinds ++ _lhsImonos
+                M.elems _patternIenvironment ++ getMonos _csetBinds ++ _lhsImonos
             (_lhsOconstraints@_) =
                 _locConstraints
             (_lhsOassumptions@_) =
@@ -14183,7 +14182,7 @@ sem_Qualifier_Guard (range_) (guard_) =
             _guardIuniqueChunk :: (Int)
             _guardIuniqueSecondRound :: (Int)
             _guardOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _guardOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _guardOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _guardOavailablePredicates :: (Predicates)
             _guardObetaUnique :: (Int)
             _guardOclassEnvironment :: (ClassEnvironment)
@@ -14200,7 +14199,7 @@ sem_Qualifier_Guard (range_) (guard_) =
             _guardOpatternMatchWarnings :: ([Warning])
             _guardOsubstitution :: (FixpointSubstitution)
             _guardOtryPatterns :: ([(Expression     , [String])])
-            _guardOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _guardOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _guardOuniqueChunk :: (Int)
             _guardOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -14381,7 +14380,7 @@ sem_Qualifier_Let (range_) (declarations_) =
             _declarationsIunboundNames :: (Names)
             _declarationsIuniqueChunk :: (Int)
             _declarationsOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _declarationsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _declarationsOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _declarationsOavailablePredicates :: (Predicates)
             _declarationsObetaUnique :: (Int)
             _declarationsObindingGroups :: (BindingGroups)
@@ -14400,7 +14399,7 @@ sem_Qualifier_Let (range_) (declarations_) =
             _declarationsOpatternMatchWarnings :: ([Warning])
             _declarationsOsubstitution :: (FixpointSubstitution)
             _declarationsOtypeSignatures :: (TypeEnvironment)
-            _declarationsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _declarationsOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _declarationsOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
@@ -14458,11 +14457,11 @@ sem_Qualifier_Let (range_) (declarations_) =
             (_inferredTypes@_) =
                 findInferredTypes _lhsItypeschemeMap _implicitsFM
             (_localTypes@_) =
-                makeLocalTypeEnv (_declarationsItypeSignatures `plusFM` _inferredTypes) _declarationsIbindingGroups
+                makeLocalTypeEnv (_declarationsItypeSignatures `M.union` _inferredTypes) _declarationsIbindingGroups
             (_allTypeSchemes@_) =
-                _localTypes `plusFM` _lhsIallTypeSchemes
+                _localTypes `M.union` _lhsIallTypeSchemes
             (_declarationsOtypeSignatures@_) =
-                emptyFM
+                M.empty
             (_lhsOuniqueChunk@_) =
                 _chunkNr
             (_localInfo@_) =
@@ -14549,7 +14548,7 @@ sem_Qualifier_Let (range_) (declarations_) =
 -- Qualifiers --------------------------------------------------
 -- semantic domain
 type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                    (FiniteMap NameWithRange TpScheme) ->
+                    (M.Map NameWithRange TpScheme) ->
                     (Assumptions) ->
                     (Predicates) ->
                     (Int) ->
@@ -14567,7 +14566,7 @@ type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (InfoTree) ->
                     ([Warning]) ->
                     (FixpointSubstitution) ->
-                    (FiniteMap Int (Scheme Predicates)) ->
+                    (M.Map Int (Scheme Predicates)) ->
                     (Names) ->
                     (Int) ->
                     (Int) ->
@@ -14637,7 +14636,7 @@ sem_Qualifiers_Cons (hd_) (tl_) =
             _hdIuniqueChunk :: (Int)
             _hdIuniqueSecondRound :: (Int)
             _hdOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _hdOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _hdOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _hdOassumptions :: (Assumptions)
             _hdOavailablePredicates :: (Predicates)
             _hdObetaUnique :: (Int)
@@ -14655,7 +14654,7 @@ sem_Qualifiers_Cons (hd_) (tl_) =
             _hdOparentTree :: (InfoTree)
             _hdOpatternMatchWarnings :: ([Warning])
             _hdOsubstitution :: (FixpointSubstitution)
-            _hdOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _hdOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _hdOunboundNames :: (Names)
             _hdOuniqueChunk :: (Int)
             _hdOuniqueSecondRound :: (Int)
@@ -14676,7 +14675,7 @@ sem_Qualifiers_Cons (hd_) (tl_) =
             _tlIuniqueChunk :: (Int)
             _tlIuniqueSecondRound :: (Int)
             _tlOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _tlOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _tlOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _tlOassumptions :: (Assumptions)
             _tlOavailablePredicates :: (Predicates)
             _tlObetaUnique :: (Int)
@@ -14694,7 +14693,7 @@ sem_Qualifiers_Cons (hd_) (tl_) =
             _tlOparentTree :: (InfoTree)
             _tlOpatternMatchWarnings :: ([Warning])
             _tlOsubstitution :: (FixpointSubstitution)
-            _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _tlOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _tlOunboundNames :: (Names)
             _tlOuniqueChunk :: (Int)
             _tlOuniqueSecondRound :: (Int)
@@ -14975,7 +14974,7 @@ sem_Range_Range (start_) (stop_) =
     in  ( _lhsOself)
 -- RecordExpressionBinding -------------------------------------
 -- semantic domain
-type T_RecordExpressionBinding = (FiniteMap NameWithRange TpScheme) ->
+type T_RecordExpressionBinding = (M.Map NameWithRange TpScheme) ->
                                  (Predicates) ->
                                  (ClassEnvironment) ->
                                  (TypeErrors) ->
@@ -14987,7 +14986,7 @@ type T_RecordExpressionBinding = (FiniteMap NameWithRange TpScheme) ->
                                  (OrderedTypeSynonyms) ->
                                  ([Warning]) ->
                                  (FixpointSubstitution) ->
-                                 (FiniteMap Int (Scheme Predicates)) ->
+                                 (M.Map Int (Scheme Predicates)) ->
                                  (Int) ->
                                  ( (TypeErrors),([(Name, Instance)]),(Warnings),(DictionaryEnvironment),([Warning]),(RecordExpressionBinding),(Names),(Int))
 -- cata
@@ -15041,7 +15040,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -15058,7 +15057,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -15156,7 +15155,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
         in  ( _lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdictionaryEnvironment,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
-type T_RecordExpressionBindings = (FiniteMap NameWithRange TpScheme) ->
+type T_RecordExpressionBindings = (M.Map NameWithRange TpScheme) ->
                                   (Predicates) ->
                                   (ClassEnvironment) ->
                                   (TypeErrors) ->
@@ -15168,7 +15167,7 @@ type T_RecordExpressionBindings = (FiniteMap NameWithRange TpScheme) ->
                                   (OrderedTypeSynonyms) ->
                                   ([Warning]) ->
                                   (FixpointSubstitution) ->
-                                  (FiniteMap Int (Scheme Predicates)) ->
+                                  (M.Map Int (Scheme Predicates)) ->
                                   (Int) ->
                                   ( (TypeErrors),([(Name, Instance)]),(Warnings),(DictionaryEnvironment),([Warning]),(RecordExpressionBindings),(Names),(Int))
 -- cata
@@ -15210,7 +15209,7 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
             _hdIself :: (RecordExpressionBinding)
             _hdIunboundNames :: (Names)
             _hdIuniqueChunk :: (Int)
-            _hdOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _hdOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _hdOavailablePredicates :: (Predicates)
             _hdOclassEnvironment :: (ClassEnvironment)
             _hdOcollectErrors :: (TypeErrors)
@@ -15222,7 +15221,7 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
             _hdOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _hdOpatternMatchWarnings :: ([Warning])
             _hdOsubstitution :: (FixpointSubstitution)
-            _hdOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _hdOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _hdOuniqueChunk :: (Int)
             _tlIcollectErrors :: (TypeErrors)
             _tlIcollectInstances :: ([(Name, Instance)])
@@ -15232,7 +15231,7 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
             _tlIself :: (RecordExpressionBindings)
             _tlIunboundNames :: (Names)
             _tlIuniqueChunk :: (Int)
-            _tlOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _tlOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _tlOavailablePredicates :: (Predicates)
             _tlOclassEnvironment :: (ClassEnvironment)
             _tlOcollectErrors :: (TypeErrors)
@@ -15244,7 +15243,7 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
             _tlOorderedTypeSynonyms :: (OrderedTypeSynonyms)
             _tlOpatternMatchWarnings :: ([Warning])
             _tlOsubstitution :: (FixpointSubstitution)
-            _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _tlOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _tlOuniqueChunk :: (Int)
             ( _hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIdictionaryEnvironment,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk) =
                 (hd_ (_hdOallTypeSchemes) (_hdOavailablePredicates) (_hdOclassEnvironment) (_hdOcollectErrors) (_hdOcollectWarnings) (_hdOcurrentChunk) (_hdOdictionaryEnvironment) (_hdOimportEnvironment) (_hdOnamesInScope) (_hdOorderedTypeSynonyms) (_hdOpatternMatchWarnings) (_hdOsubstitution) (_hdOtypeschemeMap) (_hdOuniqueChunk))
@@ -15506,7 +15505,7 @@ sem_RecordPatternBindings_Nil  =
 -- RightHandSide -----------------------------------------------
 -- semantic domain
 type T_RightHandSide = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                       (FiniteMap NameWithRange TpScheme) ->
+                       (M.Map NameWithRange TpScheme) ->
                        (Predicates) ->
                        (Tp) ->
                        (Int) ->
@@ -15523,7 +15522,7 @@ type T_RightHandSide = ([((Expression, [String]), Core_TypingStrategy)]) ->
                        (InfoTree) ->
                        ([Warning]) ->
                        (FixpointSubstitution) ->
-                       (FiniteMap Int (Scheme Predicates)) ->
+                       (M.Map Int (Scheme Predicates)) ->
                        (Int) ->
                        ( (Assumptions),(Int),(TypeErrors),([(Name, Instance)]),(Warnings),(ConstraintSet),(DictionaryEnvironment),(Bool),(InfoTree),(IO ()),([Warning]),(RightHandSide),(Names),(Int))
 -- cata
@@ -15590,7 +15589,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -15607,7 +15606,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             _whereIassumptions :: (Assumptions)
@@ -15618,7 +15617,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _whereIconstraints :: (ConstraintSet)
             _whereIdictionaryEnvironment :: (DictionaryEnvironment)
             _whereIinfoTrees :: (InfoTrees)
-            _whereIlocalTypes :: (FiniteMap NameWithRange TpScheme)
+            _whereIlocalTypes :: (M.Map NameWithRange TpScheme)
             _whereImatchIO :: (IO ())
             _whereInamesInScope :: (Names)
             _whereIpatternMatchWarnings :: ([Warning])
@@ -15626,7 +15625,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _whereIunboundNames :: (Names)
             _whereIuniqueChunk :: (Int)
             _whereOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _whereOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _whereOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _whereOassumptions :: (Assumptions)
             _whereOavailablePredicates :: (Predicates)
             _whereObetaUnique :: (Int)
@@ -15644,7 +15643,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _whereOparentTree :: (InfoTree)
             _whereOpatternMatchWarnings :: ([Warning])
             _whereOsubstitution :: (FixpointSubstitution)
-            _whereOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _whereOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _whereOunboundNames :: (Names)
             _whereOuniqueChunk :: (Int)
             ( _rangeIself) =
@@ -15705,7 +15704,7 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             (_lhsOassumptions@_) =
                 _whereIassumptions
             (_allTypeSchemes@_) =
-                _whereIlocalTypes `plusFM` _lhsIallTypeSchemes
+                _whereIlocalTypes `M.union` _lhsIallTypeSchemes
             (_cinfo@_) =
                 orphanConstraint 0 "right-hand side" _parentTree
                    [ Unifier (head (ftv _lhsIbetaRight)) ("right-hand sides", attribute (skip_UHA_FB_RHS _lhsIparentTree), "right-hand side") ]
@@ -15881,7 +15880,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _guardedexpressionsIuniqueChunk :: (Int)
             _guardedexpressionsIuniqueSecondRound :: (Int)
             _guardedexpressionsOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _guardedexpressionsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _guardedexpressionsOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _guardedexpressionsOavailablePredicates :: (Predicates)
             _guardedexpressionsObetaRight :: (Tp)
             _guardedexpressionsObetaUnique :: (Int)
@@ -15900,7 +15899,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _guardedexpressionsOparentTree :: (InfoTree)
             _guardedexpressionsOpatternMatchWarnings :: ([Warning])
             _guardedexpressionsOsubstitution :: (FixpointSubstitution)
-            _guardedexpressionsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _guardedexpressionsOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _guardedexpressionsOuniqueChunk :: (Int)
             _guardedexpressionsOuniqueSecondRound :: (Int)
             _whereIassumptions :: (Assumptions)
@@ -15911,7 +15910,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _whereIconstraints :: (ConstraintSet)
             _whereIdictionaryEnvironment :: (DictionaryEnvironment)
             _whereIinfoTrees :: (InfoTrees)
-            _whereIlocalTypes :: (FiniteMap NameWithRange TpScheme)
+            _whereIlocalTypes :: (M.Map NameWithRange TpScheme)
             _whereImatchIO :: (IO ())
             _whereInamesInScope :: (Names)
             _whereIpatternMatchWarnings :: ([Warning])
@@ -15919,7 +15918,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _whereIunboundNames :: (Names)
             _whereIuniqueChunk :: (Int)
             _whereOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _whereOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _whereOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _whereOassumptions :: (Assumptions)
             _whereOavailablePredicates :: (Predicates)
             _whereObetaUnique :: (Int)
@@ -15937,7 +15936,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _whereOparentTree :: (InfoTree)
             _whereOpatternMatchWarnings :: ([Warning])
             _whereOsubstitution :: (FixpointSubstitution)
-            _whereOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _whereOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _whereOunboundNames :: (Names)
             _whereOuniqueChunk :: (Int)
             ( _rangeIself) =
@@ -16015,7 +16014,7 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             (_lhsOassumptions@_) =
                 _whereIassumptions
             (_allTypeSchemes@_) =
-                _whereIlocalTypes `plusFM` _lhsIallTypeSchemes
+                _whereIlocalTypes `M.union` _lhsIallTypeSchemes
             (_localInfo@_) =
                 LocalInfo { self = UHA_RHS _self
                           , assignedType = Nothing
@@ -16172,7 +16171,7 @@ sem_SimpleType_SimpleType (range_) (name_) (typevariables_) =
 -- Statement ---------------------------------------------------
 -- semantic domain
 type T_Statement = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                   (FiniteMap NameWithRange TpScheme) ->
+                   (M.Map NameWithRange TpScheme) ->
                    (Assumptions) ->
                    (Predicates) ->
                    (Int) ->
@@ -16191,7 +16190,7 @@ type T_Statement = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (InfoTree) ->
                    ([Warning]) ->
                    (FixpointSubstitution) ->
-                   (FiniteMap Int (Scheme Predicates)) ->
+                   (M.Map Int (Scheme Predicates)) ->
                    (Names) ->
                    (Int) ->
                    (Int) ->
@@ -16361,7 +16360,7 @@ sem_Statement_Expression (range_) (expression_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -16378,7 +16377,7 @@ sem_Statement_Expression (range_) (expression_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -16582,7 +16581,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
             _expressionIuniqueChunk :: (Int)
             _expressionIuniqueSecondRound :: (Int)
             _expressionOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _expressionOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _expressionOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _expressionOavailablePredicates :: (Predicates)
             _expressionObetaUnique :: (Int)
             _expressionOclassEnvironment :: (ClassEnvironment)
@@ -16599,7 +16598,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
             _expressionOpatternMatchWarnings :: ([Warning])
             _expressionOsubstitution :: (FixpointSubstitution)
             _expressionOtryPatterns :: ([(Expression     , [String])])
-            _expressionOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _expressionOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _expressionOuniqueChunk :: (Int)
             _expressionOuniqueSecondRound :: (Int)
             ( _rangeIself) =
@@ -16639,7 +16638,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
                         , _lhsIconstraints
                         ]
             (_lhsOmonos@_) =
-                eltsFM _patternIenvironment ++ getMonos _csetBinds ++ _lhsImonos
+                M.elems _patternIenvironment ++ getMonos _csetBinds ++ _lhsImonos
             (_lhsOassumptions@_) =
                 _assumptions' `combine` _expressionIassumptions
             (_lhsOconstraints@_) =
@@ -16820,7 +16819,7 @@ sem_Statement_Let (range_) (declarations_) =
             _declarationsIunboundNames :: (Names)
             _declarationsIuniqueChunk :: (Int)
             _declarationsOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _declarationsOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _declarationsOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _declarationsOavailablePredicates :: (Predicates)
             _declarationsObetaUnique :: (Int)
             _declarationsObindingGroups :: (BindingGroups)
@@ -16839,7 +16838,7 @@ sem_Statement_Let (range_) (declarations_) =
             _declarationsOpatternMatchWarnings :: ([Warning])
             _declarationsOsubstitution :: (FixpointSubstitution)
             _declarationsOtypeSignatures :: (TypeEnvironment)
-            _declarationsOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _declarationsOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _declarationsOuniqueChunk :: (Int)
             ( _rangeIself) =
                 (range_ )
@@ -16899,11 +16898,11 @@ sem_Statement_Let (range_) (declarations_) =
             (_inferredTypes@_) =
                 findInferredTypes _lhsItypeschemeMap _implicitsFM
             (_localTypes@_) =
-                makeLocalTypeEnv (_declarationsItypeSignatures `plusFM` _inferredTypes) _declarationsIbindingGroups
+                makeLocalTypeEnv (_declarationsItypeSignatures `M.union` _inferredTypes) _declarationsIbindingGroups
             (_allTypeSchemes@_) =
-                _localTypes `plusFM` _lhsIallTypeSchemes
+                _localTypes `M.union` _lhsIallTypeSchemes
             (_declarationsOtypeSignatures@_) =
-                emptyFM
+                M.empty
             (_lhsOuniqueChunk@_) =
                 _chunkNr
             (_localInfo@_) =
@@ -16990,7 +16989,7 @@ sem_Statement_Let (range_) (declarations_) =
 -- Statements --------------------------------------------------
 -- semantic domain
 type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
-                    (FiniteMap NameWithRange TpScheme) ->
+                    (M.Map NameWithRange TpScheme) ->
                     (Assumptions) ->
                     (Predicates) ->
                     (Int) ->
@@ -17009,7 +17008,7 @@ type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (InfoTree) ->
                     ([Warning]) ->
                     (FixpointSubstitution) ->
-                    (FiniteMap Int (Scheme Predicates)) ->
+                    (M.Map Int (Scheme Predicates)) ->
                     (Names) ->
                     (Int) ->
                     (Int) ->
@@ -17081,7 +17080,7 @@ sem_Statements_Cons (hd_) (tl_) =
             _hdIuniqueChunk :: (Int)
             _hdIuniqueSecondRound :: (Int)
             _hdOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _hdOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _hdOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _hdOassumptions :: (Assumptions)
             _hdOavailablePredicates :: (Predicates)
             _hdObetaUnique :: (Int)
@@ -17100,7 +17099,7 @@ sem_Statements_Cons (hd_) (tl_) =
             _hdOparentTree :: (InfoTree)
             _hdOpatternMatchWarnings :: ([Warning])
             _hdOsubstitution :: (FixpointSubstitution)
-            _hdOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _hdOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _hdOunboundNames :: (Names)
             _hdOuniqueChunk :: (Int)
             _hdOuniqueSecondRound :: (Int)
@@ -17121,7 +17120,7 @@ sem_Statements_Cons (hd_) (tl_) =
             _tlIuniqueChunk :: (Int)
             _tlIuniqueSecondRound :: (Int)
             _tlOallPatterns :: ([((Expression, [String]), Core_TypingStrategy)])
-            _tlOallTypeSchemes :: (FiniteMap NameWithRange TpScheme)
+            _tlOallTypeSchemes :: (M.Map NameWithRange TpScheme)
             _tlOassumptions :: (Assumptions)
             _tlOavailablePredicates :: (Predicates)
             _tlObetaUnique :: (Int)
@@ -17140,7 +17139,7 @@ sem_Statements_Cons (hd_) (tl_) =
             _tlOparentTree :: (InfoTree)
             _tlOpatternMatchWarnings :: ([Warning])
             _tlOsubstitution :: (FixpointSubstitution)
-            _tlOtypeschemeMap :: (FiniteMap Int (Scheme Predicates))
+            _tlOtypeschemeMap :: (M.Map Int (Scheme Predicates))
             _tlOunboundNames :: (Names)
             _tlOuniqueChunk :: (Int)
             _tlOuniqueSecondRound :: (Int)

@@ -15,7 +15,7 @@ import ImportEnvironment
 import BindingGroupAnalysis (Assumptions)
 import TypeErrors
 import Top.Types
-import Data.FiniteMap
+import qualified Data.Map as M
 import UHA_Utils (nameFromString)
 import UHA_Range (noRange)
 import Utils (internalError)
@@ -36,6 +36,6 @@ expressionTypeInferencer importEnvironment expression =
           sem_Module module_ importEnvironment []
                      
        inferredType = let err = internalError "ExpressionTypeInferencer.hs" "expressionTypeInferencer" "cannot find inferred type"
-                      in maybe err id (lookupFM typeEnvironment functionName)
+                      in maybe err id (M.lookup functionName typeEnvironment)
                                 
    in (inferredType, assumptions, errors)

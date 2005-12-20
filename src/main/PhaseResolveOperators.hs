@@ -11,7 +11,7 @@ module PhaseResolveOperators(phaseResolveOperators) where
 import CompileUtils
 import ResolveOperators(resolveOperators, operatorsFromModule, ResolveError)
 import qualified UHA_Pretty as PP(sem_Module)
-import Data.FiniteMap
+import qualified Data.Map as M
 
 phaseResolveOperators :: 
    Module -> [ImportEnvironment] -> [Option] -> 
@@ -21,9 +21,8 @@ phaseResolveOperators moduleBeforeResolve importEnvs options = do
     enterNewPhase "Resolving operators" options
 
     let importOperatorTable = 
-            foldr1 plusFM ( operatorsFromModule moduleBeforeResolve
-                          : map operatorTable importEnvs
-                          )
+            M.unions (operatorsFromModule moduleBeforeResolve : map operatorTable importEnvs)
+                          
         (module_, resolveErrors) = 
                   resolveOperators importOperatorTable moduleBeforeResolve
 

@@ -101,7 +101,7 @@ SEM TypingStrategy
                  let list = [ (nameFromString s, toTpScheme $ freezeVariablesInType tp) 
                             | (s, tp) <- ("$$conclusion", @typerule.conclusionType) : @typerule.simpleJudgements 
                             ]
-                 in @lhs.importEnvironment { typeEnvironment = listToFM list }
+                 in @lhs.importEnvironment { typeEnvironment = M.fromList list }
               (inferredType, freeVariables, _) = expressionTypeInferencer newEnvironment @typerule.conclusionExpression
               monoType = unqualify (unquantify inferredType)
               synonyms = getOrderedTypeSynonyms @lhs.importEnvironment
@@ -109,7 +109,7 @@ SEM TypingStrategy
                        Left _       -> internalError "TS_ToCore.ag" "n/a" "no unification possible" 
                        Right (_, s) -> s
           in [ (show name, unfreezeVariablesInType (sub |-> tp))
-             | (name, tp) <- concat (eltsFM freeVariables) 
+             | (name, tp) <- concat (M.elems freeVariables) 
              ]
              
 {

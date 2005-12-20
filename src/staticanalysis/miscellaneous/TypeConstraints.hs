@@ -22,16 +22,8 @@ import Top.Interface.Basic
 import Top.Interface.Substitution
 import Top.Interface.TypeInference
 import Top.Interface.Qualification
-
-
---import Top.States.BasicState
---import Top.States.TIState
---import Top.States.SubstState
---import Top.States.QualifierState
 import Top.Types
-import Data.FiniteMap
 import qualified Data.Map as M
--- import Top.Solver ()
 
 type TypeConstraints info = [TypeConstraint info]
 data TypeConstraint  info
@@ -103,48 +95,48 @@ infix 3 .==., .===., .::., .:::., !::!, !:::!, .<=., .<==., !<=!, !<==!
 
 lift combinator = 
     \as bs cf -> 
-       let constraints = concat (eltsFM (intersectFM_C f as bs))
-           rest        = delListFromFM bs (keysFM as)
+       let constraints = concat (M.elems (M.intersectionWith f as bs))
+           rest        = bs M.\\ as
            f a list    = [ (a `combinator` b) (cf name) | (name,b) <- list ]
        in (constraints, rest)
       
 (.==.) :: Show info => Tp -> Tp -> info -> TypeConstraint info
 (t1 .==. t2) info = TC1 (Equality t1 t2 info)
     
-(.===.) :: (Show info, Ord key) => FiniteMap key Tp -> FiniteMap key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info],FiniteMap key [(key,Tp)])
+(.===.) :: (Show info, Ord key) => M.Map key Tp -> M.Map key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info], M.Map key [(key,Tp)])
 (.===.) = lift (.==.)
 
 (.::.) :: Show info => Tp -> TpScheme -> info -> TypeConstraint info
 tp .::. ts = tp .<=. SigmaScheme ts
 
-(.:::.) :: (Show info, Ord key) => FiniteMap key TpScheme -> FiniteMap key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info],FiniteMap key [(key,Tp)])  
+(.:::.) :: (Show info, Ord key) => M.Map key TpScheme -> M.Map key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info], M.Map key [(key,Tp)])  
 (.:::.) = lift (flip (.::.))
 
 (!::!) :: Tp -> TpScheme -> Tps -> info -> TypeConstraint info
 (tp !::! ts) monos info = TC3 (Skolemize tp (monos, SigmaScheme ts) info)
 
-(!:::!) :: (Show info, Ord key) => FiniteMap key TpScheme -> FiniteMap key Tp -> Tps -> (Tps -> key -> key -> info) -> ([TypeConstraint info], FiniteMap key Tp)  
+(!:::!) :: (Show info, Ord key) => M.Map key TpScheme -> M.Map key Tp -> Tps -> (Tps -> key -> key -> info) -> ([TypeConstraint info], M.Map key Tp)  
 (as !:::! bs) monos info =
    let op key tp (cs, fm) =
-          case lookupFM as key of
+          case M.lookup key as of
              Just ts -> 
                 let -- the key of the type scheme (equal, but may have a different range). 
-                    key' = head (filter (==key) (keysFM as)) {- this is the other name -}
+                    key' = head (filter (==key) (M.keys as)) {- this is the other name -}
                 in ((tp !::! ts) monos (info monos key key') : cs, fm)
-             Nothing -> (cs, addToFM fm key tp)
-   in foldFM op ([], emptyFM) bs
+             Nothing -> (cs, M.insert key tp fm)
+   in M.foldWithKey op ([], M.empty) bs
 
 (.<=.) :: Show info => Tp -> Sigma Predicates -> info -> TypeConstraint info
 (tp .<=. ts) info = TC3 (Instantiate tp ts info)
 
-(.<==.) :: (Show info, Ord key) => FiniteMap key (Sigma Predicates) -> FiniteMap key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info],FiniteMap key [(key,Tp)])  
+(.<==.) :: (Show info, Ord key) => M.Map key (Sigma Predicates) -> M.Map key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info], M.Map key [(key,Tp)])  
 (.<==.) = lift (flip (.<=.))
      
 -- the old implicit instance constraint
 (!<=!) :: Show info => Tps -> Tp -> Tp -> info -> TypeConstraint info
 (!<=!) ms t1 t2 info = TC3 (Implicit t1 (ms, t2) info)
 
-(!<==!) :: (Show info, Ord key) => Tps -> FiniteMap key Tp -> FiniteMap key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info],FiniteMap key [(key,Tp)])
+(!<==!) :: (Show info, Ord key) => Tps -> M.Map key Tp -> M.Map key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info], M.Map key [(key,Tp)])
 (!<==!) ms = lift (flip ((!<=!) ms)) 
 
 genConstraints :: Tps -> (key -> info) -> [(Int, (key, Tp))] -> TypeConstraints info

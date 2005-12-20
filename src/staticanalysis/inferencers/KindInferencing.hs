@@ -8,7 +8,7 @@ import Top.Constraint.Information
 import TypeConstraints
 import UHA_Syntax
 import Args
-import Data.FiniteMap
+import qualified Data.Map as M
 import TypeConstraints
 import Utils (internalError)
 import TopSort (topSort)
@@ -17,7 +17,7 @@ import KindErrors
 import Char (isLower)
 import BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, combine, single) 
 
-type KindEnvironment = FiniteMap Name TpScheme
+type KindEnvironment = M.Map Name TpScheme
 type KindConstraint  = TypeConstraint  KindError
 type KindConstraints = TypeConstraints KindError
 
@@ -25,7 +25,7 @@ type BindingGroups = [BindingGroup]
 type BindingGroup  = (PatternAssumptions,Assumptions,KindConstraints)
 
 combineBindingGroup :: BindingGroup -> BindingGroup -> BindingGroup
-combineBindingGroup (e1,a1,c1) (e2,a2,c2) = (e1 `plusFM` e2,a1 `combine` a2,c1++c2)
+combineBindingGroup (e1,a1,c1) (e2,a2,c2) = (e1 `M.union` e2,a1 `combine` a2,c1++c2)
 
 concatBindingGroups :: BindingGroups -> BindingGroup
 concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
@@ -39,9 +39,9 @@ performBindingGroup = glueGroups . bindingGroupAnalysis
       bindingGroupAnalysis :: BindingGroups -> BindingGroups
       bindingGroupAnalysis cs
          = let indexMap = concat (zipWith f cs [0..])
-               f (env,_,_) i = [ (n,i) | n <- keysFM env ]
+               f (env,_,_) i = [ (n,i) | n <- M.keys env ]
                edges    = concat (zipWith f' cs [0..])
-               f' (_,ass,_) i = [ (i,j)| n <- keysFM ass, (n',j) <- indexMap, n==n' ]
+               f' (_,ass,_) i = [ (i,j)| n <- M.keys ass, (n',j) <- indexMap, n==n' ]
                list = topSort (length cs-1) edges
            in map (concatBindingGroups . map (cs !!)) list
            
@@ -51,17 +51,17 @@ performBindingGroup = glueGroups . bindingGroupAnalysis
             op (env, aset, cset) (environment, assumptions, constraints) = 
                let (cset1,aset')        = (env .===. aset)            (\n -> unexpected $ "BindingGroup.same "++show n)
                    (cset2,assumptions') = (!<==!) [] env assumptions  (\n -> unexpected $ "BindingGroup.instance "++show n)
-               in ( env `plusFM` environment
+               in ( env `M.union` environment
                   , aset' `combine` assumptions'
                   , cset1 ++ cset ++ cset2 ++ constraints
                   )             
 
 getKindsFromImportEnvironment :: ImportEnvironment -> KindEnvironment
-getKindsFromImportEnvironment = mapFM f . typeConstructors
-   where f _ i = generalizeAll ([] .=>. foldr (.->.) star (replicate i star))
+getKindsFromImportEnvironment = M.map f . typeConstructors
+   where f i = generalizeAll ([] .=>. foldr (.->.) star (replicate i star))
 
 getTypeVariables :: Assumptions -> Names
-getTypeVariables = filter p . keysFM
+getTypeVariables = filter p . M.keys
    where p n = case show n of
                   []  -> False
                   c:_ -> isLower c
@@ -1228,9 +1228,9 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
             ( _typeIassumptions,_typeIconstraints,_typeIkappa,_typeIkappaUnique,_typeIself) =
                 (type_ (_typeOconstraints) (_typeOkappaUnique))
             (_newGroup@_) =
-                (emptyFM, _aset, _cset ++ _typeIconstraints ++ [_newConstraint])
+                (M.empty, _aset, _cset ++ _typeIconstraints ++ [_newConstraint])
             ((_cset@_,_aset@_)) =
-                (listToFM _tvEnv .===. _typeIassumptions) (\n -> unexpected $ "Declaration.TypeSignature " ++ show n)
+                (M.fromList _tvEnv .===. _typeIassumptions) (\n -> unexpected $ "Declaration.TypeSignature " ++ show n)
             (_tvEnv@_) =
                 zip (getTypeVariables _typeIassumptions) (map TVar [_typeIkappaUnique..])
             (_newConstraint@_) =
@@ -2206,9 +2206,9 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             ( _typeIassumptions,_typeIconstraints,_typeIkappa,_typeIkappaUnique,_typeIself) =
                 (type_ (_typeOconstraints) (_typeOkappaUnique))
             (_newGroup@_) =
-                (emptyFM, _aset, _cset ++ _typeIconstraints ++ [_newConstraint])
+                (M.empty, _aset, _cset ++ _typeIconstraints ++ [_newConstraint])
             ((_cset@_,_aset@_)) =
-                (listToFM _tvEnv .===. _typeIassumptions) (\n -> unexpected $ "Expression.Typed " ++ show n)
+                (M.fromList _tvEnv .===. _typeIassumptions) (\n -> unexpected $ "Expression.Typed " ++ show n)
             (_tvEnv@_) =
                 zip (getTypeVariables _typeIassumptions) (map TVar [_typeIkappaUnique..])
             (_newConstraint@_) =
@@ -3335,8 +3335,8 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             ( _bodyIconstraints,_bodyIenvironment,_bodyIkappaUnique,_bodyIself) =
                 (body_ (_bodyOimportEnvironment) (_bodyOkappaUnique))
             (_kindEnvironment@_) =
-                let f _ kind = generalizeAll ([] .=>. defaultToStar (_substitution |-> kind))
-                in mapFM f _bodyIenvironment
+                let f kind = generalizeAll ([] .=>. defaultToStar (_substitution |-> kind))
+                in M.map f _bodyIenvironment
             (((SolveResult (_kappaUniqueAtTheEnd@_)(_substitution@_)(_)(_)(_kindErrors@_)),_logEntries@_)) =
                 solve (solveOptions { uniqueCounter = _bodyIkappaUnique }) _bodyIconstraints greedyConstraintSolver
             (_bodyOkappaUnique@_) =
@@ -4330,9 +4330,9 @@ sem_SimpleType_SimpleType (range_) (name_) (typevariables_) =
             (_lhsOconstraints@_) =
                 _newConstraint : _lhsIconstraints
             (_lhsOdeclared@_) =
-                unitFM _nameIself _kappaCon
+                M.singleton _nameIself _kappaCon
             (_lhsOenvironment@_) =
-                listToFM (zip _typevariablesIself _kappasVars)
+                M.fromList (zip _typevariablesIself _kappasVars)
             (_self@_) =
                 SimpleType_SimpleType _rangeIself _nameIself _typevariablesIself
             (_lhsOself@_) =

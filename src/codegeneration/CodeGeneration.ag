@@ -24,7 +24,7 @@ import UHA_Range
 import List (union)
 import ImportEnvironment
 import DictionaryEnvironment
-import Data.FiniteMap
+import qualified Data.Map as M
 import TypeConversion
 import Char (ord)
 

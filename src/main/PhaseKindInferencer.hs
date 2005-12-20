@@ -12,7 +12,7 @@ import Args
 import CompileUtils
 import KindInferencing as KI
 import ImportEnvironment
-import Data.FiniteMap
+import qualified Data.Map as M
 import Top.Types
 import KindErrors
 
@@ -22,7 +22,7 @@ phaseKindInferencer importEnvironment module_ options =
       let (debugIO, kindEnv, kindErrors, _) = KI.sem_Module module_ importEnvironment options 
       when (DumpTypeDebug `elem` options) $ 
          do debugIO  
-            putStrLn . unlines . map (\(n,ks) -> show n++" :: "++showKindScheme ks) . fmToList $ kindEnv
+            putStrLn . unlines . map (\(n,ks) -> show n++" :: "++showKindScheme ks) . M.assocs $ kindEnv
       case kindErrors of
       
          _:_ ->

@@ -33,7 +33,7 @@ SEM Module
 SEM Declaration   
  
   | FunctionBindings
-       loc      . declPredicates        = let scheme     = lookupWithDefaultFM @lhs.allTypeSchemes err (NameWithRange @bindings.name)
+       loc      . declPredicates        = let scheme     = M.findWithDefault err (NameWithRange @bindings.name) @lhs.allTypeSchemes
                                               predicates = matchTypeWithScheme @lhs.orderedTypeSynonyms 
                                                               (@lhs.substitution |-> @beta) 
                                                               (@lhs.substitution |-> scheme)
@@ -45,7 +45,7 @@ SEM Declaration
   | PatternBinding 
        loc           . declPredicates = case @pattern.self of
                                           Pattern_Variable _ name -> 
-                                             let scheme     = lookupWithDefaultFM @lhs.allTypeSchemes err (NameWithRange name)
+                                             let scheme     = M.findWithDefault err (NameWithRange name) @lhs.allTypeSchemes
                                                  predicates = matchTypeWithScheme @lhs.orderedTypeSynonyms 
                                                                  (@lhs.substitution |-> @betaRight)  
                                                                  (@lhs.substitution |-> scheme)                                                                                                            
@@ -65,7 +65,7 @@ SEM Expression
                loc . nameInScope           = case filter (@name.self==) @lhs.namesInScope of 
                                                 [name] -> NameWithRange name
                                                 _      -> internalError "TypeInferenceOverloading.ag" "n/a" "name not in scope"
-                   . maybeInferredType     = lookupFM @lhs.allTypeSchemes @nameInScope
+                   . maybeInferredType     = M.lookup @nameInScope @lhs.allTypeSchemes
                    . requiredDictionaries  = -- if not in finitemap then this is bound by a monomorphic pattern variable
                                              case @maybeInferredType of
                                                 Nothing     -> [] 
@@ -96,7 +96,7 @@ SEM Expression
   
   | Negate   lhs . dictionaryEnvironment = @newDEnv
              loc . localName             = setNameRange intUnaryMinusName @range.self
-                 . negateTypeScheme      = case lookupFM (typeEnvironment @lhs.importEnvironment) @localName of 
+                 . negateTypeScheme      = case M.lookup @localName (typeEnvironment @lhs.importEnvironment) of 
                                               Just scheme -> scheme
                                               Nothing     -> internalError "TypeInferenceOverloading.ag" "n/a" "type of negate unknown"
                  . requiredDictionaries  = getRequiredDictionaries 

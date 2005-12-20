@@ -26,7 +26,7 @@ SEM Export
 -}
 SEM Module
   | Module  exports . namesInScop   = concat [ @body.declVarNames
-                                              , concatMap (keysFM . typeEnvironment) @lhs.importEnvironments
+                                              , concatMap (M.keys . typeEnvironment) @lhs.importEnvironments
                                               , map fst @derivedFunctions
                                               ]
                     . modulesInScope = (@moduleName : @fileName : @body.importedModules)

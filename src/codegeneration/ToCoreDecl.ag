@@ -388,7 +388,7 @@ toplevelType name ie isTopLevel
         typeString = maybe
             (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name))
             show
-            (lookupFM (typeEnvironment ie) name)
+            (M.lookup name (typeEnvironment ie))
 
 constructorCustoms :: Name -> Name -> ValueConstructorEnvironment -> [Core.Custom]
 constructorCustoms dataTypeName name env =
@@ -401,5 +401,5 @@ constructorCustoms dataTypeName name env =
                     (Core.DeclKindCustom (idFromString "data"))
             ]
         )
-        (lookupFM env name)
+        (M.lookup name env)
 }

@@ -37,7 +37,7 @@ import Top.Constraint.Information
 import TypeConstraints
 import UHA_Syntax
 import Args
-import Data.FiniteMap
+import qualified Data.Map as M
 import TypeConstraints
 import Utils (internalError)
 import TopSort (topSort)
@@ -56,8 +56,8 @@ SEM Module
              body . kappaUnique     = 0
              loc  . (SolveResult kappaUniqueAtTheEnd substitution _ _ kindErrors, logEntries) = 
                        solve (solveOptions { uniqueCounter = @body.kappaUnique }) @body.constraints greedyConstraintSolver
-                  . kindEnvironment = let f _ kind = generalizeAll ([] .=>. defaultToStar (@substitution |-> kind))
-                                      in mapFM f @body.environment                     
+                  . kindEnvironment = let f kind = generalizeAll ([] .=>. defaultToStar (@substitution |-> kind))
+                                      in M.map f @body.environment                     
                                         
 
 ATTR Body [ importEnvironment:ImportEnvironment | | constraints:KindConstraints environment:PatternAssumptions ]
@@ -105,8 +105,8 @@ SEM Declaration
             . kappaUnique   = @type.kappaUnique + length @tvEnv
        loc  . newConstraint = (@type.kappa <==> star) (mustBeStar @range.self "type signature" @type.self)
             . tvEnv         = zip (getTypeVariables @type.assumptions) (map TVar [@type.kappaUnique..])
-            . (cset, aset)  = (listToFM @tvEnv .===. @type.assumptions) (\n -> unexpected $ "Declaration.TypeSignature " ++ show n) 
-            . newGroup      = (emptyFM, @aset, @cset ++ @type.constraints ++ [@newConstraint])
+            . (cset, aset)  = (M.fromList @tvEnv .===. @type.assumptions) (\n -> unexpected $ "Declaration.TypeSignature " ++ show n) 
+            . newGroup      = (M.empty, @aset, @cset ++ @type.constraints ++ [@newConstraint])
 
 
 SEM Expression
@@ -116,15 +116,15 @@ SEM Expression
             . kappaUnique   = @type.kappaUnique + length @tvEnv
        loc  . newConstraint = (@type.kappa <==> star) (mustBeStar @range.self "type annotation" @type.self)
             . tvEnv         = zip (getTypeVariables @type.assumptions) (map TVar [@type.kappaUnique..])
-            . (cset, aset)  = (listToFM @tvEnv .===. @type.assumptions) (\n -> unexpected $ "Expression.Typed " ++ show n) 
-            . newGroup      = (emptyFM, @aset, @cset ++ @type.constraints ++ [@newConstraint])
+            . (cset, aset)  = (M.fromList @tvEnv .===. @type.assumptions) (\n -> unexpected $ "Expression.Typed " ++ show n) 
+            . newGroup      = (M.empty, @aset, @cset ++ @type.constraints ++ [@newConstraint])
 
 ATTR SimpleType [ kappaOfRHS:Kind | constraints:KindConstraints | environment:PatternAssumptions declared:PatternAssumptions ]
 
 SEM SimpleType
   | SimpleType
-       lhs . environment   = listToFM (zip @typevariables.self @kappasVars)
-           . declared      = unitFM @name.self @kappaCon
+       lhs . environment   = M.fromList (zip @typevariables.self @kappasVars)
+           . declared      = M.singleton @name.self @kappaCon
            . constraints   = @newConstraint : @lhs.constraints
            . kappaUnique   = 1 + length @typevariables.self + @lhs.kappaUnique
        loc . kappaCon      = TVar @lhs.kappaUnique
@@ -197,7 +197,7 @@ SEM Constructor
   | Record  lhs . assumptions = internalError "KindInferencing.ag" "n/a" "Record constructors are not supported"
 
 {
-type KindEnvironment = FiniteMap Name TpScheme
+type KindEnvironment = M.Map Name TpScheme
 type KindConstraint  = TypeConstraint  KindError
 type KindConstraints = TypeConstraints KindError
 
@@ -205,7 +205,7 @@ type BindingGroups = [BindingGroup]
 type BindingGroup  = (PatternAssumptions,Assumptions,KindConstraints)
 
 combineBindingGroup :: BindingGroup -> BindingGroup -> BindingGroup
-combineBindingGroup (e1,a1,c1) (e2,a2,c2) = (e1 `plusFM` e2,a1 `combine` a2,c1++c2)
+combineBindingGroup (e1,a1,c1) (e2,a2,c2) = (e1 `M.union` e2,a1 `combine` a2,c1++c2)
 
 concatBindingGroups :: BindingGroups -> BindingGroup
 concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
@@ -219,9 +219,9 @@ performBindingGroup = glueGroups . bindingGroupAnalysis
       bindingGroupAnalysis :: BindingGroups -> BindingGroups
       bindingGroupAnalysis cs
          = let indexMap = concat (zipWith f cs [0..])
-               f (env,_,_) i = [ (n,i) | n <- keysFM env ]
+               f (env,_,_) i = [ (n,i) | n <- M.keys env ]
                edges    = concat (zipWith f' cs [0..])
-               f' (_,ass,_) i = [ (i,j)| n <- keysFM ass, (n',j) <- indexMap, n==n' ]
+               f' (_,ass,_) i = [ (i,j)| n <- M.keys ass, (n',j) <- indexMap, n==n' ]
                list = topSort (length cs-1) edges
            in map (concatBindingGroups . map (cs !!)) list
            
@@ -231,17 +231,17 @@ performBindingGroup = glueGroups . bindingGroupAnalysis
             op (env, aset, cset) (environment, assumptions, constraints) = 
                let (cset1,aset')        = (env .===. aset)            (\n -> unexpected $ "BindingGroup.same "++show n)
                    (cset2,assumptions') = (!<==!) [] env assumptions  (\n -> unexpected $ "BindingGroup.instance "++show n)
-               in ( env `plusFM` environment
+               in ( env `M.union` environment
                   , aset' `combine` assumptions'
                   , cset1 ++ cset ++ cset2 ++ constraints
                   )             
 
 getKindsFromImportEnvironment :: ImportEnvironment -> KindEnvironment
-getKindsFromImportEnvironment = mapFM f . typeConstructors
-   where f _ i = generalizeAll ([] .=>. foldr (.->.) star (replicate i star))
+getKindsFromImportEnvironment = M.map f . typeConstructors
+   where f i = generalizeAll ([] .=>. foldr (.->.) star (replicate i star))
 
 getTypeVariables :: Assumptions -> Names
-getTypeVariables = filter p . keysFM
+getTypeVariables = filter p . M.keys
    where p n = case show n of
                   []  -> False
                   c:_ -> isLower c

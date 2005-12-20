@@ -56,7 +56,7 @@ SEM Module
   | Module   loc . wrongFlagErrors = 
        [ WrongOverloadingFlag flag
        | let flag = Overloading `elem` @lhs.options
-             imp  = any isOverloaded (concatMap (eltsFM . typeEnvironment) @lhs.importEnvironments)
+             imp  = any isOverloaded (concatMap (M.elems . typeEnvironment) @lhs.importEnvironments)
        , flag /= imp
        ]
        

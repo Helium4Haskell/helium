@@ -41,7 +41,7 @@ SEM AnnotatedType
                     loc . newErrors  = checkType @lhs.typeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self
   
 {
-checkType :: FiniteMap Name Int -> Names -> Type -> [Error]
+checkType :: M.Map Name Int -> Names -> Type -> [Error]
 checkType typeConstructors namesInScope t =
     let (f, xs) = walkSpine t
         xsErrors = concatMap (checkType typeConstructors namesInScope) xs
@@ -76,7 +76,7 @@ walkSpine t =
         Type_Qualified _ _ t -> walkSpine t
         _ -> internalError "StaticAnalysis" "walkSpine" "unexpected type"
 
-checkKind :: Name -> FiniteMap Name Int -> Int -> Names -> [Error]
+checkKind :: Name -> M.Map Name Int -> Int -> Names -> [Error]
 checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity namesInScope = -- !!!Name
     if expected == useArity then
         []
@@ -89,12 +89,12 @@ checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity namesInScope = -- !!!
                  n -> n + 1 -- (,) (,,) ...
 
 checkKind tycon typeConstructors useArity namesInScope =
-    case lookupFM typeConstructors tycon of
+    case M.lookup tycon typeConstructors of
         Nothing ->
             let hint = [ "Constructor "++show (show tycon)++" cannot be used in a type"
                        | tycon `elem` namesInScope
                        ]
-            in [ Undefined TypeConstructor tycon (keysFM typeConstructors) hint ]
+            in [ Undefined TypeConstructor tycon (M.keys typeConstructors) hint ]
         Just defArity ->
             if useArity /= defArity then
                 [ ArityMismatch TypeConstructor tycon defArity useArity ]
