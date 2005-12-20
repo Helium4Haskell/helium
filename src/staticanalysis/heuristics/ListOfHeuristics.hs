@@ -14,19 +14,19 @@ import Args (Option(..))
 import ConstraintInfo
 import HeuristicsInfo () -- instances
 import Top.Types
-import Top.TypeGraph.Heuristics
-import Top.TypeGraph.DefaultHeuristics
+import Top.Implementation.TypeGraph.Heuristic
+import Top.Implementation.TypeGraph.DefaultHeuristics
 -- import RepairSystem (repairSystem)
+import Top.Implementation.TypeGraph.ClassMonadic
 import RepairHeuristics
 import UnifierHeuristics
 import OnlyResultHeuristics
 import TieBreakerHeuristics
 
 -- temporary
-import Top.TypeGraph.TypeGraphState
-import Top.TypeGraph.Paths
+import Top.Implementation.TypeGraph.Path
 import Data.Maybe
-import Top.TypeGraph.Basics
+import Top.Implementation.TypeGraph.Basics
 
 listOfHeuristics :: [Option] -> Siblings -> Path (EdgeId, ConstraintInfo) -> [Heuristic ConstraintInfo]
 listOfHeuristics options siblings path =

@@ -31,9 +31,9 @@ INCLUDE "../../syntax/UHA_Syntax.ag"
 
 imports {
 import Top.Types
-import Top.Solvers.GreedySolver
-import Top.Solvers.SolveConstraints
-import Top.Constraints.TypeConstraintInfo
+import Top.Solver.Greedy
+import Top.Solver
+import Top.Constraint.Information
 import TypeConstraints
 import UHA_Syntax
 import Args
@@ -52,10 +52,10 @@ import BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, com
 
 SEM Module
   | Module   lhs  . kindErrors      = @substitution |-> (map fst @kindErrors)
-                  . debugIO         = putStrLn @debugString
+                  . debugIO         = putStrLn (show @logEntries)
              body . kappaUnique     = 0
-             loc  . (SolveResult kappaUniqueAtTheEnd substitution _ _ kindErrors debugString ()) = 
-                       runGreedy emptyClassEnvironment noOrderedTypeSynonyms @body.kappaUnique @body.constraints
+             loc  . (SolveResult kappaUniqueAtTheEnd substitution _ _ kindErrors, logEntries) = 
+                       solve (solveOptions { uniqueCounter = @body.kappaUnique }) @body.constraints greedyConstraintSolver
                   . kindEnvironment = let f _ kind = generalizeAll ([] .=>. defaultToStar (@substitution |-> kind))
                                       in mapFM f @body.environment                     
                                         
@@ -251,7 +251,7 @@ unexpected msg =
    internalError "KindInferencing.ag" "unexpected" ("unexpected kind error: "++msg)
 
 instance TypeConstraintInfo KindError
-instance PolyTypeConstraintInfo Predicates KindError
+instance PolyTypeConstraintInfo KindError
 
 (<==>) :: Kind -> Kind -> ((Kind, Kind) -> KindError) -> KindConstraint
 (k1 <==> k2) info = (k1 .==. k2) (info (k1, k2))

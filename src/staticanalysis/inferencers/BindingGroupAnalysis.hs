@@ -17,7 +17,7 @@ import TypeConstraints
 import ConstraintInfo
 import TopSort (topSort)
 import Top.Types
-import Top.ComposedSolvers.Tree
+import Top.Ordering.Tree
 import Data.FiniteMap
 import Data.List
 

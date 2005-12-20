@@ -66,7 +66,7 @@ SEM Module
 SEM Module
   | Module   loc . recursiveTypeSynonymErrors = 
                       let converted  = map (\(name, tuple) -> (show name, tuple)) @body.collectTypeSynonyms
-                          recursives = snd . getTypeSynonymOrdering . listToFM $ converted
+                          recursives = snd . getTypeSynonymOrdering . M.fromList $ converted
                           makeError = let f = foldr add (Just [])
                                           add s ml = case (g s, ml) of
                                                         ([n], Just ns) -> Just (n:ns)

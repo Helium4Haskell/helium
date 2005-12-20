@@ -2,9 +2,9 @@
 module KindInferencing where
 
 import Top.Types
-import Top.Solvers.GreedySolver
-import Top.Solvers.SolveConstraints
-import Top.Constraints.TypeConstraintInfo
+import Top.Solver.Greedy
+import Top.Solver
+import Top.Constraint.Information
 import TypeConstraints
 import UHA_Syntax
 import Args
@@ -71,7 +71,7 @@ unexpected msg =
    internalError "KindInferencing.ag" "unexpected" ("unexpected kind error: "++msg)
 
 instance TypeConstraintInfo KindError
-instance PolyTypeConstraintInfo Predicates KindError
+instance PolyTypeConstraintInfo KindError
 
 (<==>) :: Kind -> Kind -> ((Kind, Kind) -> KindError) -> KindConstraint
 (k1 <==> k2) info = (k1 .==. k2) (info (k1, k2))
@@ -3337,12 +3337,12 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             (_kindEnvironment@_) =
                 let f _ kind = generalizeAll ([] .=>. defaultToStar (_substitution |-> kind))
                 in mapFM f _bodyIenvironment
-            ((SolveResult (_kappaUniqueAtTheEnd@_)(_substitution@_)(_)(_)(_kindErrors@_)(_debugString@_)(()))) =
-                runGreedy emptyClassEnvironment noOrderedTypeSynonyms _bodyIkappaUnique _bodyIconstraints
+            (((SolveResult (_kappaUniqueAtTheEnd@_)(_substitution@_)(_)(_)(_kindErrors@_)),_logEntries@_)) =
+                solve (solveOptions { uniqueCounter = _bodyIkappaUnique }) _bodyIconstraints greedyConstraintSolver
             (_bodyOkappaUnique@_) =
                 0
             (_lhsOdebugIO@_) =
-                putStrLn _debugString
+                putStrLn (show _logEntries)
             (_lhsOkindErrors@_) =
                 _substitution |-> (map fst _kindErrors)
             (_self@_) =

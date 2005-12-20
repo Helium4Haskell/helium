@@ -26,7 +26,7 @@ import HeliumMessages ()
 import TypeErrors
 import Utils (internalError)
 import Top.Types
-import Top.TypeGraph.Heuristics
+import Top.Implementation.TypeGraph.Heuristic
 import Data.Maybe
 import Data.Char
 import Data.FiniteMap

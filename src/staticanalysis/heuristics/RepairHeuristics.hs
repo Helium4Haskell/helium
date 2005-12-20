@@ -11,22 +11,20 @@
 
 module RepairHeuristics where
 
-import Top.TypeGraph.Heuristics
-import Top.TypeGraph.Basics
-import Top.States.TIState
-import Top.States.SubstState
-import Top.TypeGraph.TypeGraphState
 import Top.Types
+import Top.Interface.TypeInference
+import Top.Interface.Qualification hiding (contextReduction)
+import Top.Interface.Substitution
+import UHA_Syntax (Range)
+import OneLiner (OneLineTree)
+import Top.Implementation.TypeGraph.Heuristic
+import Top.Implementation.TypeGraph.Basics
+import Top.Implementation.TypeGraph.ClassMonadic
+import Data.Maybe
+import Messages (showNumber, ordinal, prettyAndList)
 import OnlyResultHeuristics
 import Data.List
-import Data.Maybe
-import Data.FiniteMap  --
-import TypeErrors
-import ConstraintInfo
-import Messages (showNumber, ordinal, prettyAndList)
-import OneLiner (OneLineTree)
 import UHA_Source
-import UHA_Syntax (Range)
 
 -----------------------------------------------------------------------------
 
@@ -187,21 +185,24 @@ applicationEdge =
                                   let hint = fixHint "re-order arguments"
                                   in return $ Just
                                         (1, "application: permute with "++show p, [edge], hint info)
-                           
+          
                   -- is there one particular argument that is inconsistent
                   | length incorrectArguments == 1  ->
                       do let (t1, t2) = getTwoTypes info
-                         fullTp <- applySubst t1 -- ???
-                         let i = head incorrectArguments
-                             {- bug fix 25 september 2003: don't forget to expand the type synonyms -}
-                             expandedTp  = expandType (snd synonyms) fullTp
-                             (source,tp) = tuplesForArguments !! i
-                             range       = rangeOfSource source
-                             oneLiner    = oneLinerSource source
-                             infoFun     = typeErrorForTerm (isBinary,isPatternApplication) i oneLiner (tp,expargtp) range
-                             expargtp    = fst (functionSpine expandedTp) !! i
-                         return $ Just 
-                            (3, "incorrect argument of application="++show i, [edge], infoFun info)
+                         mtp <- substituteTypeSafe t1
+                         case mtp of 
+                            Nothing -> return Nothing
+                            Just fullTp -> 
+                               let i = head incorrectArguments
+                                   {- bug fix 25 september 2003: don't forget to expand the type synonyms -}
+                                   expandedTp  = expandType (snd synonyms) fullTp
+                                   (source,tp) = tuplesForArguments !! i
+                                   range       = rangeOfSource source
+                                   oneLiner    = oneLinerSource source
+                                   infoFun     = typeErrorForTerm (isBinary,isPatternApplication) i oneLiner (tp,expargtp) range
+                                   expargtp    = fst (functionSpine expandedTp) !! i
+                               in return $ Just 
+                                     (3, "incorrect argument of application="++show i, [edge], infoFun info)
 
                   -- too many arguments are given
                   | maybe False (< numberOfArguments) maximumForFunction && not isPatternApplication ->
@@ -230,7 +231,7 @@ applicationEdge =
                                     let hint = becauseHint "too many arguments are given"
                                     in return $ Just
                                           (2, "too many arguments are given", [edge], hint info)
-                                         
+                                     
                   -- not enough arguments are given
                   | minimumForContext > numberOfArguments && not isPatternApplication && contextIsUnifiable ->
                        case typesZippedWithHoles of
@@ -243,7 +244,7 @@ applicationEdge =
                           _   -> let hint = becauseHint "not enough arguments are given"
                                  in return $ Just
                                        (2, "not enough arguments are given", [edge], hint info)
-                       
+             
                 where unifiableTypes :: Tp -> Tp -> Bool
                       unifiableTypes = 
                          unifiableInContext classEnv synonyms subPreds
@@ -322,18 +323,18 @@ applicationEdge =
                        let hint = becauseHint "too many arguments are given"
                        in return $ Just
                              (2, "too many arguments are given", [edge], hint info)
-                                       
+                                     
                 where -- copy/paste :-(
                       maximumForFunction   = case functionSpine (expandType (snd synonyms) functionType) of
                                                 (_, TVar _) -> Nothing
                                                 (tps, _   ) -> Just (length tps)                       
                _ -> return Nothing
-         
+
 -----------------------------------------------------------------------------
 
 class IsTupleEdge a where
    isTupleEdge :: a -> Bool
-   
+
 tupleEdge :: (HasTypeGraph m info, IsTupleEdge info, HasTwoTypes info, WithHints info) => Selector m info
 tupleEdge =
    Selector ("Tuple heuristics", f) where
@@ -423,7 +424,7 @@ fbHasTooManyArguments =
 class IsExprVariable a where
    isExprVariable          :: a -> Bool
    isEmptyInfixApplication :: a -> Bool
-   
+
 variableFunction :: (HasTypeGraph m info, IsExprVariable info, MaybeApplication info, HasTwoTypes info, WithHints info) => Selector m info
 variableFunction =
    Selector ("Variable function", f) where
@@ -538,7 +539,7 @@ permute is as = map (as !!) is
 class WithHints a where
    addHint          :: String -> String -> a -> a
    typeErrorForTerm :: (Bool,Bool) -> Int -> OneLineTree -> (Tp,Tp) -> Range -> a -> a
-   
+
 fixHint, becauseHint, possibleHint :: WithHints a => String -> a -> a
 fixHint      = addHint "probable fix"
 becauseHint  = addHint "because"
@@ -557,21 +558,21 @@ unifiableInContext classEnv synonyms mps t1 t2
                   (_, errs) = contextReduction synonyms classEnv (sub |-> ps)
               in null errs
 
-allSubstPredicates :: HasTypeGraph m info => m [Maybe Predicate]
-allSubstPredicates = 
+allSubstPredicates :: (HasTypeGraph m info) => m [Maybe Predicate]
+allSubstPredicates =
    do synonyms <- getTypeSynonyms
-      allPreds <- getPredicates
+      allPreds <- allQualifiers
       let f (Predicate s tp) = 
              do mtp <- substituteTypeSafe tp
                 return (fmap (Predicate s) mtp)
       mapM f allPreds
       
-predicatesFit :: HasTypeGraph m info => Predicates -> m Bool
+predicatesFit :: (HasTypeGraph m info) => Predicates -> m Bool
 predicatesFit ps = 
    do bs <- mapM predicateFits ps
       return (and bs)
         
-predicateFits :: HasTypeGraph m info => Predicate -> m Bool        
+predicateFits :: (HasTypeGraph m info) => Predicate -> m Bool        
 predicateFits (Predicate s tp) =
    do synonyms <- getTypeSynonyms
       classEnv <- getClassEnvironment

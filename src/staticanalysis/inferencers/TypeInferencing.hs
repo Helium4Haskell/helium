@@ -16,11 +16,11 @@ import UHA_Source
 
 -- constraints and constraint trees
 import TypeConstraints
-import Top.ComposedSolvers.Tree
+import Top.Ordering.Tree
 
 -- constraint solving
-import SelectConstraintSolver (selectConstraintSolver, HeliumSolveResult)
-import Top.Solvers.SolveConstraints (SolveResult(..))
+import SelectConstraintSolver (selectConstraintSolver)
+import Top.Solver (SolveResult(..), LogEntries)
 import HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
 import BindingGroupAnalysis
 
@@ -38,6 +38,7 @@ import Args
 
 -- standard
 import Data.FiniteMap
+import qualified Data.Map as M
 import Data.Maybe 
 import Data.List
 
@@ -52,15 +53,15 @@ import UHA_Utils
 typeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (IO (), DictionaryEnvironment, TypeEnvironment, TypeErrors, Warnings)
 typeInferencing options importEnv module_ =
-   let (_, dictionaryEnv, _, _, solveResult, toplevelTypes, typeErrors, warnings) =
+   let (_, dictionaryEnv, _, logEntries, _, solveResult, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_ importEnv options
-       debugIO = putStrLn (debugFromResult solveResult)
+       debugIO = putStrLn (show logEntries)
    in (debugIO, dictionaryEnv, toplevelTypes, typeErrors, warnings)
 
 proximaTypeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (TypeErrors, Warnings, TypeEnvironment, [(Range, TpScheme)])  
 proximaTypeInferencing options importEnv module_ =
-   let (_, _, infoTree, _, solveResult, toplevelTypes, typeErrors, warnings) =
+   let (_, _, infoTree, _, _, solveResult, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_ importEnv options
        localTypeSchemes = typeSchemesInInfoTree (substitutionFromResult solveResult)
                                                 (qualifiersFromResult solveResult) 
@@ -12107,7 +12108,7 @@ sem_MaybeNames_Nothing  =
 -- semantic domain
 type T_Module = (ImportEnvironment) ->
                 ([Option]) ->
-                ( (Assumptions),(DictionaryEnvironment),(InfoTree),(Module),(HeliumSolveResult),(TypeEnvironment),(TypeErrors),(Warnings))
+                ( (Assumptions),(DictionaryEnvironment),(InfoTree),(LogEntries),(Module),(SolveResult ConstraintInfo),(TypeEnvironment),(TypeErrors),(Warnings))
 -- cata
 sem_Module :: (Module) ->
               (T_Module)
@@ -12124,8 +12125,9 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
         let _lhsOassumptions :: (Assumptions)
             _lhsOdictionaryEnvironment :: (DictionaryEnvironment)
             _lhsOinfoTree :: (InfoTree)
+            _lhsOlogEntries :: (LogEntries)
             _lhsOself :: (Module)
-            _lhsOsolveResult :: (HeliumSolveResult)
+            _lhsOsolveResult :: (SolveResult ConstraintInfo)
             _lhsOtoplevelTypes :: (TypeEnvironment)
             _lhsOtypeErrors :: (TypeErrors)
             _lhsOwarnings :: (Warnings)
@@ -12173,16 +12175,14 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 (exports_ )
             ( _bodyIassumptions,_bodyIbetaUnique,_bodyIcollectErrors,_bodyIcollectInstances,_bodyIcollectWarnings,_bodyIconstraints,_bodyIdeclVarNames,_bodyIdictionaryEnvironment,_bodyIinfoTree,_bodyImatchIO,_bodyIpatternMatchWarnings,_bodyIself,_bodyItoplevelTypes,_bodyIunboundNames,_bodyIuniqueChunk) =
                 (body_ (_bodyOallPatterns) (_bodyOallTypeSchemes) (_bodyOavailablePredicates) (_bodyObetaUnique) (_bodyOclassEnvironment) (_bodyOcollectErrors) (_bodyOcollectWarnings) (_bodyOcurrentChunk) (_bodyOdictionaryEnvironment) (_bodyOimportEnvironment) (_bodyOmatchIO) (_bodyOmonos) (_bodyOnamesInScope) (_bodyOorderedTypeSynonyms) (_bodyOpatternMatchWarnings) (_bodyOsubstitution) (_bodyOtypeschemeMap) (_bodyOuniqueChunk))
-            (_lhsOsolveResult@_) =
-                _solveResult { debugFromResult =  debugFromResult _solveResult
-                                               ++ "Inference Strategies:"
-                                               }
             (_lhsOwarnings@_) =
                 _warnings     ++ _bodyIpatternMatchWarnings
             (_bodyObetaUnique@_) =
                 if null _monomorphics
                   then 0
                   else maximum _monomorphics + 1
+            (_bodyOtypeschemeMap@_) =
+                listToFM (M.assocs _typeschemeMap)
             (_monomorphics@_) =
                 ftv (  (eltsFM $ valueConstructors _lhsIimportEnvironment)
                     ++ (eltsFM $ typeEnvironment   _lhsIimportEnvironment)
@@ -12195,7 +12195,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 let f _ xs = [ (n, _substitution |-> tp) | (n, tp) <- xs ]
                 in mapFM f _bodyIassumptions
             (_warnings@_) =
-                _bodyIcollectWarnings ++ _tooSpecificWarnings
+                _bodyIcollectWarnings
             (_typeErrors@_) =
                 case makeTypeErrors _classEnv _orderedTypeSynonyms _substitution _solveErrors of
                    []   -> _bodyIcollectErrors
@@ -12206,13 +12206,13 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                       _bodyIcollectInstances
             (_orderedTypeSynonyms@_) =
                 getOrderedTypeSynonyms _lhsIimportEnvironment
-            (_solveResult@_) =
+            ((_solveResult@_,_logEntries@_)) =
                 (selectConstraintSolver _lhsIoptions _lhsIimportEnvironment)
                    _classEnv
                    _orderedTypeSynonyms
                    _bodyIbetaUnique
                    _bodyIconstraints
-            ((SolveResult (_betaUniqueAtTheEnd@_)(_substitution@_)(_typeschemeMap@_)(_)(_solveErrors@_)(_debugString@_)(_tooSpecificWarnings@_))) =
+            ((SolveResult (_betaUniqueAtTheEnd@_)(_substitution@_)(_typeschemeMap@_)(_)(_solveErrors@_))) =
                 _solveResult
             (_bodyOavailablePredicates@_) =
                 []
@@ -12255,6 +12255,10 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 _assumptions
             (_lhsOinfoTree@_) =
                 _bodyIinfoTree
+            (_lhsOlogEntries@_) =
+                _logEntries
+            (_lhsOsolveResult@_) =
+                _solveResult
             (_lhsOtoplevelTypes@_) =
                 _bodyItoplevelTypes
             (_lhsOtypeErrors@_) =
@@ -12269,9 +12273,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 _orderedTypeSynonyms
             (_bodyOsubstitution@_) =
                 _substitution
-            (_bodyOtypeschemeMap@_) =
-                _typeschemeMap
-        in  ( _lhsOassumptions,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOself,_lhsOsolveResult,_lhsOtoplevelTypes,_lhsOtypeErrors,_lhsOwarnings)
+        in  ( _lhsOassumptions,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOlogEntries,_lhsOself,_lhsOsolveResult,_lhsOtoplevelTypes,_lhsOtypeErrors,_lhsOwarnings)
 -- Name --------------------------------------------------------
 -- semantic domain
 type T_Name = ( (Name))

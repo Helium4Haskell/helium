@@ -9,6 +9,7 @@
 module ImportEnvironment where
 
 import Data.FiniteMap
+import qualified Data.Map as M
 import Utils (internalError)
 import UHA_Syntax  ( Names, Name )
 import UHA_Utils
@@ -23,7 +24,7 @@ import Data.Maybe (catMaybes)
 type TypeEnvironment             = FiniteMap Name TpScheme
 type ValueConstructorEnvironment = FiniteMap Name TpScheme
 type TypeConstructorEnvironment  = FiniteMap Name Int
-type TypeSynonymEnvironment      = FiniteMap Name (Int, Tps -> Tp)
+type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
 
 type ImportEnvironments = [ImportEnvironment]
 data ImportEnvironment  = 
@@ -43,7 +44,7 @@ data ImportEnvironment  =
 emptyEnvironment :: ImportEnvironment
 emptyEnvironment = ImportEnvironment 
    { typeConstructors  = emptyFM
-   , typeSynonyms      = emptyFM
+   , typeSynonyms      = M.empty
    , typeEnvironment   = emptyFM
    , valueConstructors = emptyFM
    , operatorTable     = emptyFM
@@ -58,7 +59,7 @@ addTypeConstructor name int importenv =
 -- add a type synonym also to the type constructor environment   
 addTypeSynonym :: Name -> (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment                      
 addTypeSynonym name (arity, function) importenv = 
-   importenv { typeSynonyms     = addToFM (typeSynonyms importenv)     name (arity, function)
+   importenv { typeSynonyms     = M.insert name (arity, function) (typeSynonyms importenv)
              , typeConstructors = addToFM (typeConstructors importenv) name arity 
              } 
 
@@ -84,7 +85,7 @@ setValueConstructors new importenv = importenv {valueConstructors = new}
 setTypeConstructors :: FiniteMap Name Int -> ImportEnvironment -> ImportEnvironment     
 setTypeConstructors new importenv = importenv {typeConstructors = new}
 
-setTypeSynonyms :: FiniteMap Name (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment  
+setTypeSynonyms :: M.Map Name (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment  
 setTypeSynonyms new importenv = importenv {typeSynonyms = new}
 
 setTypeEnvironment :: FiniteMap Name TpScheme -> ImportEnvironment -> ImportEnvironment 
@@ -95,8 +96,8 @@ setOperatorTable new importenv = importenv {operatorTable = new}
 
 getOrderedTypeSynonyms :: ImportEnvironment -> OrderedTypeSynonyms
 getOrderedTypeSynonyms importEnvironment = 
-   let synonyms = let insert name tuple fm = addToFM fm (show name) tuple
-                  in foldFM insert emptyFM (typeSynonyms importEnvironment)
+   let synonyms = let insert name = M.insert (show name)
+                  in M.foldWithKey insert M.empty (typeSynonyms importEnvironment)
        ordering = fst (getTypeSynonymOrdering synonyms)
    in (ordering, synonyms)
 
@@ -128,7 +129,7 @@ combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnv
 combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 xs2) = 
    ImportEnvironment 
       (tcs1 `plusFM` tcs2) 
-      (tss1 `plusFM` tss2)
+      (tss1 `M.union` tss2)
       (te1  `plusFM` te2 )
       (vcs1 `plusFM` vcs2)
       (ot1  `plusFM` ot2)
@@ -194,7 +195,7 @@ createClassEnvironment importenv =
    in addToFM_C combineClassDecls standardClasses "Show" ([], extraShowInstances)
 -}
 superClassRelation :: ClassEnvironment
-superClassRelation = listToFM $ 
+superClassRelation = M.fromList $ 
    [ ("Num",  ( ["Eq","Show"],   []))
    , ("Enum", ( [],              []))
    , ("Eq" ,  ( [],              []))
@@ -235,14 +236,14 @@ instance Show ImportEnvironment where
           in showWithTitle "Fixity declarations" list
        
        datatypes = 
-          let allDatas = filter ((`notElem` keysFM tss). fst) (fmToList tcs)
+          let allDatas = filter ((`notElem` M.keys tss). fst) (fmToList tcs)
               (xs, ys) = partition (isIdentifierName . fst) allDatas
               list     = map f (ys++xs)
               f (n,i)  = unwords ("data" : (showNameAsVariable n) : take i variableList)
           in showWithTitle "Data types" list
        
        typesynonyms =
-          let (xs, ys)    = partition (isIdentifierName . fst) (fmToList tss)
+          let (xs, ys)    = partition (isIdentifierName . fst) (M.assocs tss)
               list        = map f (ys++xs)
               f (n,(i,g)) = let tcons =  take i (map TCon variableList)
                             in unwords ("type" : showNameAsVariable n : map show tcons ++ ["=", show (g tcons)])               

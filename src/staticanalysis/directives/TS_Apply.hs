@@ -21,7 +21,7 @@ import ParseLibrary (runHParser)
 import qualified ResolveOperators
 import TS_Attributes
 import TS_CoreSyntax
-import Top.ComposedSolvers.Tree
+import Top.Ordering.Tree
 import UHA_Source
 import Data.FiniteMap
 import DoublyLinkedTree (root)
@@ -64,7 +64,7 @@ type Core_TypingStrategies = [Core_TypingStrategy]
 -- semantic domain
 type T_Core_Judgement = (MetaVariableInfo) ->
                         (MetaVariableTable) ->
-                        (FiniteMapSubstitution) ->
+                        (MapSubstitution) ->
                         ( ([Int]),([(String, Tp)]))
 -- cata
 sem_Core_Judgement :: (Core_Judgement) ->
@@ -89,7 +89,7 @@ sem_Core_Judgement_Judgement (expression_) (type_) =
 -- semantic domain
 type T_Core_Judgements = (MetaVariableInfo) ->
                          (MetaVariableTable) ->
-                         (FiniteMapSubstitution) ->
+                         (MapSubstitution) ->
                          ( ([Int]),([(String, Tp)]))
 -- cata
 sem_Core_Judgements :: (Core_Judgements) ->
@@ -109,12 +109,12 @@ sem_Core_Judgements_Cons (hd_) (tl_) =
             _hdIjudgements :: ([(String, Tp)])
             _hdOinfoTuple :: (MetaVariableInfo)
             _hdOmetaVariableTable :: (MetaVariableTable)
-            _hdOsubstitution :: (FiniteMapSubstitution)
+            _hdOsubstitution :: (MapSubstitution)
             _tlIftv :: ([Int])
             _tlIjudgements :: ([(String, Tp)])
             _tlOinfoTuple :: (MetaVariableInfo)
             _tlOmetaVariableTable :: (MetaVariableTable)
-            _tlOsubstitution :: (FiniteMapSubstitution)
+            _tlOsubstitution :: (MapSubstitution)
             ( _hdIftv,_hdIjudgements) =
                 (hd_ (_hdOinfoTuple) (_hdOmetaVariableTable) (_hdOsubstitution))
             ( _tlIftv,_tlIjudgements) =
@@ -152,7 +152,7 @@ sem_Core_Judgements_Nil  =
 -- semantic domain
 type T_Core_TypeRule = (MetaVariableInfo) ->
                        (MetaVariableTable) ->
-                       (FiniteMapSubstitution) ->
+                       (MapSubstitution) ->
                        ( (TypeConstraints ConstraintInfo),([Int]),([(String, Tp)]))
 -- cata
 sem_Core_TypeRule :: (Core_TypeRule) ->
@@ -173,12 +173,12 @@ sem_Core_TypeRule_TypeRule (premises_) (conclusion_) =
             _premisesIjudgements :: ([(String, Tp)])
             _premisesOinfoTuple :: (MetaVariableInfo)
             _premisesOmetaVariableTable :: (MetaVariableTable)
-            _premisesOsubstitution :: (FiniteMapSubstitution)
+            _premisesOsubstitution :: (MapSubstitution)
             _conclusionIftv :: ([Int])
             _conclusionIjudgements :: ([(String, Tp)])
             _conclusionOinfoTuple :: (MetaVariableInfo)
             _conclusionOmetaVariableTable :: (MetaVariableTable)
-            _conclusionOsubstitution :: (FiniteMapSubstitution)
+            _conclusionOsubstitution :: (MapSubstitution)
             ( _premisesIftv,_premisesIjudgements) =
                 (premises_ (_premisesOinfoTuple) (_premisesOmetaVariableTable) (_premisesOsubstitution))
             ( _conclusionIftv,_conclusionIjudgements) =
@@ -266,7 +266,7 @@ sem_Core_TypingStrategy_TypingStrategy (typeEnv_) (typerule_) (statements_) =
             _typeruleIjudgements :: ([(String, Tp)])
             _typeruleOinfoTuple :: (MetaVariableInfo)
             _typeruleOmetaVariableTable :: (MetaVariableTable)
-            _typeruleOsubstitution :: (FiniteMapSubstitution)
+            _typeruleOsubstitution :: (MapSubstitution)
             _statementsIcollectConstraints :: (Trees (TypeConstraint ConstraintInfo))
             _statementsIcurrentPhase :: (Maybe Int)
             _statementsIcurrentPosition :: ((Int, Int))
@@ -279,7 +279,7 @@ sem_Core_TypingStrategy_TypingStrategy (typeEnv_) (typerule_) (statements_) =
             _statementsOinfoTuple :: (MetaVariableInfo)
             _statementsOmetaVariableTable :: (MetaVariableTable)
             _statementsOmetavarConstraints :: ([(String,Tree (TypeConstraint ConstraintInfo))])
-            _statementsOsubstitution :: (FiniteMapSubstitution)
+            _statementsOsubstitution :: (MapSubstitution)
             ( _typeruleIconstraints,_typeruleIftv,_typeruleIjudgements) =
                 (typerule_ (_typeruleOinfoTuple) (_typeruleOmetaVariableTable) (_typeruleOsubstitution))
             ( _statementsIcollectConstraints,_statementsIcurrentPhase,_statementsIcurrentPosition,_statementsIftv,_statementsImetavarConstraints) =
@@ -364,7 +364,7 @@ type T_Core_UserStatement = (Trees (TypeConstraint ConstraintInfo)) ->
                             (MetaVariableInfo) ->
                             (MetaVariableTable) ->
                             ([(String,Tree (TypeConstraint ConstraintInfo))]) ->
-                            (FiniteMapSubstitution) ->
+                            (MapSubstitution) ->
                             ( (Trees (TypeConstraint ConstraintInfo)),(Maybe Int),((Int, Int)),([Int]),([(String,Tree (TypeConstraint ConstraintInfo))]))
 -- cata
 sem_Core_UserStatement :: (Core_UserStatement) ->
@@ -522,7 +522,7 @@ type T_Core_UserStatements = (Trees (TypeConstraint ConstraintInfo)) ->
                              (MetaVariableInfo) ->
                              (MetaVariableTable) ->
                              ([(String,Tree (TypeConstraint ConstraintInfo))]) ->
-                             (FiniteMapSubstitution) ->
+                             (MapSubstitution) ->
                              ( (Trees (TypeConstraint ConstraintInfo)),(Maybe Int),((Int, Int)),([Int]),([(String,Tree (TypeConstraint ConstraintInfo))]))
 -- cata
 sem_Core_UserStatements :: (Core_UserStatements) ->
@@ -558,7 +558,7 @@ sem_Core_UserStatements_Cons (hd_) (tl_) =
             _hdOinfoTuple :: (MetaVariableInfo)
             _hdOmetaVariableTable :: (MetaVariableTable)
             _hdOmetavarConstraints :: ([(String,Tree (TypeConstraint ConstraintInfo))])
-            _hdOsubstitution :: (FiniteMapSubstitution)
+            _hdOsubstitution :: (MapSubstitution)
             _tlIcollectConstraints :: (Trees (TypeConstraint ConstraintInfo))
             _tlIcurrentPhase :: (Maybe Int)
             _tlIcurrentPosition :: ((Int, Int))
@@ -571,7 +571,7 @@ sem_Core_UserStatements_Cons (hd_) (tl_) =
             _tlOinfoTuple :: (MetaVariableInfo)
             _tlOmetaVariableTable :: (MetaVariableTable)
             _tlOmetavarConstraints :: ([(String,Tree (TypeConstraint ConstraintInfo))])
-            _tlOsubstitution :: (FiniteMapSubstitution)
+            _tlOsubstitution :: (MapSubstitution)
             ( _hdIcollectConstraints,_hdIcurrentPhase,_hdIcurrentPosition,_hdIftv,_hdImetavarConstraints) =
                 (hd_ (_hdOcollectConstraints) (_hdOcurrentPhase) (_hdOcurrentPosition) (_hdOfromAttribute) (_hdOinfoTuple) (_hdOmetaVariableTable) (_hdOmetavarConstraints) (_hdOsubstitution))
             ( _tlIcollectConstraints,_tlIcurrentPhase,_tlIcurrentPosition,_tlIftv,_tlImetavarConstraints) =

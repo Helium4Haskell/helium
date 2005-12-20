@@ -10,13 +10,13 @@ import Top.Types
 import StaticErrors
 import Warnings
 import Messages
-import TopSort
 import List
 import Utils ( internalError, fst3, minInt, maxInt )
 import TypeConversion
 import DerivingShow
 import TypeConstraints
 import Data.FiniteMap
+import qualified Data.Map as M
 import ImportEnvironment
 import OperatorTable
 import Char ( isUpper )
@@ -1601,7 +1601,7 @@ sem_ContextItem_ContextItem (range_) (name_) (types_) =
             (_lhsOcontextRanges@_) =
                 [range_]
             (_lhsOmiscerrors@_) =
-                if elem (getNameName name_) (keysFM standardClasses)
+                if elem (getNameName name_) (M.keys standardClasses)
                    then _typesImiscerrors
                    else UnknownClass name_ : _typesImiscerrors
             (_lhsOcontextVars@_) =
@@ -8518,7 +8518,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             (_collectEnvironment@_) =
                 setValueConstructors   (listToFM _bodyIcollectValueConstructors)
                 . setTypeConstructors  (listToFM _bodyIcollectTypeConstructors)
-                . setTypeSynonyms      (listToFM _bodyIcollectTypeSynonyms)
+                . setTypeSynonyms      (M.fromList _bodyIcollectTypeSynonyms)
                 . setOperatorTable     (listToFM _bodyIoperatorFixities)
                 . addToTypeEnvironment (listToFM _derivedFunctions)
                 $ emptyEnvironment
@@ -8548,11 +8548,11 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                            ++ [ (n,i) | (n,(i,f)) <- _bodyIcollectTypeSynonyms ]
                            )
             (_bodyOorderedTypeSynonyms@_) =
-                let list     = concatMap (fmToList . typeSynonyms) _lhsIimportEnvironments ++
+                let list     = concatMap (M.assocs . typeSynonyms) _lhsIimportEnvironments ++
                                _bodyIcollectTypeSynonyms
-                    fmlist   = listToFM [ (show name, t) | (name, t) <- list ]
-                    ordering = fst (getTypeSynonymOrdering fmlist)
-                in (ordering, fmlist)
+                    newmap   = M.fromList [ (show name, t) | (name, t) <- list ]
+                    ordering = fst (getTypeSynonymOrdering newmap)
+                in (ordering, newmap)
             (_bodyOclassEnvironment@_) =
                 let importEnv = foldr combineImportEnvironments emptyEnvironment _lhsIimportEnvironments
                 in foldr (\(n, i) -> insertInstance (show n) i)
@@ -8597,7 +8597,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
                 ]
             (_recursiveTypeSynonymErrors@_) =
                 let converted  = map (\(name, tuple) -> (show name, tuple)) _bodyIcollectTypeSynonyms
-                    recursives = snd . getTypeSynonymOrdering . listToFM $ converted
+                    recursives = snd . getTypeSynonymOrdering . M.fromList $ converted
                     makeError = let f = foldr add (Just [])
                                     add s ml = case (g s, ml) of
                                                   ([n], Just ns) -> Just (n:ns)

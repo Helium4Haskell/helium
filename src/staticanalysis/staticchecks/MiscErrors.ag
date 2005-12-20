@@ -260,7 +260,7 @@ ATTR ContextItems ContextItem [ | | contextVars USE { ++ } { [] } : {[Name]} ]
 
 SEM ContextItem
   | ContextItem lhs.contextVars = @types.typevariables
-                lhs.miscerrors = if elem (getNameName @name) (keysFM standardClasses) 
+                lhs.miscerrors = if elem (getNameName @name) (M.keys standardClasses) 
                                     then @types.miscerrors  
                                     else UnknownClass @name : @types.miscerrors
 

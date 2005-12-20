@@ -14,6 +14,7 @@ module DictionaryEnvironment
    ) where
 
 import Data.FiniteMap
+import qualified Data.Map as M
 import UHA_Syntax (Name)
 import UHA_Utils (NameWithRange(..) )
 import Utils (internalError)
@@ -79,7 +80,7 @@ makeDictionaryTree classEnv availablePredicates p@(Predicate className tp) =
                                 in Just tree 
                                 
       _      -> case byInstance noOrderedTypeSynonyms classEnv p of
-                   Nothing -> internalError "DictionaryEnvironment" "makeDictionaryTree" ("reduction error" ++ show (fmToList $ classEnv))
+                   Nothing -> internalError "DictionaryEnvironment" "makeDictionaryTree" ("reduction error" ++ show (M.assocs classEnv))
                    Just predicates -> 
                       do let (TCon instanceName, _) = leftSpine tp
                          trees <- makeDictionaryTrees classEnv availablePredicates predicates

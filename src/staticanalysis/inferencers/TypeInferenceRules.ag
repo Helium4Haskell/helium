@@ -16,8 +16,8 @@ SEM Module
 
   | Module
       loc  -- Solve the type constraints.
-           . (SolveResult betaUniqueAtTheEnd substitution typeschemeMap _ solveErrors debugString tooSpecificWarnings) = @solveResult
-           . solveResult =
+           . (SolveResult betaUniqueAtTheEnd substitution typeschemeMap _ solveErrors) = @solveResult
+           . (solveResult, logEntries) =
                 (selectConstraintSolver @lhs.options @lhs.importEnvironment) 
                    @classEnv
                    @orderedTypeSynonyms 
@@ -33,7 +33,7 @@ SEM Module
            . typeErrors          = case makeTypeErrors @classEnv @orderedTypeSynonyms @substitution @solveErrors of
                                       []   -> @body.collectErrors
                                       errs -> reverse errs
-           . warnings            = @body.collectWarnings ++ @tooSpecificWarnings
+           . warnings            = @body.collectWarnings -- ++ @tooSpecificWarnings
            . assumptions         = let f _ xs = [ (n, @substitution |-> tp) | (n, tp) <- xs ] 
                                    in mapFM f @body.assumptions
            . initialScope        = keysFM (typeEnvironment @lhs.importEnvironment)           
@@ -42,7 +42,8 @@ SEM Module
                                        ++ (eltsFM $ typeEnvironment   @lhs.importEnvironment)
                                        )
                                   
-      body . betaUnique          = if null @monomorphics 
+      body . typeschemeMap = listToFM (M.assocs @typeschemeMap) -- was a copy rule.
+           . betaUnique          = if null @monomorphics 
                                      then 0 
                                      else maximum @monomorphics + 1 
                                  

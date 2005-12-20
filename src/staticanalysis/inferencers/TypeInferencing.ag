@@ -13,15 +13,15 @@
 typeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (IO (), DictionaryEnvironment, TypeEnvironment, TypeErrors, Warnings)
 typeInferencing options importEnv module_ =
-   let (_, dictionaryEnv, _, _, solveResult, toplevelTypes, typeErrors, warnings) =
+   let (_, dictionaryEnv, _, logEntries, _, solveResult, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_ importEnv options
-       debugIO = putStrLn (debugFromResult solveResult)
+       debugIO = putStrLn (show logEntries)
    in (debugIO, dictionaryEnv, toplevelTypes, typeErrors, warnings)
 
 proximaTypeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (TypeErrors, Warnings, TypeEnvironment, [(Range, TpScheme)])  
 proximaTypeInferencing options importEnv module_ =
-   let (_, _, infoTree, _, solveResult, toplevelTypes, typeErrors, warnings) =
+   let (_, _, infoTree, _, _, solveResult, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_ importEnv options
        localTypeSchemes = typeSchemesInInfoTree (substitutionFromResult solveResult)
                                                 (qualifiersFromResult solveResult) 
@@ -39,7 +39,8 @@ ATTR Module
    | assumptions           : Assumptions
      dictionaryEnvironment : DictionaryEnvironment
      infoTree              : InfoTree
-     solveResult           : HeliumSolveResult
+     logEntries            : LogEntries
+     solveResult           : {SolveResult ConstraintInfo}
      toplevelTypes         : TypeEnvironment
      typeErrors            : TypeErrors
      warnings              : Warnings
@@ -60,9 +61,10 @@ INCLUDE "../../syntax/UHA_Syntax.ag"
 
 --- Type Inference Directives (may be turned off)
 INCLUDE "../directives/TS_PatternMatching.ag"
-SEM Module | Module   lhs . solveResult = @solveResult { debugFromResult =  debugFromResult @solveResult 
-                                                                         ++ "Inference Strategies:" 
-                                                                         } -- ++ [ ] @body.matchIO }
+
+-- SEM Module | Module   lhs . solveResult = @solveResult { debugFromResult =  debugFromResult @solveResult 
+--                                                                          ++ "Inference Strategies:" 
+--                                                                          } -- ++ [ ] @body.matchIO }
 
 -- Pattern Match Warnings (may be turned off)
 INCLUDE "PatternMatchWarnings.ag"
@@ -87,11 +89,11 @@ import UHA_Source
 
 -- constraints and constraint trees
 import TypeConstraints
-import Top.ComposedSolvers.Tree
+import Top.Ordering.Tree
 
 -- constraint solving
-import SelectConstraintSolver (selectConstraintSolver, HeliumSolveResult)
-import Top.Solvers.SolveConstraints (SolveResult(..))
+import SelectConstraintSolver (selectConstraintSolver)
+import Top.Solver (SolveResult(..), LogEntries)
 import HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
 import BindingGroupAnalysis
 
@@ -109,6 +111,7 @@ import Args
 
 -- standard
 import Data.FiniteMap
+import qualified Data.Map as M
 import Data.Maybe 
 import Data.List
 }

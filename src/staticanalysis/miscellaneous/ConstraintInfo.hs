@@ -12,7 +12,7 @@
 module ConstraintInfo where
 
 import Top.Types
-import Top.ComposedSolvers.Tree
+import Top.Ordering.Tree
 import UHA_Syntax
 import UHA_Source
 import UHA_Range
@@ -20,11 +20,11 @@ import TypeErrors
 import Messages
 import DoublyLinkedTree
 import TypeConstraints
-import Top.Constraints.TypeConstraintInfo
-import Top.Qualifiers.TypeClasses
-import Top.States.BasicState (ErrorLabel)
-import Top.States.SubstState (unificationErrorLabel)
-import Top.States.TIState
+import Top.Constraint.Information
+import Top.Implementation.Overloading
+import Top.Interface.Basic (ErrorLabel)
+import Top.Interface.Substitution (unificationErrorLabel)
+import Top.Interface.TypeInference
 import Utils (internalError)
 import Data.Maybe
 import Data.Char
@@ -251,7 +251,7 @@ instance TypeConstraintInfo ConstraintInfo where
    equalityTypePair     = setTypePair
    
 
-instance PolyTypeConstraintInfo Predicates ConstraintInfo where
+instance PolyTypeConstraintInfo ConstraintInfo where
    instantiatedTypeScheme = addProperty . InstantiatedTypeScheme
    skolemizedTypeScheme   = addProperty . SkolemizedTypeScheme
    

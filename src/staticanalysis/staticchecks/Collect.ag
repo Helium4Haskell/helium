@@ -21,7 +21,7 @@
 SEM Module
   | Module   loc . collectEnvironment = setValueConstructors   (listToFM @body.collectValueConstructors)
                                         . setTypeConstructors  (listToFM @body.collectTypeConstructors)
-                                        . setTypeSynonyms      (listToFM @body.collectTypeSynonyms)          
+                                        . setTypeSynonyms      (M.fromList @body.collectTypeSynonyms)          
                                         . setOperatorTable     (listToFM @body.operatorFixities)
                                         . addToTypeEnvironment (listToFM @derivedFunctions)
                                         -- . setClassEnvironment  @derivedInstances
@@ -149,11 +149,11 @@ ATTR Module -> Declaration [ orderedTypeSynonyms:OrderedTypeSynonyms | | ]
 
 SEM Module
   | Module body . orderedTypeSynonyms =
-                      let list     = concatMap (fmToList . typeSynonyms) @lhs.importEnvironments ++
+                      let list     = concatMap (M.assocs . typeSynonyms) @lhs.importEnvironments ++
                                      @body.collectTypeSynonyms
-                          fmlist   = listToFM [ (show name, t) | (name, t) <- list ]
-                          ordering = fst (getTypeSynonymOrdering fmlist)
-                      in (ordering, fmlist)
+                          newmap   = M.fromList [ (show name, t) | (name, t) <- list ]
+                          ordering = fst (getTypeSynonymOrdering newmap)
+                      in (ordering, newmap)
 
 --------------------------------
 -- Derived instances (see also TypeInferenceCollect.ag)

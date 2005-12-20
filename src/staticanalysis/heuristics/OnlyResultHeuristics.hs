@@ -11,8 +11,8 @@
 
 module OnlyResultHeuristics where
 
-import Top.TypeGraph.Heuristics
-import Top.States.TIState
+import Top.Implementation.TypeGraph.Heuristic
+import Top.Interface.TypeInference
 import Top.Types
 import OneLiner (OneLineTree)
 import UHA_Syntax (Range)

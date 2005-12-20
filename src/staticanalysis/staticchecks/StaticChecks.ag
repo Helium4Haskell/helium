@@ -43,13 +43,13 @@ import Top.Types
 import StaticErrors
 import Warnings
 import Messages
-import TopSort
 import List
 import Utils ( internalError, fst3, minInt, maxInt )
 import TypeConversion
 import DerivingShow
 import TypeConstraints
 import Data.FiniteMap
+import qualified Data.Map as M
 import ImportEnvironment
 import OperatorTable
 import Char ( isUpper )

@@ -27,9 +27,8 @@ INCLUDE "TS_Collect.ag"
 
 imports {
 import Top.Types
-import Top.Solvers.GreedySolver
-import Top.Solvers.SolveConstraints
-import Top.States.TIState
+import Top.Solver.Greedy
+import Top.Solver
 import TypeConstraints
 import ConstraintInfo
 import TS_Syntax
@@ -87,14 +86,16 @@ SEM TypingStrategy
                               [] -> []
                               xs -> [ MetaVariableConstraintsNotExplicit @name xs ]  -}
 
-           -- Solve the constraint set.           
-           . (SolveResult _ substitution _ _ solveErrors _ ()) =    
-                runGreedy
-                   @classEnv
-                   (getOrderedTypeSynonyms @lhs.importEnvironment)
-                   (length @uniqueTypevariables) 
-                   (reverse @statements.userConstraints)        
-                   
+           -- Solve the constraint set.   
+           . substitution = substitutionFromResult @solveResult
+           . solveErrors  = errorsFromResult @solveResult
+           . solveResult =    
+                let options = solveOptions { uniqueCounter = length @uniqueTypevariables 
+                                           , Top.Solver.typeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment
+                                           , classEnvironment = @classEnv
+                                           } 
+                in fst (solve options (reverse @statements.userConstraints) greedyConstraintSolver)
+                      
            . classEnv = createClassEnvironment @lhs.importEnvironment
            
            . soundnessErrors = 

@@ -47,7 +47,7 @@ PACKAGENET = -package net
 else
 PACKAGENET = 
 endif
-HC_OPTS = -static -fglasgow-exts -cpp \
+HC_OPTS = -static -fglasgow-exts -cpp -fallow-undecidable-instances -fallow-overlapping-instances \
 		$(PACKAGENET) -package lang -package text -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
@@ -80,7 +80,6 @@ STATICANALYSIS = \
 	staticanalysis/heuristics/RepairHeuristics.hs \
 	staticanalysis/heuristics/TieBreakerHeuristics.hs \
 	staticanalysis/heuristics/UnifierHeuristics.hs \
-	staticanalysis/heuristics/RepairSystem.hs \
 	staticanalysis/staticchecks/StaticChecks.hs \
 	staticanalysis/inferencers/TypeInferencing.hs \
 	staticanalysis/inferencers/KindInferencing.hs \
@@ -103,53 +102,6 @@ STATICANALYSIS = \
         staticanalysis/miscellaneous/TypesToAlignedDocs.hs \
         staticanalysis/miscellaneous/TypeConversion.hs \
         staticanalysis/miscellaneous/UHA_Source.hs \
-        $(TOPDIR)/Types/Basics.hs \
-        $(TOPDIR)/Types/Quantification.hs \
-        $(TOPDIR)/Types/Qualification.hs \
-        $(TOPDIR)/Types/Schemes.hs \
-        $(TOPDIR)/Types/Classes.hs \
-        $(TOPDIR)/Types/Substitution.hs \
-        $(TOPDIR)/Types/Kinds.hs \
-        $(TOPDIR)/Types/Synonyms.hs \
-        $(TOPDIR)/Types/Unification.hs \
-        $(TOPDIR)/Types.hs \
-        $(TOPDIR)/Constraints/Constraints.hs \
-        $(TOPDIR)/Constraints/ExtraConstraints.hs \
-        $(TOPDIR)/Constraints/TypeConstraintInfo.hs \
-        $(TOPDIR)/Constraints/Equality.hs \
-        $(TOPDIR)/Constraints/Polymorphism.hs \
-        $(TOPDIR)/States/States.hs \
-        $(TOPDIR)/States/BasicState.hs \
-        $(TOPDIR)/States/SubstState.hs \
-        $(TOPDIR)/States/TIState.hs \
-        $(TOPDIR)/States/QualifierState.hs \
-        $(TOPDIR)/Qualifiers/Qualifiers.hs \
-        $(TOPDIR)/Qualifiers/QualifierMap.hs \
-        $(TOPDIR)/Qualifiers/TypeClasses.hs \
-        $(TOPDIR)/Solvers/BasicMonad.hs \
-        $(TOPDIR)/Solvers/GreedySolver.hs \
-        $(TOPDIR)/Solvers/GreedySubst.hs \
-        $(TOPDIR)/Solvers/SimpleSolver.hs \
-        $(TOPDIR)/Solvers/SimpleSubst.hs \
-        $(TOPDIR)/Solvers/SolveConstraints.hs \
-        $(TOPDIR)/ComposedSolvers/CombinationSolver.hs \
-        $(TOPDIR)/ComposedSolvers/ChunkySolver.hs \
-        $(TOPDIR)/ComposedSolvers/Tree.hs \
-        $(TOPDIR)/ComposedSolvers/TreeWalk.hs \
-        $(TOPDIR)/TypeGraph/ApplyHeuristics.hs \
-        $(TOPDIR)/TypeGraph/Basics.hs \
-        $(TOPDIR)/TypeGraph/DefaultHeuristics.hs \
-        $(TOPDIR)/TypeGraph/EquivalenceGroup.hs \
-        $(TOPDIR)/TypeGraph/Heuristics.hs \
-        $(TOPDIR)/TypeGraph/Paths.hs \
-        $(TOPDIR)/TypeGraph/TypeGraphMonad.hs \
-        $(TOPDIR)/TypeGraph/TypeGraphSolver.hs \
-        $(TOPDIR)/TypeGraph/TypeGraphState.hs \
-        $(TOPDIR)/TypeGraph/Implementation.hs \
-        $(TOPDIR)/TypeGraph/TypeGraphSubst.hs \
-        $(TOPDIR)/Repair/AExpr.hs \
-        $(TOPDIR)/Repair/Transformations.hs \
-        $(TOPDIR)/Repair/Repair.hs \
         
 UHA = \
 	syntax/UHA_Syntax.hs syntax/UHA_Utils.hs syntax/UHA_Range.hs \
@@ -171,7 +123,27 @@ MAINFILES = \
 	main/PhaseStaticChecks.hs main/PhaseTypingStrategies.hs main/PhaseTypeInferencer.hs \
 	main/PhaseDesugarer.hs main/PhaseCodeGenerator.hs main/CompileUtils.hs \
 	main/PhaseKindInferencer.hs
-       
+
+# Top sources
+
+TOP = \
+	$(TOPDIR)/Constraint/Equality.hs $(TOPDIR)/Constraint/Information.hs $(TOPDIR)/Constraint/Polymorphism.hs \
+	$(TOPDIR)/Constraint/Qualifier.hs $(TOPDIR)/Constraint.hs $(TOPDIR)/Implementation/Basic.hs \
+	$(TOPDIR)/Implementation/FastSubstitution.hs $(TOPDIR)/Implementation/General.hs $(TOPDIR)/Implementation/Overloading.hs \
+	$(TOPDIR)/Implementation/SimpleSubstitution.hs $(TOPDIR)/Implementation/TypeGraph/ApplyHeuristics.hs \
+	$(TOPDIR)/Implementation/TypeGraph/Basics.hs $(TOPDIR)/Implementation/TypeGraph/Class.hs $(TOPDIR)/Implementation/TypeGraph/ClassMonadic.hs \
+	$(TOPDIR)/Implementation/TypeGraph/DefaultHeuristics.hs $(TOPDIR)/Implementation/TypeGraph/EquivalenceGroup.hs $(TOPDIR)/Implementation/TypeGraph/Heuristic.hs \
+	$(TOPDIR)/Implementation/TypeGraph/Path.hs $(TOPDIR)/Implementation/TypeGraph/Standard.hs \
+	$(TOPDIR)/Implementation/TypeGraphSubstitution.hs $(TOPDIR)/Implementation/TypeInference.hs \
+	$(TOPDIR)/Interface/Basic.hs $(TOPDIR)/Interface/Qualification.hs $(TOPDIR)/Interface/Substitution.hs \
+	$(TOPDIR)/Interface/TypeInference.hs $(TOPDIR)/Monad/Select.hs $(TOPDIR)/Monad/StateFix.hs \
+	$(TOPDIR)/Ordering/Tree.hs $(TOPDIR)/Ordering/TreeWalk.hs $(TOPDIR)/Solver/Greedy.hs \
+	$(TOPDIR)/Solver/PartitionCombinator.hs $(TOPDIR)/Solver/SwitchCombinator.hs $(TOPDIR)/Solver/TypeGraph.hs \
+	$(TOPDIR)/Solver.hs $(TOPDIR)/Types/Classes.hs $(TOPDIR)/Types/Kinds.hs $(TOPDIR)/Types/Primitive.hs \
+	$(TOPDIR)/Types/Qualification.hs $(TOPDIR)/Types/Quantification.hs $(TOPDIR)/Types/Schemes.hs \
+	$(TOPDIR)/Types/Substitution.hs $(TOPDIR)/Types/Synonym.hs $(TOPDIR)/Types/Unification.hs \
+	$(TOPDIR)/Types.hs $(TOPDIR)/Util/Embedding.hs $(TOPDIR)/Util/Empty.hs $(TOPDIR)/Util/Option.hs
+  
 # LVM sources
 
 LVMCOMMON = \
@@ -193,7 +165,7 @@ CORE	= $(LVMLIBDIR)/core/Core.hs $(LVMLIBDIR)/core/CorePretty.hs $(LVMLIBDIR)/co
 	  $(LVMLIBDIR)/core/CoreNoShadow.hs $(LVMLIBDIR)/core/CoreFreeVar.hs $(LVMLIBDIR)/core/CoreLetSort.hs \
 	  $(LVMLIBDIR)/core/CoreLift.hs $(LVMLIBDIR)/core/CoreSaturate.hs
 
-IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:./parser:./staticanalysis/miscellaneous:./staticanalysis/inferencers:./staticanalysis/directives:./staticanalysis/staticchecks:./staticanalysis/heuristics:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem:$(TOPDIR):../../Top/src
+IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:./parser:./staticanalysis/miscellaneous:./staticanalysis/inferencers:./staticanalysis/directives:./staticanalysis/staticchecks:./staticanalysis/heuristics:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem:$(TOPDIR)/..
 
 # AG sources
 AGSOURCES = \
@@ -207,7 +179,7 @@ AGSOURCES = \
      staticanalysis/directives/TS_ToCore.hs parser/ResolveOperators.hs
 
 #Sources and object files
-SRCS = $(PARSER) $(STATICANALYSIS) $(UHA) $(CODEGENERATION) $(UTILS) $(LVMCOMMON) \
+SRCS = $(PARSER) $(STATICANALYSIS) $(UHA) $(CODEGENERATION) $(UTILS) $(TOP) $(LVMCOMMON) \
 	$(LVM) $(ASM) $(CORE) $(MAINFILES) $(MODULESYSTEM)
 OBJS = $(SRCS:.hs=.o)
 

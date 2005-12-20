@@ -33,7 +33,7 @@ import ParseLibrary (runHParser)
 import qualified ResolveOperators
 import TS_Attributes
 import TS_CoreSyntax
-import Top.ComposedSolvers.Tree
+import Top.Ordering.Tree
 import UHA_Source
 import Data.FiniteMap
 import DoublyLinkedTree (root)
@@ -108,7 +108,7 @@ SEM Core_TypingStrategy
                              
 
 ATTR Core_TypeRule Core_Judgements Core_Judgement Core_UserStatements Core_UserStatement 
-   [ substitution      : FiniteMapSubstitution 
+   [ substitution      : MapSubstitution 
      infoTuple         : MetaVariableInfo
      metaVariableTable : MetaVariableTable 
    | 

@@ -13,11 +13,10 @@
 module UnifierHeuristics where
 
 import Top.Types
-import Top.States.TIState
-import Top.TypeGraph.Basics
-import Top.TypeGraph.TypeGraphState
-import Top.TypeGraph.Heuristics
-import RepairHeuristics
+import Top.Interface.TypeInference
+import Top.Implementation.TypeGraph.Basics
+import Top.Implementation.TypeGraph.Heuristic
+-- import RepairHeuristics
 import ConstraintInfo
 import Data.List (partition, sortBy)
 import Data.Maybe (isNothing, fromJust)
@@ -27,7 +26,7 @@ class IsUnifier a where
    typeErrorForUnifier :: (Tp, Tp) -> (a, a) -> a
    isUnifier :: a -> Maybe (Int, (String, LocalInfo, String))
 
-unifierVertex :: (HasTypeGraph m info, WithHints info, IsUnifier info) => Selector m info
+unifierVertex :: {- (HasTypeGraph m info, WithHints info, IsUnifier info) => -} Selector m info
 unifierVertex = internalError "UnifierHeuristics" "unifierVertex" "unifierVertex: to be implemented" {-
    Selector ("Unification vertex", f) where
 

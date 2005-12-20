@@ -2,9 +2,8 @@
 module TS_Analyse where
 
 import Top.Types
-import Top.Solvers.GreedySolver
-import Top.Solvers.SolveConstraints
-import Top.States.TIState
+import Top.Solver.Greedy
+import Top.Solver
 import TypeConstraints
 import ConstraintInfo
 import TS_Syntax
@@ -3598,12 +3597,16 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
                                       else [ Soundness _name inferredTpScheme constraintsTpScheme ]
             (_classEnv@_) =
                 createClassEnvironment _lhsIimportEnvironment
-            ((SolveResult (_)(_substitution@_)(_)(_)(_solveErrors@_)(_)(()))) =
-                runGreedy
-                   _classEnv
-                   (getOrderedTypeSynonyms _lhsIimportEnvironment)
-                   (length _uniqueTypevariables)
-                   (reverse _statementsIuserConstraints)
+            (_solveResult@_) =
+                let options = solveOptions { uniqueCounter = length _uniqueTypevariables
+                                           , Top.Solver.typeSynonyms = getOrderedTypeSynonyms _lhsIimportEnvironment
+                                           , classEnvironment = _classEnv
+                                           }
+                in fst (solve options (reverse _statementsIuserConstraints) greedyConstraintSolver)
+            (_solveErrors@_) =
+                errorsFromResult _solveResult
+            (_substitution@_) =
+                substitutionFromResult _solveResult
             (_warnings@_) =
                 []
             (_staticErrors@_) =

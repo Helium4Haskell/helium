@@ -12,8 +12,8 @@
 module TieBreakerHeuristics where
 
 import Top.Types
-import Top.States.TIState (getTypeSynonyms)
-import Top.TypeGraph.Heuristics
+import Top.Interface.TypeInference (getTypeSynonyms)
+import Top.Implementation.TypeGraph.Heuristic
 
 -----------------------------------------------------------------------------
 

@@ -13,28 +13,34 @@
 
 module TypeConstraints where
 
-import Top.Constraints.Constraints
-import Top.Constraints.Equality hiding ((.==.))
-import Top.Constraints.ExtraConstraints
-import Top.Constraints.Polymorphism hiding ((.::.))
-import Top.Constraints.TypeConstraintInfo
-import Top.States.BasicState
-import Top.States.TIState
-import Top.States.SubstState
-import Top.States.QualifierState
-import Top.Qualifiers.TypeClasses ()
+import Top.Constraint
+import Top.Constraint.Equality hiding ((.==.))
+import Top.Constraint.Qualifier
+import Top.Constraint.Polymorphism hiding ((.::.))
+import Top.Constraint.Information
+import Top.Interface.Basic
+import Top.Interface.Substitution
+import Top.Interface.TypeInference
+import Top.Interface.Qualification
+
+
+--import Top.States.BasicState
+--import Top.States.TIState
+--import Top.States.SubstState
+--import Top.States.QualifierState
 import Top.Types
 import Data.FiniteMap
-import Top.Solvers.SolveConstraints
+import qualified Data.Map as M
+-- import Top.Solver ()
 
 type TypeConstraints info = [TypeConstraint info]
 data TypeConstraint  info
    = TC1 (EqualityConstraint info)
-   | TC2 (ExtraConstraint Predicates info)
-   | TC3 (PolymorphismConstraint Predicates info)
+   | TC2 (ExtraConstraint info)
+   | TC3 (PolymorphismConstraint info)
    | TCOper String (forall m . HasSubst m info => m ())
 
-instance (HasBasic m info, HasTI m info, HasSubst m info, HasQual m Predicates info, PolyTypeConstraintInfo Predicates info) 
+instance (HasBasic m info, HasTI m info, HasSubst m info, HasQual m info, PolyTypeConstraintInfo info) 
             => Solvable (TypeConstraint info) m where 
    solveConstraint (TC1 c)      = solveConstraint c
    solveConstraint (TC2 c)      = solveConstraint c
@@ -63,7 +69,7 @@ instance Substitutable (TypeConstraint info) where
 
 ------------
 
-polySubst :: FiniteMap Int (Scheme Predicates) -> TypeConstraint info -> TypeConstraint info
+polySubst :: M.Map Int (Scheme Predicates) -> TypeConstraint info -> TypeConstraint info
 polySubst schemeMap tc =
    case tc of
       TC3 (Instantiate tp sigma info)        -> TC3 (Instantiate tp (f sigma) info)
@@ -74,7 +80,7 @@ polySubst schemeMap tc =
    f :: Sigma Predicates -> Sigma Predicates
    f sigma = 
       case sigma of 
-         SigmaVar i -> maybe sigma SigmaScheme (lookupFM schemeMap i)
+         SigmaVar i -> maybe sigma SigmaScheme (M.lookup i schemeMap)
          _          -> sigma
              
 spreadFunction :: TypeConstraint info -> Maybe Int
@@ -83,7 +89,7 @@ spreadFunction tc =
       TC1 (Equality t1 t2 info)         -> spreadFromType t2
       TC3 (Instantiate tp ts info)      -> spreadFromType tp
       TC3 (Skolemize tp ts info)        -> spreadFromType tp
-      TC2 (Implicit t1 (ms, t2) info)   -> spreadFromType t1
+      TC3 (Implicit t1 (ms, t2) info)   -> spreadFromType t1
       _                                 -> Nothing
 
 spreadFromType :: Tp -> Maybe Int
@@ -136,7 +142,7 @@ tp .::. ts = tp .<=. SigmaScheme ts
      
 -- the old implicit instance constraint
 (!<=!) :: Show info => Tps -> Tp -> Tp -> info -> TypeConstraint info
-(!<=!) ms t1 t2 info = TC2 (Implicit t1 (ms, t2) info)
+(!<=!) ms t1 t2 info = TC3 (Implicit t1 (ms, t2) info)
 
 (!<==!) :: (Show info, Ord key) => Tps -> FiniteMap key Tp -> FiniteMap key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info],FiniteMap key [(key,Tp)])
 (!<==!) ms = lift (flip ((!<=!) ms)) 
@@ -147,4 +153,4 @@ genConstraints monos infoF =
    in map f
 
 predicate :: Predicate -> info -> TypeConstraint info
-predicate p cinfo = TC2 (Prove [p] cinfo)
+predicate p cinfo = TC2 (Prove p cinfo)

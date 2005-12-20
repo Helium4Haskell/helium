@@ -1,3 +1,5 @@
+{-# OPTIONS -fglasgow-exts -fallow-undecidable-instances -fallow-overlapping-instances #-}
+
 {-| Module      :  SelectConstraintSolver
     License     :  GPL
 
@@ -8,41 +10,32 @@
     Select the type constraint solver of your own liking
 -}
 
-module SelectConstraintSolver (selectConstraintSolver, HeliumSolveResult) where
+module SelectConstraintSolver (selectConstraintSolver) where
 
 import Args (Option(..))
 import ConstraintInfo
 import TypeConstraints
-import ListOfHeuristics (listOfHeuristics)
 import ImportEnvironment (ImportEnvironment, getSiblings)
+import ListOfHeuristics (listOfHeuristics)
 import Top.Types
-import Top.States.BasicState (updateErrorInfo)
-import Top.States.SubstState (makeSubstConsistent)
-import Top.Solvers.SolveConstraints
-import Top.States.States
-import Top.Solvers.SimpleSolver (runSimple)
-import Top.Solvers.GreedySolver (runGreedy)
-import Top.TypeGraph.TypeGraphSolver (runTypeGraphPlusDoFirst)
-import Top.TypeGraph.TypeGraphMonad (setPathHeuristics)
-import Top.ComposedSolvers.Tree (Tree, spreadTree, phaseTree, chunkTree, flattenTree)
-import Top.ComposedSolvers.TreeWalk
-import Top.ComposedSolvers.CombinationSolver ((|>>|))
-import Top.ComposedSolvers.ChunkySolver (solveChunkConstraints)
---- needed for warnForTooSpecificSignatures
-import UHA_Syntax (Name)
-import UHA_Utils (NameWithRange(..), nameWithRangeToName)
-import Top.Constraints.Polymorphism (PolymorphismConstraint(..))
-import Warnings
-import Data.Maybe
-import Data.List
+import Top.Solver
+import Top.Ordering.TreeWalk
+import Top.Ordering.Tree
+import Top.Solver.Greedy
+import Top.Solver.TypeGraph
+import Top.Solver.PartitionCombinator
+import Top.Solver.SwitchCombinator
+import Top.Interface.Substitution (makeSubstConsistent)
+import Top.Interface.Basic
 
-type HeliumSolveResult = SolveResult ConstraintInfo Predicates Warnings
 type TreeSolver = ClassEnvironment -> OrderedTypeSynonyms -> Int 
-                       -> Tree (TypeConstraint ConstraintInfo) -> HeliumSolveResult
+                       -> Tree (TypeConstraint ConstraintInfo) -> (SolveResult ConstraintInfo, LogEntries)
 
 selectConstraintSolver :: [Option] -> ImportEnvironment -> TreeSolver
 selectConstraintSolver options importenv classEnv synonyms unique constraintTree =
-   let 
+   solve selectedOptions constraints selectedSolver
+
+ where   
        -- spread type constraints or not (i.e., map some type constraints to a 
        -- corresponding node in the constraint tree)
        -- spreading is enabled by default 
@@ -70,24 +63,31 @@ selectConstraintSolver options importenv classEnv synonyms unique constraintTree
        constraints      = flattening constraintTree
        chunkConstraints = chunkTree . phases . spreadTree spreadFunction $ constraintTree
        siblings         = getSiblings importenv
-       
-       selectedSolver
-          | SolverSimple      `elem` options = runSimple
-          | SolverGreedy      `elem` options = runGreedy                                                        
-          | SolverTypeGraph   `elem` options = typegraphSolver
-          | SolverCombination `elem` options = combinedSolver             
-          | otherwise = \classEnv synonyms unique _ ->  
-              solveChunkConstraints polySubst combinedSolver (flattenTree selectedTreeWalk) classEnv synonyms unique chunkConstraints
       
-       typegraphSolver =
-          let heuristics = listOfHeuristics options siblings
-          in runTypeGraphPlusDoFirst (setPathHeuristics heuristics)
-
+       selectedOptions :: SolveOptions
+       selectedOptions = 
+          solveOptions { uniqueCounter    = unique 
+                       , typeSynonyms     = synonyms
+                       , classEnvironment = classEnv
+                       }
+          
+       selectedSolver :: ConstraintSolver (TypeConstraint ConstraintInfo) ConstraintInfo
+       selectedSolver
+          | SolverSimple      `elem` options = greedySimpleConstraintSolver 
+          | SolverGreedy      `elem` options = greedyConstraintSolver                                                        
+          | SolverTypeGraph   `elem` options = typegraphConstraintSolver heuristics
+          | SolverCombination `elem` options = combinedSolver             
+          | otherwise = 
+               solveChunkConstraints polySubst combinedSolver (flattenTree selectedTreeWalk) chunkConstraints
+            
        combinedSolver =
-          (if SignatureWarnings `elem` options then warnForTooSpecificSignatures runGreedy else runGreedy)   
-             |>>| typegraphSolver
-   in selectedSolver classEnv synonyms unique constraints
+          -- (if SignatureWarnings `elem` options then warnForTooSpecificSignatures runGreedy else runGreedy)   
+          greedyConstraintSolver |>>| typegraphConstraintSolver heuristics
 
+       heuristics = listOfHeuristics options siblings
+
+
+{-
 warnForTooSpecificSignatures :: SolverX (TypeConstraint ConstraintInfo) ConstraintInfo Predicates Warnings -> SolverX (TypeConstraint ConstraintInfo) ConstraintInfo Predicates Warnings
 warnForTooSpecificSignatures solver classEnv synonyms unique constraints =
    let -- split the constraints that come from an explicit type signature from the others.
@@ -140,4 +140,4 @@ warnForTooSpecificSignatures solver classEnv synonyms unique constraints =
    splitExplicit _ = Nothing
    
 instance Show Warning where show _ = "<warning>"
-instance IsState Warnings
+instance IsState Warnings -}
