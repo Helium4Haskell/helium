@@ -40,3 +40,8 @@ instance Eq Assoc where
     AssocRight == AssocRight = True
     AssocNone  == AssocNone  = True
     _          == _          = False
+
+instance Show Assoc where
+   show AssocNone  = "infix"
+   show AssocLeft  = "infixl"
+   show AssocRight = "infixr"

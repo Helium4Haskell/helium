@@ -14,6 +14,7 @@ import qualified StaticChecks(sem_Module)
 import UHA_Syntax (Name)
 import Top.Types (TpScheme)
 import StaticErrors
+import Information (showInformation)
 
 phaseStaticChecks :: 
    String -> Module -> [ImportEnvironment] -> [Option] -> 
@@ -31,6 +32,11 @@ phaseStaticChecks fullName module_ importEnvs options = do
        _:_ ->
           do when (DumpInformationForAllModules `elem` options) $
                 putStrLn (show (foldr combineImportEnvironments emptyEnvironment importEnvs))
+             
+             -- display name information
+             let combinedEnv = foldr combineImportEnvironments emptyEnvironment importEnvs
+             showInformation False options combinedEnv
+    
              return (Left errors)
          
        [] -> 

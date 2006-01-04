@@ -43,6 +43,7 @@ processArgs args =
       , Option "v" ["verbose"]              (NoArg Verbose) "show the phase the compiler is in"
       , Option "w" ["no-warnings"]          (NoArg NoWarnings) "do not show warnings"
       , Option "X" ["more-options"]         (NoArg MoreOptions) "show more compiler options"
+      , Option ""  ["info"]                 (ReqArg Information "NAME") "display information about NAME"
       ]
       ++
       -- More options
@@ -89,6 +90,7 @@ data Option
    -- Main options
    = BuildOne | BuildAll | DumpInformationForThisModule | DumpInformationForAllModules
    | NoLogging | Overloading | LvmPath String | Verbose | NoWarnings | MoreOptions
+   | Information String
    -- More options
    | StopAfterParser | StopAfterStaticAnalysis | StopAfterTypeInferencing | StopAfterDesugar
    | DumpTokens | DumpUHA | DumpCore | DumpCoreToFile | DebugLogger | DumpTypeDebug

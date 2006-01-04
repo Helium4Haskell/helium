@@ -74,6 +74,7 @@ STATICANALYSIS = \
 	staticanalysis/messages/TypeErrors.hs \
 	staticanalysis/messages/KindErrors.hs \
 	staticanalysis/messages/Warnings.hs \
+	staticanalysis/messages/Information.hs \
 	staticanalysis/heuristics/HeuristicsInfo.hs \
 	staticanalysis/heuristics/ListOfHeuristics.hs \
 	staticanalysis/heuristics/OnlyResultHeuristics.hs \

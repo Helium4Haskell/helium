@@ -14,6 +14,7 @@ import TypeInferencing(typeInferencing)
 import DictionaryEnvironment (DictionaryEnvironment)
 import UHA_Syntax
 import TypeErrors
+import Information (showInformation)
 
 phaseTypeInferencer :: 
     String -> Module -> ImportEnvironment -> ImportEnvironment -> [Option] -> 
@@ -38,7 +39,10 @@ phaseTypeInferencer fullName module_ localEnv completeEnv options = do
         finalEnv = addToTypeEnvironment toplevelTypes completeEnv
     
     when (DumpTypeDebug `elem` options) debugIO      
-
+     
+    -- display name information
+    showInformation True options finalEnv
+    
     case typeErrors of 
        
        _:_ ->
@@ -51,6 +55,8 @@ phaseTypeInferencer fullName module_ localEnv completeEnv options = do
              when (DumpInformationForAllModules `elem` options) $ 
                 putStrLn (show finalEnv)
              when (  DumpInformationForThisModule `elem` options 
-                  && DumpInformationForAllModules `notElem` options) $ 
-                        putStrLn (show (addToTypeEnvironment toplevelTypes localEnv))
+                  && DumpInformationForAllModules `notElem` options
+                  ) 
+                  $ putStrLn (show (addToTypeEnvironment toplevelTypes localEnv))
+                  
              return (Right (dictionaryEnv, finalEnv, toplevelTypes, warnings))
