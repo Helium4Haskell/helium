@@ -47,7 +47,7 @@ PACKAGENET = -package net
 else
 PACKAGENET = 
 endif
-HC_OPTS = -static -fglasgow-exts -cpp -fallow-undecidable-instances -fallow-overlapping-instances \
+HC_OPTS = -static -fglasgow-exts -fallow-undecidable-instances -fallow-overlapping-instances \
 		$(PACKAGENET) -package lang -package text -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
@@ -222,7 +222,7 @@ lvmrun:
 
 $(LVMLIBDIR)/common/ghc/Special.hi: $(LVMLIBDIR)/common/ghc/Special.hs
 	# GHC Special.hs
-	$(HC) -c $< -cpp -fglasgow-exts $(HC_OPTS) 
+	$(HC) -c $< -fglasgow-exts $(HC_OPTS) 
 
 libraries:
 	@echo "****************************************************"
