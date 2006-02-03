@@ -58,9 +58,11 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
 	makeShowDictionary :: Int -> Id -> Expr
 	makeShowDictionary nrOfArgs nameId =
 	   let ids  = take nrOfArgs [ idFromString ("d" ++ show i) | i <- [1..] ]
-	       con  = Con (ConTag (Lit (LitInt 0)) 1)
+	       idX  = idFromString "x"
+	       con  = Con (ConTag (Lit (LitInt 0)) 2)
 	       list = [ Ap (Var (idFromString "$show")) (Var id) | id <- ids ]
-	       body = Ap con (foldl Ap (Var nameId) list)
+	       decl = Bind idX (foldl Ap (Var nameId) list)
+	       body = Let (Strict decl) (Ap (Ap con (Var idX)) (Ap (Var (idFromString "$showList")) (Var idX)))
 	   in foldr Lam body ids
  
 -- Show function for a type synonym

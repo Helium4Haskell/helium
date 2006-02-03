@@ -30,7 +30,7 @@ module HeliumLang
     , ''$negate''
     , ''$enumFrom'', ''$enumFromThen'', ''$enumFromTo'', ''$enumFromThenTo''
     , ''$floatUnaryMinus''
-    , ''$show''
+    , ''$show'', ''$showList''
     ) where
 
 import LvmLang 
@@ -95,8 +95,11 @@ custom infix (:) : public [5,"right"]
 ''$show'' :: "Show a => a -> String"
 ''$show'' dShow = 
     case dShow of
-        (@0, 1) x1 -> x1
+        (@0, 2) x1 x2 -> x1
 
+''$showList'' :: "(a -> String) -> [a] -> String"
+''$showList'' = showList
+        
 {----------------------------------------------------------
   Basic data types
 ----------------------------------------------------------}

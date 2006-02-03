@@ -67,7 +67,7 @@ module PreludePrim
     ) where
 
 import HeliumLang
-    ( showFloat, showInt, showBool, showChar, showList, showUnit
+    ( showFloat, showInt, showBool, showChar, showList, showUnit, showString
     , showTuple2, showTuple3, showTuple4, showTuple5, showTuple6, showTuple7
     , showTuple8, showTuple9, showTuple10
     , ''$negate'', ''$show''
@@ -240,71 +240,87 @@ round x
 {- Show -}
 
 ''$dictShowInt'' :: "DictShowInt"
-''$dictShowInt''    = (@0, 1) showInt
+''$dictShowInt''    = (@0, 2) showInt (showList showInt)
 
 ''$dictShowFloat'' :: "DictShowFloat"
-''$dictShowFloat''  = (@0, 1) showFloat
+''$dictShowFloat''  = (@0, 2) showFloat (showList showFloat)
 
 ''$dictShowBool'' :: "DictShowBool"
-''$dictShowBool''   = (@0, 1) showBool
+''$dictShowBool''   = (@0, 2) showBool (showList showBool)
 
 ''$dictShowChar'' :: "DictShowChar"
-''$dictShowChar''   = (@0, 1) showChar
+''$dictShowChar''   = (@0, 2) showChar showString
 
 ''$dictShowOrdering'' :: "DictShowOrdering"
-''$dictShowOrdering'' = (@0, 1) showOrdering
+''$dictShowOrdering'' = (@0, 2) showOrdering (showList showOrdering)
 
 ''$dictShow[]'' :: "DictShowList"
-''$dictShow[]'' dict = (@0, 1) (\xs -> showList (show dict) xs)
+''$dictShow[]'' dict = (@0, 2) (showAList dict) (showList (showAList dict))
 
 ''$dictShow()'' :: "DictShowTuple0"
-''$dictShow()'' = (@0, 1) showUnit
+''$dictShow()'' = (@0, 2) showUnit (showList showUnit)
 
 ''$dictShow(,)'' :: "DictShowTuple2"
-''$dictShow(,)'' d1 d2 = (@0, 1) (\t ->
-    showTuple2  (show d1) (show d2) t)
-
+''$dictShow(,)'' d1 d2 = 
+   let! x = showTuple2  (show d1) (show d2)
+   in (@0, 2) x (showList x)
+               
 ''$dictShow(,,)'' :: "DictShowTuple3"
-''$dictShow(,,)'' d1 d2 d3 = (@0, 1) (\t ->
-    showTuple3  (show d1) (show d2) (show d3) t)
+''$dictShow(,,)'' d1 d2 d3 =
+   let! x = showTuple3  (show d1) (show d2) (show d3)
+   in (@0, 2) x (showList x)
 
 ''$dictShow(,,,)'' :: "DictShowTuple4"
-''$dictShow(,,,)'' d1 d2 d3 d4 = (@0, 1) (\t ->
-    showTuple4  (show d1) (show d2) (show d3) (show d4) t)
+''$dictShow(,,,)'' d1 d2 d3 d4 = 
+   let! x = showTuple4  (show d1) (show d2) (show d3) (show d4)
+   in (@0, 2) x (showList x)
 
 ''$dictShow(,,,,)'' :: "DictShowTuple5"
-''$dictShow(,,,,)'' d1 d2 d3 d4 d5 = (@0, 1) (\t ->
-    showTuple5  (show d1) (show d2) (show d3) (show d4) (show d5) t)
+''$dictShow(,,,,)'' d1 d2 d3 d4 d5 = 
+   let! x = showTuple5  (show d1) (show d2) (show d3) (show d4) (show d5)
+   in (@0, 2) x (showList x)
 
 ''$dictShow(,,,,,)'' :: "DictShowTuple6"
-''$dictShow(,,,,,)'' d1 d2 d3 d4 d5 d6 = (@0, 1) (\t ->
-    showTuple6  (show d1) (show d2) (show d3) (show d4) (show d5) 
-                (show d6) t)
+''$dictShow(,,,,,)'' d1 d2 d3 d4 d5 d6 = 
+   let! x = showTuple6  (show d1) (show d2) (show d3) (show d4) (show d5) 
+                        (show d6)
+   in (@0, 2) x (showList x)
 
 ''$dictShow(,,,,,,)'' :: "DictShowTuple7"
-''$dictShow(,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 = (@0, 1) (\t ->
-    showTuple7  (show d1) (show d2) (show d3) (show d4) (show d5) 
-                (show d6) (show d7) t)
+''$dictShow(,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 = 
+   let! x = showTuple7  (show d1) (show d2) (show d3) (show d4) (show d5) 
+                        (show d6) (show d7)
+   in (@0, 2) x (showList x)
 
 ''$dictShow(,,,,,,,)'' :: "DictShowTuple8"
-''$dictShow(,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 = (@0, 1) (\t ->
-    showTuple8  (show d1) (show d2) (show d3) (show d4) (show d5) 
-                (show d6) (show d7) (show d8) t)
+''$dictShow(,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 = 
+   let! x = showTuple8  (show d1) (show d2) (show d3) (show d4) (show d5) 
+                        (show d6) (show d7) (show d8)
+   in (@0, 2) x (showList x)
 
 ''$dictShow(,,,,,,,,)'' :: "DictShowTuple9"
-''$dictShow(,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 = (@0, 1) (\t ->
-    showTuple9  (show d1) (show d2) (show d3) (show d4) (show d5) 
-                (show d6) (show d7) (show d8) (show d9) t)
+''$dictShow(,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 = 
+   let! x = showTuple9  (show d1) (show d2) (show d3) (show d4) (show d5) 
+                        (show d6) (show d7) (show d8) (show d9)
+   in (@0, 2) x (showList x)
 
 ''$dictShow(,,,,,,,,,)'' :: "DictShowTuple10"
-''$dictShow(,,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 = (@0, 1) (\t ->
-    showTuple10 (show d1) (show d2) (show d3) (show d4) (show d5) 
-                (show d6) (show d7) (show d8) (show d9) (show d10) t)
+''$dictShow(,,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 = 
+   let! x = showTuple10 (show d1) (show d2) (show d3) (show d4) (show d5) 
+                        (show d6) (show d7) (show d8) (show d9) (show d10)
+   in (@0, 2) x (showList x)
         
 show :: "Show a => a -> String"
 show dShow = 
-  ''$show'' dShow
-        
+  case dShow of
+     (@0, 2) x1 x2 -> x1
+
+-- not exported
+showAList :: "Show a => [a] -> String"
+showAList dShow = 
+  case dShow of
+     (@0, 2) x1 x2 -> x2
+     
 {- Num -}
 
 ''$dictNumInt'' :: "DictNumInt"
