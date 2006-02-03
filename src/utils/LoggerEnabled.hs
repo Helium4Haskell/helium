@@ -10,9 +10,9 @@ module Logger ( logger ) where
 
 import Network
 import Control.Concurrent
---import Posix
 import Monad
 import System
+import Char
 import List
 import IO
 import Version
@@ -33,16 +33,46 @@ loggerPORTNUMBER  = 5010
 loggerDELAY       = 10000    -- in micro-seconds
 loggerTRIES       = 2
 
-loggerSEPARATOR, loggerTERMINATOR, loggerUSERNAME :: String
-loggerSEPARATOR = "\NUL\NUL\n"
-loggerTERMINATOR  = "\SOH\SOH\n"
-loggerUSERNAME    = "USERNAME"
+loggerSEPARATOR, loggerTERMINATOR, loggerUSERNAME, loggerDEFAULTNAME :: String
+loggerSEPARATOR      = "\NUL\NUL\n"
+loggerTERMINATOR     = "\SOH\SOH\n"
+loggerUSERNAME       = "USERNAME"
+loggerDEFAULTNAME    = "unknown"
+
+loggerADMINSEPARATOR, loggerESCAPECHAR :: Char
+loggerADMINSEPARATOR = '|'
+loggerESCAPECHAR     = '\\'
+
+loggerESCAPABLES :: String
+loggerESCAPABLES     = [loggerADMINSEPARATOR, loggerESCAPECHAR]
 
 loggerENABLED :: Bool
-loggerENABLED     = True
+loggerENABLED        = True
 
 debug :: String -> Bool -> IO ()
 debug s loggerDEBUGMODE = when loggerDEBUGMODE (putStrLn s)
+
+------------------------------------------------------
+-- Normalization/escaping functions
+
+normalizeName :: String -> String
+normalizeName name = let 
+                       newname = map toLower (filter isAlphaNum name)
+                     in   
+                       if null newname then loggerDEFAULTNAME else newname
+
+-- Escapes all characters from the list loggerESCAPABLES
+escape :: String -> String
+escape []     = []
+escape (x:xs) = if (x `elem` loggerESCAPABLES) 
+                then loggerESCAPECHAR : rest 
+                else rest
+                where 
+                  rest = x:(escape xs)
+
+-- Remove line breaks and escape special characters                
+normalize :: String -> String
+normalize xs = escape (filter ((/=) '\n') xs)
 
 ------------------------------------------------------
 -- The function to send a message to a socket
@@ -51,7 +81,8 @@ logger :: String -> Maybe ([String],String) -> Bool -> IO ()
 logger logcode maybeSources loggerDEBUGMODE
     | not loggerENABLED || isInterpreterModule maybeSources = return ()
     | otherwise      = do
-        username <- (getEnv loggerUSERNAME) `catch` (\_ -> return "unknown")
+        username <- (getEnv loggerUSERNAME) `catch` (\_ -> return loggerDEFAULTNAME)
+        optionString  <- getArgs
         sources  <- case maybeSources of 
             Nothing -> 
                 return (loggerTERMINATOR)
@@ -69,9 +100,17 @@ logger logcode maybeSources loggerDEBUGMODE
                     x  <- f hsFile
                     return (concat (loggerSEPARATOR:x:xs)++loggerTERMINATOR) 
                    ) `catch` (\_ -> return (loggerTERMINATOR) )
-
-        --putStr (username++":"++logcode++":"++version++"\n"++sources)
-        sendLogString (username++":"++logcode++":"++version++"\n"++sources) loggerDEBUGMODE
+        {- putStr (normalizeName username ++ 
+                       (loggerADMINSEPARATOR : normalize logcode) ++ 
+                       (loggerADMINSEPARATOR : normalize version) ++
+                       (loggerADMINSEPARATOR : normalize (unwords optionString)) ++ 
+                       "\n" ++sources) -}                            
+        sendLogString (normalizeName username ++ 
+                       (loggerADMINSEPARATOR : normalize logcode) ++ 
+                       (loggerADMINSEPARATOR : normalize version) ++
+                       (loggerADMINSEPARATOR : normalize (unwords optionString)) ++ 
+                       "\n" ++sources
+                      ) loggerDEBUGMODE
 
 isInterpreterModule :: Maybe ([String],String) -> Bool
 isInterpreterModule Nothing = False
@@ -79,7 +118,6 @@ isInterpreterModule (Just (_, hsFile)) = fileNameWithoutPath hsFile == "Interpre
 
 sendLogString :: String -> Bool -> IO ()
 sendLogString message loggerDEBUGMODE = withSocketsDo (rec 0)
- 
  where
     rec i = do --installHandler sigPIPE Ignore Nothing
              handle <- connectTo loggerHOSTNAME (PortNumber (fromIntegral loggerPORTNUMBER))
