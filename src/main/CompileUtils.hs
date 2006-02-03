@@ -12,7 +12,6 @@ module CompileUtils
     , splitFilePath, combinePathAndFile
     , when, unless
     , exitWith, ExitCode(..), getArgs
-    , sendLog
     , module ImportEnvironment
     , Module(..)
     ) where

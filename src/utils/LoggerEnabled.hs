@@ -87,19 +87,11 @@ logger logcode maybeSources loggerDEBUGMODE
             Nothing -> 
                 return (loggerTERMINATOR)
             Just (imports,hsFile) -> 
-               let f name = do debug ("Logging file " ++ name) loggerDEBUGMODE
-                               program <- readFile name                                                        
-                               return (  fileNameWithoutPath name
-                                      ++ "\n" 
-                                      ++ program
-                                      ++ "\n"                
-                                      ++ loggerSEPARATOR 
-                                      )
-               in (do 
-                    xs <- mapM f imports
-                    x  <- f hsFile
-                    return (concat (loggerSEPARATOR:x:xs)++loggerTERMINATOR) 
-                   ) `catch` (\_ -> return (loggerTERMINATOR) )
+                do let allHsFiles = hsFile:imports
+                       allFiles   = allHsFiles ++ map toTypeFile allHsFiles
+                   xs <- mapM (getContentOfFile loggerDEBUGMODE) allFiles
+                   return (concat (loggerSEPARATOR:xs)++loggerTERMINATOR) 
+                     `catch` (\_ -> return (loggerTERMINATOR) )
         {- putStr (normalizeName username ++ 
                        (loggerADMINSEPARATOR : normalize logcode) ++ 
                        (loggerADMINSEPARATOR : normalize version) ++
@@ -112,6 +104,25 @@ logger logcode maybeSources loggerDEBUGMODE
                        "\n" ++sources
                       ) loggerDEBUGMODE
 
+toTypeFile :: String -> String
+toTypeFile fullName = fullNameNoExt ++ ".type"
+ where
+   (path, baseName, _) = splitFilePath fullName
+   fullNameNoExt       = combinePathAndFile path baseName     
+                     
+getContentOfFile :: Bool -> String -> IO String
+getContentOfFile loggerDEBUGMODE name =    
+   do program <- readFile name                                                        
+      debug ("Logging file " ++ name) loggerDEBUGMODE
+      return (  fileNameWithoutPath name
+             ++ "\n" 
+             ++ program
+             ++ "\n"                
+             ++ loggerSEPARATOR 
+             )
+ `catch`
+    (\_ -> return "")
+    
 isInterpreterModule :: Maybe ([String],String) -> Bool
 isInterpreterModule Nothing = False
 isInterpreterModule (Just (_, hsFile)) = fileNameWithoutPath hsFile == "Interpreter.hs"
@@ -133,7 +144,20 @@ sendLogString message loggerDEBUGMODE = withSocketsDo (rec 0)
                 
 {- from Utils.hs.....because of the import-dependencies, it is not possible to import 
    this function directly -}
-
+splitFilePath :: String -> (String, String, String)
+splitFilePath filePath = 
+    let slashes = "\\/"
+        (revFileName, revPath) = span (`notElem` slashes) (reverse filePath)
+        (baseName, ext)  = span (/= '.') (reverse revFileName)
+    in (reverse revPath, baseName, dropWhile (== '.') ext)
+    
+combinePathAndFile :: String -> String -> String
+combinePathAndFile path file =
+    case path of 
+        "" -> file
+        _  | last path == '/' -> path ++ file
+           | otherwise        -> path ++ "/" ++ file
+        
 fileNameWithoutPath :: String -> String
 fileNameWithoutPath filePath = 
     let slashes = "\\/"
