@@ -1,0 +1,4 @@
+Compiling correct/ShowString1.hs
+(1,1): Warning: Missing type signature: main :: String
+Compilation successful with 1 warning
+"\"hello, world\""
