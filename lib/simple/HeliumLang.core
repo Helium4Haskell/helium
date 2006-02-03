@@ -20,7 +20,7 @@ module HeliumLang
 
     , ''$negate'', ''$floatUnaryMinus''
     , ''$enumFrom'', ''$enumFromThen'', ''$enumFromTo'', ''$enumFromThenTo''
-    , ''$show''
+    , ''$show'' , ''$showList''
     ) where
 
 import LvmLang 
@@ -61,6 +61,9 @@ custom infix (:) : public [5,"right"]
 ''$show'' :: "showDict -> a -> String"
 ''$show'' dShow
    = errorPacked "internal error: show called in the simple prelude!"
+
+''$showList'' :: "(a -> String) -> [a] -> String"
+''$showList'' = showList
 
 -- the enumeration functions are used in the translation of the .. notation
 -- [1..10]   === enumFromTo 1 10
