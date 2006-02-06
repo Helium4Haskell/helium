@@ -462,8 +462,6 @@ movetohome: smaller
 	cp $(HELIUMBINDIR)/$(MAIN)$(EXE) ../distribution/helium/bin
 	cp $(LVMRUNTIMEDIR)/lvmrun$(EXE) ../distribution/helium/bin
 	cp $(HELIUMBINDIR)/texthint$(EXE) ../distribution/helium/bin
-	# *** Copying demos to projects directory
-	cp ../demo/Calendar.hs ../demo/TicTacToe.hs ../distribution/helium/demo
 	# *** Copy simple and overloaded generated lvms and touch them
 	cp ../lib/simple/*.lvm ../distribution/helium/lib/simple
 	cp ../lib/*.lvm ../distribution/helium/lib
@@ -479,8 +477,6 @@ movetobbl: smaller
 	cp $(HELIUMBINDIR)/$(MAIN)$(EXE) /cygdrive/r/helium/bin
 	cp $(LVMRUNTIMEDIR)/lvmrun$(EXE) /cygdrive/r/helium/bin
 	cp $(HELIUMBINDIR)/texthint$(EXE) /cygdrive/r/helium/bin
-	# *** Copying demos to projects directory
-	cp ../demo/Calendar.hs ../demo/TicTacToe.hs /cygdrive/r/helium/demo
 	# *** Copy generated simple and overloaded lvms and touch them
 	cp ../lib/simple/*.lvm /cygdrive/r/helium/lib/simple
 	cp ../lib/*.lvm /cygdrive/r/helium/lib
