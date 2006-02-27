@@ -1,0 +1,6 @@
+Compiling correct/OverloadedMain.hs
+(1,1): Warning: Missing type signature: main :: Eq a => [a]
+  Hint: Because main has an overloaded type, computations may be repeated.
+        Insert the missing type signature if this is indeed your intention.
+Compilation successful with 1 warning
+<<overloaded function>>

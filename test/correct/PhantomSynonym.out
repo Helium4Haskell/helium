@@ -1,0 +1,5 @@
+Compiling correct/PhantomSynonym.hs
+(1,14): Warning: Type variable "a" is not used
+(9,1): Warning: Missing type signature: main :: Bool
+Compilation successful with 2 warnings
+True
