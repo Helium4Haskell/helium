@@ -569,6 +569,9 @@ undefined = error "undefined"
 (>>=) io f = do x <- io
                 f x
 
+(>>) :: IO a -> IO b -> IO b
+p >> q = p >>= \ _ -> q
+
 {- imported from PreludePrim 
 putChar :: Char -> IO ()
 putChar c = primPutChar c
@@ -590,8 +593,7 @@ sequence [] = return []
 sequence (c:cs) = do { x <- c; xs <- sequence cs; return (x:xs) }
 
 sequence_ :: [IO a] -> IO ()
-sequence_ [] = return ()
-sequence_ (c:cs) = do { c; sequence_ cs; return () }
+sequence_ = foldr (>>) (return ())
 
 print :: (a -> String) -> a -> IO ()
 print showElement e = putStrLn (showElement e)

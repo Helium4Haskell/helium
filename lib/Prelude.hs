@@ -563,6 +563,9 @@ undefined = error "undefined"
 (>>=) io f = do x <- io
                 f x
 
+(>>) :: IO a -> IO b -> IO b
+p >> q = p >>= \ _ -> q
+
 {- imported from PreludePrim 
 return :: a -> IO a
 
@@ -579,13 +582,8 @@ unsafePerformIO :: IO a -> a
 unsafePerformIO = primUnsafePerformIO
 -}
 
-sequence :: [IO a] -> IO [a]
-sequence [] = return []
-sequence (c:cs) = do { x <- c; xs <- sequence cs; return (x:xs) }
-
 sequence_ :: [IO a] -> IO ()
-sequence_ [] = return ()
-sequence_ (c:cs) = do { c; sequence_ cs; return () }
+sequence_ = foldr (>>) (return ())
 
 print :: Show a => a -> IO ()
 print e = putStrLn (show e)
