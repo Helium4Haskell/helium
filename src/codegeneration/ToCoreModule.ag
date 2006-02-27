@@ -42,6 +42,10 @@ insertedMain toplevelTypes =
                         (var "$primPackedToString" `app_`
                             packedString "No 'main' function defined in this module")
                 Just (name, tpScheme)
+                    | not (null qs) ->
+                        var "$primPutStrLn" `app_` 
+                            (var "$primPackedToString" `app_`
+                                packedString "<<overloaded function>>")
                     | isIOType tp -> 
                         var name
                     | otherwise ->
@@ -49,7 +53,7 @@ insertedMain toplevelTypes =
                             (showFunctionOfType True (makeTypeFromTp tp) `app_` 
                                 var name)
                     where                        
-                        tp = unqualify (snd (instantiate 123456789 tpScheme))
+                        (qs, tp) = split (snd (instantiate 123456789 tpScheme))
     where
         unsafePIO = var "$primUnsafePerformIO"    
                 
