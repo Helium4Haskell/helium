@@ -9,8 +9,8 @@ commit in cvs
 BBL versie
 
 make depend
-make
-cd ../test/simple
+make EXTRA_HC_OPTS=-O2
+cd ../test
 ./testAll
 make movetobbl
 controleer permissies
