@@ -1,0 +1,84 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<title>Wanneer faalt patroonherkenning</title>
+</head>
+
+<body>
+
+<h1 style="text-align:justify">Wanneer faalt patroonherkenning?</h1>
+<p style="text-align:justify"><i>Betreft:</i> derdejaarsproject<i style="mso-bidi-font-style:
+normal"><br>
+Docent:</i> Arjan van IJzendoorn<i><br>
+Student:</i> Maarten Löffler<o:p>
+</o:p>
+</p>
+<p style="text-align:justify">In Haskell kunnen programma’s tijdens het
+draaien op weinig manieren fout gaan. De grootste bronnen van fouten in talen
+als C++ en Java zijn typeringsfouten en verkeerd beheer van geheugen. Deze
+categorieën fouten zijn onmogelijk in Haskell: alle types zijn statisch
+gecontroleerd en van geheugenbeheer ben je geabstraheerd.</p>
+<p style="text-align:justify">Partiële functies blijven dan nog over als bron
+van fouten tijdens het draaien van het programma; een functie die niet
+gedefinieerd is voor alle gevallen kan falen als de verkeerde parameters
+meegegeven worden. Denk bijvoorbeeld aan de <span style="mso-bidi-font-family: Times New Roman"><kbd>sum</kbd></span>
+functie op lijsten en het vergeten van het geval voor de lege lijst.<o:p>
+</o:p>
+</p>
+<p style="text-align:justify">In veel gevallen is het mogelijk om automatisch te
+bepalen of een functiedefinitie partieel is, misschien wel in alle gevallen. De
+opdracht is dan ook om uit te zoeken onder welke voorwaarden een functie
+partieel gedefinieerd is en hoe de programmeur daar zo duidelijk mogelijk op
+gewezen kan worden. Naast dit onderzoek kan gewerkt worden aan een implementatie in de
+Helium compiler. De Helium compiler wordt gebruikt in het onderwijs (Functioneel
+Programmeren) en het toevoegen van deze meldingen komt de kwaliteit van het
+onderwijs ten goede.</p>
+<p style="text-align:justify">Het doel is iets uitgebreider dan puur het bepalen
+wanneer patroonherkenning faalt. Er moet ook rekening gehouden worden met
+gevalsonderscheid d.m.v. guards. Ook kan een zij-effect van dit onderzoek zijn
+dat de programmeur ook iets te horen krijgt als patronen overlappen en er dus
+sprake is van unreachable code. Patroonherkenning vindt niet alleen plaats aan
+de linkerkant van het =-teken, maar ook in case-expressies, lambda's en de
+do-notatie.<o:p>
+</o:p>
+</p>
+<p style="text-align:justify">De volgende activiteiten zijn nodig in dit
+project:</p>
+<ul>
+  <li>
+    <p style="text-align:justify">onderzoek naar bestaande literatuur over
+    patroonherkenning</li>
+  <li>
+    <p style="text-align:justify">onderzoeken wanneer functies partieel zijn</li>
+  <li>
+    <p style="text-align:justify"><o:p>
+    </o:p>
+    onderzoeken hoe dit gecombineerd kan worden met guards</li>
+  <li>
+    <p style="text-align:justify">inwerken in de Helium compiler</li>
+  <li>
+    <p style="text-align:justify">het schrijven van testprogramma's die later
+    als invoer voor de compiler kunnen dienen (test-first programming)</li>
+  <li>
+    <p style="text-align:justify">implementeren van de controle in Haskell</li>
+  <li>
+    <p style="text-align:justify">implementeren van de presentatie aan de
+    gebruiker (welke informatie wordt getoond bij een waarschuwing?)</li>
+  <li>
+    <p style="text-align:justify">controleren of de testprogramma's het
+    verwachte resultaat geven</li>
+  <li>
+    <p style="text-align:justify">integratie in de productieversie van de Helium
+    compiler</li>
+</ul>
+<p style="text-align: justify">Kortom, literatuuronderzoek, theoretisch en
+praktisch onderzoek en implementatie zijn allemaal vertegenwoordigd in dit
+project.</p>
+<p style="text-align: justify">&nbsp;</p>
+
+</body>
+
+</html>
