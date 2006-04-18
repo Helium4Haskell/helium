@@ -6,7 +6,7 @@ import OperatorTable
 import Char
 import Utils
 import Messages
-import Data.FiniteMap
+import qualified Data.Map as M
 }
 
 INCLUDE "../syntax/UHA_Syntax.ag"
@@ -49,7 +49,7 @@ expression opTable e = -- !!! errors ignored
 
 operatorsFromModule :: Module -> OperatorTable
 operatorsFromModule m =
-    listToFM (concatMap declToOps (collectInfixdecls m))
+    M.fromList (concatMap declToOps (collectInfixdecls m))
   where
     declToOps (Declaration_Fixity _ f (MaybeInt_Just p) os) = 
         [ (o, (p, fixityToAssoc f)) | o <- os ]

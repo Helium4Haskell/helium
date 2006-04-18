@@ -10,6 +10,7 @@ import Utils
 import Messages
 import qualified Data.Map as M
 
+
 data ResolveError = 
     Ambiguous Assoc Name Assoc Name
 
