@@ -70,6 +70,8 @@ unexpected :: String -> KindError
 unexpected msg = 
    internalError "KindInferencing.ag" "unexpected" ("unexpected kind error: "++msg)
 
+instance Eq KindError
+instance Ord KindError
 instance TypeConstraintInfo KindError
 instance PolyTypeConstraintInfo KindError
 

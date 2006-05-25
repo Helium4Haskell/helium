@@ -41,6 +41,12 @@ data ConstraintInfo =
 instance Show ConstraintInfo where
    show = location
 
+instance Eq ConstraintInfo where
+  c1 == c2 = location c1 == location c2
+
+instance Ord ConstraintInfo where
+  compare c1 c2 = compare (location c1) (location c2)
+
 -------------------------------------------------------------------------
 -- Properties
 
@@ -249,6 +255,7 @@ instance TypeConstraintInfo ConstraintInfo where
    escapedSkolems       = addProperty . EscapedSkolems
    predicateArisingFrom = addProperty . PredicateArisingFrom
    equalityTypePair     = setTypePair
+   emptyInfo            = orphanConstraint 1 "" (DoublyLinkedTree Nothing (error ":(") []) []
    
 
 instance PolyTypeConstraintInfo ConstraintInfo where

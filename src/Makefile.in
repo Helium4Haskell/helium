@@ -48,7 +48,7 @@ else
 PACKAGENET = 
 endif
 HC_OPTS = -static -fglasgow-exts -fallow-undecidable-instances -fallow-overlapping-instances \
-		$(PACKAGENET) -package lang -package text -i$(IFACES) $(EXTRA_HC_OPTS)
+		$(PACKAGENET) -package lang -package text -package fgl -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
 AG_OPTS = -mscfr
@@ -143,7 +143,8 @@ TOP = \
 	$(TOPDIR)/Solver.hs $(TOPDIR)/Types/Classes.hs $(TOPDIR)/Types/Kinds.hs $(TOPDIR)/Types/Primitive.hs \
 	$(TOPDIR)/Types/Qualification.hs $(TOPDIR)/Types/Quantification.hs $(TOPDIR)/Types/Schemes.hs \
 	$(TOPDIR)/Types/Substitution.hs $(TOPDIR)/Types/Synonym.hs $(TOPDIR)/Types/Unification.hs \
-	$(TOPDIR)/Types.hs $(TOPDIR)/Util/Embedding.hs $(TOPDIR)/Util/Empty.hs $(TOPDIR)/Util/Option.hs
+	$(TOPDIR)/Types.hs $(TOPDIR)/Util/Embedding.hs $(TOPDIR)/Util/Empty.hs $(TOPDIR)/Util/Option.hs \
+        $(TOPDIR)/Implementation/PredGraph/Graph.hs
   
 # LVM sources
 
