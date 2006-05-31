@@ -1437,8 +1437,8 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             (_lhsOuniqueChunk@_) =
                 _chunkNr
             (_cinfo@_) =
-                \name -> variableConstraint "variable" (nameToUHA_Expr name)
-                   [ FolkloreConstraint, HasTrustFactor 10.0, IsImported name ]
+                \(name, TVar i) -> variableConstraint "variable" (nameToUHA_Expr name)
+                   [ FolkloreConstraint, HasTrustFactor 10.0, IsImported name, Overloaded i ]
             (_declInfo@_) =
                 LocalInfo { self = UHA_Decls _declarationsIself
                           , assignedType = Nothing
@@ -5034,7 +5034,9 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             (_conPredicate@_) =
                 if _overloaded then [predicate (Predicate "Enum" _elementType) _cinfoPred] else []
             (_elementType@_) =
-                if _overloaded then TVar (_lhsIbetaUnique + 1) else intType
+                if _overloaded then TVar _freshBeta else intType
+            (_freshBeta@_) =
+                _lhsIbetaUnique + 1
             (_overloaded@_) =
                 case M.lookup enumFromName (typeEnvironment _lhsIimportEnvironment) of
                    Just scheme -> isOverloaded scheme
@@ -5083,7 +5085,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                    [ FolkloreConstraint ]
             (_cinfoPred@_) =
                 resultConstraint "enumeration" _parentTree
-                   [ ReductionErrorInfo (Predicate "Enum" _elementType) ]
+                   [ ReductionErrorInfo (Predicate "Enum" _elementType), Overloaded _freshBeta ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta
@@ -7184,7 +7186,7 @@ sem_Expression_Negate (range_) (expression_) =
             (_cinfo@_) =
                 specialConstraint "negation" _parentTree
                    (self _localInfo, Just $ nameToUHA_Expr (Name_Operator range_ [] "-"))
-                   []
+                   [Overloaded _lhsIbetaUnique ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta

@@ -360,7 +360,8 @@ SEM Expression
             . overloaded   = case M.lookup enumFromName (typeEnvironment @lhs.importEnvironment) of
                                 Just scheme -> isOverloaded scheme
                                 Nothing     -> False
-            . elementType  = if @overloaded then TVar (@lhs.betaUnique + 1) else intType
+            . freshBeta    = @lhs.betaUnique + 1
+            . elementType  = if @overloaded then TVar @freshBeta else intType
             . conPredicate = if @overloaded then [predicate (Predicate "Enum" @elementType) @cinfoPred] else []
             . conList      = [ (listType @elementType .==. @beta) @cinfoResult ]
             . conFrom      = [ (@from.beta .==. @elementType) @cinfoFrom ]

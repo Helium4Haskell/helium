@@ -71,6 +71,7 @@ data Property
    | PredicateArisingFrom (Predicate, ConstraintInfo)
    | TypeSignatureLocation Range
    | TypePair (Tp, Tp)
+   | Overloaded Int
                 
 class HasProperties a where
    getProperties :: a -> Properties
@@ -100,6 +101,10 @@ maybeHead (a:_) = Just a
 
 headWithDefault :: a -> [a] -> a
 headWithDefault a = maybe a id . maybeHead
+
+maybeOverloadedIdentifier :: HasProperties a => a -> Maybe Int
+maybeOverloadedIdentifier a = 
+   maybeHead [ i | Overloaded i <- getProperties a ]
 
 maybeReductionErrorPredicate :: HasProperties a => a -> Maybe Predicate
 maybeReductionErrorPredicate a = 
@@ -202,8 +207,8 @@ variableConstraint theLocation theSource theProperties =
         
 cinfoBindingGroupExplicitTypedBinding :: Tps -> Name -> Name ->  ConstraintInfo
 cinfoSameBindingGroup                 :: Name ->                 ConstraintInfo
-cinfoBindingGroupImplicit             :: Name ->                 ConstraintInfo
-cinfoBindingGroupExplicit             :: Tps -> Names -> Name -> ConstraintInfo
+cinfoBindingGroupImplicit             :: (Name, Tp) ->           ConstraintInfo
+cinfoBindingGroupExplicit             :: Tps -> Names -> (Name, Tp) -> ConstraintInfo
 cinfoGeneralize                       :: Name ->                 ConstraintInfo
 
 cinfoBindingGroupExplicitTypedBinding ms name nameTS = 
@@ -213,11 +218,11 @@ cinfoBindingGroupExplicitTypedBinding ms name nameTS =
 cinfoSameBindingGroup name = 
    let props = [ FromBindingGroup, FolkloreConstraint ]
    in variableConstraint "variable" (nameToUHA_Expr name) props
-cinfoBindingGroupImplicit name = 
-   let props = [ FromBindingGroup, FolkloreConstraint, HasTrustFactor 10.0 ]
+cinfoBindingGroupImplicit (name, TVar i) = 
+   let props = [ FromBindingGroup, FolkloreConstraint, HasTrustFactor 10.0, Overloaded i ]
    in variableConstraint "variable" (nameToUHA_Expr name) props
-cinfoBindingGroupExplicit ms defNames name = 
-   let props1 = [ FromBindingGroup, FolkloreConstraint ]
+cinfoBindingGroupExplicit ms defNames (name, TVar i) = 
+   let props1 = [ FromBindingGroup, FolkloreConstraint, Overloaded i ]
        props2 = case filter (name==) defNames of
                    [defName] -> [ExplicitTypedDefinition ms defName]
                    _         -> []
@@ -255,7 +260,8 @@ instance TypeConstraintInfo ConstraintInfo where
    escapedSkolems       = addProperty . EscapedSkolems
    predicateArisingFrom = addProperty . PredicateArisingFrom
    equalityTypePair     = setTypePair
-   emptyInfo            = orphanConstraint 1 "" (DoublyLinkedTree Nothing (error ":(") []) []
+   overloadedIdentifier = maybeOverloadedIdentifier  
+   emptyInfo            = orphanConstraint 1 "supa empty Gerrit constraint" (DoublyLinkedTree Nothing (error ":(") []) []
    
 
 instance PolyTypeConstraintInfo ConstraintInfo where
