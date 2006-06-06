@@ -13,8 +13,8 @@
 -- Constraint Information : Body
 
 SEM Body | Body loc . cinfo = 
-  \(name, TVar i) -> variableConstraint "variable" (nameToUHA_Expr name) 
-     [ FolkloreConstraint, HasTrustFactor 10.0, IsImported name, Overloaded i ]
+  \name -> variableConstraint "variable" (nameToUHA_Expr name) 
+     [ FolkloreConstraint, HasTrustFactor 10.0, IsImported name, Overloaded (NameWithRange name) ]
 
 ---------------------------------------------------------------------------------------
 -- Constraint Information : Declaration
@@ -184,13 +184,13 @@ SEM Expression | Enum loc . cinfoResult =
 
 SEM Expression | Enum loc . cinfoPred =
   resultConstraint "enumeration" @parentTree 
-     [ ReductionErrorInfo (Predicate "Enum" @elementType), Overloaded @freshBeta ]
+     [ ReductionErrorInfo (Predicate "Enum" @elementType), Overloaded (NameWithRange @localName) ]
 
 -- Expression.Negate
 SEM Expression | Negate loc . cinfo =
   specialConstraint "negation" @parentTree 
      (self @localInfo, Just $ nameToUHA_Expr (Name_Operator @range [] "-")) 
-     [Overloaded @lhs.betaUnique ]
+     [Overloaded (NameWithRange @localName) ]
 
 SEM Expression | NegateFloat loc . cinfo =
   specialConstraint "negation" @parentTree 

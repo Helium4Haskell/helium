@@ -32,7 +32,7 @@ data TypeConstraint  info
    | TC3 (PolymorphismConstraint info)
    | TCOper String (forall m . HasSubst m info => m ())
 
-instance (HasBasic m info, HasTI m info, HasSubst m info, HasQual m info, PolyTypeConstraintInfo info) 
+instance (HasBasic m info, HasTI m info, HasSubst m info, HasQual m info, PolyTypeConstraintInfo info id) 
             => Solvable (TypeConstraint info) m where 
    solveConstraint (TC1 c)      = solveConstraint c
    solveConstraint (TC2 c)      = solveConstraint c
@@ -94,10 +94,10 @@ spreadFromType _        = Nothing
 infix 3 .==., .===., .::., .:::., !::!, !:::!, .<=., .<==., !<=!, !<==!
 
 lift combinator = 
-    \ selector as bs cf -> 
+    \as bs cf -> 
        let constraints = concat (M.elems (M.intersectionWith f as bs))
            rest        = bs M.\\ as
-           f a list    = [ (a `combinator` b) (cf (selector p)) | p@(name,b) <- list ]
+           f a list    = [ (a `combinator` b) (cf name) | (name,b) <- list ]
        in (constraints, rest)
 
       
@@ -105,13 +105,13 @@ lift combinator =
 (t1 .==. t2) info = TC1 (Equality t1 t2 info)
     
 (.===.) :: (Show info, Ord key) => M.Map key Tp -> M.Map key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info], M.Map key [(key,Tp)])
-(.===.) = lift (.==.) fst
+(.===.) = lift (.==.) 
 
 (.::.) :: Show info => Tp -> TpScheme -> info -> TypeConstraint info
 tp .::. ts = tp .<=. SigmaScheme ts
 
-(.:::.) :: (Show info, Ord key) => M.Map key TpScheme -> M.Map key [(key,Tp)] -> ((key,Tp) -> info) -> ([TypeConstraint info], M.Map key [(key,Tp)])  
-(.:::.) = lift (flip (.::.)) id
+(.:::.) :: (Show info, Ord key) => M.Map key TpScheme -> M.Map key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info], M.Map key [(key,Tp)])  
+(.:::.) = lift (flip (.::.))
 
 (!::!) :: Tp -> TpScheme -> Tps -> info -> TypeConstraint info
 (tp !::! ts) monos info = TC3 (Skolemize tp (monos, SigmaScheme ts) info)
@@ -130,15 +130,15 @@ tp .::. ts = tp .<=. SigmaScheme ts
 (.<=.) :: Show info => Tp -> Sigma Predicates -> info -> TypeConstraint info
 (tp .<=. ts) info = TC3 (Instantiate tp ts info)
 
-(.<==.) :: (Show info, Ord key) => M.Map key (Sigma Predicates) -> M.Map key [(key,Tp)] -> ((key, Tp) -> info) -> ([TypeConstraint info], M.Map key [(key,Tp)])  
-(.<==.) = lift (flip (.<=.)) id
+(.<==.) :: (Show info, Ord key) => M.Map key (Sigma Predicates) -> M.Map key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info], M.Map key [(key,Tp)])  
+(.<==.) = lift (flip (.<=.))
      
 -- the old implicit instance constraint
 (!<=!) :: Show info => Tps -> Tp -> Tp -> info -> TypeConstraint info
 (!<=!) ms t1 t2 info = TC3 (Implicit t1 (ms, t2) info)
 
 (!<==!) :: (Show info, Ord key) => Tps -> M.Map key Tp -> M.Map key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info], M.Map key [(key,Tp)])
-(!<==!) ms = lift (flip ((!<=!) ms))  fst
+(!<==!) ms = lift (flip ((!<=!) ms))
 
 genConstraints :: Tps -> (key -> info) -> [(Int, (key, Tp))] -> TypeConstraints info
 genConstraints monos infoF =

@@ -41,6 +41,8 @@ import qualified Data.Map as M
 import Data.Maybe 
 import Data.List
 
+import Debug.Trace
+
 import List
 import Matchers
 import TS_Apply (applyTypingStrategy, matchInformation)
@@ -83,9 +85,9 @@ matchTypeWithScheme synonyms tp scheme =
 resolveOverloading :: ClassEnvironment -> Name -> Predicates -> Predicates ->
                          DictionaryEnvironment -> DictionaryEnvironment
 resolveOverloading classEnv name availablePredicates predicates dEnv = 
-   let maybeTrees = map (makeDictionaryTree classEnv availablePredicates) predicates
+   let maybeTrees = map (\p -> makeDictionaryTree classEnv availablePredicates p) predicates
    in if all isJust maybeTrees
-        then addForVariable name (map fromJust maybeTrees) dEnv
+        then trace (show $ addForVariable name (map fromJust maybeTrees) dEnv) (addForVariable name (map fromJust maybeTrees) dEnv) 
         else internalError "TypeInferenceOverloading.ag" "resolveOverloading" ("cannot resolve overloading (" ++ show name ++ ")")
    
 expandPredicates :: OrderedTypeSynonyms -> Predicates -> Predicates
@@ -1437,8 +1439,8 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             (_lhsOuniqueChunk@_) =
                 _chunkNr
             (_cinfo@_) =
-                \(name, TVar i) -> variableConstraint "variable" (nameToUHA_Expr name)
-                   [ FolkloreConstraint, HasTrustFactor 10.0, IsImported name, Overloaded i ]
+                \name -> variableConstraint "variable" (nameToUHA_Expr name)
+                   [ FolkloreConstraint, HasTrustFactor 10.0, IsImported name, Overloaded (NameWithRange name) ]
             (_declInfo@_) =
                 LocalInfo { self = UHA_Decls _declarationsIself
                           , assignedType = Nothing
@@ -5085,7 +5087,7 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
                    [ FolkloreConstraint ]
             (_cinfoPred@_) =
                 resultConstraint "enumeration" _parentTree
-                   [ ReductionErrorInfo (Predicate "Enum" _elementType), Overloaded _freshBeta ]
+                   [ ReductionErrorInfo (Predicate "Enum" _elementType), Overloaded (NameWithRange _localName) ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta
@@ -7186,7 +7188,7 @@ sem_Expression_Negate (range_) (expression_) =
             (_cinfo@_) =
                 specialConstraint "negation" _parentTree
                    (self _localInfo, Just $ nameToUHA_Expr (Name_Operator range_ [] "-"))
-                   [Overloaded _lhsIbetaUnique ]
+                   [Overloaded (NameWithRange _localName) ]
             (_localInfo@_) =
                 LocalInfo { self = UHA_Expr _self
                           , assignedType = Just _beta

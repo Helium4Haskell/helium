@@ -113,4 +113,6 @@ import Args
 import qualified Data.Map as M
 import Data.Maybe 
 import Data.List
+
+import Debug.Trace
 }
