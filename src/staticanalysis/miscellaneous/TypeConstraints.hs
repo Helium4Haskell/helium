@@ -32,7 +32,7 @@ data TypeConstraint  info
    | TC3 (PolymorphismConstraint info)
    | TCOper String (forall m . HasSubst m info => m ())
 
-instance (HasBasic m info, HasTI m info, HasSubst m info, HasQual m info, PolyTypeConstraintInfo info id) 
+instance (HasBasic m info, HasTI m info, HasSubst m info, HasQual m info, PolyTypeConstraintInfo info) 
             => Solvable (TypeConstraint info) m where 
    solveConstraint (TC1 c)      = solveConstraint c
    solveConstraint (TC2 c)      = solveConstraint c

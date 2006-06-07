@@ -128,7 +128,7 @@ resolveOverloading :: ClassEnvironment -> Name -> Predicates -> Predicates ->
 resolveOverloading classEnv name availablePredicates predicates dEnv = 
    let maybeTrees = map (\p -> makeDictionaryTree classEnv availablePredicates p) predicates
    in if all isJust maybeTrees
-        then trace (show $ addForVariable name (map fromJust maybeTrees) dEnv) (addForVariable name (map fromJust maybeTrees) dEnv) 
+        then addForVariable name (map fromJust maybeTrees) dEnv
         else internalError "TypeInferenceOverloading.ag" "resolveOverloading" ("cannot resolve overloading (" ++ show name ++ ")")
    
 expandPredicates :: OrderedTypeSynonyms -> Predicates -> Predicates

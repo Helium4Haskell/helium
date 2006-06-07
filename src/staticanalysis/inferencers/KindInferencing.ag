@@ -252,8 +252,8 @@ unexpected msg =
 
 instance Eq KindError
 instance Ord KindError
-instance TypeConstraintInfo KindError KindError
-instance PolyTypeConstraintInfo KindError KindError
+instance TypeConstraintInfo KindError
+instance PolyTypeConstraintInfo KindError
 
 (<==>) :: Kind -> Kind -> ((Kind, Kind) -> KindError) -> KindConstraint
 (k1 <==> k2) info = (k1 .==. k2) (info (k1, k2))

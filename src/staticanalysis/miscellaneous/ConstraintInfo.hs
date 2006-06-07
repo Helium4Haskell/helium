@@ -16,7 +16,7 @@ import Top.Ordering.Tree
 import UHA_Syntax
 import UHA_Source
 import UHA_Range
-import UHA_Utils ( NameWithRange ( NameWithRange ) )
+import UHA_Utils ( NameWithRange ( NameWithRange ), nameWithRangeToName )
 import TypeErrors
 import Messages
 import DoublyLinkedTree
@@ -103,9 +103,13 @@ maybeHead (a:_) = Just a
 headWithDefault :: a -> [a] -> a
 headWithDefault a = maybe a id . maybeHead
 
-maybeOverloadedIdentifier :: HasProperties a => a -> Maybe NameWithRange
-maybeOverloadedIdentifier a = 
-   maybeHead [ name | Overloaded name <- getProperties a ]
+maybeOverloadedIdentifier :: HasProperties a => a -> Maybe (Int, Int)
+maybeOverloadedIdentifier a = do x <- maybeHead [ name | Overloaded name <- getProperties a ] 
+                                 return (unRange . getNameRange . nameWithRangeToName $ x)
+
+unRange :: Range -> (Int, Int)
+unRange (Range_Range (Position_Position _ x y) _) = (x, y)
+unRange _                   = (-1, -1)
 
 maybeReductionErrorPredicate :: HasProperties a => a -> Maybe Predicate
 maybeReductionErrorPredicate a = 
@@ -214,7 +218,8 @@ cinfoGeneralize                       :: Name ->                 ConstraintInfo
 
 cinfoBindingGroupExplicitTypedBinding ms name nameTS = 
    let props = [ FromBindingGroup, ExplicitTypedBinding, ExplicitTypedDefinition ms name, 
-                 HasTrustFactor 10.0, TypeSignatureLocation (getNameRange nameTS) ]
+                 HasTrustFactor 10.0, TypeSignatureLocation (getNameRange nameTS),
+                 Overloaded (NameWithRange name) ]
    in variableConstraint "explicitly typed binding" (nameToUHA_Def name) props
 cinfoSameBindingGroup name = 
    let props = [ FromBindingGroup, FolkloreConstraint ]
@@ -255,17 +260,15 @@ typeSchemesInInfoTree subst ps infoTree =
 type ConstraintSet  = Tree  (TypeConstraint ConstraintInfo)
 type ConstraintSets = Trees (TypeConstraint ConstraintInfo)
 	   
-instance TypeConstraintInfo ConstraintInfo NameWithRange where
+instance TypeConstraintInfo ConstraintInfo where
    unresolvedPredicate  = addProperty . ReductionErrorInfo
    ambiguousPredicate   = addProperty . ReductionErrorInfo
    escapedSkolems       = addProperty . EscapedSkolems
    predicateArisingFrom = addProperty . PredicateArisingFrom
    equalityTypePair     = setTypePair
    overloadedIdentifier = maybeOverloadedIdentifier  
-   emptyInfo            = orphanConstraint 1 "supa empty Gerrit constraint" (DoublyLinkedTree Nothing (error ":(") []) []
-   
 
-instance PolyTypeConstraintInfo ConstraintInfo NameWithRange where
+instance PolyTypeConstraintInfo ConstraintInfo where
    instantiatedTypeScheme = addProperty . InstantiatedTypeScheme
    skolemizedTypeScheme   = addProperty . SkolemizedTypeScheme
    

@@ -23,12 +23,7 @@ data DictionaryEnvironment =
      DEnv { declMap :: M.Map NameWithRange Predicates
           , varMap  :: M.Map NameWithRange [DictionaryTree]
           }
-          
-data DictionaryTree = ByPredicate Predicate
-                    | ByInstance String {- class name -} String {- instance name -} [DictionaryTree]
-                    | BySuperClass String {- sub -} String {- super -} DictionaryTree
-   deriving Show
-   
+
 instance Show DictionaryEnvironment where
    show denv = 
       "{ declMap = " ++ show (M.assocs $ declMap denv) ++
@@ -37,7 +32,13 @@ instance Show DictionaryEnvironment where
 emptyDictionaryEnvironment :: DictionaryEnvironment
 emptyDictionaryEnvironment = 
    DEnv { declMap = M.empty, varMap = M.empty }
- 
+
+data DictionaryTree = ByPredicate Predicate
+                    | ByInstance String {- class name -} String {- instance name -} [DictionaryTree]
+                    | BySuperClass String {- sub -} String {- super -} DictionaryTree
+   deriving Show
+
+
 addForDeclaration :: Name -> Predicates -> DictionaryEnvironment -> DictionaryEnvironment
 addForDeclaration name predicates dEnv
    | null predicates = dEnv
