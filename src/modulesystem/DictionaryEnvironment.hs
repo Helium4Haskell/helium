@@ -17,7 +17,7 @@ import qualified Data.Map as M
 import UHA_Syntax (Name)
 import UHA_Utils (NameWithRange(..) )
 import Utils (internalError)
-import Top.Types
+import Top.Types hiding (DictionaryEnvironment2 ( .. ), varMap, declMap, emptyDictionaryEnvironment)
 
 data DictionaryEnvironment = 
      DEnv { declMap :: M.Map NameWithRange Predicates
@@ -32,11 +32,6 @@ instance Show DictionaryEnvironment where
 emptyDictionaryEnvironment :: DictionaryEnvironment
 emptyDictionaryEnvironment = 
    DEnv { declMap = M.empty, varMap = M.empty }
-
-data DictionaryTree = ByPredicate Predicate
-                    | ByInstance String {- class name -} String {- instance name -} [DictionaryTree]
-                    | BySuperClass String {- sub -} String {- super -} DictionaryTree
-   deriving Show
 
 
 addForDeclaration :: Name -> Predicates -> DictionaryEnvironment -> DictionaryEnvironment

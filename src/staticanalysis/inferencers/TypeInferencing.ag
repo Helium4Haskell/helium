@@ -11,17 +11,19 @@
 
 {
 typeInferencing :: [Option] -> ImportEnvironment -> Module
-                      -> (IO (), DictionaryEnvironment, TypeEnvironment, TypeErrors, Warnings)
+                      -> (IO (), DictionaryEnvironment2, TypeEnvironment, TypeErrors, Warnings)
 typeInferencing options importEnv module_ =
-   let (_, dictionaryEnv, _, logEntries, _, solveResult, toplevelTypes, typeErrors, warnings) =
+   -- let (_, dictionaryEnv, _, logEntries, _, solveResult, toplevelTypes, typeErrors, warnings) =
+   let (_, _, logEntries, _, solveResult, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_ importEnv options
        debugIO = putStrLn (show logEntries)
-   in (debugIO, dictionaryEnv, toplevelTypes, typeErrors, warnings)
+       --debugIO = putStrLn ("Former dictEnv: " ++ show dictionaryEnv ++ "\n\n" ++ "New dictEnv" ++ show (dictEnvironment solveResult))
+   in (debugIO, dictEnvironment solveResult, toplevelTypes, typeErrors, warnings)
 
 proximaTypeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (TypeErrors, Warnings, TypeEnvironment, [(Range, TpScheme)])  
 proximaTypeInferencing options importEnv module_ =
-   let (_, _, infoTree, _, _, solveResult, toplevelTypes, typeErrors, warnings) =
+   let (_, infoTree, _, _, solveResult, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_ importEnv options
        localTypeSchemes = typeSchemesInInfoTree (substitutionFromResult solveResult)
                                                 (qualifiersFromResult solveResult) 
@@ -37,7 +39,7 @@ ATTR Module
      options               : {[Option]}
    |
    | assumptions           : Assumptions
-     dictionaryEnvironment : DictionaryEnvironment
+     --dictionaryEnvironment : DictionaryEnvironment
      infoTree              : InfoTree
      logEntries            : LogEntries
      solveResult           : {SolveResult ConstraintInfo}
@@ -50,7 +52,7 @@ ATTR Module
 -- Includes
 
 INCLUDE "TypeInferenceRules.ag"
-INCLUDE "TypeInferenceOverloading.ag"
+-- INCLUDE "TypeInferenceOverloading.ag"
 INCLUDE "TypeInferenceCollect.ag"
 INCLUDE "TypeInferenceInfo.ag"
 INCLUDE "LocalInfo.ag"
@@ -76,7 +78,7 @@ SEM Module | Module lhs . warnings = @loc.warnings ++ @body.patternMatchWarnings
 imports {
 
 -- types
-import Top.Types
+import Top.Types 
 import TypeConversion
 
 -- error messages and warnings
@@ -106,7 +108,7 @@ import UHA_Utils                 (showNameAsOperator, intUnaryMinusName, NameWit
 import Utils                     (internalError)
 import DerivingShow              (typeOfShowFunction, nameOfShowFunction)
 import ImportEnvironment  hiding (setTypeSynonyms)
-import DictionaryEnvironment
+-- import DictionaryEnvironment
 import Args
 
 -- standard

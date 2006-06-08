@@ -107,10 +107,6 @@ maybeOverloadedIdentifier :: HasProperties a => a -> Maybe (Int, Int)
 maybeOverloadedIdentifier a = do x <- maybeHead [ name | Overloaded name <- getProperties a ] 
                                  return (unRange . getNameRange . nameWithRangeToName $ x)
 
-unRange :: Range -> (Int, Int)
-unRange (Range_Range (Position_Position _ x y) _) = (x, y)
-unRange _                   = (-1, -1)
-
 maybeReductionErrorPredicate :: HasProperties a => a -> Maybe Predicate
 maybeReductionErrorPredicate a = 
    maybeHead [ p | ReductionErrorInfo p <- getProperties a ]
@@ -234,7 +230,7 @@ cinfoBindingGroupExplicit ms defNames name =
                    _         -> []
    in variableConstraint "variable" (nameToUHA_Expr name) (props1 ++ props2)
 cinfoGeneralize name =
-   variableConstraint ("Generalize " ++ show name) (nameToUHA_Expr name) []
+   variableConstraint ("Generalize " ++ show name) (nameToUHA_Expr name) [ Overloaded ( NameWithRange name ) ]
 
 type InfoTrees = [InfoTree]
 type InfoTree = DoublyLinkedTree LocalInfo

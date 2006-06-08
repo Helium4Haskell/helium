@@ -15,12 +15,12 @@ import CoreRemoveDead( coreRemoveDead ) -- remove dead (import) declarations
 import UHA_Syntax(Module(..), Name(..), MaybeName(..))
 import UHA_Range(noRange)
 import ImportEnvironment(TypeEnvironment, ImportEnvironment)
-import DictionaryEnvironment (DictionaryEnvironment)
+-- import DictionaryEnvironment (DictionaryEnvironment)
 import qualified CodeGeneration(sem_Module)
 import Top.Types
 import UHA_Utils
 
-phaseDesugarer :: DictionaryEnvironment -> 
+phaseDesugarer :: DictionaryEnvironment2 -> 
                   String -> Module -> [CoreDecl] -> 
                     ImportEnvironment ->
                     TypeEnvironment -> [Option] -> IO CoreModule

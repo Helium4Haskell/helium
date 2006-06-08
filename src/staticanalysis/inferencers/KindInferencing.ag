@@ -54,7 +54,7 @@ SEM Module
   | Module   lhs  . kindErrors      = @substitution |-> (map fst @kindErrors)
                   . debugIO         = putStrLn (show @logEntries)
              body . kappaUnique     = 0
-             loc  . (SolveResult kappaUniqueAtTheEnd substitution _ _ kindErrors, logEntries) = 
+             loc  . (SolveResult kappaUniqueAtTheEnd substitution _ _ kindErrors _, logEntries) = 
                        solve (solveOptions { uniqueCounter = @body.kappaUnique }) @body.constraints greedyConstraintSolver
                   . kindEnvironment = let f kind = generalizeAll ([] .=>. defaultToStar (@substitution |-> kind))
                                       in M.map f @body.environment                     

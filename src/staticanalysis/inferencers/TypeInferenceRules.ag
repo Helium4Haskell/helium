@@ -16,7 +16,7 @@ SEM Module
 
   | Module
       loc  -- Solve the type constraints.
-           . (SolveResult betaUniqueAtTheEnd substitution typeschemeMap _ solveErrors) = @solveResult
+           . (SolveResult betaUniqueAtTheEnd substitution typeschemeMap _ solveErrors _) = @solveResult
            . (solveResult, logEntries) =
                 (selectConstraintSolver @lhs.options @lhs.importEnvironment) 
                    @classEnv

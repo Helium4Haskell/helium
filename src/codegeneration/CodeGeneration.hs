@@ -6,7 +6,7 @@ import UHA_Utils
 import UHA_Range 
 import List (union)
 import ImportEnvironment
-import DictionaryEnvironment
+--import DictionaryEnvironment
 import qualified Data.Map as M
 import TypeConversion
 import Char (ord)
@@ -118,11 +118,25 @@ dictionaryTreeToCore tree =
          Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "From" ++ subClass)))          
                  (dictionaryTreeToCore tree)
 
-insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr
+insertDictionaries :: Name -> DictionaryEnvironment2 -> Core.Expr
 insertDictionaries name dictionaryEnv = 
    foldl Core.Ap
          (Core.Var (idFromName name))
          (map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv))
+
+getDictionaryTrees :: Name -> DictionaryEnvironment2 -> [DictionaryTree]
+getDictionaryTrees name dEnv = 
+   case M.lookup (unRange . getNameRange $ name) (varMap dEnv) of
+      Just dt -> dt
+      Nothing -> []
+
+getPredicateForDecl :: Name -> DictionaryEnvironment2 -> Predicates
+getPredicateForDecl name dEnv =
+   case M.lookup (unRange . getNameRange $  name) (declMap dEnv) of
+      Just ps -> ps
+      Nothing -> []
+
+
 
 toplevelType :: Name -> ImportEnvironment -> Bool -> [Core.Custom]
 toplevelType name ie isTopLevel
@@ -185,7 +199,7 @@ patternMatchFail nodeDescription range =
         start = getRangeStart range
 -- Alternative -------------------------------------------------
 -- semantic domain
-type T_Alternative = (DictionaryEnvironment) ->
+type T_Alternative = (DictionaryEnvironment2) ->
                      ( ( Core.Expr -> Core.Expr ),(Alternative))
 -- cata
 sem_Alternative :: (Alternative) ->
@@ -208,7 +222,7 @@ sem_Alternative_Alternative (range_) (pattern_) (righthandside_) =
             _righthandsideIcore :: ( Core.Expr )
             _righthandsideIisGuarded :: (Bool)
             _righthandsideIself :: (RightHandSide)
-            _righthandsideOdictionaryEnv :: (DictionaryEnvironment)
+            _righthandsideOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _patternIself,_patternIvars) =
@@ -249,7 +263,7 @@ sem_Alternative_Empty (range_) =
 -- Alternatives ------------------------------------------------
 -- semantic domain
 type T_Alternatives = (Range) ->
-                      (DictionaryEnvironment) ->
+                      (DictionaryEnvironment2) ->
                       ( ( Core.Expr ),(Alternatives))
 -- cata
 sem_Alternatives :: (Alternatives) ->
@@ -266,11 +280,11 @@ sem_Alternatives_Cons (hd_) (tl_) =
             _lhsOself :: (Alternatives)
             _hdIcore :: ( Core.Expr -> Core.Expr )
             _hdIself :: (Alternative)
-            _hdOdictionaryEnv :: (DictionaryEnvironment)
+            _hdOdictionaryEnv :: (DictionaryEnvironment2)
             _tlIcore :: ( Core.Expr )
             _tlIself :: (Alternatives)
             _tlOcaseRange :: (Range)
-            _tlOdictionaryEnv :: (DictionaryEnvironment)
+            _tlOdictionaryEnv :: (DictionaryEnvironment2)
             ( _hdIcore,_hdIself) =
                 (hd_ (_hdOdictionaryEnv))
             ( _tlIcore,_tlIself) =
@@ -367,7 +381,7 @@ sem_AnnotatedTypes_Nil  =
     in  ( _lhsOlength,_lhsOself)
 -- Body --------------------------------------------------------
 -- semantic domain
-type T_Body = (DictionaryEnvironment) ->
+type T_Body = (DictionaryEnvironment2) ->
               (ImportEnvironment) ->
               ( ( [CoreDecl] ),(Body))
 -- cata
@@ -389,7 +403,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
             _declarationsIdecls :: ( [CoreDecl] )
             _declarationsIpatBindNr :: (Int)
             _declarationsIself :: (Declarations)
-            _declarationsOdictionaryEnv :: (DictionaryEnvironment)
+            _declarationsOdictionaryEnv :: (DictionaryEnvironment2)
             _declarationsOimportEnv :: (ImportEnvironment)
             _declarationsOisTopLevel :: (Bool)
             _declarationsOpatBindNr :: (Int)
@@ -417,7 +431,7 @@ sem_Body_Body (range_) (importdeclarations_) (declarations_) =
 -- Constructor -------------------------------------------------
 -- semantic domain
 type T_Constructor = (Name) ->
-                     (DictionaryEnvironment) ->
+                     (DictionaryEnvironment2) ->
                      (ImportEnvironment) ->
                      (Int) ->
                      ( ( [(Id, CoreDecl)] ),(Constructor))
@@ -541,7 +555,7 @@ sem_Constructor_Record (range_) (constructor_) (fieldDeclarations_) =
 -- Constructors ------------------------------------------------
 -- semantic domain
 type T_Constructors = (Name) ->
-                      (DictionaryEnvironment) ->
+                      (DictionaryEnvironment2) ->
                       (ImportEnvironment) ->
                       (Int) ->
                       ( ( [(Id, CoreDecl)] ),(Constructors))
@@ -563,13 +577,13 @@ sem_Constructors_Cons (hd_) (tl_) =
             _hdIcons :: ( [(Id, CoreDecl)] )
             _hdIself :: (Constructor)
             _hdOdataTypeName :: (Name)
-            _hdOdictionaryEnv :: (DictionaryEnvironment)
+            _hdOdictionaryEnv :: (DictionaryEnvironment2)
             _hdOimportEnv :: (ImportEnvironment)
             _hdOtag :: (Int)
             _tlIcons :: ( [(Id, CoreDecl)] )
             _tlIself :: (Constructors)
             _tlOdataTypeName :: (Name)
-            _tlOdictionaryEnv :: (DictionaryEnvironment)
+            _tlOdictionaryEnv :: (DictionaryEnvironment2)
             _tlOimportEnv :: (ImportEnvironment)
             _tlOtag :: (Int)
             ( _hdIcons,_hdIself) =
@@ -676,7 +690,7 @@ sem_ContextItems_Nil  =
     in  ( _lhsOself)
 -- Declaration -------------------------------------------------
 -- semantic domain
-type T_Declaration = (DictionaryEnvironment) ->
+type T_Declaration = (DictionaryEnvironment2) ->
                      (ImportEnvironment) ->
                      (Bool) ->
                      (Int) ->
@@ -726,7 +740,7 @@ sem_Declaration_Class (range_) (context_) (simpletype_) (where_) =
             _simpletypeItypevariables :: (Names)
             _whereIcore :: ( Core.Expr -> Core.Expr )
             _whereIself :: (MaybeDeclarations)
-            _whereOdictionaryEnv :: (DictionaryEnvironment)
+            _whereOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _contextIself) =
@@ -768,7 +782,7 @@ sem_Declaration_Data (range_) (context_) (simpletype_) (constructors_) (deriving
             _constructorsIcons :: ( [(Id, CoreDecl)] )
             _constructorsIself :: (Constructors)
             _constructorsOdataTypeName :: (Name)
-            _constructorsOdictionaryEnv :: (DictionaryEnvironment)
+            _constructorsOdictionaryEnv :: (DictionaryEnvironment2)
             _constructorsOimportEnv :: (ImportEnvironment)
             _constructorsOtag :: (Int)
             _derivingsInames :: ([Name])
@@ -946,7 +960,7 @@ sem_Declaration_FunctionBindings (range_) (bindings_) =
             _bindingsIcore :: (Core.Expr)
             _bindingsIname :: (Name)
             _bindingsIself :: (FunctionBindings)
-            _bindingsOdictionaryEnv :: (DictionaryEnvironment)
+            _bindingsOdictionaryEnv :: (DictionaryEnvironment2)
             _bindingsOids :: ( [Id] )
             _bindingsOrange :: (Range)
             ( _rangeIself) =
@@ -1000,7 +1014,7 @@ sem_Declaration_Instance (range_) (context_) (name_) (types_) (where_) =
             _typesIself :: (Types)
             _whereIcore :: ( Core.Expr -> Core.Expr )
             _whereIself :: (MaybeDeclarations)
-            _whereOdictionaryEnv :: (DictionaryEnvironment)
+            _whereOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _contextIself) =
@@ -1044,7 +1058,7 @@ sem_Declaration_Newtype (range_) (context_) (simpletype_) (constructor_) (derivi
             _constructorIcons :: ( [(Id, CoreDecl)] )
             _constructorIself :: (Constructor)
             _constructorOdataTypeName :: (Name)
-            _constructorOdictionaryEnv :: (DictionaryEnvironment)
+            _constructorOdictionaryEnv :: (DictionaryEnvironment2)
             _constructorOimportEnv :: (ImportEnvironment)
             _constructorOtag :: (Int)
             _derivingsInames :: ([Name])
@@ -1094,7 +1108,7 @@ sem_Declaration_PatternBinding (range_) (pattern_) (righthandside_) =
             _righthandsideIcore :: ( Core.Expr )
             _righthandsideIisGuarded :: (Bool)
             _righthandsideIself :: (RightHandSide)
-            _righthandsideOdictionaryEnv :: (DictionaryEnvironment)
+            _righthandsideOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _patternIself,_patternIvars) =
@@ -1249,7 +1263,7 @@ sem_Declaration_TypeSignature (range_) (names_) (type_) =
         in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)
 -- Declarations ------------------------------------------------
 -- semantic domain
-type T_Declarations = (DictionaryEnvironment) ->
+type T_Declarations = (DictionaryEnvironment2) ->
                       (ImportEnvironment) ->
                       (Bool) ->
                       (Int) ->
@@ -1273,14 +1287,14 @@ sem_Declarations_Cons (hd_) (tl_) =
             _hdIdecls :: ( [CoreDecl] )
             _hdIpatBindNr :: (Int)
             _hdIself :: (Declaration)
-            _hdOdictionaryEnv :: (DictionaryEnvironment)
+            _hdOdictionaryEnv :: (DictionaryEnvironment2)
             _hdOimportEnv :: (ImportEnvironment)
             _hdOisTopLevel :: (Bool)
             _hdOpatBindNr :: (Int)
             _tlIdecls :: ( [CoreDecl] )
             _tlIpatBindNr :: (Int)
             _tlIself :: (Declarations)
-            _tlOdictionaryEnv :: (DictionaryEnvironment)
+            _tlOdictionaryEnv :: (DictionaryEnvironment2)
             _tlOimportEnv :: (ImportEnvironment)
             _tlOisTopLevel :: (Bool)
             _tlOpatBindNr :: (Int)
@@ -1528,7 +1542,7 @@ sem_Exports_Nil  =
     in  ( _lhsOcons,_lhsOmods,_lhsOself,_lhsOtypes,_lhsOvalues)
 -- Expression --------------------------------------------------
 -- semantic domain
-type T_Expression = (DictionaryEnvironment) ->
+type T_Expression = (DictionaryEnvironment2) ->
                     ( ( Core.Expr ),(Expression))
 -- cata
 sem_Expression :: (Expression) ->
@@ -1584,11 +1598,11 @@ sem_Expression_Case (range_) (expression_) (alternatives_) =
             _rangeIself :: (Range)
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             _alternativesIcore :: ( Core.Expr )
             _alternativesIself :: (Alternatives)
             _alternativesOcaseRange :: (Range)
-            _alternativesOdictionaryEnv :: (DictionaryEnvironment)
+            _alternativesOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcore,_expressionIself) =
@@ -1619,10 +1633,10 @@ sem_Expression_Comprehension (range_) (expression_) (qualifiers_) =
             _rangeIself :: (Range)
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             _qualifiersIcore :: ( [Core.Expr -> Core.Expr] )
             _qualifiersIself :: (Qualifiers)
-            _qualifiersOdictionaryEnv :: (DictionaryEnvironment)
+            _qualifiersOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcore,_expressionIself) =
@@ -1671,7 +1685,7 @@ sem_Expression_Do (range_) (statements_) =
             _rangeIself :: (Range)
             _statementsIcore :: ( [Maybe Core.Expr -> Core.Expr] )
             _statementsIself :: (Statements)
-            _statementsOdictionaryEnv :: (DictionaryEnvironment)
+            _statementsOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _statementsIcore,_statementsIself) =
@@ -1697,13 +1711,13 @@ sem_Expression_Enum (range_) (from_) (then_) (to_) =
             _rangeIself :: (Range)
             _fromIcore :: ( Core.Expr )
             _fromIself :: (Expression)
-            _fromOdictionaryEnv :: (DictionaryEnvironment)
+            _fromOdictionaryEnv :: (DictionaryEnvironment2)
             _thenIcore :: ( Maybe Core.Expr )
             _thenIself :: (MaybeExpression)
-            _thenOdictionaryEnv :: (DictionaryEnvironment)
+            _thenOdictionaryEnv :: (DictionaryEnvironment2)
             _toIcore :: ( Maybe Core.Expr )
             _toIself :: (MaybeExpression)
-            _toOdictionaryEnv :: (DictionaryEnvironment)
+            _toOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _fromIcore,_fromIself) =
@@ -1749,13 +1763,13 @@ sem_Expression_If (range_) (guardExpression_) (thenExpression_) (elseExpression_
             _rangeIself :: (Range)
             _guardExpressionIcore :: ( Core.Expr )
             _guardExpressionIself :: (Expression)
-            _guardExpressionOdictionaryEnv :: (DictionaryEnvironment)
+            _guardExpressionOdictionaryEnv :: (DictionaryEnvironment2)
             _thenExpressionIcore :: ( Core.Expr )
             _thenExpressionIself :: (Expression)
-            _thenExpressionOdictionaryEnv :: (DictionaryEnvironment)
+            _thenExpressionOdictionaryEnv :: (DictionaryEnvironment2)
             _elseExpressionIcore :: ( Core.Expr )
             _elseExpressionIself :: (Expression)
-            _elseExpressionOdictionaryEnv :: (DictionaryEnvironment)
+            _elseExpressionOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _guardExpressionIcore,_guardExpressionIself) =
@@ -1789,13 +1803,13 @@ sem_Expression_InfixApplication (range_) (leftExpression_) (operator_) (rightExp
             _rangeIself :: (Range)
             _leftExpressionIcore :: ( Maybe Core.Expr )
             _leftExpressionIself :: (MaybeExpression)
-            _leftExpressionOdictionaryEnv :: (DictionaryEnvironment)
+            _leftExpressionOdictionaryEnv :: (DictionaryEnvironment2)
             _operatorIcore :: ( Core.Expr )
             _operatorIself :: (Expression)
-            _operatorOdictionaryEnv :: (DictionaryEnvironment)
+            _operatorOdictionaryEnv :: (DictionaryEnvironment2)
             _rightExpressionIcore :: ( Maybe Core.Expr )
             _rightExpressionIself :: (MaybeExpression)
-            _rightExpressionOdictionaryEnv :: (DictionaryEnvironment)
+            _rightExpressionOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _leftExpressionIcore,_leftExpressionIself) =
@@ -1836,7 +1850,7 @@ sem_Expression_Lambda (range_) (patterns_) (expression_) =
             _patternsIvars :: ( [Name] )
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _patternsIlength,_patternsIself,_patternsIvars) =
@@ -1873,13 +1887,13 @@ sem_Expression_Let (range_) (declarations_) (expression_) =
             _declarationsIdecls :: ( [CoreDecl] )
             _declarationsIpatBindNr :: (Int)
             _declarationsIself :: (Declarations)
-            _declarationsOdictionaryEnv :: (DictionaryEnvironment)
+            _declarationsOdictionaryEnv :: (DictionaryEnvironment2)
             _declarationsOimportEnv :: (ImportEnvironment)
             _declarationsOisTopLevel :: (Bool)
             _declarationsOpatBindNr :: (Int)
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _declarationsIdecls,_declarationsIpatBindNr,_declarationsIself) =
@@ -1915,7 +1929,7 @@ sem_Expression_List (range_) (expressions_) =
             _rangeIself :: (Range)
             _expressionsIcore :: ( [Core.Expr] )
             _expressionsIself :: (Expressions)
-            _expressionsOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionsOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _expressionsIcore,_expressionsIself) =
@@ -1960,7 +1974,7 @@ sem_Expression_Negate (range_) (expression_) =
             _rangeIself :: (Range)
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcore,_expressionIself) =
@@ -1985,7 +1999,7 @@ sem_Expression_NegateFloat (range_) (expression_) =
             _rangeIself :: (Range)
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcore,_expressionIself) =
@@ -2010,10 +2024,10 @@ sem_Expression_NormalApplication (range_) (function_) (arguments_) =
             _rangeIself :: (Range)
             _functionIcore :: ( Core.Expr )
             _functionIself :: (Expression)
-            _functionOdictionaryEnv :: (DictionaryEnvironment)
+            _functionOdictionaryEnv :: (DictionaryEnvironment2)
             _argumentsIcore :: ( [Core.Expr] )
             _argumentsIself :: (Expressions)
-            _argumentsOdictionaryEnv :: (DictionaryEnvironment)
+            _argumentsOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _functionIcore,_functionIself) =
@@ -2041,7 +2055,7 @@ sem_Expression_Parenthesized (range_) (expression_) =
             _rangeIself :: (Range)
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcore,_expressionIself) =
@@ -2066,7 +2080,7 @@ sem_Expression_RecordConstruction (range_) (name_) (recordExpressionBindings_) =
             _rangeIself :: (Range)
             _nameIself :: (Name)
             _recordExpressionBindingsIself :: (RecordExpressionBindings)
-            _recordExpressionBindingsOdictionaryEnv :: (DictionaryEnvironment)
+            _recordExpressionBindingsOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
@@ -2093,9 +2107,9 @@ sem_Expression_RecordUpdate (range_) (expression_) (recordExpressionBindings_) =
             _rangeIself :: (Range)
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             _recordExpressionBindingsIself :: (RecordExpressionBindings)
-            _recordExpressionBindingsOdictionaryEnv :: (DictionaryEnvironment)
+            _recordExpressionBindingsOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcore,_expressionIself) =
@@ -2123,7 +2137,7 @@ sem_Expression_Tuple (range_) (expressions_) =
             _rangeIself :: (Range)
             _expressionsIcore :: ( [Core.Expr] )
             _expressionsIself :: (Expressions)
-            _expressionsOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionsOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _expressionsIcore,_expressionsIself) =
@@ -2156,7 +2170,7 @@ sem_Expression_Typed (range_) (expression_) (type_) =
             _rangeIself :: (Range)
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             _typeIself :: (Type)
             ( _rangeIself) =
                 (range_ )
@@ -2195,7 +2209,7 @@ sem_Expression_Variable (range_) (name_) =
         in  ( _lhsOcore,_lhsOself)
 -- Expressions -------------------------------------------------
 -- semantic domain
-type T_Expressions = (DictionaryEnvironment) ->
+type T_Expressions = (DictionaryEnvironment2) ->
                      ( ( [Core.Expr] ),(Expressions))
 -- cata
 sem_Expressions :: (Expressions) ->
@@ -2211,10 +2225,10 @@ sem_Expressions_Cons (hd_) (tl_) =
             _lhsOself :: (Expressions)
             _hdIcore :: ( Core.Expr )
             _hdIself :: (Expression)
-            _hdOdictionaryEnv :: (DictionaryEnvironment)
+            _hdOdictionaryEnv :: (DictionaryEnvironment2)
             _tlIcore :: ( [Core.Expr] )
             _tlIself :: (Expressions)
-            _tlOdictionaryEnv :: (DictionaryEnvironment)
+            _tlOdictionaryEnv :: (DictionaryEnvironment2)
             ( _hdIcore,_hdIself) =
                 (hd_ (_hdOdictionaryEnv))
             ( _tlIcore,_tlIself) =
@@ -2353,7 +2367,7 @@ sem_Fixity_Infixr (range_) =
     in  ( _lhsOself)
 -- FunctionBinding ---------------------------------------------
 -- semantic domain
-type T_FunctionBinding = (DictionaryEnvironment) ->
+type T_FunctionBinding = (DictionaryEnvironment2) ->
                          ( [Id] ) ->
                          ( (Int),( Core.Expr -> Core.Expr ),(Name),(FunctionBinding))
 -- cata
@@ -2380,7 +2394,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
             _righthandsideIcore :: ( Core.Expr )
             _righthandsideIisGuarded :: (Bool)
             _righthandsideIself :: (RightHandSide)
-            _righthandsideOdictionaryEnv :: (DictionaryEnvironment)
+            _righthandsideOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _lefthandsideIarity,_lefthandsideIname,_lefthandsideIpatterns,_lefthandsideIself) =
@@ -2413,7 +2427,7 @@ sem_FunctionBinding_FunctionBinding (range_) (lefthandside_) (righthandside_) =
         in  ( _lhsOarity,_lhsOcore,_lhsOname,_lhsOself)
 -- FunctionBindings --------------------------------------------
 -- semantic domain
-type T_FunctionBindings = (DictionaryEnvironment) ->
+type T_FunctionBindings = (DictionaryEnvironment2) ->
                           ( [Id] ) ->
                           (Range) ->
                           ( (Int),(Core.Expr),(Name),(FunctionBindings))
@@ -2437,13 +2451,13 @@ sem_FunctionBindings_Cons (hd_) (tl_) =
             _hdIcore :: ( Core.Expr -> Core.Expr )
             _hdIname :: (Name)
             _hdIself :: (FunctionBinding)
-            _hdOdictionaryEnv :: (DictionaryEnvironment)
+            _hdOdictionaryEnv :: (DictionaryEnvironment2)
             _hdOids :: ( [Id] )
             _tlIarity :: (Int)
             _tlIcore :: (Core.Expr)
             _tlIname :: (Name)
             _tlIself :: (FunctionBindings)
-            _tlOdictionaryEnv :: (DictionaryEnvironment)
+            _tlOdictionaryEnv :: (DictionaryEnvironment2)
             _tlOids :: ( [Id] )
             _tlOrange :: (Range)
             ( _hdIarity,_hdIcore,_hdIname,_hdIself) =
@@ -2493,7 +2507,7 @@ sem_FunctionBindings_Nil  =
         in  ( _lhsOarity,_lhsOcore,_lhsOname,_lhsOself)
 -- GuardedExpression -------------------------------------------
 -- semantic domain
-type T_GuardedExpression = (DictionaryEnvironment) ->
+type T_GuardedExpression = (DictionaryEnvironment2) ->
                            ( ( Core.Expr -> Core.Expr ),(GuardedExpression))
 -- cata
 sem_GuardedExpression :: (GuardedExpression) ->
@@ -2511,10 +2525,10 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
             _rangeIself :: (Range)
             _guardIcore :: ( Core.Expr )
             _guardIself :: (Expression)
-            _guardOdictionaryEnv :: (DictionaryEnvironment)
+            _guardOdictionaryEnv :: (DictionaryEnvironment2)
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _guardIcore,_guardIself) =
@@ -2534,7 +2548,7 @@ sem_GuardedExpression_GuardedExpression (range_) (guard_) (expression_) =
         in  ( _lhsOcore,_lhsOself)
 -- GuardedExpressions ------------------------------------------
 -- semantic domain
-type T_GuardedExpressions = (DictionaryEnvironment) ->
+type T_GuardedExpressions = (DictionaryEnvironment2) ->
                             ( ( [Core.Expr -> Core.Expr] ),(GuardedExpressions))
 -- cata
 sem_GuardedExpressions :: (GuardedExpressions) ->
@@ -2550,10 +2564,10 @@ sem_GuardedExpressions_Cons (hd_) (tl_) =
             _lhsOself :: (GuardedExpressions)
             _hdIcore :: ( Core.Expr -> Core.Expr )
             _hdIself :: (GuardedExpression)
-            _hdOdictionaryEnv :: (DictionaryEnvironment)
+            _hdOdictionaryEnv :: (DictionaryEnvironment2)
             _tlIcore :: ( [Core.Expr -> Core.Expr] )
             _tlIself :: (GuardedExpressions)
-            _tlOdictionaryEnv :: (DictionaryEnvironment)
+            _tlOdictionaryEnv :: (DictionaryEnvironment2)
             ( _hdIcore,_hdIself) =
                 (hd_ (_hdOdictionaryEnv))
             ( _tlIcore,_tlIself) =
@@ -2978,7 +2992,7 @@ sem_Literal_String (range_) (value_) =
     in  ( _lhsOcore,_lhsOself)
 -- MaybeDeclarations -------------------------------------------
 -- semantic domain
-type T_MaybeDeclarations = (DictionaryEnvironment) ->
+type T_MaybeDeclarations = (DictionaryEnvironment2) ->
                            ( ( Core.Expr -> Core.Expr ),(MaybeDeclarations))
 -- cata
 sem_MaybeDeclarations :: (MaybeDeclarations) ->
@@ -2996,7 +3010,7 @@ sem_MaybeDeclarations_Just (declarations_) =
             _declarationsIdecls :: ( [CoreDecl] )
             _declarationsIpatBindNr :: (Int)
             _declarationsIself :: (Declarations)
-            _declarationsOdictionaryEnv :: (DictionaryEnvironment)
+            _declarationsOdictionaryEnv :: (DictionaryEnvironment2)
             _declarationsOimportEnv :: (ImportEnvironment)
             _declarationsOisTopLevel :: (Bool)
             _declarationsOpatBindNr :: (Int)
@@ -3091,7 +3105,7 @@ sem_MaybeExports_Nothing  =
     in  ( _lhsOcons,_lhsOmods,_lhsOself,_lhsOtypes,_lhsOvalues)
 -- MaybeExpression ---------------------------------------------
 -- semantic domain
-type T_MaybeExpression = (DictionaryEnvironment) ->
+type T_MaybeExpression = (DictionaryEnvironment2) ->
                          ( ( Maybe Core.Expr ),(MaybeExpression))
 -- cata
 sem_MaybeExpression :: (MaybeExpression) ->
@@ -3108,7 +3122,7 @@ sem_MaybeExpression_Just (expression_) =
             _lhsOself :: (MaybeExpression)
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             ( _expressionIcore,_expressionIself) =
                 (expression_ (_expressionOdictionaryEnv))
             (_lhsOcore@_) =
@@ -3270,7 +3284,7 @@ sem_MaybeNames_Nothing  =
     in  ( _lhsOnames,_lhsOself)
 -- Module ------------------------------------------------------
 -- semantic domain
-type T_Module = (DictionaryEnvironment) ->
+type T_Module = (DictionaryEnvironment2) ->
                 ( [Core.CoreDecl] ) ->
                 (ImportEnvironment) ->
                 (TypeEnvironment) ->
@@ -3303,7 +3317,7 @@ sem_Module_Module (range_) (name_) (exports_) (body_) =
             _exportsIvalues :: (IdSet)
             _bodyIdecls :: ( [CoreDecl] )
             _bodyIself :: (Body)
-            _bodyOdictionaryEnv :: (DictionaryEnvironment)
+            _bodyOdictionaryEnv :: (DictionaryEnvironment2)
             _bodyOimportEnv :: (ImportEnvironment)
             ( _rangeIself) =
                 (range_ )
@@ -3845,7 +3859,7 @@ sem_Position_Unknown  =
     in  ( _lhsOself)
 -- Qualifier ---------------------------------------------------
 -- semantic domain
-type T_Qualifier = (DictionaryEnvironment) ->
+type T_Qualifier = (DictionaryEnvironment2) ->
                    ( ( Core.Expr -> Core.Expr ),(Qualifier))
 -- cata
 sem_Qualifier :: (Qualifier) ->
@@ -3887,7 +3901,7 @@ sem_Qualifier_Generator (range_) (pattern_) (expression_) =
             _patternIvars :: ( [Name] )
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _patternIself,_patternIvars) =
@@ -3924,7 +3938,7 @@ sem_Qualifier_Guard (range_) (guard_) =
             _rangeIself :: (Range)
             _guardIcore :: ( Core.Expr )
             _guardIself :: (Expression)
-            _guardOdictionaryEnv :: (DictionaryEnvironment)
+            _guardOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _guardIcore,_guardIself) =
@@ -3949,7 +3963,7 @@ sem_Qualifier_Let (range_) (declarations_) =
             _declarationsIdecls :: ( [CoreDecl] )
             _declarationsIpatBindNr :: (Int)
             _declarationsIself :: (Declarations)
-            _declarationsOdictionaryEnv :: (DictionaryEnvironment)
+            _declarationsOdictionaryEnv :: (DictionaryEnvironment2)
             _declarationsOimportEnv :: (ImportEnvironment)
             _declarationsOisTopLevel :: (Bool)
             _declarationsOpatBindNr :: (Int)
@@ -3976,7 +3990,7 @@ sem_Qualifier_Let (range_) (declarations_) =
         in  ( _lhsOcore,_lhsOself)
 -- Qualifiers --------------------------------------------------
 -- semantic domain
-type T_Qualifiers = (DictionaryEnvironment) ->
+type T_Qualifiers = (DictionaryEnvironment2) ->
                     ( ( [Core.Expr -> Core.Expr] ),(Qualifiers))
 -- cata
 sem_Qualifiers :: (Qualifiers) ->
@@ -3992,10 +4006,10 @@ sem_Qualifiers_Cons (hd_) (tl_) =
             _lhsOself :: (Qualifiers)
             _hdIcore :: ( Core.Expr -> Core.Expr )
             _hdIself :: (Qualifier)
-            _hdOdictionaryEnv :: (DictionaryEnvironment)
+            _hdOdictionaryEnv :: (DictionaryEnvironment2)
             _tlIcore :: ( [Core.Expr -> Core.Expr] )
             _tlIself :: (Qualifiers)
-            _tlOdictionaryEnv :: (DictionaryEnvironment)
+            _tlOdictionaryEnv :: (DictionaryEnvironment2)
             ( _hdIcore,_hdIself) =
                 (hd_ (_hdOdictionaryEnv))
             ( _tlIcore,_tlIself) =
@@ -4049,7 +4063,7 @@ sem_Range_Range (start_) (stop_) =
     in  ( _lhsOself)
 -- RecordExpressionBinding -------------------------------------
 -- semantic domain
-type T_RecordExpressionBinding = (DictionaryEnvironment) ->
+type T_RecordExpressionBinding = (DictionaryEnvironment2) ->
                                  ( (RecordExpressionBinding))
 -- cata
 sem_RecordExpressionBinding :: (RecordExpressionBinding) ->
@@ -4067,7 +4081,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
             _nameIself :: (Name)
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _nameIself) =
@@ -4083,7 +4097,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding (range_) (name_) (expression
         in  ( _lhsOself)
 -- RecordExpressionBindings ------------------------------------
 -- semantic domain
-type T_RecordExpressionBindings = (DictionaryEnvironment) ->
+type T_RecordExpressionBindings = (DictionaryEnvironment2) ->
                                   ( (RecordExpressionBindings))
 -- cata
 sem_RecordExpressionBindings :: (RecordExpressionBindings) ->
@@ -4097,9 +4111,9 @@ sem_RecordExpressionBindings_Cons (hd_) (tl_) =
     \ _lhsIdictionaryEnv ->
         let _lhsOself :: (RecordExpressionBindings)
             _hdIself :: (RecordExpressionBinding)
-            _hdOdictionaryEnv :: (DictionaryEnvironment)
+            _hdOdictionaryEnv :: (DictionaryEnvironment2)
             _tlIself :: (RecordExpressionBindings)
-            _tlOdictionaryEnv :: (DictionaryEnvironment)
+            _tlOdictionaryEnv :: (DictionaryEnvironment2)
             ( _hdIself) =
                 (hd_ (_hdOdictionaryEnv))
             ( _tlIself) =
@@ -4185,7 +4199,7 @@ sem_RecordPatternBindings_Nil  =
     in  ( _lhsOself)
 -- RightHandSide -----------------------------------------------
 -- semantic domain
-type T_RightHandSide = (DictionaryEnvironment) ->
+type T_RightHandSide = (DictionaryEnvironment2) ->
                        ( ( Core.Expr ),(Bool),(RightHandSide))
 -- cata
 sem_RightHandSide :: (RightHandSide) ->
@@ -4206,10 +4220,10 @@ sem_RightHandSide_Expression (range_) (expression_) (where_) =
             _rangeIself :: (Range)
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             _whereIcore :: ( Core.Expr -> Core.Expr )
             _whereIself :: (MaybeDeclarations)
-            _whereOdictionaryEnv :: (DictionaryEnvironment)
+            _whereOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcore,_expressionIself) =
@@ -4241,10 +4255,10 @@ sem_RightHandSide_Guarded (range_) (guardedexpressions_) (where_) =
             _rangeIself :: (Range)
             _guardedexpressionsIcore :: ( [Core.Expr -> Core.Expr] )
             _guardedexpressionsIself :: (GuardedExpressions)
-            _guardedexpressionsOdictionaryEnv :: (DictionaryEnvironment)
+            _guardedexpressionsOdictionaryEnv :: (DictionaryEnvironment2)
             _whereIcore :: ( Core.Expr -> Core.Expr )
             _whereIself :: (MaybeDeclarations)
-            _whereOdictionaryEnv :: (DictionaryEnvironment)
+            _whereOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _guardedexpressionsIcore,_guardedexpressionsIself) =
@@ -4301,7 +4315,7 @@ sem_SimpleType_SimpleType (range_) (name_) (typevariables_) =
     in  ( _lhsOname,_lhsOself,_lhsOtypevariables)
 -- Statement ---------------------------------------------------
 -- semantic domain
-type T_Statement = (DictionaryEnvironment) ->
+type T_Statement = (DictionaryEnvironment2) ->
                    ( ( Maybe Core.Expr -> Core.Expr ),(Statement))
 -- cata
 sem_Statement :: (Statement) ->
@@ -4343,7 +4357,7 @@ sem_Statement_Expression (range_) (expression_) =
             _rangeIself :: (Range)
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _expressionIcore,_expressionIself) =
@@ -4373,7 +4387,7 @@ sem_Statement_Generator (range_) (pattern_) (expression_) =
             _patternIvars :: ( [Name] )
             _expressionIcore :: ( Core.Expr )
             _expressionIself :: (Expression)
-            _expressionOdictionaryEnv :: (DictionaryEnvironment)
+            _expressionOdictionaryEnv :: (DictionaryEnvironment2)
             ( _rangeIself) =
                 (range_ )
             ( _patternIself,_patternIvars) =
@@ -4410,7 +4424,7 @@ sem_Statement_Let (range_) (declarations_) =
             _declarationsIdecls :: ( [CoreDecl] )
             _declarationsIpatBindNr :: (Int)
             _declarationsIself :: (Declarations)
-            _declarationsOdictionaryEnv :: (DictionaryEnvironment)
+            _declarationsOdictionaryEnv :: (DictionaryEnvironment2)
             _declarationsOimportEnv :: (ImportEnvironment)
             _declarationsOisTopLevel :: (Bool)
             _declarationsOpatBindNr :: (Int)
@@ -4440,7 +4454,7 @@ sem_Statement_Let (range_) (declarations_) =
         in  ( _lhsOcore,_lhsOself)
 -- Statements --------------------------------------------------
 -- semantic domain
-type T_Statements = (DictionaryEnvironment) ->
+type T_Statements = (DictionaryEnvironment2) ->
                     ( ( [Maybe Core.Expr -> Core.Expr] ),(Statements))
 -- cata
 sem_Statements :: (Statements) ->
@@ -4456,10 +4470,10 @@ sem_Statements_Cons (hd_) (tl_) =
             _lhsOself :: (Statements)
             _hdIcore :: ( Maybe Core.Expr -> Core.Expr )
             _hdIself :: (Statement)
-            _hdOdictionaryEnv :: (DictionaryEnvironment)
+            _hdOdictionaryEnv :: (DictionaryEnvironment2)
             _tlIcore :: ( [Maybe Core.Expr -> Core.Expr] )
             _tlIself :: (Statements)
-            _tlOdictionaryEnv :: (DictionaryEnvironment)
+            _tlOdictionaryEnv :: (DictionaryEnvironment2)
             ( _hdIcore,_hdIself) =
                 (hd_ (_hdOdictionaryEnv))
             ( _tlIcore,_tlIself) =

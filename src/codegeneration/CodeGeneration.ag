@@ -1,5 +1,5 @@
 ATTR Module
-   [   dictionaryEnv    : DictionaryEnvironment
+   [   dictionaryEnv    : DictionaryEnvironment2
        extraDecls       : { [Core.CoreDecl] }
        importEnv        : ImportEnvironment
        toplevelTypes    : TypeEnvironment
@@ -23,7 +23,7 @@ import UHA_Utils
 import UHA_Range 
 import List (union)
 import ImportEnvironment
-import DictionaryEnvironment
+--import DictionaryEnvironment
 import qualified Data.Map as M
 import TypeConversion
 import Char (ord)
@@ -60,7 +60,7 @@ ATTR Body Declarations Declaration Expressions Expression Statements Statement
      Alternatives Alternative FunctionBindings FunctionBinding
      RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
      RecordExpressionBindings Constructors Constructor
-    [ dictionaryEnv : DictionaryEnvironment | | ]
+    [ dictionaryEnv : DictionaryEnvironment2 | | ]
 
 ATTR Body Declarations Declaration Constructor Constructors
     [ importEnv     : ImportEnvironment | | ]

@@ -53,6 +53,10 @@ getNameRange (Name_Identifier r _ _) = r
 getNameRange (Name_Operator   r _ _) = r
 getNameRange (Name_Special    r _ _) = r
 
+unRange :: Range -> (Int, Int)
+unRange (Range_Range (Position_Position _ x y) _) = (x, y)
+unRange _                   = (-1, -1)
+
 setNameRange :: Name -> Range -> Name -- !!!Name
 setNameRange (Name_Identifier _ s e) r = Name_Identifier r s e 
 setNameRange (Name_Operator   _ s e) r = Name_Operator   r s e

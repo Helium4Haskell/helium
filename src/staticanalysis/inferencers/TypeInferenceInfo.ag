@@ -182,15 +182,23 @@ SEM Expression | Enum loc . cinfoResult =
   resultConstraint "enumeration" @parentTree
      [ FolkloreConstraint ]       
 
-SEM Expression | Enum loc . cinfoPred =
-  resultConstraint "enumeration" @parentTree 
+SEM Expression | Enum loc . localName = flip setNameRange @range.self $ 
+                                           case (@then.section, @to.section) of
+                                              (False, False) -> enumFromThenToName 
+                                              (False, True ) -> enumFromThenName 
+                                              (True , False) -> enumFromToName 
+                                              (True , True ) -> enumFromName 
+                          . cinfoPred =
+     resultConstraint "enumeration" @parentTree 
      [ ReductionErrorInfo (Predicate "Enum" @elementType), Overloaded (NameWithRange @localName) ]
 
 -- Expression.Negate
-SEM Expression | Negate loc . cinfo =
+SEM Expression | Negate loc . localName = setNameRange intUnaryMinusName @range.self 
+                            . cinfo =
   specialConstraint "negation" @parentTree 
      (self @localInfo, Just $ nameToUHA_Expr (Name_Operator @range [] "-")) 
      [Overloaded (NameWithRange @localName) ]
+                           
 
 SEM Expression | NegateFloat loc . cinfo =
   specialConstraint "negation" @parentTree 
