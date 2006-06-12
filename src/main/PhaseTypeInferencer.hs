@@ -11,7 +11,6 @@ module PhaseTypeInferencer (phaseTypeInferencer) where
 import CompileUtils
 import Warnings(Warning)
 import TypeInferencing(typeInferencing)
--- import DictionaryEnvironment (DictionaryEnvironment)
 import UHA_Syntax
 import TypeErrors
 import Information (showInformation)
@@ -19,7 +18,7 @@ import Top.Types
 
 phaseTypeInferencer :: 
     String -> Module -> ImportEnvironment -> ImportEnvironment -> [Option] -> 
-    Phase TypeError (DictionaryEnvironment2, ImportEnvironment, TypeEnvironment, [Warning])
+    Phase TypeError (DictionaryEnvironment, ImportEnvironment, TypeEnvironment, [Warning])
 
 phaseTypeInferencer fullName module_ localEnv completeEnv options = do
     enterNewPhase "Type inferencing" options

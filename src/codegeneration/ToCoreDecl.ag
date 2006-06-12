@@ -263,19 +263,19 @@ dictionaryTreeToCore tree =
          Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "From" ++ subClass)))          
                  (dictionaryTreeToCore tree)
 
-insertDictionaries :: Name -> DictionaryEnvironment2 -> Core.Expr
+insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr
 insertDictionaries name dictionaryEnv = 
    foldl Core.Ap
          (Core.Var (idFromName name))
          (map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv))
 
-getDictionaryTrees :: Name -> DictionaryEnvironment2 -> [DictionaryTree]
+getDictionaryTrees :: Name -> DictionaryEnvironment -> [DictionaryTree]
 getDictionaryTrees name dEnv = 
    case M.lookup (unRange . getNameRange $ name) (varMap dEnv) of
       Just dt -> dt
       Nothing -> []
 
-getPredicateForDecl :: Name -> DictionaryEnvironment2 -> Predicates
+getPredicateForDecl :: Name -> DictionaryEnvironment -> Predicates
 getPredicateForDecl name dEnv =
    case M.lookup (unRange . getNameRange $  name) (declMap dEnv) of
       Just ps -> ps

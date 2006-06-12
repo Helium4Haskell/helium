@@ -11,7 +11,7 @@
 
 {
 typeInferencing :: [Option] -> ImportEnvironment -> Module
-                      -> (IO (), DictionaryEnvironment2, TypeEnvironment, TypeErrors, Warnings)
+                      -> (IO (), DictionaryEnvironment, TypeEnvironment, TypeErrors, Warnings)
 typeInferencing options importEnv module_ =
    -- let (_, dictionaryEnv, _, logEntries, _, solveResult, toplevelTypes, typeErrors, warnings) =
    let (_, _, logEntries, _, solveResult, toplevelTypes, typeErrors, warnings) =
@@ -108,7 +108,6 @@ import UHA_Utils                 (showNameAsOperator, intUnaryMinusName, NameWit
 import Utils                     (internalError)
 import DerivingShow              (typeOfShowFunction, nameOfShowFunction)
 import ImportEnvironment  hiding (setTypeSynonyms)
--- import DictionaryEnvironment
 import Args
 
 -- standard
