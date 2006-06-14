@@ -16,7 +16,7 @@ import Top.Ordering.Tree
 import UHA_Syntax
 import UHA_Source
 import UHA_Range
-import UHA_Utils ( NameWithRange ( NameWithRange ), nameWithRangeToName )
+import UHA_Utils ( NameWithRange ( NameWithRange ), nameWithRangeToName, getNameName )
 import TypeErrors
 import Messages
 import DoublyLinkedTree
@@ -73,6 +73,7 @@ data Property
    | TypeSignatureLocation Range
    | TypePair (Tp, Tp)
    | Overloaded NameWithRange
+   | ImplicitMono (String, (Int, Int))
                 
 class HasProperties a where
    getProperties :: a -> Properties
@@ -106,6 +107,10 @@ headWithDefault a = maybe a id . maybeHead
 maybeOverloadedIdentifier :: HasProperties a => a -> Maybe (Int, Int)
 maybeOverloadedIdentifier a = do x <- maybeHead [ name | Overloaded name <- getProperties a ] 
                                  return (unRange . getNameRange . nameWithRangeToName $ x)
+
+maybeImplicitMono :: HasProperties a => a -> Maybe (String, (Int, Int))
+maybeImplicitMono a = do x <- maybeHead [ name | ImplicitMono name <- getProperties a ] 
+                         return x
 
 maybeReductionErrorPredicate :: HasProperties a => a -> Maybe Predicate
 maybeReductionErrorPredicate a = 
@@ -218,8 +223,8 @@ cinfoBindingGroupExplicitTypedBinding ms name nameTS =
                  Overloaded (NameWithRange name) ]
    in variableConstraint "explicitly typed binding" (nameToUHA_Def name) props
 cinfoSameBindingGroup name = 
-   let props = [ FromBindingGroup, FolkloreConstraint ]
-   in variableConstraint "variable" (nameToUHA_Expr name) props
+   let props = [ FromBindingGroup, FolkloreConstraint, ImplicitMono (getNameName name, unRange . getNameRange $ name ) ]
+   in variableConstraint "cinfoSameBindingGroup variable" (nameToUHA_Expr name) props
 cinfoBindingGroupImplicit name = 
    let props = [ FromBindingGroup, FolkloreConstraint, HasTrustFactor 10.0, Overloaded (NameWithRange name) ]
    in variableConstraint "variable" (nameToUHA_Expr name) props
@@ -263,6 +268,8 @@ instance TypeConstraintInfo ConstraintInfo where
    predicateArisingFrom = addProperty . PredicateArisingFrom
    equalityTypePair     = setTypePair
    overloadedIdentifier = maybeOverloadedIdentifier  
+   -- This is a hack, because of naive code-generation of helium
+   implicitMono         = maybeImplicitMono
 
 instance PolyTypeConstraintInfo ConstraintInfo where
    instantiatedTypeScheme = addProperty . InstantiatedTypeScheme

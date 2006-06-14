@@ -20,6 +20,7 @@ import Top.Types
 import Top.Ordering.Tree
 import qualified Data.Map as M
 import Data.List
+import Debug.Trace
 
 type Assumptions        = M.Map Name [(Name,Tp)]
 type PatternAssumptions = M.Map Name Tp
@@ -103,11 +104,12 @@ performBindingGroup (topLevel, currentChunk, uniqueChunk, monos, typeSignatures,
             op (cnr, (e, a, c)) (aset, cset, mt, un, fm) =
                let (cset1,e'   )  = (typeSignatures !:::! e) monos cinfoBindingGroupExplicitTypedBinding                
                    (cset2,a'   )  = (typeSignatures .:::. a) (cinfoBindingGroupExplicit monos (M.keys e))
+                   --(cset3,a''  )  = ((trace (show . M.assocs $ e') e') .===. (trace (show . M.assocs $ a') a'))            cinfoSameBindingGroup
                    (cset3,a''  )  = (e' .===. a')            cinfoSameBindingGroup
                    
                    implicits      = zip [un..] (M.assocs e')
                    implicitsFM    = M.fromList [ (name, SigmaVar sv) | (sv, (name, _)) <- implicits ]
-                   cset4          = genConstraints monos cinfoGeneralize implicits                   
+                   cset4          = genConstraints monos cinfoGeneralize (trace (show  implicits) implicits)
                    (cset5, aset') = (implicitsFM .<==. aset) cinfoBindingGroupImplicit
                                     
                    monomorphic    = not topLevel -- simplification: was 
