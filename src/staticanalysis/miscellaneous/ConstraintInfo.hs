@@ -27,6 +27,7 @@ import Top.Interface.Basic (ErrorLabel)
 import Top.Interface.Substitution (unificationErrorLabel)
 import Top.Interface.TypeInference
 import Utils (internalError)
+import qualified Data.Map as M
 import Data.Maybe
 import Data.Char
 import Data.List
@@ -73,7 +74,7 @@ data Property
    | TypeSignatureLocation Range
    | TypePair (Tp, Tp)
    | Overloaded NameWithRange
-   | ImplicitMono (String, (Int, Int))
+   | ImplicitMono (Int, (Int, Int))
                 
 class HasProperties a where
    getProperties :: a -> Properties
@@ -108,7 +109,7 @@ maybeOverloadedIdentifier :: HasProperties a => a -> Maybe (Int, Int)
 maybeOverloadedIdentifier a = do x <- maybeHead [ name | Overloaded name <- getProperties a ] 
                                  return (unRange . getNameRange . nameWithRangeToName $ x)
 
-maybeImplicitMono :: HasProperties a => a -> Maybe (String, (Int, Int))
+maybeImplicitMono :: HasProperties a => a -> Maybe (Int, (Int, Int))
 maybeImplicitMono a = do x <- maybeHead [ name | ImplicitMono name <- getProperties a ] 
                          return x
 
@@ -211,19 +212,20 @@ variableConstraint theLocation theSource theProperties =
          , errorMessage = Nothing
          }               
         
-cinfoBindingGroupExplicitTypedBinding :: Tps -> Name -> Name ->  ConstraintInfo
-cinfoSameBindingGroup                 :: Name ->                 ConstraintInfo
-cinfoBindingGroupImplicit             :: Name ->                 ConstraintInfo
-cinfoBindingGroupExplicit             :: Tps -> Names -> Name -> ConstraintInfo
-cinfoGeneralize                       :: Name ->                 ConstraintInfo
+cinfoBindingGroupExplicitTypedBinding :: Tps -> Name -> Name ->          ConstraintInfo
+cinfoSameBindingGroup                 :: M.Map Name (Sigma a) -> Name -> ConstraintInfo
+cinfoBindingGroupImplicit             :: Name ->                         ConstraintInfo
+cinfoBindingGroupExplicit             :: Tps -> Names -> Name ->         ConstraintInfo
+cinfoGeneralize                       :: Name ->                         ConstraintInfo
 
 cinfoBindingGroupExplicitTypedBinding ms name nameTS = 
    let props = [ FromBindingGroup, ExplicitTypedBinding, ExplicitTypedDefinition ms name, 
                  HasTrustFactor 10.0, TypeSignatureLocation (getNameRange nameTS),
                  Overloaded (NameWithRange name) ]
    in variableConstraint "explicitly typed binding" (nameToUHA_Def name) props
-cinfoSameBindingGroup name = 
-   let props = [ FromBindingGroup, FolkloreConstraint, ImplicitMono (getNameName name, unRange . getNameRange $ name ) ]
+cinfoSameBindingGroup map name = 
+   let props = [ FromBindingGroup, FolkloreConstraint, ImplicitMono (unSigma $ fromJust (M.lookup name map), unRange . getNameRange $ name ) ]
+       unSigma (SigmaVar i) = i
    in variableConstraint "cinfoSameBindingGroup variable" (nameToUHA_Expr name) props
 cinfoBindingGroupImplicit name = 
    let props = [ FromBindingGroup, FolkloreConstraint, HasTrustFactor 10.0, Overloaded (NameWithRange name) ]

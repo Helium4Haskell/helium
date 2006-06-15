@@ -105,11 +105,11 @@ performBindingGroup (topLevel, currentChunk, uniqueChunk, monos, typeSignatures,
                let (cset1,e'   )  = (typeSignatures !:::! e) monos cinfoBindingGroupExplicitTypedBinding                
                    (cset2,a'   )  = (typeSignatures .:::. a) (cinfoBindingGroupExplicit monos (M.keys e))
                    --(cset3,a''  )  = ((trace (show . M.assocs $ e') e') .===. (trace (show . M.assocs $ a') a'))            cinfoSameBindingGroup
-                   (cset3,a''  )  = (e' .===. a')            cinfoSameBindingGroup
+                   (cset3,a''  )  = (e' .===. a')            (cinfoSameBindingGroup implicitsFM)
                    
                    implicits      = zip [un..] (M.assocs e')
                    implicitsFM    = M.fromList [ (name, SigmaVar sv) | (sv, (name, _)) <- implicits ]
-                   cset4          = genConstraints monos cinfoGeneralize (trace (show  implicits) implicits)
+                   cset4          = genConstraints monos cinfoGeneralize implicits
                    (cset5, aset') = (implicitsFM .<==. aset) cinfoBindingGroupImplicit
                                     
                    monomorphic    = not topLevel -- simplification: was 
