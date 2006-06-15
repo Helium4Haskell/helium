@@ -266,9 +266,10 @@ SEM Pattern | Tuple loc . cinfo =
   [ FolkloreConstraint ]
 
 -- Pattern.Negate
-SEM Pattern | Negate loc . cinfo =
+SEM Pattern | Negate  loc . localName = setNameRange intUnaryMinusName @range.self 
+                          . cinfo =
   resultConstraint "pattern negation" @parentTree
-     [ FolkloreConstraint ]
+     [ FolkloreConstraint, Overloaded (NameWithRange @localName) ]
 
 -- Pattern.As
 SEM Pattern |  As loc . cinfo =

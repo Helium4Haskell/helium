@@ -226,7 +226,7 @@ cinfoBindingGroupExplicitTypedBinding ms name nameTS =
 cinfoSameBindingGroup map name = 
    let props = [ FromBindingGroup, FolkloreConstraint, ImplicitMono (unSigma $ fromJust (M.lookup name map), unRange . getNameRange $ name ) ]
        unSigma (SigmaVar i) = i
-   in variableConstraint "cinfoSameBindingGroup variable" (nameToUHA_Expr name) props
+   in variableConstraint "variable" (nameToUHA_Expr name) props
 cinfoBindingGroupImplicit name = 
    let props = [ FromBindingGroup, FolkloreConstraint, HasTrustFactor 10.0, Overloaded (NameWithRange name) ]
    in variableConstraint "variable" (nameToUHA_Expr name) props
@@ -277,8 +277,6 @@ instance PolyTypeConstraintInfo ConstraintInfo where
    instantiatedTypeScheme = addProperty . InstantiatedTypeScheme
    skolemizedTypeScheme   = addProperty . SkolemizedTypeScheme
    
-
-      
 highlyTrustedFactor :: Float
 highlyTrustedFactor = 10000.0
 
