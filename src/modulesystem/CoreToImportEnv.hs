@@ -183,7 +183,9 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                       | stringFromId id == "strategy" ->
               let (CustomDecl _  [CustomBytes bytes]) = head cs
                   text = stringFromBytes bytes
-              in addTypingStrategies (read text)
+              in case reads text of 
+                    [(rule, [])] -> addTypingStrategies rule
+                    _ -> intErr "Could not parse typing strategy from core file"
 
            -- !!! Print importedFromModId from "declAccess = Imported{importModule = importedFromModId}" as well
            DeclAbstract{ declName = n } ->
@@ -202,4 +204,3 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
               intErr "unknown kind of declaration in import declarations"
         
       intErr = internalError "CoreToImportEnv" "getImportEnvironment"
-         
