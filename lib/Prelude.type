@@ -1,7 +1,7 @@
 --------------------------------------------------------
 -- Type inference directives: Sibling functions
 
--- int versus float arithmatic
+-- int versus float arithmetic
 siblings   +   , +. ;
 siblings   *   , *. ; 
 siblings   -   , -. ; 
@@ -9,7 +9,7 @@ siblings   ^   , ^. ;
 siblings   div , /. ;
 siblings   /   , /. ;
 
--- int versus float comparison functioons
+-- int versus float comparison functions
 siblings   >== , >=. ;
 siblings   <=  , <=. ;
 siblings   ==  , ==. ;
