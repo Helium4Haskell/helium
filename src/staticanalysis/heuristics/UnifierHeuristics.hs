@@ -31,7 +31,7 @@ unifierVertex :: (HasTypeGraph m info, IsUnifier info) => Selector m info
 unifierVertex =
    Selector ("Unification vertex", f) where
 
- f (_, info) =
+ f (EdgeId _ _ this, info) =
     case isUnifier info of
        Nothing -> return Nothing
        Just (unifier, _) -> 
@@ -69,7 +69,7 @@ unifierVertex =
                             [index1, index2] ->
                                let (v1, info1) = unifiers !! index1
                                    (v2, info2) = unifiers !! index2
-                                   edges   = [ edge | (edge@(EdgeId (VertexId va) (VertexId vb) _), _) <- neighbours, p va vb ] 
+                                   edges   = [ edge | (edge@(EdgeId (VertexId va) (VertexId vb) i), _) <- neighbours, p va vb, this==i ] 
                                    p va vb =  (va == unifier && vb `elem` [v1, v2])
                                            || (vb == unifier && va `elem` [v1, v2])
                                    newInfo = typeErrorForUnifier (TVar v1, TVar v2) (info1, info2) 
