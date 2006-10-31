@@ -27,9 +27,9 @@ class MaybeApplication a where
 class IsPattern a where
    isPattern :: a -> Bool
    
-applicationResult :: (HasTwoTypes info, MaybeApplication info) => Heuristic info
-applicationResult = 
-   Heuristic (edgeFilter "Only the result of an application edge" f) where
+avoidApplicationConstraints :: (HasTwoTypes info, MaybeApplication info) => Heuristic info
+avoidApplicationConstraints = 
+   Heuristic (edgeFilter "Avoid application constraints" f) where
    
   f pair@(edge, info) = 
    case maybeNumberOfArguments info of
@@ -56,9 +56,9 @@ applicationResult =
 class MaybeNegation a where
    maybeNegation :: a -> Maybe Bool
 
-negationResult :: (HasTwoTypes info, MaybeNegation info) => Heuristic info
-negationResult = 
-   Heuristic (edgeFilter "Only the result of a negation edge" f) where
+avoidNegationConstraints :: (HasTwoTypes info, MaybeNegation info) => Heuristic info
+avoidNegationConstraints = 
+   Heuristic (edgeFilter "Avoid negation constraints" f) where
   
   f pair@(edge, info) =
    case maybeNegation info of

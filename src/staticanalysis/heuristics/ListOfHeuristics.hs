@@ -33,43 +33,43 @@ listOfHeuristics options siblings path =
    let is = [ makeEdgeNr i | SelectConstraintNumber i <- options ]
    in [ selectConstraintNumbers is | not (null is) ]
    ++
-   [ highlyTrustedFilter
+   [ avoidForbiddenConstraints       -- remove constraints that should NEVER be reported
    , highParticipation 0.95 path
-   , phaseFilter
+   , phaseFilter                     -- phasing from the type inference directives
    ] ++
    -- Repair system is disabled
    -- [ repairSystem | NoRepairHeuristics `notElem` options
    -- ] ++
    [ Heuristic (Voting (
         [ siblingFunctions siblings
-        , similarLiterals
-        , applicationEdge
-        , tupleEdge
+        , siblingLiterals
+        , applicationHeuristic 
+        , variableFunction         -- Similar to applicationHeuristic, works in absence of application node
+        , tupleHeuristic                -- Similar to applicationHeuristic, but for tuples
         , fbHasTooManyArguments
-        , variableFunction
-        , constraintFromUser path
+        , constraintFromUser path  -- From .type files
         , unaryMinus (Overloading `elem` options)
         ] ++
-        [ similarNegation | Overloading `notElem` options ] ++
+        [ similarNegation | Overloading `notElem` options ] ++   -- Avoid mix-up of -. and - if non-overloaded
         [ unifierVertex   | UnifierHeuristics `elem` options ]))
-   | NoRepairHeuristics `notElem` options
+   | NoRepairHeuristics `notElem` options   -- All selectors are turned off when NoRepairHeuristics is on.
    ] ++
    [ inPredicatePath | Overloading `elem` options ] ++
-   [ applicationResult
-   , negationResult
+   [ avoidApplicationConstraints
+   , avoidNegationConstraints
    -- , typeVariableInvolved {- I am not convinced yet. Bastiaan -}
-   , trustFactorOfConstraint
-   , isTopDownEdge
-   , positionInList
+   , avoidTrustedConstraints
+   , avoidFolkloreConstraints
+   , firstComeFirstBlamed
    ]
 
 -- Never report a constraint which is highly trusted
 -- (even if this means that you have to report multiple errors)
 -- This should be the first heuristic that is applied 
-highlyTrustedFilter :: Heuristic ConstraintInfo
-highlyTrustedFilter = Heuristic (
+avoidForbiddenConstraints :: Heuristic ConstraintInfo
+avoidForbiddenConstraints = Heuristic (
    let f (_, info) = return (not (isHighlyTrusted info))
-   in edgeFilter "Not highly trusted" f)
+   in edgeFilter "Avoid forbidden constraints" f)
 
 -- two more heuristics for the Type Inference Directives
 -- (move to another module?)

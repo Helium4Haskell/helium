@@ -20,8 +20,8 @@ import Top.Implementation.TypeGraph.Heuristic
 class HasTrustFactor a where
    trustFactor :: a -> Float
 
-trustFactorOfConstraint :: HasTrustFactor info => Heuristic info
-trustFactorOfConstraint = 
+avoidTrustedConstraints :: HasTrustFactor info => Heuristic info
+avoidTrustedConstraints = 
    Heuristic (
       let f (_, info) = return (trustFactor info)
       in minimalEdgeFilter "Trust factor of edge" f)
@@ -33,8 +33,8 @@ class HasDirection a where
 
 -- note: because True > False, we use the minimal edge filter to keep
 --       all the top down edges
-isTopDownEdge :: HasDirection info => Heuristic info
-isTopDownEdge = 
+avoidFolkloreConstraints :: HasDirection info => Heuristic info
+avoidFolkloreConstraints = 
    Heuristic (
       let f (_, info) = return (isTopDown info)
       in minimalEdgeFilter "Is a top down edge" f)

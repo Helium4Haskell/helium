@@ -78,9 +78,9 @@ siblingFunctions siblings =
 class MaybeLiteral a where
    maybeLiteral :: a -> Maybe String  
 
-similarLiterals :: (HasTypeGraph m info, MaybeLiteral info, HasTwoTypes info, WithHints info) => Selector m info
-similarLiterals = 
-   Selector ("Similar literal", f) where
+siblingLiterals :: (HasTypeGraph m info, MaybeLiteral info, HasTwoTypes info, WithHints info) => Selector m info
+siblingLiterals = 
+   Selector ("Sibling literals", f) where
 
  f pair@(edge, info) =
    case maybeLiteral info of 
@@ -154,8 +154,8 @@ similarNegation  =
 -----------------------------------------------------------------------------
 
 -- Clean up this function: split into smaller heuristics, and remove duplicated code.
-applicationEdge :: (HasTypeGraph m info, MaybeApplication info, IsPattern info, HasTwoTypes info, WithHints info) => Selector m info
-applicationEdge =
+applicationHeuristic :: (HasTypeGraph m info, MaybeApplication info, IsPattern info, HasTwoTypes info, WithHints info) => Selector m info
+applicationHeuristic =
    Selector ("Application heuristics", f) where
 
  f pair@(edge, info) =
@@ -335,8 +335,8 @@ applicationEdge =
 class IsTupleEdge a where
    isTupleEdge :: a -> Bool
 
-tupleEdge :: (HasTypeGraph m info, IsTupleEdge info, HasTwoTypes info, WithHints info) => Selector m info
-tupleEdge =
+tupleHeuristic :: (HasTypeGraph m info, IsTupleEdge info, HasTwoTypes info, WithHints info) => Selector m info
+tupleHeuristic =
    Selector ("Tuple heuristics", f) where
 
  f pair@(edge, info)    
@@ -391,7 +391,7 @@ class IsFunctionBinding a where
 
 fbHasTooManyArguments :: (HasTypeGraph m info, IsFunctionBinding info, HasTwoTypes info, WithHints info) => Selector m info
 fbHasTooManyArguments =
-   Selector ("Function Binding heuristics", f) where
+   Selector ("Function binding heuristics", f) where
 
  f (edge, info)   
    | not (isExplicitlyTyped info) = return Nothing
