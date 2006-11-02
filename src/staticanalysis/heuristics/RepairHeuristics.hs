@@ -173,7 +173,8 @@ applicationHeuristic =
                                   
                (Just functionType, Just expectedType) 
                   -- can a permutation of the arguments resolve the type inconsistency
-                  | length argumentPermutations == 1 -> 
+                  -- of course, I need at least two arguments
+                  | length argumentPermutations == 1 && length (concat argumentPermutations) > 1 -> 
                        let p = head argumentPermutations
                        in 
                          if p==[1,0] && isBinary
@@ -356,16 +357,17 @@ tupleHeuristic =
             
                EQ -> -- try if a permutation can make the tuple types equivalent
                   let perms = take heuristics_MAX (permutationsForLength (length tupleTps))
+                      notUnifiable = not (unifiableInContext classEnv synonyms subPreds (tupleType tupleTps) (tupleType expectedTps))
                       test perm = 
                          let t1 = tupleType tupleTps
                              t2 = tupleType (permute perm expectedTps)
                          in unifiableInContext classEnv synonyms subPreds t1 t2
                   in case filter test perms of
-                        []   -> return Nothing
-                        p:_ -> -- a permutation is possible!
+                        p:_ | notUnifiable -> -- a permutation is possible!
                            let hint = fixHint "re-order elements of tuple"
                            in return $ Just 
-                                   (4, "tuple: permute with "++show p, [edge], hint info)
+                                   (4, "tuple: permute with "++show p ++ show (mTupleTp, mExpectedTp), [edge], hint info)
+                        _ -> return Nothing
                                  
                compare -> case [ is 
                                | (is,zl) <- take heuristics_MAX (zipWithHoles tupleTps expectedTps)

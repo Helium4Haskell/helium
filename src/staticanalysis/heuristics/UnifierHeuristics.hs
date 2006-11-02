@@ -66,7 +66,7 @@ unifierVertex =
                          case indices of
                             -- if there are exactly two branches that cause the problem, then report
                             -- these two in a type error
-                            [index1, index2] ->
+                            [index1, index2] | not (unifiableList synonyms (unifierTypes ++ contextTypes)) ->
                                let (v1, info1) = unifiers !! index1
                                    (v2, info2) = unifiers !! index2
                                    edges   = [ edge | (edge@(EdgeId (VertexId va) (VertexId vb) i), _) <- neighbours, p va vb, this==i ] 
