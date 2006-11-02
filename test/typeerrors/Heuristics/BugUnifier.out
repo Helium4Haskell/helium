@@ -1,0 +1,8 @@
+Compiling typeerrors/Heuristics/BugUnifier.hs
+(2,13): Type error in infix application
+ expression       : x ++ replicate (length x) ' '
+ operator         : ++
+   type           : [a     ] -> [a   ] -> [a]   
+   does not match : [String] -> [Char] -> String
+
+Compilation failed with 1 error

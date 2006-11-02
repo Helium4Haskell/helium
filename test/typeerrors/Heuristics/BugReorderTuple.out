@@ -1,0 +1,13 @@
+Compiling typeerrors/Heuristics/BugReorderTuple.hs
+(5,5): Type error in pattern of function binding
+ pattern          : (hs2, (_, xss2))
+   type           : ([String] , (a, A))
+   does not match : ([b     ] , [c]   )
+
+(5,29): Type error in variable
+ expression       : ++
+   type           : [a     ] -> [a       ] -> [a]
+   expected type  : [String] -> [[String]] -> [b]
+ probable fix     : use : instead
+
+Compilation failed with 2 errors
