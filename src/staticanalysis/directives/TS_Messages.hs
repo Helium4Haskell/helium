@@ -16,6 +16,7 @@ module TS_Messages where
 import Messages
 import TypeErrors
 import ConstraintInfo
+import TypeConstraints
 import HeliumMessages () -- instance Show MessageLines
 import Top.Types
 import Utils (commaList)
@@ -31,6 +32,9 @@ data TS_Error
       | DuplicatedMetaVariableConstraints String {- rule name -} String {- metavariable -}     
       | TypeErrorTS String TypeError      
       | Soundness String {- rule name -} TpScheme {- inferredTpScheme -} TpScheme {- constraintsTpScheme -}
+      | UnsoundConstraints String {- rule name -} [TypeConstraint ConstraintInfo]
+      | Missingconstraints String {- rule name -} [TypeConstraint ConstraintInfo]
+      | UselessConstraints String {- rule name -} [(Tp,Tp)] 
              
 type TS_Warnings = [TS_Warning]
 data TS_Warning
@@ -79,7 +83,16 @@ showTS_Error tsError = case tsError of
               , "  whereas the standard type rules infer the type"
               , "    " ++ show inferred
               ]
-   
+   (UnsoundConstraints rule constraints) -> 
+      "The type rule for " ++ show rule ++ "contains the following unsound constraints:\n"
+      ++ unlines (map show constraints)
+
+   (UselessConstraints rule constraints) ->
+      "The type rule for " ++ show rule ++ "contains the following useless constraints:\n"
+      ++ unlines (map showTypeTup constraints)
+
+showTypeTup (a,b) = show a ++ " == " ++ show b
+              
 showTS_Warning :: TS_Warning -> String
 showTS_Warning tsWarning = case tsWarning of
 
@@ -89,3 +102,4 @@ showTS_Warning tsWarning = case tsWarning of
       ++ commaList metavariables      
       ++ " in the type strategy rule "++show rule
       ++" are not inserted explicitly. By default, they are inserted in the beginning."   
+

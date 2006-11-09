@@ -2,8 +2,11 @@
 module TS_Analyse where
 
 import Top.Types
+import Top.Types.Schemes(instantiateWithNameMap)
 import Top.Solver.Greedy
 import Top.Solver
+import Top.Constraint.Equality(EqualityConstraint(..))
+import UHA_Utils (getNameName)
 import TypeConstraints
 import ConstraintInfo
 import TS_Syntax
@@ -22,6 +25,8 @@ import Utils (internalError)
 import qualified UHA_Pretty as PP
 import qualified Data.Map as M
 
+import Debug.Trace(trace)
+
 import UHA_Syntax
 
 import ExpressionTypeInferencer (expressionTypeInferencer)
@@ -35,6 +40,36 @@ analyseTypingStrategies list ie =
 analyseTypingStrategy :: TypingStrategy -> ImportEnvironment -> (TS_Errors, TS_Warnings)
 analyseTypingStrategy ts ie = 
     let (errs, _, wars) = sem_TypingStrategy ts ie in (errs, wars)
+
+skipList :: [a] -> [[a]]
+skipList [] = []
+skipList (x:xs) = xs : [ x:sxs | sxs <- skipList xs ]
+
+makeTypeFromTpWithMap :: [(Name,Tp)] -> Tp -> Tp
+makeTypeFromTpWithMap m tp =
+  let f (TApp a b) = TApp (f a) (f b)
+      f (TCon c) = TCon c
+      f (TVar i) = TCon (lookupType i)
+      nameMap = M.fromList (map swap m)
+      lookupType :: Int -> String
+      lookupType i = M.findWithDefault ('v' : show i) i nameMap
+      swap (a,TVar b) = (b,getNameName a)
+  in f tp
+
+--FIXME: a lot of copy/paste from ../miscellaneous/TypeConversion.hs
+-- perhaps move it to there?
+--makeTypeFromTpWithMap :: [(Name,Tp)] -> Tp -> Type
+--makeTypeFromTpWithMap map tp =
+--      lookupType i = M.findWithDefault ('v' : show i) i nameMap
+--      nameMap = M.fromList (map swap map)
+--  let (x,xs) = leftSpine t
+--      f (TVar i) = Type_Variable noRange (lookupType i)
+--      f (TCon s) = Type_Constructor noRange (nameFromString s)
+--      nameMap = M.fromList (map swap map)
+--      swap (a,b) = (b,a)
+--   in if null xs
+--        then f x
+--        else Type_Application noRange True (f x) (map makeTypeFromTp xs)
 
 findDuplicates :: Ord a => [a] -> [[a]]
 findDuplicates = filter (not . isSingleton) . group . sort
@@ -3574,35 +3609,77 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
                 (typerule_ (_typeruleOnameMap) (_typeruleOsimpleJudgements))
             ( _statementsImetaVariableConstraintNames,_statementsIself,_statementsItypevariables,_statementsIuserConstraints,_statementsIuserPredicates) =
                 (statements_ (_statementsOattributeTable) (_statementsOmetaVariableConstraintNames) (_statementsOnameMap) (_statementsOstandardConstraintInfo) (_statementsOuserConstraints) (_statementsOuserPredicates))
+            (_tpToType@_) =
+                makeTypeFromTpWithMap _nameMap
+            (_constrToTypeTuple@_) =
+                (\(TC1 (Equality a b _)) -> (_tpToType a, _tpToType b))
+            (_missingConstrs@_) =
+                let (Right substs) = mgu ucTp inferredTp
+                    Qualification (_,ucTp) = mkSelTypeConstrs (_goodConstrs \\ _uselessConstrs)
+                    mkSelTypeConstrs = _mkSkeletonType . substitutionFromResult . _solve
+                    (_,_,inferredTp) = instantiateWithNameMap unique _inferredTpScheme
+                    unique = length _nameMap
+                    mkConstr (i,tp) = (TVar i .==. tp) _standardConstraintInfo
+                in map mkConstr $ M.toList substs
+            (_uselessConstrs@_) =
+                _getUselessConstrs _goodConstrs
+            (_getUselessConstrs@_) =
+                (\cs -> let solvedCs = map isUseless (skipList cs)
+                            isUseless cs' = _genInstOf (mkSTS cs') (mkSTS cs)
+                            mkSTS = _mkSkeletonTypeScheme .  substitutionFromResult . _solve
+                        in map fst $ filter snd $ zip cs solvedCs)
+            ((_goodConstrs@_,_badConstrs@_)) =
+                _getUnsoundConstrs (undefined,[]) (reverse _statementsIuserConstraints)
+            (_getUnsoundConstrs@_) =
+                let check s [] = ([],[])
+                    check s (c:cs) =
+                      case _solveSingleConstr s c of
+                        Just s' | _genInstOf _inferredTpScheme tps -> (c:gcs, bcs)
+                          where tps = _mkSkeletonTypeScheme (fst s')
+                                (gcs, bcs) = check s' cs
+                        otherwise -> (gcs, c:bcs)
+                          where (gcs, bcs) = check s cs
+                in check
+            (_solveSingleConstr@_) =
+                (\(_,cs) c -> let canSolve = (null . errorsFromResult . _solve) (c:cs)
+                                  subst = (substitutionFromResult . _solve) (c:cs)
+                              in if canSolve then Just (subst, c:cs) else Nothing)
+            (_genInstOf@_) =
+                let synonyms = getOrderedTypeSynonyms _lhsIimportEnvironment
+                in genericInstanceOf synonyms _classEnv
+            ((_inferredTpScheme@_,_,_inferredTypeErrors@_)) =
+                let expr = Expression_Lambda noRange pats _typeruleIconclusionExpression
+                    pats = map (Pattern_Variable noRange . nameFromString . fst) orderedMetaList
+                    orderedMetaList = reverse _typeruleIsimpleJudgements
+                in expressionTypeInferencer _lhsIimportEnvironment expr
+            (_mkSkeletonType@_) =
+                let premiseTypes = map snd (reverse _typeruleIsimpleJudgements)
+                    skeletonType = foldr (.->.) _typeruleIconclusionType premiseTypes
+                in \s -> s |-> (_statementsIuserPredicates .=>. skeletonType)
+            (_mkSkeletonTypeScheme@_) =
+                generalizeAll . _mkSkeletonType
             (_soundnessErrors@_) =
                 if not (null _staticErrors)
                   then []
-                  else let orderedMetaList =
-                              reverse _typeruleIsimpleJudgements
-                           constraintsTpScheme =
-                              let premiseTypes = map snd orderedMetaList
-                                  skeletonType = foldr (.->.) _typeruleIconclusionType premiseTypes
-                              in generalizeAll (_substitution |-> (_statementsIuserPredicates .=>. skeletonType))
-                           (inferredTpScheme, _, inferredTypeErrors) =
-                              let expr = Expression_Lambda noRange pats _typeruleIconclusionExpression
-                                  pats = map (Pattern_Variable noRange . nameFromString . fst) orderedMetaList
-                              in expressionTypeInferencer _lhsIimportEnvironment expr
-                           synonyms = getOrderedTypeSynonyms _lhsIimportEnvironment
-                       in if not (null inferredTypeErrors)
-                            then map (TypeErrorTS _name) inferredTypeErrors
-                            else if genericInstanceOf synonyms _classEnv inferredTpScheme constraintsTpScheme
-                                        &&
-                                    genericInstanceOf synonyms _classEnv constraintsTpScheme inferredTpScheme
-                                      then []
-                                      else [ Soundness _name inferredTpScheme constraintsTpScheme ]
+                  else let constraintsTpScheme = _mkSkeletonTypeScheme _substitution
+                           isSameTypeScheme a b = _genInstOf a b && _genInstOf b a
+                       in if not (null _inferredTypeErrors)
+                            then map (TypeErrorTS _name) _inferredTypeErrors
+                            else if isSameTypeScheme _inferredTpScheme constraintsTpScheme
+                                   then []
+                                   else Soundness _name _inferredTpScheme constraintsTpScheme
+                                        : UnsoundConstraints _name _badConstrs
+                                        : [UselessConstraints _name $ map _constrToTypeTuple _missingConstrs]
             (_classEnv@_) =
                 createClassEnvironment _lhsIimportEnvironment
-            (_solveResult@_) =
+            (_solve@_) =
                 let options = solveOptions { uniqueCounter = length _uniqueTypevariables
                                            , Top.Solver.typeSynonyms = getOrderedTypeSynonyms _lhsIimportEnvironment
                                            , classEnvironment = _classEnv
                                            }
-                in fst (solve options (reverse _statementsIuserConstraints) greedyConstraintSolver)
+                in \constraints -> fst (solve options constraints greedyConstraintSolver)
+            (_solveResult@_) =
+                _solve (reverse _statementsIuserConstraints)
             (_solveErrors@_) =
                 errorsFromResult _solveResult
             (_substitution@_) =

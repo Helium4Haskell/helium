@@ -32,6 +32,11 @@ data TypeConstraint  info
    | TC3 (PolymorphismConstraint info)
    | TCOper String (forall m . HasSubst m info => m ())
 
+--TODO: other constructors!
+--FIXME: do we want to compare the info as well?
+instance Eq (TypeConstraint info) where
+  TC1 (Equality a b _) == TC1 (Equality c d _) = a == c && b == d
+
 instance (HasBasic m info, HasTI m info, HasSubst m info, HasQual m info, PolyTypeConstraintInfo info) 
             => Solvable (TypeConstraint info) m where 
    solveConstraint (TC1 c)      = solveConstraint c
