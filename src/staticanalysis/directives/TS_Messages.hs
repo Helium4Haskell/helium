@@ -33,8 +33,8 @@ data TS_Error
       | TypeErrorTS String TypeError      
       | Soundness String {- rule name -} TpScheme {- inferredTpScheme -} TpScheme {- constraintsTpScheme -}
       | UnsoundConstraints String {- rule name -} [TypeConstraint ConstraintInfo]
-      | Missingconstraints String {- rule name -} [TypeConstraint ConstraintInfo]
-      | UselessConstraints String {- rule name -} [(Tp,Tp)] 
+      | MissingConstraints String {- rule name -} [TypeConstraint ConstraintInfo]
+      | UselessConstraints String {- rule name -} [TypeConstraint ConstraintInfo] 
              
 type TS_Warnings = [TS_Warning]
 data TS_Warning
@@ -89,9 +89,12 @@ showTS_Error tsError = case tsError of
 
    (UselessConstraints rule constraints) ->
       "The type rule for " ++ show rule ++ "contains the following useless constraints:\n"
-      ++ unlines (map showTypeTup constraints)
+      ++ unlines (map show constraints)
 
-showTypeTup (a,b) = show a ++ " == " ++ show b
+   (MissingConstraints rule constraints) ->
+      "The type rule for " ++ show rule ++ "is missing the following constraints:\n"
+      ++ unlines (map show constraints)
+
               
 showTS_Warning :: TS_Warning -> String
 showTS_Warning tsWarning = case tsWarning of

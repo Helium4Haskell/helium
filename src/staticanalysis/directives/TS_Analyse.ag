@@ -37,6 +37,7 @@ import ConstraintInfo
 import TS_Syntax
 import TypeConversion
 import List
+import Maybe(mapMaybe)
 import UHA_Utils (nameFromString)
 import UHA_Range (noRange)
 import UHA_Source
@@ -110,13 +111,21 @@ SEM TypingStrategy
                   then []
                   else let constraintsTpScheme = @mkSkeletonTypeScheme @substitution
                            isSameTypeScheme a b = @genInstOf a b && @genInstOf b a
+                           substTpVars = substTpVarsInConstr (nameMapToTVarSubst @nameMap)
+                           missing = if null @missingConstrs then []
+                                     else [MissingConstraints @name $ map substTpVars @missingConstrs]
+                           unsound = if null @badConstrs then []
+                                     else [UnsoundConstraints @name $ map substTpVars @badConstrs]
+                           useless = if null @uselessConstrs then []
+                                     else [UselessConstraints @name $ map substTpVars @uselessConstrs]
                        in if not (null @inferredTypeErrors) 
                             then map (TypeErrorTS @name) @inferredTypeErrors
                             else if isSameTypeScheme @inferredTpScheme constraintsTpScheme 
                                    then []
                                    else Soundness @name @inferredTpScheme constraintsTpScheme
-                                        : UnsoundConstraints @name @badConstrs
-                                        : [UselessConstraints @name $ map @constrToTypeTuple @missingConstrs]
+                                        : unsound ++ useless ++ missing
+                                        --: UnsoundConstraints @name @badConstrs
+                                        --: [UselessConstraints @name $ map @constrToTypeTuple @missingConstrs]
 
            . mkSkeletonTypeScheme = generalizeAll . @mkSkeletonType
 
@@ -154,45 +163,69 @@ SEM TypingStrategy
            . (goodConstrs,badConstrs) =
                 @getUnsoundConstrs (undefined,[]) (reverse @statements.userConstraints)
 
-           -- BUGBUG: when there are double constraints, this will go wrong!
-           . getUselessConstrs = 
-                (\cs -> let solvedCs = map isUseless (skipList cs)
-                            --tracetype = (\x -> trace ("\n"++show x++"\n") x)
-                            isUseless cs' = @genInstOf (mkSTS cs') (mkSTS cs)
-                            mkSTS = @mkSkeletonTypeScheme .  substitutionFromResult . @solve
-                        in map fst $ filter snd $ zip cs solvedCs)
+           . getUselessConstrs =
+                let isUseless cs' cs = @genInstOf (mkSTS cs') (mkSTS cs)
+                    mkSTS = @mkSkeletonTypeScheme .  substitutionFromResult . @solve
+                    
+                    check :: ([TypeConstraint ConstraintInfo] -> [TypeConstraint ConstraintInfo]) -> [TypeConstraint ConstraintInfo] -> ([TypeConstraint ConstraintInfo],[TypeConstraint ConstraintInfo])
+                    check _ [] = ([],[])
+                    check ufcs ccs@(c:cs) =
+                      if @genInstOf (mkSTS $ ufcs cs) (mkSTS $ ufcs ccs)
+                        then (c:ul, uf)  
+                        else (ul', c:uf')  
+                          where (ul,uf) = check ufcs cs
+                                (ul',uf') = check (ufcs . (c:)) cs
+                in check
 
-           . uselessConstrs = @getUselessConstrs @goodConstrs
+           . (uselessConstrs,usefulConstrs) = @getUselessConstrs id @goodConstrs
 
            . missingConstrs =
                 let (Right substs) = mgu ucTp inferredTp
-                    Qualification (_,ucTp) = mkSelTypeConstrs (@goodConstrs \\ @uselessConstrs)
+                    Qualification (_,ucTp) = mkSelTypeConstrs @usefulConstrs
                     mkSelTypeConstrs = @mkSkeletonType . substitutionFromResult . @solve
                     (_,_,inferredTp) = instantiateWithNameMap unique @inferredTpScheme
                     unique = length @nameMap
                     mkConstr (i,tp) = (TVar i .==. tp) @standardConstraintInfo
-                in map mkConstr $ M.toList substs
 
-           . constrToTypeTuple =
-                (\(TC1 (Equality a b _)) -> (@tpToType a, @tpToType b))
-                    
-           . tpToType = makeTypeFromTpWithMap @nameMap
+                    rawMissing = map mkConstr $ M.toList substs
+                    trivToSubst (TC1 (Equality (TVar a) (TVar b) info)) 
+                      | a < unique && b >= unique = Just (b,a)
+                      | b < unique && a >= unique = Just (a,b)
+                    trivToSubst _ = Nothing
+                    trivSubstMap = M.fromList $ mapMaybe trivToSubst rawMissing
+                    trivSubst i = TVar $ M.findWithDefault i i trivSubstMap
+                    substedConstrs = map (substTpVarsInConstr trivSubst) rawMissing
+                    (_,usefulMissing) = @getUselessConstrs (++ @goodConstrs) substedConstrs
+                in usefulMissing
+
 
 {
 skipList :: [a] -> [[a]]
 skipList [] = []
 skipList (x:xs) = xs : [ x:sxs | sxs <- skipList xs ]
 
-makeTypeFromTpWithMap :: [(Name,Tp)] -> Tp -> Tp
-makeTypeFromTpWithMap m tp =
-  let f (TApp a b) = TApp (f a) (f b)
-      f (TCon c) = TCon c
-      f (TVar i) = TCon (lookupType i)
-      nameMap = M.fromList (map swap m)
-      lookupType :: Int -> String
-      lookupType i = M.findWithDefault ('v' : show i) i nameMap
-      swap (a,TVar b) = (b,getNameName a)
-  in f tp
+substTVar :: (Int -> Tp) -> Tp -> Tp
+substTVar f (TApp a b) = TApp (substTVar f a) (substTVar f b)
+substTVar f (TVar i) = f i
+substTVar f tp = tp
+
+substTpVarsInConstr :: (Int -> Tp) -> TypeConstraint ConstraintInfo -> TypeConstraint ConstraintInfo
+substTpVarsInConstr f (TC1 (Equality a b info)) = (substTVar f a .==. substTVar f b) info
+substTpVarsInConstr f c = c
+
+nameMapToTVarSubst :: [(Name,Tp)] -> Int -> Tp
+nameMapToTVarSubst m i = M.findWithDefault (TVar i) i m' 
+  where m' = M.fromList (map swap m)
+        swap (a,TVar b) = (b, TCon $ getNameName a)
+
+
+--TODO: move this to ../miscellaneous/TypeConversion.hs
+--makeTypeFromTpWithMap :: [(Name,Tp)] -> Tp -> Tp
+--makeTypeFromTpWithMap m tp =
+--  let nameMap = M.fromList (map swap m)
+--      lookupType i = M.findWithDefault ('v' : show i) i nameMap
+--      swap (a,TVar b) = (b,getNameName a)
+--  in substTVar (TCon . lookupType) tp
 
 --FIXME: a lot of copy/paste from ../miscellaneous/TypeConversion.hs
 -- perhaps move it to there?

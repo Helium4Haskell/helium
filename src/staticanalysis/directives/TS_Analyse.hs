@@ -12,6 +12,7 @@ import ConstraintInfo
 import TS_Syntax
 import TypeConversion
 import List
+import Maybe(mapMaybe)
 import UHA_Utils (nameFromString)
 import UHA_Range (noRange)
 import UHA_Source
@@ -45,16 +46,28 @@ skipList :: [a] -> [[a]]
 skipList [] = []
 skipList (x:xs) = xs : [ x:sxs | sxs <- skipList xs ]
 
-makeTypeFromTpWithMap :: [(Name,Tp)] -> Tp -> Tp
-makeTypeFromTpWithMap m tp =
-  let f (TApp a b) = TApp (f a) (f b)
-      f (TCon c) = TCon c
-      f (TVar i) = TCon (lookupType i)
-      nameMap = M.fromList (map swap m)
-      lookupType :: Int -> String
-      lookupType i = M.findWithDefault ('v' : show i) i nameMap
-      swap (a,TVar b) = (b,getNameName a)
-  in f tp
+substTVar :: (Int -> Tp) -> Tp -> Tp
+substTVar f (TApp a b) = TApp (substTVar f a) (substTVar f b)
+substTVar f (TVar i) = f i
+substTVar f tp = tp
+
+substTpVarsInConstr :: (Int -> Tp) -> TypeConstraint ConstraintInfo -> TypeConstraint ConstraintInfo
+substTpVarsInConstr f (TC1 (Equality a b info)) = (substTVar f a .==. substTVar f b) info
+substTpVarsInConstr f c = c
+
+nameMapToTVarSubst :: [(Name,Tp)] -> Int -> Tp
+nameMapToTVarSubst m i = M.findWithDefault (TVar i) i m' 
+  where m' = M.fromList (map swap m)
+        swap (a,TVar b) = (b, TCon $ getNameName a)
+
+
+--TODO: move this to ../miscellaneous/TypeConversion.hs
+--makeTypeFromTpWithMap :: [(Name,Tp)] -> Tp -> Tp
+--makeTypeFromTpWithMap m tp =
+--  let nameMap = M.fromList (map swap m)
+--      lookupType i = M.findWithDefault ('v' : show i) i nameMap
+--      swap (a,TVar b) = (b,getNameName a)
+--  in substTVar (TCon . lookupType) tp
 
 --FIXME: a lot of copy/paste from ../miscellaneous/TypeConversion.hs
 -- perhaps move it to there?
@@ -3609,25 +3622,37 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
                 (typerule_ (_typeruleOnameMap) (_typeruleOsimpleJudgements))
             ( _statementsImetaVariableConstraintNames,_statementsIself,_statementsItypevariables,_statementsIuserConstraints,_statementsIuserPredicates) =
                 (statements_ (_statementsOattributeTable) (_statementsOmetaVariableConstraintNames) (_statementsOnameMap) (_statementsOstandardConstraintInfo) (_statementsOuserConstraints) (_statementsOuserPredicates))
-            (_tpToType@_) =
-                makeTypeFromTpWithMap _nameMap
-            (_constrToTypeTuple@_) =
-                (\(TC1 (Equality a b _)) -> (_tpToType a, _tpToType b))
             (_missingConstrs@_) =
                 let (Right substs) = mgu ucTp inferredTp
-                    Qualification (_,ucTp) = mkSelTypeConstrs (_goodConstrs \\ _uselessConstrs)
+                    Qualification (_,ucTp) = mkSelTypeConstrs _usefulConstrs
                     mkSelTypeConstrs = _mkSkeletonType . substitutionFromResult . _solve
                     (_,_,inferredTp) = instantiateWithNameMap unique _inferredTpScheme
                     unique = length _nameMap
                     mkConstr (i,tp) = (TVar i .==. tp) _standardConstraintInfo
-                in map mkConstr $ M.toList substs
-            (_uselessConstrs@_) =
-                _getUselessConstrs _goodConstrs
+                    rawMissing = map mkConstr $ M.toList substs
+                    trivToSubst (TC1 (Equality (TVar a) (TVar b) info))
+                      | a < unique && b >= unique = Just (b,a)
+                      | b < unique && a >= unique = Just (a,b)
+                    trivToSubst _ = Nothing
+                    trivSubstMap = M.fromList $ mapMaybe trivToSubst rawMissing
+                    trivSubst i = TVar $ M.findWithDefault i i trivSubstMap
+                    substedConstrs = map (substTpVarsInConstr trivSubst) rawMissing
+                    (_,usefulMissing) = _getUselessConstrs (++ _goodConstrs) substedConstrs
+                in usefulMissing
+            ((_uselessConstrs@_,_usefulConstrs@_)) =
+                _getUselessConstrs id _goodConstrs
             (_getUselessConstrs@_) =
-                (\cs -> let solvedCs = map isUseless (skipList cs)
-                            isUseless cs' = _genInstOf (mkSTS cs') (mkSTS cs)
-                            mkSTS = _mkSkeletonTypeScheme .  substitutionFromResult . _solve
-                        in map fst $ filter snd $ zip cs solvedCs)
+                let isUseless cs' cs = _genInstOf (mkSTS cs') (mkSTS cs)
+                    mkSTS = _mkSkeletonTypeScheme .  substitutionFromResult . _solve
+                    check :: ([TypeConstraint ConstraintInfo] -> [TypeConstraint ConstraintInfo]) -> [TypeConstraint ConstraintInfo] -> ([TypeConstraint ConstraintInfo],[TypeConstraint ConstraintInfo])
+                    check _ [] = ([],[])
+                    check ufcs ccs@(c:cs) =
+                      if _genInstOf (mkSTS $ ufcs cs) (mkSTS $ ufcs ccs)
+                        then (c:ul, uf)
+                        else (ul', c:uf')
+                          where (ul,uf) = check ufcs cs
+                                (ul',uf') = check (ufcs . (c:)) cs
+                in check
             ((_goodConstrs@_,_badConstrs@_)) =
                 _getUnsoundConstrs (undefined,[]) (reverse _statementsIuserConstraints)
             (_getUnsoundConstrs@_) =
@@ -3663,13 +3688,19 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
                   then []
                   else let constraintsTpScheme = _mkSkeletonTypeScheme _substitution
                            isSameTypeScheme a b = _genInstOf a b && _genInstOf b a
+                           substTpVars = substTpVarsInConstr (nameMapToTVarSubst _nameMap)
+                           missing = if null _missingConstrs then []
+                                     else [MissingConstraints _name $ map substTpVars _missingConstrs]
+                           unsound = if null _badConstrs then []
+                                     else [UnsoundConstraints _name $ map substTpVars _badConstrs]
+                           useless = if null _uselessConstrs then []
+                                     else [UselessConstraints _name $ map substTpVars _uselessConstrs]
                        in if not (null _inferredTypeErrors)
                             then map (TypeErrorTS _name) _inferredTypeErrors
                             else if isSameTypeScheme _inferredTpScheme constraintsTpScheme
                                    then []
                                    else Soundness _name _inferredTpScheme constraintsTpScheme
-                                        : UnsoundConstraints _name _badConstrs
-                                        : [UselessConstraints _name $ map _constrToTypeTuple _missingConstrs]
+                                        : unsound ++ useless ++ missing
             (_classEnv@_) =
                 createClassEnvironment _lhsIimportEnvironment
             (_solve@_) =
