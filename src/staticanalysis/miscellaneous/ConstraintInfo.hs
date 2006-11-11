@@ -66,6 +66,7 @@ data Property
    | PredicateArisingFrom (Predicate, ConstraintInfo)
    | TypeSignatureLocation Range
    | TypePair (Tp, Tp)
+   | WithErrorTree (ErrorTree TypeError)
                 
 class HasProperties a where
    getProperties :: a -> Properties
@@ -86,10 +87,34 @@ instance HasProperties ConstraintInfo where
    addProperties ps info = 
       info { properties = ps ++ properties info }
 
---FIXME: implement instance HasErrorTree ConstraintInfo
+-------------------------------------------------------------------------
 instance HasErrorTree ConstraintInfo where
-   -- for now, we use the trivial default instance for HasErrorTree,
-   -- where no ConstraintInfo ever has an Error Tree
+   hasErrorTree          = not . null . fst . getETprops . getProperties
+
+   evalErrorTree eval ci = let (ets,ps) = getETprops . getProperties $ ci 
+                               tperr    = maybe (et_error "evalErrorTree") eval (maybeHead ets)
+                           in  setTypeError tperr $ ci { properties = ps }
+   
+   modifyErrorTree f ci  = let (ets,ps) = getETprops . getProperties $ ci
+                               newet    = maybe (et_error "modifyErrorTree") f (maybeHead ets)
+                           in  ci { properties = (WithErrorTree newet):ps }  
+ 
+   applyToErrorTree f ci = let (ets,_)  = getETprops . getProperties $ ci
+                               res      = maybe (et_error "applyToErrorTree") f (maybeHead ets)
+                           in  res
+
+-- helper functions for HasErrorTree instance:
+isETprop :: Property -> Bool
+isETprop (WithErrorTree _) = True
+isETprop _                 = False
+
+getETprops :: Properties -> ([ErrorTree TypeError], Properties)
+getETprops props = let (etps,ps) = partition isETprop props
+                   in  ([et | WithErrorTree et <- etps], ps)
+
+et_error :: String -> a
+et_error fname = internalError "staticanalysis/miscellaneous/ConstraintInfo.hs"
+                               fname "value does not have an Error Tree."
 
 -------------------------------------------------------------------------
 -- Property functions

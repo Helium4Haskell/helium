@@ -18,11 +18,14 @@ import TypeConstraints
 import ImportEnvironment (ImportEnvironment, getSiblings)
 import ListOfHeuristics (listOfHeuristics)
 import Top.Types
-import Top.Solver
 import Top.Ordering.TreeWalk
 import Top.Ordering.Tree
-import Top.Solver.Greedy
-import Top.Solver.TypeGraph
+--import Top.Solver
+--import Top.Solver.Greedy
+--import Top.Solver.TypeGraph
+import Top.SolverET
+import Top.SolverET.Greedy
+import Top.SolverET.TypeGraph
 import Top.Solver.PartitionCombinator
 import Top.Solver.SwitchCombinator
 import Top.Interface.Substitution (makeSubstConsistent)
@@ -63,7 +66,8 @@ selectConstraintSolver options importenv classEnv synonyms unique constraintTree
        constraints      = flattening constraintTree
        chunkConstraints = chunkTree . phases . spreadTree spreadFunction $ constraintTree
        siblings         = getSiblings importenv
-      
+     
+       -- FIXME: we should enable changing of the deferErrorTrees option... 
        selectedOptions :: SolveOptions
        selectedOptions = 
           solveOptions { uniqueCounter    = unique 
