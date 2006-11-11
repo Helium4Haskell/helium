@@ -143,8 +143,10 @@ TOP = \
 	$(TOPDIR)/Solver.hs $(TOPDIR)/Types/Classes.hs $(TOPDIR)/Types/Kinds.hs $(TOPDIR)/Types/Primitive.hs \
 	$(TOPDIR)/Types/Qualification.hs $(TOPDIR)/Types/Quantification.hs $(TOPDIR)/Types/Schemes.hs \
 	$(TOPDIR)/Types/Substitution.hs $(TOPDIR)/Types/Synonym.hs $(TOPDIR)/Types/Unification.hs \
-	$(TOPDIR)/Types.hs $(TOPDIR)/Util/Embedding.hs $(TOPDIR)/Util/Empty.hs $(TOPDIR)/Util/Option.hs
-  
+	$(TOPDIR)/Types.hs $(TOPDIR)/Util/Embedding.hs $(TOPDIR)/Util/Empty.hs $(TOPDIR)/Util/Option.hs \
+	$(TOPDIR)/ErrorTree.hs $(TOPDIR)/ErrorTree/Interface.hs $(TOPDIR)/ErrorTree/ErrorTree.hs $(TOPDIR)/ErrorTree/Constraint.hs \
+	$(TOPDIR)/SolverET.hs $(TOPDIR)/SolverET/Greedy.hs $(TOPDIR)/SolverET/TypeGraph.hs  
+
 # LVM sources
 
 LVMCOMMON = \

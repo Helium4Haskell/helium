@@ -11,6 +11,7 @@
 module KindErrors where
 
 import Top.Types
+import Top.ErrorTree.Interface
 import UHA_Syntax (Range, Type)
 import PPrint (Doc)
 import Messages
@@ -74,3 +75,5 @@ instance Substitutable KindError where
          MustBeStar      _ _ _ k     -> ftv k
          KindApplication _ _ _ k1 k2 -> ftv k1 `union` ftv k2
 
+instance HasErrorTree KindError where
+   -- using default instance

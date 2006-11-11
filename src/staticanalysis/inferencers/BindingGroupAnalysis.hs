@@ -14,6 +14,7 @@ module BindingGroupAnalysis where
 
 import UHA_Syntax
 import TypeConstraints
+import Top.ErrorTree.Interface
 import ConstraintInfo
 import TopSort (topSort)
 import Top.Types
@@ -132,7 +133,7 @@ findMono :: Name -> InheritedBDG -> Monos
 findMono n = let p = elem n . fst
              in fst . snd . head . filter p                  
 
-getMonos :: TypeConstraints info -> Monos
+getMonos :: HasErrorTree info => TypeConstraints info -> Monos
 getMonos tcs = [ TVar i | tc <- tcs, i <- ftv tc ]
 
 findCurrentChunk :: Name -> InheritedBDG -> Int

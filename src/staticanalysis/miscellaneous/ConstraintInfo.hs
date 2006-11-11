@@ -25,6 +25,7 @@ import Top.Implementation.Overloading
 import Top.Interface.Basic (ErrorLabel)
 import Top.Interface.Substitution (unificationErrorLabel)
 import Top.Interface.TypeInference
+import Top.ErrorTree
 import Utils (internalError)
 import Data.Maybe
 import Data.Char
@@ -84,6 +85,11 @@ instance HasProperties ConstraintInfo where
    getProperties = properties
    addProperties ps info = 
       info { properties = ps ++ properties info }
+
+--FIXME: implement instance HasErrorTree ConstraintInfo
+instance HasErrorTree ConstraintInfo where
+   -- for now, we use the trivial default instance for HasErrorTree,
+   -- where no ConstraintInfo ever has an Error Tree
 
 -------------------------------------------------------------------------
 -- Property functions

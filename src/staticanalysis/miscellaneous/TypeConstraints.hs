@@ -15,6 +15,7 @@ module TypeConstraints where
 
 import Top.Constraint
 import Top.Constraint.Equality hiding ((.==.))
+import Top.ErrorTree.Constraint
 import Top.Constraint.Qualifier
 import Top.Constraint.Polymorphism hiding ((.::.))
 import Top.Constraint.Information
@@ -22,12 +23,14 @@ import Top.Interface.Basic
 import Top.Interface.Substitution
 import Top.Interface.TypeInference
 import Top.Interface.Qualification
+import Top.ErrorTree.Interface
 import Top.Types
 import qualified Data.Map as M
 
 type TypeConstraints info = [TypeConstraint info]
 data TypeConstraint  info
    = TC1 (EqualityConstraint info)
+   | TC4 (ErrorTreeEqualityConstraint info)
    | TC2 (ExtraConstraint info)
    | TC3 (PolymorphismConstraint info)
    | TCOper String (forall m . HasSubst m info => m ())
@@ -36,26 +39,31 @@ data TypeConstraint  info
 --FIXME: do we want to compare the info as well?
 instance Eq (TypeConstraint info) where
   TC1 (Equality a b _) == TC1 (Equality c d _) = a == c && b == d
+  TC4 (ErrorTreeEq (Equality a b _)) == TC4 (ErrorTreeEq (Equality c d _)) = a == c && b == d
 
-instance (HasBasic m info, HasTI m info, HasSubst m info, HasQual m info, PolyTypeConstraintInfo info) 
+instance (HasBasic m info, HasTI m info, HasSubst m info, HasQual m info, PolyTypeConstraintInfo info, HasErrorTree info) 
             => Solvable (TypeConstraint info) m where 
    solveConstraint (TC1 c)      = solveConstraint c
+   solveConstraint (TC4 c)      = solveConstraint c
    solveConstraint (TC2 c)      = solveConstraint c
    solveConstraint (TC3 c)      = solveConstraint c
    solveConstraint (TCOper _ f) = f
    checkCondition  (TC1 c)      = checkCondition c
+   checkCondition  (TC4 c)      = checkCondition c
    checkCondition  (TC2 c)      = checkCondition c
    checkCondition  (TC3 c)      = checkCondition c
    checkCondition  (TCOper _ _) = return True
 
-instance Show info => Show (TypeConstraint info) where
+instance (HasErrorTree info, Show info) => Show (TypeConstraint info) where
    show (TC1 c)      = show c
+   show (TC4 c)      = show c
    show (TC2 c)      = show c
    show (TC3 c)      = show c
    show (TCOper s _) = s
 
-instance Substitutable (TypeConstraint info) where
+instance HasErrorTree info => Substitutable (TypeConstraint info) where
    sub |-> (TC1 c) = TC1 (sub |-> c)
+   sub |-> (TC4 c) = TC4 (sub |-> c)
    sub |-> (TC2 c) = TC2 (sub |-> c)
    sub |-> (TC3 c) = TC3 (sub |-> c)
    sub |-> tc     = tc
@@ -84,6 +92,7 @@ spreadFunction :: TypeConstraint info -> Maybe Int
 spreadFunction tc =
    case tc of
       TC1 (Equality t1 t2 info)         -> spreadFromType t2
+      TC4 (ErrorTreeEq (Equality t1 t2 info)) -> spreadFromType t2
       TC3 (Instantiate tp ts info)      -> spreadFromType tp
       TC3 (Skolemize tp ts info)        -> spreadFromType tp
       TC3 (Implicit t1 (ms, t2) info)   -> spreadFromType t1
