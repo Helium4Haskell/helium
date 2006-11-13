@@ -1,0 +1,10 @@
+Compiling typeerrors/Strategies/UnSoundMissing.hs
+The type rule for "x +++ y" is not correct
+  the type according to the type rule is
+    Int -> Int -> a
+  whereas the standard type rules infer the type
+    Int -> Int -> Int
+
+The type rule for "x +++ y" is missing the following constraints:
+c == Int   : {Typing Strategy}
+

@@ -1,0 +1,9 @@
+
+      x :: a ; y :: b ;
+  -------------------------
+        x +++ y :: Int;;
+     
+a == Bool : "linkerkant moet een Bool zijn"
+b == Bool : "rechterkant moet een Bool zijn"
+a == c : "useless constraint with constrained typevars"
+d == e : "useless constraint with only unbound typevars";

@@ -84,15 +84,15 @@ showTS_Error tsError = case tsError of
               , "    " ++ show inferred
               ]
    (UnsoundConstraints rule constraints) -> 
-      "The type rule for " ++ show rule ++ "contains the following unsound constraints:\n"
+      "The type rule for " ++ show rule ++ " contains the following unsound constraints:\n"
       ++ unlines (map show constraints)
 
    (UselessConstraints rule constraints) ->
-      "The type rule for " ++ show rule ++ "contains the following useless constraints:\n"
+      "The type rule for " ++ show rule ++ " contains the following useless constraints:\n"
       ++ unlines (map show constraints)
 
    (MissingConstraints rule constraints) ->
-      "The type rule for " ++ show rule ++ "is missing the following constraints:\n"
+      "The type rule for " ++ show rule ++ " is missing the following constraints:\n"
       ++ unlines (map show constraints)
 
               

@@ -1,4 +1,4 @@
-Compiling typeerrors/Strategies/Soundness.hs
+Compiling typeerrors/Strategies/UnSoundUseless.hs
 The type rule for "x +++ y" is not correct
   the type according to the type rule is
     Bool -> Bool -> Int
@@ -8,6 +8,10 @@ The type rule for "x +++ y" is not correct
 The type rule for "x +++ y" contains the following unsound constraints:
 a == Bool   : {Typing Strategy}
 b == Bool   : {Typing Strategy}
+
+The type rule for "x +++ y" contains the following useless constraints:
+a == c   : {Typing Strategy}
+d == e   : {Typing Strategy}
 
 The type rule for "x +++ y" is missing the following constraints:
 a == Int   : {Typing Strategy}

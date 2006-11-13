@@ -105,7 +105,8 @@ SEM TypingStrategy
                 in \constraints -> fst (solve options constraints greedyConstraintSolver)
                       
            . classEnv = createClassEnvironment @lhs.importEnvironment
-           
+          
+           --TODO: better reports iff the judgement constraints are unsound 
            . soundnessErrors = 
                 if not (null @staticErrors)
                   then []
@@ -118,14 +119,14 @@ SEM TypingStrategy
                                      else [UnsoundConstraints @name $ map substTpVars @badConstrs]
                            useless = if null @uselessConstrs then []
                                      else [UselessConstraints @name $ map substTpVars @uselessConstrs]
+                           trivialConstr = [TVar 0 .==. TVar 0 $ undefined]
+                           jmConstrsAreSound = null $ snd $ @getUnsoundConstrs (undefined,[]) trivialConstr
                        in if not (null @inferredTypeErrors) 
                             then map (TypeErrorTS @name) @inferredTypeErrors
                             else if isSameTypeScheme @inferredTpScheme constraintsTpScheme 
                                    then []
                                    else Soundness @name @inferredTpScheme constraintsTpScheme
-                                        : unsound ++ useless ++ missing
-                                        --: UnsoundConstraints @name @badConstrs
-                                        --: [UselessConstraints @name $ map @constrToTypeTuple @missingConstrs]
+                                        : if jmConstrsAreSound then unsound ++ useless ++ missing else []
 
            . mkSkeletonTypeScheme = generalizeAll . @mkSkeletonType
 
@@ -143,7 +144,8 @@ SEM TypingStrategy
            . genInstOf =
                 let synonyms = getOrderedTypeSynonyms @lhs.importEnvironment
                 in genericInstanceOf synonyms @classEnv
-
+           
+           --TODO: implement this with a real substitution in stead of a list of constraints
            . solveSingleConstr = 
                 (\(_,cs) c -> let canSolve = (null . errorsFromResult . @solve) (c:cs)
                                   subst = (substitutionFromResult . @solve) (c:cs)
@@ -164,11 +166,11 @@ SEM TypingStrategy
                 @getUnsoundConstrs (undefined,[]) (reverse @statements.userConstraints)
 
            . getUselessConstrs =
-                let isUseless cs' cs = @genInstOf (mkSTS cs') (mkSTS cs)
+                let --isUseless cs' cs = @genInstOf (mkSTS cs') (mkSTS cs)
                     mkSTS = @mkSkeletonTypeScheme .  substitutionFromResult . @solve
                     
                     check :: ([TypeConstraint ConstraintInfo] -> [TypeConstraint ConstraintInfo]) -> [TypeConstraint ConstraintInfo] -> ([TypeConstraint ConstraintInfo],[TypeConstraint ConstraintInfo])
-                    check _ [] = ([],[])
+                    check ufcs [] = ([],[])
                     check ufcs ccs@(c:cs) =
                       if @genInstOf (mkSTS $ ufcs cs) (mkSTS $ ufcs ccs)
                         then (c:ul, uf)  
@@ -179,7 +181,8 @@ SEM TypingStrategy
 
            . (uselessConstrs,usefulConstrs) = @getUselessConstrs id @goodConstrs
 
-           . missingConstrs =
+           --TODO: make sure that newly introduced variables (always of the form v<number>) are unique
+           . missingConstrs = 
                 let (Right substs) = mgu ucTp inferredTp
                     Qualification (_,ucTp) = mkSelTypeConstrs @usefulConstrs
                     mkSelTypeConstrs = @mkSkeletonType . substitutionFromResult . @solve

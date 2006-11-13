@@ -3642,10 +3642,10 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
             ((_uselessConstrs@_,_usefulConstrs@_)) =
                 _getUselessConstrs id _goodConstrs
             (_getUselessConstrs@_) =
-                let isUseless cs' cs = _genInstOf (mkSTS cs') (mkSTS cs)
+                let
                     mkSTS = _mkSkeletonTypeScheme .  substitutionFromResult . _solve
                     check :: ([TypeConstraint ConstraintInfo] -> [TypeConstraint ConstraintInfo]) -> [TypeConstraint ConstraintInfo] -> ([TypeConstraint ConstraintInfo],[TypeConstraint ConstraintInfo])
-                    check _ [] = ([],[])
+                    check ufcs [] = ([],[])
                     check ufcs ccs@(c:cs) =
                       if _genInstOf (mkSTS $ ufcs cs) (mkSTS $ ufcs ccs)
                         then (c:ul, uf)
@@ -3695,12 +3695,14 @@ sem_TypingStrategy_TypingStrategy (typerule_) (statements_) =
                                      else [UnsoundConstraints _name $ map substTpVars _badConstrs]
                            useless = if null _uselessConstrs then []
                                      else [UselessConstraints _name $ map substTpVars _uselessConstrs]
+                           trivialConstr = [TVar 0 .==. TVar 0 $ undefined]
+                           jmConstrsAreSound = null $ snd $ _getUnsoundConstrs (undefined,[]) trivialConstr
                        in if not (null _inferredTypeErrors)
                             then map (TypeErrorTS _name) _inferredTypeErrors
                             else if isSameTypeScheme _inferredTpScheme constraintsTpScheme
                                    then []
                                    else Soundness _name _inferredTpScheme constraintsTpScheme
-                                        : unsound ++ useless ++ missing
+                                        : if jmConstrsAreSound then unsound ++ useless ++ missing else []
             (_classEnv@_) =
                 createClassEnvironment _lhsIimportEnvironment
             (_solve@_) =
