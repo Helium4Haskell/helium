@@ -77,8 +77,8 @@ normalize xs = escape (filter ((/=) '\n') xs)
 ------------------------------------------------------
 -- The function to send a message to a socket
 
-logger :: String -> Maybe ([String],String) -> Bool -> IO ()
-logger logcode maybeSources loggerDEBUGMODE
+logger :: String -> Maybe ([String],String) -> Bool -> Bool -> IO ()
+logger logcode maybeSources loggerDEBUGMODE loggerLOGSPECIAL
     | not loggerENABLED || isInterpreterModule maybeSources = return ()
     | otherwise      = do
         username <- (getEnv loggerUSERNAME) `catch` (\_ -> return loggerDEFAULTNAME)
@@ -96,9 +96,10 @@ logger logcode maybeSources loggerDEBUGMODE
                        (loggerADMINSEPARATOR : normalize logcode) ++ 
                        (loggerADMINSEPARATOR : normalize version) ++
                        (loggerADMINSEPARATOR : normalize (unwords optionString)) ++ 
-                       "\n" ++sources) -}                            
+                       "\n" ++sources) -}      
+        let specialLogcode = if loggerLOGSPECIAL then map toLower logcode else map toUpper logcode
         sendLogString (normalizeName username ++ 
-                       (loggerADMINSEPARATOR : normalize logcode) ++ 
+                       (loggerADMINSEPARATOR : normalize specialLogcode) ++ 
                        (loggerADMINSEPARATOR : normalize version) ++
                        (loggerADMINSEPARATOR : normalize (unwords optionString)) ++ 
                        "\n" ++sources

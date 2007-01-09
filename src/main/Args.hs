@@ -29,7 +29,6 @@ processArgs args =
         exitWith (ExitFailure 1)
     else
         return (options, (head arguments))
- 
  where
    optionDescription moreOptions experimentalOptions =
       -- Main options
@@ -38,6 +37,7 @@ processArgs args =
       , Option "i" ["dump-information"]     (NoArg DumpInformationForThisModule) "show information about this module"
       , Option "I" ["dump-all-information"] (NoArg DumpInformationForAllModules) "show information about all imported modules"
       , Option "l" ["no-logging"]           (NoArg NoLogging) "do not send log information"
+      , Option "!" ["log-special"]          (NoArg LogSpecial) "logs with special flag"
       , Option "o" ["overloading"]          (NoArg Overloading) "turn overloading on"
       , Option "P" ["lvmpath"]              (ReqArg LvmPath "PATH") "use PATH as search path"
       , Option "v" ["verbose"]              (NoArg Verbose) "show the phase the compiler is in"
@@ -89,7 +89,7 @@ processArgs args =
 data Option 
    -- Main options
    = BuildOne | BuildAll | DumpInformationForThisModule | DumpInformationForAllModules
-   | NoLogging | Overloading | LvmPath String | Verbose | NoWarnings | MoreOptions
+   | NoLogging | LogSpecial | Overloading | LvmPath String | Verbose | NoWarnings | MoreOptions
    | Information String
    -- More options
    | StopAfterParser | StopAfterStaticAnalysis | StopAfterTypeInferencing | StopAfterDesugar

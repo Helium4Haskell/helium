@@ -49,7 +49,7 @@ doPhaseWithExit nrOfMsgs code (options, fullName, doneModules) phase =
 
 sendLog :: String -> String -> [String] -> [Option] -> IO ()
 sendLog code fullName modules options =
-    logger code (Just (modules,fullName)) (DebugLogger `elem` options)
+    logger code (Just (modules,fullName)) (DebugLogger `elem` options) (LogSpecial `elem` options)
     
 enterNewPhase :: String -> [Option] -> IO ()
 enterNewPhase phase options =
