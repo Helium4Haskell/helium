@@ -1,2 +1,2 @@
-../bin/helium -b  -l --overloading -P"../lib" $1 && lvmrun -P"${1%/*};../lib" $1
+../bin/helium -b  -l --overloading -P"../lib" $1 && ../../lvm/src/runtime/lvmrun -P"${1%/*};../lib" $1
 rm -f ${1%/*}/*.lvm
