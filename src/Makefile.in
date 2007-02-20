@@ -43,12 +43,12 @@ status :
 
 HC	= @WithHc@
 ifdef LOGGER
-PACKAGENET = -package net
+PACKAGENET = -package network
 else
-PACKAGENET = 
+PACKAGENET =  
 endif
 HC_OPTS = -static -fglasgow-exts -fallow-undecidable-instances -fallow-overlapping-instances \
-		$(PACKAGENET) -package lang -package text -i$(IFACES) $(EXTRA_HC_OPTS)
+		-package mtl $(PACKAGENET) -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
 AG_OPTS = -mscfr

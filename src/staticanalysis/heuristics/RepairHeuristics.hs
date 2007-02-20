@@ -45,8 +45,8 @@ siblingFunctions siblings =
          | null candidates -> return Nothing
          | otherwise -> 
               doWithoutEdge pair $ 
-              do (_, mtp) <- getSubstitutedTypes info
-                 subPreds <- allSubstPredicates     
+              do (_, mtp) <- getSubstitutedTypes info -- Determine types of endpoints of edge when the edge is not present.
+                 subPreds <- allSubstPredicates       -- Which predicates must also be satisfied?
                  case mtp of 
                     Nothing -> return Nothing
                     Just contextTp                         
@@ -54,12 +54,18 @@ siblingFunctions siblings =
                             do fits <- mapM (schemeFits contextTp subPreds) (map snd candidates)
                                case [ s | (True, (s, _)) <- zip fits candidates ] of
                                   [] -> return Nothing
-                                  sibling : _ -> 
-                                     let hint = fixHint ("use "++sibling++" instead")
+                                  siblings ->    -- TODO: put all siblings in the message
+                                     let siblingsTextual = orList siblings
+                                         hint = fixHint ("use "++siblingsTextual++" instead")
                                       in return $ Just
-                                            (10,"Sibling "++show sibling++" instead of "++show name, [edge], hint info)
+                                            (10,"Sibling(s) "++siblingsTextual++" instead of "++show name, [edge], hint info)
                                   
 	   where
+        orList :: [String] -> String
+        orList [s]    = s
+        orList (x:xs) = foldr (\x y-> x ++ ", " ++ y) ("or "++x) xs
+        orList []     = "this should never occur"
+        
         candidates = 
            let f list 
                   | name `notElem` map fst list = []
