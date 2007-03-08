@@ -48,7 +48,7 @@ else
 PACKAGENET =  
 endif
 HC_OPTS = -static -fglasgow-exts -fallow-undecidable-instances -fallow-overlapping-instances \
-		-package mtl $(PACKAGENET) -i$(IFACES) $(EXTRA_HC_OPTS)
+		-package mtl -package parsec $(PACKAGENET) -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
 AG_OPTS = -mscfr
