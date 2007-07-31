@@ -1,0 +1,7 @@
+Compiling typeerrors/Heuristics/UnifierCaseRight.hs
+(3,22): Type error in right-hand side
+ expression       : "hello"
+   type           : String
+   does not match : Int   
+
+Compilation failed with 1 error

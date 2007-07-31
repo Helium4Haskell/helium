@@ -1,0 +1,7 @@
+Compiling typeerrors/Heuristics/UnifierGuards2.hs
+(3,23): Type error in guarded expression
+ expression       : 13
+   type           : Int   
+   does not match : String
+
+Compilation failed with 1 error

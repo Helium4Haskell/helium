@@ -1,0 +1,9 @@
+Compiling typeerrors/Heuristics/UnifierFunctionBinding2.hs
+(2,7): Warning: Variable "x" is not used
+(2,9): Warning: Variable "xs" is not used
+(2,15): Type error in right-hand side
+ expression       : "hello"
+   type           : String
+   does not match : Int   
+
+Compilation failed with 1 error

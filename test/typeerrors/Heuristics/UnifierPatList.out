@@ -1,0 +1,8 @@
+Compiling typeerrors/Heuristics/UnifierPatList.hs
+(1,13): Type error in element of pattern list
+ pattern          : [True, "hello"]
+ term             : "hello"
+   type           : String
+   does not match : Bool  
+
+Compilation failed with 1 error

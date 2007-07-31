@@ -1,0 +1,8 @@
+Compiling typeerrors/Heuristics/UnifierCaseLeft2.hs
+(1,13): Type error in scrutinee of case expression
+ expression       : case True of {0 -> "hello"; _ -> "world"}
+ constructor      : True
+   type           : Bool
+   does not match : Int 
+
+Compilation failed with 1 error

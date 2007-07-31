@@ -1,0 +1,10 @@
+Compiling typeerrors/Heuristics/UnifierLambda.hs
+(1,25): Type error in application
+ expression       : f "hello"
+ function         : f
+   type           : Bool -> a
+ 1st argument     : "hello"
+   type           : String
+   does not match : Bool  
+
+Compilation failed with 1 error

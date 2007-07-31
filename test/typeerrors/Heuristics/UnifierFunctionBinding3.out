@@ -1,0 +1,8 @@
+Compiling typeerrors/Heuristics/UnifierFunctionBinding3.hs
+(2,6): Warning: Variable "x" is not used
+(2,17): Type error in guarded expression
+ expression       : 42
+   type           : Int   
+   does not match : String
+
+Compilation failed with 1 error

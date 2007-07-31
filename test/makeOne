@@ -1,0 +1,3 @@
+echo $1
+bash compileAndRun $* > result.txt 2>&1
+mv result.txt $1.out

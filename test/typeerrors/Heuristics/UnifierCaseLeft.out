@@ -1,0 +1,7 @@
+Compiling typeerrors/Heuristics/UnifierCaseLeft.hs
+(3,13): Type error in case pattern
+ pattern          : 0
+   type           : Int 
+   does not match : Bool
+
+Compilation failed with 1 error

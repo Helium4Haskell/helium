@@ -1,0 +1,8 @@
+Compiling typeerrors/Heuristics/UnifierList.hs
+(1,23): Type error in element of list
+ expression       : [x, "hello", 13, x]
+ term             : 13
+   type           : Int   
+   does not match : String
+
+Compilation failed with 1 error
