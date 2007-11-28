@@ -238,6 +238,20 @@ unzip3 = foldr (\(a,b,c) (as,bs,cs) -> (a:as,b:bs,c:cs)) ([],[],[])
  -- List
  -----------------------------------------------}
 
+ -- We can't import Char here because that would mean we couldn't import
+-- it elsewhere. Therefore, we make local copies of the two functions 
+-- from that module
+localIsSpace :: Char -> Bool
+localIsSpace c =
+    i == ord ' '  || i == ord '\t' || i == ord '\n' ||
+    i == ord '\r' || i == ord '\f' || i == ord '\v'
+  where
+    i = ord c
+
+localIsDigit :: Char -> Bool
+localIsDigit c = ord c >= ord '0' && ord c <= ord '9'
+
+
 head :: [a] -> a
 head (x:_) = x
 head _ = error "Prelude.head: empty list"
@@ -413,11 +427,11 @@ lines s    = let l,s' :: String
 
 words :: String -> [String]
 words s =
-    case dropWhile isSpace s of
+    case dropWhile localIsSpace s of
         "" -> []
         s' -> w : words s''
               where w,s'' :: String
-                    (w,s'') = break isSpace s'
+                    (w,s'') = break localIsSpace s'
 
 unlines :: [String] -> String
 unlines [] = []
@@ -463,7 +477,7 @@ concatMap f = concat . map f
 
 {-----------------------------------------------
  -- Char
- -----------------------------------------------}
+ -----------------------------------------------
 
 isSpace :: Char -> Bool
 isSpace c =
@@ -502,7 +516,9 @@ toLower :: Char -> Char
 toLower c
     | isUpper c = chr ( ord c - ord 'A' + ord 'a' )
     | otherwise = c
+ -}
 
+    
 {-----------------------------------------------
  -- Conversion
  -----------------------------------------------}
@@ -736,7 +752,7 @@ readUnsigned =
     .
     map (\c -> ord c - ord '0')
     .
-    takeWhile isDigit
+    takeWhile localIsDigit
 
 {-----------------------------------------------
  -- "Overloaded" functions
