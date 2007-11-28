@@ -1,0 +1,18 @@
+The modules in this directory can be loaded and/or compiled to show
+that indeed the Helium/lvmrun installation works as aspected. We assume that the 
+executables have been installed in the usual places including the libraries.
+We do not depend on setting of LVMPATH here, but if you have that set,
+you ought to be able to remove the -P options.
+
+Helium without overloading:
+helium  -P/usr/local/helium/lib/simple:. Simple.hs
+and then
+lvmrun -P/usr/local/helium/lib/simple:. Simple.lvm
+
+Helium with overloading:
+helium --overloading -P/usr/local/helium/lib:. Overloaded.hs
+lvmrun -P/usr/local/helium/lib:.  Overloaded.lvm
+
+Note that Overloaded.hs can also be compiled by Hugs,
+but that execution can fail due to out of memory problems.
+
