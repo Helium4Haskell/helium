@@ -430,9 +430,17 @@ endif
 install : smaller
 	# *** Copy sources to library directory
 	$(MKDIR) $(bindir) $(libdir) $(libdir)/simple $(demodir) 
-	$(INSTALL) -m 644 ../lib/simple/Prelude.hs $(libdir)
-	$(INSTALL) -m 644 ../lib/simple/List.hs $(libdir)
-	$(INSTALL) -m 644 ../lib/simple/Maybe.hs $(libdir)
+  # Copy library sources, non-overloaded
+	$(INSTALL) -m 644 ../lib/simple/Prelude.hs $(libdir)/simple
+	$(INSTALL) -m 644 ../lib/simple/Char.hs $(libdir)/simple
+	$(INSTALL) -m 644 ../lib/simple/List.hs $(libdir)/simple
+	$(INSTALL) -m 644 ../lib/simple/Maybe.hs $(libdir)/simple
+  # Copy library sources, overloaded
+	$(INSTALL) -m 644 ../lib/Prelude.hs $(libdir)
+	$(INSTALL) -m 644 ../lib/Char.hs $(libdir)
+	$(INSTALL) -m 644 ../lib/List.hs $(libdir)
+	$(INSTALL) -m 644 ../lib/Maybe.hs $(libdir)
+  # Copy executables
 	$(INSTALL) -m 755 $(HELIUMBINDIR)/$(MAIN)$(EXE) $(bindir)
 	$(INSTALL) -m 755 $(LVMRUNTIMEDIR)/lvmrun$(EXE) $(bindir)
 	$(INSTALL) -m 755 $(HELIUMBINDIR)/texthint$(EXE) $(bindir)
@@ -442,6 +450,7 @@ install : smaller
 	$(INSTALL) -m 644 ../demo/ParserDemo.hs $(demodir)
 	$(INSTALL) -m 644 ../demo/TicTacToe.hs $(demodir)
 	# *** Copy generated lvms and touch them
+	$(INSTALL) -m 644 ../lib/simple/Char.lvm $(libdir)/simple
 	$(INSTALL) -m 644 ../lib/simple/HeliumLang.lvm $(libdir)/simple
 	$(INSTALL) -m 644 ../lib/simple/List.lvm $(libdir)/simple
 	$(INSTALL) -m 644 ../lib/simple/LvmException.lvm $(libdir)/simple
@@ -453,6 +462,7 @@ install : smaller
 	$(INSTALL) -m 644 ../lib/simple/Prelude.type $(libdir)/simple
 	touch $(libdir)/simple/*.lvm
 	# *** Copy generated overloaded lvms and touch them
+	$(INSTALL) -m 644 ../lib/Char.lvm $(libdir)
 	$(INSTALL) -m 644 ../lib/HeliumLang.lvm $(libdir)
 	$(INSTALL) -m 644 ../lib/List.lvm $(libdir)
 	$(INSTALL) -m 644 ../lib/LvmException.lvm $(libdir)
