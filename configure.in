@@ -97,22 +97,22 @@ AC_PROG_INSTALL
 AC_PROG_LN_S()
 
 # logger on or off?
-AC_ARG_ENABLE(logger,
-[  --enable-logger
-       Enable logging of error messages.
-],
-[log="$enableval"],
-[log="no"]
-)
-if test "$log" = "no"; then
-  cp src/utils/LoggerDisabled.hs src/utils/Logger.hs;
-  logger="";
-else
-  cp src/utils/LoggerEnabled.hs src/utils/Logger.hs;
-  logger="yes";
-fi
-AC_SUBST(logger)
-AC_MSG_WARN([Logger set to $logger])
+# AC_ARG_ENABLE(logger,
+# [  --enable-logger
+#        Enable logging of error messages.
+# ],
+# [log="$enableval"],
+# [log="no"]
+# )
+# if test "$log" = "no"; then
+#   cp src/utils/LoggerDisabled.hs src/utils/Logger.hs;
+#   logger="";
+# else
+#   cp src/utils/LoggerEnabled.hs src/utils/Logger.hs;
+#   logger="yes";
+# fi
+# AC_SUBST(logger)
+# AC_MSG_WARN([Logger set to $logger])
 
 PWD=`pwd`
 HELIUM=${PWD}/bin/helium${EXEEXT}
