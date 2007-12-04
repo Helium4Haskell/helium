@@ -29,14 +29,16 @@ unwordsBy sep (w:ws) = w ++ sep ++ unwordsBy sep ws
 -- The special flag overrides logging turned off.
 -- This function also collects all -P flags together and merges them into one. The order of the
 -- directories is the order in which they were specified.
+-- Adds Overloading flag to make sure that this is the default.
 simplifyOptions :: [Option] -> [Option]
 simplifyOptions ops = 
     let
-      revops  = if (LogSpecial `elem` ops) 
-                then EnableLogging : reverse ops -- Explicitly enable logging as well, just to be safe
-                else reverse ops
+      revdefops = reverse (DisableLogging : (Overloading : ops)) -- Add defaults that will be ignored if explicit flags are present
+      modops    = if (LogSpecial `elem` revdefops) 
+                  then EnableLogging : revdefops -- Explicitly enable logging as well, just to be safe
+                  else revdefops
     in
-      collectPaths (keepFirst [Overloading, NoOverloading] (keepFirst [EnableLogging, DisableLogging] revops)) [] []
+      collectPaths (keepFirst [Overloading, NoOverloading] (keepFirst [EnableLogging, DisableLogging] modops)) [] []
           where
             -- Assumes the options are in reverse order, and also reverses them.
             -- Collects several LvmPath options into one
@@ -79,9 +81,9 @@ processArgs args =
       , Option "i" ["dump-information"]     (NoArg DumpInformationForThisModule) "show information about this module"
       , Option "I" ["dump-all-information"] (NoArg DumpInformationForAllModules) "show information about all imported modules"
       , Option ""  ["enable-logging"]       (NoArg EnableLogging) "enable logging, overrides previous disable-logging"
-      , Option ""  ["disable-logging"]      (NoArg DisableLogging) "disable logging, overrides previous enable-logging flags"
+      , Option ""  ["disable-logging"]      (NoArg DisableLogging) "disable logging (default), overrides previous enable-logging flags"
       , Option "!" ["log-special"]          (NoArg LogSpecial) "logs with special flag, overrides all disable-logging flags"
-      , Option ""  ["overloading"]          (NoArg Overloading) "turn overloading on, overrides all previous no-overloading flags"
+      , Option ""  ["overloading"]          (NoArg Overloading) "turn overloading on (default), overrides all previous no-overloading flags"
       , Option ""  ["no-overloading"]       (NoArg NoOverloading) "turn overloading off, overrides all previous overloading flags"
       , Option "P" ["lvmpath"]              (ReqArg LvmPath "PATH") "use PATH as search path"
       , Option "v" ["verbose"]              (NoArg Verbose) "show the phase the compiler is in"
