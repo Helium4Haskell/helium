@@ -41,15 +41,16 @@ doPhaseWithExit nrOfMsgs code (options, fullName, doneModules) phase =
    do result <- phase
       case result of
          Left errs ->
-            do unless (NoLogging `elem` options) $ 
-                 sendLog (code errs) fullName doneModules options
+            do sendLog (code errs) fullName doneModules options
                showErrorsAndExit errs nrOfMsgs
          Right a ->
             return a
 
 sendLog :: String -> String -> [String] -> [Option] -> IO ()
 sendLog code fullName modules options =
-    logger code (Just (modules,fullName)) (DebugLogger `elem` options) (LogSpecial `elem` options)
+    logger code (Just (modules,fullName)) options
+           -- (DisableLogger `elem` options) 
+           -- (DebugLogger `elem` options) (LogSpecial `elem` options)
     
 enterNewPhase :: String -> [Option] -> IO ()
 enterNewPhase phase options =

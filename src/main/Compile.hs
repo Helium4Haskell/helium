@@ -104,8 +104,7 @@ compile fullName options lvmPath doneModules =
         -- Phase 10: Code generation
         phaseCodeGenerator fullName coreModule options
         
-        unless (NoLogging `elem` options) $ 
-            sendLog "C" fullName doneModules options
+        sendLog "C" fullName doneModules options
 
         let number = length staticWarnings + length typeWarnings + length lexerWarnings
         putStrLn $ "Compilation successful" ++

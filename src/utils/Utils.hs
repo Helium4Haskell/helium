@@ -103,7 +103,7 @@ splitFilePath filePath =
 refToCurrentFileName :: IORef String
 refToCurrentFileName = unsafePerformIO (newIORef "<no module>")
 
--- unsafePerformIO only to be able to make an error report 
+-- unsafePerformIO only to  be able to make an error report 
 -- in case of an internal error
 refToCurrentImported :: IORef [String]
 refToCurrentImported = unsafePerformIO (newIORef [])
@@ -114,17 +114,16 @@ internalError moduleName functionName message
    $ do (do -- internal errors are automatically logged
             curFileName <- readIORef refToCurrentFileName
             curImports  <- readIORef refToCurrentImported       
-            logger "I" (Just (curImports,curFileName)) False False {- no debugging, we can't get to the command-line option DebugLogger here -}
+            logInternalError (Just (curImports,curFileName)) {- no debugging, we can't get to the command-line option DebugLogger here -}
             `catch`
                \_ -> return () )
-    
         return . error . unlines $
            [ ""
            , "INTERNAL ERROR - " ++ message
            , "** Module   : " ++ moduleName
            , "** Function : " ++ functionName
            ]
-           
+
 maxInt, minInt :: Integer
 maxInt = 1073741823
 minInt = -1073741823

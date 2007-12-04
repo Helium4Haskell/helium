@@ -162,7 +162,8 @@ make fullName lvmPath chain options doneRef =
                     Just _ -> return ()
 
                 let importFullName = fromJust maybeImportFullName
-
+                -- TODO : print names imported modules in verbose mode.
+                
                 -- If we only have an ".lvm" file we do not need to (/can't) recompile 
                 if ".lvm" `isSuffixOf` importFullName then
                     return False

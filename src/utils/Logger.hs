@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module Logger ( logger ) where
+module Logger ( logger, logInternalError ) where
 
 import Network
 import Control.Concurrent
@@ -14,6 +14,7 @@ import Monad
 import System
 import Char
 import List
+import Args
 import IO
 import Version
 
@@ -22,16 +23,21 @@ import Version
 ---------------------------------------------------
 -- Global variables and settings
 
-loggerHOSTNAME :: String
-loggerHOSTNAME    = {- Bastiaan     -} -- "ikaria.cs.uu.nl" 
+loggerDEFAULTHOST :: String
+loggerDEFAULTHOST = {- Bastiaan     -} -- "ikaria.cs.uu.nl" 
                     {- Jurriaan     -} -- "cox.cs.uu.nl" 
-                    {- Test         -} -- "localhost"
-                    {- StudentenNet -} "shell.students.cs.uu.nl" 
-                    
-loggerPORTNUMBER, loggerDELAY, loggerTRIES :: Int
-loggerPORTNUMBER  = 5010
+                    "localhost"
+                    {- StudentenNet -} -- "shell.students.cs.uu.nl" 
+                   
+loggerDEFAULTPORT, loggerDELAY, loggerTRIES :: Int
+loggerDEFAULTPORT = 5010
 loggerDELAY       = 10000    -- in micro-seconds
 loggerTRIES       = 2
+
+loggerINTERNALERRORHOSTNAME :: String
+loggerINTERNALERRORHOSTNAME = "localhost"
+loggerINTERNALERRORPORTNR   :: Int
+loggerINTERNALERRORPORTNR   = loggerDEFAULTPORT
 
 loggerSEPARATOR, loggerTERMINATOR, loggerUSERNAME, loggerDEFAULTNAME :: String
 loggerSEPARATOR      = "\NUL\NUL\n"
@@ -45,9 +51,6 @@ loggerESCAPECHAR     = '\\'
 
 loggerESCAPABLES :: String
 loggerESCAPABLES     = [loggerADMINSEPARATOR, loggerESCAPECHAR]
-
-loggerENABLED :: Bool
-loggerENABLED        = True
 
 debug :: String -> Bool -> IO ()
 debug s loggerDEBUGMODE = when loggerDEBUGMODE (putStrLn s)
@@ -74,36 +77,60 @@ escape (x:xs) = if (x `elem` loggerESCAPABLES)
 normalize :: String -> String
 normalize xs = escape (filter ((/=) '\n') xs)
 
+logInternalError :: Maybe ([String],String) -> IO ()
+logInternalError maybeSources = 
+  logger "I" maybeSources internalErrorOptions
+    where
+      internalErrorOptions = [EnableLogging, HostName loggerINTERNALERRORHOSTNAME, PortNr loggerINTERNALERRORPORTNR]
+
 ------------------------------------------------------
 -- The function to send a message to a socket
+-- TODO : decide whether we really don't want to send interpreter input.
 
-logger :: String -> Maybe ([String],String) -> Bool -> Bool -> IO ()
-logger logcode maybeSources loggerDEBUGMODE loggerLOGSPECIAL
-    | not loggerENABLED || isInterpreterModule maybeSources = return ()
-    | otherwise      = do
-        username <- (getEnv loggerUSERNAME) `catch` (\_ -> return loggerDEFAULTNAME)
-        optionString  <- getArgs
-        sources  <- case maybeSources of 
-            Nothing -> 
-                return (loggerTERMINATOR)
-            Just (imports,hsFile) -> 
-                do let allHsFiles = hsFile:imports
-                       allFiles   = allHsFiles ++ map toTypeFile allHsFiles
-                   xs <- mapM (getContentOfFile loggerDEBUGMODE) allFiles
-                   return (concat (loggerSEPARATOR:xs)++loggerTERMINATOR) 
-                     `catch` (\_ -> return (loggerTERMINATOR) )
-        {- putStr (normalizeName username ++ 
-                       (loggerADMINSEPARATOR : normalize logcode) ++ 
-                       (loggerADMINSEPARATOR : normalize version) ++
-                       (loggerADMINSEPARATOR : normalize (unwords optionString)) ++ 
-                       "\n" ++sources) -}      
-        let specialLogcode = if loggerLOGSPECIAL then map toLower logcode else map toUpper logcode
-        sendLogString (normalizeName username ++ 
-                       (loggerADMINSEPARATOR : normalize specialLogcode) ++ 
-                       (loggerADMINSEPARATOR : normalize version) ++
-                       (loggerADMINSEPARATOR : normalize (unwords optionString)) ++ 
-                       "\n" ++sources
-                      ) loggerDEBUGMODE
+logger :: String -> Maybe ([String],String) -> [Option] -> IO ()
+logger logcode maybeSources options =
+   let
+     debugLogger = DebugLogger `elem` options
+     reallyLog   = LogSpecial `elem` options 
+                    || 
+                   EnableLogging `elem` options
+     hostName    = case hostNameFromOptions options of
+                     Nothing  -> loggerDEFAULTHOST
+                     Just host -> host
+     portNumber  = case portNrFromOptions options of
+                     Nothing  -> loggerDEFAULTPORT
+                     Just pn  -> pn
+   in
+     if reallyLog then
+       do
+         username     <- (getEnv loggerUSERNAME) `catch` (\_ -> return loggerDEFAULTNAME)
+         optionString <- getArgs
+         sources      <- case maybeSources of 
+             Nothing -> 
+                 return (loggerTERMINATOR)
+             Just (imports,hsFile) -> 
+                 do let allHsFiles = hsFile:imports
+                        allFiles   = allHsFiles ++ map toTypeFile allHsFiles
+                    xs <- mapM (getContentOfFile debugLogger) allFiles
+                    return (concat (loggerSEPARATOR:xs)++loggerTERMINATOR) 
+                      `catch` (\_ -> return (loggerTERMINATOR) )
+         {- putStr (normalizeName username ++ 
+                        (loggerADMINSEPARATOR : normalize logcode) ++ 
+                        (loggerADMINSEPARATOR : normalize version) ++
+                        (loggerADMINSEPARATOR : normalize (unwords optionString)) ++ 
+                        "\n" ++sources) -}      
+         let specialLogcode = if LogSpecial `elem` options then map toLower logcode else map toUpper logcode
+         sendLogString hostName
+                       portNumber
+                       (normalizeName username ++ 
+                        (loggerADMINSEPARATOR : normalize specialLogcode) ++ 
+                        (loggerADMINSEPARATOR : normalize version) ++
+                        (loggerADMINSEPARATOR : normalize (unwords optionString)) ++ 
+                        "\n" ++sources
+                       ) 
+                       debugLogger
+     else                  
+       do return ()
 
 toTypeFile :: String -> String
 toTypeFile fullName = fullNameNoExt ++ ".type"
@@ -128,11 +155,11 @@ isInterpreterModule :: Maybe ([String],String) -> Bool
 isInterpreterModule Nothing = False
 isInterpreterModule (Just (_, hsFile)) = fileNameWithoutPath hsFile == "Interpreter.hs"
 
-sendLogString :: String -> Bool -> IO ()
-sendLogString message loggerDEBUGMODE = withSocketsDo (rec 0)
+sendLogString :: String -> Int -> String -> Bool -> IO ()
+sendLogString hostName portNr message loggerDEBUGMODE = withSocketsDo (rec 0)
  where
     rec i = do --installHandler sigPIPE Ignore Nothing
-             handle <- connectTo loggerHOSTNAME (PortNumber (fromIntegral loggerPORTNUMBER))
+             handle <- connectTo hostName (PortNumber (fromIntegral portNr))
              hSetBuffering handle (BlockBuffering (Just 1024))
              sendToAndFlush handle message loggerDEBUGMODE
           `catch`       

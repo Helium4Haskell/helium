@@ -10,13 +10,51 @@ module Args
     ( Option(..)
     , processArgs
     , lvmPathFromOptions
+    , hostNameFromOptions
+    , portNrFromOptions
     ) where
 
 import System
 import Version
-import Utils
 import Data.Char
+import Monad(when)
 import System.Console.GetOpt
+
+unwordsBy :: String -> [String] -> String
+unwordsBy sep [] = ""
+unwordsBy sep [w] = w
+unwordsBy sep (w:ws) = w ++ sep ++ unwordsBy sep ws
+
+-- Keep only the last of the overloading flags and the last of the logging enable flags.
+-- The special flag overrides logging turned off.
+-- This function also collects all -P flags together and merges them into one. The order of the
+-- directories is the order in which they were specified.
+simplifyOptions :: [Option] -> [Option]
+simplifyOptions ops = 
+    let
+      revops  = if (LogSpecial `elem` ops) 
+                then EnableLogging : reverse ops -- Explicitly enable logging as well, just to be safe
+                else reverse ops
+    in
+      collectPaths (keepFirst [Overloading, NoOverloading] (keepFirst [EnableLogging, DisableLogging] revops)) [] []
+          where
+            -- Assumes the options are in reverse order, and also reverses them.
+            -- Collects several LvmPath options into one
+            collectPaths [] paths newops       = LvmPath (unwordsBy ":" paths) : newops              
+            collectPaths (LvmPath path : rest) paths newops
+                                               = collectPaths rest (path : paths) newops
+            collectPaths (opt : rest) paths newops
+                                               = collectPaths rest paths (opt : newops)                                   
+            keepFirst fromList []              = []
+            keepFirst fromList (opt : rest)    = if (opt `elem` fromList) then
+                                                   opt : optionFilter fromList rest
+                                                 else
+                                                   opt : keepFirst fromList rest
+            optionFilter fromList []           = []
+            optionFilter fromList (opt : rest) = if (opt `elem` fromList) then
+                                                   optionFilter fromList rest
+                                                 else
+                                                   opt : optionFilter fromList rest
 
 processArgs :: [String] -> IO ([Option], String)
 processArgs args =
@@ -28,7 +66,11 @@ processArgs args =
         putStrLn (usageInfo "Usage: helium [options] file" (optionDescription moreOptions experimentalOptions))
         exitWith (ExitFailure 1)
     else
-        return (options, (head arguments))
+        do 
+          let simpleOptions = simplifyOptions options
+          when (Verbose `elem` simpleOptions) $
+            putStrLn ((show simpleOptions)++"\n")
+          return (simpleOptions, (head arguments))
  where
    optionDescription moreOptions experimentalOptions =
       -- Main options
@@ -36,14 +78,17 @@ processArgs args =
       , Option "B" ["build-all"]            (NoArg BuildAll) "recompile all modules even if up to date"
       , Option "i" ["dump-information"]     (NoArg DumpInformationForThisModule) "show information about this module"
       , Option "I" ["dump-all-information"] (NoArg DumpInformationForAllModules) "show information about all imported modules"
-      , Option "l" ["no-logging"]           (NoArg NoLogging) "do not send log information"
-      , Option "!" ["log-special"]          (NoArg LogSpecial) "logs with special flag"
-      , Option "o" ["overloading"]          (NoArg Overloading) "turn overloading on"
+      , Option ""  ["enable-logging"]       (NoArg EnableLogging) "enable logging, overrides previous disable-logging"
+      , Option ""  ["disable-logging"]      (NoArg DisableLogging) "disable logging, overrides previous enable-logging flags"
+      , Option "!" ["log-special"]          (NoArg LogSpecial) "logs with special flag, overrides all disable-logging flags"
+      , Option ""  ["overloading"]          (NoArg Overloading) "turn overloading on, overrides all previous no-overloading flags"
+      , Option ""  ["no-overloading"]       (NoArg NoOverloading) "turn overloading off, overrides all previous overloading flags"
       , Option "P" ["lvmpath"]              (ReqArg LvmPath "PATH") "use PATH as search path"
       , Option "v" ["verbose"]              (NoArg Verbose) "show the phase the compiler is in"
       , Option "w" ["no-warnings"]          (NoArg NoWarnings) "do not show warnings"
       , Option "X" ["more-options"]         (NoArg MoreOptions) "show more compiler options"
       , Option ""  ["info"]                 (ReqArg Information "NAME") "display information about NAME"
+      
       ]
       ++
       -- More options
@@ -57,6 +102,8 @@ processArgs args =
       , Option "c" ["dump-core"]                   (NoArg DumpCore) "pretty print Core program"
       , Option "C" ["save-core"]                   (NoArg DumpCoreToFile) "write Core program to file"
       , Option ""  ["debug-logger"]                (NoArg DebugLogger) "show logger debug information"
+      , Option ""  ["hostname"]                    (ReqArg HostName "HOST") "specify which HOST to use for logging (default localhost)"
+      , Option ""  ["portnumber"]                  (ReqArg selectPortNr "PORT") "select the PORT number for the logger"
       , Option "d" ["type-debug"]                  (NoArg DumpTypeDebug) "debug constraint-based type inference"         
       , Option "W" ["algorithm-w"]                 (NoArg AlgorithmW) "use bottom-up type inference algorithm W"
       , Option "M" ["algorithm-m"]                 (NoArg AlgorithmM) "use folklore top-down type inference algorithm M"
@@ -89,25 +136,44 @@ processArgs args =
 data Option 
    -- Main options
    = BuildOne | BuildAll | DumpInformationForThisModule | DumpInformationForAllModules
-   | NoLogging | LogSpecial | Overloading | LvmPath String | Verbose | NoWarnings | MoreOptions
+   | DisableLogging | EnableLogging | LogSpecial | Overloading | NoOverloading | LvmPath String | Verbose | NoWarnings | MoreOptions
    | Information String
    -- More options
    | StopAfterParser | StopAfterStaticAnalysis | StopAfterTypeInferencing | StopAfterDesugar
-   | DumpTokens | DumpUHA | DumpCore | DumpCoreToFile | DebugLogger | DumpTypeDebug
-   | AlgorithmW | AlgorithmM | DisableDirectives | NoRepairHeuristics
+   | DumpTokens | DumpUHA | DumpCore | DumpCoreToFile 
+   | DebugLogger | HostName String | PortNr Int 
+   | DumpTypeDebug | AlgorithmW | AlgorithmM | DisableDirectives | NoRepairHeuristics
    -- Experimental options
    | ExperimentalOptions |KindInferencing | SignatureWarnings | RightToLeft | NoSpreading
    | TreeWalkTopDown | TreeWalkBottomUp | TreeWalkInorderTopFirstPre | TreeWalkInorderTopLastPre
    | TreeWalkInorderTopFirstPost | TreeWalkInorderTopLastPost | SolverSimple | SolverGreedy
    | SolverTypeGraph | SolverCombination | SolverChunks | UnifierHeuristics
    | SelectConstraintNumber Int
- deriving Eq
+ deriving (Eq, Show)
 
 lvmPathFromOptions :: [Option] -> Maybe String
 lvmPathFromOptions [] = Nothing
 lvmPathFromOptions (LvmPath s : _) = Just s
 lvmPathFromOptions (_ : rest) = lvmPathFromOptions rest
 
+
+-- Takes the first in the list. Better to remove duplicates!
+hostNameFromOptions :: [Option] -> Maybe String
+hostNameFromOptions [] = Nothing
+hostNameFromOptions (HostName s : _) = Just s
+hostNameFromOptions (_ : rest) = hostNameFromOptions rest
+
+-- Takes the first in the list. Better to remove duplicates!
+portNrFromOptions :: [Option] -> Maybe Int
+portNrFromOptions [] = Nothing
+portNrFromOptions (PortNr pn: _) = Just pn
+portNrFromOptions (_ : rest) = portNrFromOptions rest
+
+selectPortNr :: String -> Option
+selectPortNr pn 
+   | all isDigit pn = PortNr (read ('0':pn)) 
+   | otherwise     = PortNr (-1) -- problem with argument
+   
 selectCNR :: String -> Option
 selectCNR s
    | all isDigit s = SelectConstraintNumber (read ('0':s)) 
