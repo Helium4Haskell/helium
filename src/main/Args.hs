@@ -10,6 +10,8 @@ module Args
     ( Option(..)
     , processArgs
     , lvmPathFromOptions
+    , loggerDEFAULTHOST
+    , loggerDEFAULTPORT
     , hostNameFromOptions
     , portNrFromOptions
     ) where
@@ -19,6 +21,12 @@ import Version
 import Data.Char
 import Monad(when)
 import System.Console.GetOpt
+
+loggerDEFAULTHOST :: String
+loggerDEFAULTHOST = "localhost"
+
+loggerDEFAULTPORT :: Int
+loggerDEFAULTPORT = 5010
 
 unwordsBy :: String -> [String] -> String
 unwordsBy sep [] = ""
@@ -71,7 +79,7 @@ processArgs args =
         do 
           let simpleOptions = simplifyOptions options
           when (Verbose `elem` simpleOptions) $
-            putStrLn ((show simpleOptions)++"\n")
+            putStrLn ("Options after simplification: " ++ (show simpleOptions)++"\n")
           return (simpleOptions, (head arguments))
  where
    optionDescription moreOptions experimentalOptions =
@@ -104,8 +112,8 @@ processArgs args =
       , Option "c" ["dump-core"]                   (NoArg DumpCore) "pretty print Core program"
       , Option "C" ["save-core"]                   (NoArg DumpCoreToFile) "write Core program to file"
       , Option ""  ["debug-logger"]                (NoArg DebugLogger) "show logger debug information"
-      , Option ""  ["hostname"]                    (ReqArg HostName "HOST") "specify which HOST to use for logging (default localhost)"
-      , Option ""  ["portnumber"]                  (ReqArg selectPortNr "PORT") "select the PORT number for the logger"
+      , Option ""  ["hostname"]                    (ReqArg HostName "HOST") ("specify which HOST to use for logging (default " ++ loggerDEFAULTHOST ++ ")")
+      , Option ""  ["portnumber"]                  (ReqArg selectPortNr "PORT") ("select the PORT number for the logger (default: " ++ show loggerDEFAULTPORT ++ ")")
       , Option "d" ["type-debug"]                  (NoArg DumpTypeDebug) "debug constraint-based type inference"         
       , Option "W" ["algorithm-w"]                 (NoArg AlgorithmW) "use bottom-up type inference algorithm W"
       , Option "M" ["algorithm-m"]                 (NoArg AlgorithmM) "use folklore top-down type inference algorithm M"

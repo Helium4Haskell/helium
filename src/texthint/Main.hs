@@ -6,6 +6,9 @@
     Portability :  portable
     
     The textual Helium interpreter
+    
+    TODO: make it possible to derive the HELIUMBINDIR automatically.
+
 -}
 
 module Main where
@@ -14,7 +17,7 @@ import Char
 import List(isPrefixOf, isSuffixOf)
 import Monad(when)
 import IO(stdout, hFlush)
-import System(system, getEnv, getArgs, exitWith, ExitCode(..))  
+import System(system, getEnv, getArgs, exitWith, ExitCode(..))
 import OSSpecific(slash)
 import Directory
 
@@ -24,7 +27,13 @@ data State =
     , maybeFileName :: Maybe String
     , tempDir :: String
     , binDir :: String
+    , compOptions :: [String] -- Contains both options for helium as well as lvmrun. This might give problems.
     }
+
+unwordsBy :: String -> [String] -> String
+unwordsBy sep [] = ""
+unwordsBy sep [w] = w
+unwordsBy sep (w:ws) = w ++ sep ++ unwordsBy sep ws
 
 header :: String
 header = unlines
@@ -61,23 +70,32 @@ main = do
          State { tempDir = tempDirFromEnv
                , maybeModName = Nothing
                , maybeFileName = Nothing
-               , binDir = binDirFromEnv 
+               , binDir = binDirFromEnv
+               , compOptions = []
                }
     
     -- Logo
     putStrLn header
     
     -- Load command-line parameter module
+    -- If the final parameter happens to refer to a source name, then that file is loaded.
     args <- getArgs
     stateAfterLoad <-
-        if length args == 1 then
-            cmdLoadModule (head args) initialState
+        if length args >= 1 then do
+            let filename = last args
+                rest = init args
+            exists <- doesFileExist filename
+            existsWithHs <- doesFileExist (filename ++ ".hs")
+            if exists || existsWithHs then
+                cmdLoadModule filename (initialState{ compOptions = rest })
+              else
+                return initialState{ compOptions = args }
         else
             return initialState
-            
-    -- Enter read-eval-print loop            
+
+    -- Enter read-eval-print loop
     loop stateAfterLoad
-    
+
     return ()
 
 addSlashIfNeeded :: String -> String
@@ -101,8 +119,8 @@ loop state = do
             return state
         expression -> do
             if null expression 
-                then return ()
-                else processExpression expression state
+              then return ()
+              else processExpression expression state
             return state
     loop newState
   where
@@ -158,7 +176,6 @@ cmdShowType expression state = do
                     . head
                     $ typeLine
             in do 
-
                   putStrLn (expression ++ " :: " ++ typeString)
       else
         putStr (removeEvidence output)
@@ -223,7 +240,7 @@ cmdBrowse state =
             (succes, output) <- compileModule modName "-i3b" state
             putStr (unlines (safeTail (lines output)))
             return state
-            
+
 ------------------------
 -- Command :?
 ------------------------
@@ -238,7 +255,7 @@ cmdHelp state = do
     putStrLn ":! <command>     shell command"
     putStrLn ":q               quit"
     return state
-    
+
 ------------------------
 -- Expression 
 ------------------------
@@ -282,7 +299,8 @@ compileInternalModule options state =
 compileModule :: String -> String -> State -> IO (Bool, String)
 compileModule fileName options state = do
     let outputFilePath = tempDir state ++ outputFileName
-    exitCode <- sys ("\"" ++ binDir state ++ "helium\" " ++ options ++ " " ++ fileName ++ "> " ++ outputFilePath)
+    exitCode <- sys ("\"" ++ binDir state ++ "helium\" " ++ " " ++ unwords (compOptions state) 
+                          ++ " " ++ options ++ " " ++ fileName ++ "> " ++ outputFilePath)
     contents <- readFile outputFilePath
                 `catch` (\_ -> fatal ("Unable to read from file \"" ++ outputFilePath ++ "\""))
     return (exitCode == ExitSuccess, contents)
@@ -291,17 +309,25 @@ executeInternalModule :: State -> IO ()
 executeInternalModule state =
     executeModule (internalModulePath state) state
 
+-- We do compensate for the fact that helium allows -P... and -P ... and that lvmrun only allows the former. 
+lvmOptionsFilter :: [String] -> [String]
+lvmOptionsFilter []          = []
+lvmOptionsFilter ["-P"]      = []
+lvmOptionsFilter ("-P" : xs) = (head xs) : lvmOptionsFilter (tail xs)
+lvmOptionsFilter (('-' : 'P' : ys) : xs) = ys : lvmOptionsFilter xs
+lvmOptionsFilter (x:xs)      = lvmOptionsFilter xs
+
 executeModule :: String -> State -> IO ()
 executeModule fileName state = do
-    sys ("\"" ++ binDir state ++ "lvmrun\" " ++ fileName)
+    sys ("\"" ++ binDir state ++ "lvmrun\" -P" ++ unwordsBy ":" (lvmOptionsFilter (compOptions state)) ++ " "++ fileName)
     return ()
-        
+
 removeLVM :: State -> IO ()
 removeLVM state = do
     let lvmFile = tempDir state ++ internalModule ++ ".lvm"
     lvmExist <- doesFileExist lvmFile
     when lvmExist $ removeFile lvmFile
-    
+
 expressionModule :: String -> State -> String
 expressionModule expression state =
     unlines
@@ -314,7 +340,7 @@ expressionModule expression state =
 sys s = do
     -- putStrLn ("System:" ++ s)
     system s
-    
+
 ------------------------
 -- Remove evidence 
 ------------------------
@@ -396,3 +422,4 @@ splitFilePath filePath =
         (revFileName, revPath) = span (`notElem` slashes) (reverse filePath)
         (baseName, ext)  = span (/= '.') (reverse revFileName)
     in (reverse revPath, baseName, dropWhile (== '.') ext)
+

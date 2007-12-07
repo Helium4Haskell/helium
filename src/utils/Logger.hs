@@ -22,15 +22,9 @@ import Version
 
 ---------------------------------------------------
 -- Global variables and settings
+-- Some additional ones are in Args.hs
 
-loggerDEFAULTHOST :: String
-loggerDEFAULTHOST = {- Bastiaan     -} -- "ikaria.cs.uu.nl" 
-                    {- Jurriaan     -} -- "cox.cs.uu.nl" 
-                    "localhost"
-                    {- StudentenNet -} -- "shell.students.cs.uu.nl" 
-                   
-loggerDEFAULTPORT, loggerDELAY, loggerTRIES :: Int
-loggerDEFAULTPORT = 5010
+loggerDELAY, loggerTRIES :: Int
 loggerDELAY       = 10000    -- in micro-seconds
 loggerTRIES       = 2
 

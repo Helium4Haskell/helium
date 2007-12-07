@@ -1,0 +1,39 @@
+
+TODOs:
+Revise Hint to work with the new parameter calling in Helium
+Find a solution for the following:
+ - having multiple Heliums at the same time and switch easily between them
+ - allow four levels of setting:
+    1. factory settings
+    2. lecturer settings
+    3. student settings
+    4. incidental overrides
+   The best way currently seems to be to have resource files located in the installation tree
+   as well as in the home directory of students (if they want to). Setting from a higher number
+   take precedence. The most problematic issue here is to locate the resource file.
+   The resource file can contain the links to the simple and overloaded factory provided libs,
+   so knowing the standard location of the resource file is enough.
+   A solution would be to have the installer patch the compiler with the chosen location or
+   to fix the location in a binary installer. 
+   In case of installation from source, we can simply build the location of the resource file
+   into the compiler.
+   The flags in a resource file should be the same as they are in a call to Helium.
+   Note that lvmrun also needs the location of the .lvm modules, but as far as I can tell 
+   that is all it needs from the Helium flags.
+   The verbose option should say which resource files have been tried.
+   Finally, Hint should use the same resource files and behave in a way consistent with Helium.
+   Hint should also allow the programmer to change the contents of the resource file.
+
+
+KNOWN BUGS:
+File IO is quite shaky, especially flushing behaviour and memory management.
+For example, one of the test in the test siute fails: if you write a file over a certain, low,
+number of bytes it will only succeed if you plenty of heap. But then files under that size
+will fail to write due some mistake in the 
+The bottom line is: if you use file IO to write files, then test it well.
+We hope to discover at some point what is going on here, but currently lack the time and code generation
+expertise to do that. If you want to investigate this problem, contact us.
+
+
+
+
