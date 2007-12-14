@@ -83,7 +83,7 @@ checkExistence path name =
                 ++ name
                 ++ ".hs (or .lvm) in search path:\n"
                 ++ unlines (map ("\t" ++) path)
-                ++ "See the installation manual on setting the environment variable LVMPATH\n"
+                ++ "Use the -P option to add paths to the search path.\n"
                 )
             exitWith (ExitFailure 1)
 
