@@ -9,7 +9,7 @@
 default: all
 
 .PHONY : default compiler all coreasm lvmrun libraries clean depend \
-         smaller newVersion install movetohome status
+         smaller install movetohome status
 
 #directories
 HELIUMBINDIR = ../bin
@@ -415,9 +415,6 @@ depend :
 	$(HC) -M $(HC_OPTS) $(SRCS)
 
 # UTRECHT ONLY
-
-newVersion:
-	echo "module Version where version=\"1.6.1 (`date`)\"" >main/Version.hs
 
 smaller:
 	# *** UPX helium, texthint & lvmrun
