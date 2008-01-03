@@ -11,6 +11,8 @@ default: all
 .PHONY : default compiler all coreasm lvmrun libraries clean depend \
          smaller install movetohome status
 
+VERSION = 1.7
+
 #directories
 HELIUMBINDIR = ../bin
 LVMLIBDIR  = ../../lvm/src/lib
@@ -24,31 +26,33 @@ STRIP   = @STRIP@
 EXE	= @EXEEXT@
 INSTALL = @INSTALL@
 MKDIR   = ../mkinstalldirs
-LOGGER  = @logger@
 
+# Installation paths
 prefix      = @prefix@
+basedir     = @prefix@/helium-$(VERSION)
 exec_prefix = @exec_prefix@
-bindir      = @bindir@
-libdir      = @prefix@/helium/lib
-demodir     = @prefix@/helium/demo
+bindir      = @bindir@          # Typically, this is in your path
+hbindir     = $(basedir)/bin    # typically, this one is not. Used to support multiple versions.
+libdir      = $(basedir)/lib
+demodir     = $(basedir)/demo
 
 status :
 	@echo "*******************************************************************"
 	@echo "Build process complete."
 	@echo "Type \"make install\" to install."
 	@echo "  Binaries will go into  $(bindir)"
+	@echo "               and into  $(hbindir)"
 	@echo "  Libraries will go into $(libdir)"
 	@echo "  Demos will go into     $(demodir)"
+	@echo "  A default .hint-$(VERSION).conf will be generated in ~"
+	@echo "  This ensures that Hint and texthint will use the newly installed"
+	@echo "  version."
 	@echo "*******************************************************************"
 
 HC	= @WithHc@
-ifdef LOGGER
 PACKAGENET = -package network
-else
-PACKAGENET =  
-endif
 HC_OPTS = -static -fglasgow-exts -fallow-undecidable-instances -fallow-overlapping-instances \
-		-package mtl -package parsec $(PACKAGENET) -i$(IFACES) $(EXTRA_HC_OPTS)
+		-package mtl -package containers -package parsec $(PACKAGENET) -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
 AG_OPTS = -mscfr
@@ -166,7 +170,7 @@ CORE	= $(LVMLIBDIR)/core/Core.hs $(LVMLIBDIR)/core/CorePretty.hs $(LVMLIBDIR)/co
 	  $(LVMLIBDIR)/core/CoreNoShadow.hs $(LVMLIBDIR)/core/CoreFreeVar.hs $(LVMLIBDIR)/core/CoreLetSort.hs \
 	  $(LVMLIBDIR)/core/CoreLift.hs $(LVMLIBDIR)/core/CoreSaturate.hs
 
-IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:./parser:./staticanalysis/miscellaneous:./staticanalysis/inferencers:./staticanalysis/directives:./staticanalysis/staticchecks:./staticanalysis/heuristics:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem:$(TOPDIR)/..
+IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:./parser:./staticanalysis/miscellaneous:./staticanalysis/inferencers:./staticanalysis/directives:./staticanalysis/staticchecks:./staticanalysis/heuristics:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem:$(TOPDIR)/..:./texthint
 
 # AG sources
 AGSOURCES = \
@@ -234,15 +238,15 @@ libraries:
 	@echo "****************************************************"
 	cd ../lib/simple; $(MAKE) 
 
-texthint: texthint/Main.o utils/OSSpecific.o
+texthint: texthint/Main.o texthint/ConfigFile.o utils/OSSpecific.o
 	@echo "****************************************************"
 	@echo "  TextHint: the textual Helium interpreter"
 	@echo "****************************************************"
 	$(HC) $(HC_OPTS) -o $(HELIUMBINDIR)/texthint$(EXE) texthint/Main.o \
-                      utils/OSSpecific.o
+                      utils/OSSpecific.o texthint/ConfigFile.o
 	$(STRIP) $(HELIUMBINDIR)/texthint$(EXE)
 
-texthint/Main.o: utils/OSSpecific.hi texthint/Main.hs
+texthint/Main.o: utils/OSSpecific.hi texthint/Main.hs texthint/ConfigFile.hi
 
 # AG sources
 
@@ -426,7 +430,7 @@ endif
 
 install : smaller
 	# *** Copy sources to library directory
-	$(MKDIR) $(bindir) $(libdir) $(libdir)/simple $(demodir) 
+	$(MKDIR) $(bindir) $(hbindir) $(libdir) $(libdir)/simple $(demodir) 
   # Copy library sources, non-overloaded
 	$(INSTALL) -m 644 ../lib/simple/Prelude.hs $(libdir)/simple
 	$(INSTALL) -m 644 ../lib/simple/Char.hs $(libdir)/simple
@@ -438,14 +442,18 @@ install : smaller
 	$(INSTALL) -m 644 ../lib/List.hs $(libdir)
 	$(INSTALL) -m 644 ../lib/Maybe.hs $(libdir)
   # Copy executables
-	$(INSTALL) -m 755 $(HELIUMBINDIR)/$(MAIN)$(EXE) $(bindir)
+	$(INSTALL) -m 755 $(HELIUMBINDIR)/$(MAIN)$(EXE) $(bindir)   # This now becomes the default helium
+	$(INSTALL) -m 755 $(HELIUMBINDIR)/$(MAIN)$(EXE) $(hbindir)  # An additional one, to enable multiple heliums. I did not think it worthwhile to use symlinks.
 	$(INSTALL) -m 755 $(LVMRUNTIMEDIR)/lvmrun$(EXE) $(bindir)
 	$(INSTALL) -m 755 $(HELIUMBINDIR)/texthint$(EXE) $(bindir)
+	$(INSTALL) -m 755 $(LVMRUNTIMEDIR)/lvmrun$(EXE) $(hbindir) # See above.
+	$(INSTALL) -m 755 $(HELIUMBINDIR)/texthint$(EXE) $(hbindir) # See above.
 	# *** Copying demos to demo directory
 	$(INSTALL) -m 644 ../demo/Calendar.hs $(demodir)
 	$(INSTALL) -m 644 ../demo/ParserLibrary.hs $(demodir)
 	$(INSTALL) -m 644 ../demo/ParserDemo.hs $(demodir)
 	$(INSTALL) -m 644 ../demo/TicTacToe.hs $(demodir)
+        
 	# *** Copy generated lvms and touch them
 	$(INSTALL) -m 644 ../lib/simple/Char.lvm $(libdir)/simple
 	$(INSTALL) -m 644 ../lib/simple/HeliumLang.lvm $(libdir)/simple
@@ -457,7 +465,6 @@ install : smaller
 	$(INSTALL) -m 644 ../lib/simple/Prelude.lvm $(libdir)/simple
 	$(INSTALL) -m 644 ../lib/simple/PreludePrim.lvm $(libdir)/simple
 	$(INSTALL) -m 644 ../lib/simple/Prelude.type $(libdir)/simple
-	touch $(libdir)/simple/*.lvm
 	# *** Copy generated overloaded lvms and touch them
 	$(INSTALL) -m 644 ../lib/Char.lvm $(libdir)
 	$(INSTALL) -m 644 ../lib/HeliumLang.lvm $(libdir)
@@ -469,7 +476,12 @@ install : smaller
 	$(INSTALL) -m 644 ../lib/Prelude.lvm $(libdir)
 	$(INSTALL) -m 644 ../lib/PreludePrim.lvm $(libdir)
 	$(INSTALL) -m 644 ../lib/Prelude.type $(libdir)
+	$(INSTALL) -m 644 hint.conf $(basedir)
+	touch $(libdir)/simple/*.lvm
 	touch $(libdir)/*.lvm
+	# Maybe at some point we want a separate simple script for this. As part of Elemental for example.
+	$(INSTALL) -m 666 hint.conf $(HOME)/.hint-$(VERSION).conf  # Unfortunately, this will have root ownership
+	ln -s -f $(HOME)/.hint-$(VERSION).conf $(HOME)/.hint.conf  # Makes it the default.
 
 movetohome: smaller
 	# *** Copying simple library sources to distribution directory
