@@ -6,8 +6,6 @@
     Portability :  portable
     
     The textual Helium interpreter
-    
-    TODO: make it possible to derive the HELIUMBINDIR automatically.
 
 -}
 
@@ -20,6 +18,14 @@ import IO(stdout, hFlush)
 import System(system, getEnv, getArgs, exitWith, ExitCode(..))
 import OSSpecific(slash)
 import Directory
+import ConfigFile(Config, readConfig)
+
+-- Constants for configuration files
+configFilename = ".hint.conf" 
+basepathKey    = "basepath"
+temppathKey    = "temppath"
+unknown        = "<unknown>"
+passToHelium   = ["overloading", "loggingon", "lvmpaths", "additionalHeliumParameters"]
 
 data State = 
     State
@@ -27,7 +33,8 @@ data State =
     , maybeFileName :: Maybe String
     , tempDir :: String
     , binDir :: String
-    , compOptions :: [String] -- Contains both options for helium as well as lvmrun. This might give problems.
+    , compOptions :: [String] -- Contains both options for helium as well as lvmrun. 
+            -- For lvmrun only the -P options are selected to be passed on 
     }
 
 unwordsBy :: String -> [String] -> String
@@ -45,35 +52,71 @@ header = unlines
     , "|_| |_|\\___|_|_|\\__,_|_| |_| |_|   --    or a command (:? for a list)   --"
     ]
 
+extractOptions :: Config -> [String]
+extractOptions []         = []
+extractOptions ((k,v):xs) = 
+  if k `elem` passToHelium then
+      tfm k : rest
+  else
+      rest
+   where
+     rest = extractOptions xs
+     tfm k = case k of 
+               "overloading" -> if v == "false" then
+                                   "--no-overloading"
+                                else
+                                   "--overloading"
+               "loggingon"   -> if v == "false" then
+                                  "--disable-logging"
+                                else
+                                   "--enable-logging"
+               "lvmpaths"    -> if v == "" then "" else "-P"++v
+               "additionalHeliumParameters" -> v
+
+
+slashify :: String -> String
+slashify xs = if last xs == slash then xs else xs ++ [slash]
+
+-- Determines whether the overloading flag is really on (i.e., there is no 
+-- such flag, or it is the final one.
+addStandardLVMPath :: String -> [String] -> [String]
+addStandardLVMPath basepath config = 
+  addPreludePath basepath ("-P." : config)
+  where
+    addPreludePath bp conf 
+      | bp == unknown = conf
+      | otherwise     = ("-P" ++ bp ++ (slash:"lib") ++ [slash] ++  
+                        (if reallyOverloading config then "" else "simple"++[slash])) : config
+    reallyOverloading xs =
+      let 
+        onlyOverloadingFlags = reverse (filter (\x -> x == "--overloading" || x == "--no-overloading") xs)
+      in 
+        case onlyOverloadingFlags of
+           []                   -> True
+           ("--overloading":_)  -> True
+           _                    -> False
+
 main :: IO ()
 main = do
-    -- TEMP
-    tempDirFromEnv <- 
-        do
-            dir <- getEnv "TEMP" 
-            return (addSlashIfNeeded (trim dir))
-          `catch` 
-            (\_ -> do
-                putStrLn "Unable to find environment variable TEMP"
-                putStrLn "Please set this variable to a temporary directory"
-                exitWith (ExitFailure 1)
-            )
-
-    -- HELIUMBINDIR
-    binDirFromEnv <- 
-        do 
-            dir <- getEnv "HELIUMBINDIR" 
-            return (addSlashIfNeeded (trim dir))
-          `catch` (\_ -> return "")
-        
+    home <- getEnv "HOME" 
+    configInfo <-
+        readConfig (home ++ (slash : configFilename))
+    let tempDirFromEnv = case lookup temppathKey configInfo of
+                           Nothing -> "."
+                           Just xs -> xs
+    let basepath       = case lookup basepathKey configInfo of
+                           Nothing -> unknown
+                           Just xs -> xs
+    let configOptions  = extractOptions configInfo
+    putStrLn (show configOptions) 
     let initialState = 
-         State { tempDir = tempDirFromEnv
+         State { tempDir = slashify tempDirFromEnv
                , maybeModName = Nothing
                , maybeFileName = Nothing
-               , binDir = binDirFromEnv
+               , binDir = if basepath == unknown then "" else basepath ++ (slash:"bin") ++ [slash] -- Hope for $PATH
                , compOptions = []
                }
-    
+ 
     -- Logo
     putStrLn header
     
@@ -87,12 +130,12 @@ main = do
             exists <- doesFileExist filename
             existsWithHs <- doesFileExist (filename ++ ".hs")
             if exists || existsWithHs then
-                cmdLoadModule filename (initialState{ compOptions = rest })
+                cmdLoadModule filename (initialState{ compOptions = addStandardLVMPath basepath (configOptions ++ rest) })
               else
-                return initialState{ compOptions = args }
+                return initialState{ compOptions = addStandardLVMPath basepath (configOptions ++ args) }
         else
-            return initialState
-
+            return initialState{ compOptions = addStandardLVMPath basepath configOptions }
+    
     -- Enter read-eval-print loop
     loop stateAfterLoad
 
@@ -275,8 +318,8 @@ processExpression expression state = do
 ------------------------
 
 outputFileName, internalModule, interpreterMain :: String
-outputFileName = "InterpreterOutput.txt"        
-internalModule = "Interpreter"
+outputFileName = "___InterpreterOutput.txt"        
+internalModule = "___Interpreter"
 interpreterMain = "interpreter_main"
 
 internalModulePath :: State -> String
