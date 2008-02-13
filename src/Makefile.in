@@ -44,7 +44,7 @@ status :
 	@echo "               and into  $(hbindir)"
 	@echo "  Libraries will go into $(libdir)"
 	@echo "  Demos will go into     $(demodir)"
-	@echo "  A default .hint-$(VERSION).conf will be generated in ~"
+	@echo "  A default .hint-$(VERSION).conf will be generated in: $(HOME)" 
 	@echo "  This ensures that Hint and texthint will use the newly installed"
 	@echo "  version."
 	@echo "*******************************************************************"
@@ -480,8 +480,8 @@ install : smaller
 	touch $(libdir)/simple/*.lvm
 	touch $(libdir)/*.lvm
 	# Maybe at some point we want a separate simple script for this. As part of Elemental for example.
-	$(INSTALL) -m 666 hint.conf $(HOME)/.hint-$(VERSION).conf  # Unfortunately, this will have root ownership
-	ln -s -f $(HOME)/.hint-$(VERSION).conf $(HOME)/.hint.conf  # Makes it the default.
+	$(INSTALL) -m 666 hint.conf "$(HOME)/.hint-$(VERSION).conf"  # Unfortunately, this will have root ownership
+	ln -s -f "$(HOME)/.hint-$(VERSION).conf" "$(HOME)/.hint.conf"  # Makes it the default.
 
 movetohome: smaller
 	# *** Copying simple library sources to distribution directory
