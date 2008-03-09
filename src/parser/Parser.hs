@@ -307,7 +307,7 @@ decls   ->  "{" decl1 ";" ... ";" decln "}"    (n>=0)
 decls :: HParser Declarations
 decls =
     do
-        ds <- withLayout1 decl
+        ds <- withLayout decl
         return (CollectFunctionBindings.decls ds)
 
 {- 

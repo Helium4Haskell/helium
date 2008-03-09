@@ -53,11 +53,11 @@ listOfHeuristics options siblings path =
         [ similarNegation | Overloading `notElem` options ] ++   -- Avoid mix-up of -. and - if non-overloaded
         [ unifierVertex   | UnifierHeuristics `elem` options ]))
    | NoRepairHeuristics `notElem` options   -- All selectors are turned off when NoRepairHeuristics is on.
-   ] ++
+   ] ++ 
    [ inPredicatePath | Overloading `elem` options ] ++
    [ avoidApplicationConstraints
    , avoidNegationConstraints
-   -- , typeVariableInvolved {- I am not convinced yet. Bastiaan -}
+   -- , typeVariableInvolved -- I am not convinced yet. Bastiaan 
    , avoidTrustedConstraints
    , avoidFolkloreConstraints
    , firstComeFirstBlamed
