@@ -85,7 +85,7 @@ logger :: String -> Maybe ([String],String) -> [Option] -> IO ()
 logger logcode maybeSources options =
    let
      debugLogger = DebugLogger `elem` options
-     reallyLog   = LogSpecial `elem` options 
+     reallyLog   = AlertLogging `elem` options 
                     || 
                    EnableLogging `elem` options
      hostName    = case hostNameFromOptions options of
@@ -113,11 +113,11 @@ logger logcode maybeSources options =
                         (loggerADMINSEPARATOR : normalize version) ++
                         (loggerADMINSEPARATOR : normalize (unwords optionString)) ++ 
                         "\n" ++sources) -}      
-         let specialLogcode = if LogSpecial `elem` options then map toLower logcode else map toUpper logcode
+         let alertLogcode = if AlertLogging `elem` options then map toLower logcode else map toUpper logcode
          sendLogString hostName
                        portNumber
                        (normalizeName username ++ 
-                        (loggerADMINSEPARATOR : normalize specialLogcode) ++ 
+                        (loggerADMINSEPARATOR : normalize alertLogcode) ++ 
                         (loggerADMINSEPARATOR : normalize version) ++
                         (loggerADMINSEPARATOR : normalize (unwords optionString)) ++ 
                         "\n" ++sources

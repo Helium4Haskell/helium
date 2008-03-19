@@ -15,6 +15,8 @@ import Char
 import List(isPrefixOf, isSuffixOf)
 import Monad(when)
 import IO(stdout, hFlush)
+import Data.IORef       ( IORef, readIORef, newIORef, writeIORef )
+import System.IO.Unsafe ( unsafePerformIO )
 import System(system, getEnv, getArgs, exitWith, ExitCode(..))
 import OSSpecific(slash)
 import Directory
@@ -25,12 +27,12 @@ configFilename = ".hint.conf"
 basepathKey    = "basepath"
 temppathKey    = "temppath"
 unknown        = "<unknown>"
-passToHelium   = ["overloading", "loggingon", "lvmpaths", "additionalHeliumParameters"]
+passToHelium   = ["overloadingon", "loggingon", "lvmpaths", "additionalheliumparameters"]
 
 data State = 
     State
-    { maybeModName :: Maybe String
-    , maybeFileName :: Maybe String
+    { maybeModName   :: Maybe String
+    , maybeFileName  :: Maybe String
     , tempDir :: String
     , binDir :: String
     , compOptions :: [String] -- Contains both options for helium as well as lvmrun. 
@@ -41,6 +43,16 @@ unwordsBy :: String -> [String] -> String
 unwordsBy sep [] = ""
 unwordsBy sep [w] = w
 unwordsBy sep (w:ws) = w ++ sep ++ unwordsBy sep ws
+
+refToPreviousInvocation :: IORef (String, String)
+refToPreviousInvocation = unsafePerformIO (newIORef ("", ""))
+
+getPreviousInvocation :: (String, String)
+getPreviousInvocation = unsafePerformIO (readIORef refToPreviousInvocation)
+
+setPreviousInvocation :: String -> String -> IO ()
+setPreviousInvocation heliumInvocation redirect =  
+  writeIORef refToPreviousInvocation (heliumInvocation, redirect)
 
 header :: String
 header = unlines
@@ -62,16 +74,16 @@ extractOptions ((k,v):xs) =
    where
      rest = extractOptions xs
      tfm k = case k of 
-               "overloading" -> if v == "false" then
-                                   "--no-overloading"
-                                else
-                                   "--overloading"
-               "loggingon"   -> if v == "false" then
-                                  "--disable-logging"
-                                else
-                                   "--enable-logging"
-               "lvmpaths"    -> if v == "" then "" else "-P"++v
-               "additionalHeliumParameters" -> v
+               "overloadingon" -> if v == "false" then
+                                    "--no-overloading"
+                                  else
+                                    "--overloading"
+               "loggingon"     -> if v == "false" then
+                                    "--disable-logging"
+                                  else
+                                    "--enable-logging"
+               "lvmpaths"      -> if v == "" then "" else "-P"++v
+               "additionalheliumparameters" -> v
 
 
 slashify :: String -> String
@@ -108,7 +120,7 @@ main = do
                            Nothing -> unknown
                            Just xs -> xs
     let configOptions  = extractOptions configInfo
-    putStrLn (show configOptions) 
+    -- putStrLn (show configOptions) 
     let initialState = 
          State { tempDir = slashify tempDirFromEnv
                , maybeModName = Nothing
@@ -162,9 +174,8 @@ loop state = do
             return state
         expression -> do
             if null expression 
-              then return ()
+              then return state
               else processExpression expression state
-            return state
     loop newState
   where
     prompt :: State -> String
@@ -178,6 +189,7 @@ processCommand cmd rest state =
         't' -> cmdShowType     rest state
         'l' -> cmdLoadModule   rest state
         'r' -> cmdReloadModule      state
+        'a' -> cmdAlert             state
         'b' -> cmdBrowse            state
         '?' -> cmdHelp              state
         'q' -> do   putStrLn "[Leaving texthint]"
@@ -254,7 +266,7 @@ loadExistingModule fileName state = do
     writeInternalModule moduleContents newState
     (success, output) <- compileInternalModule "" newState
     putStr (removeEvidence output)
-    return newState    
+    return newState 
 
 ------------------------
 -- Command :r
@@ -267,6 +279,21 @@ cmdReloadModule state =
         Just name -> cmdLoadModule name state
 
 ------------------------
+-- Command :a 
+------------------------
+
+cmdAlert :: State -> IO State
+cmdAlert state = do
+    let (invocation, outputFilePath) = getPreviousInvocation
+    -- putStrLn (" -- " ++ invocation ++ " -- " ++ outputFilePath)
+    when (invocation /= "") 
+      (do 
+        (_, output) <- execCompileModule (invocation ++ " --alert -B --enable-logging ") outputFilePath
+        putStr (removeEvidence output)
+        return ())
+    return state
+
+------------------------
 -- Command :b
 ------------------------
 
@@ -276,11 +303,11 @@ cmdBrowse state =
         Nothing -> do
             let moduleContents = "import Prelude\n"
             writeInternalModule moduleContents state
-            (succes, output) <- compileInternalModule "-I3b" state
+            (succes, output) <- compileInternalModule "-I -3 -B" state
             putStr (unlines (safeTail (lines output)))
             return state
         Just modName -> do
-            (succes, output) <- compileModule modName "-i3b" state
+            (succes, output) <- compileModule modName "-i -3 -B" state
             putStr (unlines (safeTail (lines output)))
             return state
 
@@ -293,6 +320,7 @@ cmdHelp state = do
     putStrLn ":l <filename>    load module"
     putStrLn ":l               unload module"
     putStrLn ":r               reload module"
+    putStrLn ":a               redo previous compile and alert the Helium crew"
     putStrLn ":t <expression>  show type of expression"
     putStrLn ":b               browse definitions in current module"
     putStrLn ":! <command>     shell command"
@@ -303,7 +331,7 @@ cmdHelp state = do
 -- Expression 
 ------------------------
 
-processExpression :: String -> State -> IO ()
+processExpression :: String -> State -> IO State
 processExpression expression state = do
     removeLVM state
     let moduleContents = expressionModule expression state
@@ -312,14 +340,15 @@ processExpression expression state = do
     putStr (removeEvidence output)
     when success $ 
         executeInternalModule state
+    return state
 
 ------------------------
 -- Interpreter module 
 ------------------------
 
 outputFileName, internalModule, interpreterMain :: String
-outputFileName = "___InterpreterOutput.txt"        
-internalModule = "___Interpreter"
+outputFileName = "InterpreterOutput.txt"        
+internalModule = "Interpreter"
 interpreterMain = "interpreter_main"
 
 internalModulePath :: State -> String
@@ -342,12 +371,19 @@ compileInternalModule options state =
 compileModule :: String -> String -> State -> IO (Bool, String)
 compileModule fileName options state = do
     let outputFilePath = tempDir state ++ outputFileName
-    exitCode <- sys ("\"" ++ binDir state ++ "helium\" " ++ " " ++ unwords (compOptions state) 
-                          ++ " " ++ options ++ " " ++ fileName ++ "> " ++ outputFilePath)
+    -- putStrLn (fileName ++ "." ++ options ++ "." ++ unwords (compOptions state))
+    let heliumInvocation = "\"" ++ binDir state ++ "helium\" " ++ " " ++ unwords (compOptions state) 
+                                ++ " " ++ options ++ " " ++ fileName
+    setPreviousInvocation heliumInvocation outputFilePath
+    execCompileModule heliumInvocation outputFilePath
+
+execCompileModule :: String -> String -> IO (Bool, String)
+execCompileModule invocation outputFilePath = do
+    exitCode <- sys (invocation ++ " > " ++ outputFilePath)
     contents <- readFile outputFilePath
                 `catch` (\_ -> fatal ("Unable to read from file \"" ++ outputFilePath ++ "\""))
     return (exitCode == ExitSuccess, contents)
-
+    
 executeInternalModule :: State -> IO ()
 executeInternalModule state =
     executeModule (internalModulePath state) state

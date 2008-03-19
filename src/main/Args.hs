@@ -34,7 +34,7 @@ unwordsBy sep [w] = w
 unwordsBy sep (w:ws) = w ++ sep ++ unwordsBy sep ws
 
 -- Keep only the last of the overloading flags and the last of the logging enable flags.
--- The special flag overrides logging turned off.
+-- The alert flag overrides logging turned off.
 -- This function also collects all -P flags together and merges them into one. The order of the
 -- directories is the order in which they were specified.
 -- Adds Overloading flag to make sure that this is the default.
@@ -42,7 +42,7 @@ simplifyOptions :: [Option] -> [Option]
 simplifyOptions ops = 
     let
       revdefops = reverse (DisableLogging : (Overloading : ops)) -- Add defaults that will be ignored if explicit flags are present
-      modops    = if (LogSpecial `elem` revdefops) 
+      modops    = if (AlertLogging `elem` revdefops) 
                   then EnableLogging : revdefops -- Explicitly enable logging as well, just to be safe
                   else revdefops
     in
@@ -90,7 +90,7 @@ processArgs args =
       , Option "I" ["dump-all-information"] (NoArg DumpInformationForAllModules) "show information about all imported modules"
       , Option ""  ["enable-logging"]       (NoArg EnableLogging) "enable logging, overrides previous disable-logging"
       , Option ""  ["disable-logging"]      (NoArg DisableLogging) "disable logging (default), overrides previous enable-logging flags"
-      , Option "!" ["log-special"]          (NoArg LogSpecial) "logs with special flag, overrides all disable-logging flags"
+      , Option "a" ["alert"]                (NoArg AlertLogging) "compiles with alert flag in logging, overrides all disable-logging flags"
       , Option ""  ["overloading"]          (NoArg Overloading) "turn overloading on (default), overrides all previous no-overloading flags"
       , Option ""  ["no-overloading"]       (NoArg NoOverloading) "turn overloading off, overrides all previous overloading flags"
       , Option "P" ["lvmpath"]              (ReqArg LvmPath "PATH") "use PATH as search path"
@@ -146,7 +146,7 @@ processArgs args =
 data Option 
    -- Main options
    = BuildOne | BuildAll | DumpInformationForThisModule | DumpInformationForAllModules
-   | DisableLogging | EnableLogging | LogSpecial | Overloading | NoOverloading | LvmPath String | Verbose | NoWarnings | MoreOptions
+   | DisableLogging | EnableLogging | AlertLogging | Overloading | NoOverloading | LvmPath String | Verbose | NoWarnings | MoreOptions
    | Information String
    -- More options
    | StopAfterParser | StopAfterStaticAnalysis | StopAfterTypeInferencing | StopAfterDesugar
