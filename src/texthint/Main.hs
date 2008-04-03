@@ -44,6 +44,9 @@ unwordsBy sep [] = ""
 unwordsBy sep [w] = w
 unwordsBy sep (w:ws) = w ++ sep ++ unwordsBy sep ws
 
+
+-- The following three definitions are used to support the alert flag
+-- for redoing a compilation and logging the compilation in a special way.
 refToPreviousInvocation :: IORef (String, String)
 refToPreviousInvocation = unsafePerformIO (newIORef ("", ""))
 

@@ -80,7 +80,7 @@ ATTR Module Body Declarations Declaration FunctionBindings RightHandSide
 SEM Pattern 
     | List lhs.resolveErrors = @errs ++ @patterns.resolveErrors
            loc . (self, errs) = 
-                    case @range of
+                    case @range.self of
                         Range_Range Position_Unknown Position_Unknown -> 
                             resolvePattern @lhs.opTable @patterns.self
                         _ -> 
@@ -89,7 +89,7 @@ SEM Pattern
 SEM Expression
     | List lhs . resolveErrors = @errs ++ @expressions.resolveErrors
            loc . (self, errs) = 
-                    case @range of
+                    case @range.self of
                         Range_Range Position_Unknown Position_Unknown -> 
                             resolveExpression @lhs.opTable @expressions.self
                         _ -> (Expression_List @range.self @expressions.self, [])
