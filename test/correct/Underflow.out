@@ -1,15 +1,4 @@
 Compiling correct/Underflow.hs
 (1,1): Warning: Missing type signature: main :: [Float]
 Compilation successful with 1 warning
-[1.0,0.0001,1e-008,1e-012,1e-016,1e-020,1e-024,1e-028,1e-032,1e-036,1e-040,1e-044,1e-048,1e-052,1e-056,1e-060,1e-064,1e-068,1e-072,1e-076,1e-080,1e-084,1e-088,1e-092,1e-096,1e-100,1e-104,1e-108,1e-112,1e-116,1e-120,1e-124,1e-128,1e-132,1e-136,1e-140,1e-144,1e-148,1e-152,1e-156,1e-160,1e-164,1e-168,1e-172,1e-176,1e-180,1e-184,1e-188,1e-192,1e-196,1e-200,1e-204,1e-208,1e-212,1e-216,1e-220,1e-224,1e-228,1e-232,1e-236,1e-240,1e-244,1e-248,1e-252,1e-256,1e-260,1e-264,1e-268,1e-272,1e-276,1e-280,1e-284,1e-288,1e-292,1e-296,1e-300,1e-304,exception at "HeliumLang.$primShowFloat (.42)":
-  floating point underflow.
-
-trace:
-  demanded from "LvmLang.stringFromPacked"
-  demanded from "HeliumLang.hasPointOrE"
-  demanded from "HeliumLang.addPointZero"
-  demanded from "HeliumLang.$primAppend"
-  demanded from "HeliumLang.$primAppend"
-  demanded from "HeliumLang.$primPutChars"
-  demanded from "LvmLang.bindIO"
-  demanded from "LvmLang.unsafePerformIO"
+[1.0,0.0001,1e-08,1e-12,1e-16,1e-20,1e-24,1e-28,1e-32,1e-36,1e-40,1e-44,1e-48,1e-52,1e-56,1e-60,1e-64,1e-68,1e-72,1e-76,1e-80,1e-84,1e-88,1e-92,1e-96,1e-100,1e-104,1e-108,1e-112,1e-116,1e-120,1e-124,1e-128,1e-132,1e-136,1e-140,1e-144,1e-148,1e-152,1e-156,1e-160,1e-164,1e-168,1e-172,1e-176,1e-180,1e-184,1e-188,1e-192,1e-196,1e-200,1e-204,1e-208,1e-212,1e-216,1e-220,1e-224,1e-228,1e-232,1e-236,1e-240,1e-244,1e-248,1e-252,1e-256,1e-260,1e-264,1e-268,1e-272,1e-276,1e-280,1e-284,1e-288,1e-292,1e-296,1e-300,1e-304,1e-308,1e-312,1e-316,9.99989e-321,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]

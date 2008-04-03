@@ -1,5 +1,5 @@
 Compiling thompson/Thompson12.hs
 (3,5): Syntax error: 
     unexpected keyword 'type'
-    expecting declaration
+    expecting declaration or end of block (based on layout)
 Compilation failed with 1 error
