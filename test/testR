@@ -1,5 +1,5 @@
 #!/bin/sh
 
-$ERRORS=0
+ERRORS=0
 for f in runtimeerrors/*.hs          ; do /bin/sh testOne ${f%.hs}; ERRORS=$[$ERRORS+$?] ; done
 exit $ERRORS
