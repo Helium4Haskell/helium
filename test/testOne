@@ -1,4 +1,8 @@
+#!/bin/sh
+
 echo $1
-bash compileAndRun $* > result.txt 2>&1
+/bin/sh compileAndRun $* > result.txt 2>&1
 diff -b result.txt $1.out
+X=$?
 rm result.txt
+exit $X

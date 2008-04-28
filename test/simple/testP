@@ -1,1 +1,7 @@
-for f in parser/*.hs          ; do bash testOne ${f%.hs} ; done
+#!/bin/sh
+
+$ERRORS=0
+
+for f in parser/*.hs          ; do bash testOne ${f%.hs}; ERRORS=$[$ERRORS+$?] ; done
+
+exit $ERRORS

@@ -1,3 +1,5 @@
+#!/bin/sh
+
 for f in $1/*.hs ; 
 do 
 diff $f ../$f 2>/dev/null >/dev/null

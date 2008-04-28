@@ -1,1 +1,5 @@
-for f in staticwarnings/*.hs          ; do bash testOne ${f%.hs} ; done
+#!/bin/sh
+
+$ERRORS=0
+for f in staticwarnings/*.hs          ; do /bin/sh testOne ${f%.hs}; ERRORS=$[$ERRORS+$?] ; done
+exit $ERRORS

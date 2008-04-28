@@ -1,5 +1,6 @@
-#!/bin/bash
-for f in typeerrors/Strategies/*.hs  ; do echo $f; ./MakeOutput ${f%.hs} ; done
-for f in typeerrors/Edinburgh/*.hs  ; do echo $f; ./MakeOutput ${f%.hs} ; done
-for f in typeerrors/Examples/*.hs  ; do echo $f; ./MakeOutput ${f%.hs} ; done
-for f in typeerrors/Heuristics/*.hs  ; do echo $f; ./MakeOutput ${f%.hs} ; done
+#!/bin/sh
+
+for f in typeerrors/Strategies/*.hs  ; do echo $f; /bin/sh ./MakeOutput ${f%.hs} ; done
+for f in typeerrors/Edinburgh/*.hs  ; do echo $f; /bin/sh ./MakeOutput ${f%.hs} ; done
+for f in typeerrors/Examples/*.hs  ; do echo $f; /bin/sh ./MakeOutput ${f%.hs} ; done
+for f in typeerrors/Heuristics/*.hs  ; do echo $f; /bin/sh ./MakeOutput ${f%.hs} ; done
