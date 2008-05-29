@@ -1,6 +1,6 @@
 Compiling staticerrors/DupMaybeYouMeant.hs
-(1,2), (4,2), (7,2): Duplicated type signature "+!"
-(2,2), (5,2), (8,2): Duplicated definition "+!"
-(10,9): Undefined variable "-!"
-  Hint: Did you mean "!!", "$!" or "+!" ?
+(1,2), (4,2), (7,2): Duplicated type signature "+!!"
+(2,2), (5,2), (8,2): Duplicated definition "+!!"
+(10,9): Undefined variable "+!?"
+  Hint: Did you mean "+!!" ?
 Compilation failed with 3 errors

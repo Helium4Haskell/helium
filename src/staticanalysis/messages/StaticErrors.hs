@@ -14,7 +14,7 @@ import UHA_Syntax
 import UHA_Utils
 import UHA_Range
 import Messages
-import List        (intersperse, sort, partition, isSuffixOf, isPrefixOf)
+import List        (nub, intersperse, sort, partition, isSuffixOf, isPrefixOf)
 import Maybe       (fromJust)
 import Utils       (commaList, internalError, minInt, maxInt)
 import Top.Types
@@ -70,21 +70,30 @@ instance HasMessage Error where
       _                           -> internalError "StaticErrors.hs" 
                                                    "instance IsMessage Error" 
                                                    "unknown type of Error"
-         
+
+sensiblySimilar name inScope = 
+   let
+      similars = nub (findSimilar name inScope)
+   in
+      if length similars <= 3 then -- 3 is the magic number
+         similars
+      else
+         []
+     
 showError :: Error -> (MessageBlock {- oneliner -}, MessageBlocks {- hints -})
 showError anError = case anError of 
   
    NoFunDef TypeSignature name inScope ->
       ( MessageString ("Type signature for " ++ show (show name) ++ " without a definition ")
       , [ MessageString ("Did you mean "++prettyOrList (map (show . show) xs)++" ?")
-        | let xs = findSimilar name inScope, not (null xs) 
+        | let xs = sensiblySimilar name inScope, not (null xs) 
         ] 
       )
 
    NoFunDef Fixity name inScope ->
       ( MessageString ("Infix declaration for " ++ show (show name) ++ " without a definition ")
       , [ MessageString ("Did you mean "++prettyOrList (map (show . show) xs)++" ?")
-        | let xs = findSimilar name inScope, not (null xs) 
+        | let xs = sensiblySimilar name inScope, not (null xs)
         ]
       )
 
@@ -93,7 +102,7 @@ showError anError = case anError of
       , map MessageString hints
         ++
         [ MessageString ("Did you mean " ++ prettyOrList (map (show . show) xs) ++ " ?")
-        | let xs = findSimilar name inScope, not (null xs)
+        | let xs = sensiblySimilar name inScope, not (null xs)
         ]
       )
                          

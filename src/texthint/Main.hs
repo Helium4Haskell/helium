@@ -7,6 +7,11 @@
     
     The textual Helium interpreter
 
+    TODO: 
+       -Pass a .hint.conf as a parameter?
+        Make sure that helium itself does not allow it, explicitly forbids its use.
+        
+       
 -}
 
 module Main where
@@ -21,6 +26,7 @@ import System(system, getEnv, getArgs, exitWith, ExitCode(..))
 import OSSpecific(slash)
 import Directory
 import ConfigFile(Config, readConfig)
+import Args
 
 -- Constants for configuration files
 configFilename = ".hint.conf" 
@@ -110,7 +116,7 @@ addStandardLVMPath basepath config =
            []                   -> True
            ("--overloading":_)  -> True
            _                    -> False
-
+           
 main :: IO ()
 main = do
     home <- getEnv "HOME" 
@@ -131,24 +137,23 @@ main = do
                , binDir = if basepath == unknown then "" else basepath ++ (slash:"bin") ++ [slash] -- Hope for $PATH
                , compOptions = []
                }
- 
+
     -- Logo
     putStrLn header
     
     -- Load command-line parameter module
     -- If the final parameter happens to refer to a source name, then that file is loaded.
     args <- getArgs
+    (options, maybeFilename) <- processTexthintArgs args
+    -- We can now assume the options are correct, and if maybeFileName is a Just, then we load this as file.
+    -- This might fail as an ordinary load might. 
+    
     stateAfterLoad <-
-        if length args >= 1 then do
-            let filename = last args
-                rest = init args
-            exists <- doesFileExist filename
-            existsWithHs <- doesFileExist (filename ++ ".hs")
-            if exists || existsWithHs then
-                cmdLoadModule filename (initialState{ compOptions = addStandardLVMPath basepath (configOptions ++ rest) })
-              else
-                return initialState{ compOptions = addStandardLVMPath basepath (configOptions ++ args) }
-        else
+        case maybeFilename of
+          Just filename ->
+            cmdLoadModule filename 
+              (initialState{ compOptions = addStandardLVMPath basepath (configOptions ++ (map show options)) })
+          Nothing ->
             return initialState{ compOptions = addStandardLVMPath basepath configOptions }
     
     -- Enter read-eval-print loop

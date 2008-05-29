@@ -22,8 +22,8 @@ import TopSort
 
 main :: IO ()
 main = do
-    args                <- getArgs
-    (options, fullName) <- processArgs args
+    args                    <- getArgs
+    (options, Just fullName) <- processHeliumArgs args -- Can't fail, because processHeliumArgs checks it.
     
     lvmPathFromOptionsOrEnv <- case lvmPathFromOptions options of 
         Nothing -> getLvmPath

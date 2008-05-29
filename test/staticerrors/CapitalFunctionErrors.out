@@ -3,6 +3,7 @@ Compiling staticerrors/CapitalFunctionErrors.hs
 (1,1): Undefined constructor "X"
   Hint: Use identifiers starting with a lower case letter to define a function
         or a variable
+        Did you mean ":" ?
 (3,1): Undefined constructor "Const"
   Hint: Use identifiers starting with a lower case letter to define a function
         or a variable

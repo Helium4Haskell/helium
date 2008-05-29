@@ -4,11 +4,14 @@
     Maintainer  :  helium@cs.uu.nl
     Stability   :  experimental
     Portability :  portable
+
+    
 -}
 
 module Args
     ( Option(..)
-    , processArgs
+    , processHeliumArgs
+    , processTexthintArgs
     , lvmPathFromOptions
     , loggerDEFAULTHOST
     , loggerDEFAULTPORT
@@ -66,82 +69,107 @@ simplifyOptions ops =
                                                  else
                                                    opt : optionFilter fromList rest
 
-processArgs :: [String] -> IO ([Option], String)
-processArgs args =
+terminateWithMessage :: [Option] -> String -> [String] -> IO ([Option], Maybe String)
+terminateWithMessage options message errors = do
+    let experimentalOptions = ExperimentalOptions `elem` options
+    let moreOptions         = MoreOptions `elem` options || experimentalOptions
+    putStrLn message
+    putStrLn (unlines errors)
+    putStrLn $ "Helium compiler " ++ version
+    putStrLn (usageInfo "Usage: helium [options] file [options]" (optionDescription moreOptions experimentalOptions))
+    exitWith (ExitFailure 1)
+
+processTexthintArgs :: [String] -> IO ([Option], Maybe String)
+processTexthintArgs = basicProcessArgs 
+
+processHeliumArgs :: [String] -> IO ([Option], Maybe String)
+processHeliumArgs args = do
+    (options, maybeFiles) <- basicProcessArgs args
+    case maybeFiles of
+        Nothing ->
+          terminateWithMessage options "Error in invocation: the name of the module to be compiled seems to be missing." []
+        Just x ->
+          return (options, maybeFiles)
+
+-- The Maybe String indicates that a file may be missing                                           
+basicProcessArgs :: [String] -> IO ([Option], Maybe String)
+basicProcessArgs args =
     let (options, arguments, errors) = getOpt Permute (optionDescription True True) args
-        moreOptions         = MoreOptions `elem` options || experimentalOptions
-        experimentalOptions = ExperimentalOptions `elem` options
-    in if not (null errors) || length arguments /= 1 then do
-        putStrLn $ "Helium compiler " ++ version
-        putStrLn (usageInfo "Usage: helium [options] file" (optionDescription moreOptions experimentalOptions))
-        exitWith (ExitFailure 1)
+    in if not (null errors) then do
+          terminateWithMessage options "Error in invocation: list of parameters is erroneous.\nProblem(s):" 
+                               (map ("  " ++) errors)
     else
-        do 
-          let simpleOptions = simplifyOptions options
-          when (Verbose `elem` simpleOptions) $
-            putStrLn ("Options after simplification: " ++ (show simpleOptions)++"\n")
-          return (simpleOptions, (head arguments))
- where
-   optionDescription moreOptions experimentalOptions =
+        if (length arguments > 1) then
+            terminateWithMessage options ("Error in invocation: only one non-option parameter expected, but found instead:\n" ++ (unlines (map ("  "++) arguments))) []
+        else 
+            do 
+              let simpleOptions = simplifyOptions options
+              when (Verbose `elem` simpleOptions) $
+                putStrLn ("Options after simplification: " ++ (show simpleOptions)++"\n")
+              let argument = if null arguments then Nothing else Just (head arguments)
+              return (simpleOptions, argument)
+
+optionDescription moreOptions experimentalOptions =
       -- Main options
-      [ Option "b" ["build"]                (NoArg BuildOne) "recompile module even if up to date"
-      , Option "B" ["build-all"]            (NoArg BuildAll) "recompile all modules even if up to date"
-      , Option "i" ["dump-information"]     (NoArg DumpInformationForThisModule) "show information about this module"
-      , Option "I" ["dump-all-information"] (NoArg DumpInformationForAllModules) "show information about all imported modules"
-      , Option ""  ["enable-logging"]       (NoArg EnableLogging) "enable logging, overrides previous disable-logging"
-      , Option ""  ["disable-logging"]      (NoArg DisableLogging) "disable logging (default), overrides previous enable-logging flags"
-      , Option "a" ["alert"]                (NoArg AlertLogging) "compiles with alert flag in logging, overrides all disable-logging flags"
-      , Option ""  ["overloading"]          (NoArg Overloading) "turn overloading on (default), overrides all previous no-overloading flags"
-      , Option ""  ["no-overloading"]       (NoArg NoOverloading) "turn overloading off, overrides all previous overloading flags"
-      , Option "P" ["lvmpath"]              (ReqArg LvmPath "PATH") "use PATH as search path"
-      , Option "v" ["verbose"]              (NoArg Verbose) "show the phase the compiler is in"
-      , Option "w" ["no-warnings"]          (NoArg NoWarnings) "do not show warnings"
-      , Option "X" ["more-options"]         (NoArg MoreOptions) "show more compiler options"
-      , Option ""  ["info"]                 (ReqArg Information "NAME") "display information about NAME"
+      [ Option "b" [flag BuildOne]                      (NoArg BuildOne) "recompile module even if up to date"
+      , Option "B" [flag BuildAll]                      (NoArg BuildAll) "recompile all modules even if up to date"
+      , Option "i" [flag DumpInformationForThisModule]  (NoArg DumpInformationForThisModule) "show information about this module"
+      , Option "I" [flag DumpInformationForAllModules]  (NoArg DumpInformationForAllModules) "show information about all imported modules"
+      , Option ""  [flag EnableLogging]                 (NoArg EnableLogging) "enable logging, overrides previous disable-logging"
+      , Option ""  [flag DisableLogging]                (NoArg DisableLogging) "disable logging (default), overrides previous enable-logging flags"
+      , Option "a" [flag AlertLogging]                  (NoArg AlertLogging) "compiles with alert flag in logging, overrides all disable-logging flags"
+      , Option ""  [flag Overloading]                   (NoArg Overloading) "turn overloading on (default), overrides all previous no-overloading flags"
+      , Option ""  [flag NoOverloading]                 (NoArg NoOverloading) "turn overloading off, overrides all previous overloading flags"
+      , Option "P" [flag (LvmPath "_")]                 (ReqArg LvmPath "PATH") "use PATH as search path"
+      , Option "v" [flag Verbose]                       (NoArg Verbose) "show the phase the compiler is in"
+      , Option "w" [flag NoWarnings]                    (NoArg NoWarnings) "do notflag warnings"
+      , Option "X" [flag MoreOptions]                   (NoArg MoreOptions) "show more compiler options"
+      , Option ""  [flag (Information "_")]             (ReqArg Information "NAME") "display information about NAME"
       
       ]
       ++
       -- More options
       if not moreOptions then [] else
-      [ Option "1" ["stop-after-parsing"]          (NoArg StopAfterParser) "stop after parsing"
-      , Option "2" ["stop-after-static-analysis"]  (NoArg StopAfterStaticAnalysis) "stop after static analysis"
-      , Option "3" ["stop-after-type-inferencing"] (NoArg StopAfterTypeInferencing) "stop after type inferencing"
-      , Option "4" ["stop-after-desugaring"]       (NoArg StopAfterDesugar) "stop after desugaring into Core"    
-      , Option "t" ["dump-tokens"]                 (NoArg DumpTokens) "dump tokens to screen"
-      , Option "u" ["dump-uha"]                    (NoArg DumpUHA) "pretty print abstract syntax tree"
-      , Option "c" ["dump-core"]                   (NoArg DumpCore) "pretty print Core program"
-      , Option "C" ["save-core"]                   (NoArg DumpCoreToFile) "write Core program to file"
-      , Option ""  ["debug-logger"]                (NoArg DebugLogger) "show logger debug information"
-      , Option ""  ["hostname"]                    (ReqArg HostName "HOST") ("specify which HOST to use for logging (default " ++ loggerDEFAULTHOST ++ ")")
-      , Option ""  ["portnumber"]                  (ReqArg selectPortNr "PORT") ("select the PORT number for the logger (default: " ++ show loggerDEFAULTPORT ++ ")")
-      , Option "d" ["type-debug"]                  (NoArg DumpTypeDebug) "debug constraint-based type inference"         
-      , Option "W" ["algorithm-w"]                 (NoArg AlgorithmW) "use bottom-up type inference algorithm W"
-      , Option "M" ["algorithm-m"]                 (NoArg AlgorithmM) "use folklore top-down type inference algorithm M"
-      , Option ""  ["no-directives" ]              (NoArg DisableDirectives) "disable type inference directives"
-      , Option ""  ["no-repair-heuristics"]        (NoArg NoRepairHeuristics) "don't suggest program fixes"
+      [ Option "1" [flag StopAfterParser]               (NoArg StopAfterParser) "stop after parsing"
+      , Option "2" [flag StopAfterStaticAnalysis]       (NoArg StopAfterStaticAnalysis) "stop after static analysis"
+      , Option "3" [flag StopAfterTypeInferencing]      (NoArg StopAfterTypeInferencing) "stop after type inferencing"
+      , Option "4" [flag StopAfterDesugar]              (NoArg StopAfterDesugar) "stop after desugaring into Core"    
+      , Option "t" [flag DumpTokens]                    (NoArg DumpTokens) "dump tokens to screen"
+      , Option "u" [flag DumpUHA]                       (NoArg DumpUHA) "pretty print abstract syntax tree"
+      , Option "c" [flag DumpCore]                      (NoArg DumpCore) "pretty print Core program"
+      , Option "C" [flag DumpCoreToFile]                (NoArg DumpCoreToFile) "write Core program to file"
+      , Option ""  [flag DebugLogger]                   (NoArg DebugLogger) "show logger debug information"
+      , Option ""  [flag (HostName "_")]                (ReqArg HostName "HOST") ("specify which HOST to use for logging (default " ++ loggerDEFAULTHOST ++ ")")
+      , Option ""  [flag (PortNr 0)]                    (ReqArg selectPortNr "PORT") ("select the PORT number for the logger (default: " ++ show loggerDEFAULTPORT ++ ")")
+      , Option "d" [flag DumpTypeDebug]                 (NoArg DumpTypeDebug) "debug constraint-based type inference"         
+      , Option "W" [flag AlgorithmW]                    (NoArg AlgorithmW) "use bottom-up type inference algorithm W"
+      , Option "M" [flag AlgorithmM ]                   (NoArg AlgorithmM) "use folklore top-down type inference algorithm M"
+      , Option ""  [flag DisableDirectives]             (NoArg DisableDirectives) "disable type inference directives"
+      , Option ""  [flag NoRepairHeuristics]            (NoArg NoRepairHeuristics) "don't suggest program fixes"
       ]
       ++
       -- Experimental options
       if not experimentalOptions then [] else
-      [ Option "" ["experimental-options"] (NoArg ExperimentalOptions) "show experimental compiler options"
-      , Option "" ["kind-inferencing"]     (NoArg KindInferencing) "perform kind inference (experimental)"
-      , Option "" ["signature-warnings"]   (NoArg SignatureWarnings) "warn for too specific signatures (experimental)" 
-      , Option "" ["right-to-left"]        (NoArg RightToLeft) "right-to-left treewalk"
-      , Option "" ["no-spreading" ]        (NoArg NoSpreading) "do not spread type constraints (experimental)"
-      , Option "" ["treewalk-topdown" ]    (NoArg TreeWalkTopDown) "top-down treewalk"
-      , Option "" ["treewalk-bottomup"]    (NoArg TreeWalkBottomUp) "bottom up-treewalk"
-      , Option "" ["treewalk-inorder1"]    (NoArg TreeWalkInorderTopFirstPre) "treewalk (top;upward;child)"
-      , Option "" ["treewalk-inorder2"]    (NoArg TreeWalkInorderTopLastPre) "treewalk (upward;child;top)"
-      , Option "" ["treewalk-inorder3"]    (NoArg TreeWalkInorderTopFirstPost) "treewalk (top;child;upward)"
-      , Option "" ["treewalk-inorder4"]    (NoArg TreeWalkInorderTopLastPost) "treewalk (child;upward;top)"
-      , Option "" ["solver-simple"     ]   (NoArg SolverSimple) "a simple constraint solver"
-      , Option "" ["solver-greedy"     ]   (NoArg SolverGreedy) "a fast constraint solver"
-      , Option "" ["solver-typegraph"  ]   (NoArg SolverTypeGraph) "type graph constraint solver"
-      , Option "" ["solver-combination"]   (NoArg SolverCombination) "switches between \"greedy\" and \"type graph\""
-      , Option "" ["solver-chunks"     ]   (NoArg SolverChunks) "solves chunks of constraints (default)"
-      , Option "" ["unifier-heuristics"]   (NoArg UnifierHeuristics)  "use unifier heuristics (experimental)"
-      , Option "" ["select-cnr"]           (ReqArg selectCNR "CNR") "select constraint number to be reported"
+      [ Option "" [flag ExperimentalOptions]            (NoArg ExperimentalOptions) "show experimental compiler options"
+      , Option "" [flag KindInferencing]                (NoArg KindInferencing) "perform kind inference (experimental)"
+      , Option "" [flag SignatureWarnings]              (NoArg SignatureWarnings) "warn for too specific signatures (experimental)" 
+      , Option "" [flag RightToLeft]                    (NoArg RightToLeft) "right-to-left treewalk"
+      , Option "" [flag NoSpreading]                    (NoArg NoSpreading) "do not spread type constraints (experimental)"
+      , Option "" [flag TreeWalkTopDown]                (NoArg TreeWalkTopDown) "top-down treewalk"
+      , Option "" [flag TreeWalkBottomUp]               (NoArg TreeWalkBottomUp) "bottom up-treewalk"
+      , Option "" [flag TreeWalkInorderTopFirstPre]     (NoArg TreeWalkInorderTopFirstPre) "treewalk (top;upward;child)"
+      , Option "" [flag TreeWalkInorderTopLastPre]      (NoArg TreeWalkInorderTopLastPre) "treewalk (upward;child;top)"
+      , Option "" [flag TreeWalkInorderTopFirstPost]    (NoArg TreeWalkInorderTopFirstPost) "treewalk (top;child;upward)"
+      , Option "" [flag TreeWalkInorderTopLastPost]     (NoArg TreeWalkInorderTopLastPost) "treewalk (child;upward;top)"
+      , Option "" [flag SolverSimple]                   (NoArg SolverSimple) "a simple constraint solver"
+      , Option "" [flag SolverGreedy]                   (NoArg SolverGreedy) "a fast constraint solver"
+      , Option "" [flag SolverTypeGraph]                (NoArg SolverTypeGraph) "type graph constraint solver"
+      , Option "" [flag SolverCombination]              (NoArg SolverCombination) "switches between \"greedy\" and \"type graph\""
+      , Option "" [flag SolverChunks]                   (NoArg SolverChunks) "solves chunks of constraints (default)"
+      , Option "" [flag UnifierHeuristics]              (NoArg UnifierHeuristics)  "use unifier heuristics (experimental)"
+      , Option "" [flag (SelectConstraintNumber 0)]     (ReqArg selectCNR "CNR") "select constraint number to be reported"
       ]
+
 
 data Option 
    -- Main options
@@ -154,12 +182,79 @@ data Option
    | DebugLogger | HostName String | PortNr Int 
    | DumpTypeDebug | AlgorithmW | AlgorithmM | DisableDirectives | NoRepairHeuristics
    -- Experimental options
-   | ExperimentalOptions |KindInferencing | SignatureWarnings | RightToLeft | NoSpreading
+   | ExperimentalOptions | KindInferencing | SignatureWarnings | RightToLeft | NoSpreading
    | TreeWalkTopDown | TreeWalkBottomUp | TreeWalkInorderTopFirstPre | TreeWalkInorderTopLastPre
    | TreeWalkInorderTopFirstPost | TreeWalkInorderTopLastPost | SolverSimple | SolverGreedy
    | SolverTypeGraph | SolverCombination | SolverChunks | UnifierHeuristics
    | SelectConstraintNumber Int
- deriving (Eq, Show)
+ deriving (Eq)
+
+stripShow :: String -> String
+stripShow name = 
+  let 
+    parts = words name
+  in 
+    if null parts then 
+      ""
+    else
+      let
+        hd = head parts
+      in 
+        case hd of
+          ('-':('-':rest)) -> rest
+          _                -> error ("illegal parameter name " ++ hd)
+
+flag = stripShow . show
+
+instance Show Option where
+ show BuildOne                           = "--build"
+ show BuildAll                           = "--build-all"
+ show DumpInformationForThisModule       = "--dump-information"
+ show DumpInformationForAllModules       = "--dump-all-information"
+ show EnableLogging                      = "--enable-logging"
+ show DisableLogging                     = "--disable-logging"
+ show AlertLogging                       = "--alert"
+ show Overloading                        = "--overloading"
+ show NoOverloading                      = "--no-overloading"
+ show (LvmPath str)                      = "--lvmpath "++str
+ show Verbose                            = "--verbose"
+ show NoWarnings                         = "--no-warnings"
+ show MoreOptions                        = "--moreoptions"
+ show (Information str)                  = "--info "++str
+ show StopAfterParser                    = "--stop-after-parsing"
+ show StopAfterStaticAnalysis            = "--stop-after-static-analysis"
+ show StopAfterTypeInferencing           = "--stop-after-type-inferencing"
+ show StopAfterDesugar                   = "--stop-after-desugaring"
+ show DumpTokens                         = "--dump-tokens"
+ show DumpUHA                            = "--dump-uha"
+ show DumpCore                           = "--dump-core"
+ show DumpCoreToFile                     = "--save-core"
+ show DebugLogger                        = "--debug-logger"
+ show (HostName host)                    = "--hostshow " ++ host
+ show (PortNr port)                      = "--portnumber" ++ (show port)
+ show DumpTypeDebug                      = "--type-debug"
+ show AlgorithmW                         = "--algorithm-w"
+ show AlgorithmM                         = "--algorithm-m"
+ show DisableDirectives                  = "--no-directives"
+ show NoRepairHeuristics                 = "--no-repair-heuristics"
+ show ExperimentalOptions                = "--experimental-options"
+ show KindInferencing                    = "--kind-inferencing"
+ show SignatureWarnings                  = "--signature-warnings"
+ show RightToLeft                        = "--right-to-left"
+ show NoSpreading                        = "--no-spreading"
+ show TreeWalkTopDown                    = "--treewalk-topdown"
+ show TreeWalkBottomUp                   = "--treewalk-bottomup"
+ show TreeWalkInorderTopFirstPre         = "--treewalk-inorder1"
+ show TreeWalkInorderTopLastPre          = "--treewalk-inorder2"
+ show TreeWalkInorderTopFirstPost        = "--treewalk-inorder3"
+ show TreeWalkInorderTopLastPost         = "--treewalk-inorder4"
+ show SolverSimple                       = "--solver-simple"
+ show SolverGreedy                       = "--solver-greedy"
+ show SolverTypeGraph                    = "--solver-typegraph"
+ show SolverCombination                  = "--solver-combination"
+ show SolverChunks                       = "--solver-chunks"     
+ show UnifierHeuristics                  = "--unifier-heuristics"
+ show (SelectConstraintNumber cnr)       = "--select-cnr " ++ (show cnr)
 
 lvmPathFromOptions :: [Option] -> Maybe String
 lvmPathFromOptions [] = Nothing

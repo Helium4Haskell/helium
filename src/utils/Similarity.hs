@@ -10,7 +10,6 @@
 	- they differ in one character (filter and fi1ter)
 	- one has a character more than the other (concatMap and concattMap)
 	- two characters are swapped (filtre and filter)
-	If either of the identifiers is just one character long, they are by definition not similar.
 -}
 
 module Similarity(similar) where
@@ -23,19 +22,16 @@ similar :: String -> String -> Bool
 similar ('$':c:cs) _  | isAlpha c  = False
 similar _ ('$':c:cs)  | isAlpha c  = False
 -- normal test
-similar name1' name2' 
-    | length name1 <= 1 || length name2 <= 1
-        = False
-    | otherwise =
-        name1 == name2
-        ||
-        oneDiff name1 name2
-        || 
-        oneMore name1 name2
-        ||
-        oneMore name2 name1
-        || 
-        name1 `elem` swap name2
+similar name1' name2' =
+    name1 == name2
+    ||
+    oneDiff name1 name2
+    || 
+    oneMore name1 name2
+    ||
+    oneMore name2 name1
+    || 
+    name1 `elem` swap name2
     where
         name1 = map toUpper name1'
         name2 = map toUpper name2'

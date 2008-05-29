@@ -238,12 +238,12 @@ libraries:
 	@echo "****************************************************"
 	cd ../lib/simple; $(MAKE) 
 
-texthint: texthint/Main.o texthint/ConfigFile.o utils/OSSpecific.o
+texthint: texthint/Main.o texthint/ConfigFile.o main/Args.o main/Version.o utils/OSSpecific.o
 	@echo "****************************************************"
 	@echo "  TextHint: the textual Helium interpreter"
 	@echo "****************************************************"
 	$(HC) $(HC_OPTS) -o $(HELIUMBINDIR)/texthint$(EXE) texthint/Main.o \
-                      utils/OSSpecific.o texthint/ConfigFile.o
+                      main/Args.o main/Version.o utils/OSSpecific.o texthint/ConfigFile.o
 	$(STRIP) $(HELIUMBINDIR)/texthint$(EXE)
 
 texthint/Main.o: utils/OSSpecific.hi texthint/Main.hs texthint/ConfigFile.hi
@@ -479,7 +479,7 @@ install : smaller
 	$(INSTALL) -m 644 hint.conf $(basedir)
 	touch $(libdir)/simple/*.lvm
 	touch $(libdir)/*.lvm
-	# Maybe at some point we want a separate simple script for this. As part of Elemental for example.
+	# Maybe at some point we want a separate simple script for this. 
 	$(INSTALL) -m 666 hint.conf "$(HOME)/.hint-$(VERSION).conf"  # Unfortunately, this will have root ownership
 	ln -s -f "$(HOME)/.hint-$(VERSION).conf" "$(HOME)/.hint.conf"  # Makes it the default.
 

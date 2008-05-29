@@ -1,6 +1,6 @@
 main :: IO ()
 main
-  = do s <- readFile "correct/LargeFileOnMac.hs" 
+  = do s <- readFile "correct/PrintLargeFile.hs" 
        putStrLn s
 
 -----------------------------------------------------------------------------

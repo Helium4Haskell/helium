@@ -15,7 +15,7 @@ HELIUM
 	bijvoorbeeld showUnit of data Unit = ... proberen te definieren
 - :t in geval van typeringsfout
 - compilerondersteuning voor interpreter (expressie uitrekenen, type bepalen)
-- :b geeft rare feedback
+- type synonums worden teveel uitgevouwen volgens de bijbehorende test.
 
 LIBRARIES
 - show implementeren met shows, ShowS; efficienter

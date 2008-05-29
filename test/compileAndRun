@@ -1,2 +1,2 @@
-../bin/helium -b  --disable-logging --overloading -P"../lib" $1 && ../../lvm/src/runtime/lvmrun -P"${1%/*};../lib" $1
+../bin/helium -b  --disable-logging --overloading -P"../lib" $1 && ../../lvm/src/runtime/lvmrun -h7m -P"${1%/*};../lib" $1
 rm -f ${1%/*}/*.lvm

@@ -172,7 +172,7 @@ tan   :: Float -> Float
 -}
 
 absFloat :: Float -> Float
-absFloat x = if x < 0.0 then -. x else x
+absFloat x = if x < 0.0 then (-. x) else x
 
 signumFloat :: Float -> Int
 signumFloat x =

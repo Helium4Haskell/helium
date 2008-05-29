@@ -1,3 +1,4 @@
 Compiling typeerrors/Heuristics/UnaryMinus2.hs
 (1,12): Undefined variable "-."
+  Hint: Did you mean "-" or "." ?
 Compilation failed with 1 error
