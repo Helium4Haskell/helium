@@ -42,7 +42,7 @@ data State =
     , tempDir :: String
     , binDir :: String
     , compOptions :: [String] -- Contains both options for helium as well as lvmrun. 
-            -- For lvmrun only the -P options are selected to be passed on 
+            -- For lvmrun only the -P/--lvmpath options are selected to be passed on 
     }
 
 unwordsBy :: String -> [String] -> String
@@ -84,38 +84,36 @@ extractOptions ((k,v):xs) =
      rest = extractOptions xs
      tfm k = case k of 
                "overloadingon" -> if v == "false" then
-                                    "--no-overloading"
+                                    show NoOverloading
                                   else
-                                    "--overloading"
+                                    show Overloading
                "loggingon"     -> if v == "false" then
-                                    "--disable-logging"
+                                    show DisableLogging
                                   else
-                                    "--enable-logging"
-               "lvmpaths"      -> if v == "" then "" else "-P"++v
+                                    show EnableLogging
+               "lvmpaths"      -> if v == "" then "" else show (LvmPath v)
                "additionalheliumparameters" -> v
 
 
 slashify :: String -> String
 slashify xs = if last xs == slash then xs else xs ++ [slash]
 
--- Determines whether the overloading flag is really on (i.e., there is no 
--- such flag, or it is the final one.
+-- Adds link to the right Prelude. For that needs to verify Overloading or not.
 addStandardLVMPath :: String -> [String] -> [String]
 addStandardLVMPath basepath config = 
-  addPreludePath basepath ("-P." : config)
+  addPreludePath basepath (show (LvmPath ".") : config)
   where
     addPreludePath bp conf 
       | bp == unknown = conf
-      | otherwise     = ("-P" ++ bp ++ (slash:"lib") ++ [slash] ++  
-                        (if reallyOverloading config then "" else "simple"++[slash])) : config
+      | otherwise     = show (LvmPath (bp ++ (slash:"lib") ++ [slash] ++  
+                                      (if reallyOverloading config then "" else "simple"++[slash]))) : config
     reallyOverloading xs =
       let 
-        onlyOverloadingFlags = reverse (filter (\x -> x == "--overloading" || x == "--no-overloading") xs)
+        onlyOverloadingFlags = reverse (filter (\x -> x == (show Overloading) || x == (show NoOverloading)) xs)
       in 
         case onlyOverloadingFlags of
-           []                   -> True
-           ("--overloading":_)  -> True
-           _                    -> False
+           []     -> True
+           (x:_)  -> x == show Overloading
            
 main :: IO ()
 main = do
@@ -197,7 +195,7 @@ processCommand cmd rest state =
         't' -> cmdShowType     rest state
         'l' -> cmdLoadModule   rest state
         'r' -> cmdReloadModule      state
-        'a' -> cmdAlert             state
+        'a' -> cmdAlert        rest state
         'b' -> cmdBrowse            state
         '?' -> cmdHelp              state
         'q' -> do   putStrLn "[Leaving texthint]"
@@ -290,13 +288,13 @@ cmdReloadModule state =
 -- Command :a 
 ------------------------
 
-cmdAlert :: State -> IO State
-cmdAlert state = do
+cmdAlert :: String -> State -> IO State
+cmdAlert msg state = do
     let (invocation, outputFilePath) = getPreviousInvocation
     -- putStrLn (" -- " ++ invocation ++ " -- " ++ outputFilePath)
     when (invocation /= "") 
       (do 
-        (_, output) <- execCompileModule (invocation ++ " --alert -B --enable-logging ") outputFilePath
+        (_, output) <- execCompileModule (invocation ++ " --alert \"" ++ msg ++ "\" -b --enable-logging ") outputFilePath
         putStr (removeEvidence output)
         return ())
     return state
@@ -328,7 +326,7 @@ cmdHelp state = do
     putStrLn ":l <filename>    load module"
     putStrLn ":l               unload module"
     putStrLn ":r               reload module"
-    putStrLn ":a               redo previous compile and alert the Helium crew"
+    putStrLn ":a <message>     redo previous compile and alert the Helium crew (message optional)"
     putStrLn ":t <expression>  show type of expression"
     putStrLn ":b               browse definitions in current module"
     putStrLn ":! <command>     shell command"
@@ -387,6 +385,7 @@ compileModule fileName options state = do
 
 execCompileModule :: String -> String -> IO (Bool, String)
 execCompileModule invocation outputFilePath = do
+    putStrLn invocation
     exitCode <- sys (invocation ++ " > " ++ outputFilePath)
     contents <- readFile outputFilePath
                 `catch` (\_ -> fatal ("Unable to read from file \"" ++ outputFilePath ++ "\""))
@@ -396,17 +395,17 @@ executeInternalModule :: State -> IO ()
 executeInternalModule state =
     executeModule (internalModulePath state) state
 
--- We do compensate for the fact that helium allows -P... and -P ... and that lvmrun only allows the former. 
-lvmOptionsFilter :: [String] -> [String]
-lvmOptionsFilter []          = []
-lvmOptionsFilter ["-P"]      = []
-lvmOptionsFilter ("-P" : xs) = (head xs) : lvmOptionsFilter (tail xs)
-lvmOptionsFilter (('-' : 'P' : ys) : xs) = ys : lvmOptionsFilter xs
-lvmOptionsFilter (x:xs)      = lvmOptionsFilter xs
+lvmOptionsFilter :: [String] -> String
+lvmOptionsFilter opts = 
+  case lvmPathFromOptions (simplifyOptions (argsToOptions opts)) of
+    Nothing      -> ""
+    (Just paths) -> "-P" ++ paths
 
 executeModule :: String -> State -> IO ()
 executeModule fileName state = do
-    sys ("\"" ++ binDir state ++ "lvmrun\" -P" ++ unwordsBy ":" (lvmOptionsFilter (compOptions state)) ++ " "++ fileName)
+    let invocation = "\"" ++ binDir state ++ "lvmrun\" " ++ lvmOptionsFilter (compOptions state) ++ " \""++ fileName ++ "\""
+    putStrLn invocation
+    sys invocation
     return ()
 
 removeLVM :: State -> IO ()

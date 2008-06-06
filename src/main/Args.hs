@@ -5,7 +5,6 @@
     Stability   :  experimental
     Portability :  portable
 
-    
 -}
 
 module Args
@@ -14,9 +13,12 @@ module Args
     , processTexthintArgs
     , lvmPathFromOptions
     , loggerDEFAULTHOST
+    , simplifyOptions
+    , argsToOptions
     , loggerDEFAULTPORT
     , hostNameFromOptions
     , portNrFromOptions
+    , hasAlertOption
     ) where
 
 import System
@@ -40,14 +42,13 @@ unwordsBy sep (w:ws) = w ++ sep ++ unwordsBy sep ws
 -- The alert flag overrides logging turned off.
 -- This function also collects all -P flags together and merges them into one. The order of the
 -- directories is the order in which they were specified.
--- Adds Overloading flag to make sure that this is the default.
 simplifyOptions :: [Option] -> [Option]
 simplifyOptions ops = 
     let
-      revdefops = reverse (DisableLogging : (Overloading : ops)) -- Add defaults that will be ignored if explicit flags are present
-      modops    = if (AlertLogging `elem` revdefops) 
-                  then EnableLogging : revdefops -- Explicitly enable logging as well, just to be safe
-                  else revdefops
+      revdefops = reverse ops
+      modops    = case alertMessageFromOptions revdefops of
+                    (Just _)  ->  EnableLogging : revdefops -- Explicitly enable logging as well, just to be safe
+                    Nothing   ->  revdefops
     in
       collectPaths (keepFirst [Overloading, NoOverloading] (keepFirst [EnableLogging, DisableLogging] modops)) [] []
           where
@@ -80,20 +81,27 @@ terminateWithMessage options message errors = do
     exitWith (ExitFailure 1)
 
 processTexthintArgs :: [String] -> IO ([Option], Maybe String)
-processTexthintArgs = basicProcessArgs 
+processTexthintArgs = basicProcessArgs []
 
 processHeliumArgs :: [String] -> IO ([Option], Maybe String)
 processHeliumArgs args = do
-    (options, maybeFiles) <- basicProcessArgs args
+    (options, maybeFiles) <- basicProcessArgs [DisableLogging, Overloading] args
     case maybeFiles of
         Nothing ->
           terminateWithMessage options "Error in invocation: the name of the module to be compiled seems to be missing." []
         Just x ->
           return (options, maybeFiles)
 
+-- Sometimes you know the options are correct. Then you can use this.
+argsToOptions args = 
+    let 
+      (opts,_,_) = getOpt Permute (optionDescription True True) args
+    in 
+      opts
+    
 -- The Maybe String indicates that a file may be missing                                           
-basicProcessArgs :: [String] -> IO ([Option], Maybe String)
-basicProcessArgs args =
+basicProcessArgs :: [Option] -> [String] ->  IO ([Option], Maybe String)
+basicProcessArgs defaults args =
     let (options, arguments, errors) = getOpt Permute (optionDescription True True) args
     in if not (null errors) then do
           terminateWithMessage options "Error in invocation: list of parameters is erroneous.\nProblem(s):" 
@@ -103,7 +111,7 @@ basicProcessArgs args =
             terminateWithMessage options ("Error in invocation: only one non-option parameter expected, but found instead:\n" ++ (unlines (map ("  "++) arguments))) []
         else 
             do 
-              let simpleOptions = simplifyOptions options
+              let simpleOptions = simplifyOptions (defaults ++ options)
               when (Verbose `elem` simpleOptions) $
                 putStrLn ("Options after simplification: " ++ (show simpleOptions)++"\n")
               let argument = if null arguments then Nothing else Just (head arguments)
@@ -117,14 +125,14 @@ optionDescription moreOptions experimentalOptions =
       , Option "I" [flag DumpInformationForAllModules]  (NoArg DumpInformationForAllModules) "show information about all imported modules"
       , Option ""  [flag EnableLogging]                 (NoArg EnableLogging) "enable logging, overrides previous disable-logging"
       , Option ""  [flag DisableLogging]                (NoArg DisableLogging) "disable logging (default), overrides previous enable-logging flags"
-      , Option "a" [flag AlertLogging]                  (NoArg AlertLogging) "compiles with alert flag in logging, overrides all disable-logging flags"
+      , Option "a" [flag (Alert "")]                   (ReqArg Alert "MESSAGE") "compiles with alert flag in logging; MESSAGE specifies the reason for the alert."
       , Option ""  [flag Overloading]                   (NoArg Overloading) "turn overloading on (default), overrides all previous no-overloading flags"
       , Option ""  [flag NoOverloading]                 (NoArg NoOverloading) "turn overloading off, overrides all previous overloading flags"
-      , Option "P" [flag (LvmPath "_")]                 (ReqArg LvmPath "PATH") "use PATH as search path"
+      , Option "P" [flag (LvmPath "")]                 (ReqArg LvmPath "PATH") "use PATH as search path"
       , Option "v" [flag Verbose]                       (NoArg Verbose) "show the phase the compiler is in"
       , Option "w" [flag NoWarnings]                    (NoArg NoWarnings) "do notflag warnings"
       , Option "X" [flag MoreOptions]                   (NoArg MoreOptions) "show more compiler options"
-      , Option ""  [flag (Information "_")]             (ReqArg Information "NAME") "display information about NAME"
+      , Option ""  [flag (Information "")]             (ReqArg Information "NAME") "display information about NAME"
       
       ]
       ++
@@ -139,7 +147,7 @@ optionDescription moreOptions experimentalOptions =
       , Option "c" [flag DumpCore]                      (NoArg DumpCore) "pretty print Core program"
       , Option "C" [flag DumpCoreToFile]                (NoArg DumpCoreToFile) "write Core program to file"
       , Option ""  [flag DebugLogger]                   (NoArg DebugLogger) "show logger debug information"
-      , Option ""  [flag (HostName "_")]                (ReqArg HostName "HOST") ("specify which HOST to use for logging (default " ++ loggerDEFAULTHOST ++ ")")
+      , Option ""  [flag (HostName "")]                (ReqArg HostName "HOST") ("specify which HOST to use for logging (default " ++ loggerDEFAULTHOST ++ ")")
       , Option ""  [flag (PortNr 0)]                    (ReqArg selectPortNr "PORT") ("select the PORT number for the logger (default: " ++ show loggerDEFAULTPORT ++ ")")
       , Option "d" [flag DumpTypeDebug]                 (NoArg DumpTypeDebug) "debug constraint-based type inference"         
       , Option "W" [flag AlgorithmW]                    (NoArg AlgorithmW) "use bottom-up type inference algorithm W"
@@ -174,7 +182,7 @@ optionDescription moreOptions experimentalOptions =
 data Option 
    -- Main options
    = BuildOne | BuildAll | DumpInformationForThisModule | DumpInformationForAllModules
-   | DisableLogging | EnableLogging | AlertLogging | Overloading | NoOverloading | LvmPath String | Verbose | NoWarnings | MoreOptions
+   | DisableLogging | EnableLogging | Alert String | Overloading | NoOverloading | LvmPath String | Verbose | NoWarnings | MoreOptions
    | Information String
    -- More options
    | StopAfterParser | StopAfterStaticAnalysis | StopAfterTypeInferencing | StopAfterDesugar
@@ -190,19 +198,7 @@ data Option
  deriving (Eq)
 
 stripShow :: String -> String
-stripShow name = 
-  let 
-    parts = words name
-  in 
-    if null parts then 
-      ""
-    else
-      let
-        hd = head parts
-      in 
-        case hd of
-          ('-':('-':rest)) -> rest
-          _                -> error ("illegal parameter name " ++ hd)
+stripShow name = tail (tail (takeWhile ('=' /=) name))
 
 flag = stripShow . show
 
@@ -213,14 +209,14 @@ instance Show Option where
  show DumpInformationForAllModules       = "--dump-all-information"
  show EnableLogging                      = "--enable-logging"
  show DisableLogging                     = "--disable-logging"
- show AlertLogging                       = "--alert"
+ show (Alert str)                        = "--alert=\"" ++ str ++ "\"" -- May contain spaces
  show Overloading                        = "--overloading"
  show NoOverloading                      = "--no-overloading"
- show (LvmPath str)                      = "--lvmpath "++str
+ show (LvmPath str)                      = "--lvmpath=\"" ++ str ++ "\"" -- May contain spaces
  show Verbose                            = "--verbose"
  show NoWarnings                         = "--no-warnings"
  show MoreOptions                        = "--moreoptions"
- show (Information str)                  = "--info "++str
+ show (Information str)                  = "--info=" ++ str
  show StopAfterParser                    = "--stop-after-parsing"
  show StopAfterStaticAnalysis            = "--stop-after-static-analysis"
  show StopAfterTypeInferencing           = "--stop-after-type-inferencing"
@@ -230,8 +226,8 @@ instance Show Option where
  show DumpCore                           = "--dump-core"
  show DumpCoreToFile                     = "--save-core"
  show DebugLogger                        = "--debug-logger"
- show (HostName host)                    = "--hostshow " ++ host
- show (PortNr port)                      = "--portnumber" ++ (show port)
+ show (HostName host)                    = "--host=" ++ host
+ show (PortNr port)                      = "--port=" ++ (show port)
  show DumpTypeDebug                      = "--type-debug"
  show AlgorithmW                         = "--algorithm-w"
  show AlgorithmM                         = "--algorithm-m"
@@ -254,7 +250,7 @@ instance Show Option where
  show SolverCombination                  = "--solver-combination"
  show SolverChunks                       = "--solver-chunks"     
  show UnifierHeuristics                  = "--unifier-heuristics"
- show (SelectConstraintNumber cnr)       = "--select-cnr " ++ (show cnr)
+ show (SelectConstraintNumber cnr)       = "--select-cnr=" ++ (show cnr)
 
 lvmPathFromOptions :: [Option] -> Maybe String
 lvmPathFromOptions [] = Nothing
@@ -273,6 +269,15 @@ portNrFromOptions :: [Option] -> Maybe Int
 portNrFromOptions [] = Nothing
 portNrFromOptions (PortNr pn: _) = Just pn
 portNrFromOptions (_ : rest) = portNrFromOptions rest
+
+-- Extracts the alert message. Returns Nothing if such is not present.
+alertMessageFromOptions :: [Option] -> Maybe String
+alertMessageFromOptions [] = Nothing
+alertMessageFromOptions (Alert message: _) = Just message
+alertMessageFromOptions (_ : rest) = alertMessageFromOptions rest
+
+hasAlertOption :: [Option] -> Bool
+hasAlertOption options = alertMessageFromOptions options == Nothing
 
 selectPortNr :: String -> Option
 selectPortNr pn 
