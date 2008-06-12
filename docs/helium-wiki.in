@@ -1,0 +1,346 @@
+%TOC%
+
+<?php 
+
+function helium_exec($filename, $execline) {
+  $toname = 'Simple.hs';
+  if (!copy($filename, $toname)) {
+    print "<p>Error copying $filename</p>\n";
+  }
+  system("$execline $toname");
+}
+
+?>
+
+---+++ The basics
+
+In this short manual, we describe how the Helium compiler can be used, in particular, describe the parameters that can be 
+passed to Helium 1.7 (there are some notable differences with earlier versions of Helium).
+
+For purposes of experimentation, start off by creating a file, say =Simple.hs= and enter
+<pre>
+<?php 
+helium_exec('Simple1.hs', 'cat');
+?>
+</pre>
+
+When you run =helium= from the prompt without any parameter you obtain a short description of the most
+often used parameters (and it indicates that an error has occurred, because =helium= really expects a module to be compiled; from now on I shall omit this part of the message).
+
+<pre>
+<?php
+system("helium");
+?>
+</pre>
+
+The compiler lists its most important option and its version number. Every program needs
+the =Prelude= so you always in the location of =Prelude.lvm=. The =-P= flag serves that purpose
+To compile the program you write
+
+<pre>
+helium -P /usr/local/helium/lib/ Simple.hs
+</pre>
+
+which typically will results in
+
+<pre>
+<?php 
+helium_exec('Simple1.hs', 'helium -P /usr/local/helium/lib/');
+?>
+</pre>
+
+where we assume that you have installed files such as =Prelude.hs= in the directory 
+=/usr/local/helium/lib/=, which happens to be the standard path. If you installed
+Helium in some other place, you probably need to pass a different directory.
+
+The need to pass these paths is one of the reasons why using the Helium compiler is discouraged;
+if you want to develop programs, you typically want to use =texthint= or =Hint=.
+However, the compiler has its uses: it can be called from both interpreters, that therefore need
+to know very little about the compilation process, and it can be called from scripts and other programs
+besides the ones provided by the Helium system. Even if you are not planning to use =helium= directly,
+be sure to continue to read this section until its end, because the parameters discussed here can also
+be of use in the context of Hint and texthint.
+
+The use of paths is even a bit more complicated than you might have thought at first. The default use of 
+=helium= allows overloading (ad hoc polymorphism) by means of type classes (like Haskell 98, but in a restricted form,
+see [[Differences With Haskell 98]]), so that you can use the same symbol (==) to compare values of different types. 
+Because of the complications that type classes may give when it comes to error messages, novice programmers can 
+disallow overloading (pass =--no-overloading= along with the options). Therefore, the modules provided by Helium
+(such as the Prelude) have been povided in two forms: one that includes type classes and one
+that does not. Therefore, when you compile the =Simple= module without overloading you  write
+
+<pre>
+helium -P /usr/local/helium/lib/simple --no-overloading -B Simple.hs
+</pre>
+
+The modification to the path (add /simple) ensures that the non-overloading Prelude is used, the 
+=--no-overloading= flag does as told, and we'll get to the  =-B= option later.
+
+This brings us to a number of useful things to know about the Helium compiler.
+The first is that it compiles =.hs= files to =.lvm= files that can then be run 
+with an interpreter, called =lvmrun=. 
+If you are familiar with programming Java, then =helium= is like =javac= and =lvmrun= is like =java=.
+If you want to run the result of the previous non-overloaded compilation, you write
+
+<pre>
+lvmrun -P /usr/local/helium/lib/simple Simple.lvm
+</pre>
+
+See how you need to pass the same =-P= option to =lvmrun=, as you did to =helium=. The interpreter =lvmrun= by 
+itself can be passed numerous parameters (simply run =lvmrun= without parameters to get an overview), 
+but they are typically of a rather technical nature, and we will not look into that here further.
+
+Another thing to note, is that when you run =helium= on a correct Haskell source file twice in succession, without
+changing it in the meantime, then it  will say
+
+<pre>
+Simple is up to date
+</pre>
+
+The reason is that =helium= sees that the =.hs= file is older than the corresponding 
+=.lvm= file, and therefore sees no need to compile it. However, when we recompiled 
+=Simple.hs= earlier, the file had not changed, but we wanted
+to recompile it with  different parameters. This is why we passed along the =-B= option
+(=-b= would have worked as well in this case). When passed, the compiler does not perform the check to see 
+if recompilation is necessary, it simply recompiles. The additional feature of =-B= over =-b=, is that when your 
+source module also imports other modules, then under =-B= these will also be recompiled, 
+but not if you only pass =-b=.
+
+The Helium compiler tends to be something of a wise guy. For example, in our compilation, he continues
+to complain that =main= does not have a type signature, and it even tells you what it is, by means
+of a warning that it provides. To get rid of this and all other possible warnings, write
+
+<pre>
+helium -P/usr/local/helium/lib/ -b -w Simple.hs
+</pre>
+
+We *strongly* advise against turning the warnings off, and we also advise against not writing a type signature for every top-level
+definition. Other useful warnings that helium gives are when you shadow an identifier (e.g., defining a local variable with exactly
+the same name as a top-level identifier), when you introduce variables that you never use, 
+or when you omit a case in a pattern match. Many of these warnings point to real bugs in your code.
+
+For example when you modify =Simple.hs= like so
+
+<pre>
+<?php 
+helium_exec('Simple2.hs', 'cat');
+?>
+</pre>
+
+and run <pre>helium -P/usr/local/helium/lib/ -b Simple.hs</pre>
+then you obtain
+
+<pre>
+<?php 
+helium_exec('Simple2.hs', 'helium -P/usr/local/helium/lib/ -b');
+?>
+</pre>
+
+Note how the compiler implicitly informs us that we mispelled =empty=, because
+it indicates that we forgot a signature for both =empty= and =emty= and
+it says that we omitted the cons pattern case for =empty=. 
+It also says that =xs= is never used, but in this case that happened to be our intention.
+
+Now, if we change the definition of =main= to =main = 2 ++ 4=, then we obtain
+
+<pre>
+<?php 
+helium_exec('Simple3.hs', 'helium -P/usr/local/helium/lib/ -b');
+?>
+</pre>
+
+
+In other words, errors take precedence over warnings (in most cases). Only when 
+you fix the problem, deleting the extra =+=, will the warnings come back.
+
+If Helium seems to behave erratically (you pass parameters to it, but it does not seem to listen) or you simply
+want to know what it is up to, then pass the =-v= flag. First off, it will show you what settings
+have been made from the command line, and it will show the passes in the compiler so that if things go wrong you get a first indication
+of where things go wrong. For example, running =helium -P /usr/local/helium/lib/ -b -v Simple.hs= gives
+
+<pre>
+<?php 
+helium_exec('Simple3.hs', 'helium -P/usr/local/helium/lib/ -b -v');
+?>
+</pre>
+
+The first line shows which path will be used to search for lvm files, that logging is disabled, overloading is on,
+the file must be built, even if it already happens to seem up-to-date, and that the compilation is verbose (duh).
+(Note that even if you pass in the abbreviated form of the commands, the long version of the compiler option
+is displayed.) Then the compilation process starts as usual, but this time the compiler lists the phases that it is in.
+
+Note that the type error message hints at replacing =++= with =+= to fix the problem. This is indeed one of the 
+strong points of =helium=, that it can add this kind of informed hints to the error messages it provides.
+
+As we can see in the previous example, the default for overloading is on. It can be turned off by writing =--no-overloading=:
+<pre>
+helium -P/usr/local/helium/lib/ -b -v --no-overloading Simple.hs
+</pre>
+Indeed, when we do that we obtain
+<pre>
+<?php 
+helium_exec('Simple3.hs', 'helium -P/usr/local/helium/lib/ -b -v --no-overloading');
+?>
+</pre>
+
+As you can see, the option list now says that overloading is turned off. This turns out to be a problem, because the 
+directory that is passed along with =-P= is still the one that contains the overloaded Prelude. 
+Fortunately, =helium= tells us that that is the case (it can not know for sure 
+where the right Prelude resides, so it won't go looking for it).
+You need to pass the correct path yourself, like this:
+
+<pre>
+helium -P/usr/local/helium/lib/simple -b -v --no-overloading Simple.hs
+
+<?php 
+helium_exec('Simple3.hs', 'helium -P/usr/local/helium/lib/simple -b -v --no-overloading');
+?>
+</pre>
+
+You might wonder what happens if you write 
+
+<pre>
+helium -P /usr/local/helium/lib -b -v --no-overloading --overloading Simple.hs
+</pre>
+
+In the case of the overloading flags, the last one wins. This rule also applies to other toggle/boolean
+flags such as =--enable-logging_= and =--disable-logging=. The rule does _not_ apply to the =-P= option:
+every occurrence of the =-P= option _adds_ to the list of known lvm paths. So you can write
+
+<pre>
+helium -P /usr/local/helium/lib -P . -b -v --no-overloading --overloading Simple.hs
+</pre>
+
+and it will look for =.lvm= files in both =.= and =/usr/local/helium/lib=.
+Note that the space between the =-P= and the path is optional. If you separate them by a space, then
+you can still use tab-completion to look for the right directory (if you happen to use a terminal that 
+supports tab-completion, of course).
+
+There is one complication with having two modes for compilation: if you run an lvm file compiled
+with, say, overloading turned on and run with the libraries with overloading turned off, then you may
+obtain some obscure error messages like the following:
+
+<pre>
+exception: unable to load module "Prelude":
+  module doesn't export symbol "$dictNumInt".
+</pre>
+
+The solution is to force recompilation of your source modules (the criterium =helium= uses is whether
+the =.lvm= file is newer than the source, not that you pass different parameters).
+
+---+++ The logging facility and the alert flag
+
+One of the more innovative features is that every compile can be logged
+by the _helium_ compiler to a (logging) server. We have such a server, implemented in Java, that can be obtained
+from us on demand; it is not part of the standard Helium system.  The idea of logging is that enough 
+information is sent to the server, to be able to recreate exactly the logged compilation. This amounts to
+sending by means of socket communication, the module, the modules it imports (and so on), a description
+of the version of the compiler, and the parameters that were passed to the compiler. More details can be
+found in the technical report on the Helium logger in the [[Publications][publications section]]. Our purpose
+in logging Helium programs was to be able, at some point, to validate the work we had done on improving
+type error messages. Since then we have come to the conclusion that loggings can be used for many other
+purposes besides. One of these directly relates to a flag of the compiler that is new to version 1.7: the =--alert=
+flag (or =-a=). Consider the following program:
+
+<pre>
+main = 2 +. 4
+</pre>
+ 
+The output with overloading turned on, was at some point that it suggested to 
+replace =+.= with =++=. A user might consider this to be a bug, because replacing =+.= with =++= 
+will result in a type error. He can alert the person who manages the server by redoing the compilation
+and adding the alert flag. Even if logging is turned off by default, the compiler will attempt to log the compile
+this time, and will also make sure that that logging is tagged in a way to make it easy for 
+the person who manages the logger to find out whether somebody tried to make him aware of certain things.
+Besides alerting us to (seemingly) bad error messages, the facility can also be used to alert the manager
+to particularly good or clever error messages (by all means, do!).
+
+To come back to the "bug" that the programmer thought he had observed.
+Although his reasoning is correct, and we would prefer the type inferencer
+to come up with a better suggestion, the type inferencer never comes into play, because =+.= is not
+an operator in overloaded mode (it happens to be an operator in non-overloaded mode). 
+What happens instead is that when you write an identifier/operator that is not 
+in scope, the compiler will look for identifiers and operators with a similar
+name. He will suggest possible replacements, unless these replacements are very 
+short identifiers (length less than or equal
+to one; this is why =+= is not suggested as a replacement). In recent versions
+of Helium this has been changed somewhat: the rule is currently that we report all identifiers that differ in
+at most one position from the unknown identifier, unless there are too many candidates that qualify. Then no
+suggestion is made. In the example this results in the following:
+
+<pre>
+<?php 
+helium_exec('Simple4.hs', 'helium -P/usr/local/helium/lib/ -b --overloading');
+?>
+</pre>
+
+---+++ Advanced flags
+
+Although we have not discussed all the flags that are listed when you run =helium=, 
+the flags we discussed thus far are likely to be used the most.
+In this section, we consider the few remaining flags from the standard help 
+screen, and then move on to the real advanced flags.
+The =-i (--dump-information)= and =-I (--dump-all-information)= flags are 
+mainly used by the interpreters. By means of these
+flags, the interpreters can retrieve the identifiers provided/defined and imported
+by a source file, e.g., when you invoke the browse option =:b= in one of the interpreters.
+Note that if you already compiled the sources, and did not change them, you
+need to pass =-b= in addition to =-i= or =-I= to get this information.
+You can also request information about a particular identifier by passing 
+the option =--info=NAME=. It will tell then you where in the source file 
+a particular identifier was defined, and what its type is.
+
+Running <pre>helium -X</pre> actually gives us a whole host of other flags to 
+pass to the compiler (all those listed after =--info=NAME=).
+
+<pre>
+<?php
+system('helium -X');
+?>
+</pre>
+
+The options =-1=, =-2=, =-3=, and =-4= can be used to terminate the compilation 
+process before code is generated. Typically, these are used by people trying to 
+debug =helium=. The options =-t=, =-u=, =-c= are used for similar
+purposes: the compilation process does not transform a program directly
+to =lvm= code. Instead, a program is first desugared to =core= 
+(a slightly sugared lambda calculus), and then transformed to lvm code. 
+If you want to inspect this intermediate code, you can use the =-C= option.
+
+An important debug option is =-d=, because it shows the internals
+of the most innovative part of the compiler: it's type inferencer. By default, 
+the compiler use a fast and simple type inferencer that solves constraints as 
+it goes. When it finds an error however, it reconsiders the part of the program 
+where inference failed.
+It then uses a  type graph data structure to discover what might have caused the
+error. This data structure  allows the use of various heuristics that can help 
+decide the cause of the error, and may suggest program fixes to overcome
+the problem. [[Features#GenHeuristics][(more information)]]
+
+The =-d= option gives a lot of information to show which constraints are to be 
+solved, which heuristics have been applied, whether they made a difference, 
+and so on. To be able to observe the difference between using our type graph 
+solver and Damas-Milner's algorithm W or the folklore algorithm M, you can 
+explicitly tell the compiler to use it (by passing =-W= or =-M=).
+Furthermore, you can instruct the compiler to never suggest a program 
+fix =--no-repair-heuristics==, or to ignore
+type inference directives. [[Features#TyInDi][(more information)]]
+
+One of the problems with the logging facility is that it, necessarily, 
+communicates with the outside world. For various reasons, the logging facility 
+may not be working right (there might be an unexpected firewall, the server might 
+not be turned on, the chosen port number might be taken by another process, and so on).
+Therefore, a special debug flag has been provided to get more information about 
+what the logger is doing, =--debug-logger=.
+
+While we are on the subject of logging: up to version 1.6, =helium= had the name 
+of the computer that runs the logging server and the port to which the compiler 
+should connect, hardwired into it. Not anymore. You can change the default 
+logger server host and the port number to whatever you like (but you might want 
+to experiment a bit with debugging turned on when you do). The default host to 
+which the programs are logged can found by looking at the defaults for the flags
+=host= and =port= when you run =helium -X=. Note that internal errors of the
+compiler are also logged to this combination of host and port.
+
+-- Main.JurriaanHage - 10 Apr 2008
+

@@ -385,7 +385,7 @@ compileModule fileName options state = do
 
 execCompileModule :: String -> String -> IO (Bool, String)
 execCompileModule invocation outputFilePath = do
-    putStrLn invocation
+    -- putStrLn invocation
     exitCode <- sys (invocation ++ " > " ++ outputFilePath)
     contents <- readFile outputFilePath
                 `catch` (\_ -> fatal ("Unable to read from file \"" ++ outputFilePath ++ "\""))
@@ -404,7 +404,7 @@ lvmOptionsFilter opts =
 executeModule :: String -> State -> IO ()
 executeModule fileName state = do
     let invocation = "\"" ++ binDir state ++ "lvmrun\" " ++ lvmOptionsFilter (compOptions state) ++ " \""++ fileName ++ "\""
-    putStrLn invocation
+    -- putStrLn invocation
     sys invocation
     return ()
 

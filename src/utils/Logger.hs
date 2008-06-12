@@ -49,6 +49,12 @@ loggerESCAPABLES     = [loggerADMINSEPARATOR, loggerESCAPECHAR]
 debug :: String -> Bool -> IO ()
 debug s loggerDEBUGMODE = when loggerDEBUGMODE (putStrLn s)
 
+-- Make sure that options that contain a space are quoted with double quotes.
+unwordsQuoted :: [String] -> String
+unwordsQuoted = unwords . (map quote)
+ where
+   quote s = if (' ' `elem` s) then "\"" ++ s ++ "\"" else s -- Not efficient, but balanced.
+
 ------------------------------------------------------
 -- Normalization/escaping functions
 
@@ -117,7 +123,7 @@ logger logcode maybeSources options =
                        (normalizeName username ++ 
                         (loggerADMINSEPARATOR : normalize alertLogcode) ++ 
                         (loggerADMINSEPARATOR : normalize version) ++
-                        (loggerADMINSEPARATOR : normalize (unwords optionString)) ++ 
+                        (loggerADMINSEPARATOR : normalize (unwordsQuoted optionString)) ++ 
                         "\n" ++sources
                        ) 
                        debugLogger

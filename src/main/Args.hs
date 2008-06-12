@@ -277,7 +277,7 @@ alertMessageFromOptions (Alert message: _) = Just message
 alertMessageFromOptions (_ : rest) = alertMessageFromOptions rest
 
 hasAlertOption :: [Option] -> Bool
-hasAlertOption options = alertMessageFromOptions options == Nothing
+hasAlertOption options = alertMessageFromOptions options /= Nothing
 
 selectPortNr :: String -> Option
 selectPortNr pn 
