@@ -1,0 +1,9 @@
+Run 
+
+php helium-wiki.in > helium-wiki.out
+
+and paste the out file into the Helium compiler wikipage. 
+The Simple?.hs files are necessary to generate the output file.
+
+The Hello?.hs and Hint?.hs are used in the documentation of texthint and Hint.
+
