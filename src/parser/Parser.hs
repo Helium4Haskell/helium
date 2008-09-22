@@ -24,12 +24,12 @@ Absent:
 - import and export lists
 
 Simplified:
-- funlhs 
+- funlhs
     For example   x:xs +++ ys = ...  is not allowed, parentheses around x:xs necessary
-- pattern binding met pat10 i.p.v. pat0 
+- pattern binding met pat10 i.p.v. pat0
     For example   (x:xs) = [1..] (parenthesis are obligatory)
 - sections: (fexp op) and (op fexp)
-    For example   (+2*3)   is not allowed, should be (+(2*3)) 
+    For example   (+2*3)   is not allowed, should be (+(2*3))
 - fixity declarations only at top-level
 -}
 
@@ -50,23 +50,23 @@ import Utils
 parseOnlyImports :: String -> IO [String]
 parseOnlyImports fullName = do
     contents <- catch (readFile fullName)
-        (\ioError -> 
-            let message = "Unable to read file " ++ show fullName 
+        (\ioError ->
+            let message = "Unable to read file " ++ show fullName
                        ++ " (" ++ show ioError ++ ")"
             in throw message)
-    
+
     return $ case lexer fullName contents of
         Left _ -> []
         Right (tokens, _) ->
             case runHParser onlyImports fullName (layout tokens) False {- no EOF -} of
                 Left _ -> []
-                Right imports -> 
+                Right imports ->
                     map stringFromImportDeclaration imports
 
 {-
-module  
-    ->  "module" modid exports? "where" body  
---      |  body  
+module
+    ->  "module" modid exports? "where" body
+--      |  body
 -}
 
 module_ :: HParser Module
@@ -79,13 +79,13 @@ module_ = addRange $
         b <- body
         return (\r -> Module_Module r (MaybeName_Just n) mes b)
     <|>
-    do 
+    do
         b <- body
         return (\r ->
             Module_Module r MaybeName_Nothing MaybeExports_Nothing b)
 
 onlyImports :: HParser [ImportDeclaration]
-onlyImports = 
+onlyImports =
     do
         lexMODULE
         modid
@@ -101,14 +101,14 @@ onlyImports =
     semicolon = lexSEMI <|> lexINSERTED_SEMI <|> lexINSERTED_RBRACE
     -- the last of the three is a hack to support files that
     -- only contain imports
-    
+
 {-
 body  ->  "{" topdecls "}"
-topdecls  ->  topdecl1 ";" ... ";" topdecln    (n>=0)  
+topdecls  ->  topdecl1 ";" ... ";" topdecln    (n>=0)
 -}
 
 body = addRange $
-    withBraces' $ \explicit -> 
+    withBraces' $ \explicit ->
       do{ (is, ds) <- importsThenTopdecls explicit
         ; let groupedDecls = CollectFunctionBindings.decls ds
         ; return $ \r -> Body_Body r is groupedDecls
@@ -117,39 +117,44 @@ body = addRange $
 importsThenTopdecls explicit =
     do
         is <- many (do { i <- impdecl
-                       ; if explicit then lexSEMI else lexSEMI <|> lexINSERTED_SEMI 
+                       ; if explicit then lexSEMI else lexSEMI <|> lexINSERTED_SEMI
                        ; return i
                        } )
         ds <- topdeclCombinator topdecl
         return (is, ds)
-        
+
   where
     topdeclCombinator = if explicit then semiSepTerm else semiOrInsertedSemiSepTerm
 
-        
-    
+
+-- Need to add to topdecl '| "class" [scontext =>] tycls tyvar [where cdecls] '
+
+-- First try " class tycon tyvar [where cdecls]" as class constraints do not yet exist
+-- in a later phase add them then also data has to be changed to deal with typeclass constraints
+-- please note that in ghc already this has some strange behaviour, read semantics carefully...
+
 {-
-topdecl  
-    ->  impdecl  
+topdecl
+    ->  impdecl
      |  "data" simpletype "=" constrs derivings?
      |  "type" simpletype "=" type
      |  infixdecl
-     |  decl  
+     |  decl
 
 derivings
     -> "deriving" derivings'
 
 derivings'
-    -> tycon 
+    -> tycon
      | "(" ")"
      | "(" tycon ( "," tycon )* ")"
 
-simpletype  
-    ->  tycon tyvar1 ... tyvark  (k>=0)  
+simpletype
+    ->  tycon tyvar1 ... tyvark  (k>=0)
 -}
 
 {-
-    | Data                            
+    | Data
         range                    : Range
         context                  : ContextItems
         simpletype               : SimpleType
@@ -174,28 +179,49 @@ topdecl = addRange (
         t <- type_
         return $ \r -> Declaration_Type r st t
     <|>
+-- Declaration_Class (Range) (ContextItems) (SimpleType) (MaybeDeclarations)
+    do
+        lexCLASS
+        ct <- option [] (try $ do {c <- scontext ; lexDARROW ; return c} )
+        st <- simpleType
+        ds <- option MaybeDeclarations_Nothing (try $ do lexWHERE
+                                                         d <- withLayout decl
+                                                         return (MaybeDeclarations_Just d))
+        return $ \r -> Declaration_Class r ct st ds
+    <|>
+-- Declaration_Instance (Range) (ContextItems) (Name) (Types) (MaybeDeclarations)
+    do
+      lexINSTANCE
+      ct <- option [] (try $ do {c <- scontext; lexDARROW ; return c} )
+      n <- tycls
+      ts <- iType
+      ds <- option MaybeDeclarations_Nothing (try $ do lexWHERE
+                                                       d <- withLayout decl
+                                                       return (MaybeDeclarations_Just d))
+      return $ \r -> Declaration_Instance r ct n [ts] ds
+    <|>
     infixdecl
-    ) 
+    )
     <|>
     decl
     <?> Texts.parserDeclaration
 
 derivings :: HParser [Name]
-derivings = 
+derivings =
     do
         lexDERIVING
-        ds <- 
+        ds <-
             do
                 cls <- tycls
                 return [cls]
             <|>
             do
-                lexLPAREN           
+                lexLPAREN
                 clss <- tycls `sepBy` lexCOMMA
                 lexRPAREN
                 return clss
-        return ds            
-    
+        return ds
+
 simpleType :: HParser SimpleType
 simpleType =
     addRange (
@@ -204,15 +230,15 @@ simpleType =
             vs <- many tyvar
             return $ \r -> SimpleType_SimpleType r c vs
     )
-    
+
 {-
-infixdecl   ->  fixity [digit] ops  (fixity declaration)  
-fixity      ->  "infixl" | "infixr" | "infix"  
-ops         ->  op1 "," ... "," opn    (n>=1)  
+infixdecl   ->  fixity [digit] ops  (fixity declaration)
+fixity      ->  "infixl" | "infixr" | "infix"
+ops         ->  op1 "," ... "," opn    (n>=1)
 -}
 
 infixdecl :: HParser (Range -> Declaration)
-infixdecl = 
+infixdecl =
     do
         f <- fixity
         p <- fmap fromInteger (option 9 (fmap read lexInt)) :: HParser Int
@@ -225,46 +251,46 @@ ops :: HParser Names
 ops = commas1 op
 
 fixity :: HParser Fixity
-fixity = addRange $ 
+fixity = addRange $
     do
-        lexINFIXL 
+        lexINFIXL
         return $ \r -> Fixity_Infixl r
     <|>
     do
-        lexINFIXR 
+        lexINFIXR
         return $ \r -> Fixity_Infixr r
     <|>
     do
-        lexINFIX 
+        lexINFIX
         return $ \r -> Fixity_Infix r
-    
+
 {-
-constrs  ->  constr1 "|" ... "|" constrn  (n>=1)  
+constrs  ->  constr1 "|" ... "|" constrn  (n>=1)
 -}
 
 constrs :: HParser Constructors
 constrs = constr `sepBy1` lexBAR
 
 {-
-constr  ->  btype conop btype  (infix conop)  
-         |  con atype1 ... atypek  (arity con = k, k>=0)  
+constr  ->  btype conop btype  (infix conop)
+         |  con atype1 ... atypek  (arity con = k, k>=0)
 -}
 
 constr :: HParser Constructor
 constr = addRange $
-    do 
-        (t1, n) <- try $ do 
-            t1 <- annotatedType btype 
+    do
+        (t1, n) <- try $ do
+            t1 <- annotatedType btype
             n <- conop
             return (t1, n)
         t2 <- annotatedType btype
         return (\r -> Constructor_Infix r t1 n t2)
     <|>
-    do 
-        n <- con 
+    do
+        n <- con
         ts <- many (annotatedType atype)
         return (\r -> Constructor_Constructor r n ts)
-        
+
 
 {-
 Simplified import:
@@ -289,7 +315,7 @@ impdecl = addRange (
 
 impspec :: HParser ImportSpecification
 impspec = addRange $
-    do  
+    do
         h <- do { lexHIDING; return True }
         is <- parens (commas import_)
         return $ \r -> ImportSpecification_Import r h is
@@ -299,9 +325,9 @@ import_ = addRange $
     do
         n <- var
         return $ \r -> Import_Variable r n
-    
+
 {-
-decls   ->  "{" decl1 ";" ... ";" decln "}"    (n>=0)  
+decls   ->  "{" decl1 ";" ... ";" decln "}"    (n>=0)
 -}
 
 decls :: HParser Declarations
@@ -310,10 +336,10 @@ decls =
         ds <- withLayout decl
         return (CollectFunctionBindings.decls ds)
 
-{- 
-decl    ->  vars "::" type  (type signature)  
-         |  ( funlhs | pat10 ) rhs          
-vars    ->  var1 "," ..."," varn    (n>=1)   
+{-
+decl    ->  vars "::" type  (type signature)
+         |  ( funlhs | pat10 ) rhs
+vars    ->  var1 "," ..."," varn    (n>=1)
 funlhs  ->  var apat*
          |  pat10 varop pat10
          |  "(" funlhs ")" apat *
@@ -339,7 +365,7 @@ funlhs1 ->  varop pat10
 
 decl :: HParser Declaration
 decl = addRange (
-    do 
+    do
         nr <- try (withRange var)
         decl1 nr
     <|>
@@ -368,13 +394,13 @@ decl1 (n, nr) =
         t <- contextAndType
         return $ \r -> Declaration_TypeSignature r [n] t
     <|>
-    do  
+    do
         o <- varop
         (p, pr) <- withRange pat10
         b <- normalRhs
         let lr = mergeRanges nr pr
         return $ \r -> Declaration_FunctionBindings r
-            [FunctionBinding_FunctionBinding r 
+            [FunctionBinding_FunctionBinding r
                 (LeftHandSide_Infix lr (Pattern_Variable nr n) o p) b]
     <|>
     do
@@ -388,32 +414,34 @@ decl1 (n, nr) =
         (ps, rs) <- fmap unzip (many (withRange apat))
         let lr = if null rs then nr else mergeRanges nr (last rs)
         b <- normalRhs
-        return $ \r -> 
+        return $ \r ->
             if null rs then
                 Declaration_PatternBinding r (Pattern_Variable nr n) b
             else
                 Declaration_FunctionBindings r
-                    [FunctionBinding_FunctionBinding r 
-                        (LeftHandSide_Function lr n ps) b]                
+                    [FunctionBinding_FunctionBinding r
+                        (LeftHandSide_Function lr n ps) b]
 
 decl2 :: (Pattern, Range) -> HParser (Range -> Declaration)
-decl2 (p1, p1r) = 
+decl2 (p1, p1r) =
     do
         o <- varop
         (p2, p2r) <- withRange pat10
         b <- normalRhs
         let lr = mergeRanges p1r p2r
         return $ \r -> Declaration_FunctionBindings r
-            [FunctionBinding_FunctionBinding r 
-                (LeftHandSide_Infix lr p1 o p2) b]                
+            [FunctionBinding_FunctionBinding r
+                (LeftHandSide_Infix lr p1 o p2) b]
     <|>
     do
         b <- normalRhs
-        return $ \r -> Declaration_PatternBinding r p1 b        
+        return $ \r -> Declaration_PatternBinding r p1 b      
+        
+
 
 funlhs :: HParser LeftHandSide
 funlhs = addRange $
-    do  
+    do
         nr <- try (withRange var)
         funlhs1 nr
     <|>
@@ -426,15 +454,15 @@ funlhs = addRange $
     do
         l <- parens funlhs
         ps <- many apat
-        return $ \r -> LeftHandSide_Parenthesized r l ps 
+        return $ \r -> LeftHandSide_Parenthesized r l ps
 
 funlhs1 :: (Name, Range) -> HParser (Range -> LeftHandSide)
-funlhs1 (n, nr) = 
+funlhs1 (n, nr) =
     do
         o <- varop
         p <- pat10
         return $ \r -> LeftHandSide_Infix r
-                        (Pattern_Variable nr n) o p 
+                        (Pattern_Variable nr n) o p
     <|>
     do
         ps <- many apat
@@ -461,7 +489,7 @@ rhs equals = addRange $
         e <- exp_ 
         mds <- option MaybeDeclarations_Nothing rhs1
         return $ \r -> RightHandSide_Expression r e mds
-    <|>                        
+    <|>
     do
         gs <- many1 (gdexp equals)
         mds <- option MaybeDeclarations_Nothing rhs1
@@ -469,11 +497,11 @@ rhs equals = addRange $
 
 rhs1 :: HParser MaybeDeclarations
 rhs1 =
-    do 
+    do
         lexWHERE
         ds <- decls
         return (MaybeDeclarations_Just ds)
-                
+
 gdexp :: HParser () -> HParser GuardedExpression
 gdexp equals = addRange $
     do
@@ -482,40 +510,40 @@ gdexp equals = addRange $
         equals
         e <- exp_
         return $ \r -> GuardedExpression_GuardedExpression r g e
-        
+
 {-
-exp     ->  exp0 "::" type  (expression type signature)  
-         |  exp0  
+exp     ->  exp0 "::" type  (expression type signature)
+         |  exp0
 -}
 
 exp_ = addRange (
-    do 
+    do
         e <- exp0
-        option (\_ -> e) $ 
-            do 
+        option (\_ -> e) $
+            do
                 lexCOLCOL
                 t <- contextAndType
                 return $ \r -> Expression_Typed r e t
     )
-    <?> Texts.parserExpression        
+    <?> Texts.parserExpression
 
 contextAndType :: HParser Type
 contextAndType = addRange $ do
     mc <- option Nothing (try $ do { c <- scontext; lexDARROW; return (Just c) })
     t <- type_
-    case mc of 
+    case mc of
         Nothing -> return $ \_ -> t
         Just c  -> return $ \r -> Type_Qualified r c t
-    
-{-
-expi  ->  expi+1 [op(n,i) expi+1]  
- |  lexpi  
- |  rexpi  
-lexpi  ->  (lexpi | expi+1) op(l,i) expi+1  
-lexp6  ->  - exp7  
-rexpi  ->  expi+1 op(r,i) (rexpi | expi+1)  
 
-Simplified, post-processing 
+{-
+expi  ->  expi+1 [op(n,i) expi+1]
+ |  lexpi
+ |  rexpi
+lexpi  ->  (lexpi | expi+1) op(l,i) expi+1
+lexp6  ->  - exp7
+rexpi  ->  expi+1 op(r,i) (rexpi | expi+1)
+
+Simplified, post-processing
 
 exp0 -> ( "-" )? exp10 ( op ( "-" )? exp10 )*
 
@@ -524,15 +552,15 @@ See noRange in ParseCommon for an explanation of the parsing of infix expression
 
 exp0 :: HParser Expression
 exp0 = addRange (
-    do  
+    do
         u <- maybeUnaryMinus
         es <- exprChain
         return $ \r -> Expression_List noRange (u ++ es)
     )
-    <?> Texts.parserExpression        
+    <?> Texts.parserExpression
 
 exprChain :: HParser [Expression]
-exprChain = 
+exprChain =
     do
         e <- exp10
         es <- fmap concat $ many $
@@ -543,27 +571,27 @@ exprChain =
                 return ([o] ++ u ++ [e])
         return (e:es)
 
-maybeUnaryMinus = 
-    option [] (fmap (:[]) unaryMinus)  
+maybeUnaryMinus =
+    option [] (fmap (:[]) unaryMinus)
     <?> Texts.parserExpression
 
 unaryMinus :: HParser Expression
-unaryMinus = 
+unaryMinus =
     do
-        (_, r) <- withRange lexMINDOT 
+        (_, r) <- withRange lexMINDOT
         return (Expression_Variable noRange (setNameRange floatUnaryMinusName r))
     <|>
-    do 
-        (_, r) <- withRange lexMIN 
+    do
+        (_, r) <- withRange lexMIN
         return (Expression_Variable noRange (setNameRange intUnaryMinusName r))
 
-{-       
-exp10   ->  "\" apat1 ... apatn "->" exp  (lambda abstraction, n>=1)  
-         |  "let" decls "in" exp  (let expression)  
-         |  "if" exp "then" exp "else" exp  (conditional)  
-         |  "case" exp "of" alts  (case expression)  
-         |  "do" stmts (do expression)  
-         |  fexp  
+{-
+exp10   ->  "\" apat1 ... apatn "->" exp  (lambda abstraction, n>=1)
+         |  "let" decls "in" exp  (let expression)
+         |  "if" exp "then" exp "else" exp  (conditional)
+         |  "case" exp "of" alts  (case expression)
+         |  "do" stmts (do expression)
+         |  fexp
 -}
 
 exp10 :: HParser Expression
@@ -602,7 +630,7 @@ exp10 = addRange (
         lexDO
         ss <- stmts
         return $ \r -> Expression_Do r ss
-    ) 
+    )
     <|>
     fexp
     <?> Texts.parserExpression
@@ -625,7 +653,7 @@ aexp    ->  var  (variable)
          |  con
          |  literal  
 
-         |  "[" "]" 
+         |  "[" "]"
          |  "[" exp1 "," ... "," expk "]"
          |  "[" exp1 ( "," exp2 )? ".." exp3? "]"
          |  "[" exp "|" qual1 "," ... "," qualn "]"
@@ -653,8 +681,8 @@ operatorAsExpression storeRange = (do
         Left  v -> Expression_Variable    range v
         Right c -> Expression_Constructor range c
      )) <?> Texts.parserOperator
-                         
-aexp :: HParser Expression    
+
+aexp :: HParser Expression
 aexp = addRange (
     do 
         lexLPAREN
@@ -673,7 +701,7 @@ aexp = addRange (
                         \r -> Expression_Tuple r (ue:es))
             <|>                
             do      -- operator followed by optional expression
-                    -- either full section (if there is no expression) or 
+                    -- either full section (if there is no expression) or
                     -- a left section (if there is)
                 opExpr <- operatorAsExpression True
                 me <- option Nothing (fmap Just fexp)
@@ -756,7 +784,7 @@ aexp1 =
         return e2
         
 aexp2 :: Expression -> HParser (Range -> Expression)    
-aexp2 e1 = 
+aexp2 e1 =
     do
         lexBAR
         qs <- commas1 qual
@@ -765,7 +793,7 @@ aexp2 e1 =
     do
         lexDOTDOT
         option (\r -> Expression_Enum r e1
-                        MaybeExpression_Nothing 
+                        MaybeExpression_Nothing
                         MaybeExpression_Nothing) $
             do
                 e2 <- exp_
@@ -785,13 +813,13 @@ aexp3 e1 e2 =
     do
         lexDOTDOT
         option (\r -> Expression_Enum r e1 
-                        (MaybeExpression_Just e2)  
+                        (MaybeExpression_Just e2)
                         MaybeExpression_Nothing) $
             do
                 e3 <- exp_
                 return $ \r -> Expression_Enum r e1 
                                 (MaybeExpression_Just e2)
-                                (MaybeExpression_Just e3) 
+                                (MaybeExpression_Just e3)
     <|>
     do
         es <- many (do { lexCOMMA; exp_ })
@@ -835,7 +863,7 @@ stmt = addRange $
         return $ \r -> Statement_Expression r e
         
 {-
-alts    ->  "{" alt1 ";" ... ";" altn "}" (n>=0)  
+alts    ->  "{" alt1 ";" ... ";" altn "}" (n>=0)
 -}
 
 alts :: HParser Alternatives
@@ -855,7 +883,7 @@ alt = addRange $
 
 {-
 qual    ->  "let" decls  (local declaration)  
-         |  pat "<-" exp  (generator)  
+         |  pat "<-" exp  (generator)
          |  exp  (guard)  
 -}
 
@@ -883,11 +911,11 @@ qual = addRange $
         return $ \r -> Qualifier_Guard r e
 
 {-
-pat  ->  pat0  
+pat  ->  pat0
 pati  ->  pati+1 [conop(n,i) pati+1]  
  |  lpati  
  |  rpati  
-lpati  ->  (lpati | pati+1) conop(l,i) pati+1  
+lpati  ->  (lpati | pati+1) conop(l,i) pati+1
 lpat6  ->  - (integer | float)  (negative literal)  
 rpati  ->  pati+1 conop(r,i) (rpati | pati+1)  
 
@@ -897,7 +925,7 @@ See noRange in ParseCommon for an explanation of the parsing of infix expression
 
 pat :: HParser Pattern
 pat = addRange $
-    do  
+    do
         u <- unaryMinusPat
         ps <- fmap concat $ many $
             do
@@ -905,7 +933,7 @@ pat = addRange $
                 u <- unaryMinusPat
                 return (o : u)
         return $ \r -> Pattern_List noRange (u ++ ps)
-        
+
 unaryMinusPat :: HParser [Pattern]
 unaryMinusPat = 
     do 
@@ -1001,7 +1029,7 @@ simpleclass -> tycls tyvar
 -}
 
 scontext :: HParser ContextItems
-scontext = 
+scontext =
     do { c <- simpleclass; return [c] }
     <|>
     parens (commas simpleclass)
@@ -1042,24 +1070,17 @@ btype = addRange (
             (t:ts) -> Type_Application r True t ts
     ) <?> Texts.parserType
 
-{-
-atype   ->  tycon
-         |  tyvar  
-         |  "(" ")"  (unit type)  
+{- iType -> tycon
+         |  "(" ")"  (unit type)
          |  "(" type1 "," ... "," typek ")"  (tuple type, k>=2)  
-         |  "(" type ")"  (parenthesized constructor)  
-         |  "[" type "]"  (list type)  
+         |  "(" type ")"  (parenthesized constructor)
+         |  "[" type "]"  (list type)
 -}
-
-atype :: HParser Type
-atype = addRange (
+iType :: HParser Type
+iType = addRange (
     do
         c <- tycon
         return (\r -> Type_Constructor r c)
-    <|>
-    do
-        c <- tyvar
-        return (\r -> Type_Variable r c)
     <|>
     do
         ts <- parens (commas type_)
@@ -1077,6 +1098,19 @@ atype = addRange (
             let n = Name_Special r [] "[]" -- !!!Name
             in Type_Application r False (Type_Constructor r n) [t]
     ) <?> Texts.parserType
+{-
+atype   ->  iType
+         |  tyvar
+-}
+
+atype :: HParser Type
+atype = addRange (
+    do
+        c <- tyvar
+        return (\r -> Type_Variable r c)
+   ) 
+   <|>
+   iType
 
 annotatedType :: HParser Type -> HParser AnnotatedType
 annotatedType p = addRange $
