@@ -24,6 +24,8 @@ import Top.Types
 
 type Errors = [Error]
 data Error  = NoFunDef Entity Name {-names in scope-}Names
+            | NoTypeDefInClass Entity Name Names
+            | FunctionInMultipleClasses Entity Name Names
             | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}[String] {- hints -}
             | Duplicated Entity Names
             | LastStatementNotExpr Range
@@ -49,6 +51,8 @@ instance HasMessage Error where
    getRanges anError = case anError of
    
       NoFunDef _ name _           -> [getNameRange name]
+      NoTypeDefInClass _ name _   -> [getNameRange name]
+      FunctionInMultipleClasses _ name _ -> [getNameRange name]
       Undefined _ name _ _        -> [getNameRange name]
       Duplicated _ names          -> sortRanges (map getNameRange names)
       LastStatementNotExpr range  -> [range]
@@ -68,7 +72,7 @@ instance HasMessage Error where
       CannotDerive name _         -> [getNameRange name]
       TupleTooBig r               -> [r]
       _                           -> internalError "StaticErrors.hs" 
-                                                   "instance IsMessage Error" 
+                                                   "instance IsMessage Error"
                                                    "unknown type of Error"
 
 sensiblySimilar name inScope = 
@@ -82,12 +86,12 @@ sensiblySimilar name inScope =
      
 showError :: Error -> (MessageBlock {- oneliner -}, MessageBlocks {- hints -})
 showError anError = case anError of 
-  
+    -- Why two times show??? show . show :: Show a => a -> String
    NoFunDef TypeSignature name inScope ->
       ( MessageString ("Type signature for " ++ show (show name) ++ " without a definition ")
       , [ MessageString ("Did you mean "++prettyOrList (map (show . show) xs)++" ?")
         | let xs = sensiblySimilar name inScope, not (null xs) 
-        ] 
+        ]
       )
 
    NoFunDef Fixity name inScope ->
@@ -95,6 +99,17 @@ showError anError = case anError of
       , [ MessageString ("Did you mean "++prettyOrList (map (show . show) xs)++" ?")
         | let xs = sensiblySimilar name inScope, not (null xs)
         ]
+      )
+
+   NoTypeDefInClass Definition name inScope ->
+      ( MessageString ("Function definition for " ++ show (show name) ++ " without a type signature is not allowed in a Class ")
+      , [ MessageString ("Did you mean "++prettyOrList (map (show . show) xs)++"?")
+        | let xs = sensiblySimilar name inScope, not (null xs)
+        ]
+      )
+   FunctionInMultipleClasses Definition name classes ->
+      ( MessageString ("Type declaration for " ++ show (show name) ++ " in multipe classes")
+      , [ MessageString ("You declared it in: "++prettyOrList (map (show . show) classes)++" .")]
       )
 
    Undefined entity name inScope hints ->
