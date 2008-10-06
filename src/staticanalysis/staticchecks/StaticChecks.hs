@@ -195,8 +195,26 @@ simplePattern pattern =
       _                            -> False
 
 
+-- In a class context declaration the only allowed type variable is the variable used in the class's declaration
 
--- In a class definition a function definition without a type signature is not allowed
+checkClassContext :: SimpleType -> Types -> Errors
+checkClassContext (SimpleType_SimpleType _ c vars) tys = 
+                  (if ((length vars) == 1)
+                    then []
+                    else [MultiParameterTypeClass Definition c vars])
+                  ++
+                  if (length vs == 0)
+                      then []
+                      else [InvalidContext Definition c vs]
+                  where
+                   vs = [v | v <- (getTypeVariables tys), v `notElem` vars]
+
+
+
+getTypeVariables :: Types -> Names
+getTypeVariables ((Type_Variable _ n):tys) = n : getTypeVariables tys
+getTypeVariables []                        = []
+
 
 checkClass :: [(Name, [(Name, TpScheme)])] -> Names -> Names -> [(Name, TpScheme)] -> Errors
 checkClass typeClasses declVarNames restrictedNames declTypes =
@@ -219,8 +237,7 @@ makeMap (tClass, decl) ((declN, classes):ls) | decl == declN = (declN, tClass:cl
                                              | otherwise     = (declN, classes):(makeMap (tClass, decl) ls)
 makeMap (tClass, decl) []                                    = [(decl, [tClass])]
 
-
-
+-- In a class definition a function definition without a type signature is not allowed
 checkClassFunctions :: Names -> [(Name,TpScheme)] -> Errors
 checkClassFunctions declVarNames ts =
     let signatures = map fst ts
@@ -1605,7 +1622,7 @@ type T_ContextItem  = Names ->
                       ([Option]) ->
                       (M.Map Name Int) ->
                       ([Warning]) ->
-                      ( ([Range]),([Name]),([Error]),ContextItem,([Warning]))
+                      ( ([Range]),([Name]),([Error]),ContextItem,Types,([Warning]))
 sem_ContextItem_ContextItem :: T_Range  ->
                                T_Name  ->
                                T_Types  ->
@@ -1616,7 +1633,8 @@ sem_ContextItem_ContextItem range_ name_ types_  =
        _lhsIoptions
        _lhsItypeConstructors
        _lhsIwarnings ->
-         (let _lhsOcontextRanges :: ([Range])
+         (let _lhsOtypeVariables :: Types
+              _lhsOcontextRanges :: ([Range])
               _lhsOcontextVars :: ([Name])
               _lhsOmiscerrors :: ([Error])
               _lhsOself :: ContextItem
@@ -1632,6 +1650,8 @@ sem_ContextItem_ContextItem range_ name_ types_  =
               _typesIself :: Types
               _typesItypevariables :: Names
               _typesIwarnings :: ([Warning])
+              _lhsOtypeVariables =
+                  _typesIself
               _lhsOcontextRanges =
                   [_rangeIself]
               _lhsOcontextVars =
@@ -1664,7 +1684,7 @@ sem_ContextItem_ContextItem range_ name_ types_  =
                   (name_ )
               ( _typesImiscerrors,_typesIself,_typesItypevariables,_typesIwarnings) =
                   (types_ _typesOallTypeConstructors _typesOmiscerrors _typesOoptions _typesOtypeConstructors _typesOwarnings )
-          in  ( _lhsOcontextRanges,_lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOwarnings)))
+          in  ( _lhsOcontextRanges,_lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOtypeVariables,_lhsOwarnings)))
 -- ContextItems ------------------------------------------------
 -- cata
 sem_ContextItems :: ContextItems  ->
@@ -1677,7 +1697,7 @@ type T_ContextItems  = Names ->
                        ([Option]) ->
                        (M.Map Name Int) ->
                        ([Warning]) ->
-                       ( ([Range]),([Name]),([Error]),ContextItems,([Warning]))
+                       ( ([Range]),([Name]),([Error]),ContextItems,Types,([Warning]))
 sem_ContextItems_Cons :: T_ContextItem  ->
                          T_ContextItems  ->
                          T_ContextItems 
@@ -1689,6 +1709,7 @@ sem_ContextItems_Cons hd_ tl_  =
        _lhsIwarnings ->
          (let _lhsOcontextRanges :: ([Range])
               _lhsOcontextVars :: ([Name])
+              _lhsOtypeVariables :: Types
               _lhsOself :: ContextItems
               _lhsOmiscerrors :: ([Error])
               _lhsOwarnings :: ([Warning])
@@ -1706,16 +1727,20 @@ sem_ContextItems_Cons hd_ tl_  =
               _hdIcontextVars :: ([Name])
               _hdImiscerrors :: ([Error])
               _hdIself :: ContextItem
+              _hdItypeVariables :: Types
               _hdIwarnings :: ([Warning])
               _tlIcontextRanges :: ([Range])
               _tlIcontextVars :: ([Name])
               _tlImiscerrors :: ([Error])
               _tlIself :: ContextItems
+              _tlItypeVariables :: Types
               _tlIwarnings :: ([Warning])
               _lhsOcontextRanges =
                   _hdIcontextRanges ++ _tlIcontextRanges
               _lhsOcontextVars =
                   _hdIcontextVars  ++  _tlIcontextVars
+              _lhsOtypeVariables =
+                  _hdItypeVariables ++ _tlItypeVariables
               _self =
                   (:) _hdIself _tlIself
               _lhsOself =
@@ -1744,11 +1769,11 @@ sem_ContextItems_Cons hd_ tl_  =
                   _lhsItypeConstructors
               _tlOwarnings =
                   _hdIwarnings
-              ( _hdIcontextRanges,_hdIcontextVars,_hdImiscerrors,_hdIself,_hdIwarnings) =
+              ( _hdIcontextRanges,_hdIcontextVars,_hdImiscerrors,_hdIself,_hdItypeVariables,_hdIwarnings) =
                   (hd_ _hdOallTypeConstructors _hdOmiscerrors _hdOoptions _hdOtypeConstructors _hdOwarnings )
-              ( _tlIcontextRanges,_tlIcontextVars,_tlImiscerrors,_tlIself,_tlIwarnings) =
+              ( _tlIcontextRanges,_tlIcontextVars,_tlImiscerrors,_tlIself,_tlItypeVariables,_tlIwarnings) =
                   (tl_ _tlOallTypeConstructors _tlOmiscerrors _tlOoptions _tlOtypeConstructors _tlOwarnings )
-          in  ( _lhsOcontextRanges,_lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOwarnings)))
+          in  ( _lhsOcontextRanges,_lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOtypeVariables,_lhsOwarnings)))
 sem_ContextItems_Nil :: T_ContextItems 
 sem_ContextItems_Nil  =
     (\ _lhsIallTypeConstructors
@@ -1758,12 +1783,15 @@ sem_ContextItems_Nil  =
        _lhsIwarnings ->
          (let _lhsOcontextRanges :: ([Range])
               _lhsOcontextVars :: ([Name])
+              _lhsOtypeVariables :: Types
               _lhsOself :: ContextItems
               _lhsOmiscerrors :: ([Error])
               _lhsOwarnings :: ([Warning])
               _lhsOcontextRanges =
                   []
               _lhsOcontextVars =
+                  []
+              _lhsOtypeVariables =
                   []
               _self =
                   []
@@ -1773,7 +1801,7 @@ sem_ContextItems_Nil  =
                   _lhsImiscerrors
               _lhsOwarnings =
                   _lhsIwarnings
-          in  ( _lhsOcontextRanges,_lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOwarnings)))
+          in  ( _lhsOcontextRanges,_lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOtypeVariables,_lhsOwarnings)))
 -- Declaration -------------------------------------------------
 -- cata
 sem_Declaration :: Declaration  ->
@@ -1886,6 +1914,7 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
               _contextIcontextVars :: ([Name])
               _contextImiscerrors :: ([Error])
               _contextIself :: ContextItems
+              _contextItypeVariables :: Types
               _contextIwarnings :: ([Warning])
               _simpletypeIname :: Name
               _simpletypeIself :: SimpleType
@@ -1907,11 +1936,17 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
               _lhsOpreviousWasAlsoFB =
                   Nothing
               _lhsOmiscerrors =
-                  _lhsImiscerrors ++ checkClassFunctions _declVarNames     _types
+                  _lhsImiscerrors ++ (checkClassFunctions _declVarNames     _types    ) ++ _contextErrors
               _types =
                   _whereItypeSignatures
               _declVarNames =
                   _whereIdeclVarNames
+              _typeVars =
+                  _simpletypeIself
+              _contextVars =
+                  _contextItypeVariables
+              _contextErrors =
+                  checkClassContext _typeVars _contextVars
               __tup4 =
                   internalError "PartialSyntax.ag" "n/a" "Declaration.Class"
               (_assumptions,_,_) =
@@ -1986,7 +2021,7 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
                   _contextIwarnings
               ( _rangeIself) =
                   (range_ )
-              ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
+              ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextItypeVariables,_contextIwarnings) =
                   (context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings )
               ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                   (simpletype_ )
@@ -2057,6 +2092,7 @@ sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_  =
               _contextIcontextVars :: ([Name])
               _contextImiscerrors :: ([Error])
               _contextIself :: ContextItems
+              _contextItypeVariables :: Types
               _contextIwarnings :: ([Warning])
               _simpletypeIname :: Name
               _simpletypeIself :: SimpleType
@@ -2167,7 +2203,7 @@ sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_  =
                   _contextIwarnings
               ( _rangeIself) =
                   (range_ )
-              ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
+              ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextItypeVariables,_contextIwarnings) =
                   (context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings )
               ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                   (simpletype_ )
@@ -2659,6 +2695,7 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _contextIcontextVars :: ([Name])
               _contextImiscerrors :: ([Error])
               _contextIself :: ContextItems
+              _contextItypeVariables :: Types
               _contextIwarnings :: ([Warning])
               _nameIself :: Name
               _typesImiscerrors :: ([Error])
@@ -2767,7 +2804,7 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
                   _typesIwarnings
               ( _rangeIself) =
                   (range_ )
-              ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
+              ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextItypeVariables,_contextIwarnings) =
                   (context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings )
               ( _nameIself) =
                   (name_ )
@@ -2840,6 +2877,7 @@ sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_  =
               _contextIcontextVars :: ([Name])
               _contextImiscerrors :: ([Error])
               _contextIself :: ContextItems
+              _contextItypeVariables :: Types
               _contextIwarnings :: ([Warning])
               _simpletypeIname :: Name
               _simpletypeIself :: SimpleType
@@ -2923,7 +2961,7 @@ sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_  =
                   _contextIwarnings
               ( _rangeIself) =
                   (range_ )
-              ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
+              ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextItypeVariables,_contextIwarnings) =
                   (context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings )
               ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
                   (simpletype_ )
@@ -12444,6 +12482,7 @@ sem_Type_Qualified range_ context_ type_  =
               _contextIcontextVars :: ([Name])
               _contextImiscerrors :: ([Error])
               _contextIself :: ContextItems
+              _contextItypeVariables :: Types
               _contextIwarnings :: ([Warning])
               _typeIcontextRange :: Range
               _typeImiscerrors :: ([Error])
@@ -12492,7 +12531,7 @@ sem_Type_Qualified range_ context_ type_  =
                   _contextIwarnings
               ( _rangeIself) =
                   (range_ )
-              ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
+              ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextItypeVariables,_contextIwarnings) =
                   (context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings )
               ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
                   (type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings )

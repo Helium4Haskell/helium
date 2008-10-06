@@ -233,6 +233,12 @@ SEM Declaration
 
 SEM Declarations
     | Cons     lhs . collectTypeClasses = @hd.collectTypeClasses  ++ @tl.collectTypeClasses
+
+-- Collect the type variables in the context
+ATTR ContextItems ContextItem [ || typeVariables USE {++} {[]} : Types ]
+
+SEM ContextItem     
+     | ContextItem lhs . typeVariables = @types.self
 -------------------------------------------
 -- Collecting Type Signatures
 

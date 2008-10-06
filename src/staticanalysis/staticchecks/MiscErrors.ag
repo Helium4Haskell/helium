@@ -33,9 +33,12 @@ SEM Body
 -- Declaration
 
 SEM Declaration
-    | Class              lhs . miscerrors =  @lhs.miscerrors ++ checkClassFunctions @loc.declVarNames @loc.types
+    | Class              lhs . miscerrors = @lhs.miscerrors ++ (checkClassFunctions @loc.declVarNames @loc.types) ++ @contextErrors
                          loc . types = @where.typeSignatures
                          loc . declVarNames = @where.declVarNames
+                         loc . typeVars = @simpletype.self
+                         loc . contextVars = @context.typeVariables
+                         loc . contextErrors = checkClassContext @typeVars @contextVars
     | FunctionBindings   lhs . miscerrors  = @arityErrors ++ @bindings.miscerrors
                          loc . arityErrors = if all (== head @bindings.arities) @bindings.arities
                                                then []
@@ -215,8 +218,26 @@ SEM Qualifier
                   . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
 
 {
+-- In a class context declaration the only allowed type variable is the variable used in the class's declaration
 
--- In a class definition a function definition without a type signature is not allowed
+checkClassContext :: SimpleType -> Types -> Errors
+checkClassContext (SimpleType_SimpleType _ c vars) tys = 
+                  (if ((length vars) == 1)
+                    then []
+                    else [MultiParameterTypeClass Definition c vars])
+                  ++
+                  if (length vs == 0)
+                      then []
+                      else [InvalidContext Definition c vs]
+                  where
+                   vs = [v | v <- (getTypeVariables tys), v `notElem` vars]
+
+
+
+getTypeVariables :: Types -> Names
+getTypeVariables ((Type_Variable _ n):tys) = n : getTypeVariables tys
+getTypeVariables []                        = []
+
 
 checkClass :: [(Name, [(Name, TpScheme)])] -> Names -> Names -> [(Name, TpScheme)] -> Errors
 checkClass typeClasses declVarNames restrictedNames declTypes =
@@ -239,8 +260,7 @@ makeMap (tClass, decl) ((declN, classes):ls) | decl == declN = (declN, tClass:cl
                                              | otherwise     = (declN, classes):(makeMap (tClass, decl) ls)
 makeMap (tClass, decl) []                                    = [(decl, [tClass])]
 
-
-
+-- In a class definition a function definition without a type signature is not allowed
 checkClassFunctions :: Names -> [(Name,TpScheme)] -> Errors
 checkClassFunctions declVarNames ts =
     let signatures = map fst ts

@@ -26,6 +26,8 @@ type Errors = [Error]
 data Error  = NoFunDef Entity Name {-names in scope-}Names
             | NoTypeDefInClass Entity Name Names
             | FunctionInMultipleClasses Entity Name Names
+            | MultiParameterTypeClass Entity Name Names
+            | InvalidContext Entity Name Names
             | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}[String] {- hints -}
             | Duplicated Entity Names
             | LastStatementNotExpr Range
@@ -53,6 +55,8 @@ instance HasMessage Error where
       NoFunDef _ name _           -> [getNameRange name]
       NoTypeDefInClass _ name _   -> [getNameRange name]
       FunctionInMultipleClasses _ name _ -> [getNameRange name]
+      MultiParameterTypeClass _ name _ -> [getNameRange name]
+      InvalidContext _ name _     -> [getNameRange name]
       Undefined _ name _ _        -> [getNameRange name]
       Duplicated _ names          -> sortRanges (map getNameRange names)
       LastStatementNotExpr range  -> [range]
@@ -110,6 +114,16 @@ showError anError = case anError of
    FunctionInMultipleClasses Definition name classes ->
       ( MessageString ("Type declaration for " ++ show (show name) ++ " in multipe classes")
       , [ MessageString ("You declared it in: "++prettyOrList (map (show . show) classes)++" .")]
+      )
+   
+   MultiParameterTypeClass Definition name vars ->
+      ( MessageString ("Multiparameter typeclasses are not supported, error in class definition: " ++ show (show name) ++ ". ")
+      , [ MessageString ("You used parameters: "++prettyAndList (map (show . show) vars)++" .")]
+      )
+
+   InvalidContext Definition name vars ->
+      ( MessageString ("Context of type class " ++ show (show name) ++ " refers to variables other variables then the one declared in the type class")
+      , [ MessageString ("You use: "++prettyOrList (map (show . show) vars)++" .")]
       )
 
    Undefined entity name inScope hints ->
