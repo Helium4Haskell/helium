@@ -27,6 +27,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | NoTypeDefInClass Entity Name Names
             | FunctionInMultipleClasses Entity Name Names
             | MultiParameterTypeClass Entity Name Names
+            | ClassMethodContextError Entity Name Names ContextItems
             | InvalidContext Entity Name Names
             | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}[String] {- hints -}
             | Duplicated Entity Names
@@ -56,6 +57,7 @@ instance HasMessage Error where
       NoTypeDefInClass _ name _   -> [getNameRange name]
       FunctionInMultipleClasses _ name _ -> [getNameRange name]
       MultiParameterTypeClass _ name _ -> [getNameRange name]
+      ClassMethodContextError _ name _ _ -> [getNameRange name]
       InvalidContext _ name _     -> [getNameRange name]
       Undefined _ name _ _        -> [getNameRange name]
       Duplicated _ names          -> sortRanges (map getNameRange names)
@@ -119,6 +121,11 @@ showError anError = case anError of
    MultiParameterTypeClass Definition name vars ->
       ( MessageString ("Multiparameter typeclasses are not supported, error in class definition: " ++ show (show name) ++ ". ")
       , [ MessageString ("You used parameters: "++prettyAndList (map (show . show) vars)++" .")]
+      )
+   ClassMethodContextError Definition className methods ctxt ->
+      ( MessageString ("Not allowed to put further restictions on typeClass variable in type class: " ++ (show className) ++ ". ")
+      , [ MessageString ("In the type signatures of: "++ prettyAndList (map show methods) ++ " the following context items are not allowed: " ++ 
+                          prettyAndList (map (\(ContextItem_ContextItem _ n _) -> show n) ctxt) ++ ".")]
       )
 
    InvalidContext Definition name vars ->

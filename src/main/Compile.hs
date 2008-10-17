@@ -59,7 +59,7 @@ compile fullName options lvmPath doneModules =
                phaseResolveOperators parsedModule importEnvs options
 
         stopCompilingIf (StopAfterParser `elem` options)
-        putStrLn "Reached phase 5"
+        -- putStrLn "Reached phase 5"
 
         -- Phase 5: Static checking
         (localEnv, typeSignatures, staticWarnings) <-
@@ -71,17 +71,17 @@ compile fullName options lvmPath doneModules =
 
         stopCompilingIf (StopAfterStaticAnalysis `elem` options)
 
-        putStrLn "Reached phase 6"
+        -- putStrLn "Reached phase 6"
         -- Phase 6: Kind inferencing (by default turned off)
         let combinedEnv = foldr combineImportEnvironments localEnv importEnvs
         when (KindInferencing `elem` options) $
            doPhaseWithExit maximumNumberOfKindErrors (const "K") compileOptions $
               phaseKindInferencer combinedEnv resolvedModule options
-        putStrLn "Reached phase 7"
+        -- putStrLn "Reached phase 7"
         -- Phase 7: Type Inference Directives
         (beforeTypeInferEnv, typingStrategiesDecls) <-
             phaseTypingStrategies fullName combinedEnv typeSignatures options
-        putStrLn "Reached phase 8"
+        -- putStrLn "Reached phase 8"
         -- Phase 8: Type inferencing
         (dictionaryEnv, afterTypeInferEnv, toplevelTypes, typeWarnings) <-
             doPhaseWithExit maximumNumberOfTypeErrors (const "T") compileOptions $
@@ -92,7 +92,7 @@ compile fullName options lvmPath doneModules =
 
         stopCompilingIf (StopAfterTypeInferencing `elem` options)
         
-        putStrLn "Reached phase 9"
+        -- putStrLn "Reached phase 9"
         
         -- Phase 9: Desugaring
         coreModule <-

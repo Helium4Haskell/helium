@@ -210,17 +210,22 @@ checkClassContext (SimpleType_SimpleType _ c vars) tys =
                    vs = [v | v <- (getTypeVariables tys), v `notElem` vars]
 
 
-
-getTypeVariables :: Types -> Names
-getTypeVariables ((Type_Variable _ n):tys) = n : getTypeVariables tys
-getTypeVariables []                        = []
+getTypeVariables :: Types                            -> Names
+getTypeVariables ((Type_Variable _ n):tys)           = n : getTypeVariables tys
+getTypeVariables ((Type_Application _ _ t tys):tyss) = getTypeVariables [t] ++ getTypeVariables tys ++ getTypeVariables tyss
+getTypeVariables ((Type_Constructor _ _):tys)        = getTypeVariables tys
+getTypeVariables ((Type_Exists _ _ t):tys)           = getTypeVariables [t] ++ getTypeVariables tys
+getTypeVariables ((Type_Forall _ _ t):tys)           = getTypeVariables [t] ++ getTypeVariables tys
+getTypeVariables ((Type_Parenthesized _ t):tys)      = getTypeVariables [t] ++ getTypeVariables tys
+getTypeVariables ((Type_Qualified _ _ t):tys)        = getTypeVariables [t] ++ getTypeVariables tys
+getTypeVariables []                                  = []
 
 
 checkClass :: [(Name, [(Name, TpScheme)])] -> Names -> Names -> [(Name, TpScheme)] -> Errors
 checkClass typeClasses declVarNames restrictedNames declTypes =
            let inMultipleClasses = filter (\(_,y) -> (length y) > 1) $ declaredInMultipleClasses typeClasses
            in  [FunctionInMultipleClasses Definition name names
-               | (name, names) <- declaredInMultipleClasses typeClasses ]
+               | (name, names) <- inMultipleClasses ]
            
 declaredInMultipleClasses :: [(Name, [(Name, TpScheme)])] -> [(Name, [Name])]
 declaredInMultipleClasses dicts = buildTypes (map (\(n, l) -> (n, map fst l)) dicts) []
@@ -236,6 +241,36 @@ makeMap :: (Name, Name) -> [(Name, [Name])] -> [(Name, [Name])]
 makeMap (tClass, decl) ((declN, classes):ls) | decl == declN = (declN, tClass:classes):ls
                                              | otherwise     = (declN, classes):(makeMap (tClass, decl) ls)
 makeMap (tClass, decl) []                                    = [(decl, [tClass])]
+
+
+-- Class methods must use the class variable, and may not put further restrictions on the class variable other then the ones defined in the class definition
+
+checkClassMethods :: Declaration -> Errors
+checkClassMethods (Declaration_Class r ctxt (SimpleType_SimpleType _ className vars) mDecls) =
+                  case mDecls of
+                   (MaybeDeclarations_Nothing) -> []
+                   (MaybeDeclarations_Just decls) -> let signatures = filter (\x -> case x of
+                                                                      (Declaration_TypeSignature _ _ _) -> True
+                                                                      _                                 -> False) decls
+                                                     in
+                                                       [ ClassMethodContextError Definition className names  (tooMuchConstraints ctxt vars ty)
+                                                       | (Declaration_TypeSignature _ names ty) <- signatures
+                                                       , not (length (tooMuchConstraints ctxt vars ty) == 0)
+                                                       ]
+
+
+tooMuchConstraints :: ContextItems -> Names -> Type -> ContextItems
+tooMuchConstraints ctxt classVars (Type_Qualified _ ctxts _) = filter (disAllowedContext ctxt) $ filter (contains_classVar classVars) ctxts
+   where
+   contains_classVar [classVar] (ContextItem_ContextItem _ n tys) = not $ classVar `notElem` (getTypeVariables tys)
+   disAllowedContext ((ContextItem_ContextItem _ n _):ctxts) c@(ContextItem_ContextItem _ n2 _) = if (n == n2)
+                                                                                                     then False
+                                                                                                     else disAllowedContext ctxts c
+   disAllowedContext []                                        _                                  = True
+
+
+
+-- data ContextItem = ContextItem_ContextItem (Range) (Name) (Types)
 
 -- In a class definition a function definition without a type signature is not allowed
 checkClassFunctions :: Names -> [(Name,TpScheme)] -> Errors
@@ -1946,7 +1981,7 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
               _contextVars =
                   _contextItypeVariables
               _contextErrors =
-                  checkClassContext _typeVars _contextVars
+                  checkClassContext _typeVars _contextVars ++ checkClassMethods _self
               __tup4 =
                   internalError "PartialSyntax.ag" "n/a" "Declaration.Class"
               (_assumptions,_,_) =
