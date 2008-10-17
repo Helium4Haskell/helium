@@ -257,6 +257,11 @@ checkClassMethods (Declaration_Class r ctxt (SimpleType_SimpleType _ className v
                                                        | (Declaration_TypeSignature _ names ty) <- signatures
                                                        , not (length (tooMuchConstraints ctxt vars ty) == 0)
                                                        ]
+                                                       ++
+                                                       [ ClassVariableNotInMethodSignature className (head vars) methodNames
+                                                       | (Declaration_TypeSignature _ methodNames ty) <- signatures
+                                                       , (head vars) `notElem` (getTypeVariables [ty])
+                                                       ]
 
 
 tooMuchConstraints :: ContextItems -> Names -> Type -> ContextItems

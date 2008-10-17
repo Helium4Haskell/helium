@@ -28,6 +28,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | FunctionInMultipleClasses Entity Name Names
             | MultiParameterTypeClass Entity Name Names
             | ClassMethodContextError Entity Name Names ContextItems
+            | ClassVariableNotInMethodSignature Name Name Names -- Class name, class variable, method name
             | InvalidContext Entity Name Names
             | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}[String] {- hints -}
             | Duplicated Entity Names
@@ -59,6 +60,7 @@ instance HasMessage Error where
       MultiParameterTypeClass _ name _ -> [getNameRange name]
       ClassMethodContextError _ name _ _ -> [getNameRange name]
       InvalidContext _ name _     -> [getNameRange name]
+      ClassVariableNotInMethodSignature _ _ names -> sortRanges (map getNameRange names)
       Undefined _ name _ _        -> [getNameRange name]
       Duplicated _ names          -> sortRanges (map getNameRange names)
       LastStatementNotExpr range  -> [range]
@@ -131,6 +133,12 @@ showError anError = case anError of
    InvalidContext Definition name vars ->
       ( MessageString ("Context of type class " ++ show (show name) ++ " refers to variables other variables then the one declared in the type class")
       , [ MessageString ("You use: "++prettyOrList (map (show . show) vars)++" .")]
+      )
+
+   ClassVariableNotInMethodSignature className classVariable methods ->
+      ( MessageString ("Class method signature must mention class variable: " ++ show classVariable ++ " in class: " ++ show className ++ ".")
+      , [MessageString ("The type signatures of the methods: " ++ prettyAndList (map show methods)
+                       ++ " must mention type variable: " ++ show classVariable ++ ".")]
       )
 
    Undefined entity name inScope hints ->
