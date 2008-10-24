@@ -31,6 +31,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | ClassVariableNotInMethodSignature Name Name Names -- Class name, class variable, method name
             | InvalidContext Entity Name Names
             | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}[String] {- hints -}
+            | TypeClassOverloadRestr Name Names
             | Duplicated Entity Names
             | LastStatementNotExpr Range
             | WrongFileName {-file name-}String {-module name-}String Range {- of module name -}
@@ -53,7 +54,7 @@ instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
                   in [MessageOneLiner oneliner, MessageHints "Hint" hints]
    getRanges anError = case anError of
-   
+
       NoFunDef _ name _           -> [getNameRange name]
       NoTypeDefInClass _ name _   -> [getNameRange name]
       FunctionInMultipleClasses _ name _ -> [getNameRange name]
@@ -61,6 +62,7 @@ instance HasMessage Error where
       ClassMethodContextError _ name _ _ -> [getNameRange name]
       InvalidContext _ name _     -> [getNameRange name]
       ClassVariableNotInMethodSignature _ _ names -> sortRanges (map getNameRange names)
+      TypeClassOverloadRestr _ names -> sortRanges (map getNameRange names)
       Undefined _ name _ _        -> [getNameRange name]
       Duplicated _ names          -> sortRanges (map getNameRange names)
       LastStatementNotExpr range  -> [range]
@@ -139,6 +141,11 @@ showError anError = case anError of
       ( MessageString ("Class method signature must mention class variable: " ++ show classVariable ++ " in class: " ++ show className ++ ".")
       , [MessageString ("The type signatures of the methods: " ++ prettyAndList (map show methods)
                        ++ " must mention type variable: " ++ show classVariable ++ ".")]
+      )
+   TypeClassOverloadRestr className members ->
+      ( MessageString ("Class members may not have names occoring at top level, in class:  " ++ show className ++ ".")
+      , [MessageString ("Name: " ++ show member ++ " also used at top level.")
+        | member <- members]
       )
 
    Undefined entity name inScope hints ->
