@@ -39,6 +39,7 @@ SEM Declaration
                          loc . typeVars = @simpletype.self
                          loc . contextVars = @context.typeVariables
                          loc . contextErrors = checkClassContext @typeVars @contextVars  ++ checkClassMethods @self
+    | Instance           loc . unqueTypeVarErrors = [ DefNonUniqueInstanceVars @name | n <- nonUniqueTypeVars @typevariables ]
     | FunctionBindings   lhs . miscerrors  = @arityErrors ++ @bindings.miscerrors
                          loc . arityErrors = if all (== head @bindings.arities) @bindings.arities
                                                then []
@@ -395,6 +396,29 @@ isSimplePattern pattern =
       Pattern_Variable _ _ -> True
       Pattern_Parenthesized  _ p -> isSimplePattern p
       _ -> False
+
+--This function inspects whether a type is legal as type  for declaring an instance on
+validInstanceType :: Type -> Bool
+validInstanceType (Type_Constructor r n) = True  -- A simple type is fine
+validInstanceType (Type_Parenthesized _ t) = validInstanceType t -- Just look inside
+validInstanceType (Type_Application r b ty tys) = validApplyType ty tys-- Some complicated stuff
+validInstanceType _                      = False -- We don't like quantified and unbound types etc...
+
+validApplyType :: Type -> [Types] -> Bool
+validApplyType (Type_Constructor r n) ts        = validInstanceConstrName n
+validAppleType (Type_Application r b ty tys) ts = undefined
+
+validInstanceConstrName :: Name -> Types -> Boolean
+validInstanceConstrName (Name_Special _ _ s) ts = s == "(" ++ replicate (length ts - 1) ',' ++ ")"    --We just want to know if it was a tuple
+validInstanceConstrName (Name_Identifier _ _ _) = True
+validInstanceConstrName _ _ = False
+
+-- All type variables in an instance declaration have to be unique
+
+nonUniqueTypeVars :: Names -> Names
+nonUniqueTypeVars (x:xs) | elem x xs = x : uniqueTypeVars xs
+                         | otherwise = uniqueTypeVars xs
+nonUniqueTypeVars []     = []
 }
                                  
        

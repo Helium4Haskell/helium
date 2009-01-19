@@ -73,30 +73,30 @@ SEM Constructor
            . parameterTypes = @tps
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
            . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype @types.types
-                  
+
   | Infix
        lhs . collectValueConstructors = (@constructorOperator.self, @typeScheme) : @lhs.collectValueConstructors
            . parameterTypes = @tps
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
-           . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype [@leftType.type,@rightType.type] 
+           . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype [@leftType.type,@rightType.type]
 
 -------------------------------------------
 -- 3) Collecting type synonyms
 
 ATTR Body Declarations Declaration [ | collectTypeSynonyms : {[(Name,(Int,Tps -> Tp))]} | ]
-           
-SEM Module | Module   body . collectTypeSynonyms = []                   
+
+SEM Module | Module   body . collectTypeSynonyms = []
 
 SEM Declaration
   | Type   lhs . collectTypeSynonyms = (@simpletype.name, @typeSynonymInfo) : @lhs.collectTypeSynonyms
            loc . typeSynonymInfo = (length @simpletype.typevariables,\tps -> makeTpFromType (zip @simpletype.typevariables tps) @type.self)
-           
+
 -------------------------------------------
 -- 4) Collecting Fixity Declarations
 
 ATTR Body Declarations Declaration [ | operatorFixities : {[(Name,(Int,Assoc))]} | ]
 
-SEM Module | Module   body . operatorFixities = [] 
+SEM Module | Module   body . operatorFixities = []
 
 SEM Declaration
   | Fixity   lhs . operatorFixities = let associativity = case @fixity.self of
@@ -112,14 +112,14 @@ SEM Declaration
 -- 5) Distributing Value Constructors
 
 SEM Module
-  | Module   loc . (uniqueValueConstructors,duplicatedValueConstructors) = 
-                      uniqueKeys (  @body.collectValueConstructors 
+  | Module   loc . (uniqueValueConstructors,duplicatedValueConstructors) =
+                      uniqueKeys (  @body.collectValueConstructors
                                  ++ concatMap (M.assocs . valueConstructors) @lhs.importEnvironments
                                  )
                  . allValueConstructors = map fst @uniqueValueConstructors ++ map head @duplicatedValueConstructors
                  . valueConstructors    = M.fromList @uniqueValueConstructors
 
-ATTR Body Declarations Declaration Expressions Expression Patterns Pattern 
+ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      Statement Statements Qualifier Qualifiers
      Alternative Alternatives Constructor Constructors
      GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
@@ -138,11 +138,11 @@ SEM Module
                . allTypeConstructors = map fst @uniqueTypeConstructors ++ map head @duplicatedTypeConstructors
                . typeConstructors    = M.fromList @uniqueTypeConstructors
 
-ATTR Body Declarations Declaration Expressions Expression Patterns Pattern    
-     Statement Statements Qualifier Qualifiers 
+ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
+     Statement Statements Qualifier Qualifiers
      Alternative Alternatives Constructor Constructors
-     GuardedExpressions GuardedExpression FunctionBinding FunctionBindings     
-     LeftHandSide RightHandSide MaybeDeclarations MaybeExpression 
+     GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
+     LeftHandSide RightHandSide MaybeDeclarations MaybeExpression
      Type Types AnnotatedType AnnotatedTypes ContextItem ContextItems
      [ typeConstructors : {M.Map Name Int} allTypeConstructors : Names | | ]
 
@@ -223,21 +223,51 @@ uniqueKeys = let comp (x,_) (y,_) = compare x y
 
 -- Collecting the Classes
 {
-type Dictionairy  = [(Name, [(Name, TpScheme)])]
+
+
+-- The following haskell code is used for building a temporary dictionairy in order to complete static checks
+type Dictionairy  = [ClassDef]
+
+type ClassDef = (Name, ClassMembers)
+
+type ClassMembers = [(Name, Maybe Declaration, Type)]
+
+filterType :: Declarations -> (Declarations, Declarations) -> (Declarations, Declarations)
+filterType (d@(Declaration_TypeSignature _ _ _):ds) (t, dec) = filterType ds (d:t, dec)
+filterType (d:ds) (t, dec)                                   = filterType ds (t, d:dec)
+filterType []     res                                        = res
+
+createClassDef1 :: Declaration -> ClassMembers
+createClassDef1 (Declaration_TypeSignature r names ty) = [(n, Nothing, ty) | n <- names]
+createClassDef1 _                                      = error "Error createClassDef1, filtering failed..."
+
+createClassDef2 :: Declarations -> ClassMembers -> ClassMembers
+createClassDef2 (x:xs) m = createClassDef2 xs $ createClassDef2' x m
+createClassDef2' (Declaration_FunctionBindings r fs)  = error "undefined Declaration FunctionBindings"
+createClassDef2' (Declaration_PatternBinding r p rhs) = error "undefined Declaration PatternBinding"
+
+createClassDef :: Name -> MaybeDeclarations -> ClassDef
+createClassDef n decls | decls == Nothing = (n, [])
+                       | otherwise        = (n, createClassDef2 fdecl $ concatMap createClassDef1 types)
+               where (types, fdecl) = filterType decls ([], [])
+
 }
 
-ATTR Declarations Declaration [ | | collectTypeClasses  USE {++} {[]} : { Dictionairy } ]
+ATTR Declarations Declaration [ | | collectTypeClasses  USE {++} {[]} : { [(Name, [(Name, TpScheme)])] } ]
+ATRR Declaration Declarations [ | dictionairy USE {++} {[]} : {Dictionairy} | ]
 
 SEM Declaration
     | Class lhs . collectTypeClasses = [(@simpletype.name, @where.typeSignatures)]
+            lhs . dictionairy = [createClassDef @simpletype.name @declarations]
 
 SEM Declarations
     | Cons     lhs . collectTypeClasses = @hd.collectTypeClasses  ++ @tl.collectTypeClasses
 
+
 -- Collect the type variables in the context
 ATTR ContextItems ContextItem [ || typeVariables USE {++} {[]} : Types ]
 
-SEM ContextItem     
+SEM ContextItem
      | ContextItem lhs . typeVariables = @types.self
 -------------------------------------------
 -- Collecting Type Signatures

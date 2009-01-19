@@ -33,7 +33,7 @@ data Declaration = Declaration_Class (Range) (ContextItems) (SimpleType) (MaybeD
                  | Declaration_Newtype (Range) (ContextItems) (SimpleType) (Constructor) (Names) 
                  | Declaration_PatternBinding (Range) (Pattern) (RightHandSide) 
                  | Declaration_Type (Range) (SimpleType) (Type) 
-                 | Declaration_TypeSignature (Range) (Names) (Type) 
+                 | Declaration_TypeSignature (Range) (Names) (Type)
 -- Declarations ------------------------------------------------
 type Declarations = [Declaration]
 -- Export ------------------------------------------------------

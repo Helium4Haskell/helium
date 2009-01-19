@@ -27,6 +27,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | NoTypeDefInClass Entity Name Names
             | FunctionInMultipleClasses Entity Name Names
             | MultiParameterTypeClass Entity Name Names
+            | DefNonUniqueInstanceVars Name Names
             | ClassMethodContextError Entity Name Names ContextItems
             | ClassVariableNotInMethodSignature Name Name Names -- Class name, class variable, method name
             | InvalidContext Entity Name Names
@@ -59,6 +60,7 @@ instance HasMessage Error where
       NoTypeDefInClass _ name _   -> [getNameRange name]
       FunctionInMultipleClasses _ name _ -> [getNameRange name]
       MultiParameterTypeClass _ name _ -> [getNameRange name]
+      DefNonUniqueInstanceVars name _ -> [getNameRange name]
       ClassMethodContextError _ name _ _ -> [getNameRange name]
       InvalidContext _ name _     -> [getNameRange name]
       ClassVariableNotInMethodSignature _ _ names -> sortRanges (map getNameRange names)
@@ -125,6 +127,10 @@ showError anError = case anError of
    MultiParameterTypeClass Definition name vars ->
       ( MessageString ("Multiparameter typeclasses are not supported, error in class definition: " ++ show (show name) ++ ". ")
       , [ MessageString ("You used parameters: "++prettyAndList (map (show . show) vars)++" .")]
+      )
+   DefNonUniqueInstanceVars name vars -> 
+      ( MessageString ("Not all type variables in instance declaration of class: " ++ show name ++ " are unique. ")
+      , [ MessageString ("Type variable: " ++ show v ++ " occurs more then once.") | v <- vars]
       )
    ClassMethodContextError Definition className methods ctxt ->
       ( MessageString ("Not allowed to put further restictions on typeClass variable in type class: " ++ (show className) ++ ". ")

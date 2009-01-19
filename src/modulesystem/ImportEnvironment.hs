@@ -17,7 +17,7 @@ import OperatorTable
 import Messages () -- instance Show Name
 import RepairHeuristics (Siblings)
 import TS_CoreSyntax
-import Data.List 
+import Data.List
 import Data.Maybe (catMaybes)
 
 type TypeEnvironment             = M.Map Name TpScheme
@@ -26,71 +26,71 @@ type TypeConstructorEnvironment  = M.Map Name Int
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
 
 type ImportEnvironments = [ImportEnvironment]
-data ImportEnvironment  = 
+data ImportEnvironment  =
      ImportEnvironment { -- types
                          typeConstructors  :: TypeConstructorEnvironment
                        , typeSynonyms      :: TypeSynonymEnvironment
-                       , typeEnvironment   :: TypeEnvironment       
+                       , typeEnvironment   :: TypeEnvironment
                          -- values
                        , valueConstructors :: ValueConstructorEnvironment
                        , operatorTable     :: OperatorTable
---                         -- type classes
---                       , classEnvironment  :: ClassEnvironment
+                         -- type classes
+                       --, classEnvironment  :: ClassEnvironment
                          -- other
-                       , typingStrategies  :: Core_TypingStrategies 
+                       , typingStrategies  :: Core_TypingStrategies
                        }
 
 emptyEnvironment :: ImportEnvironment
-emptyEnvironment = ImportEnvironment 
+emptyEnvironment = ImportEnvironment
    { typeConstructors  = M.empty
    , typeSynonyms      = M.empty
    , typeEnvironment   = M.empty
    , valueConstructors = M.empty
    , operatorTable     = M.empty
---   , classEnvironment  = emptyClassEnvironment
-   , typingStrategies  = [] 
+   --, classEnvironment  = emptyClassEnvironment
+   , typingStrategies  = []
    }
-                                              
-addTypeConstructor :: Name -> Int -> ImportEnvironment -> ImportEnvironment                      
-addTypeConstructor name int importenv = 
-   importenv {typeConstructors = M.insert name int (typeConstructors importenv)} 
 
--- add a type synonym also to the type constructor environment   
-addTypeSynonym :: Name -> (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment                      
-addTypeSynonym name (arity, function) importenv = 
+addTypeConstructor :: Name -> Int -> ImportEnvironment -> ImportEnvironment
+addTypeConstructor name int importenv =
+   importenv {typeConstructors = M.insert name int (typeConstructors importenv)}
+
+-- add a type synonym also to the type constructor environment
+addTypeSynonym :: Name -> (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment
+addTypeSynonym name (arity, function) importenv =
    importenv { typeSynonyms     = M.insert name (arity, function) (typeSynonyms importenv)
              , typeConstructors = M.insert name arity (typeConstructors importenv)
-             } 
+             }
 
-addType :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment                      
-addType name tpscheme importenv = 
+addType :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment
+addType name tpscheme importenv =
    importenv {typeEnvironment = M.insert name tpscheme (typeEnvironment importenv)}
 
 addToTypeEnvironment :: TypeEnvironment -> ImportEnvironment -> ImportEnvironment
 addToTypeEnvironment new importenv =
-   importenv {typeEnvironment = typeEnvironment importenv `M.union` new} 
-   
-addValueConstructor :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment                      
-addValueConstructor name tpscheme importenv = 
+   importenv {typeEnvironment = typeEnvironment importenv `M.union` new}
+
+addValueConstructor :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment
+addValueConstructor name tpscheme importenv =
    importenv {valueConstructors = M.insert name tpscheme (valueConstructors importenv)}
 
-addOperator :: Name -> (Int,Assoc) -> ImportEnvironment -> ImportEnvironment  
-addOperator name pair importenv = 
-   importenv {operatorTable = M.insert name pair (operatorTable importenv) } 
-   
-setValueConstructors :: M.Map Name TpScheme -> ImportEnvironment -> ImportEnvironment  
-setValueConstructors new importenv = importenv {valueConstructors = new} 
+addOperator :: Name -> (Int,Assoc) -> ImportEnvironment -> ImportEnvironment
+addOperator name pair importenv =
+   importenv {operatorTable = M.insert name pair (operatorTable importenv) }
 
-setTypeConstructors :: M.Map Name Int -> ImportEnvironment -> ImportEnvironment     
+setValueConstructors :: M.Map Name TpScheme -> ImportEnvironment -> ImportEnvironment
+setValueConstructors new importenv = importenv {valueConstructors = new}
+
+setTypeConstructors :: M.Map Name Int -> ImportEnvironment -> ImportEnvironment
 setTypeConstructors new importenv = importenv {typeConstructors = new}
 
-setTypeSynonyms :: M.Map Name (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment  
+setTypeSynonyms :: M.Map Name (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment
 setTypeSynonyms new importenv = importenv {typeSynonyms = new}
 
-setTypeEnvironment :: M.Map Name TpScheme -> ImportEnvironment -> ImportEnvironment 
+setTypeEnvironment :: M.Map Name TpScheme -> ImportEnvironment -> ImportEnvironment
 setTypeEnvironment new importenv = importenv {typeEnvironment = new}
 
-setOperatorTable :: OperatorTable -> ImportEnvironment -> ImportEnvironment 
+setOperatorTable :: OperatorTable -> ImportEnvironment -> ImportEnvironment
 setOperatorTable new importenv = importenv {operatorTable = new}
 
 getOrderedTypeSynonyms :: ImportEnvironment -> OrderedTypeSynonyms
@@ -125,8 +125,8 @@ getSiblings importenv =
    in map (concatMap f) (getSiblingGroups importenv) 
          
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
-combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 xs2) = 
-   ImportEnvironment 
+combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 xs2) =
+   ImportEnvironment
       (tcs1 `exclusiveUnion` tcs2) 
       (tss1 `exclusiveUnion` tss2)
       (te1  `exclusiveUnion` te2 )
@@ -160,9 +160,9 @@ combineClassDecls (super1, inst1) (super2, inst2)
 -- Create a class environment from the dictionaries in the import environment
 createClassEnvironment :: ImportEnvironment -> ClassEnvironment
 createClassEnvironment importenv = 
-    let  dicts = map (drop (length dictPrefix) . show) 
-               . M.keys 
-               . M.filterWithKey isDict 
+    let  dicts = map (drop (length dictPrefix) . show)
+               . M.keys
+               . M.filterWithKey isDict
                $ typeEnvironment importenv
          isDict n _ = dictPrefix `isPrefixOf` show n
          dictPrefix = "$dict"
@@ -178,15 +178,15 @@ createClassEnvironment importenv =
          arity s | s == "()" = 0
                  | isTupleConstructor s = length s - 1
                  | otherwise = M.findWithDefault
-                                  (internalError "ImportEnvironment" "splitDictName" ("unknown type constructor: " ++ show s))                            
+                                  (internalError "ImportEnvironment" "splitDictName" ("unknown type constructor: " ++ show s))
                                   (nameFromString s)
-                                  (typeConstructors importenv) 
-         dictTuples = [ (c, makeInstance c (arity t) t) 
-                      | d <- dicts, let (c, t) = splitDictName d 
+                                  (typeConstructors importenv)
+         dictTuples = [ (c, makeInstance c (arity t) t)
+                      | d <- dicts, let (c, t) = splitDictName d
                       ]
-         
-         classEnv = foldr 
-                    (\(className, inst) e -> insertInstance className inst e) 
+
+         classEnv = foldr
+                    (\(className, inst) e -> insertInstance className inst e)
                     superClassRelation 
                     dictTuples
     in classEnv

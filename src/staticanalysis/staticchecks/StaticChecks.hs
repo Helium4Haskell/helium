@@ -1,6 +1,6 @@
 
 
--- UUAGC 0.9.6 (StaticChecks.ag)
+-- UUAGC 0.9.7 (StaticChecks.ag)
 module StaticChecks where
 
 import Similarity ( similar )
@@ -46,7 +46,48 @@ uniqueKeys = let comp (x,_) (y,_) = compare x y
               . sortBy comp
 
 
-type Dictionairy  = [(Name, [(Name, TpScheme)])]
+type Dictionairy  = [ClassDef]
+
+type ClassDef = (Name, ClassMembers)
+
+type ClassMembers = [(Name, Maybe Declaration, Type)]
+
+filterType :: Declarations -> (Declarations, Declarations) -> (Declarations, Declarations)
+filterType (d@(Declaration_TypeSignature _ _ _):ds) (t, dec) = filterType ds (d:t, dec)
+filterType (d:ds) (t, dec)                                   = filterType ds (t, d:dec)
+filterType []     res                                        = res
+
+createClassDef1 :: Declaration -> ClassMembers
+createClassDef1 (Declaration_TypeSignature r names ty) = [(n, Nothing, ty) | n <- names]
+createClassDef1 _                                      = error "Error createClassDef1, filtering failed..."
+
+createClassDef2 :: Declarations -> ClassMembers -> ClassMembers
+createClassDef2 (x:xs) m = createClassDef2 xs $ createClassDef2' x m
+createClassDef2' (Declaration_FunctionBindings r fs)  = error "undefined Declaration FunctionBindings"
+createClassDef2' (Declaration_PatternBinding r p rhs) = error "undefined Declaration PatternBinding"
+
+createClassDef :: Name -> Declarations -> ClassDef
+createClassDef n decls = (n, createClassDef2 fdecl $ concatMap createClassDef1 types)
+               where (types, fdecl) = filterType decls ([], [])
+
+{-
+
+createClassDef :: Name -> Declarations -> ClassDef
+createClassDef n ds = (n, map (\(x,y,z) -> (x,y unJust z)) $ sortDecls [] ds)
+  where unJust :: Maybe Type -> Type
+        unJust (Just t) = t
+        unjust _        = error "This error should have been reported earlier, no type def in class."
+        sortDecls :: [(Name, Maybe Declaration, TpScheme)] -> Declarations -> [(Name, Maybe Declaration, Maybe Type)]
+        sortDecls sorted [] = sorted
+        sortDecls sorted (Declaration_TypeSignature range names ty) = undefined
+        insertType :: Type -> Name -> ClassMembers -> ClassMembers
+        insertType ty n (d@(n2, decl, _):ds) | n == n2   = (n, decl, ty):ds
+                                             | otherwise = d : insertType ty n ds
+        insertType ty n []                   = [(n, Nothing, ty)]
+        insertDef :: Declarations -> ClassMembers -> ClassMembers
+        insertDef = undefined
+
+-}
 
                   
 type ScopeInfo = ( [Names]          -- duplicated variables
@@ -1065,7 +1106,7 @@ sem_Body_Body range_ importdeclarations_ declarations_  =
               _importdeclarationsIself :: ImportDeclarations
               _declarationsIcollectInstances :: ([(Name, Instance)])
               _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
-              _declarationsIcollectTypeClasses :: ( Dictionairy )
+              _declarationsIcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _declarationsIcollectTypeConstructors :: ([(Name,Int)])
               _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
               _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
@@ -1898,7 +1939,7 @@ type T_Declaration  = Names ->
                       ([(Name,TpScheme)]) ->
                       (M.Map Name TpScheme) ->
                       ([Warning]) ->
-                      ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),( Dictionairy ),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),Names,([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),Names,Declaration,([(Name,Name)]),([(Name,TpScheme)]),Names,([Warning]))
+                      ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),( [(Name, [(Name, TpScheme)])] ),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),Names,([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),Names,Declaration,([(Name,Name)]),([(Name,TpScheme)]),Names,([Warning]))
 sem_Declaration_Class :: T_Range  ->
                          T_ContextItems  ->
                          T_SimpleType  ->
@@ -1924,7 +1965,7 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
        _lhsItypeSignatures
        _lhsIvalueConstructors
        _lhsIwarnings ->
-         (let _lhsOcollectTypeClasses :: ( Dictionairy )
+         (let _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOtypeSignatures :: ([(Name,TpScheme)])
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOmiscerrors :: ([Error])
@@ -2110,7 +2151,7 @@ sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_  =
               _lhsOwarnings :: ([Warning])
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOmiscerrors :: ([Error])
-              _lhsOcollectTypeClasses :: ( Dictionairy )
+              _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
@@ -2287,7 +2328,7 @@ sem_Declaration_Default range_ types_  =
        _lhsIwarnings ->
          (let _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOcollectInstances :: ([(Name, Instance)])
-              _lhsOcollectTypeClasses :: ( Dictionairy )
+              _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
@@ -2386,7 +2427,7 @@ sem_Declaration_Empty range_  =
        _lhsIvalueConstructors
        _lhsIwarnings ->
          (let _lhsOcollectInstances :: ([(Name, Instance)])
-              _lhsOcollectTypeClasses :: ( Dictionairy )
+              _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
@@ -2470,7 +2511,7 @@ sem_Declaration_Fixity range_ fixity_ priority_ operators_  =
          (let _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOcollectInstances :: ([(Name, Instance)])
-              _lhsOcollectTypeClasses :: ( Dictionairy )
+              _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
@@ -2568,7 +2609,7 @@ sem_Declaration_FunctionBindings range_ bindings_  =
               _lhsOsuspiciousFBs :: ([(Name,Name)])
               _lhsOmiscerrors :: ([Error])
               _lhsOcollectInstances :: ([(Name, Instance)])
-              _lhsOcollectTypeClasses :: ( Dictionairy )
+              _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
               _lhsOself :: Declaration
@@ -2702,7 +2743,7 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
        _lhsIwarnings ->
          (let _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOcollectInstances :: ([(Name, Instance)])
-              _lhsOcollectTypeClasses :: ( Dictionairy )
+              _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
@@ -2892,7 +2933,7 @@ sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_  =
          (let _constructorOsimpletype :: SimpleType
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOcollectInstances :: ([(Name, Instance)])
-              _lhsOcollectTypeClasses :: ( Dictionairy )
+              _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
@@ -3050,7 +3091,7 @@ sem_Declaration_PatternBinding range_ pattern_ righthandside_  =
               _patternOlhsPattern :: Bool
               _lhsOrestrictedNames :: Names
               _lhsOcollectInstances :: ([(Name, Instance)])
-              _lhsOcollectTypeClasses :: ( Dictionairy )
+              _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOunboundNames :: Names
               _lhsOself :: Declaration
               _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -3217,7 +3258,7 @@ sem_Declaration_Type range_ simpletype_ type_  =
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOmiscerrors :: ([Error])
               _lhsOcollectInstances :: ([(Name, Instance)])
-              _lhsOcollectTypeClasses :: ( Dictionairy )
+              _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
@@ -3337,7 +3378,7 @@ sem_Declaration_TypeSignature range_ names_ type_  =
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOwarnings :: ([Warning])
               _lhsOcollectInstances :: ([(Name, Instance)])
-              _lhsOcollectTypeClasses :: ( Dictionairy )
+              _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
@@ -3448,7 +3489,7 @@ type T_Declarations  = Names ->
                        ([(Name,TpScheme)]) ->
                        (M.Map Name TpScheme) ->
                        ([Warning]) ->
-                       ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),( Dictionairy ),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),Names,([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),Names,Declarations,([(Name,Name)]),([(Name,TpScheme)]),Names,([Warning]))
+                       ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),( [(Name, [(Name, TpScheme)])] ),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),Names,([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),Names,Declarations,([(Name,Name)]),([(Name,TpScheme)]),Names,([Warning]))
 sem_Declarations_Cons :: T_Declaration  ->
                          T_Declarations  ->
                          T_Declarations 
@@ -3472,7 +3513,7 @@ sem_Declarations_Cons hd_ tl_  =
        _lhsItypeSignatures
        _lhsIvalueConstructors
        _lhsIwarnings ->
-         (let _lhsOcollectTypeClasses :: ( Dictionairy )
+         (let _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOdeclVarNames :: Names
               _lhsOrestrictedNames :: Names
@@ -3529,7 +3570,7 @@ sem_Declarations_Cons hd_ tl_  =
               _tlOwarnings :: ([Warning])
               _hdIcollectInstances :: ([(Name, Instance)])
               _hdIcollectScopeInfos :: ([(ScopeInfo, Entity)])
-              _hdIcollectTypeClasses :: ( Dictionairy )
+              _hdIcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _hdIcollectTypeConstructors :: ([(Name,Int)])
               _hdIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
               _hdIcollectValueConstructors :: ([(Name,TpScheme)])
@@ -3546,7 +3587,7 @@ sem_Declarations_Cons hd_ tl_  =
               _hdIwarnings :: ([Warning])
               _tlIcollectInstances :: ([(Name, Instance)])
               _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
-              _tlIcollectTypeClasses :: ( Dictionairy )
+              _tlIcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _tlIcollectTypeConstructors :: ([(Name,Int)])
               _tlIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
               _tlIcollectValueConstructors :: ([(Name,TpScheme)])
@@ -3700,7 +3741,7 @@ sem_Declarations_Nil  =
        _lhsIvalueConstructors
        _lhsIwarnings ->
          (let _lhsOcollectInstances :: ([(Name, Instance)])
-              _lhsOcollectTypeClasses :: ( Dictionairy )
+              _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
@@ -5157,7 +5198,7 @@ sem_Expression_Let range_ declarations_ expression_  =
               _rangeIself :: Range
               _declarationsIcollectInstances :: ([(Name, Instance)])
               _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
-              _declarationsIcollectTypeClasses :: ( Dictionairy )
+              _declarationsIcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _declarationsIcollectTypeConstructors :: ([(Name,Int)])
               _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
               _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
@@ -8117,7 +8158,7 @@ sem_MaybeDeclarations_Just declarations_  =
               _declarationsOwarnings :: ([Warning])
               _declarationsIcollectInstances :: ([(Name, Instance)])
               _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
-              _declarationsIcollectTypeClasses :: ( Dictionairy )
+              _declarationsIcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _declarationsIcollectTypeConstructors :: ([(Name,Int)])
               _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
               _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
@@ -10438,7 +10479,7 @@ sem_Qualifier_Let range_ declarations_  =
               _rangeIself :: Range
               _declarationsIcollectInstances :: ([(Name, Instance)])
               _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
-              _declarationsIcollectTypeClasses :: ( Dictionairy )
+              _declarationsIcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _declarationsIcollectTypeConstructors :: ([(Name,Int)])
               _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
               _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
@@ -11845,7 +11886,7 @@ sem_Statement_Let range_ declarations_  =
               _rangeIself :: Range
               _declarationsIcollectInstances :: ([(Name, Instance)])
               _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
-              _declarationsIcollectTypeClasses :: ( Dictionairy )
+              _declarationsIcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _declarationsIcollectTypeConstructors :: ([(Name,Int)])
               _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
               _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
