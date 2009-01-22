@@ -226,7 +226,7 @@ uniqueKeys = let comp (x,_) (y,_) = compare x y
 
 
 -- The following haskell code is used for building a temporary dictionairy in order to complete static checks
-type Dictionairy  = [ClassDef]
+type Dictionary  = [ClassDef]
 
 type ClassDef = (Name, ClassMembers)
 
@@ -254,12 +254,20 @@ createClassDef n (MaybeDeclarations_Just decls) = (n, createClassDef2 fdecl $ co
 }
 
 ATTR Declarations Declaration [ | | collectTypeClasses  USE { ++ } { [] } : { [(Name, [(Name, TpScheme)])] } ]
-
-ATTR Declaration Declarations [ | dictionairy USE { ++ } { [] } : {Dictionairy} | ]
+ATTR Body Declarations Declaration [ | | buildDictionary USE { ++ } { [] } : {Dictionary} ]
+ATTR Body Declaration Declarations Expression Expressions 
+     GuardedExpression GuardedExpressions MaybeDeclarations
+     MaybeExpression Qualifier Qualifiers RecordExpressionBinding
+     RightHandSide Alternative Alternatives FunctionBinding
+     FunctionBindings Statement RecordExpressionBindings
+     Statements -- Module -- When we are going to do stuff on multiple modules uncomment this thing
+               [ dictionary : {Dictionary} | | ]
+SEM Module
+    | Module body . dictionary = @body.buildDictionary
 
 SEM Declaration
     | Class lhs . collectTypeClasses = [(@simpletype.name, @where.typeSignatures)]
-            lhs . dictionairy = [createClassDef @simpletype.name @where.self]
+            lhs . buildDictionary = [createClassDef @simpletype.name @where.self]
 
 SEM Declarations
     | Cons     lhs . collectTypeClasses = @hd.collectTypeClasses  ++ @tl.collectTypeClasses

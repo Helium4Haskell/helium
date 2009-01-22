@@ -41,7 +41,7 @@ SEM Declaration
                          loc . contextErrors = checkClassContext @typeVars @contextVars  ++ checkClassMethods @self
     | Instance           lhs . miscerrors = @lhs.miscerrors ++ @loc.uniqueTypeVarErrors
                          loc . uniqueTypeVarErrors = if (length  (nonUniqueTypeVars @types.typevariables) > 0)
-                                                       then [ DefNonUniqueInstanceVars @name (nonUniqueTypeVars @types.typevariables) ]
+                                                       then [ DefNonUniqueInstanceVars @name.self (nonUniqueTypeVars @types.typevariables) ]
                                                        else []
     | FunctionBindings   lhs . miscerrors  = @arityErrors ++ @bindings.miscerrors
                          loc . arityErrors = if all (== head @bindings.arities) @bindings.arities
@@ -422,6 +422,11 @@ nonUniqueTypeVars :: Names -> Names
 nonUniqueTypeVars (x:xs) | elem x xs = x : nonUniqueTypeVars xs
                          | otherwise = nonUniqueTypeVars xs
 nonUniqueTypeVars []     = []
+
+classExists :: Name -> Dictionary -> Bool
+classExists n ((c,_):cs) | n == c    = True
+                         | otherwise = classExists n cs
+classExists n []                     = False
 }
                                  
        
