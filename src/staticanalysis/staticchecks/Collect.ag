@@ -247,18 +247,19 @@ createClassDef2' (Declaration_FunctionBindings r fs)  = error "undefined Declara
 createClassDef2' (Declaration_PatternBinding r p rhs) = error "undefined Declaration PatternBinding"
 
 createClassDef :: Name -> MaybeDeclarations -> ClassDef
-createClassDef n decls | decls == Nothing = (n, [])
-                       | otherwise        = (n, createClassDef2 fdecl $ concatMap createClassDef1 types)
+createClassDef n MaybeDeclarations_Nothing      = (n, [])
+createClassDef n (MaybeDeclarations_Just decls) = (n, createClassDef2 fdecl $ concatMap createClassDef1 types)
                where (types, fdecl) = filterType decls ([], [])
 
 }
 
-ATTR Declarations Declaration [ | | collectTypeClasses  USE {++} {[]} : { [(Name, [(Name, TpScheme)])] } ]
-ATRR Declaration Declarations [ | dictionairy USE {++} {[]} : {Dictionairy} | ]
+ATTR Declarations Declaration [ | | collectTypeClasses  USE { ++ } { [] } : { [(Name, [(Name, TpScheme)])] } ]
+
+ATTR Declaration Declarations [ | dictionairy USE { ++ } { [] } : {Dictionairy} | ]
 
 SEM Declaration
     | Class lhs . collectTypeClasses = [(@simpletype.name, @where.typeSignatures)]
-            lhs . dictionairy = [createClassDef @simpletype.name @declarations]
+            lhs . dictionairy = [createClassDef @simpletype.name @where.self]
 
 SEM Declarations
     | Cons     lhs . collectTypeClasses = @hd.collectTypeClasses  ++ @tl.collectTypeClasses

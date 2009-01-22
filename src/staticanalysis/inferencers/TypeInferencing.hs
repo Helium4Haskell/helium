@@ -1,6 +1,6 @@
 
 
--- UUAGC 0.9.6 (TypeInferencing.ag)
+-- UUAGC 0.9.7 (TypeInferencing.ag)
 module TypeInferencing where
 
 

@@ -128,7 +128,7 @@ showError anError = case anError of
       ( MessageString ("Multiparameter typeclasses are not supported, error in class definition: " ++ show (show name) ++ ". ")
       , [ MessageString ("You used parameters: "++prettyAndList (map (show . show) vars)++" .")]
       )
-   DefNonUniqueInstanceVars name vars -> 
+   DefNonUniqueInstanceVars name vars ->
       ( MessageString ("Not all type variables in instance declaration of class: " ++ show name ++ " are unique. ")
       , [ MessageString ("Type variable: " ++ show v ++ " occurs more then once.") | v <- vars]
       )

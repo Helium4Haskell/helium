@@ -40,7 +40,9 @@ SEM Declaration
                          loc . contextVars = @context.typeVariables
                          loc . contextErrors = checkClassContext @typeVars @contextVars  ++ checkClassMethods @self
     | Instance           lhs . miscerrors = @lhs.miscerrors ++ @loc.uniqueTypeVarErrors
-                         loc . uniqueTypeVarErrors = [ DefNonUniqueInstanceVars @name | n <- nonUniqueTypeVars @typevariables ]
+                         loc . uniqueTypeVarErrors = if (length  (nonUniqueTypeVars @types.typevariables) > 0)
+                                                       then [ DefNonUniqueInstanceVars @name (nonUniqueTypeVars @types.typevariables) ]
+                                                       else []
     | FunctionBindings   lhs . miscerrors  = @arityErrors ++ @bindings.miscerrors
                          loc . arityErrors = if all (== head @bindings.arities) @bindings.arities
                                                then []
@@ -405,20 +407,20 @@ validInstanceType (Type_Parenthesized _ t) = validInstanceType t -- Just look in
 validInstanceType (Type_Application r b ty tys) = validApplyType ty tys-- Some complicated stuff
 validInstanceType _                      = False -- We don't like quantified and unbound types etc...
 
-validApplyType :: Type -> [Types] -> Bool
-validApplyType (Type_Constructor r n) ts        = validInstanceConstrName n
+validApplyType :: Type -> Types -> Bool
+validApplyType (Type_Constructor r n) ts        = validInstanceConstrName n ts
 validAppleType (Type_Application r b ty tys) ts = undefined
 
-validInstanceConstrName :: Name -> Types -> Boolean
+validInstanceConstrName :: Name -> Types -> Bool
 validInstanceConstrName (Name_Special _ _ s) ts = s == "(" ++ replicate (length ts - 1) ',' ++ ")"    --We just want to know if it was a tuple
-validInstanceConstrName (Name_Identifier _ _ _) = True
+validInstanceConstrName (Name_Identifier _ _ _) _ = True
 validInstanceConstrName _ _ = False
 
 -- All type variables in an instance declaration have to be unique
 
 nonUniqueTypeVars :: Names -> Names
-nonUniqueTypeVars (x:xs) | elem x xs = x : uniqueTypeVars xs
-                         | otherwise = uniqueTypeVars xs
+nonUniqueTypeVars (x:xs) | elem x xs = x : nonUniqueTypeVars xs
+                         | otherwise = nonUniqueTypeVars xs
 nonUniqueTypeVars []     = []
 }
                                  
