@@ -43,22 +43,23 @@ compile fullName options lvmPath doneModules =
         
         unless (NoWarnings `elem` options) $
             showMessages lexerWarnings
-
+        putStrLn("Finished lexing")
         -- Phase 2: Parsing
         parsedModule <-
             doPhaseWithExit 20 (const "P") compileOptions $
                phaseParser fullName tokens options
-
+        putStrLn("Finished parsing")
         -- Phase 3: Importing
         (indirectionDecls, importEnvs) <-
             phaseImport fullName parsedModule lvmPath options
-
+        putStrLn("Finished importing")
         -- Phase 4: Resolving operators
         resolvedModule <-
             doPhaseWithExit 20 (const "R") compileOptions $
                phaseResolveOperators parsedModule importEnvs options
 
         stopCompilingIf (StopAfterParser `elem` options)
+        putStrLn("Resolving operators")
         -- putStrLn "Reached phase 5"
 
         -- Phase 5: Static checking
@@ -70,7 +71,7 @@ compile fullName options lvmPath doneModules =
             showMessages staticWarnings
 
         stopCompilingIf (StopAfterStaticAnalysis `elem` options)
-
+        putStrLn("Static checks")
         -- putStrLn "Reached phase 6"
         -- Phase 6: Kind inferencing (by default turned off)
         let combinedEnv = foldr combineImportEnvironments localEnv importEnvs

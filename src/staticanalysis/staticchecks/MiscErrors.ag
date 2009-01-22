@@ -39,7 +39,8 @@ SEM Declaration
                          loc . typeVars = @simpletype.self
                          loc . contextVars = @context.typeVariables
                          loc . contextErrors = checkClassContext @typeVars @contextVars  ++ checkClassMethods @self
-    | Instance           loc . unqueTypeVarErrors = [ DefNonUniqueInstanceVars @name | n <- nonUniqueTypeVars @typevariables ]
+    | Instance           lhs . miscerrors = @lhs.miscerrors ++ @loc.uniqueTypeVarErrors
+                         loc . uniqueTypeVarErrors = [ DefNonUniqueInstanceVars @name | n <- nonUniqueTypeVars @typevariables ]
     | FunctionBindings   lhs . miscerrors  = @arityErrors ++ @bindings.miscerrors
                          loc . arityErrors = if all (== head @bindings.arities) @bindings.arities
                                                then []
