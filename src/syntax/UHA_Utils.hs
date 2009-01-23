@@ -11,7 +11,7 @@
 module UHA_Utils where
 
 import UHA_Range(noRange, getNameRange)
-import UHA_Syntax(Name(..), ImportDeclaration(..), Pattern(..))
+import UHA_Syntax(Name(..), ImportDeclaration(..), Pattern(..), Declaration(..), Names, SimpleType(..), FunctionBinding(..), LeftHandSide(..))
 import Id(Id, idFromString, stringFromId)
 import Char
 import Top.Types(isTupleConstructor)
@@ -38,7 +38,7 @@ instance Show NameWithRange where
 instance Eq  NameWithRange where
    NameWithRange name1 == NameWithRange name2 = 
       (name1, getNameRange name1) == (name2, getNameRange name2)
-      
+
 instance Ord NameWithRange where
    NameWithRange name1 <= NameWithRange name2 = 
       (name1, getNameRange name1) <= (name2, getNameRange name2)
@@ -125,3 +125,27 @@ patternVars p = case p of
     Pattern_NegateFloat _ _             -> []
     _ -> internalError "UHA_Utils" "patternVars" "unsupported kind of pattern"
     
+--Extract the name(s) of a declaration
+nameOfDeclaration :: Declaration -> Names
+nameOfDeclaration d = case d of
+    Declaration_Class            _ _ (SimpleType_SimpleType _ n _) _   -> [n]
+    Declaration_Data             _ _ (SimpleType_SimpleType _ n _) _ _ -> [n]
+    Declaration_Default          _ _                                   -> [] --What does the Default do, it is not created by the parser...
+    Declaration_Empty            _                                     -> []
+    Declaration_Fixity           _ _ _ ns                              -> ns
+    Declaration_FunctionBindings _ fb                                  -> concatMap nameOfFunctionBinding fb
+    Declaration_Instance         _ _ n _ _                             -> [n]
+    Declaration_Newtype          _ _ (SimpleType_SimpleType _ n _) _ _ -> [n]
+    Declaration_PatternBinding   _ _ _                                 -> [] --Not entirely sure whether this is correct or not (a directly declared pattern is a binding to the names in the pattern...)
+    Declaration_Type             _ (SimpleType_SimpleType _ n _) _     -> [n]
+    Declaration_TypeSignature    _ ns _                                -> ns
+    
+nameOfFunctionBinding :: FunctionBinding -> Names
+nameOfFunctionBinding (FunctionBinding_FunctionBinding _ lhs _) = nameOfLeftHandSide lhs
+
+nameOfLeftHandSide :: LeftHandSide -> Names
+nameOfLeftHandSide lhs = case lhs of
+    LeftHandSide_Function _ n _      -> [n]
+    LeftHandSide_Infix _ _ n _       -> [n]
+    LeftHandSide_Parenthesized _ l _ -> nameOfLeftHandSide l
+

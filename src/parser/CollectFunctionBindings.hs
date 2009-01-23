@@ -9,7 +9,7 @@
 module CollectFunctionBindings where
 
 import UHA_Syntax
-import UHA_Utils
+import UHA_Utils  hiding (nameOfLeftHandSide, nameOfFunctionBinding, nameOfDeclaration)
 import UHA_Range
 import Utils
 

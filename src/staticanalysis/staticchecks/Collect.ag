@@ -232,24 +232,37 @@ type ClassDef = (Name, ClassMembers)
 
 type ClassMembers = [(Name, Maybe Declaration, Type)]
 
+--In declarations we find both type signatures and function declarations
 filterType :: Declarations -> (Declarations, Declarations) -> (Declarations, Declarations)
 filterType (d@(Declaration_TypeSignature _ _ _):ds) (t, dec) = filterType ds (d:t, dec)
 filterType (d:ds) (t, dec)                                   = filterType ds (t, d:dec)
 filterType []     res                                        = res
 
+--A type can be declared for multiple function names
 createClassDef1 :: Declaration -> ClassMembers
 createClassDef1 (Declaration_TypeSignature r names ty) = [(n, Nothing, ty) | n <- names]
 createClassDef1 _                                      = error "Error createClassDef1, filtering failed..."
 
+--A function declaration should be associated with a type in the class definition
 createClassDef2 :: Declarations -> ClassMembers -> ClassMembers
-createClassDef2 (x:xs) m = createClassDef2 xs $ createClassDef2' x m
-createClassDef2' (Declaration_FunctionBindings r fs)  = error "undefined Declaration FunctionBindings"
-createClassDef2' (Declaration_PatternBinding r p rhs) = error "undefined Declaration PatternBinding"
+createClassDef2 (d:ds) m = createClassDef2 ds $ createClassDef2' (nameOfDeclaration d) d m
+createClassDef2 []     m = m
+createClassDef2' (n:ns) d m = createClassDef2' ns d $ createClassDef2'' n d m
+createClassDef2' []     _ m = m
+createClassDef2'' n d (m@(n2, _, ty):ms) | n == n2   = (n2, Just d, ty):ms
+                                         | otherwise = m:(createClassDef2'' n d ms)
+createClassDef2'' _ _ []                             = [] -- Should not happen but if it happens the error is reported by another check
 
 createClassDef :: Name -> MaybeDeclarations -> ClassDef
 createClassDef n MaybeDeclarations_Nothing      = (n, [])
 createClassDef n (MaybeDeclarations_Just decls) = (n, createClassDef2 fdecl $ concatMap createClassDef1 types)
                where (types, fdecl) = filterType decls ([], [])
+               
+helper ((n, mem):defs) = (show n ++ (helpM mem)) : helper defs
+helper []              = []
+helpM ((n, _, _):ns)   = show n ++ helpM ns
+helpM []               = ""
+
 
 }
 

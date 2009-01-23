@@ -39,7 +39,8 @@ SEM Declaration
                          loc . typeVars = @simpletype.self
                          loc . contextVars = @context.typeVariables
                          loc . contextErrors = checkClassContext @typeVars @contextVars  ++ checkClassMethods @self
-    | Instance           lhs . miscerrors = @lhs.miscerrors ++ @loc.uniqueTypeVarErrors
+    | Instance           lhs . miscerrors = @lhs.miscerrors ++ @loc.uniqueTypeVarErrors ++ @loc.foundClasses
+                         loc . foundClasses = unsafePerformIO $ do {putStrLn $ show (helper @lhs.dictionary); return []}
                          loc . uniqueTypeVarErrors = if (length  (nonUniqueTypeVars @types.typevariables) > 0)
                                                        then [ DefNonUniqueInstanceVars @name.self (nonUniqueTypeVars @types.typevariables) ]
                                                        else []

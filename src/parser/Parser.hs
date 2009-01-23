@@ -14,7 +14,7 @@ module Parser
 {-
 Absent:
 - records
-- classes (class, instance, default...)    --If I succeed these will be there!!!!
+- classes (class, instance, default...)    --If I succeed these will be there!!!! 
 - "newtype"
 - strictness annotations
 - n+k patterns

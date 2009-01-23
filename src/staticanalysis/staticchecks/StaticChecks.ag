@@ -44,6 +44,7 @@ import StaticErrors
 import Warnings
 import Messages
 import List
+import System.IO.Unsafe
 import Utils ( internalError, fst3, minInt, maxInt )
 import TypeConversion
 import DerivingShow
