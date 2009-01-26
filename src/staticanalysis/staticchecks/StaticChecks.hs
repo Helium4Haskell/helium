@@ -33,7 +33,7 @@ filterRemovedNames list err =
 filterDerivedNames :: [Range] -> Error -> Bool
 filterDerivedNames ranges err = 
    case err of
-      Duplicated Definition names -> any (`notElem` ranges) (map getNameRange names) 
+      Duplicated Definition names -> any (`notElem` ranges) (map getNameRange names)
       _                           -> True
 
 
@@ -399,6 +399,8 @@ classExists :: Name -> Dictionary -> Bool
 classExists n ((c,_):cs) | n == c    = True
                          | otherwise = classExists n cs
 classExists n []                     = False
+
+
 
 
 checkExport entity name inScope =
@@ -2825,12 +2827,13 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
        _lhsItypeSignatures
        _lhsIvalueConstructors
        _lhsIwarnings ->
-         (let _lhsOpreviousWasAlsoFB :: (Maybe Name)
+         (let _lhsOtypeSignatures :: ([(Name,TpScheme)])
+              _lhsOdeclVarNames :: Names
+              _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOmiscerrors :: ([Error])
               _lhsObuildDictionary :: Dictionary
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
-              _lhsOdeclVarNames :: Names
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
               _lhsOself :: Declaration
@@ -2841,7 +2844,6 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _lhsOkindErrors :: ([Error])
               _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
               _lhsOsuspiciousFBs :: ([(Name,Name)])
-              _lhsOtypeSignatures :: ([(Name,TpScheme)])
               _lhsOwarnings :: ([Warning])
               _contextOallTypeConstructors :: Names
               _contextOmiscerrors :: ([Error])
@@ -2889,16 +2891,24 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _whereItypeSignatures :: ([(Name,TpScheme)])
               _whereIunboundNames :: Names
               _whereIwarnings :: ([Warning])
+              _lhsOtypeSignatures =
+                  _lhsItypeSignatures
+              _lhsOdeclVarNames =
+                  []
               _lhsOpreviousWasAlsoFB =
                   Nothing
               _lhsOmiscerrors =
-                  _lhsImiscerrors ++ _uniqueTypeVarErrors     ++ _foundClasses
+                  _lhsImiscerrors ++ _uniqueTypeVarErrors     ++ _undefinedClassErrors
               _foundClasses =
-                  unsafePerformIO $ do {putStrLn $ show (helper _lhsIdictionary); return []}
+                  []
               _uniqueTypeVarErrors =
                   if (length  (nonUniqueTypeVars _typesItypevariables) > 0)
                     then [ DefNonUniqueInstanceVars _nameIself (nonUniqueTypeVars _typesItypevariables) ]
                     else []
+              _undefinedClassErrors =
+                  if (classExists _nameIself _lhsIdictionary)
+                   then []
+                   else [UndefinedClass _nameIself (map fst _lhsIdictionary)]
               __tup5 =
                   internalError "PartialSyntax.ag" "n/a" "Declaration.Instance"
               (_assumptions,_,_) =
@@ -2913,8 +2923,6 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
                   _whereIcollectInstances
               _lhsOcollectTypeClasses =
                   []
-              _lhsOdeclVarNames =
-                  _whereIdeclVarNames
               _lhsOrestrictedNames =
                   []
               _lhsOunboundNames =
@@ -2937,8 +2945,6 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
                   _lhsIoperatorFixities
               _lhsOsuspiciousFBs =
                   _lhsIsuspiciousFBs
-              _lhsOtypeSignatures =
-                  _whereItypeSignatures
               _lhsOwarnings =
                   _whereIwarnings
               _contextOallTypeConstructors =

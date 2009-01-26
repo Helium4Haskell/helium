@@ -2534,8 +2534,8 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
        _lhsItypeSignatures
        _lhsItypeschemeMap
        _lhsIuniqueChunk ->
-         (let _lhsOcollectInstances :: ([(Name, Instance)])
-              _lhsOdeclVarNames :: Names
+         (let _lhsOdeclVarNames :: Names
+              _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOsimplePatNames :: Names
               _lhsOunboundNames :: Names
@@ -2600,10 +2600,10 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
                   __tup6
               (_,_,_unboundNames) =
                   __tup6
+              _lhsOdeclVarNames =
+                  []
               _lhsOcollectInstances =
                   _whereIcollectInstances
-              _lhsOdeclVarNames =
-                  _whereIdeclVarNames
               _lhsOrestrictedNames =
                   []
               _lhsOsimplePatNames =

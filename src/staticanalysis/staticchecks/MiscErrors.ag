@@ -39,11 +39,14 @@ SEM Declaration
                          loc . typeVars = @simpletype.self
                          loc . contextVars = @context.typeVariables
                          loc . contextErrors = checkClassContext @typeVars @contextVars  ++ checkClassMethods @self
-    | Instance           lhs . miscerrors = @lhs.miscerrors ++ @loc.uniqueTypeVarErrors ++ @loc.foundClasses
-                         loc . foundClasses = unsafePerformIO $ do {putStrLn $ show (helper @lhs.dictionary); return []}
+    | Instance           lhs . miscerrors = @lhs.miscerrors ++ @loc.uniqueTypeVarErrors ++ @loc.undefinedClassErrors
+                         loc . foundClasses =[]
                          loc . uniqueTypeVarErrors = if (length  (nonUniqueTypeVars @types.typevariables) > 0)
                                                        then [ DefNonUniqueInstanceVars @name.self (nonUniqueTypeVars @types.typevariables) ]
                                                        else []
+                         loc . undefinedClassErrors = if (classExists @name.self @lhs.dictionary)
+                                                       then []
+                                                       else [UndefinedClass @name.self (map fst @lhs.dictionary)]
     | FunctionBindings   lhs . miscerrors  = @arityErrors ++ @bindings.miscerrors
                          loc . arityErrors = if all (== head @bindings.arities) @bindings.arities
                                                then []
@@ -428,6 +431,9 @@ classExists :: Name -> Dictionary -> Bool
 classExists n ((c,_):cs) | n == c    = True
                          | otherwise = classExists n cs
 classExists n []                     = False
+
+
+
 }
                                  
        

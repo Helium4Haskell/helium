@@ -43,72 +43,67 @@ compile fullName options lvmPath doneModules =
         
         unless (NoWarnings `elem` options) $
             showMessages lexerWarnings
-        putStrLn("Finished lexing")
+
         -- Phase 2: Parsing
-        parsedModule <-
+        parsedModule <- 
             doPhaseWithExit 20 (const "P") compileOptions $
                phaseParser fullName tokens options
-        putStrLn("Finished parsing")
+
         -- Phase 3: Importing
         (indirectionDecls, importEnvs) <-
             phaseImport fullName parsedModule lvmPath options
-        putStrLn("Finished importing")
+        
         -- Phase 4: Resolving operators
-        resolvedModule <-
+        resolvedModule <- 
             doPhaseWithExit 20 (const "R") compileOptions $
                phaseResolveOperators parsedModule importEnvs options
-
+            
         stopCompilingIf (StopAfterParser `elem` options)
-        putStrLn("Resolving operators")
-        -- putStrLn "Reached phase 5"
 
         -- Phase 5: Static checking
         (localEnv, typeSignatures, staticWarnings) <-
             doPhaseWithExit 20 (("S"++) . errorsLogCode) compileOptions $
-               phaseStaticChecks fullName resolvedModule importEnvs options
+               phaseStaticChecks fullName resolvedModule importEnvs options        
 
         unless (NoWarnings `elem` options) $
             showMessages staticWarnings
 
         stopCompilingIf (StopAfterStaticAnalysis `elem` options)
-        putStrLn("Static checks")
-        -- putStrLn "Reached phase 6"
+
         -- Phase 6: Kind inferencing (by default turned off)
         let combinedEnv = foldr combineImportEnvironments localEnv importEnvs
         when (KindInferencing `elem` options) $
            doPhaseWithExit maximumNumberOfKindErrors (const "K") compileOptions $
               phaseKindInferencer combinedEnv resolvedModule options
-        -- putStrLn "Reached phase 7"
+              
         -- Phase 7: Type Inference Directives
         (beforeTypeInferEnv, typingStrategiesDecls) <-
             phaseTypingStrategies fullName combinedEnv typeSignatures options
-        -- putStrLn "Reached phase 8"
+
         -- Phase 8: Type inferencing
-        (dictionaryEnv, afterTypeInferEnv, toplevelTypes, typeWarnings) <-
-            doPhaseWithExit maximumNumberOfTypeErrors (const "T") compileOptions $
+        (dictionaryEnv, afterTypeInferEnv, toplevelTypes, typeWarnings) <- 
+            doPhaseWithExit maximumNumberOfTypeErrors (const "T") compileOptions $ 
                phaseTypeInferencer fullName resolvedModule {-doneModules-} localEnv beforeTypeInferEnv options
 
         unless (NoWarnings `elem` options) $
             showMessages typeWarnings
 
         stopCompilingIf (StopAfterTypeInferencing `elem` options)
-        
-        -- putStrLn "Reached phase 9"
-        
+
         -- Phase 9: Desugaring
-        coreModule <-
+        coreModule <-                
             phaseDesugarer dictionaryEnv
-                           fullName resolvedModule
-                           (typingStrategiesDecls ++ indirectionDecls)
+                           fullName resolvedModule 
+                           (typingStrategiesDecls ++ indirectionDecls) 
                            afterTypeInferEnv
-                           toplevelTypes
-                           options
+                           toplevelTypes 
+                           options                           
 
         stopCompilingIf (StopAfterDesugar `elem` options)
 
         -- Phase 10: Code generation
         phaseCodeGenerator fullName coreModule options
-
+        
         sendLog "C" fullName doneModules options
 
         let number = length staticWarnings + length typeWarnings + length lexerWarnings

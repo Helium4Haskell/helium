@@ -186,7 +186,8 @@ topdecl = addRange (
         st <- simpleType
         ds <- option MaybeDeclarations_Nothing (try $ do lexWHERE
                                                          d <- withLayout decl
-                                                         return (MaybeDeclarations_Just d))
+                                                         let new = CollectFunctionBindings.decls d
+                                                         return (MaybeDeclarations_Just new))
         return $ \r -> Declaration_Class r ct st ds
     <|>
 -- Declaration_Instance (Range) (ContextItems) (Name) (Types) (MaybeDeclarations)
@@ -197,7 +198,8 @@ topdecl = addRange (
       ts <- iType
       ds <- option MaybeDeclarations_Nothing (try $ do lexWHERE
                                                        d <- withLayout decl
-                                                       return (MaybeDeclarations_Just d))
+                                                       let new = CollectFunctionBindings.decls d
+                                                       return (MaybeDeclarations_Just new))
       return $ \r -> Declaration_Instance r ct n [ts] ds
     <|>
     infixdecl

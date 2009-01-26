@@ -32,6 +32,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | ClassVariableNotInMethodSignature Name Name Names -- Class name, class variable, method name
             | InvalidContext Entity Name Names
             | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}[String] {- hints -}
+            | UndefinedClass Name {-Classes in scope -} Names
             | TypeClassOverloadRestr Name Names
             | Duplicated Entity Names
             | LastStatementNotExpr Range
@@ -66,6 +67,7 @@ instance HasMessage Error where
       ClassVariableNotInMethodSignature _ _ names -> sortRanges (map getNameRange names)
       TypeClassOverloadRestr _ names -> sortRanges (map getNameRange names)
       Undefined _ name _ _        -> [getNameRange name]
+      UndefinedClass name _       -> [getNameRange name]
       Duplicated _ names          -> sortRanges (map getNameRange names)
       LastStatementNotExpr range  -> [range]
       WrongFileName _ _ range     -> [range]
@@ -162,7 +164,14 @@ showError anError = case anError of
         | let xs = sensiblySimilar name inScope, not (null xs)
         ]
       )
-                         
+   
+   UndefinedClass name inScope ->
+      ( MessageString ("Trying to instantiate unknown class " ++ show name ++ ".")
+      , [ MessageString ("Did you mean " ++ prettyOrList (map (show . show) xs) ++ " ?")
+        | let xs = sensiblySimilar name inScope, not (null xs)
+        ]
+      )
+
    Duplicated entity names
       | all isImportRange nameRanges ->
            ( MessageString (

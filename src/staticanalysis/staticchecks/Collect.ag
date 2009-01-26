@@ -310,3 +310,5 @@ SEM Declaration
       loc . (typeScheme, intMap) = makeTpSchemeFromType' @type.self
   | Class
       lhs . typeSignatures = @lhs.typeSignatures -- just shortcut it
+  | Instance
+      lhs . typeSignatures = @lhs.typeSignatures -- And we apply the same trick again

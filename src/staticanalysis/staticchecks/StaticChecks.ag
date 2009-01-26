@@ -83,7 +83,7 @@ filterRemovedNames list err =
 filterDerivedNames :: [Range] -> Error -> Bool
 filterDerivedNames ranges err = 
    case err of
-      Duplicated Definition names -> any (`notElem` ranges) (map getNameRange names) 
+      Duplicated Definition names -> any (`notElem` ranges) (map getNameRange names)
       _                           -> True
 }
 
