@@ -257,7 +257,7 @@ createClassDef :: Name -> MaybeDeclarations -> ClassDef
 createClassDef n MaybeDeclarations_Nothing      = (n, [])
 createClassDef n (MaybeDeclarations_Just decls) = (n, createClassDef2 fdecl $ concatMap createClassDef1 types)
                where (types, fdecl) = filterType decls ([], [])
-               
+
 helper ((n, mem):defs) = (show n ++ (helpM mem)) : helper defs
 helper []              = []
 helpM ((n, _, _):ns)   = show n ++ helpM ns

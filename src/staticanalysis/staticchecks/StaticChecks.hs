@@ -81,7 +81,7 @@ createClassDef :: Name -> MaybeDeclarations -> ClassDef
 createClassDef n MaybeDeclarations_Nothing      = (n, [])
 createClassDef n (MaybeDeclarations_Just decls) = (n, createClassDef2 fdecl $ concatMap createClassDef1 types)
                where (types, fdecl) = filterType decls ([], [])
-               
+
 helper ((n, mem):defs) = (show n ++ (helpM mem)) : helper defs
 helper []              = []
 helpM ((n, _, _):ns)   = show n ++ helpM ns
@@ -2022,10 +2022,10 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
          (let _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsObuildDictionary :: Dictionary
               _lhsOtypeSignatures :: ([(Name,TpScheme)])
+              _lhsOdeclVarNames :: Names
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOmiscerrors :: ([Error])
               _lhsOcollectInstances :: ([(Name, Instance)])
-              _lhsOdeclVarNames :: Names
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
               _lhsOself :: Declaration
@@ -2082,6 +2082,8 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
                   [createClassDef _simpletypeIname _whereIself]
               _lhsOtypeSignatures =
                   _lhsItypeSignatures
+              _lhsOdeclVarNames =
+                  []
               _lhsOpreviousWasAlsoFB =
                   Nothing
               _lhsOmiscerrors =
@@ -2106,8 +2108,6 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
                   __tup4
               _lhsOcollectInstances =
                   _whereIcollectInstances
-              _lhsOdeclVarNames =
-                  _declVarNames
               _lhsOrestrictedNames =
                   []
               _lhsOunboundNames =

@@ -1785,8 +1785,8 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
        _lhsItypeSignatures
        _lhsItypeschemeMap
        _lhsIuniqueChunk ->
-         (let _lhsOcollectInstances :: ([(Name, Instance)])
-              _lhsOdeclVarNames :: Names
+         (let _lhsOdeclVarNames :: Names
+              _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOsimplePatNames :: Names
               _lhsOunboundNames :: Names
@@ -1852,10 +1852,10 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
                   __tup5
               (_,_,_unboundNames) =
                   __tup5
+              _lhsOdeclVarNames =
+                  []
               _lhsOcollectInstances =
                   _whereIcollectInstances
-              _lhsOdeclVarNames =
-                  _whereIdeclVarNames
               _lhsOrestrictedNames =
                   []
               _lhsOsimplePatNames =

@@ -151,6 +151,7 @@ SEM MaybeDeclarations | Just    lhs          . declVarNames = @declarations.decl
 SEM Declaration
   | FunctionBindings  lhs . declVarNames = [@bindings.name]
   | PatternBinding    lhs . declVarNames = @pattern.patVarNames
+  | Class             lhs . declVarNames = []
 
 -- utility function
 {                  
