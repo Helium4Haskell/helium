@@ -395,10 +395,30 @@ nonUniqueTypeVars (x:xs) | elem x xs = x : nonUniqueTypeVars xs
                          | otherwise = nonUniqueTypeVars xs
 nonUniqueTypeVars []     = []
 
-classExists :: Name -> Dictionary -> Bool
-classExists n ((c,_):cs) | n == c    = True
-                         | otherwise = classExists n cs
-classExists n []                     = False
+classExists :: Name -> Dictionary -> (Maybe ClassDef)
+classExists n (d@(c,_):cs) | n == c    = Just d
+                           | otherwise = classExists n cs
+classExists n []                       = Nothing
+
+
+instanceMembers :: MaybeDeclarations -> ClassDef -> Errors
+instanceMembers MaybeDeclarations_Nothing _ = []
+instanceMembers (MaybeDeclarations_Just decls) d = {- [ (DebugError n ("We have members" ++ show (length decls)))] -} instanceMembers' decls d
+
+instanceMembers' :: Declarations -> ClassDef -> Errors
+instanceMembers' (d:ds) c@(n, members) = let fn = head $ nameOfDeclaration d
+                                             cm = map (\(x, _, _) -> x) members
+                                          in
+                                             case elem fn cm of
+                                              True -> case (noInstanceType d c) of
+                                                       Nothing -> instanceMembers' ds c
+                                                       Just e  -> e : instanceMembers' ds c
+                                              False -> UndefinedFunctionForClass n fn cm : instanceMembers' ds c
+instanceMembers' []     _       = []
+
+noInstanceType :: Declaration -> ClassDef -> Maybe Error
+noInstanceType (Declaration_TypeSignature _ names _) (n, _) = Just $ TypeSignatureInInstance n names
+noInstanceType _                                     _      = Nothing
 
 
 
@@ -2906,9 +2926,9 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
                     then [ DefNonUniqueInstanceVars _nameIself (nonUniqueTypeVars _typesItypevariables) ]
                     else []
               _undefinedClassErrors =
-                  if (classExists _nameIself _lhsIdictionary)
-                   then []
-                   else [UndefinedClass _nameIself (map fst _lhsIdictionary)]
+                  case (classExists _nameIself _lhsIdictionary) of
+                       Nothing -> [UndefinedClass _nameIself (map fst _lhsIdictionary)]
+                       (Just decl) -> instanceMembers _whereIself decl
               __tup5 =
                   internalError "PartialSyntax.ag" "n/a" "Declaration.Instance"
               (_assumptions,_,_) =

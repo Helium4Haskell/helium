@@ -133,7 +133,7 @@ nameOfDeclaration d = case d of
     Declaration_Default          _ _                                   -> [] --What does the Default do, it is not created by the parser...
     Declaration_Empty            _                                     -> []
     Declaration_Fixity           _ _ _ ns                              -> ns
-    Declaration_FunctionBindings _ fb                                  -> concatMap nameOfFunctionBinding fb
+    Declaration_FunctionBindings _ fb                                  -> [head $ concatMap nameOfFunctionBinding fb]
     Declaration_Instance         _ _ n _ _                             -> [n]
     Declaration_Newtype          _ _ (SimpleType_SimpleType _ n _) _ _ -> [n]
     Declaration_PatternBinding   _ _ _                                 -> [] --Not entirely sure whether this is correct or not (a directly declared pattern is a binding to the names in the pattern...)

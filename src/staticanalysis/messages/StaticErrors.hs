@@ -33,6 +33,8 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | InvalidContext Entity Name Names
             | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}[String] {- hints -}
             | UndefinedClass Name {-Classes in scope -} Names
+            | UndefinedFunctionForClass Name Name Names
+            | TypeSignatureInInstance Name Names
             | TypeClassOverloadRestr Name Names
             | Duplicated Entity Names
             | LastStatementNotExpr Range
@@ -51,6 +53,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | NonDerivableClass Name
             | CannotDerive Name Tps
             | TupleTooBig Range
+            | DebugError Name String
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -68,6 +71,8 @@ instance HasMessage Error where
       TypeClassOverloadRestr _ names -> sortRanges (map getNameRange names)
       Undefined _ name _ _        -> [getNameRange name]
       UndefinedClass name _       -> [getNameRange name]
+      UndefinedFunctionForClass _ name _ -> [getNameRange name]
+      TypeSignatureInInstance _ names -> sortRanges $ map getNameRange names
       Duplicated _ names          -> sortRanges (map getNameRange names)
       LastStatementNotExpr range  -> [range]
       WrongFileName _ _ range     -> [range]
@@ -85,6 +90,7 @@ instance HasMessage Error where
       NonDerivableClass name      -> [getNameRange name]
       CannotDerive name _         -> [getNameRange name]
       TupleTooBig r               -> [r]
+      DebugError name _           -> [getNameRange name]
       _                           -> internalError "StaticErrors.hs" 
                                                    "instance IsMessage Error"
                                                    "unknown type of Error"
@@ -171,6 +177,18 @@ showError anError = case anError of
         | let xs = sensiblySimilar name inScope, not (null xs)
         ]
       )
+   
+   UndefinedFunctionForClass instanceName name hints ->
+      ( MessageString ("Function " ++ show name ++ " not defined in class: " ++ show instanceName ++ ".")
+      , [ MessageString ("Did you mean " ++ prettyOrList (map (show . show) xs) ++ "?")
+        | let xs = sensiblySimilar name hints, not (null xs)
+        ]
+      )
+   
+   TypeSignatureInInstance instanceName names ->
+     ( MessageString ("Type signature for: " ++ prettyAndList (map (show . show) names) ++ " in instance for: " ++ show instanceName ++ ".")
+     , [ MessageString ("Type signatures for class members should be defined in class definition.")]
+     )
 
    Duplicated entity names
       | all isImportRange nameRanges ->
@@ -299,6 +317,11 @@ showError anError = case anError of
    TupleTooBig r ->
     ( MessageString "Tuples can have up to 10 elements"
     , []
+    )
+
+   DebugError name message ->
+    ( MessageString ("Debug error: " ++ show name ++ ".")
+    , [ MessageString message ]
     )
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
