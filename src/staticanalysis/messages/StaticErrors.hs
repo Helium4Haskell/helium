@@ -33,6 +33,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | InvalidContext Entity Name Names
             | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}[String] {- hints -}
             | UndefinedClass Name {-Classes in scope -} Names
+            | InvalidInstanceType Name
             | UndefinedFunctionForClass Name Name Names
             | TypeSignatureInInstance Name Names
             | TypeClassOverloadRestr Name Names
@@ -72,6 +73,7 @@ instance HasMessage Error where
       Undefined _ name _ _        -> [getNameRange name]
       UndefinedClass name _       -> [getNameRange name]
       UndefinedFunctionForClass _ name _ -> [getNameRange name]
+      InvalidInstanceType name -> [getNameRange name]
       TypeSignatureInInstance _ names -> sortRanges $ map getNameRange names
       Duplicated _ names          -> sortRanges (map getNameRange names)
       LastStatementNotExpr range  -> [range]
@@ -184,6 +186,11 @@ showError anError = case anError of
         | let xs = sensiblySimilar name hints, not (null xs)
         ]
       )
+
+   InvalidInstanceType instanceName ->
+      ( MessageString ("Invalid instance type for: " ++ show instanceName ++ ".")
+      , [ MessageString ("Type application is only allowed when arguments are type variables")]
+      )
    
    TypeSignatureInInstance instanceName names ->
      ( MessageString ("Type signature for: " ++ prettyAndList (map (show . show) names) ++ " in instance for: " ++ show instanceName ++ ".")
@@ -195,7 +202,7 @@ showError anError = case anError of
            ( MessageString (
                 capitalize (show entity) ++ " " ++
                 (show . show . head) names ++
-                " imported from multiple modules: " ++ 
+                " imported from multiple modules: " ++
                 commaList (map (snd.fromJust.modulesFromImportRange) nameRanges)), [])
                 
       | any isImportRange nameRanges ->

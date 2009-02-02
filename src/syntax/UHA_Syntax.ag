@@ -9,8 +9,6 @@
 -- -- Modules                                                            --
 -- ------------------------------------------------------------------------
 
-DERIVING Module MaybeExports Export Body ImportDeclaration MaybeImportSpecification ImportSpecification Import MaybeDeclarations Declaration Fixity : Show
-
 DATA Module
     | Module
         range                    : Range
@@ -495,7 +493,7 @@ DATA Statement
         range                    : Range
 
 TYPE Qualifiers                  = [ Qualifier ]
-DERIVING Type SimpleType ContextItem Constructor FieldDeclaration AnnotatedType MaybeExpression Expression Statement Qualifier Alternative GuardedExpression : Show
+
 DATA Qualifier
     | Guard
         range                    : Range
@@ -658,8 +656,6 @@ DATA MaybeNames
     | Just
         names                    : Names
 
-DERIVING RecordExpressionBinding RecordPatternBinding FunctionBinding LeftHandSide RightHandSide Pattern Literal MaybeNames MaybeName Name MaybeInt Range : Show
-
 DATA MaybeName
     | Nothing
     | Just
@@ -704,7 +700,6 @@ DATA Range
         start                    : Position
         stop                     : Position
 
-DERIVING Position : Show
 DATA Position
     | Position
         filename                 : String

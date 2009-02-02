@@ -376,8 +376,13 @@ isSimplePattern pattern =
 validInstanceType :: Type -> Bool
 validInstanceType (Type_Constructor r n) = True  -- A simple type is fine
 validInstanceType (Type_Parenthesized _ t) = validInstanceType t -- Just look inside
-validInstanceType (Type_Application r b ty tys) = validApplyType ty tys-- Some complicated stuff
+validInstanceType (Type_Application r b ty tys) = (validApplyType ty tys) && (and $ map validInnerInstanceType tys) -- Some complicated stuff
 validInstanceType _                      = False -- We don't like quantified and unbound types etc...
+
+validInnerInstanceType :: Type -> Bool
+validInnerInstanceType (Type_Parenthesized _ t) = validInnerInstanceType t
+validInnerInstanceType (Type_Variable _ _) = True
+validInnerInstanceType _                   = False
 
 validApplyType :: Type -> Types -> Bool
 validApplyType (Type_Constructor r n) ts        = validInstanceConstrName n ts
@@ -419,6 +424,7 @@ instanceMembers' []     _       = []
 noInstanceType :: Declaration -> ClassDef -> Maybe Error
 noInstanceType (Declaration_TypeSignature _ names _) (n, _) = Just $ TypeSignatureInInstance n names
 noInstanceType _                                     _      = Nothing
+
 
 
 
@@ -2918,13 +2924,17 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _lhsOpreviousWasAlsoFB =
                   Nothing
               _lhsOmiscerrors =
-                  _lhsImiscerrors ++ _uniqueTypeVarErrors     ++ _undefinedClassErrors
+                  _lhsImiscerrors ++ _uniqueTypeVarErrors     ++ _undefinedClassErrors     ++ _validInstanceType
               _foundClasses =
                   []
               _uniqueTypeVarErrors =
                   if (length  (nonUniqueTypeVars _typesItypevariables) > 0)
                     then [ DefNonUniqueInstanceVars _nameIself (nonUniqueTypeVars _typesItypevariables) ]
                     else []
+              _validInstanceType =
+                  case (validInstanceType $ head _typesIself) of
+                     True -> []
+                     False -> [InvalidInstanceType _nameIself]
               _undefinedClassErrors =
                   case (classExists _nameIself _lhsIdictionary) of
                        Nothing -> [UndefinedClass _nameIself (map fst _lhsIdictionary)]

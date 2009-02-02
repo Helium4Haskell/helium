@@ -39,11 +39,14 @@ SEM Declaration
                          loc . typeVars = @simpletype.self
                          loc . contextVars = @context.typeVariables
                          loc . contextErrors = checkClassContext @typeVars @contextVars  ++ checkClassMethods @self
-    | Instance           lhs . miscerrors = @lhs.miscerrors ++ @loc.uniqueTypeVarErrors ++ @loc.undefinedClassErrors
+    | Instance           lhs . miscerrors = @lhs.miscerrors ++ @loc.uniqueTypeVarErrors ++ @loc.undefinedClassErrors ++ @loc.validInstanceType
                          loc . foundClasses =[]
                          loc . uniqueTypeVarErrors = if (length  (nonUniqueTypeVars @types.typevariables) > 0)
                                                        then [ DefNonUniqueInstanceVars @name.self (nonUniqueTypeVars @types.typevariables) ]
                                                        else []
+                         loc . validInstanceType = case (validInstanceType $ head @types.self) of
+                                                      True -> []
+                                                      False -> [InvalidInstanceType @name.self]  
                          loc . undefinedClassErrors = case (classExists @name.self @lhs.dictionary) of
                                                            Nothing -> [UndefinedClass @name.self (map fst @lhs.dictionary)]
                                                            (Just decl) -> instanceMembers @where.self decl
@@ -408,8 +411,13 @@ isSimplePattern pattern =
 validInstanceType :: Type -> Bool
 validInstanceType (Type_Constructor r n) = True  -- A simple type is fine
 validInstanceType (Type_Parenthesized _ t) = validInstanceType t -- Just look inside
-validInstanceType (Type_Application r b ty tys) = validApplyType ty tys-- Some complicated stuff
+validInstanceType (Type_Application r b ty tys) = (validApplyType ty tys) && (and $ map validInnerInstanceType tys) -- Some complicated stuff
 validInstanceType _                      = False -- We don't like quantified and unbound types etc...
+
+validInnerInstanceType :: Type -> Bool
+validInnerInstanceType (Type_Parenthesized _ t) = validInnerInstanceType t
+validInnerInstanceType (Type_Variable _ _) = True
+validInnerInstanceType _                   = False
 
 validApplyType :: Type -> Types -> Bool
 validApplyType (Type_Constructor r n) ts        = validInstanceConstrName n ts
@@ -451,6 +459,7 @@ instanceMembers' []     _       = []
 noInstanceType :: Declaration -> ClassDef -> Maybe Error
 noInstanceType (Declaration_TypeSignature _ names _) (n, _) = Just $ TypeSignatureInInstance n names
 noInstanceType _                                     _      = Nothing
+
 
 
 }
