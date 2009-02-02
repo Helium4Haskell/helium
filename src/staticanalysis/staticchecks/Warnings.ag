@@ -11,6 +11,8 @@
 --       explicit type signature. Perhaps only one group of function bindings was intended?)
 --    2) Suspicious type variable (a type variable with at least length two that resembles a
 --       known type constant)
+--    3) Instance declarations where functions that are declared in the class definition without 
+--       default are missing.
 -------------------------------------------------------------------------------
 
 ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alternatives
@@ -47,6 +49,8 @@ SEM MaybeDeclarations
                           @suspiciousErrors                                     
                           
 SEM Declaration
+  | Instance
+        lhs . warnings = @loc.missingMemberWarning ++ @lhs.warnings
   | Data
         lhs . warnings = map (Unused TypeVariable) @unused ++ @lhs.warnings
           
@@ -161,4 +165,23 @@ simplifyContext synonyms range intMap typescheme =
    in if length reduced == length predicates 
         then []
         else [ ReduceContext range (sub |-> predicates) (sub |-> reduced) ]
+}
+
+-----------------------------------------------------
+-- Missing instance members
+
+SEM Declaration
+    | Instance loc . missingMemberWarning = [ MissingClassMember @name.self n | n <- noInstanceOrDefault @loc.classDefinition @where.self ]
+
+{
+
+noInstanceOrDefault :: Maybe ClassDef -> MaybeDeclarations -> Names
+noInstanceOrDefault (Just (_, members)) MaybeDeclarations_Nothing      = [ n | (n, d, t) <- members, case d of
+                                                                                                         (Just _) -> False
+                                                                                                         otherwise -> True ]
+noInstanceOrDefault (Just (_, members)) (MaybeDeclarations_Just decls) = [ n | (n, d, t) <- members, case d of
+                                                                                                         (Just _) -> False
+                                                                                                         otherwise -> True
+                                                                                                    , notElem n (map (head . nameOfDeclaration) decls) ]
+
 }

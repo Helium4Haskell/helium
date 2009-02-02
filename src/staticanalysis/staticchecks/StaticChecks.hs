@@ -202,6 +202,18 @@ simplifyContext synonyms range intMap typescheme =
         else [ ReduceContext range (sub |-> predicates) (sub |-> reduced) ]
 
 
+
+noInstanceOrDefault :: Maybe ClassDef -> MaybeDeclarations -> Names
+noInstanceOrDefault (Just (_, members)) MaybeDeclarations_Nothing      = [ n | (n, d, t) <- members, case d of
+                                                                                                         (Just _) -> False
+                                                                                                         otherwise -> True ]
+noInstanceOrDefault (Just (_, members)) (MaybeDeclarations_Just decls) = [ n | (n, d, t) <- members, case d of
+                                                                                                         (Just _) -> False
+                                                                                                         otherwise -> True
+                                                                                                    , notElem n (map (head . nameOfDeclaration) decls) ]
+
+
+
 mode :: Ord a => [a] -> Maybe a -- Just ... IF any of the elements is more common
 mode xs =
     case filter ((== maxFreq) . snd) fs of
@@ -424,7 +436,6 @@ instanceMembers' []     _       = []
 noInstanceType :: Declaration -> ClassDef -> Maybe Error
 noInstanceType (Declaration_TypeSignature _ names _) (n, _) = Just $ TypeSignatureInInstance n names
 noInstanceType _                                     _      = Nothing
-
 
 
 
@@ -2855,6 +2866,7 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
        _lhsIwarnings ->
          (let _lhsOtypeSignatures :: ([(Name,TpScheme)])
               _lhsOdeclVarNames :: Names
+              _lhsOwarnings :: ([Warning])
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOmiscerrors :: ([Error])
               _lhsObuildDictionary :: Dictionary
@@ -2870,7 +2882,6 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _lhsOkindErrors :: ([Error])
               _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
               _lhsOsuspiciousFBs :: ([(Name,Name)])
-              _lhsOwarnings :: ([Warning])
               _contextOallTypeConstructors :: Names
               _contextOmiscerrors :: ([Error])
               _contextOoptions :: ([Option])
@@ -2921,8 +2932,12 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
                   _lhsItypeSignatures
               _lhsOdeclVarNames =
                   []
+              _lhsOwarnings =
+                  _missingMemberWarning     ++ _lhsIwarnings
               _lhsOpreviousWasAlsoFB =
                   Nothing
+              _missingMemberWarning =
+                  [ MissingClassMember _nameIself n | n <- noInstanceOrDefault _classDefinition     _whereIself ]
               _lhsOmiscerrors =
                   _lhsImiscerrors ++ _uniqueTypeVarErrors     ++ _undefinedClassErrors     ++ _validInstanceType
               _foundClasses =
@@ -2935,8 +2950,10 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
                   case (validInstanceType $ head _typesIself) of
                      True -> []
                      False -> [InvalidInstanceType _nameIself]
+              _classDefinition =
+                  classExists _nameIself _lhsIdictionary
               _undefinedClassErrors =
-                  case (classExists _nameIself _lhsIdictionary) of
+                  case (_classDefinition    ) of
                        Nothing -> [UndefinedClass _nameIself (map fst _lhsIdictionary)]
                        (Just decl) -> instanceMembers _whereIself decl
               __tup5 =
@@ -2975,8 +2992,6 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
                   _lhsIoperatorFixities
               _lhsOsuspiciousFBs =
                   _lhsIsuspiciousFBs
-              _lhsOwarnings =
-                  _whereIwarnings
               _contextOallTypeConstructors =
                   _lhsIallTypeConstructors
               _contextOmiscerrors =

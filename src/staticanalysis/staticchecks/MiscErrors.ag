@@ -46,8 +46,9 @@ SEM Declaration
                                                        else []
                          loc . validInstanceType = case (validInstanceType $ head @types.self) of
                                                       True -> []
-                                                      False -> [InvalidInstanceType @name.self]  
-                         loc . undefinedClassErrors = case (classExists @name.self @lhs.dictionary) of
+                                                      False -> [InvalidInstanceType @name.self]
+                         loc . classDefinition = classExists @name.self @lhs.dictionary
+                         loc . undefinedClassErrors = case (@loc.classDefinition) of
                                                            Nothing -> [UndefinedClass @name.self (map fst @lhs.dictionary)]
                                                            (Just decl) -> instanceMembers @where.self decl
     | FunctionBindings   lhs . miscerrors  = @arityErrors ++ @bindings.miscerrors
@@ -461,7 +462,5 @@ noInstanceType (Declaration_TypeSignature _ names _) (n, _) = Just $ TypeSignatu
 noInstanceType _                                     _      = Nothing
 
 
-
 }
                                  
-       

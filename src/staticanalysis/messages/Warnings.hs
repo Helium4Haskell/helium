@@ -35,7 +35,8 @@ data Warning  = NoTypeDef Name TpScheme Bool{- toplevel? -} Bool{- simple pat an
               | UnreachablePatternLHS  LeftHandSide
               | UnreachableGuard Range Expression
               | FallThrough Range
-              | SignatureTooSpecific Name TpScheme TpScheme 
+              | SignatureTooSpecific Name TpScheme TpScheme
+              | MissingClassMember Name Name
               
 instance HasMessage Warning where
    getMessage x = let (oneliner, hints) = showWarning x
@@ -45,6 +46,7 @@ instance HasMessage Warning where
       NoTypeDef name _ _ _          -> [getNameRange name]
       Shadow _ name                 -> [getNameRange name]
       Unused _ name                 -> [getNameRange name]
+      MissingClassMember name _     -> [getNameRange name]
       SimilarFunctionBindings n1 n2 -> sortRanges [getNameRange n1, getNameRange n2]
       SuspiciousTypeVariable name _ -> [getNameRange name]
       ReduceContext rng _ _         -> [rng]
@@ -148,7 +150,11 @@ showWarning warning = case warning of
            ]
       , []
       )
-
+   
+   MissingClassMember instanceName member ->
+      ( MessageString ("The function: " ++ show member ++ " for an instance of: " ++ show instanceName ++ " is not defined and doesn't have a default.")
+      , []
+      )
    _ -> internalError "Warnings" "showWarning" "unknown type of Warning"
 
 plural :: [a] -> String -> String
