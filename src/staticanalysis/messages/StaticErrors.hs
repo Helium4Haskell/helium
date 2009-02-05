@@ -33,6 +33,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | InvalidContext Entity Name Names
             | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}[String] {- hints -}
             | UndefinedClass Name {-Classes in scope -} Names
+            | InvalidInstanceConstraint Name Name Name
             | InvalidInstanceType Name
             | UndefinedFunctionForClass Name Name Names
             | TypeSignatureInInstance Name Names
@@ -75,6 +76,7 @@ instance HasMessage Error where
       UndefinedFunctionForClass _ name _ -> [getNameRange name]
       InvalidInstanceType name -> [getNameRange name]
       TypeSignatureInInstance _ names -> sortRanges $ map getNameRange names
+      InvalidInstanceConstraint _ name _ -> [getNameRange name]
       Duplicated _ names          -> sortRanges (map getNameRange names)
       LastStatementNotExpr range  -> [range]
       WrongFileName _ _ range     -> [range]
@@ -151,6 +153,12 @@ showError anError = case anError of
    InvalidContext Definition name vars ->
       ( MessageString ("Context of type class " ++ show (show name) ++ " refers to variables other variables then the one declared in the type class")
       , [ MessageString ("You use: "++prettyOrList (map (show . show) vars)++" .")]
+      )
+
+   InvalidInstanceConstraint instanceName contextName var ->
+      ( MessageString ("Context item: " ++ show contextName ++ " with variable: " ++ show var ++ " is not valid for instance of: " ++ show instanceName
+                                        ++ ".")
+      , [ MessageString ("You must use the variable from the context in the instance type.") ]
       )
 
    ClassVariableNotInMethodSignature className classVariable methods ->

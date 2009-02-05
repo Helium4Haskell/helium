@@ -51,6 +51,7 @@ SEM MaybeDeclarations
 SEM Declaration
   | Instance
         lhs . warnings = @loc.missingMemberWarning ++ @lhs.warnings
+        
   | Data
         lhs . warnings = map (Unused TypeVariable) @unused ++ @lhs.warnings
           

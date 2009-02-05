@@ -337,6 +337,16 @@ tooMuchConstraints ctxt classVars (Type_Qualified _ ctxts _) = filter (disAllowe
    disAllowedContext []                                        _                                = True
 tooMuchConstraints _    _         _                          = []
 
+-- Instance constraints must apply to instance type
+checkInstanceSignature :: Name -> ContextItems -> Type -> Errors
+checkInstanceSignature instanceName ((ContextItem_ContextItem _ n tys):cts) ty = checkInstanceSignature' instanceName n (getTypeVariables tys) (getTypeVariables [ty]) ++ checkInstanceSignature instanceName cts ty
+checkInstanceSignature _            []                                      _  = []
+
+checkInstanceSignature' :: Name -> Name -> Names -> Names -> Errors
+checkInstanceSignature' className contextName contextVars instanceVars = 
+                        [ InvalidInstanceConstraint className contextName var
+                        | var <- contextVars
+                        , var `notElem` instanceVars ]
 
 -- data ContextItem = ContextItem_ContextItem (Range) (Name) (Types)
 
@@ -398,10 +408,11 @@ validInnerInstanceType _                   = False
 
 validApplyType :: Type -> Types -> Bool
 validApplyType (Type_Constructor r n) ts        = validInstanceConstrName n ts
-validAppleType (Type_Application r b ty tys) ts = undefined
+validAppleType _ _ = False
 
 validInstanceConstrName :: Name -> Types -> Bool
-validInstanceConstrName (Name_Special _ _ s) ts = s == "(" ++ replicate (length ts - 1) ',' ++ ")"    --We just want to know if it was a tuple
+validInstanceConstrName (Name_Special _ _ s) ts = s == "(" ++ replicate (length ts - 1) ',' ++ ")" || s == "[]"
+    --We just want to know if it was a tuple
 validInstanceConstrName (Name_Identifier _ _ _) _ = True
 validInstanceConstrName _ _ = False
 
@@ -436,7 +447,6 @@ instanceMembers' []     _       = []
 noInstanceType :: Declaration -> ClassDef -> Maybe Error
 noInstanceType (Declaration_TypeSignature _ names _) (n, _) = Just $ TypeSignatureInInstance n names
 noInstanceType _                                     _      = Nothing
-
 
 
 
@@ -2939,7 +2949,7 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _missingMemberWarning =
                   [ MissingClassMember _nameIself n | n <- noInstanceOrDefault _classDefinition     _whereIself ]
               _lhsOmiscerrors =
-                  _lhsImiscerrors ++ _uniqueTypeVarErrors     ++ _undefinedClassErrors     ++ _validInstanceType
+                  _lhsImiscerrors ++ _uniqueTypeVarErrors     ++ _undefinedClassErrors     ++ _validInstanceType     ++ _contextErrors
               _foundClasses =
                   []
               _uniqueTypeVarErrors =
@@ -2956,6 +2966,8 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
                   case (_classDefinition    ) of
                        Nothing -> [UndefinedClass _nameIself (map fst _lhsIdictionary)]
                        (Just decl) -> instanceMembers _whereIself decl
+              _contextErrors =
+                  checkInstanceSignature _nameIself _contextIself (head _typesIself)
               __tup5 =
                   internalError "PartialSyntax.ag" "n/a" "Declaration.Instance"
               (_assumptions,_,_) =
