@@ -51,7 +51,7 @@ status :
 
 HC	= @WithHc@
 PACKAGENET = -package network
-HC_OPTS = -static -fglasgow-exts -fallow-undecidable-instances -fallow-overlapping-instances \
+HC_OPTS = -static -fglasgow-exts -XUndecidableInstances -XOverlappingInstances \
 		-package mtl -package containers -package parsec $(PACKAGENET) -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
@@ -480,7 +480,7 @@ install : smaller
 	touch $(libdir)/simple/*.lvm
 	touch $(libdir)/*.lvm
 	# Maybe at some point we want a separate simple script for this. 
-	$(INSTALL) -m 666 hint.conf "$(HOME)/.hint-$(VERSION).conf"  # Unfortunately, this will have root ownership
+	$(INSTALL) -m -b 666 hint.conf "$(HOME)/.hint-$(VERSION).conf"  # Unfortunately, this will have root ownership
 	ln -s -f "$(HOME)/.hint-$(VERSION).conf" "$(HOME)/.hint.conf"  # Makes it the default.
 
 movetohome: smaller

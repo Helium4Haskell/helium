@@ -11,7 +11,7 @@ type Config = [(String,String)]
 
 -- Thanks to Bryan OÕSullivan, I might upgrade this later to something more in
 -- the style of the Helium parser.
--- TODO deal with empty lines.
+-- TODO deal with empty lines AT THE END of the config file.
 ident :: Parser String
 ident = do c  <- letter <|> char '_'
            cs <- many (letter <|> digit <|> char '_')
@@ -48,6 +48,7 @@ readConfig :: SourceName -> IO Config
 readConfig name = do{ result <- parseFromFile file name
                     ; case (result) of
                        Left err  -> do{ putStrLn (show err)
+                                      ; putStrLn "Error"
                                       ; return []
                                       }
                        Right xs  -> return (reverse xs) 
