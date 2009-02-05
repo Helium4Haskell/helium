@@ -17,7 +17,7 @@
 module Main where
 
 import Char
-import List(isPrefixOf, isSuffixOf)
+import Data.List(isInfixOf, isPrefixOf, isSuffixOf)
 import Monad(when)
 import IO(stdout, hFlush)
 import Data.IORef       ( IORef, readIORef, newIORef, writeIORef )
@@ -33,7 +33,8 @@ configFilename = ".hint.conf"
 basepathKey    = "basepath"
 temppathKey    = "temppath"
 unknown        = "<unknown>"
-passToHelium   = ["overloadingon", "loggingon", "lvmpaths", "additionalheliumparameters"]
+passToHelium   = ["overloadingon", "loggingon", "host", "port",
+                  "lvmpaths", "additionalheliumparameters"]
 
 data State = 
     State
@@ -49,7 +50,6 @@ unwordsBy :: String -> [String] -> String
 unwordsBy sep [] = ""
 unwordsBy sep [w] = w
 unwordsBy sep (w:ws) = w ++ sep ++ unwordsBy sep ws
-
 
 -- The following three definitions are used to support the alert flag
 -- for redoing a compilation and logging the compilation in a special way.
@@ -91,7 +91,9 @@ extractOptions ((k,v):xs) =
                                     show DisableLogging
                                   else
                                     show EnableLogging
-               "lvmpaths"      -> if v == "" then "" else show (LvmPath v)
+               "host"          -> show (Host v)
+               "port"          -> show (Port (read v))
+               "lvmpaths"      -> if trim v == "" then "" else show (LvmPath v)
                "additionalheliumparameters" -> v
 
 
@@ -197,6 +199,7 @@ processCommand cmd rest state =
         'r' -> cmdReloadModule      state
         'a' -> cmdAlert        rest state
         'b' -> cmdBrowse            state
+        'h' -> cmdHelp              state
         '?' -> cmdHelp              state
         'q' -> do   putStrLn "[Leaving texthint]"
                     exitWith ExitSuccess
@@ -294,7 +297,7 @@ cmdAlert msg state = do
     -- putStrLn (" -- " ++ invocation ++ " -- " ++ outputFilePath)
     when (invocation /= "") 
       (do 
-        (_, output) <- execCompileModule (invocation ++ " --alert \"" ++ msg ++ "\" -b --enable-logging ") outputFilePath
+        (_, output) <- execCompileModule (invocation ++ " --alert=\"" ++ escape alertESCAPABLES msg ++ "\" -b --enable-logging ") outputFilePath
         putStr (removeEvidence output)
         return ())
     return state
@@ -323,10 +326,11 @@ cmdBrowse state =
 
 cmdHelp :: State -> IO State
 cmdHelp state = do
+    putStrLn ":h, :?           display this help screen"
     putStrLn ":l <filename>    load module"
     putStrLn ":l               unload module"
     putStrLn ":r               reload module"
-    putStrLn ":a <message>     redo previous compile and alert the Helium crew (message optional)"
+    putStrLn ":a <message>     alert to previous compile (message optional)"
     putStrLn ":t <expression>  show type of expression"
     putStrLn ":b               browse definitions in current module"
     putStrLn ":! <command>     shell command"
@@ -378,14 +382,18 @@ compileModule :: String -> String -> State -> IO (Bool, String)
 compileModule fileName options state = do
     let outputFilePath = tempDir state ++ outputFileName
     -- putStrLn (fileName ++ "." ++ options ++ "." ++ unwords (compOptions state))
+    -- mapM putStrLn (compOptions state)
     let heliumInvocation = "\"" ++ binDir state ++ "helium\" " ++ " " ++ unwords (compOptions state) 
                                 ++ " " ++ options ++ " " ++ fileName
     setPreviousInvocation heliumInvocation outputFilePath
     execCompileModule heliumInvocation outputFilePath
 
+verbose = isInfixOf "--verbose" 
+
 execCompileModule :: String -> String -> IO (Bool, String)
 execCompileModule invocation outputFilePath = do
-    -- putStrLn invocation
+    when (verbose invocation) $
+      putStrLn invocation
     exitCode <- sys (invocation ++ " > " ++ outputFilePath)
     contents <- readFile outputFilePath
                 `catch` (\_ -> fatal ("Unable to read from file \"" ++ outputFilePath ++ "\""))
@@ -486,15 +494,15 @@ fatal msg = do
     putStrLn "Make sure that the environment variable TEMP points to a valid directory"
     exitWith (ExitFailure 1)
 
+safeTail :: [a] -> [a]
+safeTail (x:xs) = xs
+safeTail [] = []
+
 contains :: Eq a => [a] -> [a] -> Bool
 _  `contains` [] = True
 [] `contains` _  = False
 (large@(_:rest)) `contains` small = 
     small `isPrefixOf` large || rest `contains` small 
-
-safeTail :: [a] -> [a]
-safeTail (x:xs) = xs
-safeTail [] = []
 
 trim :: String -> String
 trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
@@ -508,4 +516,21 @@ splitFilePath filePath =
         (revFileName, revPath) = span (`notElem` slashes) (reverse filePath)
         (baseName, ext)  = span (/= '.') (reverse revFileName)
     in (reverse revPath, baseName, dropWhile (== '.') ext)
+
+-- As copied from Logger.hs
+
+escapeChar = '\\';
+
+alertESCAPABLES :: String
+alertESCAPABLES     = ['"', escapeChar]
+
+-- Escapes all characters from the list escapables
+escape :: [Char] -> String -> String
+escape escapables []     = []
+escape escapables (x:xs) = 
+    if (x `elem` escapables) 
+      then escapeChar : rest 
+      else rest
+    where 
+      rest = x:(escape escapables xs)
 

@@ -11,6 +11,7 @@ type Config = [(String,String)]
 
 -- Thanks to Bryan OÕSullivan, I might upgrade this later to something more in
 -- the style of the Helium parser.
+-- TODO deal with empty lines.
 ident :: Parser String
 ident = do c  <- letter <|> char '_'
            cs <- many (letter <|> digit <|> char '_')
