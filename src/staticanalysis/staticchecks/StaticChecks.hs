@@ -89,6 +89,23 @@ helpM []               = ""
 
 
 
+
+getClassName :: SimpleType -> String
+getClassName (SimpleType_SimpleType _ n _) = getNameName n
+
+getSuperClasses ::  ContextItems -> [String]
+getSuperClasses = map (\(ContextItem_ContextItem _ n _) -> getNameName n)
+
+
+
+
+createInstance :: Range -> Name -> Type -> ContextItems -> (Range, Instance)
+createInstance r n ty ctx = (r, (makePredicate n ty , map (\(ContextItem_ContextItem _ n2 tys) -> makePredicate n2 (head tys)) ctx))
+   where nameMap = makeNameMap (namesInTypes $ ty : (map (\(ContextItem_ContextItem _ _ tys) -> head tys) ctx))
+         makePredicate :: Name -> Type -> Predicate
+         makePredicate n ty = Predicate (getNameName n) (makeTpFromType nameMap ty)
+
+
                   
 type ScopeInfo = ( [Names]          -- duplicated variables
                  , [Name]           -- unused variables
@@ -1201,6 +1218,7 @@ sem_Body_Body range_ importdeclarations_ declarations_  =
               _importdeclarationsIimportedModules :: Names
               _importdeclarationsIself :: ImportDeclarations
               _declarationsIbuildDictionary :: Dictionary
+              _declarationsIclassEnv :: ClassEnvironment
               _declarationsIcollectInstances :: ([(Name, Instance)])
               _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
               _declarationsIcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
@@ -1208,6 +1226,7 @@ sem_Body_Body range_ importdeclarations_ declarations_  =
               _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
               _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
               _declarationsIdeclVarNames :: Names
+              _declarationsIinstances :: ([(Range, Instance)])
               _declarationsIkindErrors :: ([Error])
               _declarationsImiscerrors :: ([Error])
               _declarationsIoperatorFixities :: ([(Name,(Int,Assoc))])
@@ -1303,7 +1322,7 @@ sem_Body_Body range_ importdeclarations_ declarations_  =
                   (range_ )
               ( _importdeclarationsIimportedModules,_importdeclarationsIself) =
                   (importdeclarations_ _importdeclarationsOimportedModules )
-              ( _declarationsIbuildDictionary,_declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeClasses,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
+              ( _declarationsIbuildDictionary,_declarationsIclassEnv,_declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeClasses,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIinstances,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
                   (declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOdictionary _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings )
           in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOimportedModules,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 -- Constructor -------------------------------------------------
@@ -2041,7 +2060,7 @@ type T_Declaration  = Names ->
                       ([(Name,TpScheme)]) ->
                       (M.Map Name TpScheme) ->
                       ([Warning]) ->
-                      ( Dictionary,([(Name, Instance)]),([(ScopeInfo, Entity)]),( [(Name, [(Name, TpScheme)])] ),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),Names,([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),Names,Declaration,([(Name,Name)]),([(Name,TpScheme)]),Names,([Warning]))
+                      ( Dictionary,ClassEnvironment,([(Name, Instance)]),([(ScopeInfo, Entity)]),( [(Name, [(Name, TpScheme)])] ),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),Names,([(Range, Instance)]),([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),Names,Declaration,([(Name,Name)]),([(Name,TpScheme)]),Names,([Warning]))
 sem_Declaration_Class :: T_Range  ->
                          T_ContextItems  ->
                          T_SimpleType  ->
@@ -2071,10 +2090,12 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
          (let _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsObuildDictionary :: Dictionary
               _lhsOtypeSignatures :: ([(Name,TpScheme)])
+              _lhsOclassEnv :: ClassEnvironment
               _lhsOdeclVarNames :: Names
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOmiscerrors :: ([Error])
               _lhsOcollectInstances :: ([(Name, Instance)])
+              _lhsOinstances :: ([(Range, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
               _lhsOself :: Declaration
@@ -2131,6 +2152,8 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
                   [createClassDef _simpletypeIname _whereIself]
               _lhsOtypeSignatures =
                   _lhsItypeSignatures
+              _lhsOclassEnv =
+                  M.singleton (getClassName _simpletypeIself) (getSuperClasses _contextIself, [])
               _lhsOdeclVarNames =
                   []
               _lhsOpreviousWasAlsoFB =
@@ -2157,6 +2180,8 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
                   __tup4
               _lhsOcollectInstances =
                   _whereIcollectInstances
+              _lhsOinstances =
+                  []
               _lhsOrestrictedNames =
                   []
               _lhsOunboundNames =
@@ -2227,7 +2252,7 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
                   (simpletype_ )
               ( _whereIcollectInstances,_whereIcollectScopeInfos,_whereIdeclVarNames,_whereIkindErrors,_whereImiscerrors,_whereInamesInScope,_whereIself,_whereItypeSignatures,_whereIunboundNames,_whereIwarnings) =
                   (where_ _whereOallTypeConstructors _whereOallValueConstructors _whereOclassEnvironment _whereOcollectScopeInfos _whereOdictionary _whereOkindErrors _whereOmiscerrors _whereOnamesInScope _whereOoptions _whereOorderedTypeSynonyms _whereOtypeConstructors _whereOunboundNames _whereOvalueConstructors _whereOwarnings )
-          in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
+          in  ( _lhsObuildDictionary,_lhsOclassEnv,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOinstances,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_Data :: T_Range  ->
                         T_ContextItems  ->
                         T_SimpleType  ->
@@ -2262,8 +2287,10 @@ sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_  =
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOmiscerrors :: ([Error])
               _lhsObuildDictionary :: Dictionary
+              _lhsOclassEnv :: ClassEnvironment
               _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
+              _lhsOinstances :: ([(Range, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
               _lhsOself :: Declaration
@@ -2349,9 +2376,13 @@ sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_  =
                   ]
               _lhsObuildDictionary =
                   []
+              _lhsOclassEnv =
+                  M.empty
               _lhsOcollectTypeClasses =
                   []
               _lhsOdeclVarNames =
+                  []
+              _lhsOinstances =
                   []
               _lhsOrestrictedNames =
                   []
@@ -2415,7 +2446,7 @@ sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_  =
                   (constructors_ _constructorsOallTypeConstructors _constructorsOallValueConstructors _constructorsOcollectValueConstructors _constructorsOkindErrors _constructorsOmiscerrors _constructorsOnamesInScope _constructorsOoptions _constructorsOsimpletype _constructorsOtypeConstructors _constructorsOvalueConstructors _constructorsOwarnings )
               ( _derivingsIself) =
                   (derivings_ )
-          in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
+          in  ( _lhsObuildDictionary,_lhsOclassEnv,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOinstances,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_Default :: T_Range  ->
                            T_Types  ->
                            T_Declaration 
@@ -2442,9 +2473,11 @@ sem_Declaration_Default range_ types_  =
        _lhsIwarnings ->
          (let _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsObuildDictionary :: Dictionary
+              _lhsOclassEnv :: ClassEnvironment
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
+              _lhsOinstances :: ([(Range, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
               _lhsOself :: Declaration
@@ -2472,11 +2505,15 @@ sem_Declaration_Default range_ types_  =
                   Nothing
               _lhsObuildDictionary =
                   []
+              _lhsOclassEnv =
+                  M.empty
               _lhsOcollectInstances =
                   []
               _lhsOcollectTypeClasses =
                   []
               _lhsOdeclVarNames =
+                  []
+              _lhsOinstances =
                   []
               _lhsOrestrictedNames =
                   []
@@ -2520,7 +2557,7 @@ sem_Declaration_Default range_ types_  =
                   (range_ )
               ( _typesImiscerrors,_typesIself,_typesItypevariables,_typesIwarnings) =
                   (types_ _typesOallTypeConstructors _typesOmiscerrors _typesOoptions _typesOtypeConstructors _typesOwarnings )
-          in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
+          in  ( _lhsObuildDictionary,_lhsOclassEnv,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOinstances,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_Empty :: T_Range  ->
                          T_Declaration 
 sem_Declaration_Empty range_  =
@@ -2545,9 +2582,11 @@ sem_Declaration_Empty range_  =
        _lhsIvalueConstructors
        _lhsIwarnings ->
          (let _lhsObuildDictionary :: Dictionary
+              _lhsOclassEnv :: ClassEnvironment
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
+              _lhsOinstances :: ([(Range, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
               _lhsOself :: Declaration
@@ -2565,11 +2604,15 @@ sem_Declaration_Empty range_  =
               _rangeIself :: Range
               _lhsObuildDictionary =
                   []
+              _lhsOclassEnv =
+                  M.empty
               _lhsOcollectInstances =
                   []
               _lhsOcollectTypeClasses =
                   []
               _lhsOdeclVarNames =
+                  []
+              _lhsOinstances =
                   []
               _lhsOrestrictedNames =
                   []
@@ -2603,7 +2646,7 @@ sem_Declaration_Empty range_  =
                   _lhsIwarnings
               ( _rangeIself) =
                   (range_ )
-          in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
+          in  ( _lhsObuildDictionary,_lhsOclassEnv,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOinstances,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_Fixity :: T_Range  ->
                           T_Fixity  ->
                           T_MaybeInt  ->
@@ -2633,9 +2676,11 @@ sem_Declaration_Fixity range_ fixity_ priority_ operators_  =
          (let _lhsOoperatorFixities :: ([(Name,(Int,Assoc))])
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsObuildDictionary :: Dictionary
+              _lhsOclassEnv :: ClassEnvironment
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
+              _lhsOinstances :: ([(Range, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
               _lhsOself :: Declaration
@@ -2665,11 +2710,15 @@ sem_Declaration_Fixity range_ fixity_ priority_ operators_  =
                   Nothing
               _lhsObuildDictionary =
                   []
+              _lhsOclassEnv =
+                  M.empty
               _lhsOcollectInstances =
                   []
               _lhsOcollectTypeClasses =
                   []
               _lhsOdeclVarNames =
+                  []
+              _lhsOinstances =
                   []
               _lhsOrestrictedNames =
                   []
@@ -2705,7 +2754,7 @@ sem_Declaration_Fixity range_ fixity_ priority_ operators_  =
                   (priority_ )
               ( _operatorsIself) =
                   (operators_ )
-          in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
+          in  ( _lhsObuildDictionary,_lhsOclassEnv,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOinstances,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_FunctionBindings :: T_Range  ->
                                     T_FunctionBindings  ->
                                     T_Declaration 
@@ -2735,8 +2784,10 @@ sem_Declaration_FunctionBindings range_ bindings_  =
               _lhsOsuspiciousFBs :: ([(Name,Name)])
               _lhsOmiscerrors :: ([Error])
               _lhsObuildDictionary :: Dictionary
+              _lhsOclassEnv :: ClassEnvironment
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
+              _lhsOinstances :: ([(Range, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
               _lhsOself :: Declaration
@@ -2788,9 +2839,13 @@ sem_Declaration_FunctionBindings range_ bindings_  =
                     else [ DefArityMismatch _bindingsIname (mode _bindingsIarities) _rangeIself ]
               _lhsObuildDictionary =
                   []
+              _lhsOclassEnv =
+                  M.empty
               _lhsOcollectInstances =
                   _bindingsIcollectInstances
               _lhsOcollectTypeClasses =
+                  []
+              _lhsOinstances =
                   []
               _lhsOrestrictedNames =
                   []
@@ -2846,7 +2901,7 @@ sem_Declaration_FunctionBindings range_ bindings_  =
                   (range_ )
               ( _bindingsIarities,_bindingsIcollectInstances,_bindingsIcollectScopeInfos,_bindingsIkindErrors,_bindingsImiscerrors,_bindingsIname,_bindingsIself,_bindingsIunboundNames,_bindingsIwarnings) =
                   (bindings_ _bindingsOallTypeConstructors _bindingsOallValueConstructors _bindingsOclassEnvironment _bindingsOcollectScopeInfos _bindingsOdictionary _bindingsOkindErrors _bindingsOmiscerrors _bindingsOnamesInScope _bindingsOoptions _bindingsOorderedTypeSynonyms _bindingsOtypeConstructors _bindingsOvalueConstructors _bindingsOwarnings )
-          in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
+          in  ( _lhsObuildDictionary,_lhsOclassEnv,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOinstances,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_Instance :: T_Range  ->
                             T_ContextItems  ->
                             T_Name  ->
@@ -2875,11 +2930,13 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
        _lhsIvalueConstructors
        _lhsIwarnings ->
          (let _lhsOtypeSignatures :: ([(Name,TpScheme)])
+              _lhsOinstances :: ([(Range, Instance)])
               _lhsOdeclVarNames :: Names
               _lhsOwarnings :: ([Warning])
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOmiscerrors :: ([Error])
               _lhsObuildDictionary :: Dictionary
+              _lhsOclassEnv :: ClassEnvironment
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOrestrictedNames :: Names
@@ -2940,6 +2997,8 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _whereIwarnings :: ([Warning])
               _lhsOtypeSignatures =
                   _lhsItypeSignatures
+              _lhsOinstances =
+                  [createInstance _rangeIself _nameIself (head _typesIself) _contextIself]
               _lhsOdeclVarNames =
                   []
               _lhsOwarnings =
@@ -2978,6 +3037,8 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
                   __tup5
               _lhsObuildDictionary =
                   []
+              _lhsOclassEnv =
+                  M.empty
               _lhsOcollectInstances =
                   _whereIcollectInstances
               _lhsOcollectTypeClasses =
@@ -3062,7 +3123,7 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
                   (types_ _typesOallTypeConstructors _typesOmiscerrors _typesOoptions _typesOtypeConstructors _typesOwarnings )
               ( _whereIcollectInstances,_whereIcollectScopeInfos,_whereIdeclVarNames,_whereIkindErrors,_whereImiscerrors,_whereInamesInScope,_whereIself,_whereItypeSignatures,_whereIunboundNames,_whereIwarnings) =
                   (where_ _whereOallTypeConstructors _whereOallValueConstructors _whereOclassEnvironment _whereOcollectScopeInfos _whereOdictionary _whereOkindErrors _whereOmiscerrors _whereOnamesInScope _whereOoptions _whereOorderedTypeSynonyms _whereOtypeConstructors _whereOunboundNames _whereOvalueConstructors _whereOwarnings )
-          in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
+          in  ( _lhsObuildDictionary,_lhsOclassEnv,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOinstances,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_Newtype :: T_Range  ->
                            T_ContextItems  ->
                            T_SimpleType  ->
@@ -3093,9 +3154,11 @@ sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_  =
          (let _constructorOsimpletype :: SimpleType
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsObuildDictionary :: Dictionary
+              _lhsOclassEnv :: ClassEnvironment
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
+              _lhsOinstances :: ([(Range, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
               _lhsOself :: Declaration
@@ -3149,11 +3212,15 @@ sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_  =
                   Nothing
               _lhsObuildDictionary =
                   []
+              _lhsOclassEnv =
+                  M.empty
               _lhsOcollectInstances =
                   []
               _lhsOcollectTypeClasses =
                   []
               _lhsOdeclVarNames =
+                  []
+              _lhsOinstances =
                   []
               _lhsOrestrictedNames =
                   []
@@ -3223,7 +3290,7 @@ sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_  =
                   (constructor_ _constructorOallTypeConstructors _constructorOallValueConstructors _constructorOcollectValueConstructors _constructorOkindErrors _constructorOmiscerrors _constructorOnamesInScope _constructorOoptions _constructorOsimpletype _constructorOtypeConstructors _constructorOvalueConstructors _constructorOwarnings )
               ( _derivingsIself) =
                   (derivings_ )
-          in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
+          in  ( _lhsObuildDictionary,_lhsOclassEnv,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOinstances,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_PatternBinding :: T_Range  ->
                                   T_Pattern  ->
                                   T_RightHandSide  ->
@@ -3255,8 +3322,10 @@ sem_Declaration_PatternBinding range_ pattern_ righthandside_  =
               _patternOlhsPattern :: Bool
               _lhsOrestrictedNames :: Names
               _lhsObuildDictionary :: Dictionary
+              _lhsOclassEnv :: ClassEnvironment
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
+              _lhsOinstances :: ([(Range, Instance)])
               _lhsOunboundNames :: Names
               _lhsOself :: Declaration
               _lhsOcollectScopeInfos :: ([(ScopeInfo, Entity)])
@@ -3321,9 +3390,13 @@ sem_Declaration_PatternBinding range_ pattern_ righthandside_  =
                     else _patternIpatVarNames
               _lhsObuildDictionary =
                   []
+              _lhsOclassEnv =
+                  M.empty
               _lhsOcollectInstances =
                   _righthandsideIcollectInstances
               _lhsOcollectTypeClasses =
+                  []
+              _lhsOinstances =
                   []
               _lhsOunboundNames =
                   _patternIunboundNames ++ _righthandsideIunboundNames
@@ -3397,7 +3470,7 @@ sem_Declaration_PatternBinding range_ pattern_ righthandside_  =
                   (pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings )
               ( _righthandsideIcollectInstances,_righthandsideIcollectScopeInfos,_righthandsideIkindErrors,_righthandsideImiscerrors,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIwarnings) =
                   (righthandside_ _righthandsideOallTypeConstructors _righthandsideOallValueConstructors _righthandsideOclassEnvironment _righthandsideOcollectScopeInfos _righthandsideOdictionary _righthandsideOkindErrors _righthandsideOmiscerrors _righthandsideOnamesInScope _righthandsideOoptions _righthandsideOorderedTypeSynonyms _righthandsideOtypeConstructors _righthandsideOvalueConstructors _righthandsideOwarnings )
-          in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
+          in  ( _lhsObuildDictionary,_lhsOclassEnv,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOinstances,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_Type :: T_Range  ->
                         T_SimpleType  ->
                         T_Type  ->
@@ -3429,9 +3502,11 @@ sem_Declaration_Type range_ simpletype_ type_  =
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOmiscerrors :: ([Error])
               _lhsObuildDictionary :: Dictionary
+              _lhsOclassEnv :: ClassEnvironment
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
+              _lhsOinstances :: ([(Range, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
               _lhsOself :: Declaration
@@ -3480,11 +3555,15 @@ sem_Declaration_Type range_ simpletype_ type_  =
                   filter (`notElem` _simpletypeItypevariables) _typeItypevariables
               _lhsObuildDictionary =
                   []
+              _lhsOclassEnv =
+                  M.empty
               _lhsOcollectInstances =
                   []
               _lhsOcollectTypeClasses =
                   []
               _lhsOdeclVarNames =
+                  []
+              _lhsOinstances =
                   []
               _lhsOrestrictedNames =
                   []
@@ -3522,7 +3601,7 @@ sem_Declaration_Type range_ simpletype_ type_  =
                   (simpletype_ )
               ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
                   (type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings )
-          in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
+          in  ( _lhsObuildDictionary,_lhsOclassEnv,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOinstances,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_TypeSignature :: T_Range  ->
                                  T_Names  ->
                                  T_Type  ->
@@ -3553,9 +3632,11 @@ sem_Declaration_TypeSignature range_ names_ type_  =
               _lhsOpreviousWasAlsoFB :: (Maybe Name)
               _lhsOwarnings :: ([Warning])
               _lhsObuildDictionary :: Dictionary
+              _lhsOclassEnv :: ClassEnvironment
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
+              _lhsOinstances :: ([(Range, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
               _lhsOself :: Declaration
@@ -3596,11 +3677,15 @@ sem_Declaration_TypeSignature range_ names_ type_  =
                   simplifyContext _lhsIorderedTypeSynonyms _typeIcontextRange _intMap _typeScheme ++ _typeIwarnings
               _lhsObuildDictionary =
                   []
+              _lhsOclassEnv =
+                  M.empty
               _lhsOcollectInstances =
                   []
               _lhsOcollectTypeClasses =
                   []
               _lhsOdeclVarNames =
+                  []
+              _lhsOinstances =
                   []
               _lhsOrestrictedNames =
                   []
@@ -3640,7 +3725,7 @@ sem_Declaration_TypeSignature range_ names_ type_  =
                   (names_ )
               ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
                   (type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings )
-          in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
+          in  ( _lhsObuildDictionary,_lhsOclassEnv,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOinstances,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 -- Declarations ------------------------------------------------
 -- cata
 sem_Declarations :: Declarations  ->
@@ -3668,7 +3753,7 @@ type T_Declarations  = Names ->
                        ([(Name,TpScheme)]) ->
                        (M.Map Name TpScheme) ->
                        ([Warning]) ->
-                       ( Dictionary,([(Name, Instance)]),([(ScopeInfo, Entity)]),( [(Name, [(Name, TpScheme)])] ),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),Names,([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),Names,Declarations,([(Name,Name)]),([(Name,TpScheme)]),Names,([Warning]))
+                       ( Dictionary,ClassEnvironment,([(Name, Instance)]),([(ScopeInfo, Entity)]),( [(Name, [(Name, TpScheme)])] ),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),Names,([(Range, Instance)]),([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),Names,Declarations,([(Name,Name)]),([(Name,TpScheme)]),Names,([Warning]))
 sem_Declarations_Cons :: T_Declaration  ->
                          T_Declarations  ->
                          T_Declarations 
@@ -3695,8 +3780,10 @@ sem_Declarations_Cons hd_ tl_  =
        _lhsIwarnings ->
          (let _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsObuildDictionary :: Dictionary
+              _lhsOclassEnv :: ClassEnvironment
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOdeclVarNames :: Names
+              _lhsOinstances :: ([(Range, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
               _lhsOself :: Declarations
@@ -3752,6 +3839,7 @@ sem_Declarations_Cons hd_ tl_  =
               _tlOvalueConstructors :: (M.Map Name TpScheme)
               _tlOwarnings :: ([Warning])
               _hdIbuildDictionary :: Dictionary
+              _hdIclassEnv :: ClassEnvironment
               _hdIcollectInstances :: ([(Name, Instance)])
               _hdIcollectScopeInfos :: ([(ScopeInfo, Entity)])
               _hdIcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
@@ -3759,6 +3847,7 @@ sem_Declarations_Cons hd_ tl_  =
               _hdIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
               _hdIcollectValueConstructors :: ([(Name,TpScheme)])
               _hdIdeclVarNames :: Names
+              _hdIinstances :: ([(Range, Instance)])
               _hdIkindErrors :: ([Error])
               _hdImiscerrors :: ([Error])
               _hdIoperatorFixities :: ([(Name,(Int,Assoc))])
@@ -3770,6 +3859,7 @@ sem_Declarations_Cons hd_ tl_  =
               _hdIunboundNames :: Names
               _hdIwarnings :: ([Warning])
               _tlIbuildDictionary :: Dictionary
+              _tlIclassEnv :: ClassEnvironment
               _tlIcollectInstances :: ([(Name, Instance)])
               _tlIcollectScopeInfos :: ([(ScopeInfo, Entity)])
               _tlIcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
@@ -3777,6 +3867,7 @@ sem_Declarations_Cons hd_ tl_  =
               _tlIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
               _tlIcollectValueConstructors :: ([(Name,TpScheme)])
               _tlIdeclVarNames :: Names
+              _tlIinstances :: ([(Range, Instance)])
               _tlIkindErrors :: ([Error])
               _tlImiscerrors :: ([Error])
               _tlIoperatorFixities :: ([(Name,(Int,Assoc))])
@@ -3791,10 +3882,14 @@ sem_Declarations_Cons hd_ tl_  =
                   _hdIcollectTypeClasses  ++ _tlIcollectTypeClasses
               _lhsObuildDictionary =
                   _hdIbuildDictionary  ++  _tlIbuildDictionary
+              _lhsOclassEnv =
+                  _hdIclassEnv `M.union` _tlIclassEnv
               _lhsOcollectInstances =
                   _hdIcollectInstances  ++  _tlIcollectInstances
               _lhsOdeclVarNames =
                   _hdIdeclVarNames ++ _tlIdeclVarNames
+              _lhsOinstances =
+                  _hdIinstances ++ _tlIinstances
               _lhsOrestrictedNames =
                   _hdIrestrictedNames  ++  _tlIrestrictedNames
               _lhsOunboundNames =
@@ -3905,11 +4000,11 @@ sem_Declarations_Cons hd_ tl_  =
                   _lhsIvalueConstructors
               _tlOwarnings =
                   _hdIwarnings
-              ( _hdIbuildDictionary,_hdIcollectInstances,_hdIcollectScopeInfos,_hdIcollectTypeClasses,_hdIcollectTypeConstructors,_hdIcollectTypeSynonyms,_hdIcollectValueConstructors,_hdIdeclVarNames,_hdIkindErrors,_hdImiscerrors,_hdIoperatorFixities,_hdIpreviousWasAlsoFB,_hdIrestrictedNames,_hdIself,_hdIsuspiciousFBs,_hdItypeSignatures,_hdIunboundNames,_hdIwarnings) =
+              ( _hdIbuildDictionary,_hdIclassEnv,_hdIcollectInstances,_hdIcollectScopeInfos,_hdIcollectTypeClasses,_hdIcollectTypeConstructors,_hdIcollectTypeSynonyms,_hdIcollectValueConstructors,_hdIdeclVarNames,_hdIinstances,_hdIkindErrors,_hdImiscerrors,_hdIoperatorFixities,_hdIpreviousWasAlsoFB,_hdIrestrictedNames,_hdIself,_hdIsuspiciousFBs,_hdItypeSignatures,_hdIunboundNames,_hdIwarnings) =
                   (hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOcollectTypeConstructors _hdOcollectTypeSynonyms _hdOcollectValueConstructors _hdOdictionary _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoperatorFixities _hdOoptions _hdOorderedTypeSynonyms _hdOpreviousWasAlsoFB _hdOsuspiciousFBs _hdOtypeConstructors _hdOtypeSignatures _hdOvalueConstructors _hdOwarnings )
-              ( _tlIbuildDictionary,_tlIcollectInstances,_tlIcollectScopeInfos,_tlIcollectTypeClasses,_tlIcollectTypeConstructors,_tlIcollectTypeSynonyms,_tlIcollectValueConstructors,_tlIdeclVarNames,_tlIkindErrors,_tlImiscerrors,_tlIoperatorFixities,_tlIpreviousWasAlsoFB,_tlIrestrictedNames,_tlIself,_tlIsuspiciousFBs,_tlItypeSignatures,_tlIunboundNames,_tlIwarnings) =
+              ( _tlIbuildDictionary,_tlIclassEnv,_tlIcollectInstances,_tlIcollectScopeInfos,_tlIcollectTypeClasses,_tlIcollectTypeConstructors,_tlIcollectTypeSynonyms,_tlIcollectValueConstructors,_tlIdeclVarNames,_tlIinstances,_tlIkindErrors,_tlImiscerrors,_tlIoperatorFixities,_tlIpreviousWasAlsoFB,_tlIrestrictedNames,_tlIself,_tlIsuspiciousFBs,_tlItypeSignatures,_tlIunboundNames,_tlIwarnings) =
                   (tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOcollectTypeConstructors _tlOcollectTypeSynonyms _tlOcollectValueConstructors _tlOdictionary _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoperatorFixities _tlOoptions _tlOorderedTypeSynonyms _tlOpreviousWasAlsoFB _tlOsuspiciousFBs _tlOtypeConstructors _tlOtypeSignatures _tlOvalueConstructors _tlOwarnings )
-          in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
+          in  ( _lhsObuildDictionary,_lhsOclassEnv,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOinstances,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declarations_Nil :: T_Declarations 
 sem_Declarations_Nil  =
     (\ _lhsIallTypeConstructors
@@ -3933,9 +4028,11 @@ sem_Declarations_Nil  =
        _lhsIvalueConstructors
        _lhsIwarnings ->
          (let _lhsObuildDictionary :: Dictionary
+              _lhsOclassEnv :: ClassEnvironment
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
               _lhsOdeclVarNames :: Names
+              _lhsOinstances :: ([(Range, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOunboundNames :: Names
               _lhsOself :: Declarations
@@ -3952,11 +4049,15 @@ sem_Declarations_Nil  =
               _lhsOwarnings :: ([Warning])
               _lhsObuildDictionary =
                   []
+              _lhsOclassEnv =
+                  M.empty
               _lhsOcollectInstances =
                   []
               _lhsOcollectTypeClasses =
                   []
               _lhsOdeclVarNames =
+                  []
+              _lhsOinstances =
                   []
               _lhsOrestrictedNames =
                   []
@@ -3988,7 +4089,7 @@ sem_Declarations_Nil  =
                   _lhsItypeSignatures
               _lhsOwarnings =
                   _lhsIwarnings
-          in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
+          in  ( _lhsObuildDictionary,_lhsOclassEnv,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeClasses,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOinstances,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 -- Export ------------------------------------------------------
 -- cata
 sem_Export :: Export  ->
@@ -5449,6 +5550,7 @@ sem_Expression_Let range_ declarations_ expression_  =
               _expressionOwarnings :: ([Warning])
               _rangeIself :: Range
               _declarationsIbuildDictionary :: Dictionary
+              _declarationsIclassEnv :: ClassEnvironment
               _declarationsIcollectInstances :: ([(Name, Instance)])
               _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
               _declarationsIcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
@@ -5456,6 +5558,7 @@ sem_Expression_Let range_ declarations_ expression_  =
               _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
               _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
               _declarationsIdeclVarNames :: Names
+              _declarationsIinstances :: ([(Range, Instance)])
               _declarationsIkindErrors :: ([Error])
               _declarationsImiscerrors :: ([Error])
               _declarationsIoperatorFixities :: ([(Name,(Int,Assoc))])
@@ -5588,7 +5691,7 @@ sem_Expression_Let range_ declarations_ expression_  =
                   _declarationsIwarnings
               ( _rangeIself) =
                   (range_ )
-              ( _declarationsIbuildDictionary,_declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeClasses,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
+              ( _declarationsIbuildDictionary,_declarationsIclassEnv,_declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeClasses,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIinstances,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
                   (declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOdictionary _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings )
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
                   (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOdictionary _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
@@ -8501,6 +8604,7 @@ sem_MaybeDeclarations_Just declarations_  =
               _declarationsOvalueConstructors :: (M.Map Name TpScheme)
               _declarationsOwarnings :: ([Warning])
               _declarationsIbuildDictionary :: Dictionary
+              _declarationsIclassEnv :: ClassEnvironment
               _declarationsIcollectInstances :: ([(Name, Instance)])
               _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
               _declarationsIcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
@@ -8508,6 +8612,7 @@ sem_MaybeDeclarations_Just declarations_  =
               _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
               _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
               _declarationsIdeclVarNames :: Names
+              _declarationsIinstances :: ([(Range, Instance)])
               _declarationsIkindErrors :: ([Error])
               _declarationsImiscerrors :: ([Error])
               _declarationsIoperatorFixities :: ([(Name,(Int,Assoc))])
@@ -8611,7 +8716,7 @@ sem_MaybeDeclarations_Just declarations_  =
                   _lhsIvalueConstructors
               _declarationsOwarnings =
                   _lhsIwarnings
-              ( _declarationsIbuildDictionary,_declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeClasses,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
+              ( _declarationsIbuildDictionary,_declarationsIclassEnv,_declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeClasses,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIinstances,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
                   (declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOdictionary _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings )
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_MaybeDeclarations_Nothing :: T_MaybeDeclarations 
@@ -10848,6 +10953,7 @@ sem_Qualifier_Let range_ declarations_  =
               _declarationsOwarnings :: ([Warning])
               _rangeIself :: Range
               _declarationsIbuildDictionary :: Dictionary
+              _declarationsIclassEnv :: ClassEnvironment
               _declarationsIcollectInstances :: ([(Name, Instance)])
               _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
               _declarationsIcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
@@ -10855,6 +10961,7 @@ sem_Qualifier_Let range_ declarations_  =
               _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
               _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
               _declarationsIdeclVarNames :: Names
+              _declarationsIinstances :: ([(Range, Instance)])
               _declarationsIkindErrors :: ([Error])
               _declarationsImiscerrors :: ([Error])
               _declarationsIoperatorFixities :: ([(Name,(Int,Assoc))])
@@ -10956,7 +11063,7 @@ sem_Qualifier_Let range_ declarations_  =
                   _lhsIwarnings
               ( _rangeIself) =
                   (range_ )
-              ( _declarationsIbuildDictionary,_declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeClasses,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
+              ( _declarationsIbuildDictionary,_declarationsIclassEnv,_declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeClasses,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIinstances,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
                   (declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOdictionary _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings )
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 -- Qualifiers --------------------------------------------------
@@ -12308,6 +12415,7 @@ sem_Statement_Let range_ declarations_  =
               _declarationsOwarnings :: ([Warning])
               _rangeIself :: Range
               _declarationsIbuildDictionary :: Dictionary
+              _declarationsIclassEnv :: ClassEnvironment
               _declarationsIcollectInstances :: ([(Name, Instance)])
               _declarationsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
               _declarationsIcollectTypeClasses :: ( [(Name, [(Name, TpScheme)])] )
@@ -12315,6 +12423,7 @@ sem_Statement_Let range_ declarations_  =
               _declarationsIcollectTypeSynonyms :: ([(Name,(Int,Tps -> Tp))])
               _declarationsIcollectValueConstructors :: ([(Name,TpScheme)])
               _declarationsIdeclVarNames :: Names
+              _declarationsIinstances :: ([(Range, Instance)])
               _declarationsIkindErrors :: ([Error])
               _declarationsImiscerrors :: ([Error])
               _declarationsIoperatorFixities :: ([(Name,(Int,Assoc))])
@@ -12418,7 +12527,7 @@ sem_Statement_Let range_ declarations_  =
                   _lhsIwarnings
               ( _rangeIself) =
                   (range_ )
-              ( _declarationsIbuildDictionary,_declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeClasses,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
+              ( _declarationsIbuildDictionary,_declarationsIclassEnv,_declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeClasses,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIinstances,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
                   (declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOdictionary _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings )
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOlastStatementIsExpr,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 -- Statements --------------------------------------------------

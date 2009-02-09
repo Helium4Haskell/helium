@@ -312,3 +312,41 @@ SEM Declaration
       lhs . typeSignatures = @lhs.typeSignatures -- just shortcut it
   | Instance
       lhs . typeSignatures = @lhs.typeSignatures -- And we apply the same trick again
+      
+-------
+-- Building a Class Environment
+
+ATTR Declaration Declarations [ | | classEnv USE {`M.union`} {M.empty} : {ClassEnvironment} ]
+
+SEM Declaration
+  | Class
+     lhs . classEnv = M.singleton (getClassName @simpletype.self) (getSuperClasses @context.self, [])
+
+{
+getClassName :: SimpleType -> String
+getClassName (SimpleType_SimpleType _ n _) = getNameName n
+
+getSuperClasses ::  ContextItems -> [String]
+getSuperClasses = map (\(ContextItem_ContextItem _ n _) -> getNameName n)
+
+}
+
+ATTR Declaration Declarations [ | | instances USE {++} {[]} : {[(Range, Instance)]} ]
+
+SEM Declaration
+  | Instance
+     lhs . instances = [createInstance @range.self @name.self (head @types.self) @context.self]
+     
+{
+
+createInstance :: Range -> Name -> Type -> ContextItems -> (Range, Instance)
+createInstance r n ty ctx = (r, (makePredicate n ty , map (\(ContextItem_ContextItem _ n2 tys) -> makePredicate n2 (head tys)) ctx))
+   where nameMap = makeNameMap (namesInTypes $ ty : (map (\(ContextItem_ContextItem _ _ tys) -> head tys) ctx))
+         makePredicate :: Name -> Type -> Predicate
+         makePredicate n ty = Predicate (getNameName n) (makeTpFromType nameMap ty)
+
+}
+     
+
+
+
