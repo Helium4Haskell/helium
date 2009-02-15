@@ -316,7 +316,7 @@ SEM Declaration
 -------
 -- Building a Class Environment
 
-ATTR Declaration Declarations [ | | classEnv USE {`M.union`} {M.empty} : {ClassEnvironment} ]
+ATTR Body Declaration Declarations [ | | classEnv USE {`M.union`} {M.empty} : {ClassEnvironment} ]
 
 SEM Declaration
   | Class
@@ -331,7 +331,7 @@ getSuperClasses = map (\(ContextItem_ContextItem _ n _) -> getNameName n)
 
 }
 
-ATTR Declaration Declarations [ | | instances USE {++} {[]} : {[(Range, Instance)]} ]
+ATTR Body Declaration Declarations [ | | instances USE {++} {[]} : {[(Range, Instance)]} ]
 
 SEM Declaration
   | Instance

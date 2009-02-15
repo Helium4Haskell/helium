@@ -22,6 +22,7 @@ import qualified Data.Map as M
 import ImportEnvironment
 import OperatorTable
 import Char ( isUpper )
+import Foreign hiding (xor)
 
 -- filter undefined errors that are caused by the removal of a duplicate definition
 filterRemovedNames :: [(Name,Entity)] -> Error -> Bool
@@ -464,6 +465,17 @@ instanceMembers' []     _       = []
 noInstanceType :: Declaration -> ClassDef -> Maybe Error
 noInstanceType (Declaration_TypeSignature _ names _) (n, _) = Just $ TypeSignatureInInstance n names
 noInstanceType _                                     _      = Nothing
+
+checkClassEnvironment :: ImportEnvironment -> ClassEnvironment -> [(Range, Instance)] -> [(Range, Bool)]
+checkClassEnvironment env cEnv []    = []
+checkClassEnvironment env cEnv insts = check [] (head insts) (tail insts)
+        where check :: [(Range, Instance)] -> (Range, Instance) -> [(Range, Instance)] -> [(Range, Bool)]
+              check oldInst c@(r, (p,ps)) (n:ns) = (r, entail orderedTypeSyn (buildClassEnv (c:oldInst ++ (n:ns))) ps p) : (check (c:oldInst) n ns)
+              check oldInst c@(r, (p,ps)) []     = [(r, entail orderedTypeSyn (buildClassEnv (c:oldInst)) ps p)]
+              buildClassEnv instances = foldr insert cEnv instances
+              orderedTypeSyn = getOrderedTypeSynonyms env
+              insert (r, inst@((Predicate n _), _)) env = insertInstance n inst env
+
 
 
 
@@ -1155,7 +1167,7 @@ type T_Body  = Names ->
                (M.Map Name Int) ->
                (M.Map Name TpScheme) ->
                ([Warning]) ->
-               ( Dictionary,([(Name, Instance)]),([(ScopeInfo, Entity)]),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),Names,Names,([Error]),([Error]),([(Name,(Int,Assoc))]),Body,([(Name,TpScheme)]),Names,([Warning]))
+               ( Dictionary,ClassEnvironment,([(Name, Instance)]),([(ScopeInfo, Entity)]),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),Names,Names,([(Range, Instance)]),([Error]),([Error]),([(Name,(Int,Assoc))]),Body,([(Name,TpScheme)]),Names,([Warning]))
 sem_Body_Body :: T_Range  ->
                  T_ImportDeclarations  ->
                  T_Declarations  ->
@@ -1183,6 +1195,8 @@ sem_Body_Body range_ importdeclarations_ declarations_  =
               _declarationsOpreviousWasAlsoFB :: (Maybe Name)
               _declarationsOsuspiciousFBs :: ([(Name,Name)])
               _lhsOmiscerrors :: ([Error])
+              _lhsOclassEnv :: ClassEnvironment
+              _lhsOinstances :: ([(Range, Instance)])
               _importdeclarationsOimportedModules :: Names
               _lhsObuildDictionary :: Dictionary
               _lhsOcollectInstances :: ([(Name, Instance)])
@@ -1254,6 +1268,10 @@ sem_Body_Body range_ importdeclarations_ declarations_  =
                   checkTypeSignatures _declarationsIdeclVarNames _declarationsIrestrictedNames _declarationsItypeSignatures
               _classErrors =
                   checkClass _declarationsIcollectTypeClasses _declarationsIdeclVarNames _declarationsIrestrictedNames _declarationsItypeSignatures
+              _lhsOclassEnv =
+                  _declarationsIclassEnv
+              _lhsOinstances =
+                  _declarationsIinstances
               _importdeclarationsOimportedModules =
                   []
               _lhsObuildDictionary =
@@ -1324,7 +1342,7 @@ sem_Body_Body range_ importdeclarations_ declarations_  =
                   (importdeclarations_ _importdeclarationsOimportedModules )
               ( _declarationsIbuildDictionary,_declarationsIclassEnv,_declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeClasses,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIinstances,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
                   (declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOdictionary _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings )
-          in  ( _lhsObuildDictionary,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOimportedModules,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
+          in  ( _lhsObuildDictionary,_lhsOclassEnv,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOimportedModules,_lhsOinstances,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 -- Constructor -------------------------------------------------
 -- cata
 sem_Constructor :: Constructor  ->
@@ -9147,6 +9165,7 @@ sem_Module_Module range_ name_ exports_ body_  =
               _exportsIexportErrors :: ([Error])
               _exportsIself :: MaybeExports
               _bodyIbuildDictionary :: Dictionary
+              _bodyIclassEnv :: ClassEnvironment
               _bodyIcollectInstances :: ([(Name, Instance)])
               _bodyIcollectScopeInfos :: ([(ScopeInfo, Entity)])
               _bodyIcollectTypeConstructors :: ([(Name,Int)])
@@ -9154,6 +9173,7 @@ sem_Module_Module range_ name_ exports_ body_  =
               _bodyIcollectValueConstructors :: ([(Name,TpScheme)])
               _bodyIdeclVarNames :: Names
               _bodyIimportedModules :: Names
+              _bodyIinstances :: ([(Range, Instance)])
               _bodyIkindErrors :: ([Error])
               _bodyImiscerrors :: ([Error])
               _bodyIoperatorFixities :: ([(Name,(Int,Assoc))])
@@ -9313,7 +9333,14 @@ sem_Module_Module range_ name_ exports_ body_  =
               _bodyOmiscerrors =
                   []
               _miscerrors =
-                  _bodyImiscerrors
+                  _bodyImiscerrors ++ _instanceErrors
+              _imports =
+                  foldr combineImportEnvironments emptyEnvironment _lhsIimportEnvironments
+              _instanceErrors =
+                  unsafePerformIO $ do
+                                     putStrLn $ show (checkClassEnvironment _imports     _bodyIclassEnv _bodyIinstances)
+                                     putStrLn $ show _bodyIclassEnv
+                                     return []
               _exportsOnamesInScop =
                   concat [ _bodyIdeclVarNames
                           , concatMap (M.keys . typeEnvironment) _lhsIimportEnvironments
@@ -9361,7 +9388,7 @@ sem_Module_Module range_ name_ exports_ body_  =
                   (name_ )
               ( _exportsIexportErrors,_exportsIself) =
                   (exports_ _exportsOconsInScope _exportsOmodulesInScope _exportsOnamesInScop _exportsOtyconsInScope )
-              ( _bodyIbuildDictionary,_bodyIcollectInstances,_bodyIcollectScopeInfos,_bodyIcollectTypeConstructors,_bodyIcollectTypeSynonyms,_bodyIcollectValueConstructors,_bodyIdeclVarNames,_bodyIimportedModules,_bodyIkindErrors,_bodyImiscerrors,_bodyIoperatorFixities,_bodyIself,_bodyItypeSignatures,_bodyIunboundNames,_bodyIwarnings) =
+              ( _bodyIbuildDictionary,_bodyIclassEnv,_bodyIcollectInstances,_bodyIcollectScopeInfos,_bodyIcollectTypeConstructors,_bodyIcollectTypeSynonyms,_bodyIcollectValueConstructors,_bodyIdeclVarNames,_bodyIimportedModules,_bodyIinstances,_bodyIkindErrors,_bodyImiscerrors,_bodyIoperatorFixities,_bodyIself,_bodyItypeSignatures,_bodyIunboundNames,_bodyIwarnings) =
                   (body_ _bodyOallTypeConstructors _bodyOallValueConstructors _bodyOclassEnvironment _bodyOcollectScopeInfos _bodyOcollectTypeConstructors _bodyOcollectTypeSynonyms _bodyOcollectValueConstructors _bodyOdictionary _bodyOkindErrors _bodyOmiscerrors _bodyOnamesInScope _bodyOoperatorFixities _bodyOoptions _bodyOorderedTypeSynonyms _bodyOtypeConstructors _bodyOvalueConstructors _bodyOwarnings )
           in  ( _lhsOcollectEnvironment,_lhsOerrors,_lhsOself,_lhsOtypeSignatures,_lhsOwarnings)))
 -- Name --------------------------------------------------------

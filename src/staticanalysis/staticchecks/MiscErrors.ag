@@ -19,7 +19,12 @@ ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alterna
 
 SEM Module
   | Module  body . miscerrors = []
-            loc  . miscerrors = @body.miscerrors
+            loc  . miscerrors = @body.miscerrors ++ @loc.instanceErrors
+            loc  . imports = foldr combineImportEnvironments emptyEnvironment @lhs.importEnvironments
+            loc  . instanceErrors = unsafePerformIO $ do
+                                                       putStrLn $ show (checkClassEnvironment @loc.imports @body.classEnv @body.instances)
+                                                       putStrLn $ show @body.classEnv
+                                                       return []
                             
 -----------------------------------------
 -- Body
@@ -28,7 +33,9 @@ SEM Body
   | Body   lhs . miscerrors = @typeSignatureErrors ++ @classErrors ++ @declarations.miscerrors
            loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
            loc . classErrors = checkClass @declarations.collectTypeClasses @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
-
+           lhs . classEnv = @declarations.classEnv
+           lhs . instances = @declarations.instances
+-- checkClassEnvironment :: ImportEnvironment -> ClassEnvironment -> [(Range, Instance)] -> [(Range, Bool)]
 -----------------------------------------
 -- Declaration
 
@@ -376,7 +383,7 @@ checkTypeSignatures declVarNames restrictedNames xs =
 SEM Literal
   | Int loc . intLiteralTooBigErrors = 
                  let val = read @value :: Integer in
-                 if length @value > 9 && (val > maxInt || val < minInt)  then 
+                 if length @value > 9 && (val > maxInt || val < minInt)  then
                     [ IntLiteralTooBig @range.self @value ]
                  else 
                     []
@@ -398,7 +405,7 @@ ATTR ContextItems ContextItem [ | | contextVars USE { ++ } { [] } : {[Name]} ]
 
 SEM ContextItem
   | ContextItem lhs.contextVars = @types.typevariables
-                lhs.miscerrors = if elem (getNameName @name.self) (M.keys standardClasses) 
+                lhs.miscerrors = if elem (getNameName @name.self) (M.keys standardClasses)
                                     then @types.miscerrors  
                                     else UnknownClass @name.self : @types.miscerrors
 
@@ -473,5 +480,15 @@ noInstanceType :: Declaration -> ClassDef -> Maybe Error
 noInstanceType (Declaration_TypeSignature _ names _) (n, _) = Just $ TypeSignatureInInstance n names
 noInstanceType _                                     _      = Nothing
 
+checkClassEnvironment :: ImportEnvironment -> ClassEnvironment -> [(Range, Instance)] -> [(Range, Bool)]
+checkClassEnvironment env cEnv []    = []
+checkClassEnvironment env cEnv insts = check [] (head insts) (tail insts)
+        where check :: [(Range, Instance)] -> (Range, Instance) -> [(Range, Instance)] -> [(Range, Bool)]
+              check oldInst c@(r, (p,ps)) (n:ns) = (r, entail orderedTypeSyn (buildClassEnv (c:oldInst ++ (n:ns))) ps p) : (check (c:oldInst) n ns)
+              check oldInst c@(r, (p,ps)) []     = [(r, entail orderedTypeSyn (buildClassEnv (c:oldInst)) ps p)]
+              buildClassEnv instances = foldr insert cEnv instances
+              orderedTypeSyn = getOrderedTypeSynonyms env
+              insert (r, inst@((Predicate n _), _)) env = insertInstance n inst env
+
+
 }
-                                 

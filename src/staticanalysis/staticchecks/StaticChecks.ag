@@ -14,7 +14,7 @@ ATTR Module
      importEnvironments    : ImportEnvironments
      options               : {[Option]}
    |
-   | collectEnvironment    : ImportEnvironment  
+   | collectEnvironment    : ImportEnvironment
      errors                : Errors
      typeSignatures        : {[(Name,TpScheme)]}
      warnings              : Warnings
@@ -53,6 +53,7 @@ import qualified Data.Map as M
 import ImportEnvironment
 import OperatorTable
 import Char ( isUpper )
+import Foreign hiding (xor)
 }
 
 -- combine all the collected errors, then filter out the "entity is undefined" 
