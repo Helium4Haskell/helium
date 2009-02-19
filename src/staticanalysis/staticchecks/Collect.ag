@@ -48,7 +48,6 @@ SEM Module
                                             )
 
 -}
-
 -------------------------------------------
 -- 1) Collecting (data-)type constructors
 

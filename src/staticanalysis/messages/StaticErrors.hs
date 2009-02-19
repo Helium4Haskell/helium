@@ -38,6 +38,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | UndefinedFunctionForClass Name Name Names
             | TypeSignatureInInstance Name Names
             | TypeClassOverloadRestr Name Names
+            | MissingSuperClass Range Predicate Predicate 
             | Duplicated Entity Names
             | LastStatementNotExpr Range
             | WrongFileName {-file name-}String {-module name-}String Range {- of module name -}
@@ -76,6 +77,7 @@ instance HasMessage Error where
       UndefinedFunctionForClass _ name _ -> [getNameRange name]
       InvalidInstanceType name -> [getNameRange name]
       TypeSignatureInInstance _ names -> sortRanges $ map getNameRange names
+      MissingSuperClass range _ _ -> [range]
       InvalidInstanceConstraint _ name _ -> [getNameRange name]
       Duplicated _ names          -> sortRanges (map getNameRange names)
       LastStatementNotExpr range  -> [range]
@@ -171,7 +173,10 @@ showError anError = case anError of
       , [MessageString ("Name: " ++ show member ++ " also used at top level.")
         | member <- members]
       )
-
+   MissingSuperClass r inst missing ->
+      ( MessageString ("Instance for: "  ++ show missing ++ " is needed for the instance of: " ++ show inst ++ " but was not defined.")
+      ,  []
+      )
    Undefined entity name inScope hints ->
       ( MessageString ("Undefined " ++ show entity ++ " " ++ show (show name))
       , map MessageString hints

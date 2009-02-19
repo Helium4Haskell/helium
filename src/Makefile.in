@@ -51,7 +51,7 @@ status :
 
 HC	= @WithHc@
 PACKAGENET = -package network
-HC_OPTS = -static -fglasgow-exts -fallow-undecidable-instances -fallow-overlapping-instances \
+HC_OPTS = -static -fglasgow-exts -XUndecidableInstances -XOverlappingInstances \
 		-package mtl -package containers -package parsec $(PACKAGENET) -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
@@ -455,32 +455,32 @@ install : smaller
 	$(INSTALL) -m 644 ../demo/TicTacToe.hs $(demodir)
         
 	# *** Copy generated lvms and touch them
-        # $(INSTALL) -m 644 ../lib/simple/Char.lvm $(libdir)/simple
+	$(INSTALL) -m 644 ../lib/simple/Char.lvm $(libdir)/simple
 	$(INSTALL) -m 644 ../lib/simple/HeliumLang.lvm $(libdir)/simple
-	# $(INSTALL) -m 644 ../lib/simple/List.lvm $(libdir)/simple
+	$(INSTALL) -m 644 ../lib/simple/List.lvm $(libdir)/simple
 	$(INSTALL) -m 644 ../lib/simple/LvmException.lvm $(libdir)/simple
 	$(INSTALL) -m 644 ../lib/simple/LvmIO.lvm $(libdir)/simple
 	$(INSTALL) -m 644 ../lib/simple/LvmLang.lvm $(libdir)/simple
-	#$(INSTALL) -m 644 ../lib/simple/Maybe.lvm $(libdir)/simple
-	#$(INSTALL) -m 644 ../lib/simple/Prelude.lvm $(libdir)/simple
+	$(INSTALL) -m 644 ../lib/simple/Maybe.lvm $(libdir)/simple
+	$(INSTALL) -m 644 ../lib/simple/Prelude.lvm $(libdir)/simple
 	$(INSTALL) -m 644 ../lib/simple/PreludePrim.lvm $(libdir)/simple
 	$(INSTALL) -m 644 ../lib/simple/Prelude.type $(libdir)/simple
 	# *** Copy generated overloaded lvms and touch them
-	#$(INSTALL) -m 644 ../lib/Char.lvm $(libdir)
+	$(INSTALL) -m 644 ../lib/Char.lvm $(libdir)
 	$(INSTALL) -m 644 ../lib/HeliumLang.lvm $(libdir)
-	#$(INSTALL) -m 644 ../lib/List.lvm $(libdir)
+	$(INSTALL) -m 644 ../lib/List.lvm $(libdir)
 	$(INSTALL) -m 644 ../lib/LvmException.lvm $(libdir)
 	$(INSTALL) -m 644 ../lib/LvmIO.lvm $(libdir)
 	$(INSTALL) -m 644 ../lib/LvmLang.lvm $(libdir)
-	#$(INSTALL) -m 644 ../lib/Maybe.lvm $(libdir)
-	#$(INSTALL) -m 644 ../lib/Prelude.lvm $(libdir)
+	$(INSTALL) -m 644 ../lib/Maybe.lvm $(libdir)
+	$(INSTALL) -m 644 ../lib/Prelude.lvm $(libdir)
 	$(INSTALL) -m 644 ../lib/PreludePrim.lvm $(libdir)
 	$(INSTALL) -m 644 ../lib/Prelude.type $(libdir)
 	$(INSTALL) -m 644 hint.conf $(basedir)
 	touch $(libdir)/simple/*.lvm
 	touch $(libdir)/*.lvm
 	# Maybe at some point we want a separate simple script for this. 
-	$(INSTALL) -m 666 hint.conf "$(HOME)/.hint-$(VERSION).conf"  # Unfortunately, this will have root ownership
+	$(INSTALL) -m -b 666 hint.conf "$(HOME)/.hint-$(VERSION).conf"  # Unfortunately, this will have root ownership
 	ln -s -f "$(HOME)/.hint-$(VERSION).conf" "$(HOME)/.hint.conf"  # Makes it the default.
 
 movetohome: smaller

@@ -466,15 +466,19 @@ noInstanceType :: Declaration -> ClassDef -> Maybe Error
 noInstanceType (Declaration_TypeSignature _ names _) (n, _) = Just $ TypeSignatureInInstance n names
 noInstanceType _                                     _      = Nothing
 
-checkClassEnvironment :: ImportEnvironment -> ClassEnvironment -> [(Range, Instance)] -> [(Range, Bool)]
-checkClassEnvironment env cEnv []    = []
-checkClassEnvironment env cEnv insts = check [] (head insts) (tail insts)
-        where check :: [(Range, Instance)] -> (Range, Instance) -> [(Range, Instance)] -> [(Range, Bool)]
-              check oldInst c@(r, (p,ps)) (n:ns) = (r, entail orderedTypeSyn (buildClassEnv (c:oldInst ++ (n:ns))) ps p) : (check (c:oldInst) n ns)
-              check oldInst c@(r, (p,ps)) []     = [(r, entail orderedTypeSyn (buildClassEnv (c:oldInst)) ps p)]
-              buildClassEnv instances = foldr insert cEnv instances
-              orderedTypeSyn = getOrderedTypeSynonyms env
-              insert (r, inst@((Predicate n _), _)) env = insertInstance n inst env
+--Check all instance declarations, check if their superclass relations hold, return those predicates that fail to check.
+checkClassEnvironment :: ImportEnvironment -> ClassEnvironment -> [(Range, Instance)] -> [(Range, Predicate, Predicates)]
+checkClassEnvironment env cEnv instances = map (\(r, (i, ctxt)) -> let
+                                                                     proves = bySuperclass cEnv i
+                                                                     tySyn = getOrderedTypeSynonyms env
+                                                                     classEnv = foldr insertInst cEnv instances
+                                                                     in (r, i, filter  (\p -> not $ (entail tySyn classEnv ctxt p)) proves)) instances
+insertInst (r, inst@((Predicate n _), _)) env = insertInstance n inst env
+
+makeClassEnvironmentErrors :: [(Range, Predicate, Predicates)] -> Errors
+makeClassEnvironmentErrors ((r, c, pr):insts) | pr == []  = makeClassEnvironmentErrors insts
+                                              | otherwise = foldr (\p -> (:)(MissingSuperClass r c p)) (makeClassEnvironmentErrors insts) pr
+makeClassEnvironmentErrors []                             = []             
 
 
 
@@ -9337,10 +9341,7 @@ sem_Module_Module range_ name_ exports_ body_  =
               _imports =
                   foldr combineImportEnvironments emptyEnvironment _lhsIimportEnvironments
               _instanceErrors =
-                  unsafePerformIO $ do
-                                     putStrLn $ show (checkClassEnvironment _imports     _bodyIclassEnv _bodyIinstances)
-                                     putStrLn $ show _bodyIclassEnv
-                                     return []
+                  makeClassEnvironmentErrors $ checkClassEnvironment _imports     _bodyIclassEnv _bodyIinstances
               _exportsOnamesInScop =
                   concat [ _bodyIdeclVarNames
                           , concatMap (M.keys . typeEnvironment) _lhsIimportEnvironments

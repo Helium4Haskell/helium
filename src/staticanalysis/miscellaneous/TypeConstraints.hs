@@ -1,4 +1,4 @@
-{-# OPTIONS -fallow-undecidable-instances #-}
+{-# OPTIONS -XUndecidableInstances #-}
 {-| Module      :  TypeConstraints
     License     :  GPL
 

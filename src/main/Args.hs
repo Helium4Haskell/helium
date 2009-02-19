@@ -16,8 +16,8 @@ module Args
     , simplifyOptions
     , argsToOptions
     , loggerDEFAULTPORT
-    , hostNameFromOptions
-    , portNrFromOptions
+    , hostFromOptions
+    , portFromOptions
     , hasAlertOption
     ) where
 
@@ -28,7 +28,7 @@ import Monad(when)
 import System.Console.GetOpt
 
 loggerDEFAULTHOST :: String
-loggerDEFAULTHOST = "localhost"
+loggerDEFAULTHOST = "helium.zoo.cs.uu.nl"
 
 loggerDEFAULTPORT :: Int
 loggerDEFAULTPORT = 5010
@@ -147,8 +147,8 @@ optionDescription moreOptions experimentalOptions =
       , Option "c" [flag DumpCore]                      (NoArg DumpCore) "pretty print Core program"
       , Option "C" [flag DumpCoreToFile]                (NoArg DumpCoreToFile) "write Core program to file"
       , Option ""  [flag DebugLogger]                   (NoArg DebugLogger) "show logger debug information"
-      , Option ""  [flag (HostName "")]                (ReqArg HostName "HOST") ("specify which HOST to use for logging (default " ++ loggerDEFAULTHOST ++ ")")
-      , Option ""  [flag (PortNr 0)]                    (ReqArg selectPortNr "PORT") ("select the PORT number for the logger (default: " ++ show loggerDEFAULTPORT ++ ")")
+      , Option ""  [flag (Host "")]                     (ReqArg Host "HOST") ("specify which HOST to use for logging (default " ++ loggerDEFAULTHOST ++ ")")
+      , Option ""  [flag (Port 0)]                      (ReqArg selectPort "PORT") ("select the PORT number for the logger (default: " ++ show loggerDEFAULTPORT ++ ")")
       , Option "d" [flag DumpTypeDebug]                 (NoArg DumpTypeDebug) "debug constraint-based type inference"         
       , Option "W" [flag AlgorithmW]                    (NoArg AlgorithmW) "use bottom-up type inference algorithm W"
       , Option "M" [flag AlgorithmM ]                   (NoArg AlgorithmM) "use folklore top-down type inference algorithm M"
@@ -187,7 +187,7 @@ data Option
    -- More options
    | StopAfterParser | StopAfterStaticAnalysis | StopAfterTypeInferencing | StopAfterDesugar
    | DumpTokens | DumpUHA | DumpCore | DumpCoreToFile 
-   | DebugLogger | HostName String | PortNr Int 
+   | DebugLogger | Host String | Port Int 
    | DumpTypeDebug | AlgorithmW | AlgorithmM | DisableDirectives | NoRepairHeuristics
    -- Experimental options
    | ExperimentalOptions | KindInferencing | SignatureWarnings | RightToLeft | NoSpreading
@@ -226,8 +226,8 @@ instance Show Option where
  show DumpCore                           = "--dump-core"
  show DumpCoreToFile                     = "--save-core"
  show DebugLogger                        = "--debug-logger"
- show (HostName host)                    = "--host=" ++ host
- show (PortNr port)                      = "--port=" ++ (show port)
+ show (Host host)                        = "--host=" ++ host
+ show (Port port)                        = "--port=" ++ (show port)
  show DumpTypeDebug                      = "--type-debug"
  show AlgorithmW                         = "--algorithm-w"
  show AlgorithmM                         = "--algorithm-m"
@@ -259,16 +259,16 @@ lvmPathFromOptions (_ : rest) = lvmPathFromOptions rest
 
 
 -- Takes the first in the list. Better to remove duplicates!
-hostNameFromOptions :: [Option] -> Maybe String
-hostNameFromOptions [] = Nothing
-hostNameFromOptions (HostName s : _) = Just s
-hostNameFromOptions (_ : rest) = hostNameFromOptions rest
+hostFromOptions :: [Option] -> Maybe String
+hostFromOptions [] = Nothing
+hostFromOptions (Host s : _) = Just s
+hostFromOptions (_ : rest) = hostFromOptions rest
 
 -- Takes the first in the list. Better to remove duplicates!
-portNrFromOptions :: [Option] -> Maybe Int
-portNrFromOptions [] = Nothing
-portNrFromOptions (PortNr pn: _) = Just pn
-portNrFromOptions (_ : rest) = portNrFromOptions rest
+portFromOptions :: [Option] -> Maybe Int
+portFromOptions [] = Nothing
+portFromOptions (Port pn: _) = Just pn
+portFromOptions (_ : rest) = portFromOptions rest
 
 -- Extracts the alert message. Returns Nothing if such is not present.
 alertMessageFromOptions :: [Option] -> Maybe String
@@ -279,12 +279,13 @@ alertMessageFromOptions (_ : rest) = alertMessageFromOptions rest
 hasAlertOption :: [Option] -> Bool
 hasAlertOption options = alertMessageFromOptions options /= Nothing
 
-selectPortNr :: String -> Option
-selectPortNr pn 
-   | all isDigit pn = PortNr (read ('0':pn)) 
-   | otherwise     = PortNr (-1) -- problem with argument
+selectPort :: String -> Option
+selectPort pn 
+   | all isDigit pn = Port (read ('0':pn)) 
+   | otherwise     = Port (-1) -- problem with argument
    
 selectCNR :: String -> Option
 selectCNR s
    | all isDigit s = SelectConstraintNumber (read ('0':s)) 
    | otherwise     = SelectConstraintNumber (-1) -- problem with argument
+   

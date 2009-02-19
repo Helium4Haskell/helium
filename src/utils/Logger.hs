@@ -29,7 +29,7 @@ loggerDELAY       = 10000    -- in micro-seconds
 loggerTRIES       = 2
 
 loggerINTERNALERRORHOSTNAME :: String
-loggerINTERNALERRORHOSTNAME = "localhost"
+loggerINTERNALERRORHOSTNAME = "helium.zoo.cs.uu.nl"
 loggerINTERNALERRORPORTNR   :: Int
 loggerINTERNALERRORPORTNR   = loggerDEFAULTPORT
 
@@ -39,21 +39,25 @@ loggerTERMINATOR     = "\SOH\SOH\n"
 loggerUSERNAME       = "USERNAME"
 loggerDEFAULTNAME    = "unknown"
 
-loggerADMINSEPARATOR, loggerESCAPECHAR :: Char
+loggerADMINSEPARATOR, escapeChar :: Char
 loggerADMINSEPARATOR = '|'
-loggerESCAPECHAR     = '\\'
+escapeChar     = '\\'
 
 loggerESCAPABLES :: String
-loggerESCAPABLES     = [loggerADMINSEPARATOR, loggerESCAPECHAR]
+loggerESCAPABLES     = [loggerADMINSEPARATOR, escapeChar]
+
+alertESCAPABLES :: String
+alertESCAPABLES     = ['\"']
 
 debug :: String -> Bool -> IO ()
 debug s loggerDEBUGMODE = when loggerDEBUGMODE (putStrLn s)
 
 -- Make sure that options that contain a space are quoted with double quotes.
+-- And all double quotes in the options are escaped.
 unwordsQuoted :: [String] -> String
-unwordsQuoted = unwords . (map quote)
+unwordsQuoted words = unwords (map (quote . (escape alertESCAPABLES)) words)
  where
-   quote s = if (' ' `elem` s) then "\"" ++ s ++ "\"" else s -- Not efficient, but balanced.
+   quote s   = if (' ' `elem` s) then "\"" ++ s ++ "\"" else s -- Not efficient, but balanced.
 
 ------------------------------------------------------
 -- Normalization/escaping functions
@@ -64,24 +68,25 @@ normalizeName name = let
                      in   
                        if null newname then loggerDEFAULTNAME else newname
 
--- Escapes all characters from the list loggerESCAPABLES
-escape :: String -> String
-escape []     = []
-escape (x:xs) = if (x `elem` loggerESCAPABLES) 
-                then loggerESCAPECHAR : rest 
-                else rest
-                where 
-                  rest = x:(escape xs)
+-- Escapes all characters from the list escapables
+escape :: [Char] -> String -> String
+escape escapables []     = []
+escape escapables (x:xs) = 
+    if (x `elem` escapables) 
+      then escapeChar : rest 
+      else rest
+    where 
+      rest = x:(escape escapables xs)
 
 -- Remove line breaks and escape special characters                
 normalize :: String -> String
-normalize xs = escape (filter ((/=) '\n') xs)
+normalize xs = escape loggerESCAPABLES (filter ((/=) '\n') xs)
 
 logInternalError :: Maybe ([String],String) -> IO ()
 logInternalError maybeSources = 
   logger "I" maybeSources internalErrorOptions
     where
-      internalErrorOptions = [EnableLogging, HostName loggerINTERNALERRORHOSTNAME, PortNr loggerINTERNALERRORPORTNR]
+      internalErrorOptions = [EnableLogging, Host loggerINTERNALERRORHOSTNAME, Port loggerINTERNALERRORPORTNR]
 
 ------------------------------------------------------
 -- The function to send a message to a socket
@@ -92,15 +97,16 @@ logger logcode maybeSources options =
    let
      debugLogger = DebugLogger `elem` options
      reallyLog   = EnableLogging `elem` options -- We use that the presence of an alert adds EnableLogging in Options.hs
-     hostName    = case hostNameFromOptions options of
+     hostName    = case hostFromOptions options of
                      Nothing  -> loggerDEFAULTHOST
                      Just host -> host
-     portNumber  = case portNrFromOptions options of
+     portNumber  = case portFromOptions options of
                      Nothing  -> loggerDEFAULTPORT
                      Just pn  -> pn
    in
      if reallyLog then
        do
+         debug (hostName ++ ":" ++ (show portNumber)) debugLogger
          username     <- (getEnv loggerUSERNAME) `catch` (\_ -> return loggerDEFAULTNAME)
          optionString <- getArgs
          sources      <- case maybeSources of 
