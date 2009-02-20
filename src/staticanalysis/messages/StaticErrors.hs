@@ -38,6 +38,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | UndefinedFunctionForClass Name Name Names
             | TypeSignatureInInstance Name Names
             | TypeClassOverloadRestr Name Names
+            | TypeSynonymInInstance Range Predicate
             | MissingSuperClass Range Predicate Predicate 
             | Duplicated Entity Names
             | LastStatementNotExpr Range
@@ -72,6 +73,7 @@ instance HasMessage Error where
       InvalidContext _ name _     -> [getNameRange name]
       ClassVariableNotInMethodSignature _ _ names -> sortRanges (map getNameRange names)
       TypeClassOverloadRestr _ names -> sortRanges (map getNameRange names)
+      TypeSynonymInInstance range _   -> [range]
       Undefined _ name _ _        -> [getNameRange name]
       UndefinedClass name _       -> [getNameRange name]
       UndefinedFunctionForClass _ name _ -> [getNameRange name]
@@ -173,6 +175,11 @@ showError anError = case anError of
       , [MessageString ("Name: " ++ show member ++ " also used at top level.")
         | member <- members]
       )
+      
+   TypeSynonymInInstance _ inst ->
+     ( MessageString ("Type synonyms are not allowed as types for instances, in : "  ++ show inst ++ ".")
+     , []
+     )
    MissingSuperClass r inst missing ->
       ( MessageString ("Instance for: "  ++ show missing ++ " is needed for the instance of: " ++ show inst ++ " but was not defined.")
       ,  []

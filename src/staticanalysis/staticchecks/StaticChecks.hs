@@ -467,18 +467,32 @@ noInstanceType (Declaration_TypeSignature _ names _) (n, _) = Just $ TypeSignatu
 noInstanceType _                                     _      = Nothing
 
 --Check all instance declarations, check if their superclass relations hold, return those predicates that fail to check.
-checkClassEnvironment :: ImportEnvironment -> ClassEnvironment -> [(Range, Instance)] -> [(Range, Predicate, Predicates)]
+checkClassEnvironment :: OrderedTypeSynonyms -> ClassEnvironment -> [(Range, Instance)] -> [(Range, Predicate, Predicates)]
 checkClassEnvironment env cEnv instances = map (\(r, (i, ctxt)) -> let
                                                                      proves = bySuperclass cEnv i
-                                                                     tySyn = getOrderedTypeSynonyms env
                                                                      classEnv = foldr insertInst cEnv instances
-                                                                     in (r, i, filter  (\p -> not $ (entail tySyn classEnv ctxt p)) proves)) instances
+                                                                     in (r, i, filter  (\p -> not $ (entail env classEnv ctxt p)) proves)) instances
 insertInst (r, inst@((Predicate n _), _)) env = insertInstance n inst env
 
 makeClassEnvironmentErrors :: [(Range, Predicate, Predicates)] -> Errors
 makeClassEnvironmentErrors ((r, c, pr):insts) | pr == []  = makeClassEnvironmentErrors insts
                                               | otherwise = foldr (\p -> (:)(MissingSuperClass r c p)) (makeClassEnvironmentErrors insts) pr
 makeClassEnvironmentErrors []                             = []             
+
+
+overlappingInstances :: ClassEnvironment -> [(Range, Instance)] -> Errors
+overlappingInstances = undefined
+
+noTypeSynonymsInInstance :: OrderedTypeSynonyms -> [(Range, Instance)] -> Errors
+noTypeSynonymsInInstance typeSyn ((r, (p, ps)):insts) = if (typeSynonymInPredicate typeSyn p)
+                                                         then (TypeSynonymInInstance r p) : (noTypeSynonymsInInstance typeSyn insts)
+                                                         else (noTypeSynonymsInInstance typeSyn insts)
+noTypeSynonymsInInstance _      []                    = []  
+
+typeSynonymInPredicate :: OrderedTypeSynonyms -> Predicate -> Bool
+typeSynonymInPredicate typeSyn (Predicate _ ty) = case (expandToplevelTC typeSyn ty) of
+                                                    Nothing -> False
+                                                    _       -> True
 
 
 
@@ -9337,11 +9351,17 @@ sem_Module_Module range_ name_ exports_ body_  =
               _bodyOmiscerrors =
                   []
               _miscerrors =
-                  _bodyImiscerrors ++ _instanceErrors
+                  if length (_bodyImiscerrors ++ _typeSynonymErrors    ) == 0
+                   then _instanceErrors
+                   else _bodyImiscerrors ++ _typeSynonymErrors
               _imports =
-                  foldr combineImportEnvironments emptyEnvironment _lhsIimportEnvironments
+                  foldr combineImportEnvironments emptyEnvironment ( _collectEnvironment     : _lhsIimportEnvironments)
+              _typeSynonyms =
+                  getOrderedTypeSynonyms _imports
+              _typeSynonymErrors =
+                  noTypeSynonymsInInstance _typeSynonyms     _bodyIinstances
               _instanceErrors =
-                  makeClassEnvironmentErrors $ checkClassEnvironment _imports     _bodyIclassEnv _bodyIinstances
+                  makeClassEnvironmentErrors $ checkClassEnvironment _typeSynonyms     _bodyIclassEnv _bodyIinstances
               _exportsOnamesInScop =
                   concat [ _bodyIdeclVarNames
                           , concatMap (M.keys . typeEnvironment) _lhsIimportEnvironments
