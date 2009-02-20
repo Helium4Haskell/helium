@@ -39,6 +39,8 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | TypeSignatureInInstance Name Names
             | TypeClassOverloadRestr Name Names
             | TypeSynonymInInstance Range Predicate
+            | TypeSynonymInContext Range Predicate Predicate
+            | OverlappingInstance String Tp
             | MissingSuperClass Range Predicate Predicate 
             | Duplicated Entity Names
             | LastStatementNotExpr Range
@@ -74,6 +76,7 @@ instance HasMessage Error where
       ClassVariableNotInMethodSignature _ _ names -> sortRanges (map getNameRange names)
       TypeClassOverloadRestr _ names -> sortRanges (map getNameRange names)
       TypeSynonymInInstance range _   -> [range]
+      TypeSynonymInContext range _ _ -> [range]
       Undefined _ name _ _        -> [getNameRange name]
       UndefinedClass name _       -> [getNameRange name]
       UndefinedFunctionForClass _ name _ -> [getNameRange name]
@@ -93,6 +96,7 @@ instance HasMessage Error where
       OverloadingDisabled range   -> [range]
       OverloadedRestrPat name     -> [getNameRange name]
       WrongOverloadingFlag flag   -> [emptyRange]
+      OverlappingInstance _ _     -> [emptyRange]
       AmbiguousContext name       -> [getNameRange name]
       UnknownClass name           -> [getNameRange name]
       NonDerivableClass name      -> [getNameRange name]
@@ -180,6 +184,16 @@ showError anError = case anError of
      ( MessageString ("Type synonyms are not allowed as types for instances, in : "  ++ show inst ++ ".")
      , []
      )
+   TypeSynonymInContext _ ctx decl ->
+     ( MessageString ("Type synonyms are not allowed as types in contexts in the definition of: " ++ show decl ++ " context item: " ++ show decl ++ " contains type synonyms.")
+     , []
+     )
+   
+   OverlappingInstance className tp ->
+     ( MessageString ("Overlapping instances found for class: " ++ show className ++ " for type constructor: " ++ show tp ++ ".")
+     , []
+     )
+     
    MissingSuperClass r inst missing ->
       ( MessageString ("Instance for: "  ++ show missing ++ " is needed for the instance of: " ++ show inst ++ " but was not defined.")
       ,  []

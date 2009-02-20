@@ -480,21 +480,26 @@ makeClassEnvironmentErrors ((r, c, pr):insts) | pr == []  = makeClassEnvironment
 makeClassEnvironmentErrors []                             = []             
 
 
-overlappingInstances :: ClassEnvironment -> [(Range, Instance)] -> Errors
-overlappingInstances = undefined
+overlappingInstances :: ClassEnvironment -> Errors
+overlappingInstances = M.foldWithKey (\k (_, i) b -> (overlappingInstances k i) ++ b) []
+   where
+    overlappingInstances :: String -> Instances -> Errors
+    overlappingInstances name insts = [OverlappingInstance name ty | 
+                            ty <- map head $ filter (\l -> length l > 1) $ group . sort $ map ((\(Predicate _ ty) -> fst $ leftSpine ty) . fst) insts]
 
 noTypeSynonymsInInstance :: OrderedTypeSynonyms -> [(Range, Instance)] -> Errors
 noTypeSynonymsInInstance typeSyn ((r, (p, ps)):insts) = if (typeSynonymInPredicate typeSyn p)
-                                                         then (TypeSynonymInInstance r p) : (noTypeSynonymsInInstance typeSyn insts)
-                                                         else (noTypeSynonymsInInstance typeSyn insts)
+                                                         then (TypeSynonymInInstance r p) : (noTypeSynonymsInContext typeSyn r p ps (noTypeSynonymsInInstance typeSyn insts))
+                                                         else noTypeSynonymsInContext typeSyn r p ps (noTypeSynonymsInInstance typeSyn insts)
 noTypeSynonymsInInstance _      []                    = []  
+
+noTypeSynonymsInContext :: OrderedTypeSynonyms -> Range -> Predicate -> Predicates -> Errors -> Errors
+noTypeSynonymsInContext typeSyn r p ps err = foldr (\pred -> (:) (TypeSynonymInContext r pred p)) err (filter (typeSynonymInPredicate typeSyn) ps)
 
 typeSynonymInPredicate :: OrderedTypeSynonyms -> Predicate -> Bool
 typeSynonymInPredicate typeSyn (Predicate _ ty) = case (expandToplevelTC typeSyn ty) of
                                                     Nothing -> False
                                                     _       -> True
-
-
 
 
 checkExport entity name inScope =
@@ -9351,9 +9356,9 @@ sem_Module_Module range_ name_ exports_ body_  =
               _bodyOmiscerrors =
                   []
               _miscerrors =
-                  if length (_bodyImiscerrors ++ _typeSynonymErrors    ) == 0
+                  if length (_bodyImiscerrors ++ _typeSynonymErrors     ++ _overlappingInstances    ) == 0
                    then _instanceErrors
-                   else _bodyImiscerrors ++ _typeSynonymErrors
+                   else _bodyImiscerrors ++ _typeSynonymErrors     ++ _overlappingInstances
               _imports =
                   foldr combineImportEnvironments emptyEnvironment ( _collectEnvironment     : _lhsIimportEnvironments)
               _typeSynonyms =
@@ -9362,6 +9367,8 @@ sem_Module_Module range_ name_ exports_ body_  =
                   noTypeSynonymsInInstance _typeSynonyms     _bodyIinstances
               _instanceErrors =
                   makeClassEnvironmentErrors $ checkClassEnvironment _typeSynonyms     _bodyIclassEnv _bodyIinstances
+              _overlappingInstances =
+                  overlappingInstances $ foldr insertInst _bodyIclassEnv _bodyIinstances
               _exportsOnamesInScop =
                   concat [ _bodyIdeclVarNames
                           , concatMap (M.keys . typeEnvironment) _lhsIimportEnvironments

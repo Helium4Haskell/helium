@@ -19,14 +19,14 @@ ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alterna
 
 SEM Module
   | Module  body . miscerrors = []
-            loc  . miscerrors = if length (@body.miscerrors ++ @loc.typeSynonymErrors) == 0
+            loc  . miscerrors = if length (@body.miscerrors ++ @loc.typeSynonymErrors ++ @loc.overlappingInstances) == 0
                                  then @loc.instanceErrors
-                                 else @body.miscerrors ++ @loc.typeSynonymErrors
+                                 else @body.miscerrors ++ @loc.typeSynonymErrors ++ @loc.overlappingInstances
             loc  . imports = foldr combineImportEnvironments emptyEnvironment ( @loc.collectEnvironment : @lhs.importEnvironments)
             loc .  typeSynonyms = getOrderedTypeSynonyms @loc.imports
-            loc  . typeSynonymErrors = noTypeSynonymsInInstance @loc.typeSynonyms @body.instances 
+            loc  . typeSynonymErrors = noTypeSynonymsInInstance @loc.typeSynonyms @body.instances
             loc  . instanceErrors = makeClassEnvironmentErrors $ checkClassEnvironment @loc.typeSynonyms @body.classEnv @body.instances
-                            
+            loc  . overlappingInstances = overlappingInstances $ foldr insertInst @body.classEnv @body.instances                
 -----------------------------------------
 -- Body
 
@@ -495,19 +495,24 @@ makeClassEnvironmentErrors ((r, c, pr):insts) | pr == []  = makeClassEnvironment
 makeClassEnvironmentErrors []                             = []             
 
 
-overlappingInstances :: ClassEnvironment -> [(Range, Instance)] -> Errors
-overlappingInstances = undefined
+overlappingInstances :: ClassEnvironment -> Errors
+overlappingInstances = M.foldWithKey (\k (_, i) b -> (overlappingInstances k i) ++ b) []
+   where
+    overlappingInstances :: String -> Instances -> Errors
+    overlappingInstances name insts = [OverlappingInstance name ty | 
+                            ty <- map head $ filter (\l -> length l > 1) $ group . sort $ map ((\(Predicate _ ty) -> fst $ leftSpine ty) . fst) insts]
 
 noTypeSynonymsInInstance :: OrderedTypeSynonyms -> [(Range, Instance)] -> Errors
 noTypeSynonymsInInstance typeSyn ((r, (p, ps)):insts) = if (typeSynonymInPredicate typeSyn p)
-                                                         then (TypeSynonymInInstance r p) : (noTypeSynonymsInInstance typeSyn insts)
-                                                         else (noTypeSynonymsInInstance typeSyn insts)
+                                                         then (TypeSynonymInInstance r p) : (noTypeSynonymsInContext typeSyn r p ps (noTypeSynonymsInInstance typeSyn insts))
+                                                         else noTypeSynonymsInContext typeSyn r p ps (noTypeSynonymsInInstance typeSyn insts)
 noTypeSynonymsInInstance _      []                    = []  
+
+noTypeSynonymsInContext :: OrderedTypeSynonyms -> Range -> Predicate -> Predicates -> Errors -> Errors
+noTypeSynonymsInContext typeSyn r p ps err = foldr (\pred -> (:) (TypeSynonymInContext r pred p)) err (filter (typeSynonymInPredicate typeSyn) ps)
 
 typeSynonymInPredicate :: OrderedTypeSynonyms -> Predicate -> Bool
 typeSynonymInPredicate typeSyn (Predicate _ ty) = case (expandToplevelTC typeSyn ty) of
                                                     Nothing -> False
                                                     _       -> True
-
-
 }
