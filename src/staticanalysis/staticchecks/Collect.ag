@@ -225,11 +225,8 @@ uniqueKeys = let comp (x,_) (y,_) = compare x y
 
 
 -- The following haskell code is used for building a temporary dictionairy in order to complete static checks
-type Dictionary  = [ClassDef]
-
 type ClassDef = (Name, ClassMembers)
-
-type ClassMembers = [(Name, Maybe Declaration, Type)]
+type ClassMembers = [(Name, Bool)]
 
 --In declarations we find both type signatures and function declarations
 filterType :: Declarations -> (Declarations, Declarations) -> (Declarations, Declarations)
@@ -239,7 +236,7 @@ filterType []     res                                        = res
 
 --A type can be declared for multiple function names
 createClassDef1 :: Declaration -> ClassMembers
-createClassDef1 (Declaration_TypeSignature r names ty) = [(n, Nothing, ty) | n <- names]
+createClassDef1 (Declaration_TypeSignature r names _) = [(n, False) | n <- names]
 createClassDef1 _                                      = error "Error createClassDef1, filtering failed..."
 
 --A function declaration should be associated with a type in the class definition
@@ -248,13 +245,13 @@ createClassDef2 (d:ds) m = createClassDef2 ds $ createClassDef2' (nameOfDeclarat
 createClassDef2 []     m = m
 createClassDef2' (n:ns) d m = createClassDef2' ns d $ createClassDef2'' n d m
 createClassDef2' []     _ m = m
-createClassDef2'' n d (m@(n2, _, ty):ms) | n == n2   = (n2, Just d, ty):ms
+createClassDef2'' n d (m@(n2, _):ms) | n == n2   = (n2, True):ms
                                          | otherwise = m:(createClassDef2'' n d ms)
 createClassDef2'' _ _ []                             = [] -- Should not happen but if it happens the error is reported by another check
 
-createClassDef :: Name -> MaybeDeclarations -> ClassDef
-createClassDef n MaybeDeclarations_Nothing      = (n, [])
-createClassDef n (MaybeDeclarations_Just decls) = (n, createClassDef2 fdecl $ concatMap createClassDef1 types)
+createClassDef :: Name -> MaybeDeclarations -> ClassMemberEnvironment
+createClassDef n MaybeDeclarations_Nothing      = M.singleton n []
+createClassDef n (MaybeDeclarations_Just decls) = M.singleton n (createClassDef2 fdecl $ concatMap createClassDef1 types)
                where (types, fdecl) = filterType decls ([], [])
 
 helper ((n, mem):defs) = (show n ++ (helpM mem)) : helper defs
@@ -266,24 +263,24 @@ helpM []               = ""
 }
 
 ATTR Declarations Declaration [ | | collectTypeClasses  USE { ++ } { [] } : { [(Name, [(Name, TpScheme)])] } ]
-ATTR Body Declarations Declaration [ | | buildDictionary USE { ++ } { [] } : {Dictionary} ]
+ATTR Body Declarations Declaration [ | | buildClassMemberEnv USE { `M.union` } { M.empty } : {ClassMemberEnvironment} ]
 ATTR Body Declaration Declarations Expression Expressions 
      GuardedExpression GuardedExpressions MaybeDeclarations
      MaybeExpression Qualifier Qualifiers RecordExpressionBinding
      RightHandSide Alternative Alternatives FunctionBinding
      FunctionBindings Statement RecordExpressionBindings
      Statements -- Module -- When we are going to do stuff on multiple modules uncomment this thing
-               [ dictionary : {Dictionary} | | ]
+               [ classMemberEnv : {ClassMemberEnvironment} | | ]
 SEM Module
-    | Module body . dictionary = @body.buildDictionary
+    | Module body . classMemberEnv = @body.buildClassMemberEnv
 
 SEM Declaration
     | Class lhs . collectTypeClasses = [(@simpletype.name, @where.typeSignatures)]
-            lhs . buildDictionary = [createClassDef @simpletype.name @where.self]
+            lhs . buildClassMemberEnv = createClassDef @simpletype.name @where.self
 
 SEM Declarations
     | Cons     lhs . collectTypeClasses = @hd.collectTypeClasses  ++ @tl.collectTypeClasses
-
+-- And now build the version that we can export... 
 
 -- Collect the type variables in the context
 ATTR ContextItems ContextItem [ || typeVariables USE {++} {[]} : Types ]

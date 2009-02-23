@@ -17,7 +17,7 @@ import UHA_Source
 import Messages
 import TypeErrors
 import TS_Messages
-import ImportEnvironment hiding (setTypeSynonyms)
+import ImportEnvironment hiding (setTypeSynonyms, classEnvironment)
 import ExpressionTypeInferencer (expressionTypeInferencer)
 import Char (isAlphaNum)
 import Utils (internalError)

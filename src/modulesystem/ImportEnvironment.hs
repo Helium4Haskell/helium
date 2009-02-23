@@ -24,20 +24,22 @@ type TypeEnvironment             = M.Map Name TpScheme
 type ValueConstructorEnvironment = M.Map Name TpScheme
 type TypeConstructorEnvironment  = M.Map Name Int
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
+type ClassMemberEnvironment      = M.Map Name [(Name, Bool)]
 
 type ImportEnvironments = [ImportEnvironment]
 data ImportEnvironment  =
-     ImportEnvironment { -- types
-                         typeConstructors  :: TypeConstructorEnvironment
-                       , typeSynonyms      :: TypeSynonymEnvironment
-                       , typeEnvironment   :: TypeEnvironment
-                         -- values
-                       , valueConstructors :: ValueConstructorEnvironment
-                       , operatorTable     :: OperatorTable
+     ImportEnvironment { -- types       
+                         typeConstructors       :: TypeConstructorEnvironment
+                       , typeSynonyms           :: TypeSynonymEnvironment
+                       , typeEnvironment        :: TypeEnvironment
+                         -- values  
+                       , valueConstructors      :: ValueConstructorEnvironment
+                       , operatorTable          :: OperatorTable
                          -- type classes
-                       --, classEnvironment  :: ClassEnvironment
+                       , classEnvironment       :: ClassEnvironment
+                       , classMemberEnvironment :: ClassMemberEnvironment
                          -- other
-                       , typingStrategies  :: Core_TypingStrategies
+                       , typingStrategies       :: Core_TypingStrategies
                        }
 
 emptyEnvironment :: ImportEnvironment
@@ -47,7 +49,8 @@ emptyEnvironment = ImportEnvironment
    , typeEnvironment   = M.empty
    , valueConstructors = M.empty
    , operatorTable     = M.empty
-   --, classEnvironment  = emptyClassEnvironment
+   , classEnvironment  = emptyClassEnvironment
+   , classMemberEnvironment = M.empty
    , typingStrategies  = []
    }
 
@@ -100,10 +103,10 @@ getOrderedTypeSynonyms importEnvironment =
        ordering = fst (getTypeSynonymOrdering synonyms)
    in (ordering, synonyms)
 
-{-
+
 setClassEnvironment :: ClassEnvironment -> ImportEnvironment -> ImportEnvironment
 setClassEnvironment new importenv = importenv { classEnvironment = new }
--}
+
 
 addTypingStrategies :: Core_TypingStrategies -> ImportEnvironment -> ImportEnvironment  
 addTypingStrategies new importenv = importenv {typingStrategies = new ++ typingStrategies importenv}
@@ -125,13 +128,15 @@ getSiblings importenv =
    in map (concatMap f) (getSiblingGroups importenv) 
          
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
-combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 xs2) =
+combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 ce2 cm2 xs2) =
    ImportEnvironment
       (tcs1 `exclusiveUnion` tcs2) 
       (tss1 `exclusiveUnion` tss2)
       (te1  `exclusiveUnion` te2 )
       (vcs1 `exclusiveUnion` vcs2)
       (ot1  `exclusiveUnion` ot2)
+      (M.unionWith combineClassDecls ce1 ce2)
+      (cm1 `exclusiveUnion` cm2)
       (xs1 ++ xs2)
 
 exclusiveUnion :: Ord key => M.Map key a -> M.Map key a -> M.Map key a
@@ -147,14 +152,14 @@ exclusiveUnion m1 m2 =
 -- are the derived Show instances (Show has no superclasses).
 -- If other instances are added too, then the class environment
 -- should be split into a class declaration environment, and an
--- instance environment.
+-- instance environment.-}
 combineClassDecls :: ([[Char]],[(Predicate,[Predicate])]) -> 
                      ([[Char]],[(Predicate,[Predicate])]) ->
                      ([[Char]],[(Predicate,[Predicate])])
 combineClassDecls (super1, inst1) (super2, inst2)
    | super1 == super2 = (super1, inst1 ++ inst2)
    | otherwise        = internalError "ImportEnvironment.hs" "combineClassDecls" "cannot combine class environments"
--}
+
 
 -- Bastiaan:
 -- Create a class environment from the dictionaries in the import environment
@@ -206,9 +211,9 @@ makeInstance className nrOfArgs tp =
    in ( Predicate className (foldl TApp (TCon tp) tps)
       , [ Predicate className x | x <- tps ] 
       )
-
+-- Add stuff here to print the class Environment
 instance Show ImportEnvironment where
-   show (ImportEnvironment tcs tss te vcs ot _) = 
+   show (ImportEnvironment tcs tss te vcs ot ce cm _) = 
       unlines (concat [ fixities
                       , datatypes
                       , typesynonyms

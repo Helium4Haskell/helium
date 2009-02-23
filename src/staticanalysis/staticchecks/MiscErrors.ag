@@ -55,9 +55,9 @@ SEM Declaration
                          loc . validInstanceType = case (validInstanceType $ head @types.self) of
                                                       True -> []
                                                       False -> [InvalidInstanceType @name.self]
-                         loc . classDefinition = classExists @name.self @lhs.dictionary
+                         loc . classDefinition = classExists @name.self @lhs.classMemberEnv
                          loc . undefinedClassErrors = case (@loc.classDefinition) of
-                                                           Nothing -> [UndefinedClass @name.self (map fst @lhs.dictionary)]
+                                                           Nothing -> [UndefinedClass @name.self (M.keys @lhs.classMemberEnv)]
                                                            (Just decl) -> instanceMembers @where.self decl
                          loc . contextErrors = checkInstanceSignature @name.self @context.self (head @types.self)
     | FunctionBindings   lhs . miscerrors  = @arityErrors ++ @bindings.miscerrors
@@ -456,25 +456,25 @@ nonUniqueTypeVars (x:xs) | elem x xs = x : nonUniqueTypeVars xs
                          | otherwise = nonUniqueTypeVars xs
 nonUniqueTypeVars []     = []
 
-classExists :: Name -> Dictionary -> (Maybe ClassDef)
-classExists n (d@(c,_):cs) | n == c    = Just d
-                           | otherwise = classExists n cs
-classExists n []                       = Nothing
-
+classExists :: Name -> ClassMemberEnvironment -> (Maybe ClassDef)
+classExists n cm = case (M.lookup n cm) of
+                    (Just m) -> Just (n, m)
+                    otherwise -> Nothing
 
 instanceMembers :: MaybeDeclarations -> ClassDef -> Errors
 instanceMembers MaybeDeclarations_Nothing _ = []
 instanceMembers (MaybeDeclarations_Just decls) d = {- [ (DebugError n ("We have members" ++ show (length decls)))] -} instanceMembers' decls d
 
+
 instanceMembers' :: Declarations -> ClassDef -> Errors
 instanceMembers' (d:ds) c@(n, members) = let fn = head $ nameOfDeclaration d
-                                             cm = map (\(x, _, _) -> x) members
+                                             cm = map (\(x, _) -> x) members
                                           in
                                              case elem fn cm of
                                               True -> case (noInstanceType d c) of
                                                        Nothing -> instanceMembers' ds c
                                                        Just e  -> e : instanceMembers' ds c
-                                              False -> UndefinedFunctionForClass n fn cm : instanceMembers' ds c
+                                              False -> UndefinedFunctionForClass n fn cm : instanceMembers' ds c 
 instanceMembers' []     _       = []
 
 noInstanceType :: Declaration -> ClassDef -> Maybe Error
