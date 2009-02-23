@@ -103,6 +103,8 @@ getOrderedTypeSynonyms importEnvironment =
        ordering = fst (getTypeSynonymOrdering synonyms)
    in (ordering, synonyms)
 
+setClassMemberEnvironment :: ClassMemberEnvironment -> ImportEnvironment -> ImportEnvironment
+setClassMemberEnvironment new importenv = importenv { classMemberEnvironment = new }
 
 setClassEnvironment :: ClassEnvironment -> ImportEnvironment -> ImportEnvironment
 setClassEnvironment new importenv = importenv { classEnvironment = new }
@@ -138,6 +140,9 @@ combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 xs1)
       (M.unionWith combineClassDecls ce1 ce2)
       (cm1 `exclusiveUnion` cm2)
       (xs1 ++ xs2)
+      
+combineImportEnvironmentList :: ImportEnvironments -> ImportEnvironment
+combineImportEnvironmentList = foldr combineImportEnvironments emptyEnvironment
 
 exclusiveUnion :: Ord key => M.Map key a -> M.Map key a -> M.Map key a
 exclusiveUnion m1 m2 =
@@ -145,6 +150,8 @@ exclusiveUnion m1 m2 =
        f m  = foldr (M.update (const Nothing)) m keys
    in f m1 `M.union` f m2
 
+containsClass :: ClassEnvironment -> Name -> Bool
+containsClass cEnv n = M.member (getNameName n) cEnv
 {-
 -- Bastiaan:
 -- For the moment, this function combines class-environments.

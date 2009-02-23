@@ -1785,7 +1785,8 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
        _lhsItypeSignatures
        _lhsItypeschemeMap
        _lhsIuniqueChunk ->
-         (let _lhsOdeclVarNames :: Names
+         (let _whereOunboundNames :: Names
+              _lhsOdeclVarNames :: Names
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOsimplePatNames :: Names
@@ -1821,7 +1822,6 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
               _whereOpatternMatchWarnings :: ([Warning])
               _whereOsubstitution :: FixpointSubstitution
               _whereOtypeschemeMap :: (M.Map Int (Scheme Predicates))
-              _whereOunboundNames :: Names
               _whereOuniqueChunk :: Int
               _rangeIself :: Range
               _contextIself :: ContextItems
@@ -1844,14 +1844,8 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
               _whereIself :: MaybeDeclarations
               _whereIunboundNames :: Names
               _whereIuniqueChunk :: Int
-              __tup5 =
-                  internalError "PartialSyntax.ag" "n/a" "Declaration.Class"
-              (_assumptions,_,_) =
-                  __tup5
-              (_,_constraints,_) =
-                  __tup5
-              (_,_,_unboundNames) =
-                  __tup5
+              _whereOunboundNames =
+                  []
               _lhsOdeclVarNames =
                   []
               _lhsOcollectInstances =
@@ -1861,7 +1855,7 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
               _lhsOsimplePatNames =
                   []
               _lhsOunboundNames =
-                  _unboundNames
+                  _whereIunboundNames
               _self =
                   Declaration_Class _rangeIself _contextIself _simpletypeIself _whereIself
               _lhsOself =
@@ -1891,7 +1885,7 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
               _whereOallTypeSchemes =
                   _lhsIallTypeSchemes
               _whereOassumptions =
-                  _assumptions
+                  error "missing rule: Declaration.Class.where.assumptions"
               _whereOavailablePredicates =
                   _lhsIavailablePredicates
               _whereObetaUnique =
@@ -1903,7 +1897,7 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
               _whereOcollectWarnings =
                   _lhsIcollectWarnings
               _whereOconstraints =
-                  _constraints
+                  error "missing rule: Declaration.Class.where.constraints"
               _whereOcurrentChunk =
                   _lhsIcurrentChunk
               _whereOdictionaryEnvironment =
@@ -1926,8 +1920,6 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
                   _lhsIsubstitution
               _whereOtypeschemeMap =
                   _lhsItypeschemeMap
-              _whereOunboundNames =
-                  _unboundNames
               _whereOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
@@ -2534,7 +2526,8 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
        _lhsItypeSignatures
        _lhsItypeschemeMap
        _lhsIuniqueChunk ->
-         (let _lhsOdeclVarNames :: Names
+         (let _whereOunboundNames :: Names
+              _lhsOdeclVarNames :: Names
               _lhsOcollectInstances :: ([(Name, Instance)])
               _lhsOrestrictedNames :: Names
               _lhsOsimplePatNames :: Names
@@ -2570,7 +2563,6 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _whereOpatternMatchWarnings :: ([Warning])
               _whereOsubstitution :: FixpointSubstitution
               _whereOtypeschemeMap :: (M.Map Int (Scheme Predicates))
-              _whereOunboundNames :: Names
               _whereOuniqueChunk :: Int
               _rangeIself :: Range
               _contextIself :: ContextItems
@@ -2592,14 +2584,8 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _whereIself :: MaybeDeclarations
               _whereIunboundNames :: Names
               _whereIuniqueChunk :: Int
-              __tup6 =
-                  internalError "PartialSyntax.ag" "n/a" "Declaration.Instance"
-              (_assumptions,_,_) =
-                  __tup6
-              (_,_constraints,_) =
-                  __tup6
-              (_,_,_unboundNames) =
-                  __tup6
+              _whereOunboundNames =
+                  []
               _lhsOdeclVarNames =
                   []
               _lhsOcollectInstances =
@@ -2609,7 +2595,7 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _lhsOsimplePatNames =
                   []
               _lhsOunboundNames =
-                  _unboundNames
+                  _whereIunboundNames
               _self =
                   Declaration_Instance _rangeIself _contextIself _nameIself _typesIself _whereIself
               _lhsOself =
@@ -2639,7 +2625,7 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _whereOallTypeSchemes =
                   _lhsIallTypeSchemes
               _whereOassumptions =
-                  _assumptions
+                  error "missing rule: Declaration.Instance.where.assumptions"
               _whereOavailablePredicates =
                   _lhsIavailablePredicates
               _whereObetaUnique =
@@ -2651,7 +2637,7 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _whereOcollectWarnings =
                   _lhsIcollectWarnings
               _whereOconstraints =
-                  _constraints
+                  error "missing rule: Declaration.Instance.where.constraints"
               _whereOcurrentChunk =
                   _lhsIcurrentChunk
               _whereOdictionaryEnvironment =
@@ -2674,8 +2660,6 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
                   _lhsIsubstitution
               _whereOtypeschemeMap =
                   _lhsItypeschemeMap
-              _whereOunboundNames =
-                  _unboundNames
               _whereOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
@@ -2824,7 +2808,7 @@ sem_Declaration_PatternBinding range_ pattern_ righthandside_  =
               _righthandsideOmonos :: Monos
               _righthandsideOavailablePredicates :: Predicates
               _lhsOdictionaryEnvironment :: DictionaryEnvironment
-              __tup7 :: ((Names,Names))
+              __tup5 :: ((Names,Names))
               _lhsOrestrictedNames :: Names
               _lhsOsimplePatNames :: Names
               _righthandsideOcurrentChunk :: Int
@@ -2924,14 +2908,14 @@ sem_Declaration_PatternBinding range_ pattern_ righthandside_  =
                   case _declPredicates of
                      Just (n, ps) -> addForDeclaration n ps _righthandsideIdictionaryEnvironment
                      Nothing      -> _righthandsideIdictionaryEnvironment
-              __tup7 =
+              __tup5 =
                   if isSimplePattern _patternIself
                     then ([], _patternIpatVarNames)
                     else (_patternIpatVarNames, [])
               (_lhsOrestrictedNames,_) =
-                  __tup7
+                  __tup5
               (_,_lhsOsimplePatNames) =
-                  __tup7
+                  __tup5
               _righthandsideOcurrentChunk =
                   findCurrentChunk (head (M.keys _patternIenvironment)) _lhsIinheritedBDG
               _cinfo =
@@ -4350,24 +4334,24 @@ sem_Expression_Constructor range_ name_  =
                   node _lhsIparentTree _localInfo []
               _lhsOinfoTree =
                   _parentTree
-              __tup8 =
+              __tup6 =
                   let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                   in match0 infoTuple _lhsIuniqueSecondRound
                             (match_Expression_Constructor _nameIself)
                             _lhsItryPatterns _lhsIallPatterns
                             []
-              (__tup9,_,_,_,_,_) =
-                  __tup8
+              (__tup7,_,_,_,_,_) =
+                  __tup6
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup8
+                  __tup6
               (_,_,_lhsOconstraints,_,_,_) =
-                  __tup8
+                  __tup6
               (_,_,_,_lhsOassumptions,_,_) =
-                  __tup8
+                  __tup6
               (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup8
+                  __tup6
               (_,_,_,_,_,_ioMatch) =
-                  __tup8
+                  __tup6
               _lhsOmatchIO =
                   _lhsImatchIO             >> _ioMatch
               _lhsOcollectInstances =
@@ -4615,7 +4599,7 @@ sem_Expression_Enum range_ from_ then_ to_  =
          (let _fromObetaUnique :: Int
               _lhsOdictionaryEnvironment :: DictionaryEnvironment
               _lhsOinfoTree :: InfoTree
-              __tup11 :: (([(Expression     , [String])],[(MaybeExpression, [String])],[(MaybeExpression, [String])]))
+              __tup9 :: (([(Expression     , [String])],[(MaybeExpression, [String])],[(MaybeExpression, [String])]))
               _fromOtryPatterns :: ([(Expression     , [String])])
               _thenOtryPatterns :: ([(MaybeExpression, [String])])
               _toOtryPatterns :: ([(MaybeExpression, [String])])
@@ -4813,30 +4797,30 @@ sem_Expression_Enum range_ from_ then_ to_  =
                   node _lhsIparentTree _localInfo (_fromIinfoTree : _thenIinfoTrees ++ _toIinfoTrees)
               _lhsOinfoTree =
                   _parentTree
-              __tup10 =
+              __tup8 =
                   let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                   in match3 infoTuple _toIuniqueSecondRound
                             match_Expression_Enum
                             _lhsItryPatterns _lhsIallPatterns
                             [_fromImatches, _thenImatches, _toImatches]
-              (__tup11,_,_,_,_,_) =
-                  __tup10
+              (__tup9,_,_,_,_,_) =
+                  __tup8
               (_fromOtryPatterns,_,_) =
-                  __tup11
+                  __tup9
               (_,_thenOtryPatterns,_) =
-                  __tup11
+                  __tup9
               (_,_,_toOtryPatterns) =
-                  __tup11
+                  __tup9
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup10
+                  __tup8
               (_,_,_lhsOconstraints,_,_,_) =
-                  __tup10
+                  __tup8
               (_,_,_,_lhsOassumptions,_,_) =
-                  __tup10
+                  __tup8
               (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup10
+                  __tup8
               (_,_,_,_,_,_ioMatch) =
-                  __tup10
+                  __tup8
               _lhsOmatchIO =
                   _toImatchIO              >> _ioMatch
               _lhsOcollectInstances =
@@ -5015,7 +4999,7 @@ sem_Expression_If range_ guardExpression_ thenExpression_ elseExpression_  =
        _lhsIuniqueSecondRound ->
          (let _guardExpressionObetaUnique :: Int
               _lhsOinfoTree :: InfoTree
-              __tup13 :: (([(Expression     , [String])],[(Expression     , [String])],[(Expression     , [String])]))
+              __tup11 :: (([(Expression     , [String])],[(Expression     , [String])],[(Expression     , [String])]))
               _guardExpressionOtryPatterns :: ([(Expression     , [String])])
               _thenExpressionOtryPatterns :: ([(Expression     , [String])])
               _elseExpressionOtryPatterns :: ([(Expression     , [String])])
@@ -5177,30 +5161,30 @@ sem_Expression_If range_ guardExpression_ thenExpression_ elseExpression_  =
                   node _lhsIparentTree _localInfo [_guardExpressionIinfoTree, _thenExpressionIinfoTree, _elseExpressionIinfoTree]
               _lhsOinfoTree =
                   _parentTree
-              __tup12 =
+              __tup10 =
                   let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                   in match3 infoTuple _elseExpressionIuniqueSecondRound
                             match_Expression_If
                             _lhsItryPatterns _lhsIallPatterns
                             [_guardExpressionImatches,_thenExpressionImatches,_elseExpressionImatches]
-              (__tup13,_,_,_,_,_) =
-                  __tup12
+              (__tup11,_,_,_,_,_) =
+                  __tup10
               (_guardExpressionOtryPatterns,_,_) =
-                  __tup13
+                  __tup11
               (_,_thenExpressionOtryPatterns,_) =
-                  __tup13
+                  __tup11
               (_,_,_elseExpressionOtryPatterns) =
-                  __tup13
+                  __tup11
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup12
+                  __tup10
               (_,_,_lhsOconstraints,_,_,_) =
-                  __tup12
+                  __tup10
               (_,_,_,_lhsOassumptions,_,_) =
-                  __tup12
+                  __tup10
               (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup12
+                  __tup10
               (_,_,_,_,_,_ioMatch) =
-                  __tup12
+                  __tup10
               _lhsOmatchIO =
                   _elseExpressionImatchIO  >> _ioMatch
               _lhsOcollectInstances =
@@ -5381,7 +5365,7 @@ sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression
        _lhsIuniqueSecondRound ->
          (let _leftExpressionObetaUnique :: Int
               _lhsOinfoTree :: InfoTree
-              __tup15 :: (([(MaybeExpression, [String])],[(Expression     , [String])],[(MaybeExpression, [String])]))
+              __tup13 :: (([(MaybeExpression, [String])],[(Expression     , [String])],[(MaybeExpression, [String])]))
               _leftExpressionOtryPatterns :: ([(MaybeExpression, [String])])
               _operatorOtryPatterns :: ([(Expression     , [String])])
               _rightExpressionOtryPatterns :: ([(MaybeExpression, [String])])
@@ -5565,30 +5549,30 @@ sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression
                     (_leftExpressionIinfoTrees ++ [_operatorIinfoTree] ++ _rightExpressionIinfoTrees)
               _lhsOinfoTree =
                   _parentTree
-              __tup14 =
+              __tup12 =
                   let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                   in match3 infoTuple _rightExpressionIuniqueSecondRound
                             match_Expression_InfixApplication
                             _lhsItryPatterns _lhsIallPatterns
                             [_leftExpressionImatches, _operatorImatches,_rightExpressionImatches]
-              (__tup15,_,_,_,_,_) =
-                  __tup14
+              (__tup13,_,_,_,_,_) =
+                  __tup12
               (_leftExpressionOtryPatterns,_,_) =
-                  __tup15
+                  __tup13
               (_,_operatorOtryPatterns,_) =
-                  __tup15
+                  __tup13
               (_,_,_rightExpressionOtryPatterns) =
-                  __tup15
+                  __tup13
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup14
+                  __tup12
               (_,_,_lhsOconstraints,_,_,_) =
-                  __tup14
+                  __tup12
               (_,_,_,_lhsOassumptions,_,_) =
-                  __tup14
+                  __tup12
               (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup14
+                  __tup12
               (_,_,_,_,_,_ioMatch) =
-                  __tup14
+                  __tup12
               _lhsOmatchIO =
                   _rightExpressionImatchIO >> _ioMatch
               _lhsOcollectInstances =
@@ -5850,12 +5834,12 @@ sem_Expression_Lambda range_ patterns_ expression_  =
                   TVar _lhsIbetaUnique
               _newcon =
                   [ (foldr (.->.) _expressionIbeta _patternsIbetas .==. _beta) _cinfoType ]
-              __tup16 =
+              __tup14 =
                   (_patternsIenvironment .===. _expressionIassumptions) _cinfoBind
               (_csetBinds,_) =
-                  __tup16
+                  __tup14
               (_,_assumptions) =
-                  __tup16
+                  __tup14
               _cinfoBind =
                   \name -> variableConstraint "variable" (nameToUHA_Expr name)
                      [ FolkloreConstraint
@@ -5873,14 +5857,14 @@ sem_Expression_Lambda range_ patterns_ expression_  =
                   node _lhsIparentTree _localInfo (_patternsIinfoTrees ++ [_expressionIinfoTree])
               _lhsOinfoTree =
                   _parentTree
-              __tup17 =
+              __tup15 =
                   changeOfScope _patternsIpatVarNames _expressionIunboundNames _lhsInamesInScope
               (_namesInScope,_,_) =
-                  __tup17
+                  __tup15
               (_,_unboundNames,_) =
-                  __tup17
+                  __tup15
               (_,_,_scopeInfo) =
-                  __tup17
+                  __tup15
               _lhsOunboundNames =
                   _unboundNames
               _lhsOmatches =
@@ -6108,22 +6092,22 @@ sem_Expression_Let range_ declarations_ expression_  =
                   [ (_expressionIbeta .==. _beta) _cinfoType ] .>. _cset
               _beta =
                   TVar _lhsIbetaUnique
-              __tup18 =
+              __tup16 =
                   let inputBDG   = (False, _lhsIcurrentChunk, _expressionIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _expressionIbetaUnique)
                       mybdggroup = Just (_expressionIassumptions, [_expressionIconstraints])
                   in performBindingGroup inputBDG _declarationsIbindingGroups
               (_assumptions,_,_,_,_,_) =
-                  __tup18
+                  __tup16
               (_,_cset,_,_,_,_) =
-                  __tup18
+                  __tup16
               (_,_,_inheritedBDG,_,_,_) =
-                  __tup18
+                  __tup16
               (_,_,_,_chunkNr,_,_) =
-                  __tup18
+                  __tup16
               (_,_,_,_,_lhsObetaUnique,_) =
-                  __tup18
+                  __tup16
               (_,_,_,_,_,_implicitsFM) =
-                  __tup18
+                  __tup16
               _inferredTypes =
                   findInferredTypes _lhsItypeschemeMap _implicitsFM
               _lhsOcollectWarnings =
@@ -6163,28 +6147,28 @@ sem_Expression_Let range_ declarations_ expression_  =
                   _thisTree
               _declarationsOparentTree =
                   _declTree
-              __tup19 =
+              __tup17 =
                   internalError "PartialSyntax.ag" "n/a" "toplevel Expression"
               (_collectTypeConstructors,_,_,_,_,_) =
-                  __tup19
+                  __tup17
               (_,_collectValueConstructors,_,_,_,_) =
-                  __tup19
+                  __tup17
               (_,_,_collectTypeSynonyms,_,_,_) =
-                  __tup19
+                  __tup17
               (_,_,_,_collectConstructorEnv,_,_) =
-                  __tup19
+                  __tup17
               (_,_,_,_,_derivedFunctions,_) =
-                  __tup19
+                  __tup17
               (_,_,_,_,_,_operatorFixities) =
-                  __tup19
-              __tup20 =
+                  __tup17
+              __tup18 =
                   changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _expressionIunboundNames) _lhsInamesInScope
               (_namesInScope,_,_) =
-                  __tup20
+                  __tup18
               (_,_unboundNames,_) =
-                  __tup20
+                  __tup18
               (_,_,_scopeInfo) =
-                  __tup20
+                  __tup18
               _lhsOunboundNames =
                   _unboundNames
               _lhsOmatches =
@@ -6402,24 +6386,24 @@ sem_Expression_List range_ expressions_  =
                   node _lhsIparentTree _localInfo (_expressionsIinfoTrees)
               _lhsOinfoTree =
                   _parentTree
-              __tup21 =
+              __tup19 =
                   let infoTuple = metaVarInfo _constraints _expressionsIassumptions _localInfo
                   in match1 infoTuple _expressionsIuniqueSecondRound
                             match_Expression_List
                             _lhsItryPatterns _lhsIallPatterns
                             [_expressionsImatches]
               (_expressionsOtryPatterns,_,_,_,_,_) =
-                  __tup21
+                  __tup19
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup21
+                  __tup19
               (_,_,_lhsOconstraints,_,_,_) =
-                  __tup21
+                  __tup19
               (_,_,_,_lhsOassumptions,_,_) =
-                  __tup21
+                  __tup19
               (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup21
+                  __tup19
               (_,_,_,_,_,_ioMatch) =
-                  __tup21
+                  __tup19
               _lhsOmatchIO =
                   _expressionsImatchIO     >> _ioMatch
               _lhsOcollectInstances =
@@ -6552,24 +6536,24 @@ sem_Expression_Literal range_ literal_  =
                   node _lhsIparentTree _localInfo []
               _lhsOinfoTree =
                   _parentTree
-              __tup22 =
+              __tup20 =
                   let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                   in match0 infoTuple _lhsIuniqueSecondRound
                             (match_Expression_Literal _literalIself)
                             _lhsItryPatterns _lhsIallPatterns
                             []
-              (__tup23,_,_,_,_,_) =
-                  __tup22
+              (__tup21,_,_,_,_,_) =
+                  __tup20
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup22
+                  __tup20
               (_,_,_lhsOconstraints,_,_,_) =
-                  __tup22
+                  __tup20
               (_,_,_,_lhsOassumptions,_,_) =
-                  __tup22
+                  __tup20
               (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup22
+                  __tup20
               (_,_,_,_,_,_ioMatch) =
-                  __tup22
+                  __tup20
               _lhsOmatchIO =
                   _lhsImatchIO             >> _ioMatch
               _lhsOcollectInstances =
@@ -6719,24 +6703,24 @@ sem_Expression_Negate range_ expression_  =
                   node _lhsIparentTree _localInfo [_expressionIinfoTree]
               _lhsOinfoTree =
                   _parentTree
-              __tup24 =
+              __tup22 =
                   let infoTuple = metaVarInfo _constraints _expressionIassumptions _localInfo
                   in match1 infoTuple _expressionIuniqueSecondRound
                             match_Expression_Negate
                             _lhsItryPatterns _lhsIallPatterns
                             [_expressionImatches]
               (_expressionOtryPatterns,_,_,_,_,_) =
-                  __tup24
+                  __tup22
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup24
+                  __tup22
               (_,_,_lhsOconstraints,_,_,_) =
-                  __tup24
+                  __tup22
               (_,_,_,_lhsOassumptions,_,_) =
-                  __tup24
+                  __tup22
               (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup24
+                  __tup22
               (_,_,_,_,_,_ioMatch) =
-                  __tup24
+                  __tup22
               _lhsOmatchIO =
                   _expressionImatchIO      >> _ioMatch
               _lhsOcollectInstances =
@@ -6902,24 +6886,24 @@ sem_Expression_NegateFloat range_ expression_  =
                   node _lhsIparentTree _localInfo [_expressionIinfoTree]
               _lhsOinfoTree =
                   _parentTree
-              __tup25 =
+              __tup23 =
                   let infoTuple = metaVarInfo _constraints _expressionIassumptions _localInfo
                   in match1 infoTuple _expressionIuniqueSecondRound
                             match_Expression_NegateFloat
                             _lhsItryPatterns _lhsIallPatterns
                             [_expressionImatches]
               (_expressionOtryPatterns,_,_,_,_,_) =
-                  __tup25
+                  __tup23
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup25
+                  __tup23
               (_,_,_lhsOconstraints,_,_,_) =
-                  __tup25
+                  __tup23
               (_,_,_,_lhsOassumptions,_,_) =
-                  __tup25
+                  __tup23
               (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup25
+                  __tup23
               (_,_,_,_,_,_ioMatch) =
-                  __tup25
+                  __tup23
               _lhsOmatchIO =
                   _expressionImatchIO      >> _ioMatch
               _lhsOcollectInstances =
@@ -7015,7 +6999,7 @@ sem_Expression_NormalApplication range_ function_ arguments_  =
        _lhsIuniqueSecondRound ->
          (let _functionObetaUnique :: Int
               _lhsOinfoTree :: InfoTree
-              __tup27 :: (([(Expression     , [String])],[(Expressions    , [String])]))
+              __tup25 :: (([(Expression     , [String])],[(Expressions    , [String])]))
               _functionOtryPatterns :: ([(Expression     , [String])])
               _argumentsOtryPatterns :: ([(Expressions    , [String])])
               _lhsOmatches :: ([Maybe MetaVariableTable])
@@ -7130,28 +7114,28 @@ sem_Expression_NormalApplication range_ function_ arguments_  =
                   node _lhsIparentTree _localInfo (_functionIinfoTree : _argumentsIinfoTrees)
               _lhsOinfoTree =
                   _parentTree
-              __tup26 =
+              __tup24 =
                   let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                   in match2 infoTuple _argumentsIuniqueSecondRound
                             match_Expression_NormalApplication
                             _lhsItryPatterns _lhsIallPatterns
                             [_functionImatches, _argumentsImatches]
-              (__tup27,_,_,_,_,_) =
-                  __tup26
+              (__tup25,_,_,_,_,_) =
+                  __tup24
               (_functionOtryPatterns,_) =
-                  __tup27
+                  __tup25
               (_,_argumentsOtryPatterns) =
-                  __tup27
+                  __tup25
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup26
+                  __tup24
               (_,_,_lhsOconstraints,_,_,_) =
-                  __tup26
+                  __tup24
               (_,_,_,_lhsOassumptions,_,_) =
-                  __tup26
+                  __tup24
               (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup26
+                  __tup24
               (_,_,_,_,_,_ioMatch) =
-                  __tup26
+                  __tup24
               _lhsOmatchIO =
                   _argumentsImatchIO       >> _ioMatch
               _lhsOcollectInstances =
@@ -7489,14 +7473,14 @@ sem_Expression_RecordConstruction range_ name_ recordExpressionBindings_  =
               _recordExpressionBindingsIuniqueChunk :: Int
               _infoTree =
                   globalInfoError
-              __tup28 =
+              __tup26 =
                   internalError "PartialSyntax.ag" "n/a" "Expression.RecordConstruction"
               (_assumptions,_,_) =
-                  __tup28
+                  __tup26
               (_,_constraints,_) =
-                  __tup28
+                  __tup26
               (_,_,_beta) =
-                  __tup28
+                  __tup26
               _matches =
                   internalError "TS_PatternMatching.ag" "n/a" "RecordConstruction is not supported"
               _lhsOcollectInstances =
@@ -7880,24 +7864,24 @@ sem_Expression_Tuple range_ expressions_  =
                   node _lhsIparentTree _localInfo (_expressionsIinfoTrees)
               _lhsOinfoTree =
                   _parentTree
-              __tup29 =
+              __tup27 =
                   let infoTuple = metaVarInfo _constraints _expressionsIassumptions _localInfo
                   in match1 infoTuple _expressionsIuniqueSecondRound
                             match_Expression_Tuple
                             _lhsItryPatterns _lhsIallPatterns
                             [_expressionsImatches]
               (_expressionsOtryPatterns,_,_,_,_,_) =
-                  __tup29
+                  __tup27
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup29
+                  __tup27
               (_,_,_lhsOconstraints,_,_,_) =
-                  __tup29
+                  __tup27
               (_,_,_,_lhsOassumptions,_,_) =
-                  __tup29
+                  __tup27
               (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup29
+                  __tup27
               (_,_,_,_,_,_ioMatch) =
-                  __tup29
+                  __tup27
               _lhsOmatchIO =
                   _expressionsImatchIO     >> _ioMatch
               _lhsOcollectInstances =
@@ -8241,24 +8225,24 @@ sem_Expression_Variable range_ name_  =
                   _parentTree
               _lhsOunboundNames =
                   [ _nameIself ]
-              __tup30 =
+              __tup28 =
                   let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                   in match0 infoTuple _lhsIuniqueSecondRound
                             (match_Expression_Variable _nameIself)
                             _lhsItryPatterns _lhsIallPatterns
                             []
-              (__tup31,_,_,_,_,_) =
-                  __tup30
+              (__tup29,_,_,_,_,_) =
+                  __tup28
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup30
+                  __tup28
               (_,_,_lhsOconstraints,_,_,_) =
-                  __tup30
+                  __tup28
               (_,_,_,_lhsOassumptions,_,_) =
-                  __tup30
+                  __tup28
               (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup30
+                  __tup28
               (_,_,_,_,_,_ioMatch) =
-                  __tup30
+                  __tup28
               _lhsOmatchIO =
                   _lhsImatchIO             >> _ioMatch
               _lhsOcollectInstances =
@@ -8340,7 +8324,7 @@ sem_Expressions_Cons hd_ tl_  =
               _lhsOassumptions :: Assumptions
               _lhsOconstraintslist :: ConstraintSets
               _lhsOinfoTrees :: InfoTrees
-              __tup33 :: (([(Expression     , [String])],[(Expressions    , [String])]))
+              __tup31 :: (([(Expression     , [String])],[(Expressions    , [String])]))
               _hdOtryPatterns :: ([(Expression     , [String])])
               _tlOtryPatterns :: ([(Expressions    , [String])])
               _lhsOmatches :: ([Maybe MetaVariableTable])
@@ -8435,16 +8419,16 @@ sem_Expressions_Cons hd_ tl_  =
                   _hdIconstraints : _tlIconstraintslist
               _lhsOinfoTrees =
                   _hdIinfoTree : _tlIinfoTrees
-              __tup32 =
+              __tup30 =
                   match2' match_Expressions_Cons _lhsItryPatterns [] [_hdImatches, _tlImatches]
-              (__tup33,_,_,_,_,_) =
-                  __tup32
+              (__tup31,_,_,_,_,_) =
+                  __tup30
               (_hdOtryPatterns,_) =
-                  __tup33
+                  __tup31
               (_,_tlOtryPatterns) =
-                  __tup33
+                  __tup31
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup32
+                  __tup30
               _lhsOcollectInstances =
                   _hdIcollectInstances  ++  _tlIcollectInstances
               _lhsOunboundNames =
@@ -8601,12 +8585,12 @@ sem_Expressions_Nil  =
                   []
               _lhsOinfoTrees =
                   []
-              __tup34 =
+              __tup32 =
                   match0' match_Expressions_Nil _lhsItryPatterns [] []
-              (__tup35,_,_,_,_,_) =
-                  __tup34
+              (__tup33,_,_,_,_,_) =
+                  __tup32
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup34
+                  __tup32
               _lhsOcollectInstances =
                   []
               _lhsOunboundNames =
@@ -8654,26 +8638,26 @@ sem_FieldDeclaration_FieldDeclaration range_ names_ type_  =
               _namesIself :: Names
               _typeIself :: AnnotatedType
               _typeIunboundNames :: Names
-              __tup36 =
+              __tup34 =
                   internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
               (_kindErrors,_,_,_,_,_,_,_,_) =
-                  __tup36
+                  __tup34
               (_,_tyconEnv,_,_,_,_,_,_,_) =
-                  __tup36
+                  __tup34
               (_,_,_constructorenv,_,_,_,_,_,_) =
-                  __tup36
+                  __tup34
               (_,_,_,_importEnvironment,_,_,_,_,_) =
-                  __tup36
+                  __tup34
               (_,_,_,_,_valueConstructors,_,_,_,_) =
-                  __tup36
+                  __tup34
               (_,_,_,_,_,_allValueConstructors,_,_,_) =
-                  __tup36
+                  __tup34
               (_,_,_,_,_,_,_typeConstructors,_,_) =
-                  __tup36
+                  __tup34
               (_,_,_,_,_,_,_,_allTypeConstructors,_) =
-                  __tup36
+                  __tup34
               (_,_,_,_,_,_,_,_,_warnings) =
-                  __tup36
+                  __tup34
               _lhsOunboundNames =
                   _typeIunboundNames
               _self =
@@ -8922,12 +8906,12 @@ sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_  =
                        ]
               _conLeft =
                   zipWith3 (\t1 t2 nr -> (t1 .==. t2) (_cinfoLeft nr)) _lefthandsideIbetas _lhsIbetasLeft [0..]
-              __tup37 =
+              __tup35 =
                   (_lefthandsideIenvironment .===. _righthandsideIassumptions) _cinfoBind
               (_csetBinds,_) =
-                  __tup37
+                  __tup35
               (_,_lhsOassumptions) =
-                  __tup37
+                  __tup35
               _cinfoLeft =
                   \num  ->
                   orphanConstraint num "pattern of function binding" _parentTree
@@ -8946,14 +8930,14 @@ sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_  =
                   node _lhsIparentTree _localInfo (_lefthandsideIinfoTrees ++ [_righthandsideIinfoTree])
               _lhsOinfoTree =
                   _parentTree
-              __tup38 =
+              __tup36 =
                   changeOfScope _lefthandsideIpatVarNames _righthandsideIunboundNames _lhsInamesInScope
               (_namesInScope,_,_) =
-                  __tup38
+                  __tup36
               (_,_unboundNames,_) =
-                  __tup38
+                  __tup36
               (_,_,_scopeInfo) =
-                  __tup38
+                  __tup36
               _lhsOunboundNames =
                   _unboundNames
               _lhsOunrwar =
@@ -10804,22 +10788,22 @@ sem_MaybeDeclarations_Just declarations_  =
               _declarationsIuniqueChunk :: Int
               _declarationsObindingGroups =
                   []
-              __tup39 =
+              __tup37 =
                   let inputBDG   = (False, _lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _declarationsIbetaUnique)
                       mybdggroup = Just (_lhsIassumptions, [_lhsIconstraints])
                   in performBindingGroup inputBDG _declarationsIbindingGroups
               (_lhsOassumptions,_,_,_,_,_) =
-                  __tup39
+                  __tup37
               (_,_lhsOconstraints,_,_,_,_) =
-                  __tup39
+                  __tup37
               (_,_,_inheritedBDG,_,_,_) =
-                  __tup39
+                  __tup37
               (_,_,_,_chunkNr,_,_) =
-                  __tup39
+                  __tup37
               (_,_,_,_,_lhsObetaUnique,_) =
-                  __tup39
+                  __tup37
               (_,_,_,_,_,_implicitsFM) =
-                  __tup39
+                  __tup37
               _inferredTypes =
                   findInferredTypes _lhsItypeschemeMap _implicitsFM
               _lhsOcollectWarnings =
@@ -10845,28 +10829,28 @@ sem_MaybeDeclarations_Just declarations_  =
                   [_theNode]
               _declarationsOparentTree =
                   _theNode
-              __tup40 =
+              __tup38 =
                   internalError "PartialSyntax.ag" "n/a" "toplevel MaybeDeclaration"
               (_collectTypeConstructors,_,_,_,_,_) =
-                  __tup40
+                  __tup38
               (_,_collectValueConstructors,_,_,_,_) =
-                  __tup40
+                  __tup38
               (_,_,_collectTypeSynonyms,_,_,_) =
-                  __tup40
+                  __tup38
               (_,_,_,_collectConstructorEnv,_,_) =
-                  __tup40
+                  __tup38
               (_,_,_,_,_derivedFunctions,_) =
-                  __tup40
+                  __tup38
               (_,_,_,_,_,_operatorFixities) =
-                  __tup40
-              __tup41 =
+                  __tup38
+              __tup39 =
                   changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
               (_namesInScope,_,_) =
-                  __tup41
+                  __tup39
               (_,_unboundNames,_) =
-                  __tup41
+                  __tup39
               (_,_,_scopeInfo) =
-                  __tup41
+                  __tup39
               _lhsOunboundNames =
                   _unboundNames
               _lhsOdeclVarNames =
@@ -11144,12 +11128,12 @@ sem_MaybeExpression_Just expression_  =
                   False
               _lhsOinfoTrees =
                   [_expressionIinfoTree]
-              __tup42 =
+              __tup40 =
                   match1' match_MaybeExpression_Just _lhsItryPatterns [] [_expressionImatches]
               (_expressionOtryPatterns,_,_,_,_,_) =
-                  __tup42
+                  __tup40
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup42
+                  __tup40
               _lhsOcollectInstances =
                   _expressionIcollectInstances
               _lhsOunboundNames =
@@ -11275,12 +11259,12 @@ sem_MaybeExpression_Nothing  =
                   TVar _lhsIbetaUnique
               _lhsOinfoTrees =
                   []
-              __tup43 =
+              __tup41 =
                   match0' match_MaybeExpression_Nothing _lhsItryPatterns [] []
-              (__tup44,_,_,_,_,_) =
-                  __tup43
+              (__tup42,_,_,_,_,_) =
+                  __tup41
               (_,_lhsOmatches,_,_,_,_) =
-                  __tup43
+                  __tup41
               _lhsOcollectInstances =
                   []
               _lhsOunboundNames =
@@ -11490,16 +11474,16 @@ sem_Module_Module range_ name_ exports_ body_  =
                   _warnings     ++ _bodyIpatternMatchWarnings
               (SolveResult _betaUniqueAtTheEnd _substitution _typeschemeMap _ _solveErrors ) =
                   _solveResult
-              __tup45 =
+              __tup43 =
                   (selectConstraintSolver _lhsIoptions _lhsIimportEnvironment)
                      _classEnv
                      _orderedTypeSynonyms
                      _bodyIbetaUnique
                      _bodyIconstraints
               (_solveResult,_) =
-                  __tup45
+                  __tup43
               (_,_logEntries) =
-                  __tup45
+                  __tup43
               _orderedTypeSynonyms =
                   getOrderedTypeSynonyms _lhsIimportEnvironment
               _classEnv =
@@ -11549,14 +11533,14 @@ sem_Module_Module range_ name_ exports_ body_  =
                   0
               _bodyOuniqueChunk =
                   1
-              __tup46 =
+              __tup44 =
                   changeOfScope (_initialScope ++ _bodyIdeclVarNames) _bodyIunboundNames []
               (_namesInScope,_,_) =
-                  __tup46
+                  __tup44
               (_,_unboundNames,_) =
-                  __tup46
+                  __tup44
               (_,_,_scopeInfo) =
-                  __tup46
+                  __tup44
               _bodyOmatchIO =
                   return ()
               _bodyOallPatterns =
@@ -12579,14 +12563,14 @@ sem_Pattern_Record range_ name_ recordPatternBindings_  =
               _recordPatternBindingsIunboundNames :: Names
               _infoTree =
                   globalInfoError
-              __tup47 =
+              __tup45 =
                   internalError "PartialSyntax.ag" "n/a" "Pattern.Record"
               (_beta,_,_) =
-                  __tup47
+                  __tup45
               (_,_constraints,_) =
-                  __tup47
+                  __tup45
               (_,_,_environment) =
-                  __tup47
+                  __tup45
               _lhsOelements =
                   pmError "Pattern_Record.elements" "Records are not supported"
               _lhsOpatVarNames =
@@ -12648,14 +12632,14 @@ sem_Pattern_Successor range_ name_ literal_  =
               _literalIself :: Literal
               _infoTree =
                   globalInfoError
-              __tup48 =
+              __tup46 =
                   internalError "PartialSyntax.ag" "n/a" "Pattern.Successor"
               (_beta,_,_) =
-                  __tup48
+                  __tup46
               (_,_constraints,_) =
-                  __tup48
+                  __tup46
               (_,_,_environment) =
-                  __tup48
+                  __tup46
               _lhsOelements =
                   pmError "Pattern_Successor.elements" "Successors are not supported"
               _lhsOpatVarNames =
@@ -13322,12 +13306,12 @@ sem_Qualifier_Generator range_ pattern_ expression_  =
                           , _expressionIconstraints
                           , _lhsIconstraints
                           ]
-              __tup49 =
+              __tup47 =
                   (_patternIenvironment .===. _lhsIassumptions) _cinfoBind
               (_csetBinds,_) =
-                  __tup49
+                  __tup47
               (_,_assumptions') =
-                  __tup49
+                  __tup47
               _newcon =
                   [ (_expressionIbeta .==. listType _patternIbeta) _cinfoResult ]
               _cinfoResult =
@@ -13347,14 +13331,14 @@ sem_Qualifier_Generator range_ pattern_ expression_  =
                   node _lhsIparentTree _localInfo [_patternIinfoTree, _expressionIinfoTree]
               _lhsOinfoTree =
                   _parentTree
-              __tup50 =
+              __tup48 =
                   changeOfScope _patternIpatVarNames (_expressionIunboundNames  ++ _lhsIunboundNames)  _lhsInamesInScope
               (_namesInScope,_,_) =
-                  __tup50
+                  __tup48
               (_,_unboundNames,_) =
-                  __tup50
+                  __tup48
               (_,_,_scopeInfo) =
-                  __tup50
+                  __tup48
               _lhsOnamesInScope =
                   _namesInScope
               _lhsOunboundNames =
@@ -13715,22 +13699,22 @@ sem_Qualifier_Let range_ declarations_  =
               _declarationsIuniqueChunk :: Int
               _declarationsObindingGroups =
                   []
-              __tup51 =
+              __tup49 =
                   let inputBDG   = (False, _lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _declarationsIbetaUnique)
                       mybdggroup = Just (_lhsIassumptions, [_lhsIconstraints])
                   in performBindingGroup inputBDG _declarationsIbindingGroups
               (_lhsOassumptions,_,_,_,_,_) =
-                  __tup51
+                  __tup49
               (_,_lhsOconstraints,_,_,_,_) =
-                  __tup51
+                  __tup49
               (_,_,_inheritedBDG,_,_,_) =
-                  __tup51
+                  __tup49
               (_,_,_,_chunkNr,_,_) =
-                  __tup51
+                  __tup49
               (_,_,_,_,_lhsObetaUnique,_) =
-                  __tup51
+                  __tup49
               (_,_,_,_,_,_implicitsFM) =
-                  __tup51
+                  __tup49
               _inferredTypes =
                   findInferredTypes _lhsItypeschemeMap _implicitsFM
               _lhsOcollectWarnings =
@@ -13765,28 +13749,28 @@ sem_Qualifier_Let range_ declarations_  =
                   _thisTree
               _declarationsOparentTree =
                   _declTree
-              __tup52 =
+              __tup50 =
                   internalError "PartialSyntax.ag" "n/a" "toplevel Qualifier"
               (_collectTypeConstructors,_,_,_,_,_) =
-                  __tup52
+                  __tup50
               (_,_collectValueConstructors,_,_,_,_) =
-                  __tup52
+                  __tup50
               (_,_,_collectTypeSynonyms,_,_,_) =
-                  __tup52
+                  __tup50
               (_,_,_,_collectConstructorEnv,_,_) =
-                  __tup52
+                  __tup50
               (_,_,_,_,_derivedFunctions,_) =
-                  __tup52
+                  __tup50
               (_,_,_,_,_,_operatorFixities) =
-                  __tup52
-              __tup53 =
+                  __tup50
+              __tup51 =
                   changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
               (_namesInScope,_,_) =
-                  __tup53
+                  __tup51
               (_,_unboundNames,_) =
-                  __tup53
+                  __tup51
               (_,_,_scopeInfo) =
-                  __tup53
+                  __tup51
               _lhsOunboundNames =
                   _unboundNames
               _lhsOcollectInstances =
@@ -14323,40 +14307,40 @@ sem_RecordExpressionBinding_RecordExpressionBinding range_ name_ expression_  =
               _expressionIuniqueSecondRound :: Int
               _parentTree =
                   globalInfoError
-              __tup54 =
+              __tup52 =
                   internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
               (_monos,_,_,_,_,_,_,_,_,_,_) =
-                  __tup54
+                  __tup52
               (_,_constructorenv,_,_,_,_,_,_,_,_,_) =
-                  __tup54
+                  __tup52
               (_,_,_betaUnique,_,_,_,_,_,_,_,_) =
-                  __tup54
+                  __tup52
               (_,_,_,_miscerrors,_,_,_,_,_,_,_) =
-                  __tup54
+                  __tup52
               (_,_,_,_,_warnings,_,_,_,_,_,_) =
-                  __tup54
+                  __tup52
               (_,_,_,_,_,_kindErrors,_,_,_,_,_) =
-                  __tup54
+                  __tup52
               (_,_,_,_,_,_,_valueConstructors,_,_,_,_) =
-                  __tup54
+                  __tup52
               (_,_,_,_,_,_,_,_allValueConstructors,_,_,_) =
-                  __tup54
+                  __tup52
               (_,_,_,_,_,_,_,_,_typeConstructors,_,_) =
-                  __tup54
+                  __tup52
               (_,_,_,_,_,_,_,_,_,_allTypeConstructors,_) =
-                  __tup54
+                  __tup52
               (_,_,_,_,_,_,_,_,_,_,_importEnvironment) =
-                  __tup54
-              __tup55 =
+                  __tup52
+              __tup53 =
                   internalError "TS_PatternMatching.ag" "n/a" "RecordExpressionBinding is not supported"
               (_allPatterns,_,_,_) =
-                  __tup55
+                  __tup53
               (_,_tryPatterns,_,_) =
-                  __tup55
+                  __tup53
               (_,_,_matchIO,_) =
-                  __tup55
+                  __tup53
               (_,_,_,_uniqueSecondRound) =
-                  __tup55
+                  __tup53
               _lhsOcollectInstances =
                   _expressionIcollectInstances
               _lhsOunboundNames =
@@ -14678,28 +14662,28 @@ sem_RecordPatternBinding_RecordPatternBinding range_ name_ pattern_  =
               _patternIunboundNames :: Names
               _parentTree =
                   globalInfoError
-              __tup56 =
+              __tup54 =
                   internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
               (_monos,_,_,_,_,_,_,_,_,_) =
-                  __tup56
+                  __tup54
               (_,_constructorenv,_,_,_,_,_,_,_,_) =
-                  __tup56
+                  __tup54
               (_,_,_betaUnique,_,_,_,_,_,_,_) =
-                  __tup56
+                  __tup54
               (_,_,_,_miscerrors,_,_,_,_,_,_) =
-                  __tup56
+                  __tup54
               (_,_,_,_,_warnings,_,_,_,_,_) =
-                  __tup56
+                  __tup54
               (_,_,_,_,_,_valueConstructors,_,_,_,_) =
-                  __tup56
+                  __tup54
               (_,_,_,_,_,_,_allValueConstructors,_,_,_) =
-                  __tup56
+                  __tup54
               (_,_,_,_,_,_,_,_typeConstructors,_,_) =
-                  __tup56
+                  __tup54
               (_,_,_,_,_,_,_,_,_allTypeConstructors,_) =
-                  __tup56
+                  __tup54
               (_,_,_,_,_,_,_,_,_,_importEnvironment) =
-                  __tup56
+                  __tup54
               _lhsOunboundNames =
                   _patternIunboundNames
               _self =
@@ -15791,12 +15775,12 @@ sem_Statement_Generator range_ pattern_ expression_  =
                           ]
               _newcon =
                   [ (_expressionIbeta .==. ioType _patternIbeta) _cinfoResult ]
-              __tup57 =
+              __tup55 =
                   (_patternIenvironment .===. _lhsIassumptions) _cinfoBind
               (_csetBinds,_) =
-                  __tup57
+                  __tup55
               (_,_assumptions') =
-                  __tup57
+                  __tup55
               _cinfoResult =
                   childConstraint 1 "generator" _parentTree
                      []
@@ -15814,14 +15798,14 @@ sem_Statement_Generator range_ pattern_ expression_  =
                   node _lhsIparentTree _localInfo [_patternIinfoTree, _expressionIinfoTree]
               _lhsOinfoTree =
                   _parentTree
-              __tup58 =
+              __tup56 =
                   changeOfScope _patternIpatVarNames (_expressionIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
               (_namesInScope,_,_) =
-                  __tup58
+                  __tup56
               (_,_unboundNames,_) =
-                  __tup58
+                  __tup56
               (_,_,_scopeInfo) =
-                  __tup58
+                  __tup56
               _lhsOnamesInScope =
                   _namesInScope
               _lhsOunboundNames =
@@ -16008,22 +15992,22 @@ sem_Statement_Let range_ declarations_  =
                   Nothing
               _declarationsObindingGroups =
                   []
-              __tup59 =
+              __tup57 =
                   let inputBDG    = (False, _lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _declarationsIbetaUnique)
                       mybdggroup = Just (_lhsIassumptions, [_lhsIconstraints])
                   in performBindingGroup inputBDG _declarationsIbindingGroups
               (_lhsOassumptions,_,_,_,_,_) =
-                  __tup59
+                  __tup57
               (_,_lhsOconstraints,_,_,_,_) =
-                  __tup59
+                  __tup57
               (_,_,_inheritedBDG,_,_,_) =
-                  __tup59
+                  __tup57
               (_,_,_,_chunkNr,_,_) =
-                  __tup59
+                  __tup57
               (_,_,_,_,_lhsObetaUnique,_) =
-                  __tup59
+                  __tup57
               (_,_,_,_,_,_implicitsFM) =
-                  __tup59
+                  __tup57
               _inferredTypes =
                   findInferredTypes _lhsItypeschemeMap _implicitsFM
               _lhsOcollectWarnings =
@@ -16058,28 +16042,28 @@ sem_Statement_Let range_ declarations_  =
                   _thisTree
               _declarationsOparentTree =
                   _declTree
-              __tup60 =
+              __tup58 =
                   internalError "PartialSyntax.ag" "n/a" "toplevel Statement"
               (_collectTypeConstructors,_,_,_,_,_) =
-                  __tup60
+                  __tup58
               (_,_collectValueConstructors,_,_,_,_) =
-                  __tup60
+                  __tup58
               (_,_,_collectTypeSynonyms,_,_,_) =
-                  __tup60
+                  __tup58
               (_,_,_,_collectConstructorEnv,_,_) =
-                  __tup60
+                  __tup58
               (_,_,_,_,_derivedFunctions,_) =
-                  __tup60
+                  __tup58
               (_,_,_,_,_,_operatorFixities) =
-                  __tup60
-              __tup61 =
+                  __tup58
+              __tup59 =
                   changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
               (_namesInScope,_,_) =
-                  __tup61
+                  __tup59
               (_,_unboundNames,_) =
-                  __tup61
+                  __tup59
               (_,_,_scopeInfo) =
-                  __tup61
+                  __tup59
               _lhsOunboundNames =
                   _unboundNames
               _lhsOcollectInstances =

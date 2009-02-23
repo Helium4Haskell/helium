@@ -33,7 +33,7 @@ SEM Module
 SEM Body 
   | Body   lhs . miscerrors = @typeSignatureErrors ++ @classErrors ++ @declarations.miscerrors
            loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
-           loc . classErrors = checkClass @declarations.collectTypeClasses @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
+           loc . classErrors = checkClass @declarations.collectTypeClasses @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures @lhs.importedClassEnv
            lhs . classEnv = @declarations.classEnv
            lhs . instances = @declarations.instances
 -- checkClassEnvironment :: ImportEnvironment -> ClassEnvironment -> [(Range, Instance)] -> [(Range, Bool)]
@@ -265,8 +265,8 @@ getTypeVariables ((Type_Qualified _ _ t):tys)        = getTypeVariables [t] ++ g
 getTypeVariables []                                  = []
 
 
-checkClass :: [(Name, [(Name, TpScheme)])] -> Names -> Names -> [(Name, TpScheme)] -> Errors
-checkClass typeClasses declVarNames restrictedNames declTypes =
+checkClass :: [(Name, [(Name, TpScheme)])] -> Names -> Names -> [(Name, TpScheme)] -> ClassEnvironment-> Errors
+checkClass typeClasses declVarNames restrictedNames declTypes imported =
            let inMultipleClasses = filter (\(_,y) -> (length y) > 1) $ declaredInMultipleClasses typeClasses
                overload = map (declaredAtTopLevel (declVarNames ++ restrictedNames ++ (map fst declTypes))) typeClasses
            in  [FunctionInMultipleClasses Definition name names
@@ -276,6 +276,12 @@ checkClass typeClasses declVarNames restrictedNames declTypes =
                | (className, errMethod) <- overload
                , (length errMethod > 0)
                ]
+               ++
+               [DuplicateClassName ns
+               | ns <- filter (\x -> (length x) > 1) $ group . sort $ map fst typeClasses ]
+               ++
+               [undefined
+               | x <- filter (containsClass imported) $ map fst typeClasses  ] 
            
 declaredInMultipleClasses :: [(Name, [(Name, TpScheme)])] -> [(Name, [Name])]
 declaredInMultipleClasses dicts = buildTypes (map (\(n, l) -> (n, map fst l)) dicts) []

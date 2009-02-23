@@ -11,10 +11,11 @@
 -- This module prevents warnings by the AG-system.
 --
 -------------------------------------------------------------------------------
-
+{-
 SEM Declaration
   | Instance  loc . (assumptions,constraints,unboundNames) = internalError "PartialSyntax.ag" "n/a" "Declaration.Instance"
   | Class     loc . (assumptions,constraints,unboundNames) = internalError "PartialSyntax.ag" "n/a" "Declaration.Class"
+-}
 
 SEM Expression
   | RecordConstruction  loc . (assumptions,constraints,beta) = internalError "PartialSyntax.ag" "n/a" "Expression.RecordConstruction"

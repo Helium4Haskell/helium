@@ -40,6 +40,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | TypeClassOverloadRestr Name Names
             | TypeSynonymInInstance Range Predicate
             | TypeSynonymInContext Range Predicate Predicate
+            | DuplicateClassName Names
             | OverlappingInstance String Tp
             | MissingSuperClass Range Predicate Predicate 
             | Duplicated Entity Names
@@ -74,6 +75,7 @@ instance HasMessage Error where
       ClassMethodContextError _ name _ _ -> [getNameRange name]
       InvalidContext _ name _     -> [getNameRange name]
       ClassVariableNotInMethodSignature _ _ names -> sortRanges (map getNameRange names)
+      DuplicateClassName names -> sortRanges (map getNameRange names)
       TypeClassOverloadRestr _ names -> sortRanges (map getNameRange names)
       TypeSynonymInInstance range _   -> [range]
       TypeSynonymInContext range _ _ -> [range]
@@ -138,6 +140,10 @@ showError anError = case anError of
       , [ MessageString ("Did you mean "++prettyOrList (map (show . show) xs)++"?")
         | let xs = sensiblySimilar name inScope, not (null xs)
         ]
+      )
+   DuplicateClassName names ->
+      ( MessageString ("Found multiple definitions for the class: " ++ show (head names) ++ ".")
+      , [ MessageString ("You may only use a class name once.")]
       )
    FunctionInMultipleClasses Definition name classes ->
       ( MessageString ("Type declaration for " ++ show (show name) ++ " in multipe classes")

@@ -28,7 +28,8 @@ SEM Module
                                         . setTypeSynonyms      (M.fromList @body.collectTypeSynonyms)
                                         . setOperatorTable     (M.fromList @body.operatorFixities)
                                         . addToTypeEnvironment (M.fromList @derivedFunctions)
-                                        -- . setClassEnvironment  @derivedInstances
+                                        . setClassEnvironment  @body.classEnv
+                                        . setClassMemberEnvironment @body.collectClassMemberEnv
                                         $ emptyEnvironment
                                         -- the type environment will be added after type inferencing.
                  . derivedFunctions = let f (n,i) = ( nameOfShowFunction n
@@ -38,15 +39,13 @@ SEM Module
                                       in map f @body.collectTypeConstructors ++
                                          map g @body.collectTypeSynonyms
 
-{-
-                 . derivedInstances = let f (n,i) = makeInstance "Show" i (show n)
+{-                 . derivedInstances = let f (n,i) = makeInstance "Show" i (show n)
                                           g (n,(i,_)) = f (n,i)
                                       in unitFM "Show"
                                             ( []
                                             , map f @body.collectTypeConstructors ++
                                               map g @body.collectTypeSynonyms
                                             )
-
 -}
 -------------------------------------------
 -- 1) Collecting (data-)type constructors
@@ -263,24 +262,24 @@ helpM []               = ""
 }
 
 ATTR Declarations Declaration [ | | collectTypeClasses  USE { ++ } { [] } : { [(Name, [(Name, TpScheme)])] } ]
-ATTR Body Declarations Declaration [ | | buildClassMemberEnv USE { `M.union` } { M.empty } : {ClassMemberEnvironment} ]
+ATTR Body Declarations Declaration [ | | collectClassMemberEnv USE { `M.union` } { M.empty } : {ClassMemberEnvironment} ]
 ATTR Body Declaration Declarations Expression Expressions 
      GuardedExpression GuardedExpressions MaybeDeclarations
      MaybeExpression Qualifier Qualifiers RecordExpressionBinding
      RightHandSide Alternative Alternatives FunctionBinding
      FunctionBindings Statement RecordExpressionBindings
-     Statements -- Module -- When we are going to do stuff on multiple modules uncomment this thing
+     Statements 
                [ classMemberEnv : {ClassMemberEnvironment} | | ]
 SEM Module
-    | Module body . classMemberEnv = @body.buildClassMemberEnv
+    | Module body . classMemberEnv = @body.collectClassMemberEnv 
 
 SEM Declaration
     | Class lhs . collectTypeClasses = [(@simpletype.name, @where.typeSignatures)]
-            lhs . buildClassMemberEnv = createClassDef @simpletype.name @where.self
+            lhs . collectClassMemberEnv = createClassDef @simpletype.name @where.self
 
 SEM Declarations
     | Cons     lhs . collectTypeClasses = @hd.collectTypeClasses  ++ @tl.collectTypeClasses
--- And now build the version that we can export... 
+
 
 -- Collect the type variables in the context
 ATTR ContextItems ContextItem [ || typeVariables USE {++} {[]} : Types ]
@@ -311,6 +310,11 @@ SEM Declaration
       
 -------
 -- Building a Class Environment
+
+ATTR Body [ importedClassEnv : {ClassEnvironment}| | ]
+
+SEM Module
+  | Module body . importedClassEnv = classEnvironment $ combineImportEnvironmentList @lhs.importEnvironments
 
 ATTR Body Declaration Declarations [ | | classEnv USE {`M.union`} {M.empty} : {ClassEnvironment} ]
 
