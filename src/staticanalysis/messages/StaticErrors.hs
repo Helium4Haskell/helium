@@ -41,6 +41,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | TypeSynonymInInstance Range Predicate
             | TypeSynonymInContext Range Predicate Predicate
             | DuplicateClassName Names
+            | DuplicatedClassImported Name
             | OverlappingInstance String Tp
             | MissingSuperClass Range Predicate Predicate 
             | Duplicated Entity Names
@@ -60,7 +61,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | NonDerivableClass Name
             | CannotDerive Name Tps
             | TupleTooBig Range
-            | DebugError Name String
+            | DebugError Names String
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -76,6 +77,7 @@ instance HasMessage Error where
       InvalidContext _ name _     -> [getNameRange name]
       ClassVariableNotInMethodSignature _ _ names -> sortRanges (map getNameRange names)
       DuplicateClassName names -> sortRanges (map getNameRange names)
+      DuplicatedClassImported name -> [getNameRange name]
       TypeClassOverloadRestr _ names -> sortRanges (map getNameRange names)
       TypeSynonymInInstance range _   -> [range]
       TypeSynonymInContext range _ _ -> [range]
@@ -104,7 +106,7 @@ instance HasMessage Error where
       NonDerivableClass name      -> [getNameRange name]
       CannotDerive name _         -> [getNameRange name]
       TupleTooBig r               -> [r]
-      DebugError name _           -> [getNameRange name]
+      DebugError names _           -> sortRanges (map getNameRange names)
       _                           -> internalError "StaticErrors.hs" 
                                                    "instance IsMessage Error"
                                                    "unknown type of Error"
@@ -144,6 +146,10 @@ showError anError = case anError of
    DuplicateClassName names ->
       ( MessageString ("Found multiple definitions for the class: " ++ show (head names) ++ ".")
       , [ MessageString ("You may only use a class name once.")]
+      )
+   DuplicatedClassImported name ->
+      ( MessageString ("Found a definition for the class: " ++ show name ++ ", but this name is already used by an imported class.")
+      , []
       )
    FunctionInMultipleClasses Definition name classes ->
       ( MessageString ("Type declaration for " ++ show (show name) ++ " in multipe classes")
@@ -366,8 +372,8 @@ showError anError = case anError of
     , []
     )
 
-   DebugError name message ->
-    ( MessageString ("Debug error: " ++ show name ++ ".")
+   DebugError names message ->
+    ( MessageString ("Debug error: " ++ concatMap show names ++ ".")
     , [ MessageString message ]
     )
 

@@ -304,7 +304,7 @@ checkClass typeClasses declVarNames restrictedNames declTypes imported =
                [DuplicateClassName ns
                | ns <- filter (\x -> (length x) > 1) $ group . sort $ map fst typeClasses ]
                ++
-               [undefined
+               [DuplicatedClassImported x
                | x <- filter (containsClass imported) $ map fst typeClasses  ] 
            
 declaredInMultipleClasses :: [(Name, [(Name, TpScheme)])] -> [(Name, [Name])]
@@ -451,8 +451,8 @@ classExists n cm = case (M.lookup n cm) of
 
 instanceMembers :: MaybeDeclarations -> ClassDef -> Errors
 instanceMembers MaybeDeclarations_Nothing _ = []
-instanceMembers (MaybeDeclarations_Just decls) d = {- [ (DebugError n ("We have members" ++ show (length decls)))] -} instanceMembers' decls d
-
+instanceMembers (MaybeDeclarations_Just decls) d =  {-[ (DebugError n ("We have members" ++ show (length decls)))] -} instanceMembers' decls d
+ where n = concatMap nameOfDeclaration decls
 
 instanceMembers' :: Declarations -> ClassDef -> Errors
 instanceMembers' (d:ds) c@(n, members) = let fn = head $ nameOfDeclaration d
@@ -9275,7 +9275,7 @@ sem_Module_Module range_ name_ exports_ body_  =
                            (createClassEnvironment importEnv)
                            _bodyIcollectInstances
               _bodyOclassMemberEnv =
-                  _bodyIcollectClassMemberEnv
+                  foldr exclusiveUnion _bodyIcollectClassMemberEnv (map classMemberEnvironment _lhsIimportEnvironments)
               _bodyOimportedClassEnv =
                   classEnvironment $ combineImportEnvironmentList _lhsIimportEnvironments
               __tup17 =

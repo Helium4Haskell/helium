@@ -271,7 +271,7 @@ ATTR Body Declaration Declarations Expression Expressions
      Statements 
                [ classMemberEnv : {ClassMemberEnvironment} | | ]
 SEM Module
-    | Module body . classMemberEnv = @body.collectClassMemberEnv 
+    | Module body . classMemberEnv = foldr exclusiveUnion @body.collectClassMemberEnv (map classMemberEnvironment @lhs.importEnvironments)
 
 SEM Declaration
     | Class lhs . collectTypeClasses = [(@simpletype.name, @where.typeSignatures)]

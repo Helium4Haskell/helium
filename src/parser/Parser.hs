@@ -180,14 +180,21 @@ topdecl = addRange (
         return $ \r -> Declaration_Type r st t
     <|>
 -- Declaration_Class (Range) (ContextItems) (SimpleType) (MaybeDeclarations)
+{-
+cdecls :: HParser Declarations
+cdecls =
+    do
+     ds <- withLayout cdecl
+     return (CollectFunctionBindings.cdecls ds)
+-}
     do
         lexCLASS
         ct <- option [] (try $ do {c <- scontext ; lexDARROW ; return c} )
         st <- simpleType
         ds <- option MaybeDeclarations_Nothing (try $ do lexWHERE
-                                                         d <- withLayout decl
-                                                         let new = CollectFunctionBindings.decls d
-                                                         return (MaybeDeclarations_Just new))
+                                                         d <-  cdecls
+                                                         
+                                                         return (MaybeDeclarations_Just d))
         return $ \r -> Declaration_Class r ct st ds
     <|>
 -- Declaration_Instance (Range) (ContextItems) (Name) (Types) (MaybeDeclarations)
@@ -197,9 +204,8 @@ topdecl = addRange (
       n <- tycls
       ts <- iType
       ds <- option MaybeDeclarations_Nothing (try $ do lexWHERE
-                                                       d <- withLayout decl
-                                                       let new = CollectFunctionBindings.decls d
-                                                       return (MaybeDeclarations_Just new))
+                                                       d <- idecls
+                                                       return (MaybeDeclarations_Just d))
       return $ \r -> Declaration_Instance r ct n [ts] ds
     <|>
     infixdecl
@@ -327,7 +333,82 @@ import_ = addRange $
     do
         n <- var
         return $ \r -> Import_Variable r n
+{-
+cdecls -> " {" decl1 ";" .... ";" decln "}"    (n>=0)
+-}
 
+{-
+cdecl -> vars "::" type  (type signature)
+      | (funlhs | var) rhs
+-}
+
+cdecls :: HParser Declarations
+cdecls =
+    do
+     ds <- withLayout cdecl
+     return (CollectFunctionBindings.decls ds)
+     
+cdecl :: HParser Declaration
+cdecl = addRange (
+    do
+       nr <- try (withRange var)
+       cdecl1 nr
+    <|>
+    do
+       l <- funlhs
+       b <- normalRhs
+       return $ \r -> Declaration_FunctionBindings r
+           [FunctionBinding_FunctionBinding r l b]
+       
+      ) <?> Texts.parserDeclaration
+     
+    
+cdecl1 :: (Name, Range) -> HParser (Range -> Declaration)
+cdecl1 (n, nr) =
+    do
+        lexCOMMA
+        ns <- vars
+        lexCOLCOL
+        t <- contextAndType
+        return $ \r -> Declaration_TypeSignature r (n:ns) t
+    <|>
+    do
+        lexCOLCOL
+        t <- contextAndType
+        return $ \r -> Declaration_TypeSignature r [n] t
+    <|>
+    do
+        b <- normalRhs
+        return $ \r -> Declaration_FunctionBindings r
+            [FunctionBinding_FunctionBinding r (LeftHandSide_Function r n []) b]
+
+{-
+idecl -> (funlhs | var) rhs
+        |                       (empty)
+-}
+
+idecls :: HParser Declarations
+idecls =
+    do
+     ds <- withLayout idecl
+     return (CollectFunctionBindings.decls ds)
+     
+idecl :: HParser Declaration
+idecl = addRange (
+    do
+       (n, nr) <- try (withRange var)
+       b <- normalRhs
+       return $ \r -> Declaration_FunctionBindings r
+            [FunctionBinding_FunctionBinding r (LeftHandSide_Function r n []) b]
+    <|>
+    do
+       l <- funlhs
+       b <- normalRhs
+       return $ \r -> Declaration_FunctionBindings r
+           [FunctionBinding_FunctionBinding r l b]
+       
+      ) <?> Texts.parserDeclaration
+            
 {-
 decls   ->  "{" decl1 ";" ... ";" decln "}"    (n>=0)
 -}
@@ -365,6 +446,8 @@ funlhs1 ->  varop pat10
          |  apat*
 -}
 
+
+
 decl :: HParser Declaration
 decl = addRange (
     do
@@ -381,6 +464,7 @@ decl = addRange (
         return $ \r -> Declaration_FunctionBindings r
             [FunctionBinding_FunctionBinding r l b]
     ) <?> Texts.parserDeclaration
+
 
 decl1 :: (Name, Range) -> HParser (Range -> Declaration)
 decl1 (n, nr) =

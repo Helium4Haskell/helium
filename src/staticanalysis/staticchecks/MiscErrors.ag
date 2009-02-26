@@ -26,7 +26,7 @@ SEM Module
             loc .  typeSynonyms = getOrderedTypeSynonyms @loc.imports
             loc  . typeSynonymErrors = noTypeSynonymsInInstance @loc.typeSynonyms @body.instances
             loc  . instanceErrors = makeClassEnvironmentErrors $ checkClassEnvironment @loc.typeSynonyms @body.classEnv @body.instances
-            loc  . overlappingInstances = overlappingInstances $ foldr insertInst @body.classEnv @body.instances                
+            loc  . overlappingInstances = overlappingInstances $ foldr insertInst @body.classEnv @body.instances             
 -----------------------------------------
 -- Body
 
@@ -280,7 +280,7 @@ checkClass typeClasses declVarNames restrictedNames declTypes imported =
                [DuplicateClassName ns
                | ns <- filter (\x -> (length x) > 1) $ group . sort $ map fst typeClasses ]
                ++
-               [undefined
+               [DuplicatedClassImported x
                | x <- filter (containsClass imported) $ map fst typeClasses  ] 
            
 declaredInMultipleClasses :: [(Name, [(Name, TpScheme)])] -> [(Name, [Name])]
@@ -469,8 +469,8 @@ classExists n cm = case (M.lookup n cm) of
 
 instanceMembers :: MaybeDeclarations -> ClassDef -> Errors
 instanceMembers MaybeDeclarations_Nothing _ = []
-instanceMembers (MaybeDeclarations_Just decls) d = {- [ (DebugError n ("We have members" ++ show (length decls)))] -} instanceMembers' decls d
-
+instanceMembers (MaybeDeclarations_Just decls) d =  {-[ (DebugError n ("We have members" ++ show (length decls)))] -} instanceMembers' decls d
+ where n = concatMap nameOfDeclaration decls
 
 instanceMembers' :: Declarations -> ClassDef -> Errors
 instanceMembers' (d:ds) c@(n, members) = let fn = head $ nameOfDeclaration d
