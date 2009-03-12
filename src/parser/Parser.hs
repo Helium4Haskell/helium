@@ -350,16 +350,15 @@ cdecls =
      
 cdecl :: HParser Declaration
 cdecl = addRange (
-    do
-       nr <- try (withRange var)
-       cdecl1 nr
+    try (do
+         nr <- withRange var
+         cdecl1 nr)
     <|>
     do
        l <- funlhs
        b <- normalRhs
        return $ \r -> Declaration_FunctionBindings r
            [FunctionBinding_FunctionBinding r l b]
-       
       ) <?> Texts.parserDeclaration
      
     
@@ -391,15 +390,15 @@ idecls :: HParser Declarations
 idecls =
     do
      ds <- withLayout idecl
-     return (CollectFunctionBindings.decls ds)
+     return ds -- (CollectFunctionBindings.decls ds)
      
 idecl :: HParser Declaration
 idecl = addRange (
-    do
-       (n, nr) <- try (withRange var)
-       b <- normalRhs
-       return $ \r -> Declaration_FunctionBindings r
-            [FunctionBinding_FunctionBinding r (LeftHandSide_Function r n []) b]
+    try (do
+          (n, nr) <- try (withRange var)
+          b <- normalRhs
+          return $ \r -> Declaration_FunctionBindings r
+             [FunctionBinding_FunctionBinding r (LeftHandSide_Function r n []) b])
     <|>
     do
        l <- funlhs
