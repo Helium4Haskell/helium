@@ -459,16 +459,16 @@ instanceMembers' (d:ds) c@(n, members) = let fn = head $ nameOfDeclaration d
                                              cm = map (\(x, _) -> x) members
                                           in
                                              case elem fn cm of
-                                              True -> case (noInstanceType d c) of
+                                              True -> {-case (noInstanceType d c) of
                                                        Nothing -> instanceMembers' ds c
-                                                       Just e  -> e : instanceMembers' ds c
+                                                       Just e  -> e :-} instanceMembers' ds c
                                               False -> UndefinedFunctionForClass n fn cm : instanceMembers' ds c 
 instanceMembers' []     _       = []
-
+{-
 noInstanceType :: Declaration -> ClassDef -> Maybe Error
 noInstanceType (Declaration_TypeSignature _ names _) (n, _) = Just $ TypeSignatureInInstance n names
 noInstanceType _                                     _      = Nothing
-
+-}
 --Check all instance declarations, check if their superclass relations hold, return those predicates that fail to check.
 checkClassEnvironment :: OrderedTypeSynonyms -> ClassEnvironment -> [(Range, Instance)] -> [(Range, Predicate, Predicates)]
 checkClassEnvironment env cEnv instances = map (\(r, (i, ctxt)) -> let
@@ -492,12 +492,9 @@ overlappingInstances = M.foldWithKey (\k (_, i) b -> (overlappingInstances k i) 
 
 noTypeSynonymsInInstance :: OrderedTypeSynonyms -> [(Range, Instance)] -> Errors
 noTypeSynonymsInInstance typeSyn ((r, (p, ps)):insts) = if (typeSynonymInPredicate typeSyn p)
-                                                         then (TypeSynonymInInstance r p) : (noTypeSynonymsInContext typeSyn r p ps (noTypeSynonymsInInstance typeSyn insts))
-                                                         else noTypeSynonymsInContext typeSyn r p ps (noTypeSynonymsInInstance typeSyn insts)
+                                                         then (TypeSynonymInInstance r p) : (noTypeSynonymsInInstance typeSyn insts)
+                                                         else noTypeSynonymsInInstance typeSyn insts
 noTypeSynonymsInInstance _      []                    = []  
-
-noTypeSynonymsInContext :: OrderedTypeSynonyms -> Range -> Predicate -> Predicates -> Errors -> Errors
-noTypeSynonymsInContext typeSyn r p ps err = foldr (\pred -> (:) (TypeSynonymInContext r pred p)) err (filter (typeSynonymInPredicate typeSyn) ps)
 
 typeSynonymInPredicate :: OrderedTypeSynonyms -> Predicate -> Bool
 typeSynonymInPredicate typeSyn (Predicate _ ty) = case (expandToplevelTC typeSyn ty) of

@@ -39,7 +39,6 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | TypeSignatureInInstance Name Names
             | TypeClassOverloadRestr Name Names
             | TypeSynonymInInstance Range Predicate
-            | TypeSynonymInContext Range Predicate Predicate
             | DuplicateClassName Names
             | DuplicatedClassImported Name
             | OverlappingInstance String Tp
@@ -61,7 +60,6 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | NonDerivableClass Name
             | CannotDerive Name Tps
             | TupleTooBig Range
-            | DebugError Names String
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -80,7 +78,6 @@ instance HasMessage Error where
       DuplicatedClassImported name -> [getNameRange name]
       TypeClassOverloadRestr _ names -> sortRanges (map getNameRange names)
       TypeSynonymInInstance range _   -> [range]
-      TypeSynonymInContext range _ _ -> [range]
       Undefined _ name _ _        -> [getNameRange name]
       UndefinedClass name _       -> [getNameRange name]
       UndefinedFunctionForClass _ name _ -> [getNameRange name]
@@ -106,7 +103,6 @@ instance HasMessage Error where
       NonDerivableClass name      -> [getNameRange name]
       CannotDerive name _         -> [getNameRange name]
       TupleTooBig r               -> [r]
-      DebugError names _           -> sortRanges (map getNameRange names)
       _                           -> internalError "StaticErrors.hs" 
                                                    "instance IsMessage Error"
                                                    "unknown type of Error"
@@ -194,10 +190,6 @@ showError anError = case anError of
       
    TypeSynonymInInstance _ inst ->
      ( MessageString ("Type synonyms are not allowed as types for instances, in : "  ++ show inst ++ ".")
-     , []
-     )
-   TypeSynonymInContext _ ctx decl ->
-     ( MessageString ("Type synonyms are not allowed as types in contexts in the definition of: " ++ show decl ++ " context item: " ++ show decl ++ " contains type synonyms.")
      , []
      )
    
@@ -370,11 +362,6 @@ showError anError = case anError of
    TupleTooBig r ->
     ( MessageString "Tuples can have up to 10 elements"
     , []
-    )
-
-   DebugError names message ->
-    ( MessageString ("Debug error: " ++ concatMap show names ++ ".")
-    , [ MessageString message ]
     )
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
