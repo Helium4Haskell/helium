@@ -1,0 +1,4 @@
+Compiling typeClassesStatic/MultiParam.hs
+(1,7): Multiparameter typeclasses are not supported, error in class definition: "MultiParam". 
+  Hint: You used parameters: "a" and "b" .
+Compilation failed with 1 error

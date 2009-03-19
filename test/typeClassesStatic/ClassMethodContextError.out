@@ -1,0 +1,5 @@
+Compiling typeClassesStatic/ClassMethodContextError.hs
+(1,7): Not allowed to put further restictions on typeClass variable in type class: ClassA. 
+  Hint: In the type signatures of: function the following context items are not
+        allowed: Eq.
+Compilation failed with 1 error

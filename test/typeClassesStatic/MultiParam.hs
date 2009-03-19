@@ -1,0 +1,3 @@
+class MultiParam a b 
+
+  

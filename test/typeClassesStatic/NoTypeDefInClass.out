@@ -1,0 +1,3 @@
+Compiling typeClassesStatic/NoTypeDefInClass.hs
+(2,3): Function definition for "functionWithoutType" without a type signature is not allowed in a Class 
+Compilation failed with 1 error

@@ -1,0 +1,6 @@
+#!/bin/sh
+
+ERRORS=0
+for f in typeClassesParse/*.hs          ; do /bin/sh testOnePhase ${f%.hs} 1; ERRORS=$[$ERRORS+$?] ; done
+for f in typeClassesStatic/*.hs         ; do /bin/sh testOnePhase ${f%.hs} 2; ERRORS=$[$ERRORS+$?] ; done
+exit $ERRORS

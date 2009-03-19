@@ -1,0 +1,5 @@
+Compiling typeClassesParse/ClassesErrors4.hs
+(4,25): Syntax error: 
+    unexpected '::'
+    expecting operator, pattern, '=', '|', next in block (based on layout), ';' or end of block (based on layout)
+Compilation failed with 1 error

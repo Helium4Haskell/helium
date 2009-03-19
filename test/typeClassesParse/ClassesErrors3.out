@@ -1,0 +1,5 @@
+Compiling typeClassesParse/ClassesErrors3.hs
+(3,21): Syntax error: 
+    unexpected variable 'a'
+    expecting type
+Compilation failed with 1 error

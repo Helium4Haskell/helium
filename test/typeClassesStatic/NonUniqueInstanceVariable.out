@@ -1,0 +1,4 @@
+Compiling typeClassesStatic/NonUniqueInstanceVariable.hs
+(3,10): Not all type variables in instance declaration of class: ClassA are unique. 
+  Hint: Type variable: a occurs more then once.
+Compilation failed with 1 error

@@ -1,0 +1,4 @@
+Compiling typeClassesStatic/DuplicateClassName.hs
+(1,15), (3,16): Found multiple definitions for the class: SomeClass.
+  Hint: You may only use a class name once.
+Compilation failed with 1 error

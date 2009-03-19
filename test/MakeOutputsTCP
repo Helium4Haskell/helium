@@ -1,0 +1,4 @@
+#!/bin/sh
+
+for f in typeClassesParse/*.hs          ; do echo $f; /bin/sh ./MakeOutputPhase ${f%.hs} 1; done
+for f in typeClassesStatic/*.hs          ; do echo $f; /bin/sh ./MakeOutputPhase ${f%.hs} 2; done

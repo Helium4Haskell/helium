@@ -1,0 +1,5 @@
+Compiling typeClassesParse/ClassesErrors2.hs
+(3,25): Syntax error: 
+    unexpected end of file
+    expecting declaration, end of block (based on layout), next in block (based on layout) or ';'
+Compilation failed with 1 error

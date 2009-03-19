@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# ./compileAndRun $1 > ${1%/*}/${1#*/}.out 2>&1
+./phaseAndRun $1 $2 > $1.out 2>&1

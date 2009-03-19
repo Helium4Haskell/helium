@@ -1,0 +1,5 @@
+Compiling typeClassesStatic/Import.hs
+(1,18): Syntax error: 
+    unexpected operator '.'
+    expecting keyword 'hiding', ';' or next in block (based on layout)
+Compilation failed with 1 error
