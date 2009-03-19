@@ -22,7 +22,6 @@ import qualified Data.Map as M
 import ImportEnvironment
 import OperatorTable
 import Char ( isUpper )
-import Foreign hiding (xor)
 
 -- filter undefined errors that are caused by the removal of a duplicate definition
 filterRemovedNames :: [(Name,Entity)] -> Error -> Bool
@@ -79,11 +78,6 @@ createClassDef :: Name -> MaybeDeclarations -> ClassMemberEnvironment
 createClassDef n MaybeDeclarations_Nothing      = M.singleton n []
 createClassDef n (MaybeDeclarations_Just decls) = M.singleton n (createClassDef2 fdecl $ concatMap createClassDef1 types)
                where (types, fdecl) = filterType decls ([], [])
-
-helper ((n, mem):defs) = (show n ++ (helpM mem)) : helper defs
-helper []              = []
-helpM ((n, _, _):ns)   = show n ++ helpM ns
-helpM []               = ""
 
 
 
@@ -451,7 +445,7 @@ classExists n cm = case (M.lookup n cm) of
 
 instanceMembers :: MaybeDeclarations -> ClassDef -> Errors
 instanceMembers MaybeDeclarations_Nothing _ = []
-instanceMembers (MaybeDeclarations_Just decls) d =  {-[ (DebugError n ("We have members" ++ show (length decls)))] -} instanceMembers' decls d
+instanceMembers (MaybeDeclarations_Just decls) d = instanceMembers' decls d
  where n = concatMap nameOfDeclaration decls
 
 instanceMembers' :: Declarations -> ClassDef -> Errors
@@ -459,16 +453,10 @@ instanceMembers' (d:ds) c@(n, members) = let fn = head $ nameOfDeclaration d
                                              cm = map (\(x, _) -> x) members
                                           in
                                              case elem fn cm of
-                                              True -> {-case (noInstanceType d c) of
-                                                       Nothing -> instanceMembers' ds c
-                                                       Just e  -> e :-} instanceMembers' ds c
+                                              True -> instanceMembers' ds c
                                               False -> UndefinedFunctionForClass n fn cm : instanceMembers' ds c 
 instanceMembers' []     _       = []
-{-
-noInstanceType :: Declaration -> ClassDef -> Maybe Error
-noInstanceType (Declaration_TypeSignature _ names _) (n, _) = Just $ TypeSignatureInInstance n names
-noInstanceType _                                     _      = Nothing
--}
+
 --Check all instance declarations, check if their superclass relations hold, return those predicates that fail to check.
 checkClassEnvironment :: OrderedTypeSynonyms -> ClassEnvironment -> [(Range, Instance)] -> [(Range, Predicate, Predicates)]
 checkClassEnvironment env cEnv instances = map (\(r, (i, ctxt)) -> let

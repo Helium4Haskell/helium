@@ -253,11 +253,6 @@ createClassDef n MaybeDeclarations_Nothing      = M.singleton n []
 createClassDef n (MaybeDeclarations_Just decls) = M.singleton n (createClassDef2 fdecl $ concatMap createClassDef1 types)
                where (types, fdecl) = filterType decls ([], [])
 
-helper ((n, mem):defs) = (show n ++ (helpM mem)) : helper defs
-helper []              = []
-helpM ((n, _, _):ns)   = show n ++ helpM ns
-helpM []               = ""
-
 
 }
 
