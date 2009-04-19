@@ -1,3 +1,4 @@
+{-# OPTIONS -XFlexibleContexts #-}
 {-| Module      :  ListOfHeuristics
     License     :  GPL
 

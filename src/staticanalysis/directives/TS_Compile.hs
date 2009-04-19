@@ -23,7 +23,7 @@ import TS_Analyse     (analyseTypingStrategies)
 import HeliumMessages (sortAndShowMessages)
 import Monad          (unless, when)
 import qualified Args (Option(..))
-import ParseMessage
+import ParseMessage ()
 import CoreUtils
 import Core
 

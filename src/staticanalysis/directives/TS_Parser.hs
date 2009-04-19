@@ -18,8 +18,8 @@ import UHA_Utils (nameFromString)
 import qualified UHA_Pretty as PP
 -- Typing strategies
 import TS_Syntax
-import TS_CoreSyntax
-import qualified TS_ToCore
+--import TS_CoreSyntax
+--import qualified TS_ToCore
 -- Parser/Lexer
 import Lexer (Token, Lexeme)
 import ParseLibrary hiding (satisfy)
@@ -28,7 +28,7 @@ import qualified ResolveOperators (expression)
 import Text.ParserCombinators.Parsec
 -- Rest
 import Data.List (intersperse)
-import Data.IORef
+--import Data.IORef
 import Data.Char
 import OperatorTable
 import Utils (internalError)
