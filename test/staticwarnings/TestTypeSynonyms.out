@@ -1,3 +1,4 @@
+# THIS IS A KNOWN ISSUE.
 Compiling staticwarnings/TestTypeSynonyms.hs
 (32,1): Warning: Missing type signature: noordpool :: [Beer]
 (33,1): Warning: Missing type signature: duo :: [IJsbeer]
