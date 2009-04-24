@@ -27,7 +27,7 @@ dataShowFunction (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name nam
     let typeString = show (typeOfShowFunction name names)
         nameId     = idFromString ("show" ++ getNameName name)
         valueId    = idFromString "value$"
-	in
+        in
 	DeclValue 
 	{ declName    = nameId
 	, declAccess  = public

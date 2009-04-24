@@ -2,13 +2,12 @@
 #  The Helium Compiler
 #-----------------------------------------------------------------------
 
-# make		 - build everything that is needed
-# make depend	 - build dependencies for hs files, ag dependencies are	written	by hand
+# make		     - build everything that is needed
 # make clean	 - remove .hi and .o files
 
 default: all
 
-.PHONY : default compiler all coreasm lvmrun libraries clean depend \
+.PHONY : default compiler all coreasm lvmrun libraries clean \
          smaller install movetohome status
 
 VERSION = 1.7
@@ -50,127 +49,12 @@ status :
 	@echo "*******************************************************************"
 
 HC	= @WithHc@
-PACKAGENET = -package network
-HC_OPTS = -static -fglasgow-exts -XUndecidableInstances -XOverlappingInstances \
-		-package mtl -package containers -package parsec $(PACKAGENET) -i$(IFACES) $(EXTRA_HC_OPTS)
+IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:./parser:./staticanalysis/miscellaneous:./staticanalysis/inferencers:./staticanalysis/directives:./staticanalysis/staticchecks:./staticanalysis/heuristics:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem:$(TOPDIR)/..:./texthint
+GHCWARN = -W -fwarn-tabs -fwarn-duplicate-exports -fwarn-orphans -fwarn-unused-imports # -fwarn-missing-signatures
+HC_OPTS = --make $(GHCWARN) -static -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
 AG_OPTS = -mscfr
-
-# Helium sources
-
-PARSER	= \
-	parser/CollectFunctionBindings.hs parser/OperatorTable.hs \
-	parser/Parser.hs parser/ResolveOperators.hs parser/Lexer.hs \
-	parser/ParseLibrary.hs parser/ParseMessage.hs \
-	parser/LexerMonad.hs parser/LexerMessage.hs parser/LayoutRule.hs \
-	parser/LexerToken.hs
-
-MODULESYSTEM = \
-	modulesystem/ImportEnvironment.hs \
-	modulesystem/DictionaryEnvironment.hs \
-	modulesystem/CoreToImportEnv.hs modulesystem/ExtractImportDecls.hs
-
-STATICANALYSIS = \
-	staticanalysis/messages/Messages.hs \
-	staticanalysis/messages/HeliumMessages.hs \
-	staticanalysis/messages/StaticErrors.hs \
-	staticanalysis/messages/TypeErrors.hs \
-	staticanalysis/messages/KindErrors.hs \
-	staticanalysis/messages/Warnings.hs \
-	staticanalysis/messages/Information.hs \
-	staticanalysis/heuristics/HeuristicsInfo.hs \
-	staticanalysis/heuristics/ListOfHeuristics.hs \
-	staticanalysis/heuristics/OnlyResultHeuristics.hs \
-	staticanalysis/heuristics/RepairHeuristics.hs \
-	staticanalysis/heuristics/TieBreakerHeuristics.hs \
-	staticanalysis/heuristics/UnifierHeuristics.hs \
-	staticanalysis/staticchecks/StaticChecks.hs \
-	staticanalysis/inferencers/TypeInferencing.hs \
-	staticanalysis/inferencers/KindInferencing.hs \
-	staticanalysis/inferencers/ExpressionTypeInferencer.hs \
-	staticanalysis/inferencers/SelectConstraintSolver.hs \
-	staticanalysis/inferencers/BindingGroupAnalysis.hs \
-	staticanalysis/directives/TS_Parser.hs \
-	staticanalysis/directives/TS_Syntax.hs \
-	staticanalysis/directives/Matchers.hs \
-        staticanalysis/directives/TS_Apply.hs \
-        staticanalysis/directives/TS_Messages.hs \
-        staticanalysis/directives/TS_Analyse.hs \
-        staticanalysis/directives/TS_CoreSyntax.hs \
-        staticanalysis/directives/TS_ToCore.hs \
-        staticanalysis/directives/TS_Compile.hs \
-        staticanalysis/directives/TS_Attributes.hs \
-        staticanalysis/miscellaneous/ConstraintInfo.hs \
-        staticanalysis/miscellaneous/DoublyLinkedTree.hs \
-        staticanalysis/miscellaneous/TypeConstraints.hs \
-        staticanalysis/miscellaneous/TypesToAlignedDocs.hs \
-        staticanalysis/miscellaneous/TypeConversion.hs \
-        staticanalysis/miscellaneous/UHA_Source.hs \
-        
-UHA = \
-	syntax/UHA_Syntax.hs syntax/UHA_Utils.hs syntax/UHA_Range.hs \
-        syntax/UHA_Pretty.hs syntax/UHA_OneLine.hs
-
-
-CODEGENERATION = \
-	codegeneration/CoreToLvm.hs codegeneration/PatternMatch.hs \
-	codegeneration/DerivingShow.hs codegeneration/DerivingEq.hs codegeneration/CoreUtils.hs \
-        codegeneration/CodeGeneration.hs
-
-UTILS = \
-	utils/Utils.hs utils/Logger.hs utils/OSSpecific.hs utils/OneLiner.hs \
-	utils/Similarity.hs utils/Texts.hs
-
-MAINFILES = \
-	main/Main.hs main/Version.hs main/Args.hs main/Compile.hs \
-	main/PhaseLexer.hs main/PhaseParser.hs main/PhaseImport.hs main/PhaseResolveOperators.hs \
-	main/PhaseStaticChecks.hs main/PhaseTypingStrategies.hs main/PhaseTypeInferencer.hs \
-	main/PhaseDesugarer.hs main/PhaseCodeGenerator.hs main/CompileUtils.hs \
-	main/PhaseKindInferencer.hs
-
-# Top sources
-
-TOP = \
-	$(TOPDIR)/Constraint/Equality.hs $(TOPDIR)/Constraint/Information.hs $(TOPDIR)/Constraint/Polymorphism.hs \
-	$(TOPDIR)/Constraint/Qualifier.hs $(TOPDIR)/Constraint.hs $(TOPDIR)/Implementation/Basic.hs \
-	$(TOPDIR)/Implementation/FastSubstitution.hs $(TOPDIR)/Implementation/General.hs $(TOPDIR)/Implementation/Overloading.hs \
-	$(TOPDIR)/Implementation/SimpleSubstitution.hs $(TOPDIR)/Implementation/TypeGraph/ApplyHeuristics.hs \
-	$(TOPDIR)/Implementation/TypeGraph/Basics.hs $(TOPDIR)/Implementation/TypeGraph/Class.hs $(TOPDIR)/Implementation/TypeGraph/ClassMonadic.hs \
-	$(TOPDIR)/Implementation/TypeGraph/DefaultHeuristics.hs $(TOPDIR)/Implementation/TypeGraph/EquivalenceGroup.hs $(TOPDIR)/Implementation/TypeGraph/Heuristic.hs \
-	$(TOPDIR)/Implementation/TypeGraph/Path.hs $(TOPDIR)/Implementation/TypeGraph/Standard.hs \
-	$(TOPDIR)/Implementation/TypeGraphSubstitution.hs $(TOPDIR)/Implementation/TypeInference.hs \
-	$(TOPDIR)/Interface/Basic.hs $(TOPDIR)/Interface/Qualification.hs $(TOPDIR)/Interface/Substitution.hs \
-	$(TOPDIR)/Interface/TypeInference.hs $(TOPDIR)/Monad/Select.hs $(TOPDIR)/Monad/StateFix.hs \
-	$(TOPDIR)/Ordering/Tree.hs $(TOPDIR)/Ordering/TreeWalk.hs $(TOPDIR)/Solver/Greedy.hs \
-	$(TOPDIR)/Solver/PartitionCombinator.hs $(TOPDIR)/Solver/SwitchCombinator.hs $(TOPDIR)/Solver/TypeGraph.hs \
-	$(TOPDIR)/Solver.hs $(TOPDIR)/Types/Classes.hs $(TOPDIR)/Types/Kinds.hs $(TOPDIR)/Types/Primitive.hs \
-	$(TOPDIR)/Types/Qualification.hs $(TOPDIR)/Types/Quantification.hs $(TOPDIR)/Types/Schemes.hs \
-	$(TOPDIR)/Types/Substitution.hs $(TOPDIR)/Types/Synonym.hs $(TOPDIR)/Types/Unification.hs \
-	$(TOPDIR)/Types.hs $(TOPDIR)/Util/Embedding.hs $(TOPDIR)/Util/Empty.hs $(TOPDIR)/Util/Option.hs
-  
-# LVM sources
-
-LVMCOMMON = \
-	  $(LVMLIBDIR)/common/Id.hs $(LVMLIBDIR)/common/IdMap.hs $(LVMLIBDIR)/common/IdSet.hs $(LVMLIBDIR)/common/IntMap.hs \
-	  $(LVMLIBDIR)/common/Byte.hs $(LVMLIBDIR)/common/Standard.hs \
-	  $(LVMLIBDIR)/common/TopSort.hs $(LVMLIBDIR)/common/Set.hs \
-	  $(LVMLIBDIR)/common/ghc/Special.hs $(LVMLIBDIR)/common/PPrint.hs
-
-LVM	= $(LVMLIBDIR)/lvm/Lvm.hs $(LVMLIBDIR)/lvm/LvmPretty.hs $(LVMLIBDIR)/lvm/LvmWrite.hs $(LVMLIBDIR)/lvm/LvmRead.hs \
-	  $(LVMLIBDIR)/lvm/LvmImport.hs $(LVMLIBDIR)/lvm/Module.hs $(LVMLIBDIR)/lvm/ModulePretty.hs \
-	  $(LVMLIBDIR)/lvm/Instr.hs $(LVMLIBDIR)/lvm/InstrPretty.hs $(LVMLIBDIR)/lvm/InstrResolve.hs $(LVMLIBDIR)/lvm/InstrRewrite.hs
-
-ASM	= $(LVMLIBDIR)/asm/AsmOptimize.hs $(LVMLIBDIR)/asm/AsmInline.hs $(LVMLIBDIR)/asm/AsmOccur.hs \
-	  $(LVMLIBDIR)/asm/Asm.hs $(LVMLIBDIR)/asm/AsmPretty.hs $(LVMLIBDIR)/asm/AsmToLvm.hs
-
-CORE	= $(LVMLIBDIR)/core/Core.hs $(LVMLIBDIR)/core/CorePretty.hs $(LVMLIBDIR)/core/CoreToAsm.hs \
-	  $(LVMLIBDIR)/core/CoreParse.hs $(LVMLIBDIR)/core/CoreLexer.hs \
-	  $(LVMLIBDIR)/core/CoreNormalize.hs $(LVMLIBDIR)/core/CoreRemoveDead.hs \
-	  $(LVMLIBDIR)/core/CoreNoShadow.hs $(LVMLIBDIR)/core/CoreFreeVar.hs $(LVMLIBDIR)/core/CoreLetSort.hs \
-	  $(LVMLIBDIR)/core/CoreLift.hs $(LVMLIBDIR)/core/CoreSaturate.hs
-
-IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:./parser:./staticanalysis/miscellaneous:./staticanalysis/inferencers:./staticanalysis/directives:./staticanalysis/staticchecks:./staticanalysis/heuristics:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem:$(TOPDIR)/..:./texthint
 
 # AG sources
 AGSOURCES = \
@@ -183,27 +67,12 @@ AGSOURCES = \
      staticanalysis/directives/TS_CoreSyntax.hs \
      staticanalysis/directives/TS_ToCore.hs parser/ResolveOperators.hs
 
-#Sources and object files
-SRCS = $(PARSER) $(STATICANALYSIS) $(UHA) $(CODEGENERATION) $(UTILS) $(TOP) $(LVMCOMMON) \
-	$(LVM) $(ASM) $(CORE) $(MAINFILES) $(MODULESYSTEM)
-OBJS = $(SRCS:.hs=.o)
-
-HELIUMOBJSFILE = heliumObjs.txt
-
-objectsfile: Makefile
-	@echo $(OBJS) | \
-	sed -e s/main\\/Main.o//g | \
-	sed -e s/\\\([^\ ][^\ ]*\\\)/$$\(HELIUMSRCDIR\)\\/\\1/g > $(HELIUMOBJSFILE)
-
-# Puts all objects except main\Main.o in the text file $(HELIUMOBJSFILE), while prepending
-# each file path with "$(HELIUMSRCDIR)/"
-
 # The main target
-compiler: $(OBJS)
+compiler: $(AGSOURCES)
 	@echo "****************************************************"
 	@echo "  Helium: the Helium compiler"
 	@echo "****************************************************"
-	$(HC)	-o $(HELIUMBINDIR)/$(MAIN)$(EXE) $(HC_OPTS) $(OBJS)
+	$(HC)	-o $(HELIUMBINDIR)/$(MAIN)$(EXE) $(HC_OPTS) main/Main.hs
 ifdef STRIP
 	$(STRIP) $(HELIUMBINDIR)/$(MAIN)$(EXE)
 endif
@@ -238,15 +107,12 @@ libraries:
 	@echo "****************************************************"
 	cd ../lib/simple; $(MAKE) 
 
-texthint: texthint/Main.o texthint/ConfigFile.o main/Args.o main/Version.o utils/OSSpecific.o
+texthint:
 	@echo "****************************************************"
 	@echo "  TextHint: the textual Helium interpreter"
 	@echo "****************************************************"
-	$(HC) $(HC_OPTS) -o $(HELIUMBINDIR)/texthint$(EXE) texthint/Main.o \
-                      main/Args.o main/Version.o utils/OSSpecific.o texthint/ConfigFile.o
+	$(HC) $(HC_OPTS) -o $(HELIUMBINDIR)/texthint$(EXE) texthint/Main.hs
 	$(STRIP) $(HELIUMBINDIR)/texthint$(EXE)
-
-texthint/Main.o: utils/OSSpecific.hi texthint/Main.hs texthint/ConfigFile.hi
 
 # AG sources
 
@@ -384,16 +250,6 @@ endif
 .ag.hs:
 	$(AG) -a $<
 
-
-# Documentation target (with Haddock) Ê
-doc:
-	haddock +RTS -K8M -RTS \
-	    --title="The Helium Compiler" \
-		--prologue=prologue.txt \
-		-h -o ../docs/haddock \
-		$(PARSER) $(STATICANALYSIS) $(UHA) $(CODEGENERATION) $(UTILS) \
-		$(MAINFILES) $(MODULESYSTEM)
-
 # Ignoring files for SVN repository
 
 ignore :
@@ -412,11 +268,6 @@ clean:
 	cd $(LVMLIBDIR); $(MAKE) clean
 	cd $(LVMRUNTIMEDIR); $(MAKE) clean
 	cd $(TOPDIR)/..; $(MAKE) clean 
-
-# Inter-module dependencies
-depend :
-	# Checking dependencies
-	$(HC) -M $(HC_OPTS) $(SRCS)
 
 # UTRECHT ONLY
 
@@ -515,5 +366,3 @@ movetobbl: smaller
 	# DON'T FORGET TO CHECK PERMISSIONS
 	cp ../../hint/release/Hint.jar /cygdrive/r/helium/bin
 
-# DO NOT DELETE: Beginning of Haskell dependencies
-# DO NOT DELETE: End of Haskell dependencies

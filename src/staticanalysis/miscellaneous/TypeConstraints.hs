@@ -1,4 +1,5 @@
-{-# OPTIONS -XUndecidableInstances #-}
+{-# OPTIONS -XUndecidableInstances -XRankNTypes -XFlexibleInstances 
+            -XMultiParamTypeClasses #-}
 {-| Module      :  TypeConstraints
     License     :  GPL
 

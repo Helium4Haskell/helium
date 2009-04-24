@@ -133,5 +133,5 @@ AC_OUTPUT(src/Makefile lib/simple/Makefile lib/Makefile src/utils/OSSpecific.hs)
 
 echo "****************************************************"
 echo "Configuration done."
-echo "Type \"cd src\", then \"make depend\", then \"make\""
+echo "Type \"cd src\", then \"make\""
 echo "****************************************************"
