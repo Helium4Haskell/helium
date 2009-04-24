@@ -18,10 +18,7 @@ import TypeConstraints
 import ConstraintInfo
 import Top.Types
 import List
-import UHA_Range (noRange)
-import UHA_Utils (nameFromString)
 import Utils (internalError)
-import OneLiner
 import Messages
 import TypeErrors
 import ImportEnvironment
@@ -35,8 +32,6 @@ import qualified Data.Map as M
 import TS_Attributes
 import TS_CoreSyntax
 import Top.Ordering.Tree
-import UHA_Source
-import DoublyLinkedTree (root)
 }
 
 {

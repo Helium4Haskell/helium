@@ -36,13 +36,10 @@ import TypeConversion
 import List
 import UHA_Utils (nameFromString)
 import UHA_Range (noRange)
-import UHA_Source
 import Messages
-import TypeErrors
 import TS_Messages
 import ImportEnvironment hiding (setTypeSynonyms)
 import ExpressionTypeInferencer (expressionTypeInferencer)
-import Char (isAlphaNum)
 import Utils (internalError)
 import qualified UHA_Pretty as PP
 import qualified Data.Map as M

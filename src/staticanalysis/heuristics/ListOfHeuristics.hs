@@ -14,7 +14,6 @@ module ListOfHeuristics (listOfHeuristics) where
 import Args (Option(..))
 import ConstraintInfo
 import HeuristicsInfo () -- instances
-import Top.Types
 import Top.Implementation.TypeGraph.Heuristic
 import Top.Implementation.TypeGraph.DefaultHeuristics
 -- import RepairSystem (repairSystem)
@@ -96,8 +95,8 @@ constraintFromUser path =
                 Step (EdgeId _ _ cNR, info) |  isJust (maybeUserConstraint info) && cNR `elem` edgeNrs 
                         -> Just cNR
                 _       -> Nothing
-	 
-          f :: (a -> a -> a) -> Maybe a -> Maybe a -> Maybe a	    
+
+          f :: (a -> a -> a) -> Maybe a -> Maybe a -> Maybe a            
           f g ma mb = 
              case (ma, mb) of
                 (Just a, Just b) -> Just (g a b)
@@ -107,11 +106,11 @@ constraintFromUser path =
          case [ tuple | tuple@(EdgeId _ _ cNR, _) <- edges, Just cNR == bestEdge ] of
             [] -> return Nothing
             (edgeID, info):_ -> 
-	       let (groupID, number) = maybe (0, 0) id (maybeUserConstraint info)
-	           otherEdges = let p info =
-		                       case maybeUserConstraint info of
-				          Just (a, b) -> a == groupID && b > number
-					  Nothing     -> False
-		                in [ e | (e, i) <- edges, p i ] -- perhaps over all edges!
-	       in return . Just $
-	             (8, "constraints from .type file", edgeID:otherEdges, info)
+               let (groupID, number) = maybe (0, 0) id (maybeUserConstraint info)
+                   otherEdges = let p info =
+                                       case maybeUserConstraint info of
+                                          Just (a, b) -> a == groupID && b > number
+                                          Nothing     -> False
+                                in [ e | (e, i) <- edges, p i ] -- perhaps over all edges!
+               in return . Just $
+                     (8, "constraints from .type file", edgeID:otherEdges, info)

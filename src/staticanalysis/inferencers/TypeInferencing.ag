@@ -100,11 +100,9 @@ import BindingGroupAnalysis
 -- UHA syntax
 import UHA_Syntax
 import UHA_Range                 
-import UHA_Utils                 (showNameAsOperator, intUnaryMinusName, NameWithRange(..), nameFromString)
          
 -- other
 import Utils                     (internalError)
-import DerivingShow              (typeOfShowFunction, nameOfShowFunction)
 import ImportEnvironment  hiding (setTypeSynonyms)
 import DictionaryEnvironment
 import Args
@@ -112,5 +110,4 @@ import Args
 -- standard
 import qualified Data.Map as M
 import Data.Maybe 
-import Data.List
 }

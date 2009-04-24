@@ -10,7 +10,7 @@
 
 module ExpressionTypeInferencer (expressionTypeInferencer) where
 
-import TypeInferencing (sem_Module, sem_Body)
+import TypeInferencing (sem_Module)
 import ImportEnvironment
 import BindingGroupAnalysis (Assumptions)
 import TypeErrors

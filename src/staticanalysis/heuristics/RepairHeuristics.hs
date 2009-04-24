@@ -6,7 +6,7 @@
     Portability :  portable
     
     Heuristics that supply additional hints with a type error how a program
-	can be corrected.
+    can be corrected.
 -}
 
 module RepairHeuristics where
@@ -14,7 +14,6 @@ module RepairHeuristics where
 import Top.Types
 import Top.Interface.TypeInference
 import Top.Interface.Qualification hiding (contextReduction)
-import Top.Interface.Substitution
 import UHA_Syntax (Range)
 import OneLiner (OneLineTree)
 import Top.Implementation.TypeGraph.Heuristic
@@ -60,7 +59,7 @@ siblingFunctions siblings =
                                       in return $ Just
                                             (10,"Sibling(s) "++siblingsTextual++" instead of "++show name, [edge], hint info)
                                   
-	   where
+       where
         orList :: [String] -> String
         orList [s]    = s
         orList (x:xs) = foldr (\x y-> x ++ ", " ++ y) ("or "++x) xs
@@ -78,7 +77,7 @@ siblingFunctions siblings =
               let magicNumber = 123456789
                   (ps, itp)   = split (snd (instantiate magicNumber scheme))
               return (unifiableInContext classEnv synonyms (map Just ps ++ sps) contextTp itp)
-       			       
+       
 -----------------------------------------------------------------------------
 
 class MaybeLiteral a where
@@ -533,8 +532,8 @@ permutationsForLength :: Int -> [Permutation]
 permutationsForLength 0 = [ [] ]
 permutationsForLength i = [ ys | xs <- permutationsForLength (i-1), ys <- insertSomewhere (i-1) xs ]
   where
-	insertSomewhere i []     = [ [i] ]
-	insertSomewhere i (x:xs) = (i:x:xs) : map (x:) (insertSomewhere i xs)
+   insertSomewhere i []     = [ [i] ]
+   insertSomewhere i (x:xs) = (i:x:xs) : map (x:) (insertSomewhere i xs)
          
 deleteIndex :: Int -> [a] -> [a]
 deleteIndex _ []     = []

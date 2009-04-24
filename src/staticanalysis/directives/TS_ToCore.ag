@@ -29,14 +29,11 @@ import ImportEnvironment
 import Messages
 import Top.Types
 import ConstraintInfo
-import UHA_Range (noRange)
 import UHA_Utils (getNameName, nameFromString)
 import qualified UHA_OneLine 
-import UHA_Source
 import TypeConversion
 import Utils (internalError)
 import List
-import TypeErrors
 import OneLiner
 import TS_Attributes
 import TypeConstraints

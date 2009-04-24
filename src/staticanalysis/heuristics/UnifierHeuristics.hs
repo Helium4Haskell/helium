@@ -21,7 +21,6 @@ import RepairHeuristics
 import ConstraintInfo
 import Data.List (partition, sortBy)
 import Data.Maybe (isNothing, fromJust)
-import Utils (internalError)
 
 class IsUnifier a where
    typeErrorForUnifier :: (Tp, Tp) -> (a, a) -> a

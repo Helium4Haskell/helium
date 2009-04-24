@@ -26,7 +26,6 @@ import Top.Solver.TypeGraph
 import Top.Solver.PartitionCombinator
 import Top.Solver.SwitchCombinator
 import Top.Interface.Substitution (makeSubstConsistent)
-import Top.Interface.Basic
 
 type TreeSolver = ClassEnvironment -> OrderedTypeSynonyms -> Int 
                        -> Tree (TypeConstraint ConstraintInfo) -> (SolveResult ConstraintInfo, LogEntries)
@@ -42,7 +41,7 @@ selectConstraintSolver options importenv classEnv synonyms unique constraintTree
        spreadingOrNot 
           | NoSpreading `elem` options = id
           | otherwise                  = spreadTree spreadFunction
-	 
+         
        -- choose your treewalk to flatten the constraint tree
        -- the default treewalk is TreeWalkInorderTopLastPost (similar to 'W')
        simpleTreeWalk
@@ -57,7 +56,7 @@ selectConstraintSolver options importenv classEnv synonyms unique constraintTree
           | RightToLeft `elem` options = reverseTreeWalk simpleTreeWalk
           | otherwise                  = simpleTreeWalk
        
-       phases       = phaseTree (TCOper "MakeConsistent" makeSubstConsistent)	
+       phases       = phaseTree (TCOper "MakeConsistent" makeSubstConsistent)        
        flattening   = flattenTree selectedTreeWalk . phases . spreadingOrNot
        
        constraints      = flattening constraintTree
