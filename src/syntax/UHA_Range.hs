@@ -147,7 +147,6 @@ getPatRange (Pattern_Successor r _ _) = r
 getPatRange (Pattern_Tuple r _) = r
 getPatRange (Pattern_Variable r _) = r
 getPatRange (Pattern_Wildcard r) = r
-getPatRange _ = internalError "UHA_Range" "getPatRange" "unknown pattern"
 
 getExprRange :: Expression -> Range
 getExprRange (Expression_Literal            r _    ) = r
@@ -260,7 +259,7 @@ showRange range@(Range_Range startPos endPos)
 showFullRange :: Range -> String
 showFullRange (Range_Range startPos endPos) =
    showPosition startPos ++ "-" ++ showPosition endPos
-	
+
 showPosition :: Position -> String
 showPosition (Position_Position _ line column) =
     "(" ++ show line ++ "," ++ show column ++ ")"

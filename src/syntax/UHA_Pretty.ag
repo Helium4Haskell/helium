@@ -3,7 +3,6 @@ INCLUDE "../syntax/UHA_Syntax.ag"
 imports{
 import PPrint
 import Char
-import List (intersperse)
 import Top.Types (isTupleConstructor)
 import UHA_Syntax
 import Utils (internalError)
