@@ -8,7 +8,7 @@
 default: all
 
 .PHONY : default compiler all coreasm lvmrun libraries clean \
-         smaller install movetohome status
+         texthint smaller install movetohome status
 
 VERSION = 1.7
 
@@ -111,7 +111,7 @@ texthint:
 	@echo "****************************************************"
 	@echo "  TextHint: the textual Helium interpreter"
 	@echo "****************************************************"
-	$(HC) $(HC_OPTS) -o $(HELIUMBINDIR)/texthint$(EXE) texthint/Main.hs
+	$(HC) -o $(HELIUMBINDIR)/texthint$(EXE) $(HC_OPTS) texthint/Main.hs
 	$(STRIP) $(HELIUMBINDIR)/texthint$(EXE)
 
 # AG sources
@@ -283,15 +283,9 @@ install : smaller
 	# *** Copy sources to library directory
 	$(MKDIR) $(bindir) $(hbindir) $(libdir) $(libdir)/simple $(demodir) 
   # Copy library sources, non-overloaded
-	$(INSTALL) -m 644 ../lib/simple/Prelude.hs $(libdir)/simple
-	$(INSTALL) -m 644 ../lib/simple/Char.hs $(libdir)/simple
-	$(INSTALL) -m 644 ../lib/simple/List.hs $(libdir)/simple
-	$(INSTALL) -m 644 ../lib/simple/Maybe.hs $(libdir)/simple
+	$(INSTALL) -m 644 ../lib/simple/*.hs $(libdir)/simple
   # Copy library sources, overloaded
-	$(INSTALL) -m 644 ../lib/Prelude.hs $(libdir)
-	$(INSTALL) -m 644 ../lib/Char.hs $(libdir)
-	$(INSTALL) -m 644 ../lib/List.hs $(libdir)
-	$(INSTALL) -m 644 ../lib/Maybe.hs $(libdir)
+	$(INSTALL) -m 644 ../lib/*.hs $(libdir)
   # Copy executables
 	$(INSTALL) -m 755 $(HELIUMBINDIR)/$(MAIN)$(EXE) $(bindir)   # This now becomes the default helium
 	$(INSTALL) -m 755 $(HELIUMBINDIR)/$(MAIN)$(EXE) $(hbindir)  # An additional one, to enable multiple heliums. I did not think it worthwhile to use symlinks.
@@ -300,39 +294,22 @@ install : smaller
 	$(INSTALL) -m 755 $(LVMRUNTIMEDIR)/lvmrun$(EXE) $(hbindir) # See above.
 	$(INSTALL) -m 755 $(HELIUMBINDIR)/texthint$(EXE) $(hbindir) # See above.
 	# *** Copying demos to demo directory
-	$(INSTALL) -m 644 ../demo/Calendar.hs $(demodir)
-	$(INSTALL) -m 644 ../demo/ParserLibrary.hs $(demodir)
-	$(INSTALL) -m 644 ../demo/ParserDemo.hs $(demodir)
-	$(INSTALL) -m 644 ../demo/TicTacToe.hs $(demodir)
+	$(INSTALL) -m 644 ../demo/*.hs $(demodir)
         
 	# *** Copy generated lvms and touch them
-	$(INSTALL) -m 644 ../lib/simple/Char.lvm $(libdir)/simple
-	$(INSTALL) -m 644 ../lib/simple/HeliumLang.lvm $(libdir)/simple
-	$(INSTALL) -m 644 ../lib/simple/List.lvm $(libdir)/simple
-	$(INSTALL) -m 644 ../lib/simple/LvmException.lvm $(libdir)/simple
-	$(INSTALL) -m 644 ../lib/simple/LvmIO.lvm $(libdir)/simple
-	$(INSTALL) -m 644 ../lib/simple/LvmLang.lvm $(libdir)/simple
-	$(INSTALL) -m 644 ../lib/simple/Maybe.lvm $(libdir)/simple
-	$(INSTALL) -m 644 ../lib/simple/Prelude.lvm $(libdir)/simple
-	$(INSTALL) -m 644 ../lib/simple/PreludePrim.lvm $(libdir)/simple
+	$(INSTALL) -m 644 ../lib/simple/*.lvm $(libdir)/simple
 	$(INSTALL) -m 644 ../lib/simple/Prelude.type $(libdir)/simple
 	# *** Copy generated overloaded lvms and touch them
-	$(INSTALL) -m 644 ../lib/Char.lvm $(libdir)
-	$(INSTALL) -m 644 ../lib/HeliumLang.lvm $(libdir)
-	$(INSTALL) -m 644 ../lib/List.lvm $(libdir)
-	$(INSTALL) -m 644 ../lib/LvmException.lvm $(libdir)
-	$(INSTALL) -m 644 ../lib/LvmIO.lvm $(libdir)
-	$(INSTALL) -m 644 ../lib/LvmLang.lvm $(libdir)
-	$(INSTALL) -m 644 ../lib/Maybe.lvm $(libdir)
-	$(INSTALL) -m 644 ../lib/Prelude.lvm $(libdir)
-	$(INSTALL) -m 644 ../lib/PreludePrim.lvm $(libdir)
+	$(INSTALL) -m 644 ../lib/*.lvm $(libdir)
 	$(INSTALL) -m 644 ../lib/Prelude.type $(libdir)
 	$(INSTALL) -m 644 hint.conf $(basedir)
 	touch $(libdir)/simple/*.lvm
 	touch $(libdir)/*.lvm
-	# Maybe at some point we want a separate simple script for this. 
-	$(INSTALL) -m -b 666 hint.conf "$(HOME)/.hint-$(VERSION).conf"  # Unfortunately, this will have root ownership
-	ln -s -f "$(HOME)/.hint-$(VERSION).conf" "$(HOME)/.hint.conf"  # Makes it the default.
+	@echo ""
+	@echo "Tell your users to copy $(basedir)/hint.conf to their HOME directory as .hint.conf"
+	
+# $(INSTALL) -m -b 666 hint.conf "$(HOME)/.hint-$(VERSION).conf"  # Unfortunately, this will have root ownership
+# ln -s -f "$(HOME)/.hint-$(VERSION).conf" "$(HOME)/.hint.conf"  # Makes it the default.
 
 movetohome: smaller
 	# *** Copying simple library sources to distribution directory
