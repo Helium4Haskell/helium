@@ -44,10 +44,9 @@ import StaticErrors
 import Warnings
 import Messages
 import List
-import Utils ( internalError, fst3, minInt, maxInt )
+import Utils ( internalError, minInt, maxInt )
 import TypeConversion
 import DerivingShow
-import TypeConstraints
 import qualified Data.Map as M
 import ImportEnvironment
 import OperatorTable

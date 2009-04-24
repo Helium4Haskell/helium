@@ -6,7 +6,7 @@
     Portability :  portable
     
     The UHA_Source data type is the union of several data types from the abstract
-	syntax (UHA),  including expressions and patterns.
+    syntax (UHA),  including expressions and patterns.
 -}
 
 module UHA_Source where
@@ -30,7 +30,7 @@ data UHA_Source =
          
 instance Show UHA_Source where
    show = showOneLine 80 . oneLinerSource
-	 
+ 
 rangeOfSource :: UHA_Source -> Range
 rangeOfSource source =
    case source of

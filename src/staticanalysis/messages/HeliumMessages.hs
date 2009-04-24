@@ -6,7 +6,7 @@
     Portability :  portable
     
     Defines how the (error) messages should be reported by the Helium compiler.
-	(For instance, one could define another layout, or produce XML-like output).
+        (For instance, one could define another layout, or produce XML-like output).
 -}
 
 module HeliumMessages where
@@ -70,7 +70,7 @@ showMessage x =
               [] -> MessageString ""
               xs -> MessageString (showRanges xs ++ ": ")
         messageWithRange = 
-	   case getMessage x of
+           case getMessage x of
               MessageOneLiner m:rest -> MessageOneLiner (MessageCompose [rangePart, m]) : rest
               xs                     -> MessageOneLiner rangePart : xs
     in concatMap show messageWithRange
@@ -88,20 +88,20 @@ showTable :: [(Bool, MessageBlock, MessageBlock)] -> String
 showTable = 
    let showTuple (indentBlock, leftBlock, rightBlock) =
           let -- some helper functions
-	      leftWidth = tableWidthLeft - (if indentBlock then 2 else 0)
+              leftWidth = tableWidthLeft - (if indentBlock then 2 else 0)
               concatFour a b c d = a ++ b ++ c ++ d
-	      makeOfLength i s   = take i (s ++ repeat ' ')
-	      linesOfLength i    = repeat (replicate i ' ')
-	      -- lines
+              makeOfLength i s   = take i (s ++ repeat ' ')
+              linesOfLength i    = repeat (replicate i ' ')
+              -- lines
               leftLines  = splitString leftWidth       (show leftBlock)
               rightLines = splitString tableWidthRight (show rightBlock)
               nrOfLines  = length leftLines `max` length rightLines
-	      -- the four columns
+              -- the four columns
               indentColumn    = if indentBlock
-	                          then               linesOfLength (length tablePrefix + 2)
+                                  then               linesOfLength (length tablePrefix + 2)
                                   else tablePrefix : linesOfLength (length tablePrefix)
               leftColumn      = map (makeOfLength leftWidth) leftLines ++ linesOfLength leftWidth 
-	      seperatorColumn = tableSeparator : linesOfLength (length tableSeparator)
+              seperatorColumn = tableSeparator : linesOfLength (length tableSeparator)
               rightColumn     = rightLines ++ linesOfLength tableWidthRight
           in unlines (take nrOfLines (zipWith4 concatFour indentColumn leftColumn seperatorColumn rightColumn))
    in concatMap showTuple . renderTypesInRight
@@ -114,7 +114,7 @@ renderTypesInRight table =
       hd@(q1, l1, r1) : tl@((q2, l2, r2) : rest)
         -> case (maybeQType r1, maybeQType r2) of
               (Just tp1, Just tp2) -> 
-	         let [doc1, doc2] = qualifiedTypesToAlignedDocs [tp1, tp2]
+                 let [doc1, doc2] = qualifiedTypesToAlignedDocs [tp1, tp2]
                      render = flip PPrint.displayS [] . PPrint.renderPretty 1.0 tableWidthRight
                  in (q1, l1, MessageType (toTpScheme (TCon (render doc1))))
                   : (q2, l2, MessageType (toTpScheme (TCon (render doc2))))
@@ -195,5 +195,5 @@ prepareTypesAndTypeSchemes messageLine = newMessageLine
            MessageCompose mbs -> let (r, i, ns) = f_MessageBlocks unique mbs
                                  in (MessageCompose r, i, ns)
            MessageType ts     -> let (unique', ps, its) = instantiateWithNameMap unique ts
-                                 in (MessageType (toTpScheme (ps .=>. its)), unique', constantsInType its)				   
+                                 in (MessageType (toTpScheme (ps .=>. its)), unique', constantsInType its)                                   
            _                  -> (messageBlock, unique, [])

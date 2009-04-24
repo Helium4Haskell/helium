@@ -52,10 +52,10 @@ checkType typeConstructors namesInScope t =
             Type_Constructor r c ->
                 checkKind c typeConstructors (length xs) namesInScope
                 ++ [ TupleTooBig r
- 	                 | let nameAsString = show c
- 	                 , isTupleConstructor nameAsString
- 	                 , length nameAsString - 1 > 10
- 	                 ]
+                   | let nameAsString = show c
+                   , isTupleConstructor nameAsString
+                   , length nameAsString - 1 > 10
+                   ]
             Type_Variable _ v ->
                 if length xs /= 0 then
                     [ TypeVarApplication v ]

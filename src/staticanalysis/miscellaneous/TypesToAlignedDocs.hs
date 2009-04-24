@@ -10,7 +10,7 @@
 
 module TypesToAlignedDocs (qualifiedTypesToAlignedDocs, typesToAlignedDocs) where
 
-import List     ( (\\), union, transpose )
+import List     ( transpose )
 import Top.Types
 import PPrint
 

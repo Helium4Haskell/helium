@@ -5,22 +5,21 @@
     Stability   :  experimental
     Portability :  portable
 
-	Datatype to represent error messages. One abstraction is the datatype
-	MessageBlock, which contains (atomic) pieces of information that are
-	reported in the error messages such as types, ranges and code fragments.
+    Datatype to represent error messages. One abstraction is the datatype
+    MessageBlock, which contains (atomic) pieces of information that are
+    reported in the error messages such as types, ranges and code fragments.
 -}
 
 module Messages where
 
 import UHA_Syntax
-import UHA_Utils
 import UHA_Range
+import UHA_Utils ()
 import Top.Types 
 import OneLiner
 import Similarity (similar)
 import Utils      (internalError)
-import List       (sortBy, sort, partition, union, nub)
-import Maybe      (fromJust, isNothing)
+import List       (sortBy, partition)
 import Char       (toUpper)
 
 type Message       = [MessageLine] 
@@ -134,14 +133,14 @@ ordinal b i
             | i `mod` 10 == 2 = "nd"
             | i `mod` 10 == 3 = "rd"
             | otherwise       = "th"
-	    
+    
 showNumber :: Int -> String
 showNumber i | i <= 10 && i >=0 = list !! i
              | otherwise        = show i
    where list = [ "zero", "one", "two", "three", "four", "five"
                 , "six", "seven", "eight", "nine", "ten" 
-		]
-	    
+                ]
+    
 prettyOrList :: [String] -> String
 prettyOrList []  = ""
 prettyOrList [s] = s
@@ -180,4 +179,3 @@ instance Show Entity where
          ExportTypeConstructor
                          -> "exported type constructor"
          Fixity          -> "infix declaration"
-         _               -> internalError "Messages" "instance Show Entity" "unknown entity"

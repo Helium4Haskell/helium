@@ -12,8 +12,7 @@ module TypeErrors where
 
 import Messages
 import Top.Types
-import List       (union, intersperse, partition)
-import OneLiner   (OneLineTree(..) )
+import List       (union, partition)
 import UHA_Syntax (Range, Name)
 import UHA_Range  (getNameRange)
 import UHA_Source
@@ -25,14 +24,14 @@ data TypeError  = TypeError
                      [MessageLine]                          -- oneliner messages
                      [(Bool, MessageBlock, MessageBlock)]   -- Hugs-like table
                      [TypeErrorHint]                        -- extra hints
-		     
+     
 type TypeErrorHint  = (String, MessageBlock)
 
 instance HasMessage TypeError where
    getMessage (TypeError range oneliners table hints) =
       let emptyLine  = MessageOneLiner (MessageString "")
-	  maybeTable | null table = [] 
-	             | otherwise  = [ MessageTable (table ++ map (uncurry (<:>)) hints) ]
+          maybeTable | null table = [] 
+                     | otherwise  = [ MessageTable (table ++ map (uncurry (<:>)) hints) ]
       in oneliners ++ maybeTable ++ [emptyLine]
    getRanges (TypeError ranges oneliner table hints) = ranges
 
@@ -78,7 +77,7 @@ makeUnresolvedOverloadingError source description (functionType, usedAsType) =
                  , "type"     >:> MessageType functionType
                  , "used as"  >:> MessageType usedAsType
                  , "hint"     <:> MessageString ( "write an explicit type for this function" ++ 
-		                                "\n   e.g. (show :: [Int] -> String)")
+                                "\n   e.g. (show :: [Int] -> String)")
                  ]
    in TypeError [rangeOfSource source] message table []
       
@@ -97,7 +96,7 @@ makeReductionError source extra classEnvironment predicate@(Predicate className 
                         maybe [] (\tp -> ["type" >:> MessageType (toTpScheme tp)]) mtp
        tab2     = [ "problem"  <:> MessageCompose [ MessageType (toTpScheme predicateTp)
                                                   , MessageString (" is not an instance of class "++className)
-			 	                                  ]
+                                                  ]
                   ]
    in TypeError [rangeOfSource source] message (tab1 ++ tab2) [("hint", MessageString hint)]
    

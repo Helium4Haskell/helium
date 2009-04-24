@@ -11,12 +11,11 @@
 module StaticErrors where
 
 import UHA_Syntax
-import UHA_Utils
 import UHA_Range
 import Messages
-import List        (nub, intersperse, sort, partition, isSuffixOf, isPrefixOf)
+import List        (nub, intersperse, sort, partition)
 import Maybe       (fromJust)
-import Utils       (commaList, internalError, minInt, maxInt)
+import Utils       (commaList, internalError, maxInt)
 import Top.Types
 
 -------------------------------------------------------------
@@ -67,9 +66,6 @@ instance HasMessage Error where
       NonDerivableClass name      -> [getNameRange name]
       CannotDerive name _         -> [getNameRange name]
       TupleTooBig r               -> [r]
-      _                           -> internalError "StaticErrors.hs" 
-                                                   "instance IsMessage Error" 
-                                                   "unknown type of Error"
 
 sensiblySimilar name inScope = 
    let
@@ -290,7 +286,6 @@ errorLogCode anError = case anError of
           NonDerivableClass _     -> "nd"
           CannotDerive _ _        -> "cd"
           TupleTooBig _           -> "tt"
-          _                       -> "??"
    where code entity = maybe "??" id
                      . lookup entity 
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

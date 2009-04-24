@@ -243,7 +243,7 @@ typeSchemesInInfoTree subst ps infoTree =
 
 type ConstraintSet  = Tree  (TypeConstraint ConstraintInfo)
 type ConstraintSets = Trees (TypeConstraint ConstraintInfo)
-	   
+   
 instance TypeConstraintInfo ConstraintInfo where
    unresolvedPredicate  = addProperty . ReductionErrorInfo
    ambiguousPredicate   = addProperty . ReductionErrorInfo

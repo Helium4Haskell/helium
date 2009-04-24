@@ -1,8 +1,6 @@
 module Information where
 
 import Top.Types
-import Args
-import ImportEnvironment
 import CompileUtils
 import OperatorTable
 import Messages hiding (Constructor)

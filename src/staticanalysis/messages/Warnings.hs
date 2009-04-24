@@ -6,7 +6,7 @@
     Portability :  portable
     
     Warnings that are reported during static analysis.
-	(the phase before type inference, as well as during type inference)
+        (the phase before type inference, as well as during type inference)
 -}
 
 module Warnings where
@@ -16,7 +16,6 @@ import UHA_Syntax
 import UHA_Utils
 import Top.Types
 import Messages
-import Utils        (internalError)
 import Data.List    (intersperse)
 import qualified UHA_Pretty as PP (sem_Pattern, sem_LeftHandSide, sem_Expression)
 
@@ -56,9 +55,6 @@ instance HasMessage Warning where
       UnreachablePatternLHS (LeftHandSide_Infix         rng _ _ _) -> [rng]
       UnreachablePatternLHS (LeftHandSide_Parenthesized rng _ _  ) -> [rng]
       SignatureTooSpecific name _ _ -> [getNameRange name]
-      _                             -> internalError "Messages.hs" 
-                                                     "instance IsMessage Warning" 
-                                                     "unknown type of Warning"
 
 showWarning :: Warning -> (MessageBlock {- oneliner -}, MessageBlocks {- hints -})
 showWarning warning = case warning of
@@ -106,14 +102,14 @@ showWarning warning = case warning of
    MissingPatterns _ (Just n) tp pss place sym
      | isOperatorName n -> 
           let name = getNameName n 
-	      text = "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
+              text = "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
                      ++ concatMap (\[l, r] -> "\n  " ++ (show.PP.sem_Pattern) l ++ " " ++ name ++ " " 
-		     ++ (show.PP.sem_Pattern) r ++ " " ++ sym ++ " ...") pss
-	  in (MessageString text, [])
-	  
+                     ++ (show.PP.sem_Pattern) r ++ " " ++ sym ++ " ...") pss
+          in (MessageString text, [])
+          
      | otherwise -> 
           let name = getNameName n
-	      text =  "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
+              text =  "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
                       ++ concatMap (("\n  " ++).(name ++).(' ' :).(++ (sym ++ " ...")).concatMap ((++ " ").show.PP.sem_Pattern)) pss
           in (MessageString text, [])
 
@@ -148,8 +144,6 @@ showWarning warning = case warning of
            ]
       , []
       )
-
-   _ -> internalError "Warnings" "showWarning" "unknown type of Warning"
 
 plural :: [a] -> String -> String
 plural [_] = id
