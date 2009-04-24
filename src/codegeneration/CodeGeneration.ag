@@ -21,7 +21,6 @@ imports{
 import UHA_Syntax
 import UHA_Utils
 import UHA_Range 
-import List (union)
 import ImportEnvironment
 import DictionaryEnvironment
 import qualified Data.Map as M
@@ -45,7 +44,6 @@ import CoreUtils
 import qualified Core
 import qualified Module
 import qualified Byte
-import qualified CoreParse
 }
 
 {

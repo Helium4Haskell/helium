@@ -8,7 +8,6 @@
 
 module PhaseKindInferencer (phaseKindInferencer) where
 
-import Args
 import CompileUtils
 import KindInferencing as KI
 import ImportEnvironment

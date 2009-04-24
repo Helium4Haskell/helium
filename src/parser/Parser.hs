@@ -35,7 +35,6 @@ Simplified:
 
 import ParseLibrary hiding (satisfy)
 import Text.ParserCombinators.Parsec
-import Text.ParserCombinators.Parsec.Pos
 import Lexer
 import LayoutRule
 import qualified Texts

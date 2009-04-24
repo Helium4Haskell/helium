@@ -18,7 +18,6 @@ module LexerMessage
 import Text.ParserCombinators.Parsec.Pos
 import UHA_Syntax(Range(..), Position(..))
 import Messages
-import Data.List (partition)
 import qualified Texts
 
 instance HasMessage LexerError where

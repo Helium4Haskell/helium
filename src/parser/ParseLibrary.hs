@@ -12,7 +12,6 @@ import Text.ParserCombinators.Parsec hiding (satisfy)
 import Text.ParserCombinators.Parsec.Pos(newPos)
 import Lexer
 import UHA_Syntax(Name(..), Range(..), Position(..))
-import UHA_Utils
 import qualified Texts
 
 type HParser a = GenParser Token SourcePos a

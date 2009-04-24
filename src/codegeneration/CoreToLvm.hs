@@ -14,9 +14,6 @@ import AsmToLvm   ( asmToLvm )          -- translate Asm to instructions
 import AsmOptimize( asmOptimize )       -- optimize Asm (ie. inlining)
 import LvmWrite   ( lvmWriteFile )
 
-import PPrint     ( putDoc )
-import LvmPretty  ( lvmPretty )
-
 coreToLvm source coremod = do
     nameSupply  <- newNameSupply
 

@@ -7,11 +7,11 @@
 -}
 
 module DerivingShow
-	( dataShowFunction
-	, typeShowFunction
-	, dataDictionary
-	, nameOfShowFunction, typeOfShowFunction, showFunctionOfType
-	) where
+    ( dataShowFunction
+    , typeShowFunction
+    , dataDictionary
+    , nameOfShowFunction, typeOfShowFunction, showFunctionOfType
+    ) where
 
 import qualified UHA_Syntax as UHA
 import UHA_Utils
@@ -28,42 +28,42 @@ dataShowFunction (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name nam
         nameId     = idFromString ("show" ++ getNameName name)
         valueId    = idFromString "value$"
         in
-	DeclValue 
-	{ declName    = nameId
-	, declAccess  = public
-	, valueEnc    = Nothing
-	, valueValue  = foldr Lam 
-	    (Let 
-	        (Strict (Bind valueId (Var valueId)))
-	        (Match valueId
-	            (map makeAlt constructors)
-	        )
-	    )    
-	    (map idFromName names ++ [valueId])
-	, declCustoms = [ custom "type" typeString ] 
-	}
+    DeclValue 
+    { declName    = nameId
+    , declAccess  = public
+    , valueEnc    = Nothing
+    , valueValue  = foldr Lam 
+        (Let 
+            (Strict (Bind valueId (Var valueId)))
+            (Match valueId
+                (map makeAlt constructors)
+            )
+        )    
+        (map idFromName names ++ [valueId])
+    , declCustoms = [ custom "type" typeString ] 
+    }
 
 -- Show Dictionary for a data type declaration
 dataDictionary :: UHA.Declaration -> CoreDecl
 dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors derivings) =
     let nameId = idFromString ("show" ++ getNameName name) in
-	DeclValue 
-	{ declName    = idFromString ("$dictShow" ++ getNameName name)
-	, declAccess  = public
-	, valueEnc    = Nothing
-	, valueValue  = makeShowDictionary (length names) nameId
-	, declCustoms = [ custom "type" ("DictShow" ++ getNameName name) ] 
-	}
+    DeclValue 
+    { declName    = idFromString ("$dictShow" ++ getNameName name)
+    , declAccess  = public
+    , valueEnc    = Nothing
+    , valueValue  = makeShowDictionary (length names) nameId
+    , declCustoms = [ custom "type" ("DictShow" ++ getNameName name) ] 
+    }
   where
-	makeShowDictionary :: Int -> Id -> Expr
-	makeShowDictionary nrOfArgs nameId =
-	   let ids  = take nrOfArgs [ idFromString ("d" ++ show i) | i <- [1..] ]
-	       idX  = idFromString "x"
-	       con  = Con (ConTag (Lit (LitInt 0)) 2)
-	       list = [ Ap (Var (idFromString "$show")) (Var id) | id <- ids ]
-	       decl = Bind idX (foldl Ap (Var nameId) list)
-	       body = Let (Strict decl) (Ap (Ap con (Var idX)) (Ap (Var (idFromString "$showList")) (Var idX)))
-	   in foldr Lam body ids
+    makeShowDictionary :: Int -> Id -> Expr
+    makeShowDictionary nrOfArgs nameId =
+       let ids  = take nrOfArgs [ idFromString ("d" ++ show i) | i <- [1..] ]
+           idX  = idFromString "x"
+           con  = Con (ConTag (Lit (LitInt 0)) 2)
+           list = [ Ap (Var (idFromString "$show")) (Var id) | id <- ids ]
+           decl = Bind idX (foldl Ap (Var nameId) list)
+           body = Let (Strict decl) (Ap (Ap con (Var idX)) (Ap (Var (idFromString "$showList")) (Var idX)))
+       in foldr Lam body ids
  
 -- Show function for a type synonym
 -- type T a b = (b, a) 
@@ -72,13 +72,13 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
 -- showT a b = showTuple2 b a 
 typeShowFunction decl@(UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names) type_) =
     let typeString = show (typeOfShowFunction name names) in
-	DeclValue 
-	{ declName    = idFromString ("show" ++ getNameName name)
-	, declAccess  = public
-	, valueEnc    = Nothing
-	, valueValue  = foldr Lam (showFunctionOfType False type_) (map idFromName names)
-	, declCustoms = [ custom "type" typeString ] 
-	}
+    DeclValue 
+    { declName    = idFromString ("show" ++ getNameName name)
+    , declAccess  = public
+    , valueEnc    = Nothing
+    , valueValue  = foldr Lam (showFunctionOfType False type_) (map idFromName names)
+    , declCustoms = [ custom "type" typeString ] 
+    }
 
 -- Convert a data type constructor to a Core alternative
 makeAlt :: UHA.Constructor -> Alt
@@ -88,9 +88,9 @@ makeAlt c = Alt (constructorToPat id types) (showConstructor id types)
     
     nameAndTypes :: UHA.Constructor -> (Id, [UHA.Type])
     nameAndTypes c =
-	    case c of
-	        UHA.Constructor_Constructor _    n ts -> (idFromName n, map annotatedTypeToType ts      )
-	        UHA.Constructor_Infix       _ t1 n t2 -> (idFromName n, map annotatedTypeToType [t1, t2])
+        case c of
+            UHA.Constructor_Constructor _    n ts -> (idFromName n, map annotatedTypeToType ts      )
+            UHA.Constructor_Infix       _ t1 n t2 -> (idFromName n, map annotatedTypeToType [t1, t2])
     
     constructorToPat :: Id -> [UHA.Type] -> Pat
     constructorToPat id ts =
@@ -134,15 +134,15 @@ showFunctionOfType isMainType t = sFOT t
   where
     sFOT t = 
       case t of
-        UHA.Type_Variable _ n 			-> if isMainType then var "showPolymorphic" else Var (idFromName n) 
+        UHA.Type_Variable _ n             -> if isMainType then var "showPolymorphic" else Var (idFromName n) 
         -- show Strings not as List of Char but using showString
         UHA.Type_Application _ _ 
                     ( UHA.Type_Constructor _ (UHA.Name_Special    _ _ "[]") ) -- !!!Name
                     [ UHA.Type_Constructor _ (UHA.Name_Identifier _ _ "Char") ] -> -- !!!Name
             var "showString"
-        UHA.Type_Constructor _ n 		-> var ("show" ++ checkForPrimitive (getNameName n))
-        UHA.Type_Application _ _ f xs 	-> foldl Ap (sFOT f) (map sFOT xs)
-        UHA.Type_Parenthesized _ t 		-> showFunctionOfType isMainType t
+        UHA.Type_Constructor _ n         -> var ("show" ++ checkForPrimitive (getNameName n))
+        UHA.Type_Application _ _ f xs     -> foldl Ap (sFOT f) (map sFOT xs)
+        UHA.Type_Parenthesized _ t         -> showFunctionOfType isMainType t
         _ -> internalError "DerivingShow" "showFunctionOfType" "unsupported type"
 
 -- Some primitive types have funny names and their Show function has a different name

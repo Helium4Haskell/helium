@@ -200,7 +200,5 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
               intErr  ("don't know how to handle DeclValue: "             ++ stringFromId n)
            DeclImport  { declName = n } ->
               intErr  ("don't know how to handle DeclImport: "            ++ stringFromId n)
-           _ ->
-              intErr "unknown kind of declaration in import declarations"
         
       intErr = internalError "CoreToImportEnv" "getImportEnvironment"

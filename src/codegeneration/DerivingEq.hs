@@ -14,18 +14,17 @@ import CoreUtils
 import Core
 import Id
 import Utils
-import Top.Types
 
 -- Eq Dictionary for a data type declaration
 dataDictionary :: UHA.Declaration -> CoreDecl
 dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
-	DeclValue 
-	{ declName    = idFromString ("$dictEq" ++ getNameName name)
-	, declAccess  = public
-	, valueEnc    = Nothing
-	, valueValue  = eqFunction names constructors
-	, declCustoms = [ custom "type" ("DictEq" ++ getNameName name) ] 
-	}
+    DeclValue 
+    { declName    = idFromString ("$dictEq" ++ getNameName name)
+    , declAccess  = public
+    , valueEnc    = Nothing
+    , valueValue  = eqFunction names constructors
+    , declCustoms = [ custom "type" ("DictEq" ++ getNameName name) ] 
+    }
   where
 
 -- Example: data X a b = C a b Int | D Char b
@@ -84,8 +83,8 @@ idFromNumber i = idFromString ("v$" ++ show i)
 eqFunForType :: UHA.Type -> Expr
 eqFunForType t = 
     case t of
-        UHA.Type_Variable _ n 			-> Var (idFromName n) 
-        UHA.Type_Constructor _ n 		-> var ("$dictEq" ++ show n)
-        UHA.Type_Application _ _ f xs 	-> foldl Ap (eqFunForType f) (map eqFunForType xs)
-        UHA.Type_Parenthesized _ t 		-> eqFunForType  t
+        UHA.Type_Variable _ n             -> Var (idFromName n) 
+        UHA.Type_Constructor _ n         -> var ("$dictEq" ++ show n)
+        UHA.Type_Application _ _ f xs     -> foldl Ap (eqFunForType f) (map eqFunForType xs)
+        UHA.Type_Parenthesized _ t         -> eqFunForType  t
         _ -> internalError "DerivingEq" "eqFunForType" "unsupported type"

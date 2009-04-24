@@ -19,7 +19,6 @@ import LvmImport(lvmImportDecls)
 import Id(stringFromId)
 import CoreToImportEnv(getImportEnvironment)
 import qualified ExtractImportDecls(sem_Module)
-import CorePretty
 import Data.List(isPrefixOf)
 
 phaseImport :: String -> Module -> [String] -> [Option] -> 

@@ -9,7 +9,6 @@
 module PhaseLexer(phaseLexer) where
 
 import CompileUtils
-import LexerToken(Token)
 import Lexer
 import LayoutRule(layout)
 
