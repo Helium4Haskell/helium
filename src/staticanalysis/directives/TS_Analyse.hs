@@ -1,6 +1,5 @@
 
-
--- UUAGC 0.9.10 (TS_Analyse.ag)
+-- UUAGC 0.9.5 (TS_Analyse.ag)
 module TS_Analyse where
 
 import Top.Types
@@ -44,18 +43,18 @@ findDuplicates = filter (not . isSingleton) . group . sort
          isSingleton _   = False        
 -- Alternative -------------------------------------------------
 -- cata
-sem_Alternative :: Alternative  ->
-                   T_Alternative 
+sem_Alternative :: Alternative ->
+                   T_Alternative
 sem_Alternative (Alternative_Alternative _range _pattern _righthandside )  =
     (sem_Alternative_Alternative (sem_Range _range ) (sem_Pattern _pattern ) (sem_RightHandSide _righthandside ) )
 sem_Alternative (Alternative_Empty _range )  =
     (sem_Alternative_Empty (sem_Range _range ) )
 -- semantic domain
-type T_Alternative  = ( Alternative)
-sem_Alternative_Alternative :: T_Range  ->
-                               T_Pattern  ->
-                               T_RightHandSide  ->
-                               T_Alternative 
+type T_Alternative = ( Alternative)
+sem_Alternative_Alternative :: T_Range ->
+                               T_Pattern ->
+                               T_RightHandSide ->
+                               T_Alternative
 sem_Alternative_Alternative range_ pattern_ righthandside_  =
     (let _lhsOself :: Alternative
          _rangeIself :: Range
@@ -72,8 +71,8 @@ sem_Alternative_Alternative range_ pattern_ righthandside_  =
          ( _righthandsideIself) =
              (righthandside_ )
      in  ( _lhsOself))
-sem_Alternative_Empty :: T_Range  ->
-                         T_Alternative 
+sem_Alternative_Empty :: T_Range ->
+                         T_Alternative
 sem_Alternative_Empty range_  =
     (let _lhsOself :: Alternative
          _rangeIself :: Range
@@ -86,15 +85,15 @@ sem_Alternative_Empty range_  =
      in  ( _lhsOself))
 -- Alternatives ------------------------------------------------
 -- cata
-sem_Alternatives :: Alternatives  ->
-                    T_Alternatives 
+sem_Alternatives :: Alternatives ->
+                    T_Alternatives
 sem_Alternatives list  =
     (Prelude.foldr sem_Alternatives_Cons sem_Alternatives_Nil (Prelude.map sem_Alternative list) )
 -- semantic domain
-type T_Alternatives  = ( Alternatives)
-sem_Alternatives_Cons :: T_Alternative  ->
-                         T_Alternatives  ->
-                         T_Alternatives 
+type T_Alternatives = ( Alternatives)
+sem_Alternatives_Cons :: T_Alternative ->
+                         T_Alternatives ->
+                         T_Alternatives
 sem_Alternatives_Cons hd_ tl_  =
     (let _lhsOself :: Alternatives
          _hdIself :: Alternative
@@ -108,7 +107,7 @@ sem_Alternatives_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_Alternatives_Nil :: T_Alternatives 
+sem_Alternatives_Nil :: T_Alternatives
 sem_Alternatives_Nil  =
     (let _lhsOself :: Alternatives
          _self =
@@ -118,16 +117,16 @@ sem_Alternatives_Nil  =
      in  ( _lhsOself))
 -- AnnotatedType -----------------------------------------------
 -- cata
-sem_AnnotatedType :: AnnotatedType  ->
-                     T_AnnotatedType 
+sem_AnnotatedType :: AnnotatedType ->
+                     T_AnnotatedType
 sem_AnnotatedType (AnnotatedType_AnnotatedType _range _strict _type )  =
     (sem_AnnotatedType_AnnotatedType (sem_Range _range ) _strict (sem_Type _type ) )
 -- semantic domain
-type T_AnnotatedType  = ( AnnotatedType)
-sem_AnnotatedType_AnnotatedType :: T_Range  ->
+type T_AnnotatedType = ( AnnotatedType)
+sem_AnnotatedType_AnnotatedType :: T_Range ->
                                    Bool ->
-                                   T_Type  ->
-                                   T_AnnotatedType 
+                                   T_Type ->
+                                   T_AnnotatedType
 sem_AnnotatedType_AnnotatedType range_ strict_ type_  =
     (let _lhsOself :: AnnotatedType
          _rangeIself :: Range
@@ -144,15 +143,15 @@ sem_AnnotatedType_AnnotatedType range_ strict_ type_  =
      in  ( _lhsOself))
 -- AnnotatedTypes ----------------------------------------------
 -- cata
-sem_AnnotatedTypes :: AnnotatedTypes  ->
-                      T_AnnotatedTypes 
+sem_AnnotatedTypes :: AnnotatedTypes ->
+                      T_AnnotatedTypes
 sem_AnnotatedTypes list  =
     (Prelude.foldr sem_AnnotatedTypes_Cons sem_AnnotatedTypes_Nil (Prelude.map sem_AnnotatedType list) )
 -- semantic domain
-type T_AnnotatedTypes  = ( AnnotatedTypes)
-sem_AnnotatedTypes_Cons :: T_AnnotatedType  ->
-                           T_AnnotatedTypes  ->
-                           T_AnnotatedTypes 
+type T_AnnotatedTypes = ( AnnotatedTypes)
+sem_AnnotatedTypes_Cons :: T_AnnotatedType ->
+                           T_AnnotatedTypes ->
+                           T_AnnotatedTypes
 sem_AnnotatedTypes_Cons hd_ tl_  =
     (let _lhsOself :: AnnotatedTypes
          _hdIself :: AnnotatedType
@@ -166,7 +165,7 @@ sem_AnnotatedTypes_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_AnnotatedTypes_Nil :: T_AnnotatedTypes 
+sem_AnnotatedTypes_Nil :: T_AnnotatedTypes
 sem_AnnotatedTypes_Nil  =
     (let _lhsOself :: AnnotatedTypes
          _self =
@@ -176,16 +175,16 @@ sem_AnnotatedTypes_Nil  =
      in  ( _lhsOself))
 -- Body --------------------------------------------------------
 -- cata
-sem_Body :: Body  ->
-            T_Body 
+sem_Body :: Body ->
+            T_Body
 sem_Body (Body_Body _range _importdeclarations _declarations )  =
     (sem_Body_Body (sem_Range _range ) (sem_ImportDeclarations _importdeclarations ) (sem_Declarations _declarations ) )
 -- semantic domain
-type T_Body  = ( Body)
-sem_Body_Body :: T_Range  ->
-                 T_ImportDeclarations  ->
-                 T_Declarations  ->
-                 T_Body 
+type T_Body = ( Body)
+sem_Body_Body :: T_Range ->
+                 T_ImportDeclarations ->
+                 T_Declarations ->
+                 T_Body
 sem_Body_Body range_ importdeclarations_ declarations_  =
     (let _lhsOself :: Body
          _rangeIself :: Range
@@ -204,8 +203,8 @@ sem_Body_Body range_ importdeclarations_ declarations_  =
      in  ( _lhsOself))
 -- Constructor -------------------------------------------------
 -- cata
-sem_Constructor :: Constructor  ->
-                   T_Constructor 
+sem_Constructor :: Constructor ->
+                   T_Constructor
 sem_Constructor (Constructor_Constructor _range _constructor _types )  =
     (sem_Constructor_Constructor (sem_Range _range ) (sem_Name _constructor ) (sem_AnnotatedTypes _types ) )
 sem_Constructor (Constructor_Infix _range _leftType _constructorOperator _rightType )  =
@@ -213,11 +212,11 @@ sem_Constructor (Constructor_Infix _range _leftType _constructorOperator _rightT
 sem_Constructor (Constructor_Record _range _constructor _fieldDeclarations )  =
     (sem_Constructor_Record (sem_Range _range ) (sem_Name _constructor ) (sem_FieldDeclarations _fieldDeclarations ) )
 -- semantic domain
-type T_Constructor  = ( Constructor)
-sem_Constructor_Constructor :: T_Range  ->
-                               T_Name  ->
-                               T_AnnotatedTypes  ->
-                               T_Constructor 
+type T_Constructor = ( Constructor)
+sem_Constructor_Constructor :: T_Range ->
+                               T_Name ->
+                               T_AnnotatedTypes ->
+                               T_Constructor
 sem_Constructor_Constructor range_ constructor_ types_  =
     (let _lhsOself :: Constructor
          _rangeIself :: Range
@@ -234,11 +233,11 @@ sem_Constructor_Constructor range_ constructor_ types_  =
          ( _typesIself) =
              (types_ )
      in  ( _lhsOself))
-sem_Constructor_Infix :: T_Range  ->
-                         T_AnnotatedType  ->
-                         T_Name  ->
-                         T_AnnotatedType  ->
-                         T_Constructor 
+sem_Constructor_Infix :: T_Range ->
+                         T_AnnotatedType ->
+                         T_Name ->
+                         T_AnnotatedType ->
+                         T_Constructor
 sem_Constructor_Infix range_ leftType_ constructorOperator_ rightType_  =
     (let _lhsOself :: Constructor
          _rangeIself :: Range
@@ -258,10 +257,10 @@ sem_Constructor_Infix range_ leftType_ constructorOperator_ rightType_  =
          ( _rightTypeIself) =
              (rightType_ )
      in  ( _lhsOself))
-sem_Constructor_Record :: T_Range  ->
-                          T_Name  ->
-                          T_FieldDeclarations  ->
-                          T_Constructor 
+sem_Constructor_Record :: T_Range ->
+                          T_Name ->
+                          T_FieldDeclarations ->
+                          T_Constructor
 sem_Constructor_Record range_ constructor_ fieldDeclarations_  =
     (let _lhsOself :: Constructor
          _rangeIself :: Range
@@ -280,15 +279,15 @@ sem_Constructor_Record range_ constructor_ fieldDeclarations_  =
      in  ( _lhsOself))
 -- Constructors ------------------------------------------------
 -- cata
-sem_Constructors :: Constructors  ->
-                    T_Constructors 
+sem_Constructors :: Constructors ->
+                    T_Constructors
 sem_Constructors list  =
     (Prelude.foldr sem_Constructors_Cons sem_Constructors_Nil (Prelude.map sem_Constructor list) )
 -- semantic domain
-type T_Constructors  = ( Constructors)
-sem_Constructors_Cons :: T_Constructor  ->
-                         T_Constructors  ->
-                         T_Constructors 
+type T_Constructors = ( Constructors)
+sem_Constructors_Cons :: T_Constructor ->
+                         T_Constructors ->
+                         T_Constructors
 sem_Constructors_Cons hd_ tl_  =
     (let _lhsOself :: Constructors
          _hdIself :: Constructor
@@ -302,7 +301,7 @@ sem_Constructors_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_Constructors_Nil :: T_Constructors 
+sem_Constructors_Nil :: T_Constructors
 sem_Constructors_Nil  =
     (let _lhsOself :: Constructors
          _self =
@@ -312,16 +311,16 @@ sem_Constructors_Nil  =
      in  ( _lhsOself))
 -- ContextItem -------------------------------------------------
 -- cata
-sem_ContextItem :: ContextItem  ->
-                   T_ContextItem 
+sem_ContextItem :: ContextItem ->
+                   T_ContextItem
 sem_ContextItem (ContextItem_ContextItem _range _name _types )  =
     (sem_ContextItem_ContextItem (sem_Range _range ) (sem_Name _name ) (sem_Types _types ) )
 -- semantic domain
-type T_ContextItem  = ( ContextItem)
-sem_ContextItem_ContextItem :: T_Range  ->
-                               T_Name  ->
-                               T_Types  ->
-                               T_ContextItem 
+type T_ContextItem = ( ContextItem)
+sem_ContextItem_ContextItem :: T_Range ->
+                               T_Name ->
+                               T_Types ->
+                               T_ContextItem
 sem_ContextItem_ContextItem range_ name_ types_  =
     (let _lhsOself :: ContextItem
          _rangeIself :: Range
@@ -341,15 +340,15 @@ sem_ContextItem_ContextItem range_ name_ types_  =
      in  ( _lhsOself))
 -- ContextItems ------------------------------------------------
 -- cata
-sem_ContextItems :: ContextItems  ->
-                    T_ContextItems 
+sem_ContextItems :: ContextItems ->
+                    T_ContextItems
 sem_ContextItems list  =
     (Prelude.foldr sem_ContextItems_Cons sem_ContextItems_Nil (Prelude.map sem_ContextItem list) )
 -- semantic domain
-type T_ContextItems  = ( ContextItems)
-sem_ContextItems_Cons :: T_ContextItem  ->
-                         T_ContextItems  ->
-                         T_ContextItems 
+type T_ContextItems = ( ContextItems)
+sem_ContextItems_Cons :: T_ContextItem ->
+                         T_ContextItems ->
+                         T_ContextItems
 sem_ContextItems_Cons hd_ tl_  =
     (let _lhsOself :: ContextItems
          _hdIself :: ContextItem
@@ -363,7 +362,7 @@ sem_ContextItems_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_ContextItems_Nil :: T_ContextItems 
+sem_ContextItems_Nil :: T_ContextItems
 sem_ContextItems_Nil  =
     (let _lhsOself :: ContextItems
          _self =
@@ -373,8 +372,8 @@ sem_ContextItems_Nil  =
      in  ( _lhsOself))
 -- Declaration -------------------------------------------------
 -- cata
-sem_Declaration :: Declaration  ->
-                   T_Declaration 
+sem_Declaration :: Declaration ->
+                   T_Declaration
 sem_Declaration (Declaration_Class _range _context _simpletype _where )  =
     (sem_Declaration_Class (sem_Range _range ) (sem_ContextItems _context ) (sem_SimpleType _simpletype ) (sem_MaybeDeclarations _where ) )
 sem_Declaration (Declaration_Data _range _context _simpletype _constructors _derivings )  =
@@ -398,12 +397,12 @@ sem_Declaration (Declaration_Type _range _simpletype _type )  =
 sem_Declaration (Declaration_TypeSignature _range _names _type )  =
     (sem_Declaration_TypeSignature (sem_Range _range ) (sem_Names _names ) (sem_Type _type ) )
 -- semantic domain
-type T_Declaration  = ( Declaration)
-sem_Declaration_Class :: T_Range  ->
-                         T_ContextItems  ->
-                         T_SimpleType  ->
-                         T_MaybeDeclarations  ->
-                         T_Declaration 
+type T_Declaration = ( Declaration)
+sem_Declaration_Class :: T_Range ->
+                         T_ContextItems ->
+                         T_SimpleType ->
+                         T_MaybeDeclarations ->
+                         T_Declaration
 sem_Declaration_Class range_ context_ simpletype_ where_  =
     (let _lhsOself :: Declaration
          _rangeIself :: Range
@@ -423,12 +422,12 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
          ( _whereIself) =
              (where_ )
      in  ( _lhsOself))
-sem_Declaration_Data :: T_Range  ->
-                        T_ContextItems  ->
-                        T_SimpleType  ->
-                        T_Constructors  ->
-                        T_Names  ->
-                        T_Declaration 
+sem_Declaration_Data :: T_Range ->
+                        T_ContextItems ->
+                        T_SimpleType ->
+                        T_Constructors ->
+                        T_Names ->
+                        T_Declaration
 sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_  =
     (let _lhsOself :: Declaration
          _rangeIself :: Range
@@ -451,9 +450,9 @@ sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_  =
          ( _derivingsIself) =
              (derivings_ )
      in  ( _lhsOself))
-sem_Declaration_Default :: T_Range  ->
-                           T_Types  ->
-                           T_Declaration 
+sem_Declaration_Default :: T_Range ->
+                           T_Types ->
+                           T_Declaration
 sem_Declaration_Default range_ types_  =
     (let _lhsOself :: Declaration
          _rangeIself :: Range
@@ -468,8 +467,8 @@ sem_Declaration_Default range_ types_  =
          ( _typesIself,_typesItypevariables) =
              (types_ )
      in  ( _lhsOself))
-sem_Declaration_Empty :: T_Range  ->
-                         T_Declaration 
+sem_Declaration_Empty :: T_Range ->
+                         T_Declaration
 sem_Declaration_Empty range_  =
     (let _lhsOself :: Declaration
          _rangeIself :: Range
@@ -480,11 +479,11 @@ sem_Declaration_Empty range_  =
          ( _rangeIself) =
              (range_ )
      in  ( _lhsOself))
-sem_Declaration_Fixity :: T_Range  ->
-                          T_Fixity  ->
-                          T_MaybeInt  ->
-                          T_Names  ->
-                          T_Declaration 
+sem_Declaration_Fixity :: T_Range ->
+                          T_Fixity ->
+                          T_MaybeInt ->
+                          T_Names ->
+                          T_Declaration
 sem_Declaration_Fixity range_ fixity_ priority_ operators_  =
     (let _lhsOself :: Declaration
          _rangeIself :: Range
@@ -504,9 +503,9 @@ sem_Declaration_Fixity range_ fixity_ priority_ operators_  =
          ( _operatorsIself) =
              (operators_ )
      in  ( _lhsOself))
-sem_Declaration_FunctionBindings :: T_Range  ->
-                                    T_FunctionBindings  ->
-                                    T_Declaration 
+sem_Declaration_FunctionBindings :: T_Range ->
+                                    T_FunctionBindings ->
+                                    T_Declaration
 sem_Declaration_FunctionBindings range_ bindings_  =
     (let _lhsOself :: Declaration
          _rangeIself :: Range
@@ -520,12 +519,12 @@ sem_Declaration_FunctionBindings range_ bindings_  =
          ( _bindingsIself) =
              (bindings_ )
      in  ( _lhsOself))
-sem_Declaration_Instance :: T_Range  ->
-                            T_ContextItems  ->
-                            T_Name  ->
-                            T_Types  ->
-                            T_MaybeDeclarations  ->
-                            T_Declaration 
+sem_Declaration_Instance :: T_Range ->
+                            T_ContextItems ->
+                            T_Name ->
+                            T_Types ->
+                            T_MaybeDeclarations ->
+                            T_Declaration
 sem_Declaration_Instance range_ context_ name_ types_ where_  =
     (let _lhsOself :: Declaration
          _rangeIself :: Range
@@ -549,12 +548,12 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
          ( _whereIself) =
              (where_ )
      in  ( _lhsOself))
-sem_Declaration_Newtype :: T_Range  ->
-                           T_ContextItems  ->
-                           T_SimpleType  ->
-                           T_Constructor  ->
-                           T_Names  ->
-                           T_Declaration 
+sem_Declaration_Newtype :: T_Range ->
+                           T_ContextItems ->
+                           T_SimpleType ->
+                           T_Constructor ->
+                           T_Names ->
+                           T_Declaration
 sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_  =
     (let _lhsOself :: Declaration
          _rangeIself :: Range
@@ -577,10 +576,10 @@ sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_  =
          ( _derivingsIself) =
              (derivings_ )
      in  ( _lhsOself))
-sem_Declaration_PatternBinding :: T_Range  ->
-                                  T_Pattern  ->
-                                  T_RightHandSide  ->
-                                  T_Declaration 
+sem_Declaration_PatternBinding :: T_Range ->
+                                  T_Pattern ->
+                                  T_RightHandSide ->
+                                  T_Declaration
 sem_Declaration_PatternBinding range_ pattern_ righthandside_  =
     (let _lhsOself :: Declaration
          _rangeIself :: Range
@@ -597,10 +596,10 @@ sem_Declaration_PatternBinding range_ pattern_ righthandside_  =
          ( _righthandsideIself) =
              (righthandside_ )
      in  ( _lhsOself))
-sem_Declaration_Type :: T_Range  ->
-                        T_SimpleType  ->
-                        T_Type  ->
-                        T_Declaration 
+sem_Declaration_Type :: T_Range ->
+                        T_SimpleType ->
+                        T_Type ->
+                        T_Declaration
 sem_Declaration_Type range_ simpletype_ type_  =
     (let _lhsOself :: Declaration
          _rangeIself :: Range
@@ -618,10 +617,10 @@ sem_Declaration_Type range_ simpletype_ type_  =
          ( _typeIself,_typeItypevariables) =
              (type_ )
      in  ( _lhsOself))
-sem_Declaration_TypeSignature :: T_Range  ->
-                                 T_Names  ->
-                                 T_Type  ->
-                                 T_Declaration 
+sem_Declaration_TypeSignature :: T_Range ->
+                                 T_Names ->
+                                 T_Type ->
+                                 T_Declaration
 sem_Declaration_TypeSignature range_ names_ type_  =
     (let _lhsOself :: Declaration
          _rangeIself :: Range
@@ -641,15 +640,15 @@ sem_Declaration_TypeSignature range_ names_ type_  =
      in  ( _lhsOself))
 -- Declarations ------------------------------------------------
 -- cata
-sem_Declarations :: Declarations  ->
-                    T_Declarations 
+sem_Declarations :: Declarations ->
+                    T_Declarations
 sem_Declarations list  =
     (Prelude.foldr sem_Declarations_Cons sem_Declarations_Nil (Prelude.map sem_Declaration list) )
 -- semantic domain
-type T_Declarations  = ( Declarations)
-sem_Declarations_Cons :: T_Declaration  ->
-                         T_Declarations  ->
-                         T_Declarations 
+type T_Declarations = ( Declarations)
+sem_Declarations_Cons :: T_Declaration ->
+                         T_Declarations ->
+                         T_Declarations
 sem_Declarations_Cons hd_ tl_  =
     (let _lhsOself :: Declarations
          _hdIself :: Declaration
@@ -663,7 +662,7 @@ sem_Declarations_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_Declarations_Nil :: T_Declarations 
+sem_Declarations_Nil :: T_Declarations
 sem_Declarations_Nil  =
     (let _lhsOself :: Declarations
          _self =
@@ -673,8 +672,8 @@ sem_Declarations_Nil  =
      in  ( _lhsOself))
 -- Export ------------------------------------------------------
 -- cata
-sem_Export :: Export  ->
-              T_Export 
+sem_Export :: Export ->
+              T_Export
 sem_Export (Export_Module _range _name )  =
     (sem_Export_Module (sem_Range _range ) (sem_Name _name ) )
 sem_Export (Export_TypeOrClass _range _name _names )  =
@@ -684,10 +683,10 @@ sem_Export (Export_TypeOrClassComplete _range _name )  =
 sem_Export (Export_Variable _range _name )  =
     (sem_Export_Variable (sem_Range _range ) (sem_Name _name ) )
 -- semantic domain
-type T_Export  = ( Export)
-sem_Export_Module :: T_Range  ->
-                     T_Name  ->
-                     T_Export 
+type T_Export = ( Export)
+sem_Export_Module :: T_Range ->
+                     T_Name ->
+                     T_Export
 sem_Export_Module range_ name_  =
     (let _lhsOself :: Export
          _rangeIself :: Range
@@ -701,10 +700,10 @@ sem_Export_Module range_ name_  =
          ( _nameIself) =
              (name_ )
      in  ( _lhsOself))
-sem_Export_TypeOrClass :: T_Range  ->
-                          T_Name  ->
-                          T_MaybeNames  ->
-                          T_Export 
+sem_Export_TypeOrClass :: T_Range ->
+                          T_Name ->
+                          T_MaybeNames ->
+                          T_Export
 sem_Export_TypeOrClass range_ name_ names_  =
     (let _lhsOself :: Export
          _rangeIself :: Range
@@ -721,9 +720,9 @@ sem_Export_TypeOrClass range_ name_ names_  =
          ( _namesIself) =
              (names_ )
      in  ( _lhsOself))
-sem_Export_TypeOrClassComplete :: T_Range  ->
-                                  T_Name  ->
-                                  T_Export 
+sem_Export_TypeOrClassComplete :: T_Range ->
+                                  T_Name ->
+                                  T_Export
 sem_Export_TypeOrClassComplete range_ name_  =
     (let _lhsOself :: Export
          _rangeIself :: Range
@@ -737,9 +736,9 @@ sem_Export_TypeOrClassComplete range_ name_  =
          ( _nameIself) =
              (name_ )
      in  ( _lhsOself))
-sem_Export_Variable :: T_Range  ->
-                       T_Name  ->
-                       T_Export 
+sem_Export_Variable :: T_Range ->
+                       T_Name ->
+                       T_Export
 sem_Export_Variable range_ name_  =
     (let _lhsOself :: Export
          _rangeIself :: Range
@@ -755,15 +754,15 @@ sem_Export_Variable range_ name_  =
      in  ( _lhsOself))
 -- Exports -----------------------------------------------------
 -- cata
-sem_Exports :: Exports  ->
-               T_Exports 
+sem_Exports :: Exports ->
+               T_Exports
 sem_Exports list  =
     (Prelude.foldr sem_Exports_Cons sem_Exports_Nil (Prelude.map sem_Export list) )
 -- semantic domain
-type T_Exports  = ( Exports)
-sem_Exports_Cons :: T_Export  ->
-                    T_Exports  ->
-                    T_Exports 
+type T_Exports = ( Exports)
+sem_Exports_Cons :: T_Export ->
+                    T_Exports ->
+                    T_Exports
 sem_Exports_Cons hd_ tl_  =
     (let _lhsOself :: Exports
          _hdIself :: Export
@@ -777,7 +776,7 @@ sem_Exports_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_Exports_Nil :: T_Exports 
+sem_Exports_Nil :: T_Exports
 sem_Exports_Nil  =
     (let _lhsOself :: Exports
          _self =
@@ -787,8 +786,8 @@ sem_Exports_Nil  =
      in  ( _lhsOself))
 -- Expression --------------------------------------------------
 -- cata
-sem_Expression :: Expression  ->
-                  T_Expression 
+sem_Expression :: Expression ->
+                  T_Expression
 sem_Expression (Expression_Case _range _expression _alternatives )  =
     (sem_Expression_Case (sem_Range _range ) (sem_Expression _expression ) (sem_Alternatives _alternatives ) )
 sem_Expression (Expression_Comprehension _range _expression _qualifiers )  =
@@ -830,11 +829,11 @@ sem_Expression (Expression_Typed _range _expression _type )  =
 sem_Expression (Expression_Variable _range _name )  =
     (sem_Expression_Variable (sem_Range _range ) (sem_Name _name ) )
 -- semantic domain
-type T_Expression  = ( ([(Name,Entity)]),Expression)
-sem_Expression_Case :: T_Range  ->
-                       T_Expression  ->
-                       T_Alternatives  ->
-                       T_Expression 
+type T_Expression = ( ([(Name,Entity)]),Expression)
+sem_Expression_Case :: T_Range ->
+                       T_Expression ->
+                       T_Alternatives ->
+                       T_Expression
 sem_Expression_Case range_ expression_ alternatives_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -855,10 +854,10 @@ sem_Expression_Case range_ expression_ alternatives_  =
          ( _alternativesIself) =
              (alternatives_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_Comprehension :: T_Range  ->
-                                T_Expression  ->
-                                T_Qualifiers  ->
-                                T_Expression 
+sem_Expression_Comprehension :: T_Range ->
+                                T_Expression ->
+                                T_Qualifiers ->
+                                T_Expression
 sem_Expression_Comprehension range_ expression_ qualifiers_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -879,9 +878,9 @@ sem_Expression_Comprehension range_ expression_ qualifiers_  =
          ( _qualifiersIself) =
              (qualifiers_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_Constructor :: T_Range  ->
-                              T_Name  ->
-                              T_Expression 
+sem_Expression_Constructor :: T_Range ->
+                              T_Name ->
+                              T_Expression
 sem_Expression_Constructor range_ name_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -898,9 +897,9 @@ sem_Expression_Constructor range_ name_  =
          ( _nameIself) =
              (name_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_Do :: T_Range  ->
-                     T_Statements  ->
-                     T_Expression 
+sem_Expression_Do :: T_Range ->
+                     T_Statements ->
+                     T_Expression
 sem_Expression_Do range_ statements_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -917,11 +916,11 @@ sem_Expression_Do range_ statements_  =
          ( _statementsIself) =
              (statements_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_Enum :: T_Range  ->
-                       T_Expression  ->
-                       T_MaybeExpression  ->
-                       T_MaybeExpression  ->
-                       T_Expression 
+sem_Expression_Enum :: T_Range ->
+                       T_Expression ->
+                       T_MaybeExpression ->
+                       T_MaybeExpression ->
+                       T_Expression
 sem_Expression_Enum range_ from_ then_ to_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -947,11 +946,11 @@ sem_Expression_Enum range_ from_ then_ to_  =
          ( _toIallVariables,_toIself) =
              (to_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_If :: T_Range  ->
-                     T_Expression  ->
-                     T_Expression  ->
-                     T_Expression  ->
-                     T_Expression 
+sem_Expression_If :: T_Range ->
+                     T_Expression ->
+                     T_Expression ->
+                     T_Expression ->
+                     T_Expression
 sem_Expression_If range_ guardExpression_ thenExpression_ elseExpression_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -977,11 +976,11 @@ sem_Expression_If range_ guardExpression_ thenExpression_ elseExpression_  =
          ( _elseExpressionIallVariables,_elseExpressionIself) =
              (elseExpression_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_InfixApplication :: T_Range  ->
-                                   T_MaybeExpression  ->
-                                   T_Expression  ->
-                                   T_MaybeExpression  ->
-                                   T_Expression 
+sem_Expression_InfixApplication :: T_Range ->
+                                   T_MaybeExpression ->
+                                   T_Expression ->
+                                   T_MaybeExpression ->
+                                   T_Expression
 sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -1007,10 +1006,10 @@ sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression
          ( _rightExpressionIallVariables,_rightExpressionIself) =
              (rightExpression_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_Lambda :: T_Range  ->
-                         T_Patterns  ->
-                         T_Expression  ->
-                         T_Expression 
+sem_Expression_Lambda :: T_Range ->
+                         T_Patterns ->
+                         T_Expression ->
+                         T_Expression
 sem_Expression_Lambda range_ patterns_ expression_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -1031,10 +1030,10 @@ sem_Expression_Lambda range_ patterns_ expression_  =
          ( _expressionIallVariables,_expressionIself) =
              (expression_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_Let :: T_Range  ->
-                      T_Declarations  ->
-                      T_Expression  ->
-                      T_Expression 
+sem_Expression_Let :: T_Range ->
+                      T_Declarations ->
+                      T_Expression ->
+                      T_Expression
 sem_Expression_Let range_ declarations_ expression_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -1055,9 +1054,9 @@ sem_Expression_Let range_ declarations_ expression_  =
          ( _expressionIallVariables,_expressionIself) =
              (expression_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_List :: T_Range  ->
-                       T_Expressions  ->
-                       T_Expression 
+sem_Expression_List :: T_Range ->
+                       T_Expressions ->
+                       T_Expression
 sem_Expression_List range_ expressions_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -1075,9 +1074,9 @@ sem_Expression_List range_ expressions_  =
          ( _expressionsIallVariables,_expressionsIself) =
              (expressions_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_Literal :: T_Range  ->
-                          T_Literal  ->
-                          T_Expression 
+sem_Expression_Literal :: T_Range ->
+                          T_Literal ->
+                          T_Expression
 sem_Expression_Literal range_ literal_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -1094,9 +1093,9 @@ sem_Expression_Literal range_ literal_  =
          ( _literalIself) =
              (literal_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_Negate :: T_Range  ->
-                         T_Expression  ->
-                         T_Expression 
+sem_Expression_Negate :: T_Range ->
+                         T_Expression ->
+                         T_Expression
 sem_Expression_Negate range_ expression_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -1114,9 +1113,9 @@ sem_Expression_Negate range_ expression_  =
          ( _expressionIallVariables,_expressionIself) =
              (expression_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_NegateFloat :: T_Range  ->
-                              T_Expression  ->
-                              T_Expression 
+sem_Expression_NegateFloat :: T_Range ->
+                              T_Expression ->
+                              T_Expression
 sem_Expression_NegateFloat range_ expression_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -1134,10 +1133,10 @@ sem_Expression_NegateFloat range_ expression_  =
          ( _expressionIallVariables,_expressionIself) =
              (expression_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_NormalApplication :: T_Range  ->
-                                    T_Expression  ->
-                                    T_Expressions  ->
-                                    T_Expression 
+sem_Expression_NormalApplication :: T_Range ->
+                                    T_Expression ->
+                                    T_Expressions ->
+                                    T_Expression
 sem_Expression_NormalApplication range_ function_ arguments_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -1159,9 +1158,9 @@ sem_Expression_NormalApplication range_ function_ arguments_  =
          ( _argumentsIallVariables,_argumentsIself) =
              (arguments_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_Parenthesized :: T_Range  ->
-                                T_Expression  ->
-                                T_Expression 
+sem_Expression_Parenthesized :: T_Range ->
+                                T_Expression ->
+                                T_Expression
 sem_Expression_Parenthesized range_ expression_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -1179,10 +1178,10 @@ sem_Expression_Parenthesized range_ expression_  =
          ( _expressionIallVariables,_expressionIself) =
              (expression_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_RecordConstruction :: T_Range  ->
-                                     T_Name  ->
-                                     T_RecordExpressionBindings  ->
-                                     T_Expression 
+sem_Expression_RecordConstruction :: T_Range ->
+                                     T_Name ->
+                                     T_RecordExpressionBindings ->
+                                     T_Expression
 sem_Expression_RecordConstruction range_ name_ recordExpressionBindings_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -1202,10 +1201,10 @@ sem_Expression_RecordConstruction range_ name_ recordExpressionBindings_  =
          ( _recordExpressionBindingsIself) =
              (recordExpressionBindings_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_RecordUpdate :: T_Range  ->
-                               T_Expression  ->
-                               T_RecordExpressionBindings  ->
-                               T_Expression 
+sem_Expression_RecordUpdate :: T_Range ->
+                               T_Expression ->
+                               T_RecordExpressionBindings ->
+                               T_Expression
 sem_Expression_RecordUpdate range_ expression_ recordExpressionBindings_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -1226,9 +1225,9 @@ sem_Expression_RecordUpdate range_ expression_ recordExpressionBindings_  =
          ( _recordExpressionBindingsIself) =
              (recordExpressionBindings_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_Tuple :: T_Range  ->
-                        T_Expressions  ->
-                        T_Expression 
+sem_Expression_Tuple :: T_Range ->
+                        T_Expressions ->
+                        T_Expression
 sem_Expression_Tuple range_ expressions_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -1246,10 +1245,10 @@ sem_Expression_Tuple range_ expressions_  =
          ( _expressionsIallVariables,_expressionsIself) =
              (expressions_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_Typed :: T_Range  ->
-                        T_Expression  ->
-                        T_Type  ->
-                        T_Expression 
+sem_Expression_Typed :: T_Range ->
+                        T_Expression ->
+                        T_Type ->
+                        T_Expression
 sem_Expression_Typed range_ expression_ type_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -1271,9 +1270,9 @@ sem_Expression_Typed range_ expression_ type_  =
          ( _typeIself,_typeItypevariables) =
              (type_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expression_Variable :: T_Range  ->
-                           T_Name  ->
-                           T_Expression 
+sem_Expression_Variable :: T_Range ->
+                           T_Name ->
+                           T_Expression
 sem_Expression_Variable range_ name_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expression
@@ -1292,15 +1291,15 @@ sem_Expression_Variable range_ name_  =
      in  ( _lhsOallVariables,_lhsOself))
 -- Expressions -------------------------------------------------
 -- cata
-sem_Expressions :: Expressions  ->
-                   T_Expressions 
+sem_Expressions :: Expressions ->
+                   T_Expressions
 sem_Expressions list  =
     (Prelude.foldr sem_Expressions_Cons sem_Expressions_Nil (Prelude.map sem_Expression list) )
 -- semantic domain
-type T_Expressions  = ( ([(Name,Entity)]),Expressions)
-sem_Expressions_Cons :: T_Expression  ->
-                        T_Expressions  ->
-                        T_Expressions 
+type T_Expressions = ( ([(Name,Entity)]),Expressions)
+sem_Expressions_Cons :: T_Expression ->
+                        T_Expressions ->
+                        T_Expressions
 sem_Expressions_Cons hd_ tl_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expressions
@@ -1319,7 +1318,7 @@ sem_Expressions_Cons hd_ tl_  =
          ( _tlIallVariables,_tlIself) =
              (tl_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_Expressions_Nil :: T_Expressions 
+sem_Expressions_Nil :: T_Expressions
 sem_Expressions_Nil  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: Expressions
@@ -1332,16 +1331,16 @@ sem_Expressions_Nil  =
      in  ( _lhsOallVariables,_lhsOself))
 -- FieldDeclaration --------------------------------------------
 -- cata
-sem_FieldDeclaration :: FieldDeclaration  ->
-                        T_FieldDeclaration 
+sem_FieldDeclaration :: FieldDeclaration ->
+                        T_FieldDeclaration
 sem_FieldDeclaration (FieldDeclaration_FieldDeclaration _range _names _type )  =
     (sem_FieldDeclaration_FieldDeclaration (sem_Range _range ) (sem_Names _names ) (sem_AnnotatedType _type ) )
 -- semantic domain
-type T_FieldDeclaration  = ( FieldDeclaration)
-sem_FieldDeclaration_FieldDeclaration :: T_Range  ->
-                                         T_Names  ->
-                                         T_AnnotatedType  ->
-                                         T_FieldDeclaration 
+type T_FieldDeclaration = ( FieldDeclaration)
+sem_FieldDeclaration_FieldDeclaration :: T_Range ->
+                                         T_Names ->
+                                         T_AnnotatedType ->
+                                         T_FieldDeclaration
 sem_FieldDeclaration_FieldDeclaration range_ names_ type_  =
     (let _lhsOself :: FieldDeclaration
          _rangeIself :: Range
@@ -1360,15 +1359,15 @@ sem_FieldDeclaration_FieldDeclaration range_ names_ type_  =
      in  ( _lhsOself))
 -- FieldDeclarations -------------------------------------------
 -- cata
-sem_FieldDeclarations :: FieldDeclarations  ->
-                         T_FieldDeclarations 
+sem_FieldDeclarations :: FieldDeclarations ->
+                         T_FieldDeclarations
 sem_FieldDeclarations list  =
     (Prelude.foldr sem_FieldDeclarations_Cons sem_FieldDeclarations_Nil (Prelude.map sem_FieldDeclaration list) )
 -- semantic domain
-type T_FieldDeclarations  = ( FieldDeclarations)
-sem_FieldDeclarations_Cons :: T_FieldDeclaration  ->
-                              T_FieldDeclarations  ->
-                              T_FieldDeclarations 
+type T_FieldDeclarations = ( FieldDeclarations)
+sem_FieldDeclarations_Cons :: T_FieldDeclaration ->
+                              T_FieldDeclarations ->
+                              T_FieldDeclarations
 sem_FieldDeclarations_Cons hd_ tl_  =
     (let _lhsOself :: FieldDeclarations
          _hdIself :: FieldDeclaration
@@ -1382,7 +1381,7 @@ sem_FieldDeclarations_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_FieldDeclarations_Nil :: T_FieldDeclarations 
+sem_FieldDeclarations_Nil :: T_FieldDeclarations
 sem_FieldDeclarations_Nil  =
     (let _lhsOself :: FieldDeclarations
          _self =
@@ -1392,8 +1391,8 @@ sem_FieldDeclarations_Nil  =
      in  ( _lhsOself))
 -- Fixity ------------------------------------------------------
 -- cata
-sem_Fixity :: Fixity  ->
-              T_Fixity 
+sem_Fixity :: Fixity ->
+              T_Fixity
 sem_Fixity (Fixity_Infix _range )  =
     (sem_Fixity_Infix (sem_Range _range ) )
 sem_Fixity (Fixity_Infixl _range )  =
@@ -1401,9 +1400,9 @@ sem_Fixity (Fixity_Infixl _range )  =
 sem_Fixity (Fixity_Infixr _range )  =
     (sem_Fixity_Infixr (sem_Range _range ) )
 -- semantic domain
-type T_Fixity  = ( Fixity)
-sem_Fixity_Infix :: T_Range  ->
-                    T_Fixity 
+type T_Fixity = ( Fixity)
+sem_Fixity_Infix :: T_Range ->
+                    T_Fixity
 sem_Fixity_Infix range_  =
     (let _lhsOself :: Fixity
          _rangeIself :: Range
@@ -1414,8 +1413,8 @@ sem_Fixity_Infix range_  =
          ( _rangeIself) =
              (range_ )
      in  ( _lhsOself))
-sem_Fixity_Infixl :: T_Range  ->
-                     T_Fixity 
+sem_Fixity_Infixl :: T_Range ->
+                     T_Fixity
 sem_Fixity_Infixl range_  =
     (let _lhsOself :: Fixity
          _rangeIself :: Range
@@ -1426,8 +1425,8 @@ sem_Fixity_Infixl range_  =
          ( _rangeIself) =
              (range_ )
      in  ( _lhsOself))
-sem_Fixity_Infixr :: T_Range  ->
-                     T_Fixity 
+sem_Fixity_Infixr :: T_Range ->
+                     T_Fixity
 sem_Fixity_Infixr range_  =
     (let _lhsOself :: Fixity
          _rangeIself :: Range
@@ -1440,16 +1439,16 @@ sem_Fixity_Infixr range_  =
      in  ( _lhsOself))
 -- FunctionBinding ---------------------------------------------
 -- cata
-sem_FunctionBinding :: FunctionBinding  ->
-                       T_FunctionBinding 
+sem_FunctionBinding :: FunctionBinding ->
+                       T_FunctionBinding
 sem_FunctionBinding (FunctionBinding_FunctionBinding _range _lefthandside _righthandside )  =
     (sem_FunctionBinding_FunctionBinding (sem_Range _range ) (sem_LeftHandSide _lefthandside ) (sem_RightHandSide _righthandside ) )
 -- semantic domain
-type T_FunctionBinding  = ( FunctionBinding)
-sem_FunctionBinding_FunctionBinding :: T_Range  ->
-                                       T_LeftHandSide  ->
-                                       T_RightHandSide  ->
-                                       T_FunctionBinding 
+type T_FunctionBinding = ( FunctionBinding)
+sem_FunctionBinding_FunctionBinding :: T_Range ->
+                                       T_LeftHandSide ->
+                                       T_RightHandSide ->
+                                       T_FunctionBinding
 sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_  =
     (let _lhsOself :: FunctionBinding
          _rangeIself :: Range
@@ -1468,15 +1467,15 @@ sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_  =
      in  ( _lhsOself))
 -- FunctionBindings --------------------------------------------
 -- cata
-sem_FunctionBindings :: FunctionBindings  ->
-                        T_FunctionBindings 
+sem_FunctionBindings :: FunctionBindings ->
+                        T_FunctionBindings
 sem_FunctionBindings list  =
     (Prelude.foldr sem_FunctionBindings_Cons sem_FunctionBindings_Nil (Prelude.map sem_FunctionBinding list) )
 -- semantic domain
-type T_FunctionBindings  = ( FunctionBindings)
-sem_FunctionBindings_Cons :: T_FunctionBinding  ->
-                             T_FunctionBindings  ->
-                             T_FunctionBindings 
+type T_FunctionBindings = ( FunctionBindings)
+sem_FunctionBindings_Cons :: T_FunctionBinding ->
+                             T_FunctionBindings ->
+                             T_FunctionBindings
 sem_FunctionBindings_Cons hd_ tl_  =
     (let _lhsOself :: FunctionBindings
          _hdIself :: FunctionBinding
@@ -1490,7 +1489,7 @@ sem_FunctionBindings_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_FunctionBindings_Nil :: T_FunctionBindings 
+sem_FunctionBindings_Nil :: T_FunctionBindings
 sem_FunctionBindings_Nil  =
     (let _lhsOself :: FunctionBindings
          _self =
@@ -1500,16 +1499,16 @@ sem_FunctionBindings_Nil  =
      in  ( _lhsOself))
 -- GuardedExpression -------------------------------------------
 -- cata
-sem_GuardedExpression :: GuardedExpression  ->
-                         T_GuardedExpression 
+sem_GuardedExpression :: GuardedExpression ->
+                         T_GuardedExpression
 sem_GuardedExpression (GuardedExpression_GuardedExpression _range _guard _expression )  =
     (sem_GuardedExpression_GuardedExpression (sem_Range _range ) (sem_Expression _guard ) (sem_Expression _expression ) )
 -- semantic domain
-type T_GuardedExpression  = ( GuardedExpression)
-sem_GuardedExpression_GuardedExpression :: T_Range  ->
-                                           T_Expression  ->
-                                           T_Expression  ->
-                                           T_GuardedExpression 
+type T_GuardedExpression = ( GuardedExpression)
+sem_GuardedExpression_GuardedExpression :: T_Range ->
+                                           T_Expression ->
+                                           T_Expression ->
+                                           T_GuardedExpression
 sem_GuardedExpression_GuardedExpression range_ guard_ expression_  =
     (let _lhsOself :: GuardedExpression
          _rangeIself :: Range
@@ -1530,15 +1529,15 @@ sem_GuardedExpression_GuardedExpression range_ guard_ expression_  =
      in  ( _lhsOself))
 -- GuardedExpressions ------------------------------------------
 -- cata
-sem_GuardedExpressions :: GuardedExpressions  ->
-                          T_GuardedExpressions 
+sem_GuardedExpressions :: GuardedExpressions ->
+                          T_GuardedExpressions
 sem_GuardedExpressions list  =
     (Prelude.foldr sem_GuardedExpressions_Cons sem_GuardedExpressions_Nil (Prelude.map sem_GuardedExpression list) )
 -- semantic domain
-type T_GuardedExpressions  = ( GuardedExpressions)
-sem_GuardedExpressions_Cons :: T_GuardedExpression  ->
-                               T_GuardedExpressions  ->
-                               T_GuardedExpressions 
+type T_GuardedExpressions = ( GuardedExpressions)
+sem_GuardedExpressions_Cons :: T_GuardedExpression ->
+                               T_GuardedExpressions ->
+                               T_GuardedExpressions
 sem_GuardedExpressions_Cons hd_ tl_  =
     (let _lhsOself :: GuardedExpressions
          _hdIself :: GuardedExpression
@@ -1552,7 +1551,7 @@ sem_GuardedExpressions_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_GuardedExpressions_Nil :: T_GuardedExpressions 
+sem_GuardedExpressions_Nil :: T_GuardedExpressions
 sem_GuardedExpressions_Nil  =
     (let _lhsOself :: GuardedExpressions
          _self =
@@ -1562,8 +1561,8 @@ sem_GuardedExpressions_Nil  =
      in  ( _lhsOself))
 -- Import ------------------------------------------------------
 -- cata
-sem_Import :: Import  ->
-              T_Import 
+sem_Import :: Import ->
+              T_Import
 sem_Import (Import_TypeOrClass _range _name _names )  =
     (sem_Import_TypeOrClass (sem_Range _range ) (sem_Name _name ) (sem_MaybeNames _names ) )
 sem_Import (Import_TypeOrClassComplete _range _name )  =
@@ -1571,11 +1570,11 @@ sem_Import (Import_TypeOrClassComplete _range _name )  =
 sem_Import (Import_Variable _range _name )  =
     (sem_Import_Variable (sem_Range _range ) (sem_Name _name ) )
 -- semantic domain
-type T_Import  = ( Import)
-sem_Import_TypeOrClass :: T_Range  ->
-                          T_Name  ->
-                          T_MaybeNames  ->
-                          T_Import 
+type T_Import = ( Import)
+sem_Import_TypeOrClass :: T_Range ->
+                          T_Name ->
+                          T_MaybeNames ->
+                          T_Import
 sem_Import_TypeOrClass range_ name_ names_  =
     (let _lhsOself :: Import
          _rangeIself :: Range
@@ -1592,9 +1591,9 @@ sem_Import_TypeOrClass range_ name_ names_  =
          ( _namesIself) =
              (names_ )
      in  ( _lhsOself))
-sem_Import_TypeOrClassComplete :: T_Range  ->
-                                  T_Name  ->
-                                  T_Import 
+sem_Import_TypeOrClassComplete :: T_Range ->
+                                  T_Name ->
+                                  T_Import
 sem_Import_TypeOrClassComplete range_ name_  =
     (let _lhsOself :: Import
          _rangeIself :: Range
@@ -1608,9 +1607,9 @@ sem_Import_TypeOrClassComplete range_ name_  =
          ( _nameIself) =
              (name_ )
      in  ( _lhsOself))
-sem_Import_Variable :: T_Range  ->
-                       T_Name  ->
-                       T_Import 
+sem_Import_Variable :: T_Range ->
+                       T_Name ->
+                       T_Import
 sem_Import_Variable range_ name_  =
     (let _lhsOself :: Import
          _rangeIself :: Range
@@ -1626,16 +1625,16 @@ sem_Import_Variable range_ name_  =
      in  ( _lhsOself))
 -- ImportDeclaration -------------------------------------------
 -- cata
-sem_ImportDeclaration :: ImportDeclaration  ->
-                         T_ImportDeclaration 
+sem_ImportDeclaration :: ImportDeclaration ->
+                         T_ImportDeclaration
 sem_ImportDeclaration (ImportDeclaration_Empty _range )  =
     (sem_ImportDeclaration_Empty (sem_Range _range ) )
 sem_ImportDeclaration (ImportDeclaration_Import _range _qualified _name _asname _importspecification )  =
     (sem_ImportDeclaration_Import (sem_Range _range ) _qualified (sem_Name _name ) (sem_MaybeName _asname ) (sem_MaybeImportSpecification _importspecification ) )
 -- semantic domain
-type T_ImportDeclaration  = ( ImportDeclaration)
-sem_ImportDeclaration_Empty :: T_Range  ->
-                               T_ImportDeclaration 
+type T_ImportDeclaration = ( ImportDeclaration)
+sem_ImportDeclaration_Empty :: T_Range ->
+                               T_ImportDeclaration
 sem_ImportDeclaration_Empty range_  =
     (let _lhsOself :: ImportDeclaration
          _rangeIself :: Range
@@ -1646,12 +1645,12 @@ sem_ImportDeclaration_Empty range_  =
          ( _rangeIself) =
              (range_ )
      in  ( _lhsOself))
-sem_ImportDeclaration_Import :: T_Range  ->
+sem_ImportDeclaration_Import :: T_Range ->
                                 Bool ->
-                                T_Name  ->
-                                T_MaybeName  ->
-                                T_MaybeImportSpecification  ->
-                                T_ImportDeclaration 
+                                T_Name ->
+                                T_MaybeName ->
+                                T_MaybeImportSpecification ->
+                                T_ImportDeclaration
 sem_ImportDeclaration_Import range_ qualified_ name_ asname_ importspecification_  =
     (let _lhsOself :: ImportDeclaration
          _rangeIself :: Range
@@ -1673,15 +1672,15 @@ sem_ImportDeclaration_Import range_ qualified_ name_ asname_ importspecification
      in  ( _lhsOself))
 -- ImportDeclarations ------------------------------------------
 -- cata
-sem_ImportDeclarations :: ImportDeclarations  ->
-                          T_ImportDeclarations 
+sem_ImportDeclarations :: ImportDeclarations ->
+                          T_ImportDeclarations
 sem_ImportDeclarations list  =
     (Prelude.foldr sem_ImportDeclarations_Cons sem_ImportDeclarations_Nil (Prelude.map sem_ImportDeclaration list) )
 -- semantic domain
-type T_ImportDeclarations  = ( ImportDeclarations)
-sem_ImportDeclarations_Cons :: T_ImportDeclaration  ->
-                               T_ImportDeclarations  ->
-                               T_ImportDeclarations 
+type T_ImportDeclarations = ( ImportDeclarations)
+sem_ImportDeclarations_Cons :: T_ImportDeclaration ->
+                               T_ImportDeclarations ->
+                               T_ImportDeclarations
 sem_ImportDeclarations_Cons hd_ tl_  =
     (let _lhsOself :: ImportDeclarations
          _hdIself :: ImportDeclaration
@@ -1695,7 +1694,7 @@ sem_ImportDeclarations_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_ImportDeclarations_Nil :: T_ImportDeclarations 
+sem_ImportDeclarations_Nil :: T_ImportDeclarations
 sem_ImportDeclarations_Nil  =
     (let _lhsOself :: ImportDeclarations
          _self =
@@ -1705,16 +1704,16 @@ sem_ImportDeclarations_Nil  =
      in  ( _lhsOself))
 -- ImportSpecification -----------------------------------------
 -- cata
-sem_ImportSpecification :: ImportSpecification  ->
-                           T_ImportSpecification 
+sem_ImportSpecification :: ImportSpecification ->
+                           T_ImportSpecification
 sem_ImportSpecification (ImportSpecification_Import _range _hiding _imports )  =
     (sem_ImportSpecification_Import (sem_Range _range ) _hiding (sem_Imports _imports ) )
 -- semantic domain
-type T_ImportSpecification  = ( ImportSpecification)
-sem_ImportSpecification_Import :: T_Range  ->
+type T_ImportSpecification = ( ImportSpecification)
+sem_ImportSpecification_Import :: T_Range ->
                                   Bool ->
-                                  T_Imports  ->
-                                  T_ImportSpecification 
+                                  T_Imports ->
+                                  T_ImportSpecification
 sem_ImportSpecification_Import range_ hiding_ imports_  =
     (let _lhsOself :: ImportSpecification
          _rangeIself :: Range
@@ -1730,15 +1729,15 @@ sem_ImportSpecification_Import range_ hiding_ imports_  =
      in  ( _lhsOself))
 -- Imports -----------------------------------------------------
 -- cata
-sem_Imports :: Imports  ->
-               T_Imports 
+sem_Imports :: Imports ->
+               T_Imports
 sem_Imports list  =
     (Prelude.foldr sem_Imports_Cons sem_Imports_Nil (Prelude.map sem_Import list) )
 -- semantic domain
-type T_Imports  = ( Imports)
-sem_Imports_Cons :: T_Import  ->
-                    T_Imports  ->
-                    T_Imports 
+type T_Imports = ( Imports)
+sem_Imports_Cons :: T_Import ->
+                    T_Imports ->
+                    T_Imports
 sem_Imports_Cons hd_ tl_  =
     (let _lhsOself :: Imports
          _hdIself :: Import
@@ -1752,7 +1751,7 @@ sem_Imports_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_Imports_Nil :: T_Imports 
+sem_Imports_Nil :: T_Imports
 sem_Imports_Nil  =
     (let _lhsOself :: Imports
          _self =
@@ -1762,16 +1761,16 @@ sem_Imports_Nil  =
      in  ( _lhsOself))
 -- Judgement ---------------------------------------------------
 -- cata
-sem_Judgement :: Judgement  ->
-                 T_Judgement 
+sem_Judgement :: Judgement ->
+                 T_Judgement
 sem_Judgement (Judgement_Judgement _expression _type )  =
     (sem_Judgement_Judgement (sem_Expression _expression ) (sem_Type _type ) )
 -- semantic domain
-type T_Judgement  = ([(Name,Tp)]) ->
-                    ( ([(Name,Entity)]),Tp,Judgement,Expression,Names)
-sem_Judgement_Judgement :: T_Expression  ->
-                           T_Type  ->
-                           T_Judgement 
+type T_Judgement = ([(Name,Tp)]) ->
+                   ( ([(Name,Entity)]),Tp,Judgement,Expression,Names)
+sem_Judgement_Judgement :: T_Expression ->
+                           T_Type ->
+                           T_Judgement
 sem_Judgement_Judgement expression_ type_  =
     (\ _lhsInameMap ->
          (let _lhsOconclusionType :: Tp
@@ -1802,8 +1801,8 @@ sem_Judgement_Judgement expression_ type_  =
           in  ( _lhsOallVariables,_lhsOconclusionType,_lhsOself,_lhsOtheExpression,_lhsOtypevariables)))
 -- LeftHandSide ------------------------------------------------
 -- cata
-sem_LeftHandSide :: LeftHandSide  ->
-                    T_LeftHandSide 
+sem_LeftHandSide :: LeftHandSide ->
+                    T_LeftHandSide
 sem_LeftHandSide (LeftHandSide_Function _range _name _patterns )  =
     (sem_LeftHandSide_Function (sem_Range _range ) (sem_Name _name ) (sem_Patterns _patterns ) )
 sem_LeftHandSide (LeftHandSide_Infix _range _leftPattern _operator _rightPattern )  =
@@ -1811,11 +1810,11 @@ sem_LeftHandSide (LeftHandSide_Infix _range _leftPattern _operator _rightPattern
 sem_LeftHandSide (LeftHandSide_Parenthesized _range _lefthandside _patterns )  =
     (sem_LeftHandSide_Parenthesized (sem_Range _range ) (sem_LeftHandSide _lefthandside ) (sem_Patterns _patterns ) )
 -- semantic domain
-type T_LeftHandSide  = ( LeftHandSide)
-sem_LeftHandSide_Function :: T_Range  ->
-                             T_Name  ->
-                             T_Patterns  ->
-                             T_LeftHandSide 
+type T_LeftHandSide = ( LeftHandSide)
+sem_LeftHandSide_Function :: T_Range ->
+                             T_Name ->
+                             T_Patterns ->
+                             T_LeftHandSide
 sem_LeftHandSide_Function range_ name_ patterns_  =
     (let _lhsOself :: LeftHandSide
          _rangeIself :: Range
@@ -1832,11 +1831,11 @@ sem_LeftHandSide_Function range_ name_ patterns_  =
          ( _patternsIself) =
              (patterns_ )
      in  ( _lhsOself))
-sem_LeftHandSide_Infix :: T_Range  ->
-                          T_Pattern  ->
-                          T_Name  ->
-                          T_Pattern  ->
-                          T_LeftHandSide 
+sem_LeftHandSide_Infix :: T_Range ->
+                          T_Pattern ->
+                          T_Name ->
+                          T_Pattern ->
+                          T_LeftHandSide
 sem_LeftHandSide_Infix range_ leftPattern_ operator_ rightPattern_  =
     (let _lhsOself :: LeftHandSide
          _rangeIself :: Range
@@ -1856,10 +1855,10 @@ sem_LeftHandSide_Infix range_ leftPattern_ operator_ rightPattern_  =
          ( _rightPatternIself) =
              (rightPattern_ )
      in  ( _lhsOself))
-sem_LeftHandSide_Parenthesized :: T_Range  ->
-                                  T_LeftHandSide  ->
-                                  T_Patterns  ->
-                                  T_LeftHandSide 
+sem_LeftHandSide_Parenthesized :: T_Range ->
+                                  T_LeftHandSide ->
+                                  T_Patterns ->
+                                  T_LeftHandSide
 sem_LeftHandSide_Parenthesized range_ lefthandside_ patterns_  =
     (let _lhsOself :: LeftHandSide
          _rangeIself :: Range
@@ -1878,8 +1877,8 @@ sem_LeftHandSide_Parenthesized range_ lefthandside_ patterns_  =
      in  ( _lhsOself))
 -- Literal -----------------------------------------------------
 -- cata
-sem_Literal :: Literal  ->
-               T_Literal 
+sem_Literal :: Literal ->
+               T_Literal
 sem_Literal (Literal_Char _range _value )  =
     (sem_Literal_Char (sem_Range _range ) _value )
 sem_Literal (Literal_Float _range _value )  =
@@ -1889,10 +1888,10 @@ sem_Literal (Literal_Int _range _value )  =
 sem_Literal (Literal_String _range _value )  =
     (sem_Literal_String (sem_Range _range ) _value )
 -- semantic domain
-type T_Literal  = ( Literal)
-sem_Literal_Char :: T_Range  ->
+type T_Literal = ( Literal)
+sem_Literal_Char :: T_Range ->
                     String ->
-                    T_Literal 
+                    T_Literal
 sem_Literal_Char range_ value_  =
     (let _lhsOself :: Literal
          _rangeIself :: Range
@@ -1903,9 +1902,9 @@ sem_Literal_Char range_ value_  =
          ( _rangeIself) =
              (range_ )
      in  ( _lhsOself))
-sem_Literal_Float :: T_Range  ->
+sem_Literal_Float :: T_Range ->
                      String ->
-                     T_Literal 
+                     T_Literal
 sem_Literal_Float range_ value_  =
     (let _lhsOself :: Literal
          _rangeIself :: Range
@@ -1916,9 +1915,9 @@ sem_Literal_Float range_ value_  =
          ( _rangeIself) =
              (range_ )
      in  ( _lhsOself))
-sem_Literal_Int :: T_Range  ->
+sem_Literal_Int :: T_Range ->
                    String ->
-                   T_Literal 
+                   T_Literal
 sem_Literal_Int range_ value_  =
     (let _lhsOself :: Literal
          _rangeIself :: Range
@@ -1929,9 +1928,9 @@ sem_Literal_Int range_ value_  =
          ( _rangeIself) =
              (range_ )
      in  ( _lhsOself))
-sem_Literal_String :: T_Range  ->
+sem_Literal_String :: T_Range ->
                       String ->
-                      T_Literal 
+                      T_Literal
 sem_Literal_String range_ value_  =
     (let _lhsOself :: Literal
          _rangeIself :: Range
@@ -1944,16 +1943,16 @@ sem_Literal_String range_ value_  =
      in  ( _lhsOself))
 -- MaybeDeclarations -------------------------------------------
 -- cata
-sem_MaybeDeclarations :: MaybeDeclarations  ->
-                         T_MaybeDeclarations 
+sem_MaybeDeclarations :: MaybeDeclarations ->
+                         T_MaybeDeclarations
 sem_MaybeDeclarations (MaybeDeclarations_Just _declarations )  =
     (sem_MaybeDeclarations_Just (sem_Declarations _declarations ) )
 sem_MaybeDeclarations (MaybeDeclarations_Nothing )  =
     (sem_MaybeDeclarations_Nothing )
 -- semantic domain
-type T_MaybeDeclarations  = ( MaybeDeclarations)
-sem_MaybeDeclarations_Just :: T_Declarations  ->
-                              T_MaybeDeclarations 
+type T_MaybeDeclarations = ( MaybeDeclarations)
+sem_MaybeDeclarations_Just :: T_Declarations ->
+                              T_MaybeDeclarations
 sem_MaybeDeclarations_Just declarations_  =
     (let _lhsOself :: MaybeDeclarations
          _declarationsIself :: Declarations
@@ -1964,7 +1963,7 @@ sem_MaybeDeclarations_Just declarations_  =
          ( _declarationsIself) =
              (declarations_ )
      in  ( _lhsOself))
-sem_MaybeDeclarations_Nothing :: T_MaybeDeclarations 
+sem_MaybeDeclarations_Nothing :: T_MaybeDeclarations
 sem_MaybeDeclarations_Nothing  =
     (let _lhsOself :: MaybeDeclarations
          _self =
@@ -1974,16 +1973,16 @@ sem_MaybeDeclarations_Nothing  =
      in  ( _lhsOself))
 -- MaybeExports ------------------------------------------------
 -- cata
-sem_MaybeExports :: MaybeExports  ->
-                    T_MaybeExports 
+sem_MaybeExports :: MaybeExports ->
+                    T_MaybeExports
 sem_MaybeExports (MaybeExports_Just _exports )  =
     (sem_MaybeExports_Just (sem_Exports _exports ) )
 sem_MaybeExports (MaybeExports_Nothing )  =
     (sem_MaybeExports_Nothing )
 -- semantic domain
-type T_MaybeExports  = ( MaybeExports)
-sem_MaybeExports_Just :: T_Exports  ->
-                         T_MaybeExports 
+type T_MaybeExports = ( MaybeExports)
+sem_MaybeExports_Just :: T_Exports ->
+                         T_MaybeExports
 sem_MaybeExports_Just exports_  =
     (let _lhsOself :: MaybeExports
          _exportsIself :: Exports
@@ -1994,7 +1993,7 @@ sem_MaybeExports_Just exports_  =
          ( _exportsIself) =
              (exports_ )
      in  ( _lhsOself))
-sem_MaybeExports_Nothing :: T_MaybeExports 
+sem_MaybeExports_Nothing :: T_MaybeExports
 sem_MaybeExports_Nothing  =
     (let _lhsOself :: MaybeExports
          _self =
@@ -2004,16 +2003,16 @@ sem_MaybeExports_Nothing  =
      in  ( _lhsOself))
 -- MaybeExpression ---------------------------------------------
 -- cata
-sem_MaybeExpression :: MaybeExpression  ->
-                       T_MaybeExpression 
+sem_MaybeExpression :: MaybeExpression ->
+                       T_MaybeExpression
 sem_MaybeExpression (MaybeExpression_Just _expression )  =
     (sem_MaybeExpression_Just (sem_Expression _expression ) )
 sem_MaybeExpression (MaybeExpression_Nothing )  =
     (sem_MaybeExpression_Nothing )
 -- semantic domain
-type T_MaybeExpression  = ( ([(Name,Entity)]),MaybeExpression)
-sem_MaybeExpression_Just :: T_Expression  ->
-                            T_MaybeExpression 
+type T_MaybeExpression = ( ([(Name,Entity)]),MaybeExpression)
+sem_MaybeExpression_Just :: T_Expression ->
+                            T_MaybeExpression
 sem_MaybeExpression_Just expression_  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: MaybeExpression
@@ -2028,7 +2027,7 @@ sem_MaybeExpression_Just expression_  =
          ( _expressionIallVariables,_expressionIself) =
              (expression_ )
      in  ( _lhsOallVariables,_lhsOself))
-sem_MaybeExpression_Nothing :: T_MaybeExpression 
+sem_MaybeExpression_Nothing :: T_MaybeExpression
 sem_MaybeExpression_Nothing  =
     (let _lhsOallVariables :: ([(Name,Entity)])
          _lhsOself :: MaybeExpression
@@ -2041,16 +2040,16 @@ sem_MaybeExpression_Nothing  =
      in  ( _lhsOallVariables,_lhsOself))
 -- MaybeImportSpecification ------------------------------------
 -- cata
-sem_MaybeImportSpecification :: MaybeImportSpecification  ->
-                                T_MaybeImportSpecification 
+sem_MaybeImportSpecification :: MaybeImportSpecification ->
+                                T_MaybeImportSpecification
 sem_MaybeImportSpecification (MaybeImportSpecification_Just _importspecification )  =
     (sem_MaybeImportSpecification_Just (sem_ImportSpecification _importspecification ) )
 sem_MaybeImportSpecification (MaybeImportSpecification_Nothing )  =
     (sem_MaybeImportSpecification_Nothing )
 -- semantic domain
-type T_MaybeImportSpecification  = ( MaybeImportSpecification)
-sem_MaybeImportSpecification_Just :: T_ImportSpecification  ->
-                                     T_MaybeImportSpecification 
+type T_MaybeImportSpecification = ( MaybeImportSpecification)
+sem_MaybeImportSpecification_Just :: T_ImportSpecification ->
+                                     T_MaybeImportSpecification
 sem_MaybeImportSpecification_Just importspecification_  =
     (let _lhsOself :: MaybeImportSpecification
          _importspecificationIself :: ImportSpecification
@@ -2061,7 +2060,7 @@ sem_MaybeImportSpecification_Just importspecification_  =
          ( _importspecificationIself) =
              (importspecification_ )
      in  ( _lhsOself))
-sem_MaybeImportSpecification_Nothing :: T_MaybeImportSpecification 
+sem_MaybeImportSpecification_Nothing :: T_MaybeImportSpecification
 sem_MaybeImportSpecification_Nothing  =
     (let _lhsOself :: MaybeImportSpecification
          _self =
@@ -2071,16 +2070,16 @@ sem_MaybeImportSpecification_Nothing  =
      in  ( _lhsOself))
 -- MaybeInt ----------------------------------------------------
 -- cata
-sem_MaybeInt :: MaybeInt  ->
-                T_MaybeInt 
+sem_MaybeInt :: MaybeInt ->
+                T_MaybeInt
 sem_MaybeInt (MaybeInt_Just _int )  =
     (sem_MaybeInt_Just _int )
 sem_MaybeInt (MaybeInt_Nothing )  =
     (sem_MaybeInt_Nothing )
 -- semantic domain
-type T_MaybeInt  = ( MaybeInt)
+type T_MaybeInt = ( MaybeInt)
 sem_MaybeInt_Just :: Int ->
-                     T_MaybeInt 
+                     T_MaybeInt
 sem_MaybeInt_Just int_  =
     (let _lhsOself :: MaybeInt
          _self =
@@ -2088,7 +2087,7 @@ sem_MaybeInt_Just int_  =
          _lhsOself =
              _self
      in  ( _lhsOself))
-sem_MaybeInt_Nothing :: T_MaybeInt 
+sem_MaybeInt_Nothing :: T_MaybeInt
 sem_MaybeInt_Nothing  =
     (let _lhsOself :: MaybeInt
          _self =
@@ -2098,16 +2097,16 @@ sem_MaybeInt_Nothing  =
      in  ( _lhsOself))
 -- MaybeName ---------------------------------------------------
 -- cata
-sem_MaybeName :: MaybeName  ->
-                 T_MaybeName 
+sem_MaybeName :: MaybeName ->
+                 T_MaybeName
 sem_MaybeName (MaybeName_Just _name )  =
     (sem_MaybeName_Just (sem_Name _name ) )
 sem_MaybeName (MaybeName_Nothing )  =
     (sem_MaybeName_Nothing )
 -- semantic domain
-type T_MaybeName  = ( MaybeName)
-sem_MaybeName_Just :: T_Name  ->
-                      T_MaybeName 
+type T_MaybeName = ( MaybeName)
+sem_MaybeName_Just :: T_Name ->
+                      T_MaybeName
 sem_MaybeName_Just name_  =
     (let _lhsOself :: MaybeName
          _nameIself :: Name
@@ -2118,7 +2117,7 @@ sem_MaybeName_Just name_  =
          ( _nameIself) =
              (name_ )
      in  ( _lhsOself))
-sem_MaybeName_Nothing :: T_MaybeName 
+sem_MaybeName_Nothing :: T_MaybeName
 sem_MaybeName_Nothing  =
     (let _lhsOself :: MaybeName
          _self =
@@ -2128,16 +2127,16 @@ sem_MaybeName_Nothing  =
      in  ( _lhsOself))
 -- MaybeNames --------------------------------------------------
 -- cata
-sem_MaybeNames :: MaybeNames  ->
-                  T_MaybeNames 
+sem_MaybeNames :: MaybeNames ->
+                  T_MaybeNames
 sem_MaybeNames (MaybeNames_Just _names )  =
     (sem_MaybeNames_Just (sem_Names _names ) )
 sem_MaybeNames (MaybeNames_Nothing )  =
     (sem_MaybeNames_Nothing )
 -- semantic domain
-type T_MaybeNames  = ( MaybeNames)
-sem_MaybeNames_Just :: T_Names  ->
-                       T_MaybeNames 
+type T_MaybeNames = ( MaybeNames)
+sem_MaybeNames_Just :: T_Names ->
+                       T_MaybeNames
 sem_MaybeNames_Just names_  =
     (let _lhsOself :: MaybeNames
          _namesIself :: Names
@@ -2148,7 +2147,7 @@ sem_MaybeNames_Just names_  =
          ( _namesIself) =
              (names_ )
      in  ( _lhsOself))
-sem_MaybeNames_Nothing :: T_MaybeNames 
+sem_MaybeNames_Nothing :: T_MaybeNames
 sem_MaybeNames_Nothing  =
     (let _lhsOself :: MaybeNames
          _self =
@@ -2158,17 +2157,17 @@ sem_MaybeNames_Nothing  =
      in  ( _lhsOself))
 -- Module ------------------------------------------------------
 -- cata
-sem_Module :: Module  ->
-              T_Module 
+sem_Module :: Module ->
+              T_Module
 sem_Module (Module_Module _range _name _exports _body )  =
     (sem_Module_Module (sem_Range _range ) (sem_MaybeName _name ) (sem_MaybeExports _exports ) (sem_Body _body ) )
 -- semantic domain
-type T_Module  = ( Module)
-sem_Module_Module :: T_Range  ->
-                     T_MaybeName  ->
-                     T_MaybeExports  ->
-                     T_Body  ->
-                     T_Module 
+type T_Module = ( Module)
+sem_Module_Module :: T_Range ->
+                     T_MaybeName ->
+                     T_MaybeExports ->
+                     T_Body ->
+                     T_Module
 sem_Module_Module range_ name_ exports_ body_  =
     (let _lhsOself :: Module
          _rangeIself :: Range
@@ -2190,8 +2189,8 @@ sem_Module_Module range_ name_ exports_ body_  =
      in  ( _lhsOself))
 -- Name --------------------------------------------------------
 -- cata
-sem_Name :: Name  ->
-            T_Name 
+sem_Name :: Name ->
+            T_Name
 sem_Name (Name_Identifier _range _module _name )  =
     (sem_Name_Identifier (sem_Range _range ) (sem_Strings _module ) _name )
 sem_Name (Name_Operator _range _module _name )  =
@@ -2199,11 +2198,11 @@ sem_Name (Name_Operator _range _module _name )  =
 sem_Name (Name_Special _range _module _name )  =
     (sem_Name_Special (sem_Range _range ) (sem_Strings _module ) _name )
 -- semantic domain
-type T_Name  = ( Name)
-sem_Name_Identifier :: T_Range  ->
-                       T_Strings  ->
+type T_Name = ( Name)
+sem_Name_Identifier :: T_Range ->
+                       T_Strings ->
                        String ->
-                       T_Name 
+                       T_Name
 sem_Name_Identifier range_ module_ name_  =
     (let _lhsOself :: Name
          _rangeIself :: Range
@@ -2217,10 +2216,10 @@ sem_Name_Identifier range_ module_ name_  =
          ( _moduleIself) =
              (module_ )
      in  ( _lhsOself))
-sem_Name_Operator :: T_Range  ->
-                     T_Strings  ->
+sem_Name_Operator :: T_Range ->
+                     T_Strings ->
                      String ->
-                     T_Name 
+                     T_Name
 sem_Name_Operator range_ module_ name_  =
     (let _lhsOself :: Name
          _rangeIself :: Range
@@ -2234,10 +2233,10 @@ sem_Name_Operator range_ module_ name_  =
          ( _moduleIself) =
              (module_ )
      in  ( _lhsOself))
-sem_Name_Special :: T_Range  ->
-                    T_Strings  ->
+sem_Name_Special :: T_Range ->
+                    T_Strings ->
                     String ->
-                    T_Name 
+                    T_Name
 sem_Name_Special range_ module_ name_  =
     (let _lhsOself :: Name
          _rangeIself :: Range
@@ -2253,15 +2252,15 @@ sem_Name_Special range_ module_ name_  =
      in  ( _lhsOself))
 -- Names -------------------------------------------------------
 -- cata
-sem_Names :: Names  ->
-             T_Names 
+sem_Names :: Names ->
+             T_Names
 sem_Names list  =
     (Prelude.foldr sem_Names_Cons sem_Names_Nil (Prelude.map sem_Name list) )
 -- semantic domain
-type T_Names  = ( Names)
-sem_Names_Cons :: T_Name  ->
-                  T_Names  ->
-                  T_Names 
+type T_Names = ( Names)
+sem_Names_Cons :: T_Name ->
+                  T_Names ->
+                  T_Names
 sem_Names_Cons hd_ tl_  =
     (let _lhsOself :: Names
          _hdIself :: Name
@@ -2275,7 +2274,7 @@ sem_Names_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_Names_Nil :: T_Names 
+sem_Names_Nil :: T_Names
 sem_Names_Nil  =
     (let _lhsOself :: Names
          _self =
@@ -2285,8 +2284,8 @@ sem_Names_Nil  =
      in  ( _lhsOself))
 -- Pattern -----------------------------------------------------
 -- cata
-sem_Pattern :: Pattern  ->
-               T_Pattern 
+sem_Pattern :: Pattern ->
+               T_Pattern
 sem_Pattern (Pattern_As _range _name _pattern )  =
     (sem_Pattern_As (sem_Range _range ) (sem_Name _name ) (sem_Pattern _pattern ) )
 sem_Pattern (Pattern_Constructor _range _name _patterns )  =
@@ -2316,11 +2315,11 @@ sem_Pattern (Pattern_Variable _range _name )  =
 sem_Pattern (Pattern_Wildcard _range )  =
     (sem_Pattern_Wildcard (sem_Range _range ) )
 -- semantic domain
-type T_Pattern  = ( Pattern)
-sem_Pattern_As :: T_Range  ->
-                  T_Name  ->
-                  T_Pattern  ->
-                  T_Pattern 
+type T_Pattern = ( Pattern)
+sem_Pattern_As :: T_Range ->
+                  T_Name ->
+                  T_Pattern ->
+                  T_Pattern
 sem_Pattern_As range_ name_ pattern_  =
     (let _lhsOself :: Pattern
          _rangeIself :: Range
@@ -2337,10 +2336,10 @@ sem_Pattern_As range_ name_ pattern_  =
          ( _patternIself) =
              (pattern_ )
      in  ( _lhsOself))
-sem_Pattern_Constructor :: T_Range  ->
-                           T_Name  ->
-                           T_Patterns  ->
-                           T_Pattern 
+sem_Pattern_Constructor :: T_Range ->
+                           T_Name ->
+                           T_Patterns ->
+                           T_Pattern
 sem_Pattern_Constructor range_ name_ patterns_  =
     (let _lhsOself :: Pattern
          _rangeIself :: Range
@@ -2357,11 +2356,11 @@ sem_Pattern_Constructor range_ name_ patterns_  =
          ( _patternsIself) =
              (patterns_ )
      in  ( _lhsOself))
-sem_Pattern_InfixConstructor :: T_Range  ->
-                                T_Pattern  ->
-                                T_Name  ->
-                                T_Pattern  ->
-                                T_Pattern 
+sem_Pattern_InfixConstructor :: T_Range ->
+                                T_Pattern ->
+                                T_Name ->
+                                T_Pattern ->
+                                T_Pattern
 sem_Pattern_InfixConstructor range_ leftPattern_ constructorOperator_ rightPattern_  =
     (let _lhsOself :: Pattern
          _rangeIself :: Range
@@ -2381,9 +2380,9 @@ sem_Pattern_InfixConstructor range_ leftPattern_ constructorOperator_ rightPatte
          ( _rightPatternIself) =
              (rightPattern_ )
      in  ( _lhsOself))
-sem_Pattern_Irrefutable :: T_Range  ->
-                           T_Pattern  ->
-                           T_Pattern 
+sem_Pattern_Irrefutable :: T_Range ->
+                           T_Pattern ->
+                           T_Pattern
 sem_Pattern_Irrefutable range_ pattern_  =
     (let _lhsOself :: Pattern
          _rangeIself :: Range
@@ -2397,9 +2396,9 @@ sem_Pattern_Irrefutable range_ pattern_  =
          ( _patternIself) =
              (pattern_ )
      in  ( _lhsOself))
-sem_Pattern_List :: T_Range  ->
-                    T_Patterns  ->
-                    T_Pattern 
+sem_Pattern_List :: T_Range ->
+                    T_Patterns ->
+                    T_Pattern
 sem_Pattern_List range_ patterns_  =
     (let _lhsOself :: Pattern
          _rangeIself :: Range
@@ -2413,9 +2412,9 @@ sem_Pattern_List range_ patterns_  =
          ( _patternsIself) =
              (patterns_ )
      in  ( _lhsOself))
-sem_Pattern_Literal :: T_Range  ->
-                       T_Literal  ->
-                       T_Pattern 
+sem_Pattern_Literal :: T_Range ->
+                       T_Literal ->
+                       T_Pattern
 sem_Pattern_Literal range_ literal_  =
     (let _lhsOself :: Pattern
          _rangeIself :: Range
@@ -2429,9 +2428,9 @@ sem_Pattern_Literal range_ literal_  =
          ( _literalIself) =
              (literal_ )
      in  ( _lhsOself))
-sem_Pattern_Negate :: T_Range  ->
-                      T_Literal  ->
-                      T_Pattern 
+sem_Pattern_Negate :: T_Range ->
+                      T_Literal ->
+                      T_Pattern
 sem_Pattern_Negate range_ literal_  =
     (let _lhsOself :: Pattern
          _rangeIself :: Range
@@ -2445,9 +2444,9 @@ sem_Pattern_Negate range_ literal_  =
          ( _literalIself) =
              (literal_ )
      in  ( _lhsOself))
-sem_Pattern_NegateFloat :: T_Range  ->
-                           T_Literal  ->
-                           T_Pattern 
+sem_Pattern_NegateFloat :: T_Range ->
+                           T_Literal ->
+                           T_Pattern
 sem_Pattern_NegateFloat range_ literal_  =
     (let _lhsOself :: Pattern
          _rangeIself :: Range
@@ -2461,9 +2460,9 @@ sem_Pattern_NegateFloat range_ literal_  =
          ( _literalIself) =
              (literal_ )
      in  ( _lhsOself))
-sem_Pattern_Parenthesized :: T_Range  ->
-                             T_Pattern  ->
-                             T_Pattern 
+sem_Pattern_Parenthesized :: T_Range ->
+                             T_Pattern ->
+                             T_Pattern
 sem_Pattern_Parenthesized range_ pattern_  =
     (let _lhsOself :: Pattern
          _rangeIself :: Range
@@ -2477,10 +2476,10 @@ sem_Pattern_Parenthesized range_ pattern_  =
          ( _patternIself) =
              (pattern_ )
      in  ( _lhsOself))
-sem_Pattern_Record :: T_Range  ->
-                      T_Name  ->
-                      T_RecordPatternBindings  ->
-                      T_Pattern 
+sem_Pattern_Record :: T_Range ->
+                      T_Name ->
+                      T_RecordPatternBindings ->
+                      T_Pattern
 sem_Pattern_Record range_ name_ recordPatternBindings_  =
     (let _lhsOself :: Pattern
          _rangeIself :: Range
@@ -2497,10 +2496,10 @@ sem_Pattern_Record range_ name_ recordPatternBindings_  =
          ( _recordPatternBindingsIself) =
              (recordPatternBindings_ )
      in  ( _lhsOself))
-sem_Pattern_Successor :: T_Range  ->
-                         T_Name  ->
-                         T_Literal  ->
-                         T_Pattern 
+sem_Pattern_Successor :: T_Range ->
+                         T_Name ->
+                         T_Literal ->
+                         T_Pattern
 sem_Pattern_Successor range_ name_ literal_  =
     (let _lhsOself :: Pattern
          _rangeIself :: Range
@@ -2517,9 +2516,9 @@ sem_Pattern_Successor range_ name_ literal_  =
          ( _literalIself) =
              (literal_ )
      in  ( _lhsOself))
-sem_Pattern_Tuple :: T_Range  ->
-                     T_Patterns  ->
-                     T_Pattern 
+sem_Pattern_Tuple :: T_Range ->
+                     T_Patterns ->
+                     T_Pattern
 sem_Pattern_Tuple range_ patterns_  =
     (let _lhsOself :: Pattern
          _rangeIself :: Range
@@ -2533,9 +2532,9 @@ sem_Pattern_Tuple range_ patterns_  =
          ( _patternsIself) =
              (patterns_ )
      in  ( _lhsOself))
-sem_Pattern_Variable :: T_Range  ->
-                        T_Name  ->
-                        T_Pattern 
+sem_Pattern_Variable :: T_Range ->
+                        T_Name ->
+                        T_Pattern
 sem_Pattern_Variable range_ name_  =
     (let _lhsOself :: Pattern
          _rangeIself :: Range
@@ -2549,8 +2548,8 @@ sem_Pattern_Variable range_ name_  =
          ( _nameIself) =
              (name_ )
      in  ( _lhsOself))
-sem_Pattern_Wildcard :: T_Range  ->
-                        T_Pattern 
+sem_Pattern_Wildcard :: T_Range ->
+                        T_Pattern
 sem_Pattern_Wildcard range_  =
     (let _lhsOself :: Pattern
          _rangeIself :: Range
@@ -2563,15 +2562,15 @@ sem_Pattern_Wildcard range_  =
      in  ( _lhsOself))
 -- Patterns ----------------------------------------------------
 -- cata
-sem_Patterns :: Patterns  ->
-                T_Patterns 
+sem_Patterns :: Patterns ->
+                T_Patterns
 sem_Patterns list  =
     (Prelude.foldr sem_Patterns_Cons sem_Patterns_Nil (Prelude.map sem_Pattern list) )
 -- semantic domain
-type T_Patterns  = ( Patterns)
-sem_Patterns_Cons :: T_Pattern  ->
-                     T_Patterns  ->
-                     T_Patterns 
+type T_Patterns = ( Patterns)
+sem_Patterns_Cons :: T_Pattern ->
+                     T_Patterns ->
+                     T_Patterns
 sem_Patterns_Cons hd_ tl_  =
     (let _lhsOself :: Patterns
          _hdIself :: Pattern
@@ -2585,7 +2584,7 @@ sem_Patterns_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_Patterns_Nil :: T_Patterns 
+sem_Patterns_Nil :: T_Patterns
 sem_Patterns_Nil  =
     (let _lhsOself :: Patterns
          _self =
@@ -2595,18 +2594,18 @@ sem_Patterns_Nil  =
      in  ( _lhsOself))
 -- Position ----------------------------------------------------
 -- cata
-sem_Position :: Position  ->
-                T_Position 
+sem_Position :: Position ->
+                T_Position
 sem_Position (Position_Position _filename _line _column )  =
     (sem_Position_Position _filename _line _column )
 sem_Position (Position_Unknown )  =
     (sem_Position_Unknown )
 -- semantic domain
-type T_Position  = ( Position)
+type T_Position = ( Position)
 sem_Position_Position :: String ->
                          Int ->
                          Int ->
-                         T_Position 
+                         T_Position
 sem_Position_Position filename_ line_ column_  =
     (let _lhsOself :: Position
          _self =
@@ -2614,7 +2613,7 @@ sem_Position_Position filename_ line_ column_  =
          _lhsOself =
              _self
      in  ( _lhsOself))
-sem_Position_Unknown :: T_Position 
+sem_Position_Unknown :: T_Position
 sem_Position_Unknown  =
     (let _lhsOself :: Position
          _self =
@@ -2624,8 +2623,8 @@ sem_Position_Unknown  =
      in  ( _lhsOself))
 -- Qualifier ---------------------------------------------------
 -- cata
-sem_Qualifier :: Qualifier  ->
-                 T_Qualifier 
+sem_Qualifier :: Qualifier ->
+                 T_Qualifier
 sem_Qualifier (Qualifier_Empty _range )  =
     (sem_Qualifier_Empty (sem_Range _range ) )
 sem_Qualifier (Qualifier_Generator _range _pattern _expression )  =
@@ -2635,9 +2634,9 @@ sem_Qualifier (Qualifier_Guard _range _guard )  =
 sem_Qualifier (Qualifier_Let _range _declarations )  =
     (sem_Qualifier_Let (sem_Range _range ) (sem_Declarations _declarations ) )
 -- semantic domain
-type T_Qualifier  = ( Qualifier)
-sem_Qualifier_Empty :: T_Range  ->
-                       T_Qualifier 
+type T_Qualifier = ( Qualifier)
+sem_Qualifier_Empty :: T_Range ->
+                       T_Qualifier
 sem_Qualifier_Empty range_  =
     (let _lhsOself :: Qualifier
          _rangeIself :: Range
@@ -2648,10 +2647,10 @@ sem_Qualifier_Empty range_  =
          ( _rangeIself) =
              (range_ )
      in  ( _lhsOself))
-sem_Qualifier_Generator :: T_Range  ->
-                           T_Pattern  ->
-                           T_Expression  ->
-                           T_Qualifier 
+sem_Qualifier_Generator :: T_Range ->
+                           T_Pattern ->
+                           T_Expression ->
+                           T_Qualifier
 sem_Qualifier_Generator range_ pattern_ expression_  =
     (let _lhsOself :: Qualifier
          _rangeIself :: Range
@@ -2669,9 +2668,9 @@ sem_Qualifier_Generator range_ pattern_ expression_  =
          ( _expressionIallVariables,_expressionIself) =
              (expression_ )
      in  ( _lhsOself))
-sem_Qualifier_Guard :: T_Range  ->
-                       T_Expression  ->
-                       T_Qualifier 
+sem_Qualifier_Guard :: T_Range ->
+                       T_Expression ->
+                       T_Qualifier
 sem_Qualifier_Guard range_ guard_  =
     (let _lhsOself :: Qualifier
          _rangeIself :: Range
@@ -2686,9 +2685,9 @@ sem_Qualifier_Guard range_ guard_  =
          ( _guardIallVariables,_guardIself) =
              (guard_ )
      in  ( _lhsOself))
-sem_Qualifier_Let :: T_Range  ->
-                     T_Declarations  ->
-                     T_Qualifier 
+sem_Qualifier_Let :: T_Range ->
+                     T_Declarations ->
+                     T_Qualifier
 sem_Qualifier_Let range_ declarations_  =
     (let _lhsOself :: Qualifier
          _rangeIself :: Range
@@ -2704,15 +2703,15 @@ sem_Qualifier_Let range_ declarations_  =
      in  ( _lhsOself))
 -- Qualifiers --------------------------------------------------
 -- cata
-sem_Qualifiers :: Qualifiers  ->
-                  T_Qualifiers 
+sem_Qualifiers :: Qualifiers ->
+                  T_Qualifiers
 sem_Qualifiers list  =
     (Prelude.foldr sem_Qualifiers_Cons sem_Qualifiers_Nil (Prelude.map sem_Qualifier list) )
 -- semantic domain
-type T_Qualifiers  = ( Qualifiers)
-sem_Qualifiers_Cons :: T_Qualifier  ->
-                       T_Qualifiers  ->
-                       T_Qualifiers 
+type T_Qualifiers = ( Qualifiers)
+sem_Qualifiers_Cons :: T_Qualifier ->
+                       T_Qualifiers ->
+                       T_Qualifiers
 sem_Qualifiers_Cons hd_ tl_  =
     (let _lhsOself :: Qualifiers
          _hdIself :: Qualifier
@@ -2726,7 +2725,7 @@ sem_Qualifiers_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_Qualifiers_Nil :: T_Qualifiers 
+sem_Qualifiers_Nil :: T_Qualifiers
 sem_Qualifiers_Nil  =
     (let _lhsOself :: Qualifiers
          _self =
@@ -2736,15 +2735,15 @@ sem_Qualifiers_Nil  =
      in  ( _lhsOself))
 -- Range -------------------------------------------------------
 -- cata
-sem_Range :: Range  ->
-             T_Range 
+sem_Range :: Range ->
+             T_Range
 sem_Range (Range_Range _start _stop )  =
     (sem_Range_Range (sem_Position _start ) (sem_Position _stop ) )
 -- semantic domain
-type T_Range  = ( Range)
-sem_Range_Range :: T_Position  ->
-                   T_Position  ->
-                   T_Range 
+type T_Range = ( Range)
+sem_Range_Range :: T_Position ->
+                   T_Position ->
+                   T_Range
 sem_Range_Range start_ stop_  =
     (let _lhsOself :: Range
          _startIself :: Position
@@ -2760,16 +2759,16 @@ sem_Range_Range start_ stop_  =
      in  ( _lhsOself))
 -- RecordExpressionBinding -------------------------------------
 -- cata
-sem_RecordExpressionBinding :: RecordExpressionBinding  ->
-                               T_RecordExpressionBinding 
+sem_RecordExpressionBinding :: RecordExpressionBinding ->
+                               T_RecordExpressionBinding
 sem_RecordExpressionBinding (RecordExpressionBinding_RecordExpressionBinding _range _name _expression )  =
     (sem_RecordExpressionBinding_RecordExpressionBinding (sem_Range _range ) (sem_Name _name ) (sem_Expression _expression ) )
 -- semantic domain
-type T_RecordExpressionBinding  = ( RecordExpressionBinding)
-sem_RecordExpressionBinding_RecordExpressionBinding :: T_Range  ->
-                                                       T_Name  ->
-                                                       T_Expression  ->
-                                                       T_RecordExpressionBinding 
+type T_RecordExpressionBinding = ( RecordExpressionBinding)
+sem_RecordExpressionBinding_RecordExpressionBinding :: T_Range ->
+                                                       T_Name ->
+                                                       T_Expression ->
+                                                       T_RecordExpressionBinding
 sem_RecordExpressionBinding_RecordExpressionBinding range_ name_ expression_  =
     (let _lhsOself :: RecordExpressionBinding
          _rangeIself :: Range
@@ -2789,15 +2788,15 @@ sem_RecordExpressionBinding_RecordExpressionBinding range_ name_ expression_  =
      in  ( _lhsOself))
 -- RecordExpressionBindings ------------------------------------
 -- cata
-sem_RecordExpressionBindings :: RecordExpressionBindings  ->
-                                T_RecordExpressionBindings 
+sem_RecordExpressionBindings :: RecordExpressionBindings ->
+                                T_RecordExpressionBindings
 sem_RecordExpressionBindings list  =
     (Prelude.foldr sem_RecordExpressionBindings_Cons sem_RecordExpressionBindings_Nil (Prelude.map sem_RecordExpressionBinding list) )
 -- semantic domain
-type T_RecordExpressionBindings  = ( RecordExpressionBindings)
-sem_RecordExpressionBindings_Cons :: T_RecordExpressionBinding  ->
-                                     T_RecordExpressionBindings  ->
-                                     T_RecordExpressionBindings 
+type T_RecordExpressionBindings = ( RecordExpressionBindings)
+sem_RecordExpressionBindings_Cons :: T_RecordExpressionBinding ->
+                                     T_RecordExpressionBindings ->
+                                     T_RecordExpressionBindings
 sem_RecordExpressionBindings_Cons hd_ tl_  =
     (let _lhsOself :: RecordExpressionBindings
          _hdIself :: RecordExpressionBinding
@@ -2811,7 +2810,7 @@ sem_RecordExpressionBindings_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_RecordExpressionBindings_Nil :: T_RecordExpressionBindings 
+sem_RecordExpressionBindings_Nil :: T_RecordExpressionBindings
 sem_RecordExpressionBindings_Nil  =
     (let _lhsOself :: RecordExpressionBindings
          _self =
@@ -2821,16 +2820,16 @@ sem_RecordExpressionBindings_Nil  =
      in  ( _lhsOself))
 -- RecordPatternBinding ----------------------------------------
 -- cata
-sem_RecordPatternBinding :: RecordPatternBinding  ->
-                            T_RecordPatternBinding 
+sem_RecordPatternBinding :: RecordPatternBinding ->
+                            T_RecordPatternBinding
 sem_RecordPatternBinding (RecordPatternBinding_RecordPatternBinding _range _name _pattern )  =
     (sem_RecordPatternBinding_RecordPatternBinding (sem_Range _range ) (sem_Name _name ) (sem_Pattern _pattern ) )
 -- semantic domain
-type T_RecordPatternBinding  = ( RecordPatternBinding)
-sem_RecordPatternBinding_RecordPatternBinding :: T_Range  ->
-                                                 T_Name  ->
-                                                 T_Pattern  ->
-                                                 T_RecordPatternBinding 
+type T_RecordPatternBinding = ( RecordPatternBinding)
+sem_RecordPatternBinding_RecordPatternBinding :: T_Range ->
+                                                 T_Name ->
+                                                 T_Pattern ->
+                                                 T_RecordPatternBinding
 sem_RecordPatternBinding_RecordPatternBinding range_ name_ pattern_  =
     (let _lhsOself :: RecordPatternBinding
          _rangeIself :: Range
@@ -2849,15 +2848,15 @@ sem_RecordPatternBinding_RecordPatternBinding range_ name_ pattern_  =
      in  ( _lhsOself))
 -- RecordPatternBindings ---------------------------------------
 -- cata
-sem_RecordPatternBindings :: RecordPatternBindings  ->
-                             T_RecordPatternBindings 
+sem_RecordPatternBindings :: RecordPatternBindings ->
+                             T_RecordPatternBindings
 sem_RecordPatternBindings list  =
     (Prelude.foldr sem_RecordPatternBindings_Cons sem_RecordPatternBindings_Nil (Prelude.map sem_RecordPatternBinding list) )
 -- semantic domain
-type T_RecordPatternBindings  = ( RecordPatternBindings)
-sem_RecordPatternBindings_Cons :: T_RecordPatternBinding  ->
-                                  T_RecordPatternBindings  ->
-                                  T_RecordPatternBindings 
+type T_RecordPatternBindings = ( RecordPatternBindings)
+sem_RecordPatternBindings_Cons :: T_RecordPatternBinding ->
+                                  T_RecordPatternBindings ->
+                                  T_RecordPatternBindings
 sem_RecordPatternBindings_Cons hd_ tl_  =
     (let _lhsOself :: RecordPatternBindings
          _hdIself :: RecordPatternBinding
@@ -2871,7 +2870,7 @@ sem_RecordPatternBindings_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_RecordPatternBindings_Nil :: T_RecordPatternBindings 
+sem_RecordPatternBindings_Nil :: T_RecordPatternBindings
 sem_RecordPatternBindings_Nil  =
     (let _lhsOself :: RecordPatternBindings
          _self =
@@ -2881,18 +2880,18 @@ sem_RecordPatternBindings_Nil  =
      in  ( _lhsOself))
 -- RightHandSide -----------------------------------------------
 -- cata
-sem_RightHandSide :: RightHandSide  ->
-                     T_RightHandSide 
+sem_RightHandSide :: RightHandSide ->
+                     T_RightHandSide
 sem_RightHandSide (RightHandSide_Expression _range _expression _where )  =
     (sem_RightHandSide_Expression (sem_Range _range ) (sem_Expression _expression ) (sem_MaybeDeclarations _where ) )
 sem_RightHandSide (RightHandSide_Guarded _range _guardedexpressions _where )  =
     (sem_RightHandSide_Guarded (sem_Range _range ) (sem_GuardedExpressions _guardedexpressions ) (sem_MaybeDeclarations _where ) )
 -- semantic domain
-type T_RightHandSide  = ( RightHandSide)
-sem_RightHandSide_Expression :: T_Range  ->
-                                T_Expression  ->
-                                T_MaybeDeclarations  ->
-                                T_RightHandSide 
+type T_RightHandSide = ( RightHandSide)
+sem_RightHandSide_Expression :: T_Range ->
+                                T_Expression ->
+                                T_MaybeDeclarations ->
+                                T_RightHandSide
 sem_RightHandSide_Expression range_ expression_ where_  =
     (let _lhsOself :: RightHandSide
          _rangeIself :: Range
@@ -2910,10 +2909,10 @@ sem_RightHandSide_Expression range_ expression_ where_  =
          ( _whereIself) =
              (where_ )
      in  ( _lhsOself))
-sem_RightHandSide_Guarded :: T_Range  ->
-                             T_GuardedExpressions  ->
-                             T_MaybeDeclarations  ->
-                             T_RightHandSide 
+sem_RightHandSide_Guarded :: T_Range ->
+                             T_GuardedExpressions ->
+                             T_MaybeDeclarations ->
+                             T_RightHandSide
 sem_RightHandSide_Guarded range_ guardedexpressions_ where_  =
     (let _lhsOself :: RightHandSide
          _rangeIself :: Range
@@ -2932,17 +2931,17 @@ sem_RightHandSide_Guarded range_ guardedexpressions_ where_  =
      in  ( _lhsOself))
 -- SimpleJudgement ---------------------------------------------
 -- cata
-sem_SimpleJudgement :: SimpleJudgement  ->
-                       T_SimpleJudgement 
+sem_SimpleJudgement :: SimpleJudgement ->
+                       T_SimpleJudgement
 sem_SimpleJudgement (SimpleJudgement_SimpleJudgement _name _type )  =
     (sem_SimpleJudgement_SimpleJudgement (sem_Name _name ) (sem_Type _type ) )
 -- semantic domain
-type T_SimpleJudgement  = ([(Name,Tp)]) ->
-                          ([(String,Tp)]) ->
-                          ( SimpleJudgement,([(String,Tp)]),Names)
-sem_SimpleJudgement_SimpleJudgement :: T_Name  ->
-                                       T_Type  ->
-                                       T_SimpleJudgement 
+type T_SimpleJudgement = ([(Name,Tp)]) ->
+                         ([(String,Tp)]) ->
+                         ( SimpleJudgement,([(String,Tp)]),Names)
+sem_SimpleJudgement_SimpleJudgement :: T_Name ->
+                                       T_Type ->
+                                       T_SimpleJudgement
 sem_SimpleJudgement_SimpleJudgement name_ type_  =
     (\ _lhsInameMap
        _lhsIsimpleJudgements ->
@@ -2969,17 +2968,17 @@ sem_SimpleJudgement_SimpleJudgement name_ type_  =
           in  ( _lhsOself,_lhsOsimpleJudgements,_lhsOtypevariables)))
 -- SimpleJudgements --------------------------------------------
 -- cata
-sem_SimpleJudgements :: SimpleJudgements  ->
-                        T_SimpleJudgements 
+sem_SimpleJudgements :: SimpleJudgements ->
+                        T_SimpleJudgements
 sem_SimpleJudgements list  =
     (Prelude.foldr sem_SimpleJudgements_Cons sem_SimpleJudgements_Nil (Prelude.map sem_SimpleJudgement list) )
 -- semantic domain
-type T_SimpleJudgements  = ([(Name,Tp)]) ->
-                           ([(String,Tp)]) ->
-                           ( SimpleJudgements,([(String,Tp)]),Names)
-sem_SimpleJudgements_Cons :: T_SimpleJudgement  ->
-                             T_SimpleJudgements  ->
-                             T_SimpleJudgements 
+type T_SimpleJudgements = ([(Name,Tp)]) ->
+                          ([(String,Tp)]) ->
+                          ( SimpleJudgements,([(String,Tp)]),Names)
+sem_SimpleJudgements_Cons :: T_SimpleJudgement ->
+                             T_SimpleJudgements ->
+                             T_SimpleJudgements
 sem_SimpleJudgements_Cons hd_ tl_  =
     (\ _lhsInameMap
        _lhsIsimpleJudgements ->
@@ -3017,7 +3016,7 @@ sem_SimpleJudgements_Cons hd_ tl_  =
               ( _tlIself,_tlIsimpleJudgements,_tlItypevariables) =
                   (tl_ _tlOnameMap _tlOsimpleJudgements )
           in  ( _lhsOself,_lhsOsimpleJudgements,_lhsOtypevariables)))
-sem_SimpleJudgements_Nil :: T_SimpleJudgements 
+sem_SimpleJudgements_Nil :: T_SimpleJudgements
 sem_SimpleJudgements_Nil  =
     (\ _lhsInameMap
        _lhsIsimpleJudgements ->
@@ -3035,16 +3034,16 @@ sem_SimpleJudgements_Nil  =
           in  ( _lhsOself,_lhsOsimpleJudgements,_lhsOtypevariables)))
 -- SimpleType --------------------------------------------------
 -- cata
-sem_SimpleType :: SimpleType  ->
-                  T_SimpleType 
+sem_SimpleType :: SimpleType ->
+                  T_SimpleType
 sem_SimpleType (SimpleType_SimpleType _range _name _typevariables )  =
     (sem_SimpleType_SimpleType (sem_Range _range ) (sem_Name _name ) (sem_Names _typevariables ) )
 -- semantic domain
-type T_SimpleType  = ( SimpleType)
-sem_SimpleType_SimpleType :: T_Range  ->
-                             T_Name  ->
-                             T_Names  ->
-                             T_SimpleType 
+type T_SimpleType = ( SimpleType)
+sem_SimpleType_SimpleType :: T_Range ->
+                             T_Name ->
+                             T_Names ->
+                             T_SimpleType
 sem_SimpleType_SimpleType range_ name_ typevariables_  =
     (let _lhsOself :: SimpleType
          _rangeIself :: Range
@@ -3063,8 +3062,8 @@ sem_SimpleType_SimpleType range_ name_ typevariables_  =
      in  ( _lhsOself))
 -- Statement ---------------------------------------------------
 -- cata
-sem_Statement :: Statement  ->
-                 T_Statement 
+sem_Statement :: Statement ->
+                 T_Statement
 sem_Statement (Statement_Empty _range )  =
     (sem_Statement_Empty (sem_Range _range ) )
 sem_Statement (Statement_Expression _range _expression )  =
@@ -3074,9 +3073,9 @@ sem_Statement (Statement_Generator _range _pattern _expression )  =
 sem_Statement (Statement_Let _range _declarations )  =
     (sem_Statement_Let (sem_Range _range ) (sem_Declarations _declarations ) )
 -- semantic domain
-type T_Statement  = ( Statement)
-sem_Statement_Empty :: T_Range  ->
-                       T_Statement 
+type T_Statement = ( Statement)
+sem_Statement_Empty :: T_Range ->
+                       T_Statement
 sem_Statement_Empty range_  =
     (let _lhsOself :: Statement
          _rangeIself :: Range
@@ -3087,9 +3086,9 @@ sem_Statement_Empty range_  =
          ( _rangeIself) =
              (range_ )
      in  ( _lhsOself))
-sem_Statement_Expression :: T_Range  ->
-                            T_Expression  ->
-                            T_Statement 
+sem_Statement_Expression :: T_Range ->
+                            T_Expression ->
+                            T_Statement
 sem_Statement_Expression range_ expression_  =
     (let _lhsOself :: Statement
          _rangeIself :: Range
@@ -3104,10 +3103,10 @@ sem_Statement_Expression range_ expression_  =
          ( _expressionIallVariables,_expressionIself) =
              (expression_ )
      in  ( _lhsOself))
-sem_Statement_Generator :: T_Range  ->
-                           T_Pattern  ->
-                           T_Expression  ->
-                           T_Statement 
+sem_Statement_Generator :: T_Range ->
+                           T_Pattern ->
+                           T_Expression ->
+                           T_Statement
 sem_Statement_Generator range_ pattern_ expression_  =
     (let _lhsOself :: Statement
          _rangeIself :: Range
@@ -3125,9 +3124,9 @@ sem_Statement_Generator range_ pattern_ expression_  =
          ( _expressionIallVariables,_expressionIself) =
              (expression_ )
      in  ( _lhsOself))
-sem_Statement_Let :: T_Range  ->
-                     T_Declarations  ->
-                     T_Statement 
+sem_Statement_Let :: T_Range ->
+                     T_Declarations ->
+                     T_Statement
 sem_Statement_Let range_ declarations_  =
     (let _lhsOself :: Statement
          _rangeIself :: Range
@@ -3143,15 +3142,15 @@ sem_Statement_Let range_ declarations_  =
      in  ( _lhsOself))
 -- Statements --------------------------------------------------
 -- cata
-sem_Statements :: Statements  ->
-                  T_Statements 
+sem_Statements :: Statements ->
+                  T_Statements
 sem_Statements list  =
     (Prelude.foldr sem_Statements_Cons sem_Statements_Nil (Prelude.map sem_Statement list) )
 -- semantic domain
-type T_Statements  = ( Statements)
-sem_Statements_Cons :: T_Statement  ->
-                       T_Statements  ->
-                       T_Statements 
+type T_Statements = ( Statements)
+sem_Statements_Cons :: T_Statement ->
+                       T_Statements ->
+                       T_Statements
 sem_Statements_Cons hd_ tl_  =
     (let _lhsOself :: Statements
          _hdIself :: Statement
@@ -3165,7 +3164,7 @@ sem_Statements_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_Statements_Nil :: T_Statements 
+sem_Statements_Nil :: T_Statements
 sem_Statements_Nil  =
     (let _lhsOself :: Statements
          _self =
@@ -3175,15 +3174,15 @@ sem_Statements_Nil  =
      in  ( _lhsOself))
 -- Strings -----------------------------------------------------
 -- cata
-sem_Strings :: Strings  ->
-               T_Strings 
+sem_Strings :: Strings ->
+               T_Strings
 sem_Strings list  =
     (Prelude.foldr sem_Strings_Cons sem_Strings_Nil list )
 -- semantic domain
-type T_Strings  = ( Strings)
+type T_Strings = ( Strings)
 sem_Strings_Cons :: String ->
-                    T_Strings  ->
-                    T_Strings 
+                    T_Strings ->
+                    T_Strings
 sem_Strings_Cons hd_ tl_  =
     (let _lhsOself :: Strings
          _tlIself :: Strings
@@ -3194,7 +3193,7 @@ sem_Strings_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_Strings_Nil :: T_Strings 
+sem_Strings_Nil :: T_Strings
 sem_Strings_Nil  =
     (let _lhsOself :: Strings
          _self =
@@ -3204,8 +3203,8 @@ sem_Strings_Nil  =
      in  ( _lhsOself))
 -- Type --------------------------------------------------------
 -- cata
-sem_Type :: Type  ->
-            T_Type 
+sem_Type :: Type ->
+            T_Type
 sem_Type (Type_Application _range _prefix _function _arguments )  =
     (sem_Type_Application (sem_Range _range ) _prefix (sem_Type _function ) (sem_Types _arguments ) )
 sem_Type (Type_Constructor _range _name )  =
@@ -3221,12 +3220,12 @@ sem_Type (Type_Qualified _range _context _type )  =
 sem_Type (Type_Variable _range _name )  =
     (sem_Type_Variable (sem_Range _range ) (sem_Name _name ) )
 -- semantic domain
-type T_Type  = ( Type,Names)
-sem_Type_Application :: T_Range  ->
+type T_Type = ( Type,Names)
+sem_Type_Application :: T_Range ->
                         Bool ->
-                        T_Type  ->
-                        T_Types  ->
-                        T_Type 
+                        T_Type ->
+                        T_Types ->
+                        T_Type
 sem_Type_Application range_ prefix_ function_ arguments_  =
     (let _lhsOtypevariables :: Names
          _lhsOself :: Type
@@ -3248,9 +3247,9 @@ sem_Type_Application range_ prefix_ function_ arguments_  =
          ( _argumentsIself,_argumentsItypevariables) =
              (arguments_ )
      in  ( _lhsOself,_lhsOtypevariables))
-sem_Type_Constructor :: T_Range  ->
-                        T_Name  ->
-                        T_Type 
+sem_Type_Constructor :: T_Range ->
+                        T_Name ->
+                        T_Type
 sem_Type_Constructor range_ name_  =
     (let _lhsOtypevariables :: Names
          _lhsOself :: Type
@@ -3267,10 +3266,10 @@ sem_Type_Constructor range_ name_  =
          ( _nameIself) =
              (name_ )
      in  ( _lhsOself,_lhsOtypevariables))
-sem_Type_Exists :: T_Range  ->
-                   T_Names  ->
-                   T_Type  ->
-                   T_Type 
+sem_Type_Exists :: T_Range ->
+                   T_Names ->
+                   T_Type ->
+                   T_Type
 sem_Type_Exists range_ typevariables_ type_  =
     (let _lhsOtypevariables :: Names
          _lhsOself :: Type
@@ -3291,10 +3290,10 @@ sem_Type_Exists range_ typevariables_ type_  =
          ( _typeIself,_typeItypevariables) =
              (type_ )
      in  ( _lhsOself,_lhsOtypevariables))
-sem_Type_Forall :: T_Range  ->
-                   T_Names  ->
-                   T_Type  ->
-                   T_Type 
+sem_Type_Forall :: T_Range ->
+                   T_Names ->
+                   T_Type ->
+                   T_Type
 sem_Type_Forall range_ typevariables_ type_  =
     (let _lhsOtypevariables :: Names
          _lhsOself :: Type
@@ -3315,9 +3314,9 @@ sem_Type_Forall range_ typevariables_ type_  =
          ( _typeIself,_typeItypevariables) =
              (type_ )
      in  ( _lhsOself,_lhsOtypevariables))
-sem_Type_Parenthesized :: T_Range  ->
-                          T_Type  ->
-                          T_Type 
+sem_Type_Parenthesized :: T_Range ->
+                          T_Type ->
+                          T_Type
 sem_Type_Parenthesized range_ type_  =
     (let _lhsOtypevariables :: Names
          _lhsOself :: Type
@@ -3335,10 +3334,10 @@ sem_Type_Parenthesized range_ type_  =
          ( _typeIself,_typeItypevariables) =
              (type_ )
      in  ( _lhsOself,_lhsOtypevariables))
-sem_Type_Qualified :: T_Range  ->
-                      T_ContextItems  ->
-                      T_Type  ->
-                      T_Type 
+sem_Type_Qualified :: T_Range ->
+                      T_ContextItems ->
+                      T_Type ->
+                      T_Type
 sem_Type_Qualified range_ context_ type_  =
     (let _lhsOtypevariables :: Names
          _lhsOself :: Type
@@ -3359,9 +3358,9 @@ sem_Type_Qualified range_ context_ type_  =
          ( _typeIself,_typeItypevariables) =
              (type_ )
      in  ( _lhsOself,_lhsOtypevariables))
-sem_Type_Variable :: T_Range  ->
-                     T_Name  ->
-                     T_Type 
+sem_Type_Variable :: T_Range ->
+                     T_Name ->
+                     T_Type
 sem_Type_Variable range_ name_  =
     (let _lhsOtypevariables :: Names
          _lhsOself :: Type
@@ -3380,17 +3379,17 @@ sem_Type_Variable range_ name_  =
      in  ( _lhsOself,_lhsOtypevariables))
 -- TypeRule ----------------------------------------------------
 -- cata
-sem_TypeRule :: TypeRule  ->
-                T_TypeRule 
+sem_TypeRule :: TypeRule ->
+                T_TypeRule
 sem_TypeRule (TypeRule_TypeRule _premises _conclusion )  =
     (sem_TypeRule_TypeRule (sem_SimpleJudgements _premises ) (sem_Judgement _conclusion ) )
 -- semantic domain
-type T_TypeRule  = ([(Name,Tp)]) ->
-                   ([(String,Tp)]) ->
-                   ( ([(Name,Entity)]),Expression,Tp,TypeRule,([(String,Tp)]),Names)
-sem_TypeRule_TypeRule :: T_SimpleJudgements  ->
-                         T_Judgement  ->
-                         T_TypeRule 
+type T_TypeRule = ([(Name,Tp)]) ->
+                  ([(String,Tp)]) ->
+                  ( ([(Name,Entity)]),Expression,Tp,TypeRule,([(String,Tp)]),Names)
+sem_TypeRule_TypeRule :: T_SimpleJudgements ->
+                         T_Judgement ->
+                         T_TypeRule
 sem_TypeRule_TypeRule premises_ conclusion_  =
     (\ _lhsInameMap
        _lhsIsimpleJudgements ->
@@ -3438,15 +3437,15 @@ sem_TypeRule_TypeRule premises_ conclusion_  =
           in  ( _lhsOconclusionAllVariables,_lhsOconclusionExpression,_lhsOconclusionType,_lhsOself,_lhsOsimpleJudgements,_lhsOtypevariables)))
 -- Types -------------------------------------------------------
 -- cata
-sem_Types :: Types  ->
-             T_Types 
+sem_Types :: Types ->
+             T_Types
 sem_Types list  =
     (Prelude.foldr sem_Types_Cons sem_Types_Nil (Prelude.map sem_Type list) )
 -- semantic domain
-type T_Types  = ( Types,Names)
-sem_Types_Cons :: T_Type  ->
-                  T_Types  ->
-                  T_Types 
+type T_Types = ( Types,Names)
+sem_Types_Cons :: T_Type ->
+                  T_Types ->
+                  T_Types
 sem_Types_Cons hd_ tl_  =
     (let _lhsOtypevariables :: Names
          _lhsOself :: Types
@@ -3465,7 +3464,7 @@ sem_Types_Cons hd_ tl_  =
          ( _tlIself,_tlItypevariables) =
              (tl_ )
      in  ( _lhsOself,_lhsOtypevariables))
-sem_Types_Nil :: T_Types 
+sem_Types_Nil :: T_Types
 sem_Types_Nil  =
     (let _lhsOtypevariables :: Names
          _lhsOself :: Types
@@ -3478,15 +3477,15 @@ sem_Types_Nil  =
      in  ( _lhsOself,_lhsOtypevariables))
 -- TypingStrategies --------------------------------------------
 -- cata
-sem_TypingStrategies :: TypingStrategies  ->
-                        T_TypingStrategies 
+sem_TypingStrategies :: TypingStrategies ->
+                        T_TypingStrategies
 sem_TypingStrategies list  =
     (Prelude.foldr sem_TypingStrategies_Cons sem_TypingStrategies_Nil (Prelude.map sem_TypingStrategy list) )
 -- semantic domain
-type T_TypingStrategies  = ( TypingStrategies)
-sem_TypingStrategies_Cons :: T_TypingStrategy  ->
-                             T_TypingStrategies  ->
-                             T_TypingStrategies 
+type T_TypingStrategies = ( TypingStrategies)
+sem_TypingStrategies_Cons :: T_TypingStrategy ->
+                             T_TypingStrategies ->
+                             T_TypingStrategies
 sem_TypingStrategies_Cons hd_ tl_  =
     (let _lhsOself :: TypingStrategies
          _hdOimportEnvironment :: ImportEnvironment
@@ -3507,7 +3506,7 @@ sem_TypingStrategies_Cons hd_ tl_  =
          ( _tlIself) =
              (tl_ )
      in  ( _lhsOself))
-sem_TypingStrategies_Nil :: T_TypingStrategies 
+sem_TypingStrategies_Nil :: T_TypingStrategies
 sem_TypingStrategies_Nil  =
     (let _lhsOself :: TypingStrategies
          _self =
@@ -3517,17 +3516,17 @@ sem_TypingStrategies_Nil  =
      in  ( _lhsOself))
 -- TypingStrategy ----------------------------------------------
 -- cata
-sem_TypingStrategy :: TypingStrategy  ->
-                      T_TypingStrategy 
+sem_TypingStrategy :: TypingStrategy ->
+                      T_TypingStrategy
 sem_TypingStrategy (TypingStrategy_Siblings _names )  =
     (sem_TypingStrategy_Siblings (sem_Names _names ) )
 sem_TypingStrategy (TypingStrategy_TypingStrategy _typerule _statements )  =
     (sem_TypingStrategy_TypingStrategy (sem_TypeRule _typerule ) (sem_UserStatements _statements ) )
 -- semantic domain
-type T_TypingStrategy  = ImportEnvironment ->
-                         ( TS_Errors,TypingStrategy,TS_Warnings)
-sem_TypingStrategy_Siblings :: T_Names  ->
-                               T_TypingStrategy 
+type T_TypingStrategy = ImportEnvironment ->
+                        ( TS_Errors,TypingStrategy,TS_Warnings)
+sem_TypingStrategy_Siblings :: T_Names ->
+                               T_TypingStrategy
 sem_TypingStrategy_Siblings names_  =
     (\ _lhsIimportEnvironment ->
          (let _lhsOerrors :: TS_Errors
@@ -3545,9 +3544,9 @@ sem_TypingStrategy_Siblings names_  =
               ( _namesIself) =
                   (names_ )
           in  ( _lhsOerrors,_lhsOself,_lhsOwarnings)))
-sem_TypingStrategy_TypingStrategy :: T_TypeRule  ->
-                                     T_UserStatements  ->
-                                     T_TypingStrategy 
+sem_TypingStrategy_TypingStrategy :: T_TypeRule ->
+                                     T_UserStatements ->
+                                     T_TypingStrategy
 sem_TypingStrategy_TypingStrategy typerule_ statements_  =
     (\ _lhsIimportEnvironment ->
          (let _statementsOuserConstraints :: (TypeConstraints ConstraintInfo)
@@ -3677,8 +3676,8 @@ sem_TypingStrategy_TypingStrategy typerule_ statements_  =
           in  ( _lhsOerrors,_lhsOself,_lhsOwarnings)))
 -- UserStatement -----------------------------------------------
 -- cata
-sem_UserStatement :: UserStatement  ->
-                     T_UserStatement 
+sem_UserStatement :: UserStatement ->
+                     T_UserStatement
 sem_UserStatement (UserStatement_Equal _leftType _rightType _message )  =
     (sem_UserStatement_Equal (sem_Type _leftType ) (sem_Type _rightType ) _message )
 sem_UserStatement (UserStatement_MetaVariableConstraints _name )  =
@@ -3688,17 +3687,17 @@ sem_UserStatement (UserStatement_Phase _phase )  =
 sem_UserStatement (UserStatement_Pred _predClass _predType _message )  =
     (sem_UserStatement_Pred (sem_Name _predClass ) (sem_Type _predType ) _message )
 -- semantic domain
-type T_UserStatement  = ([((String, Maybe String), MessageBlock)]) ->
-                        Names ->
-                        ([(Name,Tp)]) ->
-                        ConstraintInfo ->
-                        (TypeConstraints ConstraintInfo) ->
-                        Predicates ->
-                        ( Names,UserStatement,Names,(TypeConstraints ConstraintInfo),Predicates)
-sem_UserStatement_Equal :: T_Type  ->
-                           T_Type  ->
+type T_UserStatement = ([((String, Maybe String), MessageBlock)]) ->
+                       Names ->
+                       ([(Name,Tp)]) ->
+                       ConstraintInfo ->
+                       (TypeConstraints ConstraintInfo) ->
+                       Predicates ->
+                       ( Names,UserStatement,Names,(TypeConstraints ConstraintInfo),Predicates)
+sem_UserStatement_Equal :: T_Type ->
+                           T_Type ->
                            String ->
-                           T_UserStatement 
+                           T_UserStatement
 sem_UserStatement_Equal leftType_ rightType_ message_  =
     (\ _lhsIattributeTable
        _lhsImetaVariableConstraintNames
@@ -3734,8 +3733,8 @@ sem_UserStatement_Equal leftType_ rightType_ message_  =
               ( _rightTypeIself,_rightTypeItypevariables) =
                   (rightType_ )
           in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints,_lhsOuserPredicates)))
-sem_UserStatement_MetaVariableConstraints :: T_Name  ->
-                                             T_UserStatement 
+sem_UserStatement_MetaVariableConstraints :: T_Name ->
+                                             T_UserStatement
 sem_UserStatement_MetaVariableConstraints name_  =
     (\ _lhsIattributeTable
        _lhsImetaVariableConstraintNames
@@ -3765,7 +3764,7 @@ sem_UserStatement_MetaVariableConstraints name_  =
                   (name_ )
           in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints,_lhsOuserPredicates)))
 sem_UserStatement_Phase :: Int ->
-                           T_UserStatement 
+                           T_UserStatement
 sem_UserStatement_Phase phase_  =
     (\ _lhsIattributeTable
        _lhsImetaVariableConstraintNames
@@ -3791,10 +3790,10 @@ sem_UserStatement_Phase phase_  =
               _lhsOuserPredicates =
                   _lhsIuserPredicates
           in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints,_lhsOuserPredicates)))
-sem_UserStatement_Pred :: T_Name  ->
-                          T_Type  ->
+sem_UserStatement_Pred :: T_Name ->
+                          T_Type ->
                           String ->
-                          T_UserStatement 
+                          T_UserStatement
 sem_UserStatement_Pred predClass_ predType_ message_  =
     (\ _lhsIattributeTable
        _lhsImetaVariableConstraintNames
@@ -3831,21 +3830,21 @@ sem_UserStatement_Pred predClass_ predType_ message_  =
           in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints,_lhsOuserPredicates)))
 -- UserStatements ----------------------------------------------
 -- cata
-sem_UserStatements :: UserStatements  ->
-                      T_UserStatements 
+sem_UserStatements :: UserStatements ->
+                      T_UserStatements
 sem_UserStatements list  =
     (Prelude.foldr sem_UserStatements_Cons sem_UserStatements_Nil (Prelude.map sem_UserStatement list) )
 -- semantic domain
-type T_UserStatements  = ([((String, Maybe String), MessageBlock)]) ->
-                         Names ->
-                         ([(Name,Tp)]) ->
-                         ConstraintInfo ->
-                         (TypeConstraints ConstraintInfo) ->
-                         Predicates ->
-                         ( Names,UserStatements,Names,(TypeConstraints ConstraintInfo),Predicates)
-sem_UserStatements_Cons :: T_UserStatement  ->
-                           T_UserStatements  ->
-                           T_UserStatements 
+type T_UserStatements = ([((String, Maybe String), MessageBlock)]) ->
+                        Names ->
+                        ([(Name,Tp)]) ->
+                        ConstraintInfo ->
+                        (TypeConstraints ConstraintInfo) ->
+                        Predicates ->
+                        ( Names,UserStatements,Names,(TypeConstraints ConstraintInfo),Predicates)
+sem_UserStatements_Cons :: T_UserStatement ->
+                           T_UserStatements ->
+                           T_UserStatements
 sem_UserStatements_Cons hd_ tl_  =
     (\ _lhsIattributeTable
        _lhsImetaVariableConstraintNames
@@ -3921,7 +3920,7 @@ sem_UserStatements_Cons hd_ tl_  =
               ( _tlImetaVariableConstraintNames,_tlIself,_tlItypevariables,_tlIuserConstraints,_tlIuserPredicates) =
                   (tl_ _tlOattributeTable _tlOmetaVariableConstraintNames _tlOnameMap _tlOstandardConstraintInfo _tlOuserConstraints _tlOuserPredicates )
           in  ( _lhsOmetaVariableConstraintNames,_lhsOself,_lhsOtypevariables,_lhsOuserConstraints,_lhsOuserPredicates)))
-sem_UserStatements_Nil :: T_UserStatements 
+sem_UserStatements_Nil :: T_UserStatements
 sem_UserStatements_Nil  =
     (\ _lhsIattributeTable
        _lhsImetaVariableConstraintNames

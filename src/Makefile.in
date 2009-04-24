@@ -4,6 +4,7 @@
 
 # make		     - build everything that is needed
 # make clean	 - remove .hi and .o files
+# make cleanag - remove all .hs files that are derivatives of .ag files
 
 default: all
 
@@ -43,9 +44,10 @@ status :
 	@echo "               and into  $(hbindir)"
 	@echo "  Libraries will go into $(libdir)"
 	@echo "  Demos will go into     $(demodir)"
-	@echo "  A default .hint-$(VERSION).conf will be generated in: $(HOME)" 
-	@echo "  This ensures that Hint and texthint will use the newly installed"
-	@echo "  version."
+	@echo "  To use this newly installed version, you might need to put a"
+	@echo "  configuration file .hint.conf into your home directory: $(HOME)."
+	@echo "  A default version of this configuration file, called hint.conf,"
+	@echo "  can be found in $(basedir)."
 	@echo "*******************************************************************"
 
 HC	= @WithHc@
@@ -305,8 +307,6 @@ install : smaller
 	$(INSTALL) -m 644 hint.conf $(basedir)
 	touch $(libdir)/simple/*.lvm
 	touch $(libdir)/*.lvm
-	@echo ""
-	@echo "Tell your users to copy $(basedir)/hint.conf to their HOME directory as .hint.conf"
 	
 # $(INSTALL) -m -b 666 hint.conf "$(HOME)/.hint-$(VERSION).conf"  # Unfortunately, this will have root ownership
 # ln -s -f "$(HOME)/.hint-$(VERSION).conf" "$(HOME)/.hint.conf"  # Makes it the default.
