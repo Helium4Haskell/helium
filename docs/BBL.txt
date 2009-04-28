@@ -8,7 +8,7 @@ commit in cvs
 
 BBL versie
 
-make depend
+# make depend should be superfluous now.
 make EXTRA_HC_OPTS=-O2
 cd ../test
 ./testAll
@@ -22,7 +22,7 @@ Thuis versie
 
 ./configure      (= LOGGER UIT!)
 cd src
-make depend
+# make depend should be superfluous now.
 make
 make movetohome
 SetupToGo build
