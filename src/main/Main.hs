@@ -29,8 +29,14 @@ main = do
         Just s  -> return (splitPath s)
     
     let a@(filePath, moduleName, extension) = splitFilePath fullName
-        lvmPath = filter (not.null) . nub 
-                $ (if null filePath then "." else filePath) : lvmPathFromOptionsOrEnv
+        filePath' = if null filePath then "." else filePath
+        lvmPath   = filter (not.null) . nub
+                  $ filePath' : lvmPathFromOptionsOrEnv
+    
+--        lvmPath = filter (not.null) . nub 
+--                $ (if null filePath then "." else filePath) : lvmPathFromOptionsOrEnv
+
+
 
     -- File must exist, this test doesn't use the search path
     fileExists <- doesFileExist fullName
@@ -69,7 +75,7 @@ main = do
 -}
 
     doneRef <- newIORef []
-    make newFullName lvmPath [moduleName] options doneRef
+    make filePath' newFullName lvmPath [moduleName] options doneRef
     return ()
 
 {-
@@ -125,8 +131,8 @@ buildImportGraph fullName lvmPath fullNamesRef verticesRef edgesRef = do
 
 -- returns: recompiled or not? (true = recompiled)
 
-make :: String -> [String] -> [String] -> [Option] -> IORef [(String, Bool)] -> IO Bool
-make fullName lvmPath chain options doneRef =
+make :: String -> String -> [String] -> [String] -> [Option] -> IORef [(String, Bool)] -> IO Bool
+make basedir fullName lvmPath chain options doneRef =
     do
         -- If we already compiled this module, return the result we already now
         done <- readIORef doneRef
@@ -167,7 +173,7 @@ make fullName lvmPath chain options doneRef =
                 if ".lvm" `isSuffixOf` importFullName then
                     return False
                   else
-                    make importFullName lvmPath (chain ++ [importModuleName]) options doneRef
+                    make basedir importFullName lvmPath (chain ++ [importModuleName]) options doneRef
 
             -- Recompile the current module if:
             --  * any of the children was recompiled
@@ -184,7 +190,7 @@ make fullName lvmPath chain options doneRef =
                     (BuildOne `elem` options && moduleName == head chain) ||
                     not upToDate 
                     then do
-                        compile fullName options lvmPath (map fst newDone)
+                        compile basedir fullName options lvmPath (map fst newDone)
                         return True
                       else do
                         putStrLn (moduleName ++ " is up to date")

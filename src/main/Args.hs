@@ -154,6 +154,7 @@ optionDescription moreOptions experimentalOptions =
       , Option "M" [flag AlgorithmM ]                   (NoArg AlgorithmM) "use folklore top-down type inference algorithm M"
       , Option ""  [flag DisableDirectives]             (NoArg DisableDirectives) "disable type inference directives"
       , Option ""  [flag NoRepairHeuristics]            (NoArg NoRepairHeuristics) "don't suggest program fixes"
+      , Option ""  [flag HFullQualification]             (NoArg HFullQualification) "to determine fully qualified names for Holmes"
       ]
       ++
       -- Experimental options
@@ -188,7 +189,7 @@ data Option
    | StopAfterParser | StopAfterStaticAnalysis | StopAfterTypeInferencing | StopAfterDesugar
    | DumpTokens | DumpUHA | DumpCore | DumpCoreToFile 
    | DebugLogger | Host String | Port Int 
-   | DumpTypeDebug | AlgorithmW | AlgorithmM | DisableDirectives | NoRepairHeuristics
+   | DumpTypeDebug | AlgorithmW | AlgorithmM | DisableDirectives | NoRepairHeuristics | HFullQualification
    -- Experimental options
    | ExperimentalOptions | KindInferencing | SignatureWarnings | RightToLeft | NoSpreading
    | TreeWalkTopDown | TreeWalkBottomUp | TreeWalkInorderTopFirstPre | TreeWalkInorderTopLastPre
@@ -251,7 +252,8 @@ instance Show Option where
  show SolverChunks                       = "--solver-chunks"     
  show UnifierHeuristics                  = "--unifier-heuristics"
  show (SelectConstraintNumber cnr)       = "--select-cnr=" ++ (show cnr)
-
+ show HFullQualification                 = "--H-fullqualification"
+ 
 lvmPathFromOptions :: [Option] -> Maybe String
 lvmPathFromOptions [] = Nothing
 lvmPathFromOptions (LvmPath s : _) = Just s

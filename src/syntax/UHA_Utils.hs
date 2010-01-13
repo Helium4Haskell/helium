@@ -10,12 +10,16 @@
 
 module UHA_Utils where
 
-import UHA_Range(noRange, getNameRange)
+--import UHA_Range(noRange, getNameRange)
+import UHA_Range  --altered for Holmes
+import Maybe     --added for Holmes
+import UHA_Syntax --added for Holmes
 import UHA_Syntax(Name(..), ImportDeclaration(..), Pattern(..))
 import Id(Id, idFromString, stringFromId)
 import Char
 import Top.Types(isTupleConstructor)
 import Utils(internalError)
+
 
 instance Eq Name where
    n1 == n2 = getNameName n1 == getNameName n2
@@ -49,6 +53,22 @@ getNameName :: Name -> String -- !!!Name
 getNameName (Name_Identifier _ _ name) = name
 getNameName (Name_Operator   _ _ name) = name
 getNameName (Name_Special    _ _ name) = name
+
+-- added for Holmes
+getHolmesName :: String -> Name -> String -- !!!Name
+getHolmesName altname (Name_Identifier range mod name) = (getFrom range altname) ++ "." ++ name
+getHolmesName altname (Name_Operator   range mod name)  = (getFrom range altname) ++ "." ++ name
+getHolmesName altname (Name_Special    range mod name)  = (getFrom range altname) ++ "." ++ name
+
+getFrom range altname = if result == "" then altname else result
+        where
+             result = snd $ checkRange range
+             checkRange range = if moduleFI == Nothing then ("","") else fromJust $ moduleFI
+             moduleFI = modulesFromImportRange range
+
+getModuleName :: Module -> String       -- added for Holmes
+getModuleName (Module_Module _ (MaybeName_Nothing) _ _) = ""
+getModuleName (Module_Module _ (MaybeName_Just name) _ _) = show name
 
 idFromName :: Name -> Id -- !!!Name
 idFromName (Name_Special _ _ s) = idFromString s

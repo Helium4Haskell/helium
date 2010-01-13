@@ -10,7 +10,7 @@ module ImportEnvironment where
 
 import qualified Data.Map as M
 import Utils (internalError)
-import UHA_Syntax  (Name)
+import UHA_Syntax -- (Name)
 import UHA_Utils
 import Top.Types
 import OperatorTable
@@ -206,6 +206,18 @@ makeInstance className nrOfArgs tp =
    in ( Predicate className (foldl TApp (TCon tp) tps)
       , [ Predicate className x | x <- tps ] 
       )
+
+      
+-- added for holmes
+holmesShowImpEnv :: Module -> ImportEnvironment -> String
+holmesShowImpEnv module_ (ImportEnvironment tcs tss te vcs ot _) =
+      concat functions
+    where
+       localName = getModuleName module_
+       functions =
+          let (xs, ys) = partition (isIdentifierName . fst) (M.assocs te)
+              list     = map (\(n,t) -> getHolmesName localName n) (ys++xs)
+          in map (++ ";") list
 
 instance Show ImportEnvironment where
    show (ImportEnvironment tcs tss te vcs ot _) = 

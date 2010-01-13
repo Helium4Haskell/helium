@@ -15,12 +15,13 @@ import DictionaryEnvironment (DictionaryEnvironment)
 import UHA_Syntax
 import TypeErrors
 import Information (showInformation)
+import System.FilePath.Posix
 
 phaseTypeInferencer :: 
-    String -> Module -> ImportEnvironment -> ImportEnvironment -> [Option] -> 
+    String -> String -> Module -> ImportEnvironment -> ImportEnvironment -> [Option] -> 
     Phase TypeError (DictionaryEnvironment, ImportEnvironment, TypeEnvironment, [Warning])
 
-phaseTypeInferencer fullName module_ localEnv completeEnv options = do
+phaseTypeInferencer basedir fullName module_ localEnv completeEnv options = do
     enterNewPhase "Type inferencing" options
 
     -- 'W' and 'M' are predefined type inference algorithms
@@ -52,6 +53,9 @@ phaseTypeInferencer fullName module_ localEnv completeEnv options = do
           
        [] -> 
           do -- Dump information
+             when (HFullQualification `elem` options) $
+                writeFile (basedir ++ (dropExtension $ takeFileName fullName) ++ ".fqn") (holmesShowImpEnv module_ finalEnv)
+
              when (DumpInformationForAllModules `elem` options) $ 
                 putStrLn (show finalEnv)
              when (  DumpInformationForThisModule `elem` options 

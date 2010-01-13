@@ -23,8 +23,8 @@ import Utils
 import Data.IORef
 import StaticErrors(errorsLogCode)
 
-compile :: String -> [Option] -> [String] -> [String] -> IO ()
-compile fullName options lvmPath doneModules =
+compile :: String -> String -> [Option] -> [String] -> [String] -> IO ()
+compile basedir fullName options lvmPath doneModules =
     do
         let compileOptions = (options, fullName, doneModules)
         putStrLn ("Compiling " ++ fullName)
@@ -83,7 +83,7 @@ compile fullName options lvmPath doneModules =
         -- Phase 8: Type inferencing
         (dictionaryEnv, afterTypeInferEnv, toplevelTypes, typeWarnings) <- 
             doPhaseWithExit maximumNumberOfTypeErrors (const "T") compileOptions $ 
-               phaseTypeInferencer fullName resolvedModule {-doneModules-} localEnv beforeTypeInferEnv options
+               phaseTypeInferencer basedir fullName resolvedModule {-doneModules-} localEnv beforeTypeInferEnv options
 
         unless (NoWarnings `elem` options) $
             showMessages typeWarnings
