@@ -23,6 +23,7 @@ comment = do char '#'
              skipMany (noneOf "\r\n")
         <?> "comment"
 
+eol :: Parser ()
 eol = do oneOf "\n\r"
          return ()
       <?> "end of line"
