@@ -2,7 +2,7 @@ module ConfigFile (Config, readConfig) where
 
 import Char
 import Control.Monad
-import qualified Data.Map as Map
+-- import qualified Data.Map as Map
 import Text.ParserCombinators.Parsec
 import Data.Either
 import Data.Maybe

@@ -47,8 +47,8 @@ data State =
     }
 
 unwordsBy :: String -> [String] -> String
-unwordsBy sep [] = ""
-unwordsBy sep [w] = w
+unwordsBy _   [] = ""
+unwordsBy _   [w] = w
 unwordsBy sep (w:ws) = w ++ sep ++ unwordsBy sep ws
 
 -- The following three definitions are used to support the alert flag
@@ -95,6 +95,7 @@ extractOptions ((k,v):xs) =
                "port"          -> show (Port (read v))
                "lvmpaths"      -> if trim v == "" then "" else show (LvmPath v)
                "additionalheliumparameters" -> v
+               _               -> error "Internal error in texthint/Main.hs"
 
 
 slashify :: String -> String
@@ -273,7 +274,7 @@ loadExistingModule fileName state = do
     let newState = state{ maybeModName = Just baseName, maybeFileName = Just fileName }
         moduleContents = expressionModule "()" newState
     writeInternalModule moduleContents newState
-    (success, output) <- compileInternalModule "" newState
+    (_, output) <- compileInternalModule "" newState
     putStr (removeEvidence output)
     return newState 
 
@@ -312,11 +313,11 @@ cmdBrowse state =
         Nothing -> do
             let moduleContents = "import Prelude\n"
             writeInternalModule moduleContents state
-            (succes, output) <- compileInternalModule "-I -3 -B" state
+            (_, output) <- compileInternalModule "-I -3 -B" state
             putStr (unlines (safeTail (lines output)))
             return state
         Just modName -> do
-            (succes, output) <- compileModule modName "-i -3 -B" state
+            (_, output) <- compileModule modName "-i -3 -B" state
             putStr (unlines (safeTail (lines output)))
             return state
 
@@ -495,7 +496,7 @@ fatal msg = do
     exitWith (ExitFailure 1)
 
 safeTail :: [a] -> [a]
-safeTail (x:xs) = xs
+safeTail (_:xs) = xs
 safeTail [] = []
 
 contains :: Eq a => [a] -> [a] -> Bool
@@ -526,7 +527,7 @@ alertESCAPABLES     = ['"', escapeChar]
 
 -- Escapes all characters from the list escapables
 escape :: [Char] -> String -> String
-escape escapables []     = []
+escape _          []     = []
 escape escapables (x:xs) = 
     if (x `elem` escapables) 
       then escapeChar : rest 
