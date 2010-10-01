@@ -88,11 +88,11 @@ rec predicate tps =
           | otherwise = doc
    in map maybeParenthesize (zip bools docs)
 
-showTwoTypesSpecial (t1,t2) = 
-   let [d1,d2] = typesToAlignedDocs [t1,t2]
-   in (d1,d2)
+--showTwoTypesSpecial (t1,t2) = 
+--   let [d1,d2] = typesToAlignedDocs [t1,t2]
+--   in (d1,d2)
 
-showTwoTypes = showTwoTypesSpecial 
+--showTwoTypes = showTwoTypesSpecial 
    
 allEqual :: Eq a => [a] -> Bool
 allEqual []     = True

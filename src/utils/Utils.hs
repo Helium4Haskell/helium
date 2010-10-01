@@ -11,7 +11,7 @@
 module Utils where
 
 import Data.IORef
-import GHC.IOBase (unsafePerformIO)
+import GHC.IO (unsafePerformIO)
 import List (group, groupBy, sort, elemIndex)
 import Logger
 

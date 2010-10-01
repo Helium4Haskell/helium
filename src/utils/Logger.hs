@@ -13,7 +13,7 @@ import Control.Concurrent
 import Monad
 import System
 import Char
-import List
+-- import List
 import Args
 import IO
 import Version
@@ -70,7 +70,7 @@ normalizeName name = let
 
 -- Escapes all characters from the list escapables
 escape :: [Char] -> String -> String
-escape escapables []     = []
+escape _          []     = []
 escape escapables (x:xs) = 
     if (x `elem` escapables) 
       then escapeChar : rest 
@@ -155,9 +155,9 @@ getContentOfFile loggerDEBUGMODE name =
  `catch`
     (\_ -> return "")
     
-isInterpreterModule :: Maybe ([String],String) -> Bool
-isInterpreterModule Nothing = False
-isInterpreterModule (Just (_, hsFile)) = fileNameWithoutPath hsFile == "Interpreter.hs"
+-- isInterpreterModule :: Maybe ([String],String) -> Bool
+-- isInterpreterModule Nothing = False
+-- isInterpreterModule (Just (_, hsFile)) = fileNameWithoutPath hsFile == "Interpreter.hs"
 
 sendLogString :: String -> Int -> String -> Bool -> IO ()
 sendLogString hostName portNr message loggerDEBUGMODE = withSocketsDo (rec 0)
