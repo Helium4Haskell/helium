@@ -23,7 +23,7 @@ import Top.Types
 
 -- Show function for a data type declaration
 dataShowFunction :: UHA.Declaration -> CoreDecl
-dataShowFunction (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors derivings) =
+dataShowFunction (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
     let typeString = show (typeOfShowFunction name names)
         nameId     = idFromString ("show" ++ getNameName name)
         valueId    = idFromString "value$"
@@ -45,7 +45,7 @@ dataShowFunction (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name nam
 
 -- Show Dictionary for a data type declaration
 dataDictionary :: UHA.Declaration -> CoreDecl
-dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors derivings) =
+dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) _ _) =
     let nameId = idFromString ("show" ++ getNameName name) in
     DeclValue 
     { declName    = idFromString ("$dictShow" ++ getNameName name)
@@ -70,7 +70,7 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
 --   ===>
 -- showT :: (a -> String) -> (b -> String) -> T a b -> String
 -- showT a b = showTuple2 b a 
-typeShowFunction decl@(UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names) type_) =
+typeShowFunction (UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names) type_) =
     let typeString = show (typeOfShowFunction name names) in
     DeclValue 
     { declName    = idFromString ("show" ++ getNameName name)

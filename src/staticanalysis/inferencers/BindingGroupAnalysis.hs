@@ -19,7 +19,7 @@ import TopSort (topSort)
 import Top.Types
 import Top.Ordering.Tree
 import qualified Data.Map as M
-import Data.List
+-- import Data.List
 
 type Assumptions        = M.Map Name [(Name,Tp)]
 type PatternAssumptions = M.Map Name Tp
@@ -79,7 +79,7 @@ performBindingGroup (topLevel, currentChunk, uniqueChunk, monos, typeSignatures,
               Nothing     -> []
               Just (a, c) -> [(currentChunk, (M.empty, a, c))]
         
-        monomorphicNames :: [Name]
+{-      monomorphicNames :: [Name]
         monomorphicNames = 
            let initial = let f (e, a, _) = if any (`elem` ftv monos) (ftv $ map snd $ concat $ M.elems a)
                                              then M.keys e
@@ -90,7 +90,7 @@ performBindingGroup (topLevel, currentChunk, uniqueChunk, monos, typeSignatures,
                                        p (_,a,_) = n `elem` M.keys a
                                        f (e,_,_) = M.keys e
                                    in n : expand (concatMap f xs ++ ns) ys
-           in expand initial groups
+           in expand initial groups -}
                           
         variableDependencies :: OutputBDG
         variableDependencies = 

@@ -28,7 +28,7 @@ import Top.Interface.Substitution (unificationErrorLabel)
 import Top.Interface.TypeInference
 import Utils (internalError)
 import Data.Maybe
-import Data.Char
+-- import Data.Char
 import Data.List
 
 data ConstraintInfo =

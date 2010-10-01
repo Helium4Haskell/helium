@@ -86,7 +86,7 @@ patternToCore' (name, pat) continue nr =
             case l of
                 Literal_Int _ i -> withNr nr $
                     case_ name [ Core.Alt (Core.PatLit (Core.LitInt (read i))) continue ]
-                Literal_Char r c -> withNr nr $
+                Literal_Char _ c -> withNr nr $
                     case_ name 
                     [ Core.Alt  
                         (Core.PatLit 

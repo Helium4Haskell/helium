@@ -6,7 +6,7 @@ import UHA_Utils
 import UHA_Syntax 
 import UHA_Range
 import OperatorTable
-import Char
+-- import Char
 import Utils
 import Messages
 import qualified Data.Map as M
@@ -43,7 +43,7 @@ resolveOperators opTable m =
     in (newModule, errs)
 
 expression opTable e = -- !!! errors ignored
-    let (errs, newE) = sem_Expression e opTable [] 
+    let (_, newE) = sem_Expression e opTable [] 
     in newE
 
 operatorsFromModule :: Module -> OperatorTable
@@ -102,14 +102,14 @@ resolvePattern opTable ps = resolve opTable ps (getOp, applyMinus, applyBinary) 
     getOp _ = Nothing
     
     applyMinus :: Name -> Pattern -> Pattern
-    applyMinus n p@(Pattern_Literal r l) 
+    applyMinus n (Pattern_Literal r l) 
         | n == intUnaryMinusName =
             Pattern_Negate (mergeRanges (getNameRange n) r) l
         | n == floatUnaryMinusName = 
             Pattern_NegateFloat (mergeRanges (getNameRange n) r) l            
         | otherwise = internalError 
                 "ResolveOperators.hs" "resolvePattern.applyMinus" "unknown unary operator"        
-    applyMinus n _ =
+    applyMinus _ _ =
         internalError "ResolveOperators" "resolvePattern" "in patterns unary minus is only allowed in front of literals"         
         
     applyBinary :: Name -> Pattern -> Pattern -> Pattern
@@ -157,7 +157,7 @@ resolve opTable exprs fs@(getOp, applyMinus, applyBinary) state =
         ([op], exprs, errs)
 --    cleanup :: State expr -> expr
     cleanup state@(_:_, _, _)       = cleanup (popOp state)
-    cleanup state@(_, [expr], errs) = (expr, errs)
+    cleanup (_, [expr], errs) = (expr, errs)
     cleanup _ = internalError "ResolveOperators" "cleanup" "invalid state"
     
 

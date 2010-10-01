@@ -10,7 +10,7 @@ module PhaseKindInferencer (phaseKindInferencer) where
 
 import CompileUtils
 import KindInferencing as KI
-import ImportEnvironment
+-- import ImportEnvironment
 import qualified Data.Map as M
 import Top.Types
 import KindErrors

@@ -10,7 +10,7 @@ import TypeConstraints
 import UHA_Syntax
 import Args
 import qualified Data.Map as M
-import TypeConstraints
+-- import TypeConstraints
 import Utils (internalError)
 import TopSort (topSort)
 import ImportEnvironment hiding (setTypeSynonyms)

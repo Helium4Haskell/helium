@@ -54,5 +54,5 @@ makeErrors xs = [ Duplicated entity ys | ((yss, _, _), entity) <- xs, ys <- yss 
 
 makeWarnings :: [(ScopeInfo, Entity)] -> Warnings
 makeWarnings xs =  [ Unused entity name | ((_, names, _), entity) <- xs, name <- names ]
-                ++ [ Shadow n2 n1 | ((_, _, pairs), entity) <- xs, (n1, n2) <- pairs ]
+                ++ [ Shadow n2 n1 | ((_, _, pairs), _) <- xs, (n1, n2) <- pairs ]
 }  

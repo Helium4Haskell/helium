@@ -102,7 +102,7 @@ walkSpine t =
         _ -> internalError "StaticAnalysis" "walkSpine" "unexpected type"
 
 checkKind :: Name -> M.Map Name Int -> Int -> Names -> [Error]
-checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity namesInScope = -- !!!Name
+checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity _ = -- !!!Name
     if expected == useArity then
         []
     else
@@ -240,7 +240,7 @@ makeErrors xs = [ Duplicated entity ys | ((yss, _, _), entity) <- xs, ys <- yss 
 
 makeWarnings :: [(ScopeInfo, Entity)] -> Warnings
 makeWarnings xs =  [ Unused entity name | ((_, names, _), entity) <- xs, name <- names ]
-                ++ [ Shadow n2 n1 | ((_, _, pairs), entity) <- xs, (n1, n2) <- pairs ]
+                ++ [ Shadow n2 n1 | ((_, _, pairs), _) <- xs, (n1, n2) <- pairs ]
 -- Alternative -------------------------------------------------
 -- cata
 sem_Alternative :: Alternative ->
@@ -8516,7 +8516,7 @@ sem_Module_Module range_ name_ exports_ body_  =
               __tup18 =
                   uniqueKeys (  _bodyIcollectTypeConstructors
                              ++ concatMap (M.assocs . typeConstructors) _lhsIimportEnvironments
-                             ++ [ (n,i) | (n,(i,f)) <- _bodyIcollectTypeSynonyms ]
+                             ++ [ (n,i) | (n,(i,_)) <- _bodyIcollectTypeSynonyms ]
                              )
               (_uniqueTypeConstructors,_) =
                   __tup18
