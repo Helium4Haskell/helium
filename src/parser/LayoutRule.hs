@@ -47,7 +47,7 @@ lay :: Token -> [Context] -> [Token] -> [Token]
 -- new context.
 lay     _ 
         cc@(CtxBrace:cs) 
-        input@(t@(pos, lexeme):ts)
+        input@(t@(_, lexeme):ts)
     | lexeme == LexSpecial '}' =
         t : lay t cs ts
     | otherwise = 
@@ -57,7 +57,7 @@ lay     _
 -- the context, too.
 lay     prevToken 
         (CtxLay _ True:cs) 
-        (t@(pos, LexKeyword "in"):ts) 
+        (t@(_, LexKeyword "in"):ts) 
     = (behind prevToken, LexInsertedCloseBrace) : t : lay t cs ts
 
 -- If we're in a layout context and the new token is not on the 
@@ -79,7 +79,7 @@ lay     prevToken@(prevPos, _)
         
 lay _ _ [] = []
 
-lay _ [] input@(t@(pos, _):_) = 
+lay _ [] input@(t@(_, _):_) = 
     t : addContext t [] input
 
 behind :: Token -> SourcePos

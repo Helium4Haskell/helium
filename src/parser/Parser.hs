@@ -574,12 +574,13 @@ exp10 = addRange (
         e <- exp_
         return $ \r -> Expression_Lambda r ps e
     <|>
-    do
+    (do
         lexLET
         ds <- decls
         lexIN
         e <- exp_
         return $ \r -> Expression_Let r ds e
+      <?> "Blob!")
     <|>
     do
         lexIF
@@ -604,7 +605,8 @@ exp10 = addRange (
     ) 
     <|>
     fexp
-    <?> Texts.parserExpression
+    <?> "Blob!"
+-- <?> Texts.parserExpression
 
 {-
 fexp  -> aexp+
