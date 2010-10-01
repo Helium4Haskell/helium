@@ -34,8 +34,8 @@ loggerDEFAULTPORT :: Int
 loggerDEFAULTPORT = 5010
 
 unwordsBy :: String -> [String] -> String
-unwordsBy sep [] = ""
-unwordsBy sep [w] = w
+unwordsBy _   [] = ""
+unwordsBy _   [w] = w
 unwordsBy sep (w:ws) = w ++ sep ++ unwordsBy sep ws
 
 -- Keep only the last of the overloading flags and the last of the logging enable flags.
@@ -59,12 +59,12 @@ simplifyOptions ops =
                                                = collectPaths rest (path : paths) newops
             collectPaths (opt : rest) paths newops
                                                = collectPaths rest paths (opt : newops)                                   
-            keepFirst fromList []              = []
+            keepFirst _        []              = []
             keepFirst fromList (opt : rest)    = if (opt `elem` fromList) then
                                                    opt : optionFilter fromList rest
                                                  else
                                                    opt : keepFirst fromList rest
-            optionFilter fromList []           = []
+            optionFilter _        []           = []
             optionFilter fromList (opt : rest) = if (opt `elem` fromList) then
                                                    optionFilter fromList rest
                                                  else
@@ -89,7 +89,7 @@ processHeliumArgs args = do
     case maybeFiles of
         Nothing ->
           terminateWithMessage options "Error in invocation: the name of the module to be compiled seems to be missing." []
-        Just x ->
+        Just _ ->
           return (options, maybeFiles)
 
 -- Sometimes you know the options are correct. Then you can use this.
