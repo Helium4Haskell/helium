@@ -44,7 +44,7 @@ avoidFolkloreConstraints =
 -- no "unification-around-a-corner-type-error"
 typeVariableInvolved :: HasTwoTypes info => Heuristic info
 typeVariableInvolved = 
-   let f pair@(edgeID, info) = 
+   let f pair@(_, info) = 
           doWithoutEdge pair $
          do typeTuple <- getSubstitutedTypes info
             synonyms  <- getTypeSynonyms

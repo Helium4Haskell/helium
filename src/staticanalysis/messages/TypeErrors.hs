@@ -28,19 +28,19 @@ data TypeError  = TypeError
 type TypeErrorHint  = (String, MessageBlock)
 
 instance HasMessage TypeError where
-   getMessage (TypeError range oneliners table hints) =
+   getMessage (TypeError _ oneliners table hints) =
       let emptyLine  = MessageOneLiner (MessageString "")
           maybeTable | null table = [] 
                      | otherwise  = [ MessageTable (table ++ map (uncurry (<:>)) hints) ]
       in oneliners ++ maybeTable ++ [emptyLine]
-   getRanges (TypeError ranges oneliner table hints) = ranges
+   getRanges (TypeError ranges _ _ _) = ranges
 
 instance Substitutable TypeError where
    sub |-> (TypeError ranges oneliner table hints) =
       let table' = [ (b, sub |-> mb1, sub |-> mb2) | (b, mb1, mb2) <- table ] 
           hints' = [ (s, sub |-> mb) | (s, mb) <- hints ]
       in TypeError ranges (sub |-> oneliner) table' hints'
-   ftv (TypeError ranges oneliner table hints) =
+   ftv (TypeError _ oneliner table hints) =
       ftv oneliner `union` ftv [ [mb1, mb2] | (_, mb1, mb2) <- table ] `union` ftv (map snd hints)
     
 makeNotGeneralEnoughTypeError :: Bool -> Range -> UHA_Source -> TpScheme -> TpScheme -> TypeError
@@ -82,7 +82,7 @@ makeUnresolvedOverloadingError source description (functionType, usedAsType) =
    in TypeError [rangeOfSource source] message table []
       
 makeReductionError :: UHA_Source -> Either (TpScheme, Tp) (String, Maybe Tp) -> ClassEnvironment -> Predicate -> TypeError
-makeReductionError source extra classEnvironment predicate@(Predicate className predicateTp) =
+makeReductionError source extra classEnvironment (Predicate className predicateTp) =
    let location = either (const "function") fst extra
        message  = [ MessageOneLiner $ MessageString $ "Type error in overloaded " ++ location ]
        tab1     = case extra of 
@@ -105,7 +105,7 @@ makeReductionError source extra classEnvironment predicate@(Predicate className 
     hint = case valids of
               []  -> "there are no valid instances of "++className
               [x] -> "valid instance of "++className++" is "++show x
-              xs  -> "valid instances of "++className++" are "++prettyAndList valids
+              _   -> "valid instances of "++className++" are "++prettyAndList valids
          
     valids :: [String]
     valids = let tps              = [ tp | (Predicate _ tp, _) <- instances className classEnvironment ]

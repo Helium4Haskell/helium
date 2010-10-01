@@ -94,7 +94,7 @@ siblingLiterals =
 
          doWithoutEdge pair $
 
-            do synonyms <- getTypeSynonyms
+            do _        <- getTypeSynonyms
                (_, mtp) <- getSubstitutedTypes info
 
                case (literal,mtp) of
@@ -194,7 +194,7 @@ applicationHeuristic =
           
                   -- is there one particular argument that is inconsistent
                   | length incorrectArguments == 1  ->
-                      do let (t1, t2) = getTwoTypes info
+                      do let (t1, _) = getTwoTypes info
                          mtp <- substituteTypeSafe t1
                          case mtp of 
                             Nothing -> return Nothing
@@ -537,7 +537,7 @@ permutationsForLength i = [ ys | xs <- permutationsForLength (i-1), ys <- insert
          
 deleteIndex :: Int -> [a] -> [a]
 deleteIndex _ []     = []
-deleteIndex 0 (a:as) = as
+deleteIndex 0 (_:as) = as
 deleteIndex i (a:as) = a : deleteIndex (i-1) as
 
 permute :: Permutation -> [a] -> [a]
@@ -567,7 +567,7 @@ unifiableInContext classEnv synonyms mps t1 t2
 
 allSubstPredicates :: (HasTypeGraph m info) => m [Maybe Predicate]
 allSubstPredicates =
-   do synonyms <- getTypeSynonyms
+   do _        <- getTypeSynonyms
       allPreds <- allQualifiers
       let f (Predicate s tp) = 
              do mtp <- substituteTypeSafe tp

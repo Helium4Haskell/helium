@@ -54,7 +54,7 @@ instance Substitutable (TypeConstraint info) where
    sub |-> (TC1 c) = TC1 (sub |-> c)
    sub |-> (TC2 c) = TC2 (sub |-> c)
    sub |-> (TC3 c) = TC3 (sub |-> c)
-   sub |-> tc     = tc
+   _   |-> tc     = tc
    ftv (TC1 c)    = ftv c
    ftv (TC2 c)    = ftv c
    ftv (TC3 c)    = ftv c
@@ -79,10 +79,10 @@ polySubst schemeMap tc =
 spreadFunction :: TypeConstraint info -> Maybe Int
 spreadFunction tc =
    case tc of
-      TC1 (Equality t1 t2 info)         -> spreadFromType t2
-      TC3 (Instantiate tp ts info)      -> spreadFromType tp
-      TC3 (Skolemize tp ts info)        -> spreadFromType tp
-      TC3 (Implicit t1 (ms, t2) info)   -> spreadFromType t1
+      TC1 (Equality _ t2 _)             -> spreadFromType t2
+      TC3 (Instantiate tp _ _)          -> spreadFromType tp
+      TC3 (Skolemize tp _ _)            -> spreadFromType tp
+      TC3 (Implicit t1 (_, _) _)        -> spreadFromType t1
       _                                 -> Nothing
 
 spreadFromType :: Tp -> Maybe Int

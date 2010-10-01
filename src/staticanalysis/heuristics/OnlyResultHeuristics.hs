@@ -29,7 +29,7 @@ avoidApplicationConstraints :: (HasTwoTypes info, MaybeApplication info) => Heur
 avoidApplicationConstraints = 
    Heuristic (edgeFilter "Avoid application constraints" f) where
    
-  f pair@(edge, info) = 
+  f pair@(_, info) = 
    case maybeNumberOfArguments info of
       Nothing -> return True
       Just nrArgs ->
@@ -58,7 +58,7 @@ avoidNegationConstraints :: (HasTwoTypes info, MaybeNegation info) => Heuristic 
 avoidNegationConstraints = 
    Heuristic (edgeFilter "Avoid negation constraints" f) where
   
-  f pair@(edge, info) =
+  f pair@(_, info) =
    case maybeNegation info of
       Nothing -> return True
       Just isIntNegation -> doWithoutEdge pair $  

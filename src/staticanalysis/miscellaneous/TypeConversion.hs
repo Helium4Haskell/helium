@@ -61,7 +61,7 @@ predicatesFromContext nameMap (Type_Qualified _ is _) =
          Nothing -> []
          Just tp -> [Predicate (getNameName cn) tp]
      predicateFromContext _ = internalError "TypeConversion.hs" "predicateFromContext" "malformed type in context"
-predicatesFromContext nameMap _ = []
+predicatesFromContext _ _   = []
 
 makeTpFromType :: [(Name,Tp)] -> Type -> Tp    
 makeTpFromType nameMap = rec 
@@ -72,7 +72,7 @@ makeTpFromType nameMap = rec
              Type_Variable _ name          -> maybe (TCon "???") id (lookup name nameMap)                                                      
              Type_Constructor _ name       -> TCon (getNameName name)
              Type_Parenthesized _ t        -> rec t                                                 
-             Type_Qualified _ cs t         -> rec t
+             Type_Qualified _ _ t          -> rec t
              Type_Forall _ _ _             -> internalError "TypeConversion.hs" "makeTpFromType" "universal types are currently not supported"            
              Type_Exists _ _ _             -> internalError "TypeConversion.hs" "makeTpFromType" "existential types are currently not supported"
 
@@ -91,3 +91,5 @@ makeTypeFromTp t =
         else Type_Application noRange True (f x) (map makeTypeFromTp xs)
    where f (TVar i) = Type_Variable noRange    (nameFromString ('v' : show i)) 
          f (TCon s) = Type_Constructor noRange (nameFromString s)
+         f (TApp _ _) = error "TApp case in makeTypeFromTp"
+         

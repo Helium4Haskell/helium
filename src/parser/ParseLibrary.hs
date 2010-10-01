@@ -223,35 +223,35 @@ lexeme lex
 
 lexChar :: HParser String
 lexChar
-  = satisfy (\lex -> case lex of { LexChar c -> Just c; other -> Nothing })
+  = satisfy (\lex -> case lex of { LexChar c -> Just c; _ -> Nothing })
 
 lexString :: HParser String
 lexString
-  = satisfy (\lex -> case lex of { LexString s -> Just s; other -> Nothing })
+  = satisfy (\lex -> case lex of { LexString s -> Just s; _ -> Nothing })
 
 lexDouble :: HParser String
 lexDouble
-  = satisfy (\lex -> case lex of { LexFloat d -> Just d; other -> Nothing })
+  = satisfy (\lex -> case lex of { LexFloat d -> Just d; _ -> Nothing })
 
 lexInt :: HParser String
 lexInt
-  = satisfy (\lex -> case lex of { LexInt i -> Just i; other -> Nothing })
+  = satisfy (\lex -> case lex of { LexInt i -> Just i; _ -> Nothing })
 
 lexVar :: HParser String
 lexVar
-  = satisfy (\lex -> case lex of { LexVar s -> Just s; other -> Nothing })
+  = satisfy (\lex -> case lex of { LexVar s -> Just s; _ -> Nothing })
                           
 lexCon :: HParser String
 lexCon
-  = satisfy (\lex -> case lex of { LexCon s -> Just s; other -> Nothing })
+  = satisfy (\lex -> case lex of { LexCon s -> Just s; _ -> Nothing })
 
 lexVarSym :: HParser String
 lexVarSym
-  = satisfy (\lex -> case lex of { LexVarSym s -> Just s; other -> Nothing })
+  = satisfy (\lex -> case lex of { LexVarSym s -> Just s; _ -> Nothing })
 
 lexConSym :: HParser String
 lexConSym
-  = satisfy (\lex -> case lex of { LexConSym s -> Just s; other -> Nothing })
+  = satisfy (\lex -> case lex of { LexConSym s -> Just s; _ -> Nothing })
 
 
 satisfy :: (Lexeme -> Maybe a) -> HParser a
@@ -259,11 +259,11 @@ satisfy pred
   = tokenPrimEx
         showtok 
         nextpos 
-        (Just (\oldpos (pos,lex) lexemes old -> incSourceColumn pos (lexemeLength lex)))
-        (\(pos,lex) -> pred lex)
+        (Just (\_ (pos,lex) _ _ -> incSourceColumn pos (lexemeLength lex)))
+        (\(_,lex) -> pred lex)
   where
-    showtok (pos,lex)   = show lex
-    nextpos _ _ ((pos,lex):_)
+    showtok (_,lex)   = show lex
+    nextpos _ _ ((pos,_):_)
        = pos
     nextpos pos _ []
        = pos

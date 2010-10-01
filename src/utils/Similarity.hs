@@ -19,8 +19,8 @@ import Utils(internalError)
 
 similar :: String -> String -> Bool
 -- ignore primitives
-similar ('$':c:cs) _  | isAlpha c  = False
-similar _ ('$':c:cs)  | isAlpha c  = False
+similar ('$':c:_) _  | isAlpha c  = False
+similar _ ('$':c:_)  | isAlpha c  = False
 -- normal test
 similar name1' name2' =
     name1 == name2

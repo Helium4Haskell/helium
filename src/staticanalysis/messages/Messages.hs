@@ -57,7 +57,7 @@ instance Substitutable MessageLine where
    ftv ml = case ml of
                MessageOneLiner mb -> ftv mb
                MessageTable table -> ftv [ [mb1, mb2] | (_, mb1, mb2) <- table ]
-               MessageHints s mbs -> ftv mbs
+               MessageHints _ mbs -> ftv mbs
                                        
 instance Substitutable MessageBlock where
 
@@ -157,6 +157,7 @@ prettyNumberOfParameters 1 = "1 parameter"
 prettyNumberOfParameters n = show n++" parameters"
 
 capitalize :: String -> String
+capitalize []     = []
 capitalize (x:xs) = toUpper x : xs
 
 findSimilar :: Name -> Names -> Names

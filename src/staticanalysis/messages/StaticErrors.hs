@@ -60,7 +60,7 @@ instance HasMessage Error where
       IntLiteralTooBig range _    -> [range]
       OverloadingDisabled range   -> [range]
       OverloadedRestrPat name     -> [getNameRange name]
-      WrongOverloadingFlag flag   -> [emptyRange]
+      WrongOverloadingFlag _      -> [emptyRange]
       AmbiguousContext name       -> [getNameRange name]
       UnknownClass name           -> [getNameRange name]
       NonDerivableClass name      -> [getNameRange name]
@@ -112,7 +112,7 @@ showError anError = case anError of
                 
       | any isImportRange nameRanges ->
            let
-               (importRanges, localRanges) = partition isImportRange nameRanges
+               (importRanges, _) = partition isImportRange nameRanges
                plural = if length importRanges > 1 then "s" else ""
            in
               ( MessageString ( 
@@ -127,16 +127,16 @@ showError anError = case anError of
            ( MessageString ("Duplicated " ++ show entity ++ " " ++ (show . show . head) names), [])
                  
     where
-        fromRanges = [ if isImportRange range then
+{-        fromRanges = [ if isImportRange range then
                          Range_Range position position
                        else
                          range
                      | range <- nameRanges
                      , let position = getRangeEnd range
-                     ]
+                     ] -}
         nameRanges   = sort (map getNameRange names)
 
-   LastStatementNotExpr range ->
+   LastStatementNotExpr _ ->
       ( MessageString "Last generator in do {...} must be an expression ", [])
     
    TypeVarApplication name ->
@@ -158,17 +158,17 @@ showError anError = case anError of
       , []
       )
 
-   DefArityMismatch name maybeExpected range ->
+   DefArityMismatch name maybeExpected _ ->
       ( MessageString ("Arity mismatch in function bindings for " ++ show (show name))
       , [ MessageString (show arity ++ " parameters in most of the clauses")
         | Just arity <- [maybeExpected]
         ]
       )
 
-   PatternDefinesNoVars range ->
+   PatternDefinesNoVars _ ->
       ( MessageString "Left hand side pattern defines no variables", [])
 
-   WrongFileName fileName moduleName range ->
+   WrongFileName fileName moduleName _ ->
       ( MessageString ("The file name " ++ show fileName ++ " doesn't match the module name " ++ show moduleName), [])
       
    IntLiteralTooBig _ value ->
@@ -181,7 +181,7 @@ showError anError = case anError of
       , [MessageString "Only functions and simple patterns can have an overloaded type"]
       )
       
-   OverloadingDisabled range ->
+   OverloadingDisabled _ ->
       ( MessageString ("Cannot handle contexts when overloading is disabled")
       , []
       )
@@ -226,7 +226,7 @@ showError anError = case anError of
            ]
       )      
     
-   TupleTooBig r ->
+   TupleTooBig _ ->
     ( MessageString "Tuples can have up to 10 elements"
     , []
     )

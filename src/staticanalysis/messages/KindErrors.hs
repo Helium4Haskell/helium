@@ -32,7 +32,7 @@ kindApplication range uhaType1 uhaType2 (kind1, kind2) =
    KindApplication range (PP.sem_Type uhaType1) (PP.sem_Type uhaType2) kind1 kind2
 
 instance Show KindError where 
-   show kindError = "<kindError>"
+   show _ = "<kindError>"
 
 instance HasMessage KindError where
 
@@ -52,7 +52,7 @@ instance HasMessage KindError where
                  ]
             ] 
             
-         KindApplication r d1 d2 k1 k2 -> 
+         KindApplication _ d1 d2 k1 k2 -> 
             [ MessageOneLiner (MessageString $ "Illegal type in type application")
             , MessageTable
                  [ "type"             <:> MessageString (show d1)

@@ -12,7 +12,7 @@ import Utils (internalError)
 
 
 encloseSep :: String -> String -> String -> [OneLineTree] -> OneLineTree
-encloseSep left sep right [] = OneLineNode [OneLineText left, OneLineText right]
+encloseSep left _   right [] = OneLineNode [OneLineText left, OneLineText right]
 encloseSep left sep right (t:ts) =
     OneLineNode ([ OneLineText left] ++ (t : concatMap (\t -> [OneLineText sep,t]) ts) ++ [OneLineText right] )
 

@@ -116,7 +116,7 @@ xs@(_:rest) `contains` ys = ys `isPrefixOf` xs || rest `contains` ys
 
 lexIntFloat :: Lexer
 lexIntFloat input = do
-    startPos <- getPos
+    _ <- getPos
     let (digits, rest) = span myIsDigit input
     case rest of
         ('.':rest2@(next:_)) 

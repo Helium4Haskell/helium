@@ -30,7 +30,7 @@ commas docs =
     hcat (punctuate (comma <+> empty) docs)
 
 utrechtList :: Doc -> Doc -> [Doc] -> Doc
-utrechtList start end []     = empty
+utrechtList _     _   []     = empty
 utrechtList start end (d:ds) =
     let utrechtList' []     = end
         utrechtList' (d:ds) = comma <+> d <$> utrechtList' ds
@@ -1045,8 +1045,8 @@ sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression
          _operatorItext :: Doc
          _rightExpressionItext :: (        Maybe Doc  )
          _text =
-             let f []       m = m
-                 f n@(c:cs) m = if isAlpha c && all (\c -> c == '_' || c == '\'' || isAlphaNum c) cs then char '`' <> m <> char '`' else m
+             let f []     m = m
+                 f (c:cs) m = if isAlpha c && all (\c -> c == '_' || c == '\'' || isAlphaNum c) cs then char '`' <> m <> char '`' else m
              in
                 case (_leftExpressionItext, _rightExpressionItext) of
                     (Nothing, Nothing) ->
@@ -3186,7 +3186,7 @@ sem_Type_Application range_ prefix_ function_ arguments_  =
              else
                  case _argumentsItext of
                      [a, b] -> a <+> _functionItext <+> b
-                     as     -> text "{- error: Unknown special application notation -}"
+                     _      -> text "{- error: Unknown special application notation -}"
          _lhsOtext =
              _text
          ( _rangeItext) =

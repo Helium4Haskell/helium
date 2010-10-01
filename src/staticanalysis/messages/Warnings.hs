@@ -59,7 +59,7 @@ instance HasMessage Warning where
 showWarning :: Warning -> (MessageBlock {- oneliner -}, MessageBlocks {- hints -})
 showWarning warning = case warning of
 
-   NoTypeDef name tpscheme topLevel simplePat ->
+   NoTypeDef name tpscheme _ simplePat ->
       ( MessageString ("Missing type signature: " ++ showNameAsVariable name ++ " :: " ++ show tpscheme)
       , let hint = "Because " ++ showNameAsVariable name ++ " has an overloaded type, computations may be repeated. " ++
                    "Insert the missing type signature if this is indeed your intention."
@@ -87,19 +87,19 @@ showWarning warning = case warning of
       , [ MessageString ("Did you mean the type constructor " ++ (show.show) conName ++ " ?") ]
       )
 
-   ReduceContext range predicates reduced ->
+   ReduceContext _ predicates reduced ->
       let showPredicates ps = "(" ++ concat (intersperse ", " (map show ps)) ++ ")"  
       in ( MessageString ( "The context " ++ showPredicates predicates ++ " has superfluous predicates." )
          , [ MessageString ("You may change it into " ++ showPredicates reduced ++ ".") ]
          )
 
    
-   MissingPatterns _ Nothing tp pss place sym ->
+   MissingPatterns _ Nothing _ pss place sym ->
       let text = "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
                  ++ concatMap (("\n  " ++).(++ (sym ++ " ...")).concatMap ((++ " ").show.PP.sem_Pattern)) pss
       in (MessageString text, [])
    
-   MissingPatterns _ (Just n) tp pss place sym
+   MissingPatterns _ (Just n) _ pss place sym
      | isOperatorName n -> 
           let name = getNameName n 
               text = "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "

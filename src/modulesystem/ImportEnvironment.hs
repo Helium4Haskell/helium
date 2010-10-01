@@ -166,7 +166,7 @@ createClassEnvironment importenv =
                $ typeEnvironment importenv
          isDict n _ = dictPrefix `isPrefixOf` show n
          dictPrefix = "$dict"
-         classes = ["Eq","Num","Ord","Enum","Show"]
+         -- classes = ["Eq","Num","Ord","Enum","Show"]
          -- TODO: put $ between class name and type in dictionary name
          --  i.e. $dictEq$Int instead of $dictEqInt
          splitDictName ('E':'q':t) = ("Eq", t)
@@ -210,13 +210,13 @@ makeInstance className nrOfArgs tp =
       
 -- added for holmes
 holmesShowImpEnv :: Module -> ImportEnvironment -> String
-holmesShowImpEnv module_ (ImportEnvironment tcs tss te vcs ot _) =
+holmesShowImpEnv module_ (ImportEnvironment _ _ te _ _ _) =
       concat functions
     where
        localName = getModuleName module_
        functions =
           let (xs, ys) = partition (isIdentifierName . fst) (M.assocs te)
-              list     = map (\(n,t) -> getHolmesName localName n) (ys++xs)
+              list     = map (\(n,_) -> getHolmesName localName n) (ys++xs)
           in map (++ ";") list
 
 instance Show ImportEnvironment where
