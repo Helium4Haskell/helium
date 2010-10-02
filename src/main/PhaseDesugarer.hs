@@ -12,9 +12,9 @@ import CompileUtils
 import CorePretty(corePretty)
 import Core(CoreModule, CoreDecl)
 import CoreRemoveDead( coreRemoveDead ) -- remove dead (import) declarations
-import UHA_Syntax(Module(..), Name(..), MaybeName(..))
+import UHA_Syntax(Name(..), MaybeName(..))
 import UHA_Range(noRange)
-import ImportEnvironment(TypeEnvironment, ImportEnvironment)
+import ImportEnvironment()
 import DictionaryEnvironment (DictionaryEnvironment)
 import qualified CodeGeneration(sem_Module)
 

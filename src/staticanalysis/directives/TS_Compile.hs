@@ -41,7 +41,7 @@ readTypingStrategiesFromFile options filename importEnvironment =
                 putStrLn "Parse error in typing strategy: "
                 putStr . sortAndShowMessages $ [lexError]
                 exitWith (ExitFailure 1)
-              Right (tokens, lexerWarnings) ->
+              Right (tokens, _) ->
                case parseTypingStrategies (operatorTable importEnvironment) filename tokens of
                   Left parseError -> do
                     putStrLn "Parse error in typing strategy: " 

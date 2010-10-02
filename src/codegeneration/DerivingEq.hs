@@ -63,9 +63,9 @@ makeAlt constructor =
     (id, types) = nameAndTypes constructor
     vs = [ idFromString ("$v"++show i) | i <- [0..length types-1] ]
     ws = [ idFromString ("$w"++show i) | i <- [0..length types-1] ]
-    constructorToPat :: Id -> [UHA.Type] -> Pat
+{-  constructorToPat :: Id -> [UHA.Type] -> Pat
     constructorToPat id ts =
-        PatCon (ConId id) [ idFromNumber i | i <- [1..length ts] ]
+        PatCon (ConId id) [ idFromNumber i | i <- [1..length ts] ] -}
     andCore x y = Ap (Ap (Var (idFromString "&&")) x) y
     
 nameAndTypes :: UHA.Constructor -> (Id, [UHA.Type])

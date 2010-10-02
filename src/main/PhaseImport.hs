@@ -26,7 +26,7 @@ phaseImport :: String -> Module -> [String] -> [Option] ->
 phaseImport fullName module_ lvmPath options = do
     enterNewPhase "Importing" options
 
-    let (filePath, baseName, _) = splitFilePath fullName
+    let (_, baseName, _) = splitFilePath fullName
 
     -- Add HeliumLang and Prelude import
     let moduleWithExtraImports = addImplicitImports module_
@@ -61,8 +61,8 @@ chaseImports lvmPath mod =
 --   the Prelude is not explicitly imported
 -- Always add "import HeliumLang
 addImplicitImports :: Module -> Module
-addImplicitImports m@(Module_Module moduleRange maybeName exports
-                    (Body_Body bodyRange explicitImportDecls decls)) =
+addImplicitImports (Module_Module moduleRange maybeName exports
+                   (Body_Body bodyRange explicitImportDecls decls)) =
     Module_Module
         moduleRange
         maybeName

@@ -88,7 +88,7 @@ onlyImports =
     do
         lexMODULE
         modid
-        let mes = MaybeExports_Nothing
+        let _ = MaybeExports_Nothing
         lexWHERE
         lexLBRACE <|> lexINSERTED_LBRACE
         many (do { i <- impdecl; semicolon; return i })
@@ -526,7 +526,7 @@ exp0 = addRange (
     do  
         u <- maybeUnaryMinus
         es <- exprChain
-        return $ \r -> Expression_List noRange (u ++ es)
+        return $ \_ -> Expression_List noRange (u ++ es)
     )
     <?> Texts.parserExpression        
 
@@ -905,7 +905,7 @@ pat = addRange $
                 o <- do { n <- conop; return (Pattern_Variable noRange n) }
                 u <- unaryMinusPat
                 return (o : u)
-        return $ \r -> Pattern_List noRange (u ++ ps)
+        return $ \_ -> Pattern_List noRange (u ++ ps)
         
 unaryMinusPat :: HParser [Pattern]
 unaryMinusPat = 

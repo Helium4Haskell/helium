@@ -52,7 +52,7 @@ status :
 
 HC	= @WithHc@
 IFACES	= $(LVMLIBDIR)/common:$(LVMLIBDIR)/common/ghc:$(LVMLIBDIR)/lvm:$(LVMLIBDIR)/asm:$(LVMLIBDIR)/core:./utils:./parser:./staticanalysis/miscellaneous:./staticanalysis/inferencers:./staticanalysis/directives:./staticanalysis/staticchecks:./staticanalysis/heuristics:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem:$(TOPDIR)/..:./texthint
-GHCWARN = -W -fwarn-tabs -fwarn-duplicate-exports -fwarn-orphans -fwarn-unused-imports # -fwarn-missing-signatures
+GHCWARN = -W -fwarn-tabs -fwarn-duplicate-exports -fwarn-unused-imports # -fwarn-missing-signatures
 HC_OPTS = --make $(GHCWARN) -static -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@

@@ -5,7 +5,7 @@ module TS_Apply where
 import UHA_Syntax
 import TypeConstraints
 import ConstraintInfo
-import Top.Types
+--import Top.Types
 import List
 import Utils (internalError)
 import Messages
@@ -35,17 +35,17 @@ matchInformation importEnvironment typingStrategy =
       TypingStrategy _ (TypeRule premises conclusion) _ -> 
          let Judgement exprstring _ = conclusion
              expression = expressionParser (operatorTable importEnvironment) exprstring
-             metas      = [ s | Judgement s t <- premises ]
+             metas      = [ s | Judgement s _ <- premises ]
          in [(expression, metas)]
       _ -> []
       
 expressionParser :: OperatorTable -> String -> Expression
 expressionParser operatorTable string = 
     case strategiesLexer "TS_Apply" string of
-        Left lexErr -> intErr
+        Left _ -> intErr
         Right (tokens, _) ->
             case runHParser exp_ "TS_Apply" tokens True {- wait for EOF -} of
-                Left parseError  -> intErr
+                Left _  -> intErr
                 Right expression -> 
                     ResolveOperators.expression operatorTable expression
   where

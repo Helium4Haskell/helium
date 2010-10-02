@@ -17,7 +17,7 @@ import Directory(doesFileExist, getModificationTime)
 import CompileUtils
 import Data.IORef
 import Args
-import Utils
+-- import Utils
 
 main :: IO ()
 main = do
@@ -28,7 +28,7 @@ main = do
         Nothing -> getLvmPath
         Just s  -> return (splitPath s)
     
-    let a@(filePath, moduleName, extension) = splitFilePath fullName
+    let (filePath, moduleName, _) = splitFilePath fullName
         filePath' = if null filePath then "." else filePath
         lvmPath   = filter (not.null) . nub
                   $ filePath' : lvmPathFromOptionsOrEnv
@@ -211,7 +211,7 @@ circularityCheck (import_:imports) chain =
     case elemIndex import_ chain of
         Just index -> Just (drop index chain ++ [import_])
         Nothing -> circularityCheck imports chain
-circularityCheck [] chain = Nothing
+circularityCheck [] _ = Nothing
 
 foreach = flip mapM
 

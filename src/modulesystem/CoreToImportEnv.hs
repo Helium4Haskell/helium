@@ -37,10 +37,10 @@ typeFromCustoms n ( CustomDecl (DeclKindCustom id) [CustomBytes bytes] : cs)
 parseFromString :: HParser a -> String -> a
 parseFromString p string = 
     case lexer "CoreToImportEnv" string of 
-        Left lexErr -> internalError "CoreToImportEnv" "parseFromString" ("lex error in " ++ string)
+        Left _ -> internalError "CoreToImportEnv" "parseFromString" ("lex error in " ++ string)
         Right (tokens, _) ->
             case runHParser p "CoreToImportEnv" tokens True {- wait for EOF -} of
-                Left parseError  -> internalError "CoreToImportEnv" "parseFromString" ("parse error in " ++ string)
+                Left _  -> internalError "CoreToImportEnv" "parseFromString" ("parse error in " ++ string)
                 Right x -> x
 
 typeSynFromCustoms :: String -> [Custom] -> (Int, Tps -> Tp) -- !!! yuck
@@ -72,15 +72,15 @@ arityFromCustoms :: String -> [Custom] -> Int
 arityFromCustoms n [] =
     internalError "CoreToImportEnv" "arityFromCustoms"
         ("type constructor import without kind: " ++ n)
-arityFromCustoms n ( CustomInt arity : _ ) = arity
-arityFromCustoms n ( CustomDecl (DeclKindCustom id) [CustomBytes bytes] : cs ) 
+arityFromCustoms _ ( CustomInt arity : _ ) = arity
+arityFromCustoms _ ( CustomDecl (DeclKindCustom id) [CustomBytes bytes] : _ ) 
     | stringFromId id == "kind" = 
         (length . filter ('*'==) . Byte.stringFromBytes) bytes - 1
         -- the number of stars minus 1 is the arity
 arityFromCustoms n (_:cs) = arityFromCustoms n cs
 
 makeOperatorTable :: Name -> [Custom] -> [(Name, (Int, Assoc))]
-makeOperatorTable op (Core.CustomInt i : Core.CustomBytes bs : cs) =
+makeOperatorTable op (Core.CustomInt i : Core.CustomBytes bs : _) =
     let
         assoc =
             case stringFromBytes bs of
@@ -100,7 +100,7 @@ makeOperatorTable op (Core.CustomInt i : Core.CustomBytes bs : cs) =
             ]
         else
             [(op, (i, assoc))]
-makeOperatorTable op cs = 
+makeOperatorTable op _ = 
     internalError "CoreToImportEnv" "makeOperatorTable"
         ("infix decl missing priority or associativity: " ++ show op)
 

@@ -12,7 +12,7 @@ import CompileUtils
 import Warnings(Warning)
 import TypeInferencing(typeInferencing)
 import DictionaryEnvironment (DictionaryEnvironment)
-import UHA_Syntax
+--import UHA_Syntax
 import TypeErrors
 import Information (showInformation)
 import System.FilePath.Posix
@@ -56,7 +56,7 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options = do
              when (DumpInformationForAllModules `elem` options) $ 
                 putStrLn (show finalEnv)
              when (HFullQualification `elem` options) $
-       		writeFile (combinePathAndFile basedir (dropExtension $ takeFileName fullName) ++ ".fqn") 
+                writeFile (combinePathAndFile basedir (dropExtension $ takeFileName fullName) ++ ".fqn") 
                           (holmesShowImpEnv module_ finalEnv)
              when (  DumpInformationForThisModule `elem` options 
                   && DumpInformationForAllModules `notElem` options

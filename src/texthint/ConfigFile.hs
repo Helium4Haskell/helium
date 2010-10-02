@@ -1,10 +1,10 @@
 module ConfigFile (Config, readConfig) where
 
 import Char
-import Control.Monad
+--  import Control.Monad
 -- import qualified Data.Map as Map
 import Text.ParserCombinators.Parsec
-import Data.Either
+--import Data.Either
 import Data.Maybe
 
 type Config = [(String,String)]
@@ -23,10 +23,12 @@ comment = do char '#'
              skipMany (noneOf "\r\n")
         <?> "comment"
 
+{- 
 eol :: Parser ()
 eol = do oneOf "\n\r"
          return ()
       <?> "end of line"
+-}
 
 item :: Parser (String, String)
 item = do key <- ident

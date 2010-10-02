@@ -77,7 +77,7 @@ everythingPublicButPrelude :: Core.CoreModule -> Core.CoreModule
 everythingPublicButPrelude mod = mod { Core.moduleDecls = map setPublic (Core.moduleDecls mod) }
   where
     setPublic decl = 
-        let accessRecord = Core.declAccess decl
+        let -- accessRecord = Core.declAccess decl
             public = case Core.declAccess decl of 
                     Core.Defined _ -> True
                     Core.Imported { Core.importModule = m } -> 

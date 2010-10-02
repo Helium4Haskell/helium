@@ -52,7 +52,7 @@ import UHA_Utils
 typeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (IO (), DictionaryEnvironment, TypeEnvironment, TypeErrors, Warnings)
 typeInferencing options importEnv module_ =
-   let (_, dictionaryEnv, _, logEntries, _, solveResult, toplevelTypes, typeErrors, warnings) =
+   let (_, dictionaryEnv, _, logEntries, _, _, toplevelTypes, typeErrors, warnings) =
             TypeInferencing.sem_Module module_ importEnv options
        debugIO = putStrLn (show logEntries)
    in (debugIO, dictionaryEnv, toplevelTypes, typeErrors, warnings)
