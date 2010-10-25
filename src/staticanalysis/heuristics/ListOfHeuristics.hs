@@ -85,13 +85,13 @@ constraintFromUser path =
  where
    helper path edges = 
       let
-          bestEdge = rec path
+          bestEdge = rec_ path
           edgeNrs  = [ i | (EdgeId _ _ i, _) <- edges ]
  
-          rec path =
+          rec_ path =
              case path of
-                x :|: y -> f min (rec x) (rec y)
-                x :+: y -> f max (rec x) (rec y)
+                x :|: y -> f min (rec_ x) (rec_ y)
+                x :+: y -> f max (rec_ x) (rec_ y)
                 Step (EdgeId _ _ cNR, info) |  isJust (maybeUserConstraint info) && cNR `elem` edgeNrs 
                         -> Just cNR
                 _       -> Nothing

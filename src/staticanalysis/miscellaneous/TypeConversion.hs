@@ -64,15 +64,15 @@ predicatesFromContext nameMap (Type_Qualified _ is _) =
 predicatesFromContext _ _   = []
 
 makeTpFromType :: [(Name,Tp)] -> Type -> Tp    
-makeTpFromType nameMap = rec 
+makeTpFromType nameMap = rec_ 
   where                    
-        rec :: Type -> Tp
-        rec uhaType = case uhaType of  
-             Type_Application _ _ fun args -> foldl TApp (rec fun) (map rec args)
+        rec_ :: Type -> Tp
+        rec_ uhaType = case uhaType of  
+             Type_Application _ _ fun args -> foldl TApp (rec_ fun) (map rec_ args)
              Type_Variable _ name          -> maybe (TCon "???") id (lookup name nameMap)                                                      
              Type_Constructor _ name       -> TCon (getNameName name)
-             Type_Parenthesized _ t        -> rec t                                                 
-             Type_Qualified _ _ t          -> rec t
+             Type_Parenthesized _ t        -> rec_ t                                                 
+             Type_Qualified _ _ t          -> rec_ t
              Type_Forall _ _ _             -> internalError "TypeConversion.hs" "makeTpFromType" "universal types are currently not supported"            
              Type_Exists _ _ _             -> internalError "TypeConversion.hs" "makeTpFromType" "existential types are currently not supported"
 

@@ -179,10 +179,10 @@ matchConverter3 = let insert (metas,(a,b,c)) (as,bs,cs) = ((a,metas):as,(b,metas
                   in foldr insert ([],[],[]) 
 
 allMatch :: [Maybe [a]] -> Maybe [a]
-allMatch = rec []
-  where rec xs []             = Just xs
-        rec xs (Nothing:_)    = Nothing
-        rec xs (Just ys:rest) = rec (ys ++ xs) rest
+allMatch = rec_ []
+  where rec_ xs []             = Just xs
+        rec_ xs (Nothing:_)    = Nothing
+        rec_ xs (Just ys:rest) = rec_ (ys ++ xs) rest
 
 data Match a = NoMatch | NonTerminalMatch a | MetaVariableMatch String
 

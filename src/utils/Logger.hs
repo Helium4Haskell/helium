@@ -160,19 +160,19 @@ getContentOfFile loggerDEBUGMODE name =
 -- isInterpreterModule (Just (_, hsFile)) = fileNameWithoutPath hsFile == "Interpreter.hs"
 
 sendLogString :: String -> Int -> String -> Bool -> IO ()
-sendLogString hostName portNr message loggerDEBUGMODE = withSocketsDo (rec 0)
+sendLogString hostName portNr message loggerDEBUGMODE = withSocketsDo (rec_ 0)
  where
-    rec i = do --installHandler sigPIPE Ignore Nothing
+    rec_ i = do --installHandler sigPIPE Ignore Nothing
              handle <- connectTo hostName (PortNumber (fromIntegral portNr))
              hSetBuffering handle (BlockBuffering (Just 1024))
              sendToAndFlush handle message loggerDEBUGMODE
-          `catch`       
+           `catch`       
               \exception -> 
                  if i+1 >= loggerTRIES 
                    then debug ( "Could not make a connection: no send (" ++ show exception ++ ")" ) loggerDEBUGMODE
                    else do debug ( "Could not make a connection: sleeping (" ++ show exception ++ ")" ) loggerDEBUGMODE
                            threadDelay loggerDELAY
-                           rec (i+1)
+                           rec_ (i+1)
                 
 {- from Utils.hs.....because of the import-dependencies, it is not possible to import 
    this function directly -}

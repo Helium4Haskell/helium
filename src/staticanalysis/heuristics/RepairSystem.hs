@@ -78,12 +78,12 @@ substituteLocalType aexpr =
 rootOfInfoTree :: InfoTree -> InfoTree
 rootOfInfoTree infoTree
    | isBlock (makeAExpr infoTree) = infoTree
-   | otherwise = rec infoTree
+   | otherwise = rec_ infoTree
  where
-   rec thisTree = 
+   rec_ thisTree = 
       case parent thisTree of
          Just it | not . isBlock . makeAExpr $ it
-            -> rec it
+            -> rec_ it
          _  -> thisTree
 
 makeAExpr :: InfoTree -> AExpr LocalInfo

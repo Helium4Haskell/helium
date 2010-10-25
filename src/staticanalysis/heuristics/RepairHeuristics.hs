@@ -515,16 +515,16 @@ unaryMinus overloading =
 heuristics_MAX = 120 :: Int
 
 zipWithHoles :: [a] -> [b] -> [ ( [Int] , [(a,b)] ) ] 
-zipWithHoles = rec 0 where
+zipWithHoles = rec_ 0 where
 
-   rec i [] bs = [ (take (length bs) [i..] , []) ]
-   rec i as [] = [ (take (length as) [i..] , []) ]
-   rec i (a:as) (b:bs) = case compare (length as) (length bs) of
-         LT -> [ (  is,(a,b):zl) | (is,zl) <- rec (i+1) as     bs ]
-            ++ [ (i:is,      zl) | (is,zl) <- rec (i+1) (a:as) bs ]
+   rec_ i [] bs = [ (take (length bs) [i..] , []) ]
+   rec_ i as [] = [ (take (length as) [i..] , []) ]
+   rec_ i (a:as) (b:bs) = case compare (length as) (length bs) of
+         LT -> [ (  is,(a,b):zl) | (is,zl) <- rec_ (i+1) as     bs ]
+            ++ [ (i:is,      zl) | (is,zl) <- rec_ (i+1) (a:as) bs ]
          EQ -> [ ([],zip (a:as) (b:bs)) ] 
-         GT -> [ (  is,(a,b):zl) | (is,zl) <- rec (i+1) as bs     ]
-            ++ [ (i:is,      zl) | (is,zl) <- rec (i+1) as (b:bs) ]
+         GT -> [ (  is,(a,b):zl) | (is,zl) <- rec_ (i+1) as bs     ]
+            ++ [ (i:is,      zl) | (is,zl) <- rec_ (i+1) as (b:bs) ]
 
 type Permutation = [Int]
 

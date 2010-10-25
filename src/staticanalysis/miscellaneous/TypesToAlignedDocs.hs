@@ -35,7 +35,7 @@ typesToAlignedDocs tps
                                  in (xs, foldr (.->.) t ys)
            (left, right)  = unzip tupleSpines
            docsLeft       = recs (<1) left
-           docsRight      = rec  (const False) right
+           docsRight      = rec_  (const False) right
        in map funDocs (zipWith (\xs x -> xs++[x]) docsLeft docsRight)
   
    | allVariable
@@ -45,7 +45,7 @@ typesToAlignedDocs tps
      = map PPrint.text (sameLength [ s | (TCon s, _) <- spines])
    
    | allListType
-     = map PPrint.squares (rec (const False) (map (head . snd) spines))
+     = map PPrint.squares (rec_ (const False) (map (head . snd) spines))
 
    | allSameTuple
      = map tupleDocs (recs (const False) (map snd spines))   
@@ -76,10 +76,10 @@ typesToAlignedDocs tps
                            && all (2==) [length xs | (_, xs) <- spines ]
 
 recs :: (Int -> Bool) -> [Tps] -> [[PPrint.Doc]]
-recs predicate = transpose . map (rec predicate) . transpose 
+recs predicate = transpose . map (rec_ predicate) . transpose 
 
-rec :: (Int -> Bool) -> Tps -> [PPrint.Doc]    
-rec predicate tps = 
+rec_ :: (Int -> Bool) -> Tps -> [PPrint.Doc]    
+rec_ predicate tps = 
    let docs  = typesToAlignedDocs tps     
        bools = map (predicate . priorityOfType) tps
        maybeParenthesize (b, doc) 
