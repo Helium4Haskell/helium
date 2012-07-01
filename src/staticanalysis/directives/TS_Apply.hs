@@ -6,7 +6,7 @@ import UHA_Syntax
 import TypeConstraints
 import ConstraintInfo
 --import Top.Types
-import List
+import Data.List
 import Utils (internalError)
 import Messages
 import TypeErrors

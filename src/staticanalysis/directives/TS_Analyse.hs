@@ -9,7 +9,7 @@ import TypeConstraints
 import ConstraintInfo
 import TS_Syntax
 import TypeConversion
-import List
+import Data.List
 import UHA_Utils (nameFromString)
 import UHA_Range (noRange)
 import Messages

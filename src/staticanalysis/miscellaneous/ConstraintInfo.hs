@@ -1,4 +1,4 @@
-{-# OPTIONS -XTypeSynonymInstances #-}
+{-# OPTIONS -XTypeSynonymInstances -XFlexibleInstances #-}
 {-| Module      :  ConstraintInfo
     License     :  GPL
 

@@ -40,7 +40,7 @@ import qualified Data.Map as M
 import Data.Maybe 
 
 
-import List
+import Data.List
 import Matchers
 import TS_Apply (applyTypingStrategy, matchInformation)
 import TS_CoreSyntax

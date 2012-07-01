@@ -8,7 +8,7 @@
 
 module OneLiner(OneLineTree(..), showOneLine) where
 
-import List
+import Data.List
 
 data OneLineTree 
     = OneLineNode [OneLineTree]

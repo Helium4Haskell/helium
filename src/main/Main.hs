@@ -10,13 +10,14 @@ module Main where
 import Compile(compile)
 import Parser(parseOnlyImports)
 
-import List(nub, elemIndex, isSuffixOf, intersperse)
-import Maybe(fromJust)
+import Data.List(nub, elemIndex, isSuffixOf, intersperse)
+import Data.Maybe(fromJust)
 import Standard(getLvmPath, splitPath)
-import Directory(doesFileExist, getModificationTime)
+import System.Directory(doesFileExist, getModificationTime)
+import Args
 import CompileUtils
 import Data.IORef
-import Args
+import System.Environment
 -- import Utils
 
 main :: IO ()

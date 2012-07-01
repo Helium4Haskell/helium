@@ -15,10 +15,10 @@ import Messages
 import Top.Types
 import qualified PPrint
 import qualified OneLiner
-import List                (intersperse, zipWith4)
+import Data.List                (intersperse, zipWith4)
 import TypesToAlignedDocs  (qualifiedTypesToAlignedDocs)
 import UHA_Range           (isImportRange, showRanges)
-import Char                (isSpace)
+import Data.Char                (isSpace)
 
 ----------------------------------------------------------
 -- message parameters

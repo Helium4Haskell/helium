@@ -3,11 +3,11 @@
 module UHA_OneLine where
 
 import OneLiner
-import Char
+import Data.Char
 import UHA_Utils (showNameAsOperator)
 import TypeConversion
 import UHA_Syntax
-import List
+import Data.List
 import Utils (internalError)
 
 

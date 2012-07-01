@@ -16,15 +16,17 @@
 
 module Main where
 
-import Char
+import Data.Char
 import Data.List(isInfixOf, isPrefixOf, isSuffixOf)
-import Monad(when)
-import IO(stdout, hFlush)
+import Control.Monad(when)
+import System.IO(stdout, hFlush)
 import Data.IORef       ( IORef, readIORef, newIORef, writeIORef )
 import System.IO.Unsafe ( unsafePerformIO )
-import System(system, getEnv, getArgs, exitWith, ExitCode(..))
+import System.Environment(getEnv, getArgs)
+import System.Process(system)
+import System.Exit(exitWith, ExitCode(..))
 import OSSpecific(slash)
-import Directory
+import System.Directory
 import ConfigFile(Config, readConfig)
 import Args
 

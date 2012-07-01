@@ -17,7 +17,7 @@ module CoreUtils
 
 import Core
 import Id
-import Char
+import Data.Char
 import Byte(bytesFromString)
 
 infixl `app_`

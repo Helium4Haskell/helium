@@ -11,8 +11,8 @@ module UHA_Range where
 import UHA_Syntax
 import Id(Id, stringFromId)
 import Utils(internalError)
-import Maybe(isJust)
-import List(sort, partition)
+import Data.Maybe(isJust)
+import Data.List(sort, partition)
 
 --------------------------------------------------------------
 -- instances for Range and Position

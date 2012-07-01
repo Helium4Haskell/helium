@@ -19,8 +19,8 @@ import Top.Types
 import OneLiner
 import Similarity (similar)
 import Utils      (internalError)
-import List       (sortBy, partition)
-import Char       (toUpper)
+import Data.List       (sortBy, partition)
+import Data.Char       (toUpper)
 
 type Message       = [MessageLine] 
 

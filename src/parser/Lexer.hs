@@ -19,9 +19,9 @@ import LexerToken
 import Text.ParserCombinators.Parsec.Pos
 import Utils(internalError)
 
-import Monad(when)
-import Char(ord)
-import List(isPrefixOf)
+import Control.Monad(when)
+import Data.Char(ord)
+import Data.List(isPrefixOf)
 
 lexer :: String -> [Char] -> Either LexerError ([Token], [LexerWarning])
 lexer fileName input = runLexerMonad fileName (mainLexer input)

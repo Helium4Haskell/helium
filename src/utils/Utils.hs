@@ -12,7 +12,7 @@ module Utils where
 
 import Data.IORef
 import GHC.IO (unsafePerformIO)
-import List (group, groupBy, sort, elemIndex)
+import Data.List (group, groupBy, sort, elemIndex)
 import Logger
 
 -------------------------------------------------------

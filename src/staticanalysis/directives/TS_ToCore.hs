@@ -12,7 +12,7 @@ import UHA_Utils (getNameName, nameFromString)
 import qualified UHA_OneLine 
 import TypeConversion
 import Utils (internalError)
-import List
+import Data.List
 import OneLiner
 import TS_Attributes
 import TypeConstraints

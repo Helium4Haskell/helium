@@ -474,13 +474,13 @@ eqList ''$dictEqElem'' xs ys =
             case ys of 
                 (:) yh yt ->
                     case (==) ''$dictEqElem'' xh yh of
-                        True -> eqList ''$dictEqElem'' xt yt
+                        True  -> eqList ''$dictEqElem'' xt yt
                         False -> False
                 _ -> False
         _ -> case ys of
                 [] -> True
                 _  -> False
-                    
+
 not :: Bool -> Bool
 not x = case x of True -> False
                   False -> True

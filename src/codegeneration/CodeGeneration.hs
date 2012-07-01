@@ -9,7 +9,7 @@ import ImportEnvironment
 import DictionaryEnvironment
 import qualified Data.Map as M
 import TypeConversion
-import Char (ord)
+import Data.Char (ord)
 
 import Id
 import IdSet 

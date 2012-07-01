@@ -14,7 +14,7 @@ import Top.Types
 import UHA_Syntax (Range, Type)
 import PPrint (Doc)
 import Messages
-import List (union)
+import Data.List (union)
 import qualified UHA_Pretty as PP
 import qualified PPrint
 

@@ -14,7 +14,7 @@
 
 module Similarity(similar) where
 
-import Char
+import Data.Char
 import Utils(internalError)
 
 similar :: String -> String -> Bool

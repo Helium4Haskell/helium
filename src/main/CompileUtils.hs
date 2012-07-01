@@ -19,9 +19,10 @@ module CompileUtils
 import Args(Option(..))
 import Messages(HasMessage)
 import HeliumMessages(sortAndShowMessages)
-import Monad(when, unless)
+import Control.Monad(when, unless)
 import Utils(splitFilePath, combinePathAndFile)
-import System(exitWith, ExitCode(..), getArgs)
+import System.Exit(exitWith, ExitCode(..))
+import System.Environment(getArgs)
 import Logger
 import ImportEnvironment
 import UHA_Syntax(Module(..))

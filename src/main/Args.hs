@@ -21,10 +21,11 @@ module Args
     , hasAlertOption
     ) where
 
-import System
+import System.Environment
+import System.Exit
 import Version
 import Data.Char
-import Monad(when)
+import Control.Monad(when)
 import System.Console.GetOpt
 
 loggerDEFAULTHOST :: String

@@ -15,13 +15,13 @@ module TS_Compile where
 import TS_CoreSyntax
 import ImportEnvironment
 import TS_ToCore      (typingStrategyToCore)
-import System         (exitWith, ExitCode(..) )
-import Directory      (doesFileExist)
+import System.Exit         (exitWith, ExitCode(..) )
+import System.Directory      (doesFileExist)
 import TS_Parser      (parseTypingStrategies)
 import Lexer          (strategiesLexer)
 import TS_Analyse     (analyseTypingStrategies)
 import HeliumMessages (sortAndShowMessages)
-import Monad          (unless, when)
+import Control.Monad          (unless, when)
 import qualified Args (Option(..))
 import ParseMessage ()
 import CoreUtils

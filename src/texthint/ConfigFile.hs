@@ -1,6 +1,6 @@
 module ConfigFile (Config, readConfig) where
 
-import Char
+import Data.Char
 --  import Control.Monad
 -- import qualified Data.Map as Map
 import Text.ParserCombinators.Parsec

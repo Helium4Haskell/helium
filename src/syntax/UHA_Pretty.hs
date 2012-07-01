@@ -3,7 +3,7 @@
 module UHA_Pretty where
 
 import PPrint
-import Char
+import Data.Char
 import Top.Types (isTupleConstructor)
 import UHA_Syntax
 import Utils (internalError)

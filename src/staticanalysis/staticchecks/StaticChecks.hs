@@ -11,14 +11,14 @@ import Top.Types
 import StaticErrors
 import Warnings
 import Messages
-import List
+import Data.List
 import Utils ( internalError, minInt, maxInt )
 import TypeConversion
 import DerivingShow
 import qualified Data.Map as M
 import ImportEnvironment
 import OperatorTable
-import Char ( isUpper )
+import Data.Char ( isUpper )
 
 -- filter undefined errors that are caused by the removal of a duplicate definition
 filterRemovedNames :: [(Name,Entity)] -> Error -> Bool

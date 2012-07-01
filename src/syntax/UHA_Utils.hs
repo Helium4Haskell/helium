@@ -12,11 +12,11 @@ module UHA_Utils where
 
 --import UHA_Range(noRange, getNameRange)
 import UHA_Range  --altered for Holmes
-import Maybe     --added for Holmes
+import Data.Maybe     --added for Holmes
 import UHA_Syntax --added for Holmes
 -- import UHA_Syntax(Name(..), ImportDeclaration(..), Pattern(..))
 import Id(Id, idFromString, stringFromId)
-import Char
+import Data.Char
 import Top.Types(isTupleConstructor)
 import Utils(internalError)
 

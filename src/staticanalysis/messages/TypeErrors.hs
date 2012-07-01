@@ -12,7 +12,7 @@ module TypeErrors where
 
 import Messages
 import Top.Types
-import List       (union, partition)
+import Data.List       (union, partition)
 import UHA_Syntax (Range, Name)
 import UHA_Range  (getNameRange)
 import UHA_Source

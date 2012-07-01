@@ -13,8 +13,8 @@ module StaticErrors where
 import UHA_Syntax
 import UHA_Range
 import Messages
-import List        (nub, intersperse, sort, partition)
-import Maybe       (fromJust)
+import Data.List        (nub, intersperse, sort, partition)
+import Data.Maybe       (fromJust)
 import Utils       (commaList, internalError, maxInt)
 import Top.Types
 

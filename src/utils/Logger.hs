@@ -10,12 +10,12 @@ module Logger ( logger, logInternalError ) where
 
 import Network
 import Control.Concurrent
-import Monad
-import System
-import Char
+import Control.Monad
+import System.Environment
+import Data.Char
 -- import List
 import Args
-import IO
+import System.IO
 import Version
 
 {-# NOTINLINE logger #-}

@@ -13,7 +13,7 @@ import UHA_Syntax
 import UHA_Utils
 import UHA_Range
 import Id
-import Char
+import Data.Char
 import Utils
 import CoreUtils
 

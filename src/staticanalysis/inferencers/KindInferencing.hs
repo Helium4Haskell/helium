@@ -15,7 +15,7 @@ import Utils (internalError)
 import TopSort (topSort)
 import ImportEnvironment hiding (setTypeSynonyms)
 import KindErrors
-import Char (isLower)
+import Data.Char (isLower)
 import BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, combine, single) 
 
 type KindEnvironment = M.Map Name TpScheme
