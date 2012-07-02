@@ -91,18 +91,19 @@ toMessageBlock :: [(String, MessageBlock)] -> MetaVariableInfo -> MetaVariableTa
 toMessageBlock locals metaInfo table attribute =
    case attribute of
       LocalAttribute s -> 
-         let err = internalError "TS_Attributes.hs" "toMessageBlock" "unknown local attribute"
+         let err = internalError "TS_Attributes.hs" "toMessageBlock" ("unknown local attribute " ++ s) 
          in maybe err id (lookup s locals)
       MetaVarAttribute s f
-         | s == "expr" -> findAttributeField f metaInfo
+         | s == "expr" -> findAttributeField f s metaInfo
          | otherwise ->
-              let err = internalError "TS_Attributes.hs" "toMessageBlock" "unknown meta variable"
-              in maybe err (findAttributeField f) (lookup s table)
+              let err = internalError "TS_Attributes.hs" "toMessageBlock" ("unknown combination " ++ s ++ "." ++ f)                  
+              in maybe err (findAttributeField f s) (lookup s table)
 
-findAttributeField :: String -> MetaVariableInfo -> MessageBlock
-findAttributeField s = 
-   let err = internalError "TS_Attributes.hs" "toMessageBlock" "unknown attribute field"
-   in maybe err id (lookup s attributeFieldTable)
+-- Added parameter s for diagnostic reasons, and renamed the old s to f.              
+findAttributeField :: String -> String -> MetaVariableInfo -> MessageBlock
+findAttributeField f s = 
+   let err = internalError "TS_Attributes.hs" "toMessageBlock" ("unknown attribute field " ++ f ++ " of metavariable " ++ s)
+   in maybe err id (lookup f attributeFieldTable)
 
 attributeFieldTable :: [(String, MetaVariableInfo -> MessageBlock)]
 attributeFieldTable = 
