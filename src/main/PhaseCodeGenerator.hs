@@ -8,7 +8,7 @@
 
 module PhaseCodeGenerator(phaseCodeGenerator) where
 
-import Core(CoreModule)
+import Lvm.Core.Core(CoreModule)
 import CompileUtils
 import CoreToLvm(coreToLvm)
 

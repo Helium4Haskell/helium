@@ -12,7 +12,8 @@ module TypesToAlignedDocs (qualifiedTypesToAlignedDocs, typesToAlignedDocs) wher
 
 import Data.List     ( transpose )
 import Top.Types
-import PPrint
+import Lvm.Common.PPrint
+import qualified Lvm.Common.PPrint as PPrint
 
 qualifiedTypesToAlignedDocs :: [QType] -> [PPrint.Doc]
 qualifiedTypesToAlignedDocs qtps = 

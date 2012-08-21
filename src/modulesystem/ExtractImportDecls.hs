@@ -4,8 +4,8 @@ module ExtractImportDecls where
 
 import UHA_Syntax
 import UHA_Utils
-import Id
-import qualified Core
+import Lvm.Common.Id
+import qualified Lvm.Core.Core as Core
 import Utils (internalError)
 -- Alternative -------------------------------------------------
 -- cata

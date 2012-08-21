@@ -15,7 +15,7 @@ module BindingGroupAnalysis where
 import UHA_Syntax
 import TypeConstraints
 import ConstraintInfo
-import TopSort (topSort)
+import Lvm.Common.TopSort (topSort)
 import Top.Types
 import Top.Ordering.Tree
 import qualified Data.Map as M

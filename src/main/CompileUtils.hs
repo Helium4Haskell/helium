@@ -27,7 +27,7 @@ import Logger
 import ImportEnvironment
 import UHA_Syntax(Module(..))
 import Data.Maybe
-import Standard(searchPathMaybe)
+import Lvm.Common.Standard(searchPathMaybe)
 
 type Phase err a = IO (Either [err] a)
 type CompileOptions = ([Option], String, [String]) 

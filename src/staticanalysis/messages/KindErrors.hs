@@ -12,11 +12,11 @@ module KindErrors where
 
 import Top.Types
 import UHA_Syntax (Range, Type)
-import PPrint (Doc)
+import Lvm.Common.PPrint (Doc)
 import Messages
 import Data.List (union)
 import qualified UHA_Pretty as PP
-import qualified PPrint
+import qualified Lvm.Common.PPrint as PPrint
 
 type KindErrors = [KindError]
 data KindError  = MustBeStar Range String Doc Kind

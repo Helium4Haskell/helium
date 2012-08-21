@@ -11,8 +11,8 @@ module DerivingEq(dataDictionary) where
 import qualified UHA_Syntax as UHA
 import UHA_Utils
 import CoreUtils
-import Core
-import Id
+import Lvm.Core.Core
+import Lvm.Common.Id
 import Utils
 
 -- Eq Dictionary for a data type declaration

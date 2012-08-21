@@ -15,10 +15,11 @@ module CoreUtils
     ,   float, packedString
     ) where
 
-import Core
-import Id
+import Lvm.Core.Core
+import Lvm.Common.Id
 import Data.Char
-import Byte(bytesFromString)
+import Lvm.Common.Byte(bytesFromString)
+import qualified Lvm.Core.Core as Core
 
 infixl `app_`
 
@@ -26,7 +27,7 @@ custom :: String -> String -> Custom
 custom sort text =
     CustomDecl
         (DeclKindCustom (idFromString sort))
-        [CustomBytes (Byte.bytesFromString text)]
+        [CustomBytes (bytesFromString text)]
 
 
 customStrategy :: String -> Decl a

@@ -2,7 +2,8 @@
 -- UUAGC 0.9.5 (UHA_Pretty.ag)
 module UHA_Pretty where
 
-import PPrint
+import Lvm.Common.PPrint
+import qualified Lvm.Common.PPrint as PPrint
 import Data.Char
 import Top.Types (isTupleConstructor)
 import UHA_Syntax

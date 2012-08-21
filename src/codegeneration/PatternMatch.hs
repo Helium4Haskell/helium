@@ -8,11 +8,11 @@
 
 module PatternMatch(patternToCore, patternsToCore, nextClauseId, freshIds) where
 
-import qualified Core
+import qualified Lvm.Core.Core as Core
 import UHA_Syntax
 import UHA_Utils
 import UHA_Range
-import Id
+import Lvm.Common.Id
 import Data.Char
 import Utils
 import CoreUtils

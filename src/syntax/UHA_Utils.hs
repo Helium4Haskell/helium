@@ -15,7 +15,7 @@ import UHA_Range  --altered for Holmes
 import Data.Maybe     --added for Holmes
 import UHA_Syntax --added for Holmes
 -- import UHA_Syntax(Name(..), ImportDeclaration(..), Pattern(..))
-import Id(Id, idFromString, stringFromId)
+import Lvm.Common.Id(Id, idFromString, stringFromId)
 import Data.Char
 import Top.Types(isTupleConstructor)
 import Utils(internalError)

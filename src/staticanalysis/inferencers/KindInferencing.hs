@@ -12,7 +12,7 @@ import Args
 import qualified Data.Map as M
 -- import TypeConstraints
 import Utils (internalError)
-import TopSort (topSort)
+import Lvm.Common.TopSort (topSort)
 import ImportEnvironment hiding (setTypeSynonyms)
 import KindErrors
 import Data.Char (isLower)

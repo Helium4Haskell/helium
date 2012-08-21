@@ -8,7 +8,7 @@
 
 module CoreToImportEnv(getImportEnvironment) where
 
-import Core
+import Lvm.Core.Core
 import Utils
 import TypeConversion
 import ParseLibrary
@@ -16,11 +16,11 @@ import Lexer(lexer)
 import Parser(type_, contextAndType)
 import ImportEnvironment
 import UHA_Utils
-import Id
+import Lvm.Common.Id
 import UHA_Syntax
 import OperatorTable
 import Top.Types
-import Byte(stringFromBytes)
+import Lvm.Common.Byte(stringFromBytes)
 import UHA_Range(makeImportRange, setNameRange)
 
 typeFromCustoms :: String -> [Custom] -> TpScheme
@@ -29,7 +29,7 @@ typeFromCustoms n [] =
         ("function import without type: " ++ n)
 typeFromCustoms n ( CustomDecl (DeclKindCustom id) [CustomBytes bytes] : cs) 
     | stringFromId id == "type" =
-        let string = filter (/= '!') (Byte.stringFromBytes bytes) 
+        let string = filter (/= '!') (stringFromBytes bytes) 
         in makeTpSchemeFromType (parseFromString contextAndType string)
     | otherwise =
         typeFromCustoms n cs
@@ -46,7 +46,7 @@ parseFromString p string =
 typeSynFromCustoms :: String -> [Custom] -> (Int, Tps -> Tp) -- !!! yuck
 typeSynFromCustoms n (CustomBytes bs:cs) =
     let
-        typeSynDecl = Byte.stringFromBytes bs
+        typeSynDecl = stringFromBytes bs
         -- (too?) simple parser; works because type variables in synonym decls are renamed to 1 letter
         ids         = ( map (\x -> nameFromString [x])
                       . filter    (' '/=)
@@ -75,12 +75,12 @@ arityFromCustoms n [] =
 arityFromCustoms _ ( CustomInt arity : _ ) = arity
 arityFromCustoms _ ( CustomDecl (DeclKindCustom id) [CustomBytes bytes] : _ ) 
     | stringFromId id == "kind" = 
-        (length . filter ('*'==) . Byte.stringFromBytes) bytes - 1
+        (length . filter ('*'==) . stringFromBytes) bytes - 1
         -- the number of stars minus 1 is the arity
 arityFromCustoms n (_:cs) = arityFromCustoms n cs
 
 makeOperatorTable :: Name -> [Custom] -> [(Name, (Int, Assoc))]
-makeOperatorTable op (Core.CustomInt i : Core.CustomBytes bs : _) =
+makeOperatorTable op (CustomInt i : CustomBytes bs : _) =
     let
         assoc =
             case stringFromBytes bs of

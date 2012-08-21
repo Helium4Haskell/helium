@@ -11,8 +11,8 @@ import qualified Data.Map as M
 import TypeConversion
 import Data.Char (ord)
 
-import Id
-import IdSet 
+import Lvm.Common.Id
+import Lvm.Common.IdSet 
 import Utils(internalError)
 
 import Top.Types
@@ -25,12 +25,12 @@ import DerivingEq
 import CoreUtils
 
 -- Daan
-import qualified Core
-import qualified Module
-import qualified Byte
+import qualified Lvm.Core.Core as Core
+import qualified Lvm.Module as Module
+import qualified Lvm.Common.Byte as Byte
 
 
-import Byte(bytesFromString)
+import Lvm.Common.Byte(bytesFromString)
 
 
 type CoreDecl = Core.Decl Core.Expr
