@@ -13,7 +13,7 @@ module HeliumMessages where
 
 import Messages 
 import Top.Types
-import qualified Lvm.Common.PPrint as PPrint
+import qualified Text.PrettyPrint.Leijen as PPrint
 import qualified OneLiner
 import Data.List                (intersperse, zipWith4)
 import TypesToAlignedDocs  (qualifiedTypesToAlignedDocs)

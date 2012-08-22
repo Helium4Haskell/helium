@@ -25,8 +25,8 @@ import DerivingEq
 import CoreUtils
 
 -- Daan
-import qualified Lvm.Core.Core as Core
-import qualified Lvm.Module as Module
+import qualified Lvm.Core.Data as Core
+import qualified Lvm.Module.Data as Module
 import qualified Lvm.Common.Byte as Byte
 
 

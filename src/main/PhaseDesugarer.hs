@@ -9,9 +9,9 @@
 module PhaseDesugarer(phaseDesugarer) where
 
 import CompileUtils
-import Lvm.Core.CorePretty(corePretty)
-import Lvm.Core.Core(CoreModule, CoreDecl)
-import Lvm.Core.CoreRemoveDead( coreRemoveDead ) -- remove dead (import) declarations
+import Lvm.Core.Pretty(corePretty)
+import Lvm.Core.Data(CoreModule, CoreDecl)
+import Lvm.Core.RemoveDead( coreRemoveDead ) -- remove dead (import) declarations
 import UHA_Syntax(Name(..), MaybeName(..))
 import UHA_Range(noRange)
 import ImportEnvironment()

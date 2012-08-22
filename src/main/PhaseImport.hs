@@ -9,13 +9,13 @@
 module PhaseImport(phaseImport) where
 
 import CompileUtils
-import qualified Lvm.Core.Core as Core
+import qualified Lvm.Core.Data as Core
 import Lvm.Common.Id(Id)
 import UHA_Syntax
 import UHA_Utils
 import UHA_Range(noRange)
 import Lvm.Common.Standard(searchPath)
-import Lvm.LvmImport(lvmImportDecls)
+import Lvm.Import(lvmImportDecls)
 import Lvm.Common.Id(stringFromId)
 import CoreToImportEnv(getImportEnvironment)
 import qualified ExtractImportDecls(sem_Module)

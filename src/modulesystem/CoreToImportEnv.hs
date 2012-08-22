@@ -8,7 +8,7 @@
 
 module CoreToImportEnv(getImportEnvironment) where
 
-import Lvm.Core.Core
+import Lvm.Core.Data
 import Utils
 import TypeConversion
 import ParseLibrary

@@ -12,8 +12,8 @@ module TypesToAlignedDocs (qualifiedTypesToAlignedDocs, typesToAlignedDocs) wher
 
 import Data.List     ( transpose )
 import Top.Types
-import Lvm.Common.PPrint
-import qualified Lvm.Common.PPrint as PPrint
+import Text.PrettyPrint.Leijen
+import qualified Text.PrettyPrint.Leijen as PPrint
 
 qualifiedTypesToAlignedDocs :: [QType] -> [PPrint.Doc]
 qualifiedTypesToAlignedDocs qtps = 
@@ -46,7 +46,7 @@ typesToAlignedDocs tps
      = map PPrint.text (sameLength [ s | (TCon s, _) <- spines])
    
    | allListType
-     = map PPrint.squares (rec_ (const False) (map (head . snd) spines))
+     = map PPrint.brackets (rec_ (const False) (map (head . snd) spines))
 
    | allSameTuple
      = map tupleDocs (recs (const False) (map snd spines))   
