@@ -9,7 +9,7 @@
 module PhaseDesugarer(phaseDesugarer) where
 
 import CompileUtils
-import Lvm.Core.Pretty(corePretty)
+import Text.PrettyPrint.Leijen
 import Lvm.Core.Data(CoreModule, CoreDecl)
 import Lvm.Core.RemoveDead( coreRemoveDead ) -- remove dead (import) declarations
 import UHA_Syntax(Name(..), MaybeName(..))
@@ -46,10 +46,10 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
         strippedCoreModule = coreRemoveDead coreModule
 
     when (DumpCore `elem` options) $
-        print.corePretty $ strippedCoreModule
+        print . pretty $ strippedCoreModule
 
     when (DumpCoreToFile `elem` options) $ do
-        writeFile (fullNameNoExt ++ ".core") $ show.corePretty $ strippedCoreModule
+        writeFile (fullNameNoExt ++ ".core") $ show . pretty $ strippedCoreModule
         exitWith (ExitSuccess)
    
     return strippedCoreModule

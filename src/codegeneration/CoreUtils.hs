@@ -17,6 +17,7 @@ module CoreUtils
 
 import Lvm.Core.Data
 import Lvm.Common.Id
+import Lvm.Core.Utils
 import Data.Char
 import Lvm.Common.Byte(bytesFromString)
 import qualified Lvm.Core.Data as Core

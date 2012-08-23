@@ -6,6 +6,7 @@ import UHA_Syntax
 import UHA_Utils
 import Lvm.Common.Id
 import qualified Lvm.Core.Data as Core
+import qualified Lvm.Core.Utils as Core
 import Utils (internalError)
 -- Alternative -------------------------------------------------
 -- cata

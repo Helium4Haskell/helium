@@ -10,6 +10,7 @@ module PhaseImport(phaseImport) where
 
 import CompileUtils
 import qualified Lvm.Core.Data as Core
+import qualified Lvm.Core.Utils as Core
 import Lvm.Common.Id(Id)
 import UHA_Syntax
 import UHA_Utils
