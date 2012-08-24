@@ -12,7 +12,7 @@ import Parser(parseOnlyImports)
 
 import Data.List(nub, elemIndex, isSuffixOf, intersperse)
 import Data.Maybe(fromJust)
-import Lvm.Common.Standard(getLvmPath, splitPath)
+import Lvm.Path(getLvmPath, splitPath)
 import System.Directory(doesFileExist, getModificationTime)
 import Args
 import CompileUtils

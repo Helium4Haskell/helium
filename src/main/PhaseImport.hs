@@ -15,7 +15,7 @@ import Lvm.Common.Id(Id)
 import UHA_Syntax
 import UHA_Utils
 import UHA_Range(noRange)
-import Lvm.Common.Standard(searchPath)
+import Lvm.Path(searchPath)
 import Lvm.Import(lvmImportDecls)
 import Lvm.Common.Id(stringFromId)
 import CoreToImportEnv(getImportEnvironment)

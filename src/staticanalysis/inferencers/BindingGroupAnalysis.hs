@@ -12,10 +12,11 @@
 
 module BindingGroupAnalysis where
 
+import qualified Data.Graph as G
+import qualified Data.Tree as G
 import UHA_Syntax
 import TypeConstraints
 import ConstraintInfo
-import Lvm.Common.Standard (topSort)
 import Top.Types
 import Top.Ordering.Tree
 import qualified Data.Map as M
@@ -138,3 +139,7 @@ getMonos tcs = [ TVar i | tc <- tcs, i <- ftv tc ]
 findCurrentChunk :: Name -> InheritedBDG -> Int
 findCurrentChunk n = let p = elem n . fst
                      in snd . snd . head . filter p
+
+-- topological sort
+topSort :: G.Vertex -> [G.Edge] -> [[G.Vertex]]
+topSort n = map G.flatten . G.scc . G.buildG (0, n)

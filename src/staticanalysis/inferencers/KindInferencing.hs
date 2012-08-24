@@ -12,11 +12,10 @@ import Args
 import qualified Data.Map as M
 -- import TypeConstraints
 import Utils (internalError)
-import Lvm.Common.Standard (topSort)
 import ImportEnvironment hiding (setTypeSynonyms)
 import KindErrors
 import Data.Char (isLower)
-import BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, combine, single) 
+import BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, combine, single, topSort) 
 
 type KindEnvironment = M.Map Name TpScheme
 type KindConstraint  = TypeConstraint  KindError
