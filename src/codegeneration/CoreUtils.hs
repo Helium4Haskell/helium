@@ -15,12 +15,12 @@ module CoreUtils
     ,   float, packedString
     ) where
 
-import Lvm.Core.Data
+import Lvm.Core.Expr
 import Lvm.Common.Id
 import Lvm.Core.Utils
 import Data.Char
 import Lvm.Common.Byte(bytesFromString)
-import qualified Lvm.Core.Data as Core
+import qualified Lvm.Core.Expr as Core
 
 infixl `app_`
 

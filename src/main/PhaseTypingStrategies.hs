@@ -9,7 +9,7 @@
 module PhaseTypingStrategies(phaseTypingStrategies) where
 
 import CompileUtils
-import Lvm.Core.Data (CoreDecl)
+import Lvm.Core.Expr (CoreDecl)
 import TS_Compile (readTypingStrategiesFromFile)
 import qualified Data.Map as M
 import UHA_Syntax (Name)

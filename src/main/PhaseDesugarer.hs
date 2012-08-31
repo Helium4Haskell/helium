@@ -10,7 +10,7 @@ module PhaseDesugarer(phaseDesugarer) where
 
 import CompileUtils
 import Text.PrettyPrint.Leijen
-import Lvm.Core.Data(CoreModule, CoreDecl)
+import Lvm.Core.Expr(CoreModule, CoreDecl)
 import Lvm.Core.RemoveDead( coreRemoveDead ) -- remove dead (import) declarations
 import UHA_Syntax(Name(..), MaybeName(..))
 import UHA_Range(noRange)

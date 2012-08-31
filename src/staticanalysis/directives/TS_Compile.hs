@@ -25,7 +25,7 @@ import Control.Monad          (unless, when)
 import qualified Args (Option(..))
 import ParseMessage ()
 import CoreUtils
-import Lvm.Core.Data
+import Lvm.Core.Expr
 
 readTypingStrategiesFromFile :: [Args.Option] -> String -> ImportEnvironment -> 
     IO (Core_TypingStrategies, [CoreDecl])

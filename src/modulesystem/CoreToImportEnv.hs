@@ -8,7 +8,7 @@
 
 module CoreToImportEnv(getImportEnvironment) where
 
-import Lvm.Core.Data
+import Lvm.Core.Expr
 import Lvm.Core.Utils
 import Utils
 import TypeConversion

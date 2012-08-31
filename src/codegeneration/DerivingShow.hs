@@ -16,7 +16,7 @@ module DerivingShow
 import qualified UHA_Syntax as UHA
 import UHA_Utils
 import CoreUtils
-import Lvm.Core.Data
+import Lvm.Core.Expr
 import Lvm.Core.Utils
 import Lvm.Common.Id
 import Utils
