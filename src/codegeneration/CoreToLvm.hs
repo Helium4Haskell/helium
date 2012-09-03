@@ -8,18 +8,18 @@
 
 module CoreToLvm ( coreToLvm ) where
 
-import Lvm.Common.Id         ( newNameSupply )
-import Lvm.Core.ToAsm  ( coreToAsm )         -- enriched lambda expressions (Core) to Asm
-import Lvm.Asm.ToLvm   ( asmToLvm )          -- translate Asm to instructions
-import Lvm.Asm.Optimize( asmOptimize )       -- optimize Asm (ie. inlining)
-import Lvm.Write   ( lvmWriteFile )
+import Lvm.Common.Id  (newNameSupply)
+import Lvm.Core.ToAsm (coreToAsm)         -- enriched lambda expressions (Core) to Asm
+import Lvm.Asm.ToLvm  (asmToLvm)          -- translate Asm to instructions
+import Lvm.Asm.Inline (asmInline)       -- optimize Asm (ie. inlining)
+import Lvm.Write      (lvmWriteFile)
 
 coreToLvm source coremod = do
     nameSupply  <- newNameSupply
 
     -- coreRemoveDead gebeurt al in Compile.hs
     let asmmod  = coreToAsm nameSupply coremod
-        asmopt  = asmOptimize asmmod
+        asmopt  = asmInline asmmod
         lvmmod  = asmToLvm  asmopt
         target  = source ++ ".lvm"
    
