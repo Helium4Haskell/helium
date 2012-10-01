@@ -3,7 +3,7 @@
 -- ------------------------------------------------------------------------
 
 imports{
-import Byte(bytesFromString)
+import Lvm.Common.Byte(bytesFromString)
 }
 
 {

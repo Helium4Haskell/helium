@@ -1,5 +1,6 @@
 
--- UUAGC 0.9.5 (StaticChecks.ag)
+
+-- UUAGC 0.9.40.3 (StaticChecks.ag)
 module StaticChecks where
 
 import Similarity ( similar )
@@ -11,14 +12,14 @@ import Top.Types
 import StaticErrors
 import Warnings
 import Messages
-import Data.List
+import List
 import Utils ( internalError, minInt, maxInt )
 import TypeConversion
 import DerivingShow
 import qualified Data.Map as M
 import ImportEnvironment
 import OperatorTable
-import Data.Char ( isUpper )
+import Char ( isUpper )
 
 -- filter undefined errors that are caused by the removal of a duplicate definition
 filterRemovedNames :: [(Name,Entity)] -> Error -> Bool
@@ -245,10 +246,10 @@ makeWarnings xs =  [ Unused entity name | ((_, names, _), entity) <- xs, name <-
 -- cata
 sem_Alternative :: Alternative ->
                    T_Alternative
-sem_Alternative (Alternative_Alternative _range _pattern _righthandside )  =
-    (sem_Alternative_Alternative (sem_Range _range ) (sem_Pattern _pattern ) (sem_RightHandSide _righthandside ) )
-sem_Alternative (Alternative_Empty _range )  =
-    (sem_Alternative_Empty (sem_Range _range ) )
+sem_Alternative (Alternative_Alternative _range _pattern _righthandside) =
+    (sem_Alternative_Alternative (sem_Range _range) (sem_Pattern _pattern) (sem_RightHandSide _righthandside))
+sem_Alternative (Alternative_Empty _range) =
+    (sem_Alternative_Empty (sem_Range _range))
 -- semantic domain
 type T_Alternative = Names ->
                      Names ->
@@ -267,7 +268,7 @@ sem_Alternative_Alternative :: T_Range ->
                                T_Pattern ->
                                T_RightHandSide ->
                                T_Alternative
-sem_Alternative_Alternative range_ pattern_ righthandside_  =
+sem_Alternative_Alternative range_ pattern_ righthandside_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -322,14 +323,8 @@ sem_Alternative_Alternative range_ pattern_ righthandside_  =
               _righthandsideIself :: RightHandSide
               _righthandsideIunboundNames :: Names
               _righthandsideIwarnings :: ([Warning])
-              __tup1 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _patternIpatVarNames _righthandsideIunboundNames _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup1
-              (_,_unboundNames,_) =
-                  __tup1
-              (_,_,_scopeInfo) =
-                  __tup1
               _lhsOunboundNames =
                   _unboundNames
               _patternOlhsPattern =
@@ -389,15 +384,15 @@ sem_Alternative_Alternative range_ pattern_ righthandside_  =
               _righthandsideOwarnings =
                   _patternIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
-                  (pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings )
+                  pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings
               ( _righthandsideIcollectInstances,_righthandsideIcollectScopeInfos,_righthandsideIkindErrors,_righthandsideImiscerrors,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIwarnings) =
-                  (righthandside_ _righthandsideOallTypeConstructors _righthandsideOallValueConstructors _righthandsideOclassEnvironment _righthandsideOcollectScopeInfos _righthandsideOkindErrors _righthandsideOmiscerrors _righthandsideOnamesInScope _righthandsideOoptions _righthandsideOorderedTypeSynonyms _righthandsideOtypeConstructors _righthandsideOvalueConstructors _righthandsideOwarnings )
+                  righthandside_ _righthandsideOallTypeConstructors _righthandsideOallValueConstructors _righthandsideOclassEnvironment _righthandsideOcollectScopeInfos _righthandsideOkindErrors _righthandsideOmiscerrors _righthandsideOnamesInScope _righthandsideOoptions _righthandsideOorderedTypeSynonyms _righthandsideOtypeConstructors _righthandsideOvalueConstructors _righthandsideOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Alternative_Empty :: T_Range ->
                          T_Alternative
-sem_Alternative_Empty range_  =
+sem_Alternative_Empty range_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -435,14 +430,14 @@ sem_Alternative_Empty range_  =
               _lhsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 -- Alternatives ------------------------------------------------
 -- cata
 sem_Alternatives :: Alternatives ->
                     T_Alternatives
-sem_Alternatives list  =
-    (Prelude.foldr sem_Alternatives_Cons sem_Alternatives_Nil (Prelude.map sem_Alternative list) )
+sem_Alternatives list =
+    (Prelude.foldr sem_Alternatives_Cons sem_Alternatives_Nil (Prelude.map sem_Alternative list))
 -- semantic domain
 type T_Alternatives = Names ->
                       Names ->
@@ -460,7 +455,7 @@ type T_Alternatives = Names ->
 sem_Alternatives_Cons :: T_Alternative ->
                          T_Alternatives ->
                          T_Alternatives
-sem_Alternatives_Cons hd_ tl_  =
+sem_Alternatives_Cons hd_ tl_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -583,12 +578,12 @@ sem_Alternatives_Cons hd_ tl_  =
               _tlOwarnings =
                   _hdIwarnings
               ( _hdIcollectInstances,_hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                  (hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOorderedTypeSynonyms _hdOtypeConstructors _hdOvalueConstructors _hdOwarnings )
+                  hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOorderedTypeSynonyms _hdOtypeConstructors _hdOvalueConstructors _hdOwarnings
               ( _tlIcollectInstances,_tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                  (tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOorderedTypeSynonyms _tlOtypeConstructors _tlOvalueConstructors _tlOwarnings )
+                  tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOorderedTypeSynonyms _tlOtypeConstructors _tlOvalueConstructors _tlOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Alternatives_Nil :: T_Alternatives
-sem_Alternatives_Nil  =
+sem_Alternatives_Nil =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -629,8 +624,8 @@ sem_Alternatives_Nil  =
 -- cata
 sem_AnnotatedType :: AnnotatedType ->
                      T_AnnotatedType
-sem_AnnotatedType (AnnotatedType_AnnotatedType _range _strict _type )  =
-    (sem_AnnotatedType_AnnotatedType (sem_Range _range ) _strict (sem_Type _type ) )
+sem_AnnotatedType (AnnotatedType_AnnotatedType _range _strict _type) =
+    (sem_AnnotatedType_AnnotatedType (sem_Range _range) _strict (sem_Type _type))
 -- semantic domain
 type T_AnnotatedType = Names ->
                        Names ->
@@ -646,7 +641,7 @@ sem_AnnotatedType_AnnotatedType :: T_Range ->
                                    Bool ->
                                    T_Type ->
                                    T_AnnotatedType
-sem_AnnotatedType_AnnotatedType range_ strict_ type_  =
+sem_AnnotatedType_AnnotatedType range_ strict_ type_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIkindErrors
@@ -703,16 +698,16 @@ sem_AnnotatedType_AnnotatedType range_ strict_ type_  =
               _typeOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
-                  (type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings )
+                  type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings
           in  ( _lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOtype,_lhsOtypevariables,_lhsOunboundNames,_lhsOwarnings)))
 -- AnnotatedTypes ----------------------------------------------
 -- cata
 sem_AnnotatedTypes :: AnnotatedTypes ->
                       T_AnnotatedTypes
-sem_AnnotatedTypes list  =
-    (Prelude.foldr sem_AnnotatedTypes_Cons sem_AnnotatedTypes_Nil (Prelude.map sem_AnnotatedType list) )
+sem_AnnotatedTypes list =
+    (Prelude.foldr sem_AnnotatedTypes_Cons sem_AnnotatedTypes_Nil (Prelude.map sem_AnnotatedType list))
 -- semantic domain
 type T_AnnotatedTypes = Names ->
                         Names ->
@@ -727,7 +722,7 @@ type T_AnnotatedTypes = Names ->
 sem_AnnotatedTypes_Cons :: T_AnnotatedType ->
                            T_AnnotatedTypes ->
                            T_AnnotatedTypes
-sem_AnnotatedTypes_Cons hd_ tl_  =
+sem_AnnotatedTypes_Cons hd_ tl_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIkindErrors
@@ -829,12 +824,12 @@ sem_AnnotatedTypes_Cons hd_ tl_  =
               _tlOwarnings =
                   _hdIwarnings
               ( _hdIkindErrors,_hdImiscerrors,_hdIself,_hdItype,_hdItypevariables,_hdIunboundNames,_hdIwarnings) =
-                  (hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOtypeConstructors _hdOvalueConstructors _hdOwarnings )
+                  hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOtypeConstructors _hdOvalueConstructors _hdOwarnings
               ( _tlIkindErrors,_tlImiscerrors,_tlIself,_tlItypes,_tlItypevariables,_tlIunboundNames,_tlIwarnings) =
-                  (tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOtypeConstructors _tlOvalueConstructors _tlOwarnings )
+                  tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOtypeConstructors _tlOvalueConstructors _tlOwarnings
           in  ( _lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOtypes,_lhsOtypevariables,_lhsOunboundNames,_lhsOwarnings)))
 sem_AnnotatedTypes_Nil :: T_AnnotatedTypes
-sem_AnnotatedTypes_Nil  =
+sem_AnnotatedTypes_Nil =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIkindErrors
@@ -872,8 +867,8 @@ sem_AnnotatedTypes_Nil  =
 -- cata
 sem_Body :: Body ->
             T_Body
-sem_Body (Body_Body _range _importdeclarations _declarations )  =
-    (sem_Body_Body (sem_Range _range ) (sem_ImportDeclarations _importdeclarations ) (sem_Declarations _declarations ) )
+sem_Body (Body_Body _range _importdeclarations _declarations) =
+    (sem_Body_Body (sem_Range _range) (sem_ImportDeclarations _importdeclarations) (sem_Declarations _declarations))
 -- semantic domain
 type T_Body = Names ->
               Names ->
@@ -896,7 +891,7 @@ sem_Body_Body :: T_Range ->
                  T_ImportDeclarations ->
                  T_Declarations ->
                  T_Body
-sem_Body_Body range_ importdeclarations_ declarations_  =
+sem_Body_Body range_ importdeclarations_ declarations_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -1042,22 +1037,22 @@ sem_Body_Body range_ importdeclarations_ declarations_  =
               _declarationsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _importdeclarationsIimportedModules,_importdeclarationsIself) =
-                  (importdeclarations_ _importdeclarationsOimportedModules )
+                  importdeclarations_ _importdeclarationsOimportedModules
               ( _declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
-                  (declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings )
+                  declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOimportedModules,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 -- Constructor -------------------------------------------------
 -- cata
 sem_Constructor :: Constructor ->
                    T_Constructor
-sem_Constructor (Constructor_Constructor _range _constructor _types )  =
-    (sem_Constructor_Constructor (sem_Range _range ) (sem_Name _constructor ) (sem_AnnotatedTypes _types ) )
-sem_Constructor (Constructor_Infix _range _leftType _constructorOperator _rightType )  =
-    (sem_Constructor_Infix (sem_Range _range ) (sem_AnnotatedType _leftType ) (sem_Name _constructorOperator ) (sem_AnnotatedType _rightType ) )
-sem_Constructor (Constructor_Record _range _constructor _fieldDeclarations )  =
-    (sem_Constructor_Record (sem_Range _range ) (sem_Name _constructor ) (sem_FieldDeclarations _fieldDeclarations ) )
+sem_Constructor (Constructor_Constructor _range _constructor _types) =
+    (sem_Constructor_Constructor (sem_Range _range) (sem_Name _constructor) (sem_AnnotatedTypes _types))
+sem_Constructor (Constructor_Infix _range _leftType _constructorOperator _rightType) =
+    (sem_Constructor_Infix (sem_Range _range) (sem_AnnotatedType _leftType) (sem_Name _constructorOperator) (sem_AnnotatedType _rightType))
+sem_Constructor (Constructor_Record _range _constructor _fieldDeclarations) =
+    (sem_Constructor_Record (sem_Range _range) (sem_Name _constructor) (sem_FieldDeclarations _fieldDeclarations))
 -- semantic domain
 type T_Constructor = Names ->
                      Names ->
@@ -1075,7 +1070,7 @@ sem_Constructor_Constructor :: T_Range ->
                                T_Name ->
                                T_AnnotatedTypes ->
                                T_Constructor
-sem_Constructor_Constructor range_ constructor_ types_  =
+sem_Constructor_Constructor range_ constructor_ types_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectValueConstructors
@@ -1119,12 +1114,8 @@ sem_Constructor_Constructor range_ constructor_ types_  =
                   _tps
               _typeScheme =
                   generalizeAll ([] .=>. foldr (.->.) _tp _tps)
-              __tup2 =
+              (_tp,_tps) =
                   convertFromSimpleTypeAndTypes _lhsIsimpletype _typesItypes
-              (_tp,_) =
-                  __tup2
-              (_,_tps) =
-                  __tup2
               _lhsOtypevariables =
                   _typesItypevariables
               _lhsOunboundNames =
@@ -1158,18 +1149,18 @@ sem_Constructor_Constructor range_ constructor_ types_  =
               _typesOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _constructorIself) =
-                  (constructor_ )
+                  constructor_
               ( _typesIkindErrors,_typesImiscerrors,_typesIself,_typesItypes,_typesItypevariables,_typesIunboundNames,_typesIwarnings) =
-                  (types_ _typesOallTypeConstructors _typesOallValueConstructors _typesOkindErrors _typesOmiscerrors _typesOnamesInScope _typesOoptions _typesOtypeConstructors _typesOvalueConstructors _typesOwarnings )
+                  types_ _typesOallTypeConstructors _typesOallValueConstructors _typesOkindErrors _typesOmiscerrors _typesOnamesInScope _typesOoptions _typesOtypeConstructors _typesOvalueConstructors _typesOwarnings
           in  ( _lhsOcollectValueConstructors,_lhsOkindErrors,_lhsOmiscerrors,_lhsOparameterTypes,_lhsOself,_lhsOtypevariables,_lhsOunboundNames,_lhsOwarnings)))
 sem_Constructor_Infix :: T_Range ->
                          T_AnnotatedType ->
                          T_Name ->
                          T_AnnotatedType ->
                          T_Constructor
-sem_Constructor_Infix range_ leftType_ constructorOperator_ rightType_  =
+sem_Constructor_Infix range_ leftType_ constructorOperator_ rightType_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectValueConstructors
@@ -1229,12 +1220,8 @@ sem_Constructor_Infix range_ leftType_ constructorOperator_ rightType_  =
                   _tps
               _typeScheme =
                   generalizeAll ([] .=>. foldr (.->.) _tp _tps)
-              __tup3 =
+              (_tp,_tps) =
                   convertFromSimpleTypeAndTypes _lhsIsimpletype [_leftTypeItype,_rightTypeItype]
-              (_tp,_) =
-                  __tup3
-              (_,_tps) =
-                  __tup3
               _lhsOtypevariables =
                   _leftTypeItypevariables  ++  _rightTypeItypevariables
               _lhsOunboundNames =
@@ -1286,19 +1273,19 @@ sem_Constructor_Infix range_ leftType_ constructorOperator_ rightType_  =
               _rightTypeOwarnings =
                   _leftTypeIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _leftTypeIkindErrors,_leftTypeImiscerrors,_leftTypeIself,_leftTypeItype,_leftTypeItypevariables,_leftTypeIunboundNames,_leftTypeIwarnings) =
-                  (leftType_ _leftTypeOallTypeConstructors _leftTypeOallValueConstructors _leftTypeOkindErrors _leftTypeOmiscerrors _leftTypeOnamesInScope _leftTypeOoptions _leftTypeOtypeConstructors _leftTypeOvalueConstructors _leftTypeOwarnings )
+                  leftType_ _leftTypeOallTypeConstructors _leftTypeOallValueConstructors _leftTypeOkindErrors _leftTypeOmiscerrors _leftTypeOnamesInScope _leftTypeOoptions _leftTypeOtypeConstructors _leftTypeOvalueConstructors _leftTypeOwarnings
               ( _constructorOperatorIself) =
-                  (constructorOperator_ )
+                  constructorOperator_
               ( _rightTypeIkindErrors,_rightTypeImiscerrors,_rightTypeIself,_rightTypeItype,_rightTypeItypevariables,_rightTypeIunboundNames,_rightTypeIwarnings) =
-                  (rightType_ _rightTypeOallTypeConstructors _rightTypeOallValueConstructors _rightTypeOkindErrors _rightTypeOmiscerrors _rightTypeOnamesInScope _rightTypeOoptions _rightTypeOtypeConstructors _rightTypeOvalueConstructors _rightTypeOwarnings )
+                  rightType_ _rightTypeOallTypeConstructors _rightTypeOallValueConstructors _rightTypeOkindErrors _rightTypeOmiscerrors _rightTypeOnamesInScope _rightTypeOoptions _rightTypeOtypeConstructors _rightTypeOvalueConstructors _rightTypeOwarnings
           in  ( _lhsOcollectValueConstructors,_lhsOkindErrors,_lhsOmiscerrors,_lhsOparameterTypes,_lhsOself,_lhsOtypevariables,_lhsOunboundNames,_lhsOwarnings)))
 sem_Constructor_Record :: T_Range ->
                           T_Name ->
                           T_FieldDeclarations ->
                           T_Constructor
-sem_Constructor_Record range_ constructor_ fieldDeclarations_  =
+sem_Constructor_Record range_ constructor_ fieldDeclarations_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectValueConstructors
@@ -1351,18 +1338,18 @@ sem_Constructor_Record range_ constructor_ fieldDeclarations_  =
               _fieldDeclarationsOoptions =
                   _lhsIoptions
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _constructorIself) =
-                  (constructor_ )
+                  constructor_
               ( _fieldDeclarationsImiscerrors,_fieldDeclarationsIself,_fieldDeclarationsIunboundNames) =
-                  (fieldDeclarations_ _fieldDeclarationsOmiscerrors _fieldDeclarationsOnamesInScope _fieldDeclarationsOoptions )
+                  fieldDeclarations_ _fieldDeclarationsOmiscerrors _fieldDeclarationsOnamesInScope _fieldDeclarationsOoptions
           in  ( _lhsOcollectValueConstructors,_lhsOkindErrors,_lhsOmiscerrors,_lhsOparameterTypes,_lhsOself,_lhsOtypevariables,_lhsOunboundNames,_lhsOwarnings)))
 -- Constructors ------------------------------------------------
 -- cata
 sem_Constructors :: Constructors ->
                     T_Constructors
-sem_Constructors list  =
-    (Prelude.foldr sem_Constructors_Cons sem_Constructors_Nil (Prelude.map sem_Constructor list) )
+sem_Constructors list =
+    (Prelude.foldr sem_Constructors_Cons sem_Constructors_Nil (Prelude.map sem_Constructor list))
 -- semantic domain
 type T_Constructors = Names ->
                       Names ->
@@ -1379,7 +1366,7 @@ type T_Constructors = Names ->
 sem_Constructors_Cons :: T_Constructor ->
                          T_Constructors ->
                          T_Constructors
-sem_Constructors_Cons hd_ tl_  =
+sem_Constructors_Cons hd_ tl_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectValueConstructors
@@ -1500,12 +1487,12 @@ sem_Constructors_Cons hd_ tl_  =
               _tlOwarnings =
                   _hdIwarnings
               ( _hdIcollectValueConstructors,_hdIkindErrors,_hdImiscerrors,_hdIparameterTypes,_hdIself,_hdItypevariables,_hdIunboundNames,_hdIwarnings) =
-                  (hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOcollectValueConstructors _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOsimpletype _hdOtypeConstructors _hdOvalueConstructors _hdOwarnings )
+                  hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOcollectValueConstructors _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOsimpletype _hdOtypeConstructors _hdOvalueConstructors _hdOwarnings
               ( _tlIcollectValueConstructors,_tlIkindErrors,_tlImiscerrors,_tlIparameterTypes,_tlIself,_tlItypevariables,_tlIunboundNames,_tlIwarnings) =
-                  (tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOcollectValueConstructors _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOsimpletype _tlOtypeConstructors _tlOvalueConstructors _tlOwarnings )
+                  tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOcollectValueConstructors _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOsimpletype _tlOtypeConstructors _tlOvalueConstructors _tlOwarnings
           in  ( _lhsOcollectValueConstructors,_lhsOkindErrors,_lhsOmiscerrors,_lhsOparameterTypes,_lhsOself,_lhsOtypevariables,_lhsOunboundNames,_lhsOwarnings)))
 sem_Constructors_Nil :: T_Constructors
-sem_Constructors_Nil  =
+sem_Constructors_Nil =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectValueConstructors
@@ -1548,8 +1535,8 @@ sem_Constructors_Nil  =
 -- cata
 sem_ContextItem :: ContextItem ->
                    T_ContextItem
-sem_ContextItem (ContextItem_ContextItem _range _name _types )  =
-    (sem_ContextItem_ContextItem (sem_Range _range ) (sem_Name _name ) (sem_Types _types ) )
+sem_ContextItem (ContextItem_ContextItem _range _name _types) =
+    (sem_ContextItem_ContextItem (sem_Range _range) (sem_Name _name) (sem_Types _types))
 -- semantic domain
 type T_ContextItem = Names ->
                      ([Error]) ->
@@ -1561,7 +1548,7 @@ sem_ContextItem_ContextItem :: T_Range ->
                                T_Name ->
                                T_Types ->
                                T_ContextItem
-sem_ContextItem_ContextItem range_ name_ types_  =
+sem_ContextItem_ContextItem range_ name_ types_ =
     (\ _lhsIallTypeConstructors
        _lhsImiscerrors
        _lhsIoptions
@@ -1610,18 +1597,18 @@ sem_ContextItem_ContextItem range_ name_ types_  =
               _typesOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _typesImiscerrors,_typesIself,_typesItypevariables,_typesIwarnings) =
-                  (types_ _typesOallTypeConstructors _typesOmiscerrors _typesOoptions _typesOtypeConstructors _typesOwarnings )
+                  types_ _typesOallTypeConstructors _typesOmiscerrors _typesOoptions _typesOtypeConstructors _typesOwarnings
           in  ( _lhsOcontextRanges,_lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOwarnings)))
 -- ContextItems ------------------------------------------------
 -- cata
 sem_ContextItems :: ContextItems ->
                     T_ContextItems
-sem_ContextItems list  =
-    (Prelude.foldr sem_ContextItems_Cons sem_ContextItems_Nil (Prelude.map sem_ContextItem list) )
+sem_ContextItems list =
+    (Prelude.foldr sem_ContextItems_Cons sem_ContextItems_Nil (Prelude.map sem_ContextItem list))
 -- semantic domain
 type T_ContextItems = Names ->
                       ([Error]) ->
@@ -1632,7 +1619,7 @@ type T_ContextItems = Names ->
 sem_ContextItems_Cons :: T_ContextItem ->
                          T_ContextItems ->
                          T_ContextItems
-sem_ContextItems_Cons hd_ tl_  =
+sem_ContextItems_Cons hd_ tl_ =
     (\ _lhsIallTypeConstructors
        _lhsImiscerrors
        _lhsIoptions
@@ -1696,12 +1683,12 @@ sem_ContextItems_Cons hd_ tl_  =
               _tlOwarnings =
                   _hdIwarnings
               ( _hdIcontextRanges,_hdIcontextVars,_hdImiscerrors,_hdIself,_hdIwarnings) =
-                  (hd_ _hdOallTypeConstructors _hdOmiscerrors _hdOoptions _hdOtypeConstructors _hdOwarnings )
+                  hd_ _hdOallTypeConstructors _hdOmiscerrors _hdOoptions _hdOtypeConstructors _hdOwarnings
               ( _tlIcontextRanges,_tlIcontextVars,_tlImiscerrors,_tlIself,_tlIwarnings) =
-                  (tl_ _tlOallTypeConstructors _tlOmiscerrors _tlOoptions _tlOtypeConstructors _tlOwarnings )
+                  tl_ _tlOallTypeConstructors _tlOmiscerrors _tlOoptions _tlOtypeConstructors _tlOwarnings
           in  ( _lhsOcontextRanges,_lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOwarnings)))
 sem_ContextItems_Nil :: T_ContextItems
-sem_ContextItems_Nil  =
+sem_ContextItems_Nil =
     (\ _lhsIallTypeConstructors
        _lhsImiscerrors
        _lhsIoptions
@@ -1729,28 +1716,28 @@ sem_ContextItems_Nil  =
 -- cata
 sem_Declaration :: Declaration ->
                    T_Declaration
-sem_Declaration (Declaration_Class _range _context _simpletype _where )  =
-    (sem_Declaration_Class (sem_Range _range ) (sem_ContextItems _context ) (sem_SimpleType _simpletype ) (sem_MaybeDeclarations _where ) )
-sem_Declaration (Declaration_Data _range _context _simpletype _constructors _derivings )  =
-    (sem_Declaration_Data (sem_Range _range ) (sem_ContextItems _context ) (sem_SimpleType _simpletype ) (sem_Constructors _constructors ) (sem_Names _derivings ) )
-sem_Declaration (Declaration_Default _range _types )  =
-    (sem_Declaration_Default (sem_Range _range ) (sem_Types _types ) )
-sem_Declaration (Declaration_Empty _range )  =
-    (sem_Declaration_Empty (sem_Range _range ) )
-sem_Declaration (Declaration_Fixity _range _fixity _priority _operators )  =
-    (sem_Declaration_Fixity (sem_Range _range ) (sem_Fixity _fixity ) (sem_MaybeInt _priority ) (sem_Names _operators ) )
-sem_Declaration (Declaration_FunctionBindings _range _bindings )  =
-    (sem_Declaration_FunctionBindings (sem_Range _range ) (sem_FunctionBindings _bindings ) )
-sem_Declaration (Declaration_Instance _range _context _name _types _where )  =
-    (sem_Declaration_Instance (sem_Range _range ) (sem_ContextItems _context ) (sem_Name _name ) (sem_Types _types ) (sem_MaybeDeclarations _where ) )
-sem_Declaration (Declaration_Newtype _range _context _simpletype _constructor _derivings )  =
-    (sem_Declaration_Newtype (sem_Range _range ) (sem_ContextItems _context ) (sem_SimpleType _simpletype ) (sem_Constructor _constructor ) (sem_Names _derivings ) )
-sem_Declaration (Declaration_PatternBinding _range _pattern _righthandside )  =
-    (sem_Declaration_PatternBinding (sem_Range _range ) (sem_Pattern _pattern ) (sem_RightHandSide _righthandside ) )
-sem_Declaration (Declaration_Type _range _simpletype _type )  =
-    (sem_Declaration_Type (sem_Range _range ) (sem_SimpleType _simpletype ) (sem_Type _type ) )
-sem_Declaration (Declaration_TypeSignature _range _names _type )  =
-    (sem_Declaration_TypeSignature (sem_Range _range ) (sem_Names _names ) (sem_Type _type ) )
+sem_Declaration (Declaration_Class _range _context _simpletype _where) =
+    (sem_Declaration_Class (sem_Range _range) (sem_ContextItems _context) (sem_SimpleType _simpletype) (sem_MaybeDeclarations _where))
+sem_Declaration (Declaration_Data _range _context _simpletype _constructors _derivings) =
+    (sem_Declaration_Data (sem_Range _range) (sem_ContextItems _context) (sem_SimpleType _simpletype) (sem_Constructors _constructors) (sem_Names _derivings))
+sem_Declaration (Declaration_Default _range _types) =
+    (sem_Declaration_Default (sem_Range _range) (sem_Types _types))
+sem_Declaration (Declaration_Empty _range) =
+    (sem_Declaration_Empty (sem_Range _range))
+sem_Declaration (Declaration_Fixity _range _fixity _priority _operators) =
+    (sem_Declaration_Fixity (sem_Range _range) (sem_Fixity _fixity) (sem_MaybeInt _priority) (sem_Names _operators))
+sem_Declaration (Declaration_FunctionBindings _range _bindings) =
+    (sem_Declaration_FunctionBindings (sem_Range _range) (sem_FunctionBindings _bindings))
+sem_Declaration (Declaration_Instance _range _context _name _types _where) =
+    (sem_Declaration_Instance (sem_Range _range) (sem_ContextItems _context) (sem_Name _name) (sem_Types _types) (sem_MaybeDeclarations _where))
+sem_Declaration (Declaration_Newtype _range _context _simpletype _constructor _derivings) =
+    (sem_Declaration_Newtype (sem_Range _range) (sem_ContextItems _context) (sem_SimpleType _simpletype) (sem_Constructor _constructor) (sem_Names _derivings))
+sem_Declaration (Declaration_PatternBinding _range _pattern _righthandside) =
+    (sem_Declaration_PatternBinding (sem_Range _range) (sem_Pattern _pattern) (sem_RightHandSide _righthandside))
+sem_Declaration (Declaration_Type _range _simpletype _type) =
+    (sem_Declaration_Type (sem_Range _range) (sem_SimpleType _simpletype) (sem_Type _type))
+sem_Declaration (Declaration_TypeSignature _range _names _type) =
+    (sem_Declaration_TypeSignature (sem_Range _range) (sem_Names _names) (sem_Type _type))
 -- semantic domain
 type T_Declaration = Names ->
                      Names ->
@@ -1777,7 +1764,7 @@ sem_Declaration_Class :: T_Range ->
                          T_SimpleType ->
                          T_MaybeDeclarations ->
                          T_Declaration
-sem_Declaration_Class range_ context_ simpletype_ where_  =
+sem_Declaration_Class range_ context_ simpletype_ where_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -1850,14 +1837,8 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
               _whereIwarnings :: ([Warning])
               _lhsOpreviousWasAlsoFB =
                   Nothing
-              __tup4 =
+              (_assumptions,_constraints,_unboundNames) =
                   internalError "PartialSyntax.ag" "n/a" "Declaration.Class"
-              (_assumptions,_,_) =
-                  __tup4
-              (_,_constraints,_) =
-                  __tup4
-              (_,_,_unboundNames) =
-                  __tup4
               _lhsOcollectInstances =
                   _whereIcollectInstances
               _lhsOdeclVarNames =
@@ -1927,13 +1908,13 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
               _whereOwarnings =
                   _contextIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
-                  (context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings )
+                  context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings
               ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
-                  (simpletype_ )
+                  simpletype_
               ( _whereIcollectInstances,_whereIcollectScopeInfos,_whereIkindErrors,_whereImiscerrors,_whereInamesInScope,_whereIself,_whereIunboundNames,_whereIwarnings) =
-                  (where_ _whereOallTypeConstructors _whereOallValueConstructors _whereOclassEnvironment _whereOcollectScopeInfos _whereOkindErrors _whereOmiscerrors _whereOnamesInScope _whereOoptions _whereOorderedTypeSynonyms _whereOtypeConstructors _whereOunboundNames _whereOvalueConstructors _whereOwarnings )
+                  where_ _whereOallTypeConstructors _whereOallValueConstructors _whereOclassEnvironment _whereOcollectScopeInfos _whereOkindErrors _whereOmiscerrors _whereOnamesInScope _whereOoptions _whereOorderedTypeSynonyms _whereOtypeConstructors _whereOunboundNames _whereOvalueConstructors _whereOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_Data :: T_Range ->
                         T_ContextItems ->
@@ -1941,7 +1922,7 @@ sem_Declaration_Data :: T_Range ->
                         T_Constructors ->
                         T_Names ->
                         T_Declaration
-sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_  =
+sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -2105,20 +2086,20 @@ sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_  =
               _constructorsOwarnings =
                   _contextIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
-                  (context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings )
+                  context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings
               ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
-                  (simpletype_ )
+                  simpletype_
               ( _constructorsIcollectValueConstructors,_constructorsIkindErrors,_constructorsImiscerrors,_constructorsIparameterTypes,_constructorsIself,_constructorsItypevariables,_constructorsIunboundNames,_constructorsIwarnings) =
-                  (constructors_ _constructorsOallTypeConstructors _constructorsOallValueConstructors _constructorsOcollectValueConstructors _constructorsOkindErrors _constructorsOmiscerrors _constructorsOnamesInScope _constructorsOoptions _constructorsOsimpletype _constructorsOtypeConstructors _constructorsOvalueConstructors _constructorsOwarnings )
+                  constructors_ _constructorsOallTypeConstructors _constructorsOallValueConstructors _constructorsOcollectValueConstructors _constructorsOkindErrors _constructorsOmiscerrors _constructorsOnamesInScope _constructorsOoptions _constructorsOsimpletype _constructorsOtypeConstructors _constructorsOvalueConstructors _constructorsOwarnings
               ( _derivingsIself) =
-                  (derivings_ )
+                  derivings_
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_Default :: T_Range ->
                            T_Types ->
                            T_Declaration
-sem_Declaration_Default range_ types_  =
+sem_Declaration_Default range_ types_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -2209,13 +2190,13 @@ sem_Declaration_Default range_ types_  =
               _typesOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _typesImiscerrors,_typesIself,_typesItypevariables,_typesIwarnings) =
-                  (types_ _typesOallTypeConstructors _typesOmiscerrors _typesOoptions _typesOtypeConstructors _typesOwarnings )
+                  types_ _typesOallTypeConstructors _typesOmiscerrors _typesOoptions _typesOtypeConstructors _typesOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_Empty :: T_Range ->
                          T_Declaration
-sem_Declaration_Empty range_  =
+sem_Declaration_Empty range_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -2287,14 +2268,14 @@ sem_Declaration_Empty range_  =
               _lhsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_Fixity :: T_Range ->
                           T_Fixity ->
                           T_MaybeInt ->
                           T_Names ->
                           T_Declaration
-sem_Declaration_Fixity range_ fixity_ priority_ operators_  =
+sem_Declaration_Fixity range_ fixity_ priority_ operators_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -2376,18 +2357,18 @@ sem_Declaration_Fixity range_ fixity_ priority_ operators_  =
               _lhsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _fixityIself) =
-                  (fixity_ )
+                  fixity_
               ( _priorityIself) =
-                  (priority_ )
+                  priority_
               ( _operatorsIself) =
-                  (operators_ )
+                  operators_
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_FunctionBindings :: T_Range ->
                                     T_FunctionBindings ->
                                     T_Declaration
-sem_Declaration_FunctionBindings range_ bindings_  =
+sem_Declaration_FunctionBindings range_ bindings_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -2511,9 +2492,9 @@ sem_Declaration_FunctionBindings range_ bindings_  =
               _bindingsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _bindingsIarities,_bindingsIcollectInstances,_bindingsIcollectScopeInfos,_bindingsIkindErrors,_bindingsImiscerrors,_bindingsIname,_bindingsIself,_bindingsIunboundNames,_bindingsIwarnings) =
-                  (bindings_ _bindingsOallTypeConstructors _bindingsOallValueConstructors _bindingsOclassEnvironment _bindingsOcollectScopeInfos _bindingsOkindErrors _bindingsOmiscerrors _bindingsOnamesInScope _bindingsOoptions _bindingsOorderedTypeSynonyms _bindingsOtypeConstructors _bindingsOvalueConstructors _bindingsOwarnings )
+                  bindings_ _bindingsOallTypeConstructors _bindingsOallValueConstructors _bindingsOclassEnvironment _bindingsOcollectScopeInfos _bindingsOkindErrors _bindingsOmiscerrors _bindingsOnamesInScope _bindingsOoptions _bindingsOorderedTypeSynonyms _bindingsOtypeConstructors _bindingsOvalueConstructors _bindingsOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_Instance :: T_Range ->
                             T_ContextItems ->
@@ -2521,7 +2502,7 @@ sem_Declaration_Instance :: T_Range ->
                             T_Types ->
                             T_MaybeDeclarations ->
                             T_Declaration
-sem_Declaration_Instance range_ context_ name_ types_ where_  =
+sem_Declaration_Instance range_ context_ name_ types_ where_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -2601,14 +2582,8 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _whereIwarnings :: ([Warning])
               _lhsOpreviousWasAlsoFB =
                   Nothing
-              __tup5 =
+              (_assumptions,_constraints,_unboundNames) =
                   internalError "PartialSyntax.ag" "n/a" "Declaration.Instance"
-              (_assumptions,_,_) =
-                  __tup5
-              (_,_constraints,_) =
-                  __tup5
-              (_,_,_unboundNames) =
-                  __tup5
               _lhsOcollectInstances =
                   _whereIcollectInstances
               _lhsOdeclVarNames =
@@ -2688,15 +2663,15 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _whereOwarnings =
                   _typesIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
-                  (context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings )
+                  context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _typesImiscerrors,_typesIself,_typesItypevariables,_typesIwarnings) =
-                  (types_ _typesOallTypeConstructors _typesOmiscerrors _typesOoptions _typesOtypeConstructors _typesOwarnings )
+                  types_ _typesOallTypeConstructors _typesOmiscerrors _typesOoptions _typesOtypeConstructors _typesOwarnings
               ( _whereIcollectInstances,_whereIcollectScopeInfos,_whereIkindErrors,_whereImiscerrors,_whereInamesInScope,_whereIself,_whereIunboundNames,_whereIwarnings) =
-                  (where_ _whereOallTypeConstructors _whereOallValueConstructors _whereOclassEnvironment _whereOcollectScopeInfos _whereOkindErrors _whereOmiscerrors _whereOnamesInScope _whereOoptions _whereOorderedTypeSynonyms _whereOtypeConstructors _whereOunboundNames _whereOvalueConstructors _whereOwarnings )
+                  where_ _whereOallTypeConstructors _whereOallValueConstructors _whereOclassEnvironment _whereOcollectScopeInfos _whereOkindErrors _whereOmiscerrors _whereOnamesInScope _whereOoptions _whereOorderedTypeSynonyms _whereOtypeConstructors _whereOunboundNames _whereOvalueConstructors _whereOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_Newtype :: T_Range ->
                            T_ContextItems ->
@@ -2704,7 +2679,7 @@ sem_Declaration_Newtype :: T_Range ->
                            T_Constructor ->
                            T_Names ->
                            T_Declaration
-sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_  =
+sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -2841,21 +2816,21 @@ sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_  =
               _constructorOwarnings =
                   _contextIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
-                  (context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings )
+                  context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings
               ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
-                  (simpletype_ )
+                  simpletype_
               ( _constructorIcollectValueConstructors,_constructorIkindErrors,_constructorImiscerrors,_constructorIparameterTypes,_constructorIself,_constructorItypevariables,_constructorIunboundNames,_constructorIwarnings) =
-                  (constructor_ _constructorOallTypeConstructors _constructorOallValueConstructors _constructorOcollectValueConstructors _constructorOkindErrors _constructorOmiscerrors _constructorOnamesInScope _constructorOoptions _constructorOsimpletype _constructorOtypeConstructors _constructorOvalueConstructors _constructorOwarnings )
+                  constructor_ _constructorOallTypeConstructors _constructorOallValueConstructors _constructorOcollectValueConstructors _constructorOkindErrors _constructorOmiscerrors _constructorOnamesInScope _constructorOoptions _constructorOsimpletype _constructorOtypeConstructors _constructorOvalueConstructors _constructorOwarnings
               ( _derivingsIself) =
-                  (derivings_ )
+                  derivings_
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_PatternBinding :: T_Range ->
                                   T_Pattern ->
                                   T_RightHandSide ->
                                   T_Declaration
-sem_Declaration_PatternBinding range_ pattern_ righthandside_  =
+sem_Declaration_PatternBinding range_ pattern_ righthandside_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -3009,17 +2984,17 @@ sem_Declaration_PatternBinding range_ pattern_ righthandside_  =
               _righthandsideOwarnings =
                   _patternIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
-                  (pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings )
+                  pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings
               ( _righthandsideIcollectInstances,_righthandsideIcollectScopeInfos,_righthandsideIkindErrors,_righthandsideImiscerrors,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIwarnings) =
-                  (righthandside_ _righthandsideOallTypeConstructors _righthandsideOallValueConstructors _righthandsideOclassEnvironment _righthandsideOcollectScopeInfos _righthandsideOkindErrors _righthandsideOmiscerrors _righthandsideOnamesInScope _righthandsideOoptions _righthandsideOorderedTypeSynonyms _righthandsideOtypeConstructors _righthandsideOvalueConstructors _righthandsideOwarnings )
+                  righthandside_ _righthandsideOallTypeConstructors _righthandsideOallValueConstructors _righthandsideOclassEnvironment _righthandsideOcollectScopeInfos _righthandsideOkindErrors _righthandsideOmiscerrors _righthandsideOnamesInScope _righthandsideOoptions _righthandsideOorderedTypeSynonyms _righthandsideOtypeConstructors _righthandsideOvalueConstructors _righthandsideOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_Type :: T_Range ->
                         T_SimpleType ->
                         T_Type ->
                         T_Declaration
-sem_Declaration_Type range_ simpletype_ type_  =
+sem_Declaration_Type range_ simpletype_ type_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -3127,17 +3102,17 @@ sem_Declaration_Type range_ simpletype_ type_  =
               _typeOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
-                  (simpletype_ )
+                  simpletype_
               ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
-                  (type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings )
+                  type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declaration_TypeSignature :: T_Range ->
                                  T_Names ->
                                  T_Type ->
                                  T_Declaration
-sem_Declaration_TypeSignature range_ names_ type_  =
+sem_Declaration_TypeSignature range_ names_ type_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -3187,12 +3162,8 @@ sem_Declaration_TypeSignature range_ names_ type_  =
               _typeIwarnings :: ([Warning])
               _lhsOtypeSignatures =
                   [ (name, _typeScheme) | name <- _namesIself ] ++ _lhsItypeSignatures
-              __tup6 =
+              (_typeScheme,_intMap) =
                   makeTpSchemeFromType' _typeIself
-              (_typeScheme,_) =
-                  __tup6
-              (_,_intMap) =
-                  __tup6
               _lhsOkindErrors =
                   _newErrors ++ _lhsIkindErrors
               _newErrors =
@@ -3238,18 +3209,18 @@ sem_Declaration_TypeSignature range_ names_ type_  =
               _typeOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _namesIself) =
-                  (names_ )
+                  names_
               ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
-                  (type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings )
+                  type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 -- Declarations ------------------------------------------------
 -- cata
 sem_Declarations :: Declarations ->
                     T_Declarations
-sem_Declarations list  =
-    (Prelude.foldr sem_Declarations_Cons sem_Declarations_Nil (Prelude.map sem_Declaration list) )
+sem_Declarations list =
+    (Prelude.foldr sem_Declarations_Cons sem_Declarations_Nil (Prelude.map sem_Declaration list))
 -- semantic domain
 type T_Declarations = Names ->
                       Names ->
@@ -3274,7 +3245,7 @@ type T_Declarations = Names ->
 sem_Declarations_Cons :: T_Declaration ->
                          T_Declarations ->
                          T_Declarations
-sem_Declarations_Cons hd_ tl_  =
+sem_Declarations_Cons hd_ tl_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -3491,12 +3462,12 @@ sem_Declarations_Cons hd_ tl_  =
               _tlOwarnings =
                   _hdIwarnings
               ( _hdIcollectInstances,_hdIcollectScopeInfos,_hdIcollectTypeConstructors,_hdIcollectTypeSynonyms,_hdIcollectValueConstructors,_hdIdeclVarNames,_hdIkindErrors,_hdImiscerrors,_hdIoperatorFixities,_hdIpreviousWasAlsoFB,_hdIrestrictedNames,_hdIself,_hdIsuspiciousFBs,_hdItypeSignatures,_hdIunboundNames,_hdIwarnings) =
-                  (hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOcollectTypeConstructors _hdOcollectTypeSynonyms _hdOcollectValueConstructors _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoperatorFixities _hdOoptions _hdOorderedTypeSynonyms _hdOpreviousWasAlsoFB _hdOsuspiciousFBs _hdOtypeConstructors _hdOtypeSignatures _hdOvalueConstructors _hdOwarnings )
+                  hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOcollectTypeConstructors _hdOcollectTypeSynonyms _hdOcollectValueConstructors _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoperatorFixities _hdOoptions _hdOorderedTypeSynonyms _hdOpreviousWasAlsoFB _hdOsuspiciousFBs _hdOtypeConstructors _hdOtypeSignatures _hdOvalueConstructors _hdOwarnings
               ( _tlIcollectInstances,_tlIcollectScopeInfos,_tlIcollectTypeConstructors,_tlIcollectTypeSynonyms,_tlIcollectValueConstructors,_tlIdeclVarNames,_tlIkindErrors,_tlImiscerrors,_tlIoperatorFixities,_tlIpreviousWasAlsoFB,_tlIrestrictedNames,_tlIself,_tlIsuspiciousFBs,_tlItypeSignatures,_tlIunboundNames,_tlIwarnings) =
-                  (tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOcollectTypeConstructors _tlOcollectTypeSynonyms _tlOcollectValueConstructors _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoperatorFixities _tlOoptions _tlOorderedTypeSynonyms _tlOpreviousWasAlsoFB _tlOsuspiciousFBs _tlOtypeConstructors _tlOtypeSignatures _tlOvalueConstructors _tlOwarnings )
+                  tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOcollectTypeConstructors _tlOcollectTypeSynonyms _tlOcollectValueConstructors _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoperatorFixities _tlOoptions _tlOorderedTypeSynonyms _tlOpreviousWasAlsoFB _tlOsuspiciousFBs _tlOtypeConstructors _tlOtypeSignatures _tlOvalueConstructors _tlOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings)))
 sem_Declarations_Nil :: T_Declarations
-sem_Declarations_Nil  =
+sem_Declarations_Nil =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -3571,14 +3542,14 @@ sem_Declarations_Nil  =
 -- cata
 sem_Export :: Export ->
               T_Export
-sem_Export (Export_Module _range _name )  =
-    (sem_Export_Module (sem_Range _range ) (sem_Name _name ) )
-sem_Export (Export_TypeOrClass _range _name _names )  =
-    (sem_Export_TypeOrClass (sem_Range _range ) (sem_Name _name ) (sem_MaybeNames _names ) )
-sem_Export (Export_TypeOrClassComplete _range _name )  =
-    (sem_Export_TypeOrClassComplete (sem_Range _range ) (sem_Name _name ) )
-sem_Export (Export_Variable _range _name )  =
-    (sem_Export_Variable (sem_Range _range ) (sem_Name _name ) )
+sem_Export (Export_Module _range _name) =
+    (sem_Export_Module (sem_Range _range) (sem_Name _name))
+sem_Export (Export_TypeOrClass _range _name _names) =
+    (sem_Export_TypeOrClass (sem_Range _range) (sem_Name _name) (sem_MaybeNames _names))
+sem_Export (Export_TypeOrClassComplete _range _name) =
+    (sem_Export_TypeOrClassComplete (sem_Range _range) (sem_Name _name))
+sem_Export (Export_Variable _range _name) =
+    (sem_Export_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Export = Names ->
                 Names ->
@@ -3588,7 +3559,7 @@ type T_Export = Names ->
 sem_Export_Module :: T_Range ->
                      T_Name ->
                      T_Export
-sem_Export_Module range_ name_  =
+sem_Export_Module range_ name_ =
     (\ _lhsIconsInScope
        _lhsImodulesInScope
        _lhsInamesInScop
@@ -3605,15 +3576,15 @@ sem_Export_Module range_ name_  =
               _lhsOself =
                   _self
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
           in  ( _lhsOexportErrors,_lhsOself)))
 sem_Export_TypeOrClass :: T_Range ->
                           T_Name ->
                           T_MaybeNames ->
                           T_Export
-sem_Export_TypeOrClass range_ name_ names_  =
+sem_Export_TypeOrClass range_ name_ names_ =
     (\ _lhsIconsInScope
        _lhsImodulesInScope
        _lhsInamesInScop
@@ -3630,16 +3601,16 @@ sem_Export_TypeOrClass range_ name_ names_  =
               _lhsOself =
                   _self
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _namesIself) =
-                  (names_ )
+                  names_
           in  ( _lhsOexportErrors,_lhsOself)))
 sem_Export_TypeOrClassComplete :: T_Range ->
                                   T_Name ->
                                   T_Export
-sem_Export_TypeOrClassComplete range_ name_  =
+sem_Export_TypeOrClassComplete range_ name_ =
     (\ _lhsIconsInScope
        _lhsImodulesInScope
        _lhsInamesInScop
@@ -3655,14 +3626,14 @@ sem_Export_TypeOrClassComplete range_ name_  =
               _lhsOself =
                   _self
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
           in  ( _lhsOexportErrors,_lhsOself)))
 sem_Export_Variable :: T_Range ->
                        T_Name ->
                        T_Export
-sem_Export_Variable range_ name_  =
+sem_Export_Variable range_ name_ =
     (\ _lhsIconsInScope
        _lhsImodulesInScope
        _lhsInamesInScop
@@ -3679,16 +3650,16 @@ sem_Export_Variable range_ name_  =
               _lhsOself =
                   _self
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
           in  ( _lhsOexportErrors,_lhsOself)))
 -- Exports -----------------------------------------------------
 -- cata
 sem_Exports :: Exports ->
                T_Exports
-sem_Exports list  =
-    (Prelude.foldr sem_Exports_Cons sem_Exports_Nil (Prelude.map sem_Export list) )
+sem_Exports list =
+    (Prelude.foldr sem_Exports_Cons sem_Exports_Nil (Prelude.map sem_Export list))
 -- semantic domain
 type T_Exports = Names ->
                  Names ->
@@ -3698,7 +3669,7 @@ type T_Exports = Names ->
 sem_Exports_Cons :: T_Export ->
                     T_Exports ->
                     T_Exports
-sem_Exports_Cons hd_ tl_  =
+sem_Exports_Cons hd_ tl_ =
     (\ _lhsIconsInScope
        _lhsImodulesInScope
        _lhsInamesInScop
@@ -3740,12 +3711,12 @@ sem_Exports_Cons hd_ tl_  =
               _tlOtyconsInScope =
                   _lhsItyconsInScope
               ( _hdIexportErrors,_hdIself) =
-                  (hd_ _hdOconsInScope _hdOmodulesInScope _hdOnamesInScop _hdOtyconsInScope )
+                  hd_ _hdOconsInScope _hdOmodulesInScope _hdOnamesInScop _hdOtyconsInScope
               ( _tlIexportErrors,_tlIself) =
-                  (tl_ _tlOconsInScope _tlOmodulesInScope _tlOnamesInScop _tlOtyconsInScope )
+                  tl_ _tlOconsInScope _tlOmodulesInScope _tlOnamesInScop _tlOtyconsInScope
           in  ( _lhsOexportErrors,_lhsOself)))
 sem_Exports_Nil :: T_Exports
-sem_Exports_Nil  =
+sem_Exports_Nil =
     (\ _lhsIconsInScope
        _lhsImodulesInScope
        _lhsInamesInScop
@@ -3763,46 +3734,46 @@ sem_Exports_Nil  =
 -- cata
 sem_Expression :: Expression ->
                   T_Expression
-sem_Expression (Expression_Case _range _expression _alternatives )  =
-    (sem_Expression_Case (sem_Range _range ) (sem_Expression _expression ) (sem_Alternatives _alternatives ) )
-sem_Expression (Expression_Comprehension _range _expression _qualifiers )  =
-    (sem_Expression_Comprehension (sem_Range _range ) (sem_Expression _expression ) (sem_Qualifiers _qualifiers ) )
-sem_Expression (Expression_Constructor _range _name )  =
-    (sem_Expression_Constructor (sem_Range _range ) (sem_Name _name ) )
-sem_Expression (Expression_Do _range _statements )  =
-    (sem_Expression_Do (sem_Range _range ) (sem_Statements _statements ) )
-sem_Expression (Expression_Enum _range _from _then _to )  =
-    (sem_Expression_Enum (sem_Range _range ) (sem_Expression _from ) (sem_MaybeExpression _then ) (sem_MaybeExpression _to ) )
-sem_Expression (Expression_If _range _guardExpression _thenExpression _elseExpression )  =
-    (sem_Expression_If (sem_Range _range ) (sem_Expression _guardExpression ) (sem_Expression _thenExpression ) (sem_Expression _elseExpression ) )
-sem_Expression (Expression_InfixApplication _range _leftExpression _operator _rightExpression )  =
-    (sem_Expression_InfixApplication (sem_Range _range ) (sem_MaybeExpression _leftExpression ) (sem_Expression _operator ) (sem_MaybeExpression _rightExpression ) )
-sem_Expression (Expression_Lambda _range _patterns _expression )  =
-    (sem_Expression_Lambda (sem_Range _range ) (sem_Patterns _patterns ) (sem_Expression _expression ) )
-sem_Expression (Expression_Let _range _declarations _expression )  =
-    (sem_Expression_Let (sem_Range _range ) (sem_Declarations _declarations ) (sem_Expression _expression ) )
-sem_Expression (Expression_List _range _expressions )  =
-    (sem_Expression_List (sem_Range _range ) (sem_Expressions _expressions ) )
-sem_Expression (Expression_Literal _range _literal )  =
-    (sem_Expression_Literal (sem_Range _range ) (sem_Literal _literal ) )
-sem_Expression (Expression_Negate _range _expression )  =
-    (sem_Expression_Negate (sem_Range _range ) (sem_Expression _expression ) )
-sem_Expression (Expression_NegateFloat _range _expression )  =
-    (sem_Expression_NegateFloat (sem_Range _range ) (sem_Expression _expression ) )
-sem_Expression (Expression_NormalApplication _range _function _arguments )  =
-    (sem_Expression_NormalApplication (sem_Range _range ) (sem_Expression _function ) (sem_Expressions _arguments ) )
-sem_Expression (Expression_Parenthesized _range _expression )  =
-    (sem_Expression_Parenthesized (sem_Range _range ) (sem_Expression _expression ) )
-sem_Expression (Expression_RecordConstruction _range _name _recordExpressionBindings )  =
-    (sem_Expression_RecordConstruction (sem_Range _range ) (sem_Name _name ) (sem_RecordExpressionBindings _recordExpressionBindings ) )
-sem_Expression (Expression_RecordUpdate _range _expression _recordExpressionBindings )  =
-    (sem_Expression_RecordUpdate (sem_Range _range ) (sem_Expression _expression ) (sem_RecordExpressionBindings _recordExpressionBindings ) )
-sem_Expression (Expression_Tuple _range _expressions )  =
-    (sem_Expression_Tuple (sem_Range _range ) (sem_Expressions _expressions ) )
-sem_Expression (Expression_Typed _range _expression _type )  =
-    (sem_Expression_Typed (sem_Range _range ) (sem_Expression _expression ) (sem_Type _type ) )
-sem_Expression (Expression_Variable _range _name )  =
-    (sem_Expression_Variable (sem_Range _range ) (sem_Name _name ) )
+sem_Expression (Expression_Case _range _expression _alternatives) =
+    (sem_Expression_Case (sem_Range _range) (sem_Expression _expression) (sem_Alternatives _alternatives))
+sem_Expression (Expression_Comprehension _range _expression _qualifiers) =
+    (sem_Expression_Comprehension (sem_Range _range) (sem_Expression _expression) (sem_Qualifiers _qualifiers))
+sem_Expression (Expression_Constructor _range _name) =
+    (sem_Expression_Constructor (sem_Range _range) (sem_Name _name))
+sem_Expression (Expression_Do _range _statements) =
+    (sem_Expression_Do (sem_Range _range) (sem_Statements _statements))
+sem_Expression (Expression_Enum _range _from _then _to) =
+    (sem_Expression_Enum (sem_Range _range) (sem_Expression _from) (sem_MaybeExpression _then) (sem_MaybeExpression _to))
+sem_Expression (Expression_If _range _guardExpression _thenExpression _elseExpression) =
+    (sem_Expression_If (sem_Range _range) (sem_Expression _guardExpression) (sem_Expression _thenExpression) (sem_Expression _elseExpression))
+sem_Expression (Expression_InfixApplication _range _leftExpression _operator _rightExpression) =
+    (sem_Expression_InfixApplication (sem_Range _range) (sem_MaybeExpression _leftExpression) (sem_Expression _operator) (sem_MaybeExpression _rightExpression))
+sem_Expression (Expression_Lambda _range _patterns _expression) =
+    (sem_Expression_Lambda (sem_Range _range) (sem_Patterns _patterns) (sem_Expression _expression))
+sem_Expression (Expression_Let _range _declarations _expression) =
+    (sem_Expression_Let (sem_Range _range) (sem_Declarations _declarations) (sem_Expression _expression))
+sem_Expression (Expression_List _range _expressions) =
+    (sem_Expression_List (sem_Range _range) (sem_Expressions _expressions))
+sem_Expression (Expression_Literal _range _literal) =
+    (sem_Expression_Literal (sem_Range _range) (sem_Literal _literal))
+sem_Expression (Expression_Negate _range _expression) =
+    (sem_Expression_Negate (sem_Range _range) (sem_Expression _expression))
+sem_Expression (Expression_NegateFloat _range _expression) =
+    (sem_Expression_NegateFloat (sem_Range _range) (sem_Expression _expression))
+sem_Expression (Expression_NormalApplication _range _function _arguments) =
+    (sem_Expression_NormalApplication (sem_Range _range) (sem_Expression _function) (sem_Expressions _arguments))
+sem_Expression (Expression_Parenthesized _range _expression) =
+    (sem_Expression_Parenthesized (sem_Range _range) (sem_Expression _expression))
+sem_Expression (Expression_RecordConstruction _range _name _recordExpressionBindings) =
+    (sem_Expression_RecordConstruction (sem_Range _range) (sem_Name _name) (sem_RecordExpressionBindings _recordExpressionBindings))
+sem_Expression (Expression_RecordUpdate _range _expression _recordExpressionBindings) =
+    (sem_Expression_RecordUpdate (sem_Range _range) (sem_Expression _expression) (sem_RecordExpressionBindings _recordExpressionBindings))
+sem_Expression (Expression_Tuple _range _expressions) =
+    (sem_Expression_Tuple (sem_Range _range) (sem_Expressions _expressions))
+sem_Expression (Expression_Typed _range _expression _type) =
+    (sem_Expression_Typed (sem_Range _range) (sem_Expression _expression) (sem_Type _type))
+sem_Expression (Expression_Variable _range _name) =
+    (sem_Expression_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Expression = Names ->
                     Names ->
@@ -3821,7 +3792,7 @@ sem_Expression_Case :: T_Range ->
                        T_Expression ->
                        T_Alternatives ->
                        T_Expression
-sem_Expression_Case range_ expression_ alternatives_  =
+sem_Expression_Case range_ expression_ alternatives_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -3945,17 +3916,17 @@ sem_Expression_Case range_ expression_ alternatives_  =
               _alternativesOwarnings =
                   _expressionIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
               ( _alternativesIcollectInstances,_alternativesIcollectScopeInfos,_alternativesIkindErrors,_alternativesImiscerrors,_alternativesIself,_alternativesIunboundNames,_alternativesIwarnings) =
-                  (alternatives_ _alternativesOallTypeConstructors _alternativesOallValueConstructors _alternativesOclassEnvironment _alternativesOcollectScopeInfos _alternativesOkindErrors _alternativesOmiscerrors _alternativesOnamesInScope _alternativesOoptions _alternativesOorderedTypeSynonyms _alternativesOtypeConstructors _alternativesOvalueConstructors _alternativesOwarnings )
+                  alternatives_ _alternativesOallTypeConstructors _alternativesOallValueConstructors _alternativesOclassEnvironment _alternativesOcollectScopeInfos _alternativesOkindErrors _alternativesOmiscerrors _alternativesOnamesInScope _alternativesOoptions _alternativesOorderedTypeSynonyms _alternativesOtypeConstructors _alternativesOvalueConstructors _alternativesOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_Comprehension :: T_Range ->
                                 T_Expression ->
                                 T_Qualifiers ->
                                 T_Expression
-sem_Expression_Comprehension range_ expression_ qualifiers_  =
+sem_Expression_Comprehension range_ expression_ qualifiers_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -4083,16 +4054,16 @@ sem_Expression_Comprehension range_ expression_ qualifiers_  =
               _qualifiersOwarnings =
                   _expressionIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
               ( _qualifiersIcollectInstances,_qualifiersIcollectScopeInfos,_qualifiersIkindErrors,_qualifiersImiscerrors,_qualifiersInamesInScope,_qualifiersIself,_qualifiersIunboundNames,_qualifiersIwarnings) =
-                  (qualifiers_ _qualifiersOallTypeConstructors _qualifiersOallValueConstructors _qualifiersOclassEnvironment _qualifiersOcollectScopeInfos _qualifiersOkindErrors _qualifiersOmiscerrors _qualifiersOnamesInScope _qualifiersOoptions _qualifiersOorderedTypeSynonyms _qualifiersOtypeConstructors _qualifiersOunboundNames _qualifiersOvalueConstructors _qualifiersOwarnings )
+                  qualifiers_ _qualifiersOallTypeConstructors _qualifiersOallValueConstructors _qualifiersOclassEnvironment _qualifiersOcollectScopeInfos _qualifiersOkindErrors _qualifiersOmiscerrors _qualifiersOnamesInScope _qualifiersOoptions _qualifiersOorderedTypeSynonyms _qualifiersOtypeConstructors _qualifiersOunboundNames _qualifiersOvalueConstructors _qualifiersOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_Constructor :: T_Range ->
                               T_Name ->
                               T_Expression
-sem_Expression_Constructor range_ name_  =
+sem_Expression_Constructor range_ name_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -4135,14 +4106,14 @@ sem_Expression_Constructor range_ name_  =
               _lhsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_Do :: T_Range ->
                      T_Statements ->
                      T_Expression
-sem_Expression_Do range_ statements_  =
+sem_Expression_Do range_ statements_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -4236,16 +4207,16 @@ sem_Expression_Do range_ statements_  =
               _statementsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _statementsIcollectInstances,_statementsIcollectScopeInfos,_statementsIkindErrors,_statementsIlastStatementIsExpr,_statementsImiscerrors,_statementsInamesInScope,_statementsIself,_statementsIunboundNames,_statementsIwarnings) =
-                  (statements_ _statementsOallTypeConstructors _statementsOallValueConstructors _statementsOclassEnvironment _statementsOcollectScopeInfos _statementsOkindErrors _statementsOlastStatementIsExpr _statementsOmiscerrors _statementsOnamesInScope _statementsOoptions _statementsOorderedTypeSynonyms _statementsOtypeConstructors _statementsOunboundNames _statementsOvalueConstructors _statementsOwarnings )
+                  statements_ _statementsOallTypeConstructors _statementsOallValueConstructors _statementsOclassEnvironment _statementsOcollectScopeInfos _statementsOkindErrors _statementsOlastStatementIsExpr _statementsOmiscerrors _statementsOnamesInScope _statementsOoptions _statementsOorderedTypeSynonyms _statementsOtypeConstructors _statementsOunboundNames _statementsOvalueConstructors _statementsOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_Enum :: T_Range ->
                        T_Expression ->
                        T_MaybeExpression ->
                        T_MaybeExpression ->
                        T_Expression
-sem_Expression_Enum range_ from_ then_ to_  =
+sem_Expression_Enum range_ from_ then_ to_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -4412,20 +4383,20 @@ sem_Expression_Enum range_ from_ then_ to_  =
               _toOwarnings =
                   _thenIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _fromIcollectInstances,_fromIcollectScopeInfos,_fromIkindErrors,_fromImiscerrors,_fromIself,_fromIunboundNames,_fromIwarnings) =
-                  (from_ _fromOallTypeConstructors _fromOallValueConstructors _fromOclassEnvironment _fromOcollectScopeInfos _fromOkindErrors _fromOmiscerrors _fromOnamesInScope _fromOoptions _fromOorderedTypeSynonyms _fromOtypeConstructors _fromOvalueConstructors _fromOwarnings )
+                  from_ _fromOallTypeConstructors _fromOallValueConstructors _fromOclassEnvironment _fromOcollectScopeInfos _fromOkindErrors _fromOmiscerrors _fromOnamesInScope _fromOoptions _fromOorderedTypeSynonyms _fromOtypeConstructors _fromOvalueConstructors _fromOwarnings
               ( _thenIcollectInstances,_thenIcollectScopeInfos,_thenIkindErrors,_thenImiscerrors,_thenIself,_thenIunboundNames,_thenIwarnings) =
-                  (then_ _thenOallTypeConstructors _thenOallValueConstructors _thenOclassEnvironment _thenOcollectScopeInfos _thenOkindErrors _thenOmiscerrors _thenOnamesInScope _thenOoptions _thenOorderedTypeSynonyms _thenOtypeConstructors _thenOvalueConstructors _thenOwarnings )
+                  then_ _thenOallTypeConstructors _thenOallValueConstructors _thenOclassEnvironment _thenOcollectScopeInfos _thenOkindErrors _thenOmiscerrors _thenOnamesInScope _thenOoptions _thenOorderedTypeSynonyms _thenOtypeConstructors _thenOvalueConstructors _thenOwarnings
               ( _toIcollectInstances,_toIcollectScopeInfos,_toIkindErrors,_toImiscerrors,_toIself,_toIunboundNames,_toIwarnings) =
-                  (to_ _toOallTypeConstructors _toOallValueConstructors _toOclassEnvironment _toOcollectScopeInfos _toOkindErrors _toOmiscerrors _toOnamesInScope _toOoptions _toOorderedTypeSynonyms _toOtypeConstructors _toOvalueConstructors _toOwarnings )
+                  to_ _toOallTypeConstructors _toOallValueConstructors _toOclassEnvironment _toOcollectScopeInfos _toOkindErrors _toOmiscerrors _toOnamesInScope _toOoptions _toOorderedTypeSynonyms _toOtypeConstructors _toOvalueConstructors _toOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_If :: T_Range ->
                      T_Expression ->
                      T_Expression ->
                      T_Expression ->
                      T_Expression
-sem_Expression_If range_ guardExpression_ thenExpression_ elseExpression_  =
+sem_Expression_If range_ guardExpression_ thenExpression_ elseExpression_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -4592,20 +4563,20 @@ sem_Expression_If range_ guardExpression_ thenExpression_ elseExpression_  =
               _elseExpressionOwarnings =
                   _thenExpressionIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _guardExpressionIcollectInstances,_guardExpressionIcollectScopeInfos,_guardExpressionIkindErrors,_guardExpressionImiscerrors,_guardExpressionIself,_guardExpressionIunboundNames,_guardExpressionIwarnings) =
-                  (guardExpression_ _guardExpressionOallTypeConstructors _guardExpressionOallValueConstructors _guardExpressionOclassEnvironment _guardExpressionOcollectScopeInfos _guardExpressionOkindErrors _guardExpressionOmiscerrors _guardExpressionOnamesInScope _guardExpressionOoptions _guardExpressionOorderedTypeSynonyms _guardExpressionOtypeConstructors _guardExpressionOvalueConstructors _guardExpressionOwarnings )
+                  guardExpression_ _guardExpressionOallTypeConstructors _guardExpressionOallValueConstructors _guardExpressionOclassEnvironment _guardExpressionOcollectScopeInfos _guardExpressionOkindErrors _guardExpressionOmiscerrors _guardExpressionOnamesInScope _guardExpressionOoptions _guardExpressionOorderedTypeSynonyms _guardExpressionOtypeConstructors _guardExpressionOvalueConstructors _guardExpressionOwarnings
               ( _thenExpressionIcollectInstances,_thenExpressionIcollectScopeInfos,_thenExpressionIkindErrors,_thenExpressionImiscerrors,_thenExpressionIself,_thenExpressionIunboundNames,_thenExpressionIwarnings) =
-                  (thenExpression_ _thenExpressionOallTypeConstructors _thenExpressionOallValueConstructors _thenExpressionOclassEnvironment _thenExpressionOcollectScopeInfos _thenExpressionOkindErrors _thenExpressionOmiscerrors _thenExpressionOnamesInScope _thenExpressionOoptions _thenExpressionOorderedTypeSynonyms _thenExpressionOtypeConstructors _thenExpressionOvalueConstructors _thenExpressionOwarnings )
+                  thenExpression_ _thenExpressionOallTypeConstructors _thenExpressionOallValueConstructors _thenExpressionOclassEnvironment _thenExpressionOcollectScopeInfos _thenExpressionOkindErrors _thenExpressionOmiscerrors _thenExpressionOnamesInScope _thenExpressionOoptions _thenExpressionOorderedTypeSynonyms _thenExpressionOtypeConstructors _thenExpressionOvalueConstructors _thenExpressionOwarnings
               ( _elseExpressionIcollectInstances,_elseExpressionIcollectScopeInfos,_elseExpressionIkindErrors,_elseExpressionImiscerrors,_elseExpressionIself,_elseExpressionIunboundNames,_elseExpressionIwarnings) =
-                  (elseExpression_ _elseExpressionOallTypeConstructors _elseExpressionOallValueConstructors _elseExpressionOclassEnvironment _elseExpressionOcollectScopeInfos _elseExpressionOkindErrors _elseExpressionOmiscerrors _elseExpressionOnamesInScope _elseExpressionOoptions _elseExpressionOorderedTypeSynonyms _elseExpressionOtypeConstructors _elseExpressionOvalueConstructors _elseExpressionOwarnings )
+                  elseExpression_ _elseExpressionOallTypeConstructors _elseExpressionOallValueConstructors _elseExpressionOclassEnvironment _elseExpressionOcollectScopeInfos _elseExpressionOkindErrors _elseExpressionOmiscerrors _elseExpressionOnamesInScope _elseExpressionOoptions _elseExpressionOorderedTypeSynonyms _elseExpressionOtypeConstructors _elseExpressionOvalueConstructors _elseExpressionOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_InfixApplication :: T_Range ->
                                    T_MaybeExpression ->
                                    T_Expression ->
                                    T_MaybeExpression ->
                                    T_Expression
-sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression_  =
+sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -4772,19 +4743,19 @@ sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression
               _rightExpressionOwarnings =
                   _operatorIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _leftExpressionIcollectInstances,_leftExpressionIcollectScopeInfos,_leftExpressionIkindErrors,_leftExpressionImiscerrors,_leftExpressionIself,_leftExpressionIunboundNames,_leftExpressionIwarnings) =
-                  (leftExpression_ _leftExpressionOallTypeConstructors _leftExpressionOallValueConstructors _leftExpressionOclassEnvironment _leftExpressionOcollectScopeInfos _leftExpressionOkindErrors _leftExpressionOmiscerrors _leftExpressionOnamesInScope _leftExpressionOoptions _leftExpressionOorderedTypeSynonyms _leftExpressionOtypeConstructors _leftExpressionOvalueConstructors _leftExpressionOwarnings )
+                  leftExpression_ _leftExpressionOallTypeConstructors _leftExpressionOallValueConstructors _leftExpressionOclassEnvironment _leftExpressionOcollectScopeInfos _leftExpressionOkindErrors _leftExpressionOmiscerrors _leftExpressionOnamesInScope _leftExpressionOoptions _leftExpressionOorderedTypeSynonyms _leftExpressionOtypeConstructors _leftExpressionOvalueConstructors _leftExpressionOwarnings
               ( _operatorIcollectInstances,_operatorIcollectScopeInfos,_operatorIkindErrors,_operatorImiscerrors,_operatorIself,_operatorIunboundNames,_operatorIwarnings) =
-                  (operator_ _operatorOallTypeConstructors _operatorOallValueConstructors _operatorOclassEnvironment _operatorOcollectScopeInfos _operatorOkindErrors _operatorOmiscerrors _operatorOnamesInScope _operatorOoptions _operatorOorderedTypeSynonyms _operatorOtypeConstructors _operatorOvalueConstructors _operatorOwarnings )
+                  operator_ _operatorOallTypeConstructors _operatorOallValueConstructors _operatorOclassEnvironment _operatorOcollectScopeInfos _operatorOkindErrors _operatorOmiscerrors _operatorOnamesInScope _operatorOoptions _operatorOorderedTypeSynonyms _operatorOtypeConstructors _operatorOvalueConstructors _operatorOwarnings
               ( _rightExpressionIcollectInstances,_rightExpressionIcollectScopeInfos,_rightExpressionIkindErrors,_rightExpressionImiscerrors,_rightExpressionIself,_rightExpressionIunboundNames,_rightExpressionIwarnings) =
-                  (rightExpression_ _rightExpressionOallTypeConstructors _rightExpressionOallValueConstructors _rightExpressionOclassEnvironment _rightExpressionOcollectScopeInfos _rightExpressionOkindErrors _rightExpressionOmiscerrors _rightExpressionOnamesInScope _rightExpressionOoptions _rightExpressionOorderedTypeSynonyms _rightExpressionOtypeConstructors _rightExpressionOvalueConstructors _rightExpressionOwarnings )
+                  rightExpression_ _rightExpressionOallTypeConstructors _rightExpressionOallValueConstructors _rightExpressionOclassEnvironment _rightExpressionOcollectScopeInfos _rightExpressionOkindErrors _rightExpressionOmiscerrors _rightExpressionOnamesInScope _rightExpressionOoptions _rightExpressionOorderedTypeSynonyms _rightExpressionOtypeConstructors _rightExpressionOvalueConstructors _rightExpressionOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_Lambda :: T_Range ->
                          T_Patterns ->
                          T_Expression ->
                          T_Expression
-sem_Expression_Lambda range_ patterns_ expression_  =
+sem_Expression_Lambda range_ patterns_ expression_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -4840,14 +4811,8 @@ sem_Expression_Lambda range_ patterns_ expression_  =
               _expressionIself :: Expression
               _expressionIunboundNames :: Names
               _expressionIwarnings :: ([Warning])
-              __tup7 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _patternsIpatVarNames _expressionIunboundNames _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup7
-              (_,_unboundNames,_) =
-                  __tup7
-              (_,_,_scopeInfo) =
-                  __tup7
               _lhsOunboundNames =
                   _unboundNames
               _patternsOlhsPattern =
@@ -4907,17 +4872,17 @@ sem_Expression_Lambda range_ patterns_ expression_  =
               _expressionOwarnings =
                   _patternsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternsIcollectScopeInfos,_patternsImiscerrors,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIself,_patternsIunboundNames,_patternsIwarnings) =
-                  (patterns_ _patternsOallTypeConstructors _patternsOallValueConstructors _patternsOcollectScopeInfos _patternsOlhsPattern _patternsOmiscerrors _patternsOnamesInScope _patternsOtypeConstructors _patternsOvalueConstructors _patternsOwarnings )
+                  patterns_ _patternsOallTypeConstructors _patternsOallValueConstructors _patternsOcollectScopeInfos _patternsOlhsPattern _patternsOmiscerrors _patternsOnamesInScope _patternsOtypeConstructors _patternsOvalueConstructors _patternsOwarnings
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_Let :: T_Range ->
                       T_Declarations ->
                       T_Expression ->
                       T_Expression
-sem_Expression_Let range_ declarations_ expression_  =
+sem_Expression_Let range_ declarations_ expression_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -4994,14 +4959,8 @@ sem_Expression_Let range_ declarations_ expression_  =
               _expressionIwarnings :: ([Warning])
               _declarationsOtypeSignatures =
                   []
-              __tup8 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _expressionIunboundNames) _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup8
-              (_,_unboundNames,_) =
-                  __tup8
-              (_,_,_scopeInfo) =
-                  __tup8
               _lhsOunboundNames =
                   _unboundNames
               _lhsOwarnings =
@@ -5015,26 +4974,12 @@ sem_Expression_Let range_ declarations_ expression_  =
                   findSimilarFunctionBindings _declarationsItypeSignatures _declarationsIsuspiciousFBs
               _lhsOmiscerrors =
                   _typeSignatureErrors ++ _expressionImiscerrors
-              __tup9 =
-                  uniqueAppearance (map fst _declarationsItypeSignatures)
               (_,_doubles) =
-                  __tup9
+                  uniqueAppearance (map fst _declarationsItypeSignatures)
               _typeSignatureErrors =
                   checkTypeSignatures _declarationsIdeclVarNames _declarationsIrestrictedNames _declarationsItypeSignatures
-              __tup10 =
+              (_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities) =
                   internalError "PartialSyntax.ag" "n/a" "toplevel Expression"
-              (_collectTypeConstructors,_,_,_,_,_) =
-                  __tup10
-              (_,_collectValueConstructors,_,_,_,_) =
-                  __tup10
-              (_,_,_collectTypeSynonyms,_,_,_) =
-                  __tup10
-              (_,_,_,_collectConstructorEnv,_,_) =
-                  __tup10
-              (_,_,_,_,_derivedFunctions,_) =
-                  __tup10
-              (_,_,_,_,_,_operatorFixities) =
-                  __tup10
               _lhsOcollectScopeInfos =
                   (_scopeInfo, Definition) : _expressionIcollectScopeInfos
               _lhsOcollectInstances =
@@ -5102,16 +5047,16 @@ sem_Expression_Let range_ declarations_ expression_  =
               _expressionOwarnings =
                   _declarationsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
-                  (declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings )
+                  declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_List :: T_Range ->
                        T_Expressions ->
                        T_Expression
-sem_Expression_List range_ expressions_  =
+sem_Expression_List range_ expressions_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -5192,14 +5137,14 @@ sem_Expression_List range_ expressions_  =
               _expressionsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionsIcollectInstances,_expressionsIcollectScopeInfos,_expressionsIkindErrors,_expressionsImiscerrors,_expressionsIself,_expressionsIunboundNames,_expressionsIwarnings) =
-                  (expressions_ _expressionsOallTypeConstructors _expressionsOallValueConstructors _expressionsOclassEnvironment _expressionsOcollectScopeInfos _expressionsOkindErrors _expressionsOmiscerrors _expressionsOnamesInScope _expressionsOoptions _expressionsOorderedTypeSynonyms _expressionsOtypeConstructors _expressionsOvalueConstructors _expressionsOwarnings )
+                  expressions_ _expressionsOallTypeConstructors _expressionsOallValueConstructors _expressionsOclassEnvironment _expressionsOcollectScopeInfos _expressionsOkindErrors _expressionsOmiscerrors _expressionsOnamesInScope _expressionsOoptions _expressionsOorderedTypeSynonyms _expressionsOtypeConstructors _expressionsOvalueConstructors _expressionsOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_Literal :: T_Range ->
                           T_Literal ->
                           T_Expression
-sem_Expression_Literal range_ literal_  =
+sem_Expression_Literal range_ literal_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -5246,14 +5191,14 @@ sem_Expression_Literal range_ literal_  =
               _literalOmiscerrors =
                   _lhsImiscerrors
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _literalIcollectScopeInfos,_literalImiscerrors,_literalIself) =
-                  (literal_ _literalOcollectScopeInfos _literalOmiscerrors )
+                  literal_ _literalOcollectScopeInfos _literalOmiscerrors
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_Negate :: T_Range ->
                          T_Expression ->
                          T_Expression
-sem_Expression_Negate range_ expression_  =
+sem_Expression_Negate range_ expression_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -5334,14 +5279,14 @@ sem_Expression_Negate range_ expression_  =
               _expressionOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_NegateFloat :: T_Range ->
                               T_Expression ->
                               T_Expression
-sem_Expression_NegateFloat range_ expression_  =
+sem_Expression_NegateFloat range_ expression_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -5422,15 +5367,15 @@ sem_Expression_NegateFloat range_ expression_  =
               _expressionOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_NormalApplication :: T_Range ->
                                     T_Expression ->
                                     T_Expressions ->
                                     T_Expression
-sem_Expression_NormalApplication range_ function_ arguments_  =
+sem_Expression_NormalApplication range_ function_ arguments_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -5554,16 +5499,16 @@ sem_Expression_NormalApplication range_ function_ arguments_  =
               _argumentsOwarnings =
                   _functionIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _functionIcollectInstances,_functionIcollectScopeInfos,_functionIkindErrors,_functionImiscerrors,_functionIself,_functionIunboundNames,_functionIwarnings) =
-                  (function_ _functionOallTypeConstructors _functionOallValueConstructors _functionOclassEnvironment _functionOcollectScopeInfos _functionOkindErrors _functionOmiscerrors _functionOnamesInScope _functionOoptions _functionOorderedTypeSynonyms _functionOtypeConstructors _functionOvalueConstructors _functionOwarnings )
+                  function_ _functionOallTypeConstructors _functionOallValueConstructors _functionOclassEnvironment _functionOcollectScopeInfos _functionOkindErrors _functionOmiscerrors _functionOnamesInScope _functionOoptions _functionOorderedTypeSynonyms _functionOtypeConstructors _functionOvalueConstructors _functionOwarnings
               ( _argumentsIcollectInstances,_argumentsIcollectScopeInfos,_argumentsIkindErrors,_argumentsImiscerrors,_argumentsIself,_argumentsIunboundNames,_argumentsIwarnings) =
-                  (arguments_ _argumentsOallTypeConstructors _argumentsOallValueConstructors _argumentsOclassEnvironment _argumentsOcollectScopeInfos _argumentsOkindErrors _argumentsOmiscerrors _argumentsOnamesInScope _argumentsOoptions _argumentsOorderedTypeSynonyms _argumentsOtypeConstructors _argumentsOvalueConstructors _argumentsOwarnings )
+                  arguments_ _argumentsOallTypeConstructors _argumentsOallValueConstructors _argumentsOclassEnvironment _argumentsOcollectScopeInfos _argumentsOkindErrors _argumentsOmiscerrors _argumentsOnamesInScope _argumentsOoptions _argumentsOorderedTypeSynonyms _argumentsOtypeConstructors _argumentsOvalueConstructors _argumentsOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_Parenthesized :: T_Range ->
                                 T_Expression ->
                                 T_Expression
-sem_Expression_Parenthesized range_ expression_  =
+sem_Expression_Parenthesized range_ expression_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -5644,15 +5589,15 @@ sem_Expression_Parenthesized range_ expression_  =
               _expressionOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_RecordConstruction :: T_Range ->
                                      T_Name ->
                                      T_RecordExpressionBindings ->
                                      T_Expression
-sem_Expression_RecordConstruction range_ name_ recordExpressionBindings_  =
+sem_Expression_RecordConstruction range_ name_ recordExpressionBindings_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -5683,14 +5628,8 @@ sem_Expression_RecordConstruction range_ name_ recordExpressionBindings_  =
               _recordExpressionBindingsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
               _recordExpressionBindingsIself :: RecordExpressionBindings
               _recordExpressionBindingsIunboundNames :: Names
-              __tup11 =
+              (_assumptions,_constraints,_beta) =
                   internalError "PartialSyntax.ag" "n/a" "Expression.RecordConstruction"
-              (_assumptions,_,_) =
-                  __tup11
-              (_,_constraints,_) =
-                  __tup11
-              (_,_,_beta) =
-                  __tup11
               _lhsOcollectInstances =
                   _recordExpressionBindingsIcollectInstances
               _lhsOunboundNames =
@@ -5718,17 +5657,17 @@ sem_Expression_RecordConstruction range_ name_ recordExpressionBindings_  =
               _recordExpressionBindingsOorderedTypeSynonyms =
                   _lhsIorderedTypeSynonyms
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _recordExpressionBindingsIcollectInstances,_recordExpressionBindingsIcollectScopeInfos,_recordExpressionBindingsIself,_recordExpressionBindingsIunboundNames) =
-                  (recordExpressionBindings_ _recordExpressionBindingsOclassEnvironment _recordExpressionBindingsOcollectScopeInfos _recordExpressionBindingsOnamesInScope _recordExpressionBindingsOoptions _recordExpressionBindingsOorderedTypeSynonyms )
+                  recordExpressionBindings_ _recordExpressionBindingsOclassEnvironment _recordExpressionBindingsOcollectScopeInfos _recordExpressionBindingsOnamesInScope _recordExpressionBindingsOoptions _recordExpressionBindingsOorderedTypeSynonyms
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_RecordUpdate :: T_Range ->
                                T_Expression ->
                                T_RecordExpressionBindings ->
                                T_Expression
-sem_Expression_RecordUpdate range_ expression_ recordExpressionBindings_  =
+sem_Expression_RecordUpdate range_ expression_ recordExpressionBindings_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -5828,16 +5767,16 @@ sem_Expression_RecordUpdate range_ expression_ recordExpressionBindings_  =
               _recordExpressionBindingsOorderedTypeSynonyms =
                   _lhsIorderedTypeSynonyms
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
               ( _recordExpressionBindingsIcollectInstances,_recordExpressionBindingsIcollectScopeInfos,_recordExpressionBindingsIself,_recordExpressionBindingsIunboundNames) =
-                  (recordExpressionBindings_ _recordExpressionBindingsOclassEnvironment _recordExpressionBindingsOcollectScopeInfos _recordExpressionBindingsOnamesInScope _recordExpressionBindingsOoptions _recordExpressionBindingsOorderedTypeSynonyms )
+                  recordExpressionBindings_ _recordExpressionBindingsOclassEnvironment _recordExpressionBindingsOcollectScopeInfos _recordExpressionBindingsOnamesInScope _recordExpressionBindingsOoptions _recordExpressionBindingsOorderedTypeSynonyms
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_Tuple :: T_Range ->
                         T_Expressions ->
                         T_Expression
-sem_Expression_Tuple range_ expressions_  =
+sem_Expression_Tuple range_ expressions_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -5922,15 +5861,15 @@ sem_Expression_Tuple range_ expressions_  =
               _expressionsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionsIcollectInstances,_expressionsIcollectScopeInfos,_expressionsIkindErrors,_expressionsImiscerrors,_expressionsIself,_expressionsIunboundNames,_expressionsIwarnings) =
-                  (expressions_ _expressionsOallTypeConstructors _expressionsOallValueConstructors _expressionsOclassEnvironment _expressionsOcollectScopeInfos _expressionsOkindErrors _expressionsOmiscerrors _expressionsOnamesInScope _expressionsOoptions _expressionsOorderedTypeSynonyms _expressionsOtypeConstructors _expressionsOvalueConstructors _expressionsOwarnings )
+                  expressions_ _expressionsOallTypeConstructors _expressionsOallValueConstructors _expressionsOclassEnvironment _expressionsOcollectScopeInfos _expressionsOkindErrors _expressionsOmiscerrors _expressionsOnamesInScope _expressionsOoptions _expressionsOorderedTypeSynonyms _expressionsOtypeConstructors _expressionsOvalueConstructors _expressionsOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_Typed :: T_Range ->
                         T_Expression ->
                         T_Type ->
                         T_Expression
-sem_Expression_Typed range_ expression_ type_  =
+sem_Expression_Typed range_ expression_ type_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -6033,16 +5972,16 @@ sem_Expression_Typed range_ expression_ type_  =
               _typeOwarnings =
                   _expressionIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
               ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
-                  (type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings )
+                  type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expression_Variable :: T_Range ->
                            T_Name ->
                            T_Expression
-sem_Expression_Variable range_ name_  =
+sem_Expression_Variable range_ name_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -6085,16 +6024,16 @@ sem_Expression_Variable range_ name_  =
               _lhsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 -- Expressions -------------------------------------------------
 -- cata
 sem_Expressions :: Expressions ->
                    T_Expressions
-sem_Expressions list  =
-    (Prelude.foldr sem_Expressions_Cons sem_Expressions_Nil (Prelude.map sem_Expression list) )
+sem_Expressions list =
+    (Prelude.foldr sem_Expressions_Cons sem_Expressions_Nil (Prelude.map sem_Expression list))
 -- semantic domain
 type T_Expressions = Names ->
                      Names ->
@@ -6112,7 +6051,7 @@ type T_Expressions = Names ->
 sem_Expressions_Cons :: T_Expression ->
                         T_Expressions ->
                         T_Expressions
-sem_Expressions_Cons hd_ tl_  =
+sem_Expressions_Cons hd_ tl_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -6235,12 +6174,12 @@ sem_Expressions_Cons hd_ tl_  =
               _tlOwarnings =
                   _hdIwarnings
               ( _hdIcollectInstances,_hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                  (hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOorderedTypeSynonyms _hdOtypeConstructors _hdOvalueConstructors _hdOwarnings )
+                  hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOorderedTypeSynonyms _hdOtypeConstructors _hdOvalueConstructors _hdOwarnings
               ( _tlIcollectInstances,_tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                  (tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOorderedTypeSynonyms _tlOtypeConstructors _tlOvalueConstructors _tlOwarnings )
+                  tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOorderedTypeSynonyms _tlOtypeConstructors _tlOvalueConstructors _tlOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Expressions_Nil :: T_Expressions
-sem_Expressions_Nil  =
+sem_Expressions_Nil =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -6281,8 +6220,8 @@ sem_Expressions_Nil  =
 -- cata
 sem_FieldDeclaration :: FieldDeclaration ->
                         T_FieldDeclaration
-sem_FieldDeclaration (FieldDeclaration_FieldDeclaration _range _names _type )  =
-    (sem_FieldDeclaration_FieldDeclaration (sem_Range _range ) (sem_Names _names ) (sem_AnnotatedType _type ) )
+sem_FieldDeclaration (FieldDeclaration_FieldDeclaration _range _names _type) =
+    (sem_FieldDeclaration_FieldDeclaration (sem_Range _range) (sem_Names _names) (sem_AnnotatedType _type))
 -- semantic domain
 type T_FieldDeclaration = ([Error]) ->
                           Names ->
@@ -6292,7 +6231,7 @@ sem_FieldDeclaration_FieldDeclaration :: T_Range ->
                                          T_Names ->
                                          T_AnnotatedType ->
                                          T_FieldDeclaration
-sem_FieldDeclaration_FieldDeclaration range_ names_ type_  =
+sem_FieldDeclaration_FieldDeclaration range_ names_ type_ =
     (\ _lhsImiscerrors
        _lhsInamesInScope
        _lhsIoptions ->
@@ -6317,26 +6256,8 @@ sem_FieldDeclaration_FieldDeclaration range_ names_ type_  =
               _typeItypevariables :: Names
               _typeIunboundNames :: Names
               _typeIwarnings :: ([Warning])
-              __tup12 =
+              (_kindErrors,_tyconEnv,_constructorenv,_importEnvironment,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_warnings) =
                   internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
-              (_kindErrors,_,_,_,_,_,_,_,_) =
-                  __tup12
-              (_,_tyconEnv,_,_,_,_,_,_,_) =
-                  __tup12
-              (_,_,_constructorenv,_,_,_,_,_,_) =
-                  __tup12
-              (_,_,_,_importEnvironment,_,_,_,_,_) =
-                  __tup12
-              (_,_,_,_,_valueConstructors,_,_,_,_) =
-                  __tup12
-              (_,_,_,_,_,_allValueConstructors,_,_,_) =
-                  __tup12
-              (_,_,_,_,_,_,_typeConstructors,_,_) =
-                  __tup12
-              (_,_,_,_,_,_,_,_allTypeConstructors,_) =
-                  __tup12
-              (_,_,_,_,_,_,_,_,_warnings) =
-                  __tup12
               _lhsOunboundNames =
                   _typeIunboundNames
               _self =
@@ -6364,18 +6285,18 @@ sem_FieldDeclaration_FieldDeclaration range_ names_ type_  =
               _typeOwarnings =
                   _warnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _namesIself) =
-                  (names_ )
+                  names_
               ( _typeIkindErrors,_typeImiscerrors,_typeIself,_typeItype,_typeItypevariables,_typeIunboundNames,_typeIwarnings) =
-                  (type_ _typeOallTypeConstructors _typeOallValueConstructors _typeOkindErrors _typeOmiscerrors _typeOnamesInScope _typeOoptions _typeOtypeConstructors _typeOvalueConstructors _typeOwarnings )
+                  type_ _typeOallTypeConstructors _typeOallValueConstructors _typeOkindErrors _typeOmiscerrors _typeOnamesInScope _typeOoptions _typeOtypeConstructors _typeOvalueConstructors _typeOwarnings
           in  ( _lhsOmiscerrors,_lhsOself,_lhsOunboundNames)))
 -- FieldDeclarations -------------------------------------------
 -- cata
 sem_FieldDeclarations :: FieldDeclarations ->
                          T_FieldDeclarations
-sem_FieldDeclarations list  =
-    (Prelude.foldr sem_FieldDeclarations_Cons sem_FieldDeclarations_Nil (Prelude.map sem_FieldDeclaration list) )
+sem_FieldDeclarations list =
+    (Prelude.foldr sem_FieldDeclarations_Cons sem_FieldDeclarations_Nil (Prelude.map sem_FieldDeclaration list))
 -- semantic domain
 type T_FieldDeclarations = ([Error]) ->
                            Names ->
@@ -6384,7 +6305,7 @@ type T_FieldDeclarations = ([Error]) ->
 sem_FieldDeclarations_Cons :: T_FieldDeclaration ->
                               T_FieldDeclarations ->
                               T_FieldDeclarations
-sem_FieldDeclarations_Cons hd_ tl_  =
+sem_FieldDeclarations_Cons hd_ tl_ =
     (\ _lhsImiscerrors
        _lhsInamesInScope
        _lhsIoptions ->
@@ -6424,12 +6345,12 @@ sem_FieldDeclarations_Cons hd_ tl_  =
               _tlOoptions =
                   _lhsIoptions
               ( _hdImiscerrors,_hdIself,_hdIunboundNames) =
-                  (hd_ _hdOmiscerrors _hdOnamesInScope _hdOoptions )
+                  hd_ _hdOmiscerrors _hdOnamesInScope _hdOoptions
               ( _tlImiscerrors,_tlIself,_tlIunboundNames) =
-                  (tl_ _tlOmiscerrors _tlOnamesInScope _tlOoptions )
+                  tl_ _tlOmiscerrors _tlOnamesInScope _tlOoptions
           in  ( _lhsOmiscerrors,_lhsOself,_lhsOunboundNames)))
 sem_FieldDeclarations_Nil :: T_FieldDeclarations
-sem_FieldDeclarations_Nil  =
+sem_FieldDeclarations_Nil =
     (\ _lhsImiscerrors
        _lhsInamesInScope
        _lhsIoptions ->
@@ -6449,17 +6370,17 @@ sem_FieldDeclarations_Nil  =
 -- cata
 sem_Fixity :: Fixity ->
               T_Fixity
-sem_Fixity (Fixity_Infix _range )  =
-    (sem_Fixity_Infix (sem_Range _range ) )
-sem_Fixity (Fixity_Infixl _range )  =
-    (sem_Fixity_Infixl (sem_Range _range ) )
-sem_Fixity (Fixity_Infixr _range )  =
-    (sem_Fixity_Infixr (sem_Range _range ) )
+sem_Fixity (Fixity_Infix _range) =
+    (sem_Fixity_Infix (sem_Range _range))
+sem_Fixity (Fixity_Infixl _range) =
+    (sem_Fixity_Infixl (sem_Range _range))
+sem_Fixity (Fixity_Infixr _range) =
+    (sem_Fixity_Infixr (sem_Range _range))
 -- semantic domain
 type T_Fixity = ( Fixity)
 sem_Fixity_Infix :: T_Range ->
                     T_Fixity
-sem_Fixity_Infix range_  =
+sem_Fixity_Infix range_ =
     (let _lhsOself :: Fixity
          _rangeIself :: Range
          _self =
@@ -6467,11 +6388,11 @@ sem_Fixity_Infix range_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
      in  ( _lhsOself))
 sem_Fixity_Infixl :: T_Range ->
                      T_Fixity
-sem_Fixity_Infixl range_  =
+sem_Fixity_Infixl range_ =
     (let _lhsOself :: Fixity
          _rangeIself :: Range
          _self =
@@ -6479,11 +6400,11 @@ sem_Fixity_Infixl range_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
      in  ( _lhsOself))
 sem_Fixity_Infixr :: T_Range ->
                      T_Fixity
-sem_Fixity_Infixr range_  =
+sem_Fixity_Infixr range_ =
     (let _lhsOself :: Fixity
          _rangeIself :: Range
          _self =
@@ -6491,14 +6412,14 @@ sem_Fixity_Infixr range_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
      in  ( _lhsOself))
 -- FunctionBinding ---------------------------------------------
 -- cata
 sem_FunctionBinding :: FunctionBinding ->
                        T_FunctionBinding
-sem_FunctionBinding (FunctionBinding_FunctionBinding _range _lefthandside _righthandside )  =
-    (sem_FunctionBinding_FunctionBinding (sem_Range _range ) (sem_LeftHandSide _lefthandside ) (sem_RightHandSide _righthandside ) )
+sem_FunctionBinding (FunctionBinding_FunctionBinding _range _lefthandside _righthandside) =
+    (sem_FunctionBinding_FunctionBinding (sem_Range _range) (sem_LeftHandSide _lefthandside) (sem_RightHandSide _righthandside))
 -- semantic domain
 type T_FunctionBinding = Names ->
                          Names ->
@@ -6517,7 +6438,7 @@ sem_FunctionBinding_FunctionBinding :: T_Range ->
                                        T_LeftHandSide ->
                                        T_RightHandSide ->
                                        T_FunctionBinding
-sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_  =
+sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -6575,14 +6496,8 @@ sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_  =
               _righthandsideIself :: RightHandSide
               _righthandsideIunboundNames :: Names
               _righthandsideIwarnings :: ([Warning])
-              __tup13 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _lefthandsideIpatVarNames _righthandsideIunboundNames _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup13
-              (_,_unboundNames,_) =
-                  __tup13
-              (_,_,_scopeInfo) =
-                  __tup13
               _lhsOunboundNames =
                   _unboundNames
               _lhsOarity =
@@ -6644,18 +6559,18 @@ sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_  =
               _righthandsideOwarnings =
                   _lefthandsideIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _lefthandsideIcollectScopeInfos,_lefthandsideImiscerrors,_lefthandsideIname,_lefthandsideInumberOfPatterns,_lefthandsideIpatVarNames,_lefthandsideIself,_lefthandsideIunboundNames,_lefthandsideIwarnings) =
-                  (lefthandside_ _lefthandsideOallTypeConstructors _lefthandsideOallValueConstructors _lefthandsideOcollectScopeInfos _lefthandsideOmiscerrors _lefthandsideOnamesInScope _lefthandsideOtypeConstructors _lefthandsideOvalueConstructors _lefthandsideOwarnings )
+                  lefthandside_ _lefthandsideOallTypeConstructors _lefthandsideOallValueConstructors _lefthandsideOcollectScopeInfos _lefthandsideOmiscerrors _lefthandsideOnamesInScope _lefthandsideOtypeConstructors _lefthandsideOvalueConstructors _lefthandsideOwarnings
               ( _righthandsideIcollectInstances,_righthandsideIcollectScopeInfos,_righthandsideIkindErrors,_righthandsideImiscerrors,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIwarnings) =
-                  (righthandside_ _righthandsideOallTypeConstructors _righthandsideOallValueConstructors _righthandsideOclassEnvironment _righthandsideOcollectScopeInfos _righthandsideOkindErrors _righthandsideOmiscerrors _righthandsideOnamesInScope _righthandsideOoptions _righthandsideOorderedTypeSynonyms _righthandsideOtypeConstructors _righthandsideOvalueConstructors _righthandsideOwarnings )
+                  righthandside_ _righthandsideOallTypeConstructors _righthandsideOallValueConstructors _righthandsideOclassEnvironment _righthandsideOcollectScopeInfos _righthandsideOkindErrors _righthandsideOmiscerrors _righthandsideOnamesInScope _righthandsideOoptions _righthandsideOorderedTypeSynonyms _righthandsideOtypeConstructors _righthandsideOvalueConstructors _righthandsideOwarnings
           in  ( _lhsOarity,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOname,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 -- FunctionBindings --------------------------------------------
 -- cata
 sem_FunctionBindings :: FunctionBindings ->
                         T_FunctionBindings
-sem_FunctionBindings list  =
-    (Prelude.foldr sem_FunctionBindings_Cons sem_FunctionBindings_Nil (Prelude.map sem_FunctionBinding list) )
+sem_FunctionBindings list =
+    (Prelude.foldr sem_FunctionBindings_Cons sem_FunctionBindings_Nil (Prelude.map sem_FunctionBinding list))
 -- semantic domain
 type T_FunctionBindings = Names ->
                           Names ->
@@ -6673,7 +6588,7 @@ type T_FunctionBindings = Names ->
 sem_FunctionBindings_Cons :: T_FunctionBinding ->
                              T_FunctionBindings ->
                              T_FunctionBindings
-sem_FunctionBindings_Cons hd_ tl_  =
+sem_FunctionBindings_Cons hd_ tl_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -6806,12 +6721,12 @@ sem_FunctionBindings_Cons hd_ tl_  =
               _tlOwarnings =
                   _hdIwarnings
               ( _hdIarity,_hdIcollectInstances,_hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIname,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                  (hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOorderedTypeSynonyms _hdOtypeConstructors _hdOvalueConstructors _hdOwarnings )
+                  hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOorderedTypeSynonyms _hdOtypeConstructors _hdOvalueConstructors _hdOwarnings
               ( _tlIarities,_tlIcollectInstances,_tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlIname,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                  (tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOorderedTypeSynonyms _tlOtypeConstructors _tlOvalueConstructors _tlOwarnings )
+                  tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOorderedTypeSynonyms _tlOtypeConstructors _tlOvalueConstructors _tlOwarnings
           in  ( _lhsOarities,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOname,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_FunctionBindings_Nil :: T_FunctionBindings
-sem_FunctionBindings_Nil  =
+sem_FunctionBindings_Nil =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -6858,8 +6773,8 @@ sem_FunctionBindings_Nil  =
 -- cata
 sem_GuardedExpression :: GuardedExpression ->
                          T_GuardedExpression
-sem_GuardedExpression (GuardedExpression_GuardedExpression _range _guard _expression )  =
-    (sem_GuardedExpression_GuardedExpression (sem_Range _range ) (sem_Expression _guard ) (sem_Expression _expression ) )
+sem_GuardedExpression (GuardedExpression_GuardedExpression _range _guard _expression) =
+    (sem_GuardedExpression_GuardedExpression (sem_Range _range) (sem_Expression _guard) (sem_Expression _expression))
 -- semantic domain
 type T_GuardedExpression = Names ->
                            Names ->
@@ -6878,7 +6793,7 @@ sem_GuardedExpression_GuardedExpression :: T_Range ->
                                            T_Expression ->
                                            T_Expression ->
                                            T_GuardedExpression
-sem_GuardedExpression_GuardedExpression range_ guard_ expression_  =
+sem_GuardedExpression_GuardedExpression range_ guard_ expression_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -7002,18 +6917,18 @@ sem_GuardedExpression_GuardedExpression range_ guard_ expression_  =
               _expressionOwarnings =
                   _guardIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _guardIcollectInstances,_guardIcollectScopeInfos,_guardIkindErrors,_guardImiscerrors,_guardIself,_guardIunboundNames,_guardIwarnings) =
-                  (guard_ _guardOallTypeConstructors _guardOallValueConstructors _guardOclassEnvironment _guardOcollectScopeInfos _guardOkindErrors _guardOmiscerrors _guardOnamesInScope _guardOoptions _guardOorderedTypeSynonyms _guardOtypeConstructors _guardOvalueConstructors _guardOwarnings )
+                  guard_ _guardOallTypeConstructors _guardOallValueConstructors _guardOclassEnvironment _guardOcollectScopeInfos _guardOkindErrors _guardOmiscerrors _guardOnamesInScope _guardOoptions _guardOorderedTypeSynonyms _guardOtypeConstructors _guardOvalueConstructors _guardOwarnings
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 -- GuardedExpressions ------------------------------------------
 -- cata
 sem_GuardedExpressions :: GuardedExpressions ->
                           T_GuardedExpressions
-sem_GuardedExpressions list  =
-    (Prelude.foldr sem_GuardedExpressions_Cons sem_GuardedExpressions_Nil (Prelude.map sem_GuardedExpression list) )
+sem_GuardedExpressions list =
+    (Prelude.foldr sem_GuardedExpressions_Cons sem_GuardedExpressions_Nil (Prelude.map sem_GuardedExpression list))
 -- semantic domain
 type T_GuardedExpressions = Names ->
                             Names ->
@@ -7031,7 +6946,7 @@ type T_GuardedExpressions = Names ->
 sem_GuardedExpressions_Cons :: T_GuardedExpression ->
                                T_GuardedExpressions ->
                                T_GuardedExpressions
-sem_GuardedExpressions_Cons hd_ tl_  =
+sem_GuardedExpressions_Cons hd_ tl_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -7154,12 +7069,12 @@ sem_GuardedExpressions_Cons hd_ tl_  =
               _tlOwarnings =
                   _hdIwarnings
               ( _hdIcollectInstances,_hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                  (hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOorderedTypeSynonyms _hdOtypeConstructors _hdOvalueConstructors _hdOwarnings )
+                  hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOorderedTypeSynonyms _hdOtypeConstructors _hdOvalueConstructors _hdOwarnings
               ( _tlIcollectInstances,_tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                  (tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOorderedTypeSynonyms _tlOtypeConstructors _tlOvalueConstructors _tlOwarnings )
+                  tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOorderedTypeSynonyms _tlOtypeConstructors _tlOvalueConstructors _tlOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_GuardedExpressions_Nil :: T_GuardedExpressions
-sem_GuardedExpressions_Nil  =
+sem_GuardedExpressions_Nil =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -7200,19 +7115,19 @@ sem_GuardedExpressions_Nil  =
 -- cata
 sem_Import :: Import ->
               T_Import
-sem_Import (Import_TypeOrClass _range _name _names )  =
-    (sem_Import_TypeOrClass (sem_Range _range ) (sem_Name _name ) (sem_MaybeNames _names ) )
-sem_Import (Import_TypeOrClassComplete _range _name )  =
-    (sem_Import_TypeOrClassComplete (sem_Range _range ) (sem_Name _name ) )
-sem_Import (Import_Variable _range _name )  =
-    (sem_Import_Variable (sem_Range _range ) (sem_Name _name ) )
+sem_Import (Import_TypeOrClass _range _name _names) =
+    (sem_Import_TypeOrClass (sem_Range _range) (sem_Name _name) (sem_MaybeNames _names))
+sem_Import (Import_TypeOrClassComplete _range _name) =
+    (sem_Import_TypeOrClassComplete (sem_Range _range) (sem_Name _name))
+sem_Import (Import_Variable _range _name) =
+    (sem_Import_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Import = ( Import)
 sem_Import_TypeOrClass :: T_Range ->
                           T_Name ->
                           T_MaybeNames ->
                           T_Import
-sem_Import_TypeOrClass range_ name_ names_  =
+sem_Import_TypeOrClass range_ name_ names_ =
     (let _lhsOself :: Import
          _rangeIself :: Range
          _nameIself :: Name
@@ -7222,16 +7137,16 @@ sem_Import_TypeOrClass range_ name_ names_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
          ( _namesIself) =
-             (names_ )
+             names_
      in  ( _lhsOself))
 sem_Import_TypeOrClassComplete :: T_Range ->
                                   T_Name ->
                                   T_Import
-sem_Import_TypeOrClassComplete range_ name_  =
+sem_Import_TypeOrClassComplete range_ name_ =
     (let _lhsOself :: Import
          _rangeIself :: Range
          _nameIself :: Name
@@ -7240,14 +7155,14 @@ sem_Import_TypeOrClassComplete range_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
      in  ( _lhsOself))
 sem_Import_Variable :: T_Range ->
                        T_Name ->
                        T_Import
-sem_Import_Variable range_ name_  =
+sem_Import_Variable range_ name_ =
     (let _lhsOself :: Import
          _rangeIself :: Range
          _nameIself :: Name
@@ -7256,24 +7171,24 @@ sem_Import_Variable range_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
      in  ( _lhsOself))
 -- ImportDeclaration -------------------------------------------
 -- cata
 sem_ImportDeclaration :: ImportDeclaration ->
                          T_ImportDeclaration
-sem_ImportDeclaration (ImportDeclaration_Empty _range )  =
-    (sem_ImportDeclaration_Empty (sem_Range _range ) )
-sem_ImportDeclaration (ImportDeclaration_Import _range _qualified _name _asname _importspecification )  =
-    (sem_ImportDeclaration_Import (sem_Range _range ) _qualified (sem_Name _name ) (sem_MaybeName _asname ) (sem_MaybeImportSpecification _importspecification ) )
+sem_ImportDeclaration (ImportDeclaration_Empty _range) =
+    (sem_ImportDeclaration_Empty (sem_Range _range))
+sem_ImportDeclaration (ImportDeclaration_Import _range _qualified _name _asname _importspecification) =
+    (sem_ImportDeclaration_Import (sem_Range _range) _qualified (sem_Name _name) (sem_MaybeName _asname) (sem_MaybeImportSpecification _importspecification))
 -- semantic domain
 type T_ImportDeclaration = Names ->
                            ( Names,ImportDeclaration)
 sem_ImportDeclaration_Empty :: T_Range ->
                                T_ImportDeclaration
-sem_ImportDeclaration_Empty range_  =
+sem_ImportDeclaration_Empty range_ =
     (\ _lhsIimportedModules ->
          (let _lhsOself :: ImportDeclaration
               _lhsOimportedModules :: Names
@@ -7285,7 +7200,7 @@ sem_ImportDeclaration_Empty range_  =
               _lhsOimportedModules =
                   _lhsIimportedModules
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsOimportedModules,_lhsOself)))
 sem_ImportDeclaration_Import :: T_Range ->
                                 Bool ->
@@ -7293,7 +7208,7 @@ sem_ImportDeclaration_Import :: T_Range ->
                                 T_MaybeName ->
                                 T_MaybeImportSpecification ->
                                 T_ImportDeclaration
-sem_ImportDeclaration_Import range_ qualified_ name_ asname_ importspecification_  =
+sem_ImportDeclaration_Import range_ qualified_ name_ asname_ importspecification_ =
     (\ _lhsIimportedModules ->
          (let _lhsOimportedModules :: Names
               _lhsOself :: ImportDeclaration
@@ -7308,27 +7223,27 @@ sem_ImportDeclaration_Import range_ qualified_ name_ asname_ importspecification
               _lhsOself =
                   _self
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _asnameIself) =
-                  (asname_ )
+                  asname_
               ( _importspecificationIself) =
-                  (importspecification_ )
+                  importspecification_
           in  ( _lhsOimportedModules,_lhsOself)))
 -- ImportDeclarations ------------------------------------------
 -- cata
 sem_ImportDeclarations :: ImportDeclarations ->
                           T_ImportDeclarations
-sem_ImportDeclarations list  =
-    (Prelude.foldr sem_ImportDeclarations_Cons sem_ImportDeclarations_Nil (Prelude.map sem_ImportDeclaration list) )
+sem_ImportDeclarations list =
+    (Prelude.foldr sem_ImportDeclarations_Cons sem_ImportDeclarations_Nil (Prelude.map sem_ImportDeclaration list))
 -- semantic domain
 type T_ImportDeclarations = Names ->
                             ( Names,ImportDeclarations)
 sem_ImportDeclarations_Cons :: T_ImportDeclaration ->
                                T_ImportDeclarations ->
                                T_ImportDeclarations
-sem_ImportDeclarations_Cons hd_ tl_  =
+sem_ImportDeclarations_Cons hd_ tl_ =
     (\ _lhsIimportedModules ->
          (let _lhsOself :: ImportDeclarations
               _lhsOimportedModules :: Names
@@ -7349,12 +7264,12 @@ sem_ImportDeclarations_Cons hd_ tl_  =
               _tlOimportedModules =
                   _hdIimportedModules
               ( _hdIimportedModules,_hdIself) =
-                  (hd_ _hdOimportedModules )
+                  hd_ _hdOimportedModules
               ( _tlIimportedModules,_tlIself) =
-                  (tl_ _tlOimportedModules )
+                  tl_ _tlOimportedModules
           in  ( _lhsOimportedModules,_lhsOself)))
 sem_ImportDeclarations_Nil :: T_ImportDeclarations
-sem_ImportDeclarations_Nil  =
+sem_ImportDeclarations_Nil =
     (\ _lhsIimportedModules ->
          (let _lhsOself :: ImportDeclarations
               _lhsOimportedModules :: Names
@@ -7369,15 +7284,15 @@ sem_ImportDeclarations_Nil  =
 -- cata
 sem_ImportSpecification :: ImportSpecification ->
                            T_ImportSpecification
-sem_ImportSpecification (ImportSpecification_Import _range _hiding _imports )  =
-    (sem_ImportSpecification_Import (sem_Range _range ) _hiding (sem_Imports _imports ) )
+sem_ImportSpecification (ImportSpecification_Import _range _hiding _imports) =
+    (sem_ImportSpecification_Import (sem_Range _range) _hiding (sem_Imports _imports))
 -- semantic domain
 type T_ImportSpecification = ( ImportSpecification)
 sem_ImportSpecification_Import :: T_Range ->
                                   Bool ->
                                   T_Imports ->
                                   T_ImportSpecification
-sem_ImportSpecification_Import range_ hiding_ imports_  =
+sem_ImportSpecification_Import range_ hiding_ imports_ =
     (let _lhsOself :: ImportSpecification
          _rangeIself :: Range
          _importsIself :: Imports
@@ -7386,22 +7301,22 @@ sem_ImportSpecification_Import range_ hiding_ imports_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _importsIself) =
-             (imports_ )
+             imports_
      in  ( _lhsOself))
 -- Imports -----------------------------------------------------
 -- cata
 sem_Imports :: Imports ->
                T_Imports
-sem_Imports list  =
-    (Prelude.foldr sem_Imports_Cons sem_Imports_Nil (Prelude.map sem_Import list) )
+sem_Imports list =
+    (Prelude.foldr sem_Imports_Cons sem_Imports_Nil (Prelude.map sem_Import list))
 -- semantic domain
 type T_Imports = ( Imports)
 sem_Imports_Cons :: T_Import ->
                     T_Imports ->
                     T_Imports
-sem_Imports_Cons hd_ tl_  =
+sem_Imports_Cons hd_ tl_ =
     (let _lhsOself :: Imports
          _hdIself :: Import
          _tlIself :: Imports
@@ -7410,12 +7325,12 @@ sem_Imports_Cons hd_ tl_  =
          _lhsOself =
              _self
          ( _hdIself) =
-             (hd_ )
+             hd_
          ( _tlIself) =
-             (tl_ )
+             tl_
      in  ( _lhsOself))
 sem_Imports_Nil :: T_Imports
-sem_Imports_Nil  =
+sem_Imports_Nil =
     (let _lhsOself :: Imports
          _self =
              []
@@ -7426,12 +7341,12 @@ sem_Imports_Nil  =
 -- cata
 sem_LeftHandSide :: LeftHandSide ->
                     T_LeftHandSide
-sem_LeftHandSide (LeftHandSide_Function _range _name _patterns )  =
-    (sem_LeftHandSide_Function (sem_Range _range ) (sem_Name _name ) (sem_Patterns _patterns ) )
-sem_LeftHandSide (LeftHandSide_Infix _range _leftPattern _operator _rightPattern )  =
-    (sem_LeftHandSide_Infix (sem_Range _range ) (sem_Pattern _leftPattern ) (sem_Name _operator ) (sem_Pattern _rightPattern ) )
-sem_LeftHandSide (LeftHandSide_Parenthesized _range _lefthandside _patterns )  =
-    (sem_LeftHandSide_Parenthesized (sem_Range _range ) (sem_LeftHandSide _lefthandside ) (sem_Patterns _patterns ) )
+sem_LeftHandSide (LeftHandSide_Function _range _name _patterns) =
+    (sem_LeftHandSide_Function (sem_Range _range) (sem_Name _name) (sem_Patterns _patterns))
+sem_LeftHandSide (LeftHandSide_Infix _range _leftPattern _operator _rightPattern) =
+    (sem_LeftHandSide_Infix (sem_Range _range) (sem_Pattern _leftPattern) (sem_Name _operator) (sem_Pattern _rightPattern))
+sem_LeftHandSide (LeftHandSide_Parenthesized _range _lefthandside _patterns) =
+    (sem_LeftHandSide_Parenthesized (sem_Range _range) (sem_LeftHandSide _lefthandside) (sem_Patterns _patterns))
 -- semantic domain
 type T_LeftHandSide = Names ->
                       Names ->
@@ -7446,7 +7361,7 @@ sem_LeftHandSide_Function :: T_Range ->
                              T_Name ->
                              T_Patterns ->
                              T_LeftHandSide
-sem_LeftHandSide_Function range_ name_ patterns_  =
+sem_LeftHandSide_Function range_ name_ patterns_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -7518,18 +7433,18 @@ sem_LeftHandSide_Function range_ name_ patterns_  =
               _patternsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _patternsIcollectScopeInfos,_patternsImiscerrors,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIself,_patternsIunboundNames,_patternsIwarnings) =
-                  (patterns_ _patternsOallTypeConstructors _patternsOallValueConstructors _patternsOcollectScopeInfos _patternsOlhsPattern _patternsOmiscerrors _patternsOnamesInScope _patternsOtypeConstructors _patternsOvalueConstructors _patternsOwarnings )
+                  patterns_ _patternsOallTypeConstructors _patternsOallValueConstructors _patternsOcollectScopeInfos _patternsOlhsPattern _patternsOmiscerrors _patternsOnamesInScope _patternsOtypeConstructors _patternsOvalueConstructors _patternsOwarnings
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_LeftHandSide_Infix :: T_Range ->
                           T_Pattern ->
                           T_Name ->
                           T_Pattern ->
                           T_LeftHandSide
-sem_LeftHandSide_Infix range_ leftPattern_ operator_ rightPattern_  =
+sem_LeftHandSide_Infix range_ leftPattern_ operator_ rightPattern_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -7633,19 +7548,19 @@ sem_LeftHandSide_Infix range_ leftPattern_ operator_ rightPattern_  =
               _rightPatternOwarnings =
                   _leftPatternIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _leftPatternIcollectScopeInfos,_leftPatternImiscerrors,_leftPatternIpatVarNames,_leftPatternIself,_leftPatternIunboundNames,_leftPatternIwarnings) =
-                  (leftPattern_ _leftPatternOallTypeConstructors _leftPatternOallValueConstructors _leftPatternOcollectScopeInfos _leftPatternOlhsPattern _leftPatternOmiscerrors _leftPatternOnamesInScope _leftPatternOtypeConstructors _leftPatternOvalueConstructors _leftPatternOwarnings )
+                  leftPattern_ _leftPatternOallTypeConstructors _leftPatternOallValueConstructors _leftPatternOcollectScopeInfos _leftPatternOlhsPattern _leftPatternOmiscerrors _leftPatternOnamesInScope _leftPatternOtypeConstructors _leftPatternOvalueConstructors _leftPatternOwarnings
               ( _operatorIself) =
-                  (operator_ )
+                  operator_
               ( _rightPatternIcollectScopeInfos,_rightPatternImiscerrors,_rightPatternIpatVarNames,_rightPatternIself,_rightPatternIunboundNames,_rightPatternIwarnings) =
-                  (rightPattern_ _rightPatternOallTypeConstructors _rightPatternOallValueConstructors _rightPatternOcollectScopeInfos _rightPatternOlhsPattern _rightPatternOmiscerrors _rightPatternOnamesInScope _rightPatternOtypeConstructors _rightPatternOvalueConstructors _rightPatternOwarnings )
+                  rightPattern_ _rightPatternOallTypeConstructors _rightPatternOallValueConstructors _rightPatternOcollectScopeInfos _rightPatternOlhsPattern _rightPatternOmiscerrors _rightPatternOnamesInScope _rightPatternOtypeConstructors _rightPatternOvalueConstructors _rightPatternOwarnings
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_LeftHandSide_Parenthesized :: T_Range ->
                                   T_LeftHandSide ->
                                   T_Patterns ->
                                   T_LeftHandSide
-sem_LeftHandSide_Parenthesized range_ lefthandside_ patterns_  =
+sem_LeftHandSide_Parenthesized range_ lefthandside_ patterns_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -7748,24 +7663,24 @@ sem_LeftHandSide_Parenthesized range_ lefthandside_ patterns_  =
               _patternsOwarnings =
                   _lefthandsideIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _lefthandsideIcollectScopeInfos,_lefthandsideImiscerrors,_lefthandsideIname,_lefthandsideInumberOfPatterns,_lefthandsideIpatVarNames,_lefthandsideIself,_lefthandsideIunboundNames,_lefthandsideIwarnings) =
-                  (lefthandside_ _lefthandsideOallTypeConstructors _lefthandsideOallValueConstructors _lefthandsideOcollectScopeInfos _lefthandsideOmiscerrors _lefthandsideOnamesInScope _lefthandsideOtypeConstructors _lefthandsideOvalueConstructors _lefthandsideOwarnings )
+                  lefthandside_ _lefthandsideOallTypeConstructors _lefthandsideOallValueConstructors _lefthandsideOcollectScopeInfos _lefthandsideOmiscerrors _lefthandsideOnamesInScope _lefthandsideOtypeConstructors _lefthandsideOvalueConstructors _lefthandsideOwarnings
               ( _patternsIcollectScopeInfos,_patternsImiscerrors,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIself,_patternsIunboundNames,_patternsIwarnings) =
-                  (patterns_ _patternsOallTypeConstructors _patternsOallValueConstructors _patternsOcollectScopeInfos _patternsOlhsPattern _patternsOmiscerrors _patternsOnamesInScope _patternsOtypeConstructors _patternsOvalueConstructors _patternsOwarnings )
+                  patterns_ _patternsOallTypeConstructors _patternsOallValueConstructors _patternsOcollectScopeInfos _patternsOlhsPattern _patternsOmiscerrors _patternsOnamesInScope _patternsOtypeConstructors _patternsOvalueConstructors _patternsOwarnings
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 -- Literal -----------------------------------------------------
 -- cata
 sem_Literal :: Literal ->
                T_Literal
-sem_Literal (Literal_Char _range _value )  =
-    (sem_Literal_Char (sem_Range _range ) _value )
-sem_Literal (Literal_Float _range _value )  =
-    (sem_Literal_Float (sem_Range _range ) _value )
-sem_Literal (Literal_Int _range _value )  =
-    (sem_Literal_Int (sem_Range _range ) _value )
-sem_Literal (Literal_String _range _value )  =
-    (sem_Literal_String (sem_Range _range ) _value )
+sem_Literal (Literal_Char _range _value) =
+    (sem_Literal_Char (sem_Range _range) _value)
+sem_Literal (Literal_Float _range _value) =
+    (sem_Literal_Float (sem_Range _range) _value)
+sem_Literal (Literal_Int _range _value) =
+    (sem_Literal_Int (sem_Range _range) _value)
+sem_Literal (Literal_String _range _value) =
+    (sem_Literal_String (sem_Range _range) _value)
 -- semantic domain
 type T_Literal = ([(ScopeInfo, Entity)]) ->
                  ([Error]) ->
@@ -7773,7 +7688,7 @@ type T_Literal = ([(ScopeInfo, Entity)]) ->
 sem_Literal_Char :: T_Range ->
                     String ->
                     T_Literal
-sem_Literal_Char range_ value_  =
+sem_Literal_Char range_ value_ =
     (\ _lhsIcollectScopeInfos
        _lhsImiscerrors ->
          (let _lhsOself :: Literal
@@ -7789,12 +7704,12 @@ sem_Literal_Char range_ value_  =
               _lhsOmiscerrors =
                   _lhsImiscerrors
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOself)))
 sem_Literal_Float :: T_Range ->
                      String ->
                      T_Literal
-sem_Literal_Float range_ value_  =
+sem_Literal_Float range_ value_ =
     (\ _lhsIcollectScopeInfos
        _lhsImiscerrors ->
          (let _lhsOself :: Literal
@@ -7810,12 +7725,12 @@ sem_Literal_Float range_ value_  =
               _lhsOmiscerrors =
                   _lhsImiscerrors
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOself)))
 sem_Literal_Int :: T_Range ->
                    String ->
                    T_Literal
-sem_Literal_Int range_ value_  =
+sem_Literal_Int range_ value_ =
     (\ _lhsIcollectScopeInfos
        _lhsImiscerrors ->
          (let _lhsOmiscerrors :: ([Error])
@@ -7837,12 +7752,12 @@ sem_Literal_Int range_ value_  =
               _lhsOcollectScopeInfos =
                   _lhsIcollectScopeInfos
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOself)))
 sem_Literal_String :: T_Range ->
                       String ->
                       T_Literal
-sem_Literal_String range_ value_  =
+sem_Literal_String range_ value_ =
     (\ _lhsIcollectScopeInfos
        _lhsImiscerrors ->
          (let _lhsOself :: Literal
@@ -7858,16 +7773,16 @@ sem_Literal_String range_ value_  =
               _lhsOmiscerrors =
                   _lhsImiscerrors
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOself)))
 -- MaybeDeclarations -------------------------------------------
 -- cata
 sem_MaybeDeclarations :: MaybeDeclarations ->
                          T_MaybeDeclarations
-sem_MaybeDeclarations (MaybeDeclarations_Just _declarations )  =
-    (sem_MaybeDeclarations_Just (sem_Declarations _declarations ) )
-sem_MaybeDeclarations (MaybeDeclarations_Nothing )  =
-    (sem_MaybeDeclarations_Nothing )
+sem_MaybeDeclarations (MaybeDeclarations_Just _declarations) =
+    (sem_MaybeDeclarations_Just (sem_Declarations _declarations))
+sem_MaybeDeclarations (MaybeDeclarations_Nothing) =
+    (sem_MaybeDeclarations_Nothing)
 -- semantic domain
 type T_MaybeDeclarations = Names ->
                            Names ->
@@ -7885,7 +7800,7 @@ type T_MaybeDeclarations = Names ->
                            ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),Names,MaybeDeclarations,Names,([Warning]))
 sem_MaybeDeclarations_Just :: T_Declarations ->
                               T_MaybeDeclarations
-sem_MaybeDeclarations_Just declarations_  =
+sem_MaybeDeclarations_Just declarations_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -7944,14 +7859,8 @@ sem_MaybeDeclarations_Just declarations_  =
               _declarationsIwarnings :: ([Warning])
               _declarationsOtypeSignatures =
                   []
-              __tup14 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup14
-              (_,_unboundNames,_) =
-                  __tup14
-              (_,_,_scopeInfo) =
-                  __tup14
               _lhsOunboundNames =
                   _unboundNames
               _lhsOwarnings =
@@ -7965,26 +7874,12 @@ sem_MaybeDeclarations_Just declarations_  =
                   findSimilarFunctionBindings _declarationsItypeSignatures _declarationsIsuspiciousFBs
               _lhsOmiscerrors =
                   _typeSignatureErrors ++ _declarationsImiscerrors
-              __tup15 =
-                  uniqueAppearance (map fst _declarationsItypeSignatures)
               (_,_doubles) =
-                  __tup15
+                  uniqueAppearance (map fst _declarationsItypeSignatures)
               _typeSignatureErrors =
                   checkTypeSignatures _declarationsIdeclVarNames _declarationsIrestrictedNames _declarationsItypeSignatures
-              __tup16 =
+              (_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities) =
                   internalError "PartialSyntax.ag" "n/a" "toplevel MaybeDeclaration"
-              (_collectTypeConstructors,_,_,_,_,_) =
-                  __tup16
-              (_,_collectValueConstructors,_,_,_,_) =
-                  __tup16
-              (_,_,_collectTypeSynonyms,_,_,_) =
-                  __tup16
-              (_,_,_,_collectConstructorEnv,_,_) =
-                  __tup16
-              (_,_,_,_,_derivedFunctions,_) =
-                  __tup16
-              (_,_,_,_,_,_operatorFixities) =
-                  __tup16
               _lhsOcollectScopeInfos =
                   (_scopeInfo, Definition) : _declarationsIcollectScopeInfos
               _lhsOcollectInstances =
@@ -8030,10 +7925,10 @@ sem_MaybeDeclarations_Just declarations_  =
               _declarationsOwarnings =
                   _lhsIwarnings
               ( _declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
-                  (declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings )
+                  declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_MaybeDeclarations_Nothing :: T_MaybeDeclarations
-sem_MaybeDeclarations_Nothing  =
+sem_MaybeDeclarations_Nothing =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -8078,10 +7973,10 @@ sem_MaybeDeclarations_Nothing  =
 -- cata
 sem_MaybeExports :: MaybeExports ->
                     T_MaybeExports
-sem_MaybeExports (MaybeExports_Just _exports )  =
-    (sem_MaybeExports_Just (sem_Exports _exports ) )
-sem_MaybeExports (MaybeExports_Nothing )  =
-    (sem_MaybeExports_Nothing )
+sem_MaybeExports (MaybeExports_Just _exports) =
+    (sem_MaybeExports_Just (sem_Exports _exports))
+sem_MaybeExports (MaybeExports_Nothing) =
+    (sem_MaybeExports_Nothing)
 -- semantic domain
 type T_MaybeExports = Names ->
                       Names ->
@@ -8090,7 +7985,7 @@ type T_MaybeExports = Names ->
                       ( ([Error]),MaybeExports)
 sem_MaybeExports_Just :: T_Exports ->
                          T_MaybeExports
-sem_MaybeExports_Just exports_  =
+sem_MaybeExports_Just exports_ =
     (\ _lhsIconsInScope
        _lhsImodulesInScope
        _lhsInamesInScop
@@ -8118,10 +8013,10 @@ sem_MaybeExports_Just exports_  =
               _exportsOtyconsInScope =
                   _lhsItyconsInScope
               ( _exportsIexportErrors,_exportsIself) =
-                  (exports_ _exportsOconsInScope _exportsOmodulesInScope _exportsOnamesInScop _exportsOtyconsInScope )
+                  exports_ _exportsOconsInScope _exportsOmodulesInScope _exportsOnamesInScop _exportsOtyconsInScope
           in  ( _lhsOexportErrors,_lhsOself)))
 sem_MaybeExports_Nothing :: T_MaybeExports
-sem_MaybeExports_Nothing  =
+sem_MaybeExports_Nothing =
     (\ _lhsIconsInScope
        _lhsImodulesInScope
        _lhsInamesInScop
@@ -8139,10 +8034,10 @@ sem_MaybeExports_Nothing  =
 -- cata
 sem_MaybeExpression :: MaybeExpression ->
                        T_MaybeExpression
-sem_MaybeExpression (MaybeExpression_Just _expression )  =
-    (sem_MaybeExpression_Just (sem_Expression _expression ) )
-sem_MaybeExpression (MaybeExpression_Nothing )  =
-    (sem_MaybeExpression_Nothing )
+sem_MaybeExpression (MaybeExpression_Just _expression) =
+    (sem_MaybeExpression_Just (sem_Expression _expression))
+sem_MaybeExpression (MaybeExpression_Nothing) =
+    (sem_MaybeExpression_Nothing)
 -- semantic domain
 type T_MaybeExpression = Names ->
                          Names ->
@@ -8159,7 +8054,7 @@ type T_MaybeExpression = Names ->
                          ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),MaybeExpression,Names,([Warning]))
 sem_MaybeExpression_Just :: T_Expression ->
                             T_MaybeExpression
-sem_MaybeExpression_Just expression_  =
+sem_MaybeExpression_Just expression_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -8239,10 +8134,10 @@ sem_MaybeExpression_Just expression_  =
               _expressionOwarnings =
                   _lhsIwarnings
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_MaybeExpression_Nothing :: T_MaybeExpression
-sem_MaybeExpression_Nothing  =
+sem_MaybeExpression_Nothing =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -8283,15 +8178,15 @@ sem_MaybeExpression_Nothing  =
 -- cata
 sem_MaybeImportSpecification :: MaybeImportSpecification ->
                                 T_MaybeImportSpecification
-sem_MaybeImportSpecification (MaybeImportSpecification_Just _importspecification )  =
-    (sem_MaybeImportSpecification_Just (sem_ImportSpecification _importspecification ) )
-sem_MaybeImportSpecification (MaybeImportSpecification_Nothing )  =
-    (sem_MaybeImportSpecification_Nothing )
+sem_MaybeImportSpecification (MaybeImportSpecification_Just _importspecification) =
+    (sem_MaybeImportSpecification_Just (sem_ImportSpecification _importspecification))
+sem_MaybeImportSpecification (MaybeImportSpecification_Nothing) =
+    (sem_MaybeImportSpecification_Nothing)
 -- semantic domain
 type T_MaybeImportSpecification = ( MaybeImportSpecification)
 sem_MaybeImportSpecification_Just :: T_ImportSpecification ->
                                      T_MaybeImportSpecification
-sem_MaybeImportSpecification_Just importspecification_  =
+sem_MaybeImportSpecification_Just importspecification_ =
     (let _lhsOself :: MaybeImportSpecification
          _importspecificationIself :: ImportSpecification
          _self =
@@ -8299,10 +8194,10 @@ sem_MaybeImportSpecification_Just importspecification_  =
          _lhsOself =
              _self
          ( _importspecificationIself) =
-             (importspecification_ )
+             importspecification_
      in  ( _lhsOself))
 sem_MaybeImportSpecification_Nothing :: T_MaybeImportSpecification
-sem_MaybeImportSpecification_Nothing  =
+sem_MaybeImportSpecification_Nothing =
     (let _lhsOself :: MaybeImportSpecification
          _self =
              MaybeImportSpecification_Nothing
@@ -8313,15 +8208,15 @@ sem_MaybeImportSpecification_Nothing  =
 -- cata
 sem_MaybeInt :: MaybeInt ->
                 T_MaybeInt
-sem_MaybeInt (MaybeInt_Just _int )  =
-    (sem_MaybeInt_Just _int )
-sem_MaybeInt (MaybeInt_Nothing )  =
-    (sem_MaybeInt_Nothing )
+sem_MaybeInt (MaybeInt_Just _int) =
+    (sem_MaybeInt_Just _int)
+sem_MaybeInt (MaybeInt_Nothing) =
+    (sem_MaybeInt_Nothing)
 -- semantic domain
 type T_MaybeInt = ( MaybeInt)
 sem_MaybeInt_Just :: Int ->
                      T_MaybeInt
-sem_MaybeInt_Just int_  =
+sem_MaybeInt_Just int_ =
     (let _lhsOself :: MaybeInt
          _self =
              MaybeInt_Just int_
@@ -8329,7 +8224,7 @@ sem_MaybeInt_Just int_  =
              _self
      in  ( _lhsOself))
 sem_MaybeInt_Nothing :: T_MaybeInt
-sem_MaybeInt_Nothing  =
+sem_MaybeInt_Nothing =
     (let _lhsOself :: MaybeInt
          _self =
              MaybeInt_Nothing
@@ -8340,15 +8235,15 @@ sem_MaybeInt_Nothing  =
 -- cata
 sem_MaybeName :: MaybeName ->
                  T_MaybeName
-sem_MaybeName (MaybeName_Just _name )  =
-    (sem_MaybeName_Just (sem_Name _name ) )
-sem_MaybeName (MaybeName_Nothing )  =
-    (sem_MaybeName_Nothing )
+sem_MaybeName (MaybeName_Just _name) =
+    (sem_MaybeName_Just (sem_Name _name))
+sem_MaybeName (MaybeName_Nothing) =
+    (sem_MaybeName_Nothing)
 -- semantic domain
 type T_MaybeName = ( MaybeName)
 sem_MaybeName_Just :: T_Name ->
                       T_MaybeName
-sem_MaybeName_Just name_  =
+sem_MaybeName_Just name_ =
     (let _lhsOself :: MaybeName
          _nameIself :: Name
          _self =
@@ -8356,10 +8251,10 @@ sem_MaybeName_Just name_  =
          _lhsOself =
              _self
          ( _nameIself) =
-             (name_ )
+             name_
      in  ( _lhsOself))
 sem_MaybeName_Nothing :: T_MaybeName
-sem_MaybeName_Nothing  =
+sem_MaybeName_Nothing =
     (let _lhsOself :: MaybeName
          _self =
              MaybeName_Nothing
@@ -8370,15 +8265,15 @@ sem_MaybeName_Nothing  =
 -- cata
 sem_MaybeNames :: MaybeNames ->
                   T_MaybeNames
-sem_MaybeNames (MaybeNames_Just _names )  =
-    (sem_MaybeNames_Just (sem_Names _names ) )
-sem_MaybeNames (MaybeNames_Nothing )  =
-    (sem_MaybeNames_Nothing )
+sem_MaybeNames (MaybeNames_Just _names) =
+    (sem_MaybeNames_Just (sem_Names _names))
+sem_MaybeNames (MaybeNames_Nothing) =
+    (sem_MaybeNames_Nothing)
 -- semantic domain
 type T_MaybeNames = ( MaybeNames)
 sem_MaybeNames_Just :: T_Names ->
                        T_MaybeNames
-sem_MaybeNames_Just names_  =
+sem_MaybeNames_Just names_ =
     (let _lhsOself :: MaybeNames
          _namesIself :: Names
          _self =
@@ -8386,10 +8281,10 @@ sem_MaybeNames_Just names_  =
          _lhsOself =
              _self
          ( _namesIself) =
-             (names_ )
+             names_
      in  ( _lhsOself))
 sem_MaybeNames_Nothing :: T_MaybeNames
-sem_MaybeNames_Nothing  =
+sem_MaybeNames_Nothing =
     (let _lhsOself :: MaybeNames
          _self =
              MaybeNames_Nothing
@@ -8400,8 +8295,8 @@ sem_MaybeNames_Nothing  =
 -- cata
 sem_Module :: Module ->
               T_Module
-sem_Module (Module_Module _range _name _exports _body )  =
-    (sem_Module_Module (sem_Range _range ) (sem_MaybeName _name ) (sem_MaybeExports _exports ) (sem_Body _body ) )
+sem_Module (Module_Module _range _name _exports _body) =
+    (sem_Module_Module (sem_Range _range) (sem_MaybeName _name) (sem_MaybeExports _exports) (sem_Body _body))
 -- semantic domain
 type T_Module = String ->
                 ImportEnvironments ->
@@ -8412,7 +8307,7 @@ sem_Module_Module :: T_Range ->
                      T_MaybeExports ->
                      T_Body ->
                      T_Module
-sem_Module_Module range_ name_ exports_ body_  =
+sem_Module_Module range_ name_ exports_ body_ =
     (\ _lhsIbaseName
        _lhsIimportEnvironments
        _lhsIoptions ->
@@ -8501,27 +8396,19 @@ sem_Module_Module range_ name_ exports_ body_  =
                   []
               _bodyOoperatorFixities =
                   []
-              __tup17 =
+              (_uniqueValueConstructors,_duplicatedValueConstructors) =
                   uniqueKeys (  _bodyIcollectValueConstructors
                              ++ concatMap (M.assocs . valueConstructors) _lhsIimportEnvironments
                              )
-              (_uniqueValueConstructors,_) =
-                  __tup17
-              (_,_duplicatedValueConstructors) =
-                  __tup17
               _allValueConstructors =
                   map fst _uniqueValueConstructors ++ map head _duplicatedValueConstructors
               _valueConstructors =
                   M.fromList _uniqueValueConstructors
-              __tup18 =
+              (_uniqueTypeConstructors,_duplicatedTypeConstructors) =
                   uniqueKeys (  _bodyIcollectTypeConstructors
                              ++ concatMap (M.assocs . typeConstructors) _lhsIimportEnvironments
                              ++ [ (n,i) | (n,(i,_)) <- _bodyIcollectTypeSynonyms ]
                              )
-              (_uniqueTypeConstructors,_) =
-                  __tup18
-              (_,_duplicatedTypeConstructors) =
-                  __tup18
               _allTypeConstructors =
                   map fst _uniqueTypeConstructors ++ map head _duplicatedTypeConstructors
               _typeConstructors =
@@ -8537,14 +8424,8 @@ sem_Module_Module range_ name_ exports_ body_  =
                   in foldr (\(n, i) -> insertInstance (show n) i)
                            (createClassEnvironment importEnv)
                            _bodyIcollectInstances
-              __tup19 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope (_initialScope ++ _bodyIdeclVarNames) _bodyIunboundNames []
-              (_namesInScope,_,_) =
-                  __tup19
-              (_,_unboundNames,_) =
-                  __tup19
-              (_,_,_scopeInfo) =
-                  __tup19
               _bodyOkindErrors =
                   []
               _kindErrors =
@@ -8568,13 +8449,9 @@ sem_Module_Module range_ name_ exports_ body_  =
                   makeDuplicated Constructor _duplicatedValueConstructors
               _fixityErrors =
                   makeDuplicated Fixity _duplicatedFixities
-              __tup20 =
+              (_duplicatedFixities,_correctFixities) =
                   let (xs,ys) = partition ((>1) . length) . group . sort $ (map fst _bodyIoperatorFixities)
                   in (xs,map head ys)
-              (_duplicatedFixities,_) =
-                  __tup20
-              (_,_correctFixities) =
-                  __tup20
               _fixityButNoFunDefErrors =
                   let list = nub (_bodyIdeclVarNames ++ _allValueConstructors)
                   in makeNoFunDef Fixity (filter (`notElem` list) _correctFixities) list
@@ -8652,31 +8529,31 @@ sem_Module_Module range_ name_ exports_ body_  =
               _bodyOvalueConstructors =
                   _valueConstructors
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _exportsIexportErrors,_exportsIself) =
-                  (exports_ _exportsOconsInScope _exportsOmodulesInScope _exportsOnamesInScop _exportsOtyconsInScope )
+                  exports_ _exportsOconsInScope _exportsOmodulesInScope _exportsOnamesInScop _exportsOtyconsInScope
               ( _bodyIcollectInstances,_bodyIcollectScopeInfos,_bodyIcollectTypeConstructors,_bodyIcollectTypeSynonyms,_bodyIcollectValueConstructors,_bodyIdeclVarNames,_bodyIimportedModules,_bodyIkindErrors,_bodyImiscerrors,_bodyIoperatorFixities,_bodyIself,_bodyItypeSignatures,_bodyIunboundNames,_bodyIwarnings) =
-                  (body_ _bodyOallTypeConstructors _bodyOallValueConstructors _bodyOclassEnvironment _bodyOcollectScopeInfos _bodyOcollectTypeConstructors _bodyOcollectTypeSynonyms _bodyOcollectValueConstructors _bodyOkindErrors _bodyOmiscerrors _bodyOnamesInScope _bodyOoperatorFixities _bodyOoptions _bodyOorderedTypeSynonyms _bodyOtypeConstructors _bodyOvalueConstructors _bodyOwarnings )
+                  body_ _bodyOallTypeConstructors _bodyOallValueConstructors _bodyOclassEnvironment _bodyOcollectScopeInfos _bodyOcollectTypeConstructors _bodyOcollectTypeSynonyms _bodyOcollectValueConstructors _bodyOkindErrors _bodyOmiscerrors _bodyOnamesInScope _bodyOoperatorFixities _bodyOoptions _bodyOorderedTypeSynonyms _bodyOtypeConstructors _bodyOvalueConstructors _bodyOwarnings
           in  ( _lhsOcollectEnvironment,_lhsOerrors,_lhsOself,_lhsOtypeSignatures,_lhsOwarnings)))
 -- Name --------------------------------------------------------
 -- cata
 sem_Name :: Name ->
             T_Name
-sem_Name (Name_Identifier _range _module _name )  =
-    (sem_Name_Identifier (sem_Range _range ) (sem_Strings _module ) _name )
-sem_Name (Name_Operator _range _module _name )  =
-    (sem_Name_Operator (sem_Range _range ) (sem_Strings _module ) _name )
-sem_Name (Name_Special _range _module _name )  =
-    (sem_Name_Special (sem_Range _range ) (sem_Strings _module ) _name )
+sem_Name (Name_Identifier _range _module _name) =
+    (sem_Name_Identifier (sem_Range _range) (sem_Strings _module) _name)
+sem_Name (Name_Operator _range _module _name) =
+    (sem_Name_Operator (sem_Range _range) (sem_Strings _module) _name)
+sem_Name (Name_Special _range _module _name) =
+    (sem_Name_Special (sem_Range _range) (sem_Strings _module) _name)
 -- semantic domain
 type T_Name = ( Name)
 sem_Name_Identifier :: T_Range ->
                        T_Strings ->
                        String ->
                        T_Name
-sem_Name_Identifier range_ module_ name_  =
+sem_Name_Identifier range_ module_ name_ =
     (let _lhsOself :: Name
          _rangeIself :: Range
          _moduleIself :: Strings
@@ -8685,15 +8562,15 @@ sem_Name_Identifier range_ module_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _moduleIself) =
-             (module_ )
+             module_
      in  ( _lhsOself))
 sem_Name_Operator :: T_Range ->
                      T_Strings ->
                      String ->
                      T_Name
-sem_Name_Operator range_ module_ name_  =
+sem_Name_Operator range_ module_ name_ =
     (let _lhsOself :: Name
          _rangeIself :: Range
          _moduleIself :: Strings
@@ -8702,15 +8579,15 @@ sem_Name_Operator range_ module_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _moduleIself) =
-             (module_ )
+             module_
      in  ( _lhsOself))
 sem_Name_Special :: T_Range ->
                     T_Strings ->
                     String ->
                     T_Name
-sem_Name_Special range_ module_ name_  =
+sem_Name_Special range_ module_ name_ =
     (let _lhsOself :: Name
          _rangeIself :: Range
          _moduleIself :: Strings
@@ -8719,22 +8596,22 @@ sem_Name_Special range_ module_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _moduleIself) =
-             (module_ )
+             module_
      in  ( _lhsOself))
 -- Names -------------------------------------------------------
 -- cata
 sem_Names :: Names ->
              T_Names
-sem_Names list  =
-    (Prelude.foldr sem_Names_Cons sem_Names_Nil (Prelude.map sem_Name list) )
+sem_Names list =
+    (Prelude.foldr sem_Names_Cons sem_Names_Nil (Prelude.map sem_Name list))
 -- semantic domain
 type T_Names = ( Names)
 sem_Names_Cons :: T_Name ->
                   T_Names ->
                   T_Names
-sem_Names_Cons hd_ tl_  =
+sem_Names_Cons hd_ tl_ =
     (let _lhsOself :: Names
          _hdIself :: Name
          _tlIself :: Names
@@ -8743,12 +8620,12 @@ sem_Names_Cons hd_ tl_  =
          _lhsOself =
              _self
          ( _hdIself) =
-             (hd_ )
+             hd_
          ( _tlIself) =
-             (tl_ )
+             tl_
      in  ( _lhsOself))
 sem_Names_Nil :: T_Names
-sem_Names_Nil  =
+sem_Names_Nil =
     (let _lhsOself :: Names
          _self =
              []
@@ -8759,34 +8636,34 @@ sem_Names_Nil  =
 -- cata
 sem_Pattern :: Pattern ->
                T_Pattern
-sem_Pattern (Pattern_As _range _name _pattern )  =
-    (sem_Pattern_As (sem_Range _range ) (sem_Name _name ) (sem_Pattern _pattern ) )
-sem_Pattern (Pattern_Constructor _range _name _patterns )  =
-    (sem_Pattern_Constructor (sem_Range _range ) (sem_Name _name ) (sem_Patterns _patterns ) )
-sem_Pattern (Pattern_InfixConstructor _range _leftPattern _constructorOperator _rightPattern )  =
-    (sem_Pattern_InfixConstructor (sem_Range _range ) (sem_Pattern _leftPattern ) (sem_Name _constructorOperator ) (sem_Pattern _rightPattern ) )
-sem_Pattern (Pattern_Irrefutable _range _pattern )  =
-    (sem_Pattern_Irrefutable (sem_Range _range ) (sem_Pattern _pattern ) )
-sem_Pattern (Pattern_List _range _patterns )  =
-    (sem_Pattern_List (sem_Range _range ) (sem_Patterns _patterns ) )
-sem_Pattern (Pattern_Literal _range _literal )  =
-    (sem_Pattern_Literal (sem_Range _range ) (sem_Literal _literal ) )
-sem_Pattern (Pattern_Negate _range _literal )  =
-    (sem_Pattern_Negate (sem_Range _range ) (sem_Literal _literal ) )
-sem_Pattern (Pattern_NegateFloat _range _literal )  =
-    (sem_Pattern_NegateFloat (sem_Range _range ) (sem_Literal _literal ) )
-sem_Pattern (Pattern_Parenthesized _range _pattern )  =
-    (sem_Pattern_Parenthesized (sem_Range _range ) (sem_Pattern _pattern ) )
-sem_Pattern (Pattern_Record _range _name _recordPatternBindings )  =
-    (sem_Pattern_Record (sem_Range _range ) (sem_Name _name ) (sem_RecordPatternBindings _recordPatternBindings ) )
-sem_Pattern (Pattern_Successor _range _name _literal )  =
-    (sem_Pattern_Successor (sem_Range _range ) (sem_Name _name ) (sem_Literal _literal ) )
-sem_Pattern (Pattern_Tuple _range _patterns )  =
-    (sem_Pattern_Tuple (sem_Range _range ) (sem_Patterns _patterns ) )
-sem_Pattern (Pattern_Variable _range _name )  =
-    (sem_Pattern_Variable (sem_Range _range ) (sem_Name _name ) )
-sem_Pattern (Pattern_Wildcard _range )  =
-    (sem_Pattern_Wildcard (sem_Range _range ) )
+sem_Pattern (Pattern_As _range _name _pattern) =
+    (sem_Pattern_As (sem_Range _range) (sem_Name _name) (sem_Pattern _pattern))
+sem_Pattern (Pattern_Constructor _range _name _patterns) =
+    (sem_Pattern_Constructor (sem_Range _range) (sem_Name _name) (sem_Patterns _patterns))
+sem_Pattern (Pattern_InfixConstructor _range _leftPattern _constructorOperator _rightPattern) =
+    (sem_Pattern_InfixConstructor (sem_Range _range) (sem_Pattern _leftPattern) (sem_Name _constructorOperator) (sem_Pattern _rightPattern))
+sem_Pattern (Pattern_Irrefutable _range _pattern) =
+    (sem_Pattern_Irrefutable (sem_Range _range) (sem_Pattern _pattern))
+sem_Pattern (Pattern_List _range _patterns) =
+    (sem_Pattern_List (sem_Range _range) (sem_Patterns _patterns))
+sem_Pattern (Pattern_Literal _range _literal) =
+    (sem_Pattern_Literal (sem_Range _range) (sem_Literal _literal))
+sem_Pattern (Pattern_Negate _range _literal) =
+    (sem_Pattern_Negate (sem_Range _range) (sem_Literal _literal))
+sem_Pattern (Pattern_NegateFloat _range _literal) =
+    (sem_Pattern_NegateFloat (sem_Range _range) (sem_Literal _literal))
+sem_Pattern (Pattern_Parenthesized _range _pattern) =
+    (sem_Pattern_Parenthesized (sem_Range _range) (sem_Pattern _pattern))
+sem_Pattern (Pattern_Record _range _name _recordPatternBindings) =
+    (sem_Pattern_Record (sem_Range _range) (sem_Name _name) (sem_RecordPatternBindings _recordPatternBindings))
+sem_Pattern (Pattern_Successor _range _name _literal) =
+    (sem_Pattern_Successor (sem_Range _range) (sem_Name _name) (sem_Literal _literal))
+sem_Pattern (Pattern_Tuple _range _patterns) =
+    (sem_Pattern_Tuple (sem_Range _range) (sem_Patterns _patterns))
+sem_Pattern (Pattern_Variable _range _name) =
+    (sem_Pattern_Variable (sem_Range _range) (sem_Name _name))
+sem_Pattern (Pattern_Wildcard _range) =
+    (sem_Pattern_Wildcard (sem_Range _range))
 -- semantic domain
 type T_Pattern = Names ->
                  Names ->
@@ -8802,7 +8679,7 @@ sem_Pattern_As :: T_Range ->
                   T_Name ->
                   T_Pattern ->
                   T_Pattern
-sem_Pattern_As range_ name_ pattern_  =
+sem_Pattern_As range_ name_ pattern_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -8868,17 +8745,17 @@ sem_Pattern_As range_ name_ pattern_  =
               _patternOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
-                  (pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings )
+                  pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Pattern_Constructor :: T_Range ->
                            T_Name ->
                            T_Patterns ->
                            T_Pattern
-sem_Pattern_Constructor range_ name_ patterns_  =
+sem_Pattern_Constructor range_ name_ patterns_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -8949,18 +8826,18 @@ sem_Pattern_Constructor range_ name_ patterns_  =
               _patternsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _patternsIcollectScopeInfos,_patternsImiscerrors,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIself,_patternsIunboundNames,_patternsIwarnings) =
-                  (patterns_ _patternsOallTypeConstructors _patternsOallValueConstructors _patternsOcollectScopeInfos _patternsOlhsPattern _patternsOmiscerrors _patternsOnamesInScope _patternsOtypeConstructors _patternsOvalueConstructors _patternsOwarnings )
+                  patterns_ _patternsOallTypeConstructors _patternsOallValueConstructors _patternsOcollectScopeInfos _patternsOlhsPattern _patternsOmiscerrors _patternsOnamesInScope _patternsOtypeConstructors _patternsOvalueConstructors _patternsOwarnings
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Pattern_InfixConstructor :: T_Range ->
                                 T_Pattern ->
                                 T_Name ->
                                 T_Pattern ->
                                 T_Pattern
-sem_Pattern_InfixConstructor range_ leftPattern_ constructorOperator_ rightPattern_  =
+sem_Pattern_InfixConstructor range_ leftPattern_ constructorOperator_ rightPattern_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -9063,18 +8940,18 @@ sem_Pattern_InfixConstructor range_ leftPattern_ constructorOperator_ rightPatte
               _rightPatternOwarnings =
                   _leftPatternIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _leftPatternIcollectScopeInfos,_leftPatternImiscerrors,_leftPatternIpatVarNames,_leftPatternIself,_leftPatternIunboundNames,_leftPatternIwarnings) =
-                  (leftPattern_ _leftPatternOallTypeConstructors _leftPatternOallValueConstructors _leftPatternOcollectScopeInfos _leftPatternOlhsPattern _leftPatternOmiscerrors _leftPatternOnamesInScope _leftPatternOtypeConstructors _leftPatternOvalueConstructors _leftPatternOwarnings )
+                  leftPattern_ _leftPatternOallTypeConstructors _leftPatternOallValueConstructors _leftPatternOcollectScopeInfos _leftPatternOlhsPattern _leftPatternOmiscerrors _leftPatternOnamesInScope _leftPatternOtypeConstructors _leftPatternOvalueConstructors _leftPatternOwarnings
               ( _constructorOperatorIself) =
-                  (constructorOperator_ )
+                  constructorOperator_
               ( _rightPatternIcollectScopeInfos,_rightPatternImiscerrors,_rightPatternIpatVarNames,_rightPatternIself,_rightPatternIunboundNames,_rightPatternIwarnings) =
-                  (rightPattern_ _rightPatternOallTypeConstructors _rightPatternOallValueConstructors _rightPatternOcollectScopeInfos _rightPatternOlhsPattern _rightPatternOmiscerrors _rightPatternOnamesInScope _rightPatternOtypeConstructors _rightPatternOvalueConstructors _rightPatternOwarnings )
+                  rightPattern_ _rightPatternOallTypeConstructors _rightPatternOallValueConstructors _rightPatternOcollectScopeInfos _rightPatternOlhsPattern _rightPatternOmiscerrors _rightPatternOnamesInScope _rightPatternOtypeConstructors _rightPatternOvalueConstructors _rightPatternOwarnings
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Pattern_Irrefutable :: T_Range ->
                            T_Pattern ->
                            T_Pattern
-sem_Pattern_Irrefutable range_ pattern_  =
+sem_Pattern_Irrefutable range_ pattern_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -9139,14 +9016,14 @@ sem_Pattern_Irrefutable range_ pattern_  =
               _patternOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
-                  (pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings )
+                  pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Pattern_List :: T_Range ->
                     T_Patterns ->
                     T_Pattern
-sem_Pattern_List range_ patterns_  =
+sem_Pattern_List range_ patterns_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -9212,14 +9089,14 @@ sem_Pattern_List range_ patterns_  =
               _patternsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternsIcollectScopeInfos,_patternsImiscerrors,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIself,_patternsIunboundNames,_patternsIwarnings) =
-                  (patterns_ _patternsOallTypeConstructors _patternsOallValueConstructors _patternsOcollectScopeInfos _patternsOlhsPattern _patternsOmiscerrors _patternsOnamesInScope _patternsOtypeConstructors _patternsOvalueConstructors _patternsOwarnings )
+                  patterns_ _patternsOallTypeConstructors _patternsOallValueConstructors _patternsOcollectScopeInfos _patternsOlhsPattern _patternsOmiscerrors _patternsOnamesInScope _patternsOtypeConstructors _patternsOvalueConstructors _patternsOwarnings
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Pattern_Literal :: T_Range ->
                        T_Literal ->
                        T_Pattern
-sem_Pattern_Literal range_ literal_  =
+sem_Pattern_Literal range_ literal_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -9260,14 +9137,14 @@ sem_Pattern_Literal range_ literal_  =
               _literalOmiscerrors =
                   _lhsImiscerrors
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _literalIcollectScopeInfos,_literalImiscerrors,_literalIself) =
-                  (literal_ _literalOcollectScopeInfos _literalOmiscerrors )
+                  literal_ _literalOcollectScopeInfos _literalOmiscerrors
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Pattern_Negate :: T_Range ->
                       T_Literal ->
                       T_Pattern
-sem_Pattern_Negate range_ literal_  =
+sem_Pattern_Negate range_ literal_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -9308,14 +9185,14 @@ sem_Pattern_Negate range_ literal_  =
               _literalOmiscerrors =
                   _lhsImiscerrors
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _literalIcollectScopeInfos,_literalImiscerrors,_literalIself) =
-                  (literal_ _literalOcollectScopeInfos _literalOmiscerrors )
+                  literal_ _literalOcollectScopeInfos _literalOmiscerrors
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Pattern_NegateFloat :: T_Range ->
                            T_Literal ->
                            T_Pattern
-sem_Pattern_NegateFloat range_ literal_  =
+sem_Pattern_NegateFloat range_ literal_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -9356,14 +9233,14 @@ sem_Pattern_NegateFloat range_ literal_  =
               _literalOmiscerrors =
                   _lhsImiscerrors
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _literalIcollectScopeInfos,_literalImiscerrors,_literalIself) =
-                  (literal_ _literalOcollectScopeInfos _literalOmiscerrors )
+                  literal_ _literalOcollectScopeInfos _literalOmiscerrors
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Pattern_Parenthesized :: T_Range ->
                              T_Pattern ->
                              T_Pattern
-sem_Pattern_Parenthesized range_ pattern_  =
+sem_Pattern_Parenthesized range_ pattern_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -9428,15 +9305,15 @@ sem_Pattern_Parenthesized range_ pattern_  =
               _patternOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
-                  (pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings )
+                  pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Pattern_Record :: T_Range ->
                       T_Name ->
                       T_RecordPatternBindings ->
                       T_Pattern
-sem_Pattern_Record range_ name_ recordPatternBindings_  =
+sem_Pattern_Record range_ name_ recordPatternBindings_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -9459,14 +9336,8 @@ sem_Pattern_Record range_ name_ recordPatternBindings_  =
               _recordPatternBindingsIcollectScopeInfos :: ([(ScopeInfo, Entity)])
               _recordPatternBindingsIself :: RecordPatternBindings
               _recordPatternBindingsIunboundNames :: Names
-              __tup21 =
+              (_beta,_constraints,_environment) =
                   internalError "PartialSyntax.ag" "n/a" "Pattern.Record"
-              (_beta,_,_) =
-                  __tup21
-              (_,_constraints,_) =
-                  __tup21
-              (_,_,_environment) =
-                  __tup21
               _lhsOpatVarNames =
                   []
               _lhsOunboundNames =
@@ -9486,17 +9357,17 @@ sem_Pattern_Record range_ name_ recordPatternBindings_  =
               _recordPatternBindingsOnamesInScope =
                   _lhsInamesInScope
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _recordPatternBindingsIcollectScopeInfos,_recordPatternBindingsIself,_recordPatternBindingsIunboundNames) =
-                  (recordPatternBindings_ _recordPatternBindingsOcollectScopeInfos _recordPatternBindingsOnamesInScope )
+                  recordPatternBindings_ _recordPatternBindingsOcollectScopeInfos _recordPatternBindingsOnamesInScope
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Pattern_Successor :: T_Range ->
                          T_Name ->
                          T_Literal ->
                          T_Pattern
-sem_Pattern_Successor range_ name_ literal_  =
+sem_Pattern_Successor range_ name_ literal_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -9519,14 +9390,8 @@ sem_Pattern_Successor range_ name_ literal_  =
               _literalIcollectScopeInfos :: ([(ScopeInfo, Entity)])
               _literalImiscerrors :: ([Error])
               _literalIself :: Literal
-              __tup22 =
+              (_beta,_constraints,_environment) =
                   internalError "PartialSyntax.ag" "n/a" "Pattern.Successor"
-              (_beta,_,_) =
-                  __tup22
-              (_,_constraints,_) =
-                  __tup22
-              (_,_,_environment) =
-                  __tup22
               _lhsOpatVarNames =
                   []
               _lhsOunboundNames =
@@ -9546,16 +9411,16 @@ sem_Pattern_Successor range_ name_ literal_  =
               _literalOmiscerrors =
                   _lhsImiscerrors
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _literalIcollectScopeInfos,_literalImiscerrors,_literalIself) =
-                  (literal_ _literalOcollectScopeInfos _literalOmiscerrors )
+                  literal_ _literalOcollectScopeInfos _literalOmiscerrors
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Pattern_Tuple :: T_Range ->
                      T_Patterns ->
                      T_Pattern
-sem_Pattern_Tuple range_ patterns_  =
+sem_Pattern_Tuple range_ patterns_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -9621,14 +9486,14 @@ sem_Pattern_Tuple range_ patterns_  =
               _patternsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternsIcollectScopeInfos,_patternsImiscerrors,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIself,_patternsIunboundNames,_patternsIwarnings) =
-                  (patterns_ _patternsOallTypeConstructors _patternsOallValueConstructors _patternsOcollectScopeInfos _patternsOlhsPattern _patternsOmiscerrors _patternsOnamesInScope _patternsOtypeConstructors _patternsOvalueConstructors _patternsOwarnings )
+                  patterns_ _patternsOallTypeConstructors _patternsOallValueConstructors _patternsOcollectScopeInfos _patternsOlhsPattern _patternsOmiscerrors _patternsOnamesInScope _patternsOtypeConstructors _patternsOvalueConstructors _patternsOwarnings
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Pattern_Variable :: T_Range ->
                         T_Name ->
                         T_Pattern
-sem_Pattern_Variable range_ name_  =
+sem_Pattern_Variable range_ name_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -9661,13 +9526,13 @@ sem_Pattern_Variable range_ name_  =
               _lhsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Pattern_Wildcard :: T_Range ->
                         T_Pattern
-sem_Pattern_Wildcard range_  =
+sem_Pattern_Wildcard range_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -9699,14 +9564,14 @@ sem_Pattern_Wildcard range_  =
               _lhsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 -- Patterns ----------------------------------------------------
 -- cata
 sem_Patterns :: Patterns ->
                 T_Patterns
-sem_Patterns list  =
-    (Prelude.foldr sem_Patterns_Cons sem_Patterns_Nil (Prelude.map sem_Pattern list) )
+sem_Patterns list =
+    (Prelude.foldr sem_Patterns_Cons sem_Patterns_Nil (Prelude.map sem_Pattern list))
 -- semantic domain
 type T_Patterns = Names ->
                   Names ->
@@ -9721,7 +9586,7 @@ type T_Patterns = Names ->
 sem_Patterns_Cons :: T_Pattern ->
                      T_Patterns ->
                      T_Patterns
-sem_Patterns_Cons hd_ tl_  =
+sem_Patterns_Cons hd_ tl_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -9822,12 +9687,12 @@ sem_Patterns_Cons hd_ tl_  =
               _tlOwarnings =
                   _hdIwarnings
               ( _hdIcollectScopeInfos,_hdImiscerrors,_hdIpatVarNames,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                  (hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOcollectScopeInfos _hdOlhsPattern _hdOmiscerrors _hdOnamesInScope _hdOtypeConstructors _hdOvalueConstructors _hdOwarnings )
+                  hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOcollectScopeInfos _hdOlhsPattern _hdOmiscerrors _hdOnamesInScope _hdOtypeConstructors _hdOvalueConstructors _hdOwarnings
               ( _tlIcollectScopeInfos,_tlImiscerrors,_tlInumberOfPatterns,_tlIpatVarNames,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                  (tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOcollectScopeInfos _tlOlhsPattern _tlOmiscerrors _tlOnamesInScope _tlOtypeConstructors _tlOvalueConstructors _tlOwarnings )
+                  tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOcollectScopeInfos _tlOlhsPattern _tlOmiscerrors _tlOnamesInScope _tlOtypeConstructors _tlOvalueConstructors _tlOwarnings
           in  ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOnumberOfPatterns,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Patterns_Nil :: T_Patterns
-sem_Patterns_Nil  =
+sem_Patterns_Nil =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIcollectScopeInfos
@@ -9865,17 +9730,17 @@ sem_Patterns_Nil  =
 -- cata
 sem_Position :: Position ->
                 T_Position
-sem_Position (Position_Position _filename _line _column )  =
-    (sem_Position_Position _filename _line _column )
-sem_Position (Position_Unknown )  =
-    (sem_Position_Unknown )
+sem_Position (Position_Position _filename _line _column) =
+    (sem_Position_Position _filename _line _column)
+sem_Position (Position_Unknown) =
+    (sem_Position_Unknown)
 -- semantic domain
 type T_Position = ( Position)
 sem_Position_Position :: String ->
                          Int ->
                          Int ->
                          T_Position
-sem_Position_Position filename_ line_ column_  =
+sem_Position_Position filename_ line_ column_ =
     (let _lhsOself :: Position
          _self =
              Position_Position filename_ line_ column_
@@ -9883,7 +9748,7 @@ sem_Position_Position filename_ line_ column_  =
              _self
      in  ( _lhsOself))
 sem_Position_Unknown :: T_Position
-sem_Position_Unknown  =
+sem_Position_Unknown =
     (let _lhsOself :: Position
          _self =
              Position_Unknown
@@ -9894,14 +9759,14 @@ sem_Position_Unknown  =
 -- cata
 sem_Qualifier :: Qualifier ->
                  T_Qualifier
-sem_Qualifier (Qualifier_Empty _range )  =
-    (sem_Qualifier_Empty (sem_Range _range ) )
-sem_Qualifier (Qualifier_Generator _range _pattern _expression )  =
-    (sem_Qualifier_Generator (sem_Range _range ) (sem_Pattern _pattern ) (sem_Expression _expression ) )
-sem_Qualifier (Qualifier_Guard _range _guard )  =
-    (sem_Qualifier_Guard (sem_Range _range ) (sem_Expression _guard ) )
-sem_Qualifier (Qualifier_Let _range _declarations )  =
-    (sem_Qualifier_Let (sem_Range _range ) (sem_Declarations _declarations ) )
+sem_Qualifier (Qualifier_Empty _range) =
+    (sem_Qualifier_Empty (sem_Range _range))
+sem_Qualifier (Qualifier_Generator _range _pattern _expression) =
+    (sem_Qualifier_Generator (sem_Range _range) (sem_Pattern _pattern) (sem_Expression _expression))
+sem_Qualifier (Qualifier_Guard _range _guard) =
+    (sem_Qualifier_Guard (sem_Range _range) (sem_Expression _guard))
+sem_Qualifier (Qualifier_Let _range _declarations) =
+    (sem_Qualifier_Let (sem_Range _range) (sem_Declarations _declarations))
 -- semantic domain
 type T_Qualifier = Names ->
                    Names ->
@@ -9919,7 +9784,7 @@ type T_Qualifier = Names ->
                    ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),([Error]),Names,Qualifier,Names,([Warning]))
 sem_Qualifier_Empty :: T_Range ->
                        T_Qualifier
-sem_Qualifier_Empty range_  =
+sem_Qualifier_Empty range_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -9961,13 +9826,13 @@ sem_Qualifier_Empty range_  =
               _lhsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Qualifier_Generator :: T_Range ->
                            T_Pattern ->
                            T_Expression ->
                            T_Qualifier
-sem_Qualifier_Generator range_ pattern_ expression_  =
+sem_Qualifier_Generator range_ pattern_ expression_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -10024,14 +9889,8 @@ sem_Qualifier_Generator range_ pattern_ expression_  =
               _expressionIself :: Expression
               _expressionIunboundNames :: Names
               _expressionIwarnings :: ([Warning])
-              __tup23 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _patternIpatVarNames (_expressionIunboundNames  ++ _lhsIunboundNames)  _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup23
-              (_,_unboundNames,_) =
-                  __tup23
-              (_,_,_scopeInfo) =
-                  __tup23
               _lhsOnamesInScope =
                   _namesInScope
               _lhsOunboundNames =
@@ -10093,16 +9952,16 @@ sem_Qualifier_Generator range_ pattern_ expression_  =
               _expressionOwarnings =
                   _patternIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
-                  (pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings )
+                  pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Qualifier_Guard :: T_Range ->
                        T_Expression ->
                        T_Qualifier
-sem_Qualifier_Guard range_ guard_  =
+sem_Qualifier_Guard range_ guard_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -10187,14 +10046,14 @@ sem_Qualifier_Guard range_ guard_  =
               _guardOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _guardIcollectInstances,_guardIcollectScopeInfos,_guardIkindErrors,_guardImiscerrors,_guardIself,_guardIunboundNames,_guardIwarnings) =
-                  (guard_ _guardOallTypeConstructors _guardOallValueConstructors _guardOclassEnvironment _guardOcollectScopeInfos _guardOkindErrors _guardOmiscerrors _guardOnamesInScope _guardOoptions _guardOorderedTypeSynonyms _guardOtypeConstructors _guardOvalueConstructors _guardOwarnings )
+                  guard_ _guardOallTypeConstructors _guardOallValueConstructors _guardOclassEnvironment _guardOcollectScopeInfos _guardOkindErrors _guardOmiscerrors _guardOnamesInScope _guardOoptions _guardOorderedTypeSynonyms _guardOtypeConstructors _guardOvalueConstructors _guardOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Qualifier_Let :: T_Range ->
                      T_Declarations ->
                      T_Qualifier
-sem_Qualifier_Let range_ declarations_  =
+sem_Qualifier_Let range_ declarations_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -10254,14 +10113,8 @@ sem_Qualifier_Let range_ declarations_  =
               _declarationsIwarnings :: ([Warning])
               _declarationsOtypeSignatures =
                   []
-              __tup24 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup24
-              (_,_unboundNames,_) =
-                  __tup24
-              (_,_,_scopeInfo) =
-                  __tup24
               _lhsOunboundNames =
                   _unboundNames
               _lhsOwarnings =
@@ -10275,26 +10128,12 @@ sem_Qualifier_Let range_ declarations_  =
                   findSimilarFunctionBindings _declarationsItypeSignatures _declarationsIsuspiciousFBs
               _lhsOmiscerrors =
                   _typeSignatureErrors ++ _declarationsImiscerrors
-              __tup25 =
-                  uniqueAppearance (map fst _declarationsItypeSignatures)
               (_,_doubles) =
-                  __tup25
+                  uniqueAppearance (map fst _declarationsItypeSignatures)
               _typeSignatureErrors =
                   checkTypeSignatures _declarationsIdeclVarNames _declarationsIrestrictedNames _declarationsItypeSignatures
-              __tup26 =
+              (_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities) =
                   internalError "PartialSyntax.ag" "n/a" "toplevel Qualifier"
-              (_collectTypeConstructors,_,_,_,_,_) =
-                  __tup26
-              (_,_collectValueConstructors,_,_,_,_) =
-                  __tup26
-              (_,_,_collectTypeSynonyms,_,_,_) =
-                  __tup26
-              (_,_,_,_collectConstructorEnv,_,_) =
-                  __tup26
-              (_,_,_,_,_derivedFunctions,_) =
-                  __tup26
-              (_,_,_,_,_,_operatorFixities) =
-                  __tup26
               _lhsOcollectScopeInfos =
                   (_scopeInfo, Definition) : _declarationsIcollectScopeInfos
               _lhsOcollectInstances =
@@ -10340,16 +10179,16 @@ sem_Qualifier_Let range_ declarations_  =
               _declarationsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
-                  (declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings )
+                  declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 -- Qualifiers --------------------------------------------------
 -- cata
 sem_Qualifiers :: Qualifiers ->
                   T_Qualifiers
-sem_Qualifiers list  =
-    (Prelude.foldr sem_Qualifiers_Cons sem_Qualifiers_Nil (Prelude.map sem_Qualifier list) )
+sem_Qualifiers list =
+    (Prelude.foldr sem_Qualifiers_Cons sem_Qualifiers_Nil (Prelude.map sem_Qualifier list))
 -- semantic domain
 type T_Qualifiers = Names ->
                     Names ->
@@ -10368,7 +10207,7 @@ type T_Qualifiers = Names ->
 sem_Qualifiers_Cons :: T_Qualifier ->
                        T_Qualifiers ->
                        T_Qualifiers
-sem_Qualifiers_Cons hd_ tl_  =
+sem_Qualifiers_Cons hd_ tl_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -10503,12 +10342,12 @@ sem_Qualifiers_Cons hd_ tl_  =
               _tlOwarnings =
                   _hdIwarnings
               ( _hdIcollectInstances,_hdIcollectScopeInfos,_hdIkindErrors,_hdImiscerrors,_hdInamesInScope,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                  (hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOorderedTypeSynonyms _hdOtypeConstructors _hdOunboundNames _hdOvalueConstructors _hdOwarnings )
+                  hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOkindErrors _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOorderedTypeSynonyms _hdOtypeConstructors _hdOunboundNames _hdOvalueConstructors _hdOwarnings
               ( _tlIcollectInstances,_tlIcollectScopeInfos,_tlIkindErrors,_tlImiscerrors,_tlInamesInScope,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                  (tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOorderedTypeSynonyms _tlOtypeConstructors _tlOunboundNames _tlOvalueConstructors _tlOwarnings )
+                  tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOkindErrors _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOorderedTypeSynonyms _tlOtypeConstructors _tlOunboundNames _tlOvalueConstructors _tlOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Qualifiers_Nil :: T_Qualifiers
-sem_Qualifiers_Nil  =
+sem_Qualifiers_Nil =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -10553,14 +10392,14 @@ sem_Qualifiers_Nil  =
 -- cata
 sem_Range :: Range ->
              T_Range
-sem_Range (Range_Range _start _stop )  =
-    (sem_Range_Range (sem_Position _start ) (sem_Position _stop ) )
+sem_Range (Range_Range _start _stop) =
+    (sem_Range_Range (sem_Position _start) (sem_Position _stop))
 -- semantic domain
 type T_Range = ( Range)
 sem_Range_Range :: T_Position ->
                    T_Position ->
                    T_Range
-sem_Range_Range start_ stop_  =
+sem_Range_Range start_ stop_ =
     (let _lhsOself :: Range
          _startIself :: Position
          _stopIself :: Position
@@ -10569,16 +10408,16 @@ sem_Range_Range start_ stop_  =
          _lhsOself =
              _self
          ( _startIself) =
-             (start_ )
+             start_
          ( _stopIself) =
-             (stop_ )
+             stop_
      in  ( _lhsOself))
 -- RecordExpressionBinding -------------------------------------
 -- cata
 sem_RecordExpressionBinding :: RecordExpressionBinding ->
                                T_RecordExpressionBinding
-sem_RecordExpressionBinding (RecordExpressionBinding_RecordExpressionBinding _range _name _expression )  =
-    (sem_RecordExpressionBinding_RecordExpressionBinding (sem_Range _range ) (sem_Name _name ) (sem_Expression _expression ) )
+sem_RecordExpressionBinding (RecordExpressionBinding_RecordExpressionBinding _range _name _expression) =
+    (sem_RecordExpressionBinding_RecordExpressionBinding (sem_Range _range) (sem_Name _name) (sem_Expression _expression))
 -- semantic domain
 type T_RecordExpressionBinding = ClassEnvironment ->
                                  ([(ScopeInfo, Entity)]) ->
@@ -10590,7 +10429,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: T_Range ->
                                                        T_Name ->
                                                        T_Expression ->
                                                        T_RecordExpressionBinding
-sem_RecordExpressionBinding_RecordExpressionBinding range_ name_ expression_  =
+sem_RecordExpressionBinding_RecordExpressionBinding range_ name_ expression_ =
     (\ _lhsIclassEnvironment
        _lhsIcollectScopeInfos
        _lhsInamesInScope
@@ -10621,30 +10460,8 @@ sem_RecordExpressionBinding_RecordExpressionBinding range_ name_ expression_  =
               _expressionIself :: Expression
               _expressionIunboundNames :: Names
               _expressionIwarnings :: ([Warning])
-              __tup27 =
+              (_monos,_constructorenv,_betaUnique,_miscerrors,_warnings,_kindErrors,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_importEnvironment) =
                   internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
-              (_monos,_,_,_,_,_,_,_,_,_,_) =
-                  __tup27
-              (_,_constructorenv,_,_,_,_,_,_,_,_,_) =
-                  __tup27
-              (_,_,_betaUnique,_,_,_,_,_,_,_,_) =
-                  __tup27
-              (_,_,_,_miscerrors,_,_,_,_,_,_,_) =
-                  __tup27
-              (_,_,_,_,_warnings,_,_,_,_,_,_) =
-                  __tup27
-              (_,_,_,_,_,_kindErrors,_,_,_,_,_) =
-                  __tup27
-              (_,_,_,_,_,_,_valueConstructors,_,_,_,_) =
-                  __tup27
-              (_,_,_,_,_,_,_,_allValueConstructors,_,_,_) =
-                  __tup27
-              (_,_,_,_,_,_,_,_,_typeConstructors,_,_) =
-                  __tup27
-              (_,_,_,_,_,_,_,_,_,_allTypeConstructors,_) =
-                  __tup27
-              (_,_,_,_,_,_,_,_,_,_,_importEnvironment) =
-                  __tup27
               _lhsOcollectInstances =
                   _expressionIcollectInstances
               _lhsOunboundNames =
@@ -10680,18 +10497,18 @@ sem_RecordExpressionBinding_RecordExpressionBinding range_ name_ expression_  =
               _expressionOwarnings =
                   _warnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOself,_lhsOunboundNames)))
 -- RecordExpressionBindings ------------------------------------
 -- cata
 sem_RecordExpressionBindings :: RecordExpressionBindings ->
                                 T_RecordExpressionBindings
-sem_RecordExpressionBindings list  =
-    (Prelude.foldr sem_RecordExpressionBindings_Cons sem_RecordExpressionBindings_Nil (Prelude.map sem_RecordExpressionBinding list) )
+sem_RecordExpressionBindings list =
+    (Prelude.foldr sem_RecordExpressionBindings_Cons sem_RecordExpressionBindings_Nil (Prelude.map sem_RecordExpressionBinding list))
 -- semantic domain
 type T_RecordExpressionBindings = ClassEnvironment ->
                                   ([(ScopeInfo, Entity)]) ->
@@ -10702,7 +10519,7 @@ type T_RecordExpressionBindings = ClassEnvironment ->
 sem_RecordExpressionBindings_Cons :: T_RecordExpressionBinding ->
                                      T_RecordExpressionBindings ->
                                      T_RecordExpressionBindings
-sem_RecordExpressionBindings_Cons hd_ tl_  =
+sem_RecordExpressionBindings_Cons hd_ tl_ =
     (\ _lhsIclassEnvironment
        _lhsIcollectScopeInfos
        _lhsInamesInScope
@@ -10761,12 +10578,12 @@ sem_RecordExpressionBindings_Cons hd_ tl_  =
               _tlOorderedTypeSynonyms =
                   _lhsIorderedTypeSynonyms
               ( _hdIcollectInstances,_hdIcollectScopeInfos,_hdIself,_hdIunboundNames) =
-                  (hd_ _hdOclassEnvironment _hdOcollectScopeInfos _hdOnamesInScope _hdOoptions _hdOorderedTypeSynonyms )
+                  hd_ _hdOclassEnvironment _hdOcollectScopeInfos _hdOnamesInScope _hdOoptions _hdOorderedTypeSynonyms
               ( _tlIcollectInstances,_tlIcollectScopeInfos,_tlIself,_tlIunboundNames) =
-                  (tl_ _tlOclassEnvironment _tlOcollectScopeInfos _tlOnamesInScope _tlOoptions _tlOorderedTypeSynonyms )
+                  tl_ _tlOclassEnvironment _tlOcollectScopeInfos _tlOnamesInScope _tlOoptions _tlOorderedTypeSynonyms
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOself,_lhsOunboundNames)))
 sem_RecordExpressionBindings_Nil :: T_RecordExpressionBindings
-sem_RecordExpressionBindings_Nil  =
+sem_RecordExpressionBindings_Nil =
     (\ _lhsIclassEnvironment
        _lhsIcollectScopeInfos
        _lhsInamesInScope
@@ -10791,8 +10608,8 @@ sem_RecordExpressionBindings_Nil  =
 -- cata
 sem_RecordPatternBinding :: RecordPatternBinding ->
                             T_RecordPatternBinding
-sem_RecordPatternBinding (RecordPatternBinding_RecordPatternBinding _range _name _pattern )  =
-    (sem_RecordPatternBinding_RecordPatternBinding (sem_Range _range ) (sem_Name _name ) (sem_Pattern _pattern ) )
+sem_RecordPatternBinding (RecordPatternBinding_RecordPatternBinding _range _name _pattern) =
+    (sem_RecordPatternBinding_RecordPatternBinding (sem_Range _range) (sem_Name _name) (sem_Pattern _pattern))
 -- semantic domain
 type T_RecordPatternBinding = ([(ScopeInfo, Entity)]) ->
                               Names ->
@@ -10801,7 +10618,7 @@ sem_RecordPatternBinding_RecordPatternBinding :: T_Range ->
                                                  T_Name ->
                                                  T_Pattern ->
                                                  T_RecordPatternBinding
-sem_RecordPatternBinding_RecordPatternBinding range_ name_ pattern_  =
+sem_RecordPatternBinding_RecordPatternBinding range_ name_ pattern_ =
     (\ _lhsIcollectScopeInfos
        _lhsInamesInScope ->
          (let _patternOlhsPattern :: Bool
@@ -10826,28 +10643,8 @@ sem_RecordPatternBinding_RecordPatternBinding range_ name_ pattern_  =
               _patternIwarnings :: ([Warning])
               _patternOlhsPattern =
                   False
-              __tup28 =
+              (_monos,_constructorenv,_betaUnique,_miscerrors,_warnings,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_importEnvironment) =
                   internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
-              (_monos,_,_,_,_,_,_,_,_,_) =
-                  __tup28
-              (_,_constructorenv,_,_,_,_,_,_,_,_) =
-                  __tup28
-              (_,_,_betaUnique,_,_,_,_,_,_,_) =
-                  __tup28
-              (_,_,_,_miscerrors,_,_,_,_,_,_) =
-                  __tup28
-              (_,_,_,_,_warnings,_,_,_,_,_) =
-                  __tup28
-              (_,_,_,_,_,_valueConstructors,_,_,_,_) =
-                  __tup28
-              (_,_,_,_,_,_,_allValueConstructors,_,_,_) =
-                  __tup28
-              (_,_,_,_,_,_,_,_typeConstructors,_,_) =
-                  __tup28
-              (_,_,_,_,_,_,_,_,_allTypeConstructors,_) =
-                  __tup28
-              (_,_,_,_,_,_,_,_,_,_importEnvironment) =
-                  __tup28
               _lhsOunboundNames =
                   _patternIunboundNames
               _self =
@@ -10873,18 +10670,18 @@ sem_RecordPatternBinding_RecordPatternBinding range_ name_ pattern_  =
               _patternOwarnings =
                   _warnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
-                  (pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings )
+                  pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings
           in  ( _lhsOcollectScopeInfos,_lhsOself,_lhsOunboundNames)))
 -- RecordPatternBindings ---------------------------------------
 -- cata
 sem_RecordPatternBindings :: RecordPatternBindings ->
                              T_RecordPatternBindings
-sem_RecordPatternBindings list  =
-    (Prelude.foldr sem_RecordPatternBindings_Cons sem_RecordPatternBindings_Nil (Prelude.map sem_RecordPatternBinding list) )
+sem_RecordPatternBindings list =
+    (Prelude.foldr sem_RecordPatternBindings_Cons sem_RecordPatternBindings_Nil (Prelude.map sem_RecordPatternBinding list))
 -- semantic domain
 type T_RecordPatternBindings = ([(ScopeInfo, Entity)]) ->
                                Names ->
@@ -10892,7 +10689,7 @@ type T_RecordPatternBindings = ([(ScopeInfo, Entity)]) ->
 sem_RecordPatternBindings_Cons :: T_RecordPatternBinding ->
                                   T_RecordPatternBindings ->
                                   T_RecordPatternBindings
-sem_RecordPatternBindings_Cons hd_ tl_  =
+sem_RecordPatternBindings_Cons hd_ tl_ =
     (\ _lhsIcollectScopeInfos
        _lhsInamesInScope ->
          (let _lhsOunboundNames :: Names
@@ -10925,12 +10722,12 @@ sem_RecordPatternBindings_Cons hd_ tl_  =
               _tlOnamesInScope =
                   _lhsInamesInScope
               ( _hdIcollectScopeInfos,_hdIself,_hdIunboundNames) =
-                  (hd_ _hdOcollectScopeInfos _hdOnamesInScope )
+                  hd_ _hdOcollectScopeInfos _hdOnamesInScope
               ( _tlIcollectScopeInfos,_tlIself,_tlIunboundNames) =
-                  (tl_ _tlOcollectScopeInfos _tlOnamesInScope )
+                  tl_ _tlOcollectScopeInfos _tlOnamesInScope
           in  ( _lhsOcollectScopeInfos,_lhsOself,_lhsOunboundNames)))
 sem_RecordPatternBindings_Nil :: T_RecordPatternBindings
-sem_RecordPatternBindings_Nil  =
+sem_RecordPatternBindings_Nil =
     (\ _lhsIcollectScopeInfos
        _lhsInamesInScope ->
          (let _lhsOunboundNames :: Names
@@ -10949,10 +10746,10 @@ sem_RecordPatternBindings_Nil  =
 -- cata
 sem_RightHandSide :: RightHandSide ->
                      T_RightHandSide
-sem_RightHandSide (RightHandSide_Expression _range _expression _where )  =
-    (sem_RightHandSide_Expression (sem_Range _range ) (sem_Expression _expression ) (sem_MaybeDeclarations _where ) )
-sem_RightHandSide (RightHandSide_Guarded _range _guardedexpressions _where )  =
-    (sem_RightHandSide_Guarded (sem_Range _range ) (sem_GuardedExpressions _guardedexpressions ) (sem_MaybeDeclarations _where ) )
+sem_RightHandSide (RightHandSide_Expression _range _expression _where) =
+    (sem_RightHandSide_Expression (sem_Range _range) (sem_Expression _expression) (sem_MaybeDeclarations _where))
+sem_RightHandSide (RightHandSide_Guarded _range _guardedexpressions _where) =
+    (sem_RightHandSide_Guarded (sem_Range _range) (sem_GuardedExpressions _guardedexpressions) (sem_MaybeDeclarations _where))
 -- semantic domain
 type T_RightHandSide = Names ->
                        Names ->
@@ -10971,7 +10768,7 @@ sem_RightHandSide_Expression :: T_Range ->
                                 T_Expression ->
                                 T_MaybeDeclarations ->
                                 T_RightHandSide
-sem_RightHandSide_Expression range_ expression_ where_  =
+sem_RightHandSide_Expression range_ expression_ where_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -11099,17 +10896,17 @@ sem_RightHandSide_Expression range_ expression_ where_  =
               _whereOwarnings =
                   _expressionIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
               ( _whereIcollectInstances,_whereIcollectScopeInfos,_whereIkindErrors,_whereImiscerrors,_whereInamesInScope,_whereIself,_whereIunboundNames,_whereIwarnings) =
-                  (where_ _whereOallTypeConstructors _whereOallValueConstructors _whereOclassEnvironment _whereOcollectScopeInfos _whereOkindErrors _whereOmiscerrors _whereOnamesInScope _whereOoptions _whereOorderedTypeSynonyms _whereOtypeConstructors _whereOunboundNames _whereOvalueConstructors _whereOwarnings )
+                  where_ _whereOallTypeConstructors _whereOallValueConstructors _whereOclassEnvironment _whereOcollectScopeInfos _whereOkindErrors _whereOmiscerrors _whereOnamesInScope _whereOoptions _whereOorderedTypeSynonyms _whereOtypeConstructors _whereOunboundNames _whereOvalueConstructors _whereOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_RightHandSide_Guarded :: T_Range ->
                              T_GuardedExpressions ->
                              T_MaybeDeclarations ->
                              T_RightHandSide
-sem_RightHandSide_Guarded range_ guardedexpressions_ where_  =
+sem_RightHandSide_Guarded range_ guardedexpressions_ where_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -11237,25 +11034,25 @@ sem_RightHandSide_Guarded range_ guardedexpressions_ where_  =
               _whereOwarnings =
                   _guardedexpressionsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _guardedexpressionsIcollectInstances,_guardedexpressionsIcollectScopeInfos,_guardedexpressionsIkindErrors,_guardedexpressionsImiscerrors,_guardedexpressionsIself,_guardedexpressionsIunboundNames,_guardedexpressionsIwarnings) =
-                  (guardedexpressions_ _guardedexpressionsOallTypeConstructors _guardedexpressionsOallValueConstructors _guardedexpressionsOclassEnvironment _guardedexpressionsOcollectScopeInfos _guardedexpressionsOkindErrors _guardedexpressionsOmiscerrors _guardedexpressionsOnamesInScope _guardedexpressionsOoptions _guardedexpressionsOorderedTypeSynonyms _guardedexpressionsOtypeConstructors _guardedexpressionsOvalueConstructors _guardedexpressionsOwarnings )
+                  guardedexpressions_ _guardedexpressionsOallTypeConstructors _guardedexpressionsOallValueConstructors _guardedexpressionsOclassEnvironment _guardedexpressionsOcollectScopeInfos _guardedexpressionsOkindErrors _guardedexpressionsOmiscerrors _guardedexpressionsOnamesInScope _guardedexpressionsOoptions _guardedexpressionsOorderedTypeSynonyms _guardedexpressionsOtypeConstructors _guardedexpressionsOvalueConstructors _guardedexpressionsOwarnings
               ( _whereIcollectInstances,_whereIcollectScopeInfos,_whereIkindErrors,_whereImiscerrors,_whereInamesInScope,_whereIself,_whereIunboundNames,_whereIwarnings) =
-                  (where_ _whereOallTypeConstructors _whereOallValueConstructors _whereOclassEnvironment _whereOcollectScopeInfos _whereOkindErrors _whereOmiscerrors _whereOnamesInScope _whereOoptions _whereOorderedTypeSynonyms _whereOtypeConstructors _whereOunboundNames _whereOvalueConstructors _whereOwarnings )
+                  where_ _whereOallTypeConstructors _whereOallValueConstructors _whereOclassEnvironment _whereOcollectScopeInfos _whereOkindErrors _whereOmiscerrors _whereOnamesInScope _whereOoptions _whereOorderedTypeSynonyms _whereOtypeConstructors _whereOunboundNames _whereOvalueConstructors _whereOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 -- SimpleType --------------------------------------------------
 -- cata
 sem_SimpleType :: SimpleType ->
                   T_SimpleType
-sem_SimpleType (SimpleType_SimpleType _range _name _typevariables )  =
-    (sem_SimpleType_SimpleType (sem_Range _range ) (sem_Name _name ) (sem_Names _typevariables ) )
+sem_SimpleType (SimpleType_SimpleType _range _name _typevariables) =
+    (sem_SimpleType_SimpleType (sem_Range _range) (sem_Name _name) (sem_Names _typevariables))
 -- semantic domain
 type T_SimpleType = ( Name,SimpleType,Names)
 sem_SimpleType_SimpleType :: T_Range ->
                              T_Name ->
                              T_Names ->
                              T_SimpleType
-sem_SimpleType_SimpleType range_ name_ typevariables_  =
+sem_SimpleType_SimpleType range_ name_ typevariables_ =
     (let _lhsOname :: Name
          _lhsOtypevariables :: Names
          _lhsOself :: SimpleType
@@ -11271,24 +11068,24 @@ sem_SimpleType_SimpleType range_ name_ typevariables_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
          ( _typevariablesIself) =
-             (typevariables_ )
+             typevariables_
      in  ( _lhsOname,_lhsOself,_lhsOtypevariables))
 -- Statement ---------------------------------------------------
 -- cata
 sem_Statement :: Statement ->
                  T_Statement
-sem_Statement (Statement_Empty _range )  =
-    (sem_Statement_Empty (sem_Range _range ) )
-sem_Statement (Statement_Expression _range _expression )  =
-    (sem_Statement_Expression (sem_Range _range ) (sem_Expression _expression ) )
-sem_Statement (Statement_Generator _range _pattern _expression )  =
-    (sem_Statement_Generator (sem_Range _range ) (sem_Pattern _pattern ) (sem_Expression _expression ) )
-sem_Statement (Statement_Let _range _declarations )  =
-    (sem_Statement_Let (sem_Range _range ) (sem_Declarations _declarations ) )
+sem_Statement (Statement_Empty _range) =
+    (sem_Statement_Empty (sem_Range _range))
+sem_Statement (Statement_Expression _range _expression) =
+    (sem_Statement_Expression (sem_Range _range) (sem_Expression _expression))
+sem_Statement (Statement_Generator _range _pattern _expression) =
+    (sem_Statement_Generator (sem_Range _range) (sem_Pattern _pattern) (sem_Expression _expression))
+sem_Statement (Statement_Let _range _declarations) =
+    (sem_Statement_Let (sem_Range _range) (sem_Declarations _declarations))
 -- semantic domain
 type T_Statement = Names ->
                    Names ->
@@ -11307,7 +11104,7 @@ type T_Statement = Names ->
                    ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([Error]),Bool,([Error]),Names,Statement,Names,([Warning]))
 sem_Statement_Empty :: T_Range ->
                        T_Statement
-sem_Statement_Empty range_  =
+sem_Statement_Empty range_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -11353,12 +11150,12 @@ sem_Statement_Empty range_  =
               _lhsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOlastStatementIsExpr,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Statement_Expression :: T_Range ->
                             T_Expression ->
                             T_Statement
-sem_Statement_Expression range_ expression_  =
+sem_Statement_Expression range_ expression_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -11447,15 +11244,15 @@ sem_Statement_Expression range_ expression_  =
               _expressionOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOlastStatementIsExpr,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Statement_Generator :: T_Range ->
                            T_Pattern ->
                            T_Expression ->
                            T_Statement
-sem_Statement_Generator range_ pattern_ expression_  =
+sem_Statement_Generator range_ pattern_ expression_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -11514,14 +11311,8 @@ sem_Statement_Generator range_ pattern_ expression_  =
               _expressionIself :: Expression
               _expressionIunboundNames :: Names
               _expressionIwarnings :: ([Warning])
-              __tup29 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _patternIpatVarNames (_expressionIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup29
-              (_,_unboundNames,_) =
-                  __tup29
-              (_,_,_scopeInfo) =
-                  __tup29
               _lhsOnamesInScope =
                   _namesInScope
               _lhsOunboundNames =
@@ -11585,16 +11376,16 @@ sem_Statement_Generator range_ pattern_ expression_  =
               _expressionOwarnings =
                   _patternIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternIcollectScopeInfos,_patternImiscerrors,_patternIpatVarNames,_patternIself,_patternIunboundNames,_patternIwarnings) =
-                  (pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings )
+                  pattern_ _patternOallTypeConstructors _patternOallValueConstructors _patternOcollectScopeInfos _patternOlhsPattern _patternOmiscerrors _patternOnamesInScope _patternOtypeConstructors _patternOvalueConstructors _patternOwarnings
               ( _expressionIcollectInstances,_expressionIcollectScopeInfos,_expressionIkindErrors,_expressionImiscerrors,_expressionIself,_expressionIunboundNames,_expressionIwarnings) =
-                  (expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings )
+                  expression_ _expressionOallTypeConstructors _expressionOallValueConstructors _expressionOclassEnvironment _expressionOcollectScopeInfos _expressionOkindErrors _expressionOmiscerrors _expressionOnamesInScope _expressionOoptions _expressionOorderedTypeSynonyms _expressionOtypeConstructors _expressionOvalueConstructors _expressionOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOlastStatementIsExpr,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Statement_Let :: T_Range ->
                      T_Declarations ->
                      T_Statement
-sem_Statement_Let range_ declarations_  =
+sem_Statement_Let range_ declarations_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -11656,14 +11447,8 @@ sem_Statement_Let range_ declarations_  =
               _declarationsIwarnings :: ([Warning])
               _declarationsOtypeSignatures =
                   []
-              __tup30 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup30
-              (_,_unboundNames,_) =
-                  __tup30
-              (_,_,_scopeInfo) =
-                  __tup30
               _lhsOunboundNames =
                   _unboundNames
               _lhsOwarnings =
@@ -11679,26 +11464,12 @@ sem_Statement_Let range_ declarations_  =
                   False
               _lhsOmiscerrors =
                   _typeSignatureErrors ++ _declarationsImiscerrors
-              __tup31 =
-                  uniqueAppearance (map fst _declarationsItypeSignatures)
               (_,_doubles) =
-                  __tup31
+                  uniqueAppearance (map fst _declarationsItypeSignatures)
               _typeSignatureErrors =
                   checkTypeSignatures _declarationsIdeclVarNames _declarationsIrestrictedNames _declarationsItypeSignatures
-              __tup32 =
+              (_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities) =
                   internalError "PartialSyntax.ag" "n/a" "toplevel Statement"
-              (_collectTypeConstructors,_,_,_,_,_) =
-                  __tup32
-              (_,_collectValueConstructors,_,_,_,_) =
-                  __tup32
-              (_,_,_collectTypeSynonyms,_,_,_) =
-                  __tup32
-              (_,_,_,_collectConstructorEnv,_,_) =
-                  __tup32
-              (_,_,_,_,_derivedFunctions,_) =
-                  __tup32
-              (_,_,_,_,_,_operatorFixities) =
-                  __tup32
               _lhsOcollectScopeInfos =
                   (_scopeInfo, Definition) : _declarationsIcollectScopeInfos
               _lhsOcollectInstances =
@@ -11744,16 +11515,16 @@ sem_Statement_Let range_ declarations_  =
               _declarationsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _declarationsIcollectInstances,_declarationsIcollectScopeInfos,_declarationsIcollectTypeConstructors,_declarationsIcollectTypeSynonyms,_declarationsIcollectValueConstructors,_declarationsIdeclVarNames,_declarationsIkindErrors,_declarationsImiscerrors,_declarationsIoperatorFixities,_declarationsIpreviousWasAlsoFB,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsuspiciousFBs,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIwarnings) =
-                  (declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings )
+                  declarations_ _declarationsOallTypeConstructors _declarationsOallValueConstructors _declarationsOclassEnvironment _declarationsOcollectScopeInfos _declarationsOcollectTypeConstructors _declarationsOcollectTypeSynonyms _declarationsOcollectValueConstructors _declarationsOkindErrors _declarationsOmiscerrors _declarationsOnamesInScope _declarationsOoperatorFixities _declarationsOoptions _declarationsOorderedTypeSynonyms _declarationsOpreviousWasAlsoFB _declarationsOsuspiciousFBs _declarationsOtypeConstructors _declarationsOtypeSignatures _declarationsOvalueConstructors _declarationsOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOlastStatementIsExpr,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 -- Statements --------------------------------------------------
 -- cata
 sem_Statements :: Statements ->
                   T_Statements
-sem_Statements list  =
-    (Prelude.foldr sem_Statements_Cons sem_Statements_Nil (Prelude.map sem_Statement list) )
+sem_Statements list =
+    (Prelude.foldr sem_Statements_Cons sem_Statements_Nil (Prelude.map sem_Statement list))
 -- semantic domain
 type T_Statements = Names ->
                     Names ->
@@ -11773,7 +11544,7 @@ type T_Statements = Names ->
 sem_Statements_Cons :: T_Statement ->
                        T_Statements ->
                        T_Statements
-sem_Statements_Cons hd_ tl_  =
+sem_Statements_Cons hd_ tl_ =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -11920,12 +11691,12 @@ sem_Statements_Cons hd_ tl_  =
               _tlOwarnings =
                   _hdIwarnings
               ( _hdIcollectInstances,_hdIcollectScopeInfos,_hdIkindErrors,_hdIlastStatementIsExpr,_hdImiscerrors,_hdInamesInScope,_hdIself,_hdIunboundNames,_hdIwarnings) =
-                  (hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOkindErrors _hdOlastStatementIsExpr _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOorderedTypeSynonyms _hdOtypeConstructors _hdOunboundNames _hdOvalueConstructors _hdOwarnings )
+                  hd_ _hdOallTypeConstructors _hdOallValueConstructors _hdOclassEnvironment _hdOcollectScopeInfos _hdOkindErrors _hdOlastStatementIsExpr _hdOmiscerrors _hdOnamesInScope _hdOoptions _hdOorderedTypeSynonyms _hdOtypeConstructors _hdOunboundNames _hdOvalueConstructors _hdOwarnings
               ( _tlIcollectInstances,_tlIcollectScopeInfos,_tlIkindErrors,_tlIlastStatementIsExpr,_tlImiscerrors,_tlInamesInScope,_tlIself,_tlIunboundNames,_tlIwarnings) =
-                  (tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOkindErrors _tlOlastStatementIsExpr _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOorderedTypeSynonyms _tlOtypeConstructors _tlOunboundNames _tlOvalueConstructors _tlOwarnings )
+                  tl_ _tlOallTypeConstructors _tlOallValueConstructors _tlOclassEnvironment _tlOcollectScopeInfos _tlOkindErrors _tlOlastStatementIsExpr _tlOmiscerrors _tlOnamesInScope _tlOoptions _tlOorderedTypeSynonyms _tlOtypeConstructors _tlOunboundNames _tlOvalueConstructors _tlOwarnings
           in  ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOkindErrors,_lhsOlastStatementIsExpr,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings)))
 sem_Statements_Nil :: T_Statements
-sem_Statements_Nil  =
+sem_Statements_Nil =
     (\ _lhsIallTypeConstructors
        _lhsIallValueConstructors
        _lhsIclassEnvironment
@@ -11974,14 +11745,14 @@ sem_Statements_Nil  =
 -- cata
 sem_Strings :: Strings ->
                T_Strings
-sem_Strings list  =
-    (Prelude.foldr sem_Strings_Cons sem_Strings_Nil list )
+sem_Strings list =
+    (Prelude.foldr sem_Strings_Cons sem_Strings_Nil list)
 -- semantic domain
 type T_Strings = ( Strings)
 sem_Strings_Cons :: String ->
                     T_Strings ->
                     T_Strings
-sem_Strings_Cons hd_ tl_  =
+sem_Strings_Cons hd_ tl_ =
     (let _lhsOself :: Strings
          _tlIself :: Strings
          _self =
@@ -11989,10 +11760,10 @@ sem_Strings_Cons hd_ tl_  =
          _lhsOself =
              _self
          ( _tlIself) =
-             (tl_ )
+             tl_
      in  ( _lhsOself))
 sem_Strings_Nil :: T_Strings
-sem_Strings_Nil  =
+sem_Strings_Nil =
     (let _lhsOself :: Strings
          _self =
              []
@@ -12003,20 +11774,20 @@ sem_Strings_Nil  =
 -- cata
 sem_Type :: Type ->
             T_Type
-sem_Type (Type_Application _range _prefix _function _arguments )  =
-    (sem_Type_Application (sem_Range _range ) _prefix (sem_Type _function ) (sem_Types _arguments ) )
-sem_Type (Type_Constructor _range _name )  =
-    (sem_Type_Constructor (sem_Range _range ) (sem_Name _name ) )
-sem_Type (Type_Exists _range _typevariables _type )  =
-    (sem_Type_Exists (sem_Range _range ) (sem_Names _typevariables ) (sem_Type _type ) )
-sem_Type (Type_Forall _range _typevariables _type )  =
-    (sem_Type_Forall (sem_Range _range ) (sem_Names _typevariables ) (sem_Type _type ) )
-sem_Type (Type_Parenthesized _range _type )  =
-    (sem_Type_Parenthesized (sem_Range _range ) (sem_Type _type ) )
-sem_Type (Type_Qualified _range _context _type )  =
-    (sem_Type_Qualified (sem_Range _range ) (sem_ContextItems _context ) (sem_Type _type ) )
-sem_Type (Type_Variable _range _name )  =
-    (sem_Type_Variable (sem_Range _range ) (sem_Name _name ) )
+sem_Type (Type_Application _range _prefix _function _arguments) =
+    (sem_Type_Application (sem_Range _range) _prefix (sem_Type _function) (sem_Types _arguments))
+sem_Type (Type_Constructor _range _name) =
+    (sem_Type_Constructor (sem_Range _range) (sem_Name _name))
+sem_Type (Type_Exists _range _typevariables _type) =
+    (sem_Type_Exists (sem_Range _range) (sem_Names _typevariables) (sem_Type _type))
+sem_Type (Type_Forall _range _typevariables _type) =
+    (sem_Type_Forall (sem_Range _range) (sem_Names _typevariables) (sem_Type _type))
+sem_Type (Type_Parenthesized _range _type) =
+    (sem_Type_Parenthesized (sem_Range _range) (sem_Type _type))
+sem_Type (Type_Qualified _range _context _type) =
+    (sem_Type_Qualified (sem_Range _range) (sem_ContextItems _context) (sem_Type _type))
+sem_Type (Type_Variable _range _name) =
+    (sem_Type_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Type = Names ->
               ([Error]) ->
@@ -12029,7 +11800,7 @@ sem_Type_Application :: T_Range ->
                         T_Type ->
                         T_Types ->
                         T_Type
-sem_Type_Application range_ prefix_ function_ arguments_  =
+sem_Type_Application range_ prefix_ function_ arguments_ =
     (\ _lhsIallTypeConstructors
        _lhsImiscerrors
        _lhsIoptions
@@ -12093,16 +11864,16 @@ sem_Type_Application range_ prefix_ function_ arguments_  =
               _argumentsOwarnings =
                   _functionIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _functionIcontextRange,_functionImiscerrors,_functionIself,_functionItypevariables,_functionIwarnings) =
-                  (function_ _functionOallTypeConstructors _functionOmiscerrors _functionOoptions _functionOtypeConstructors _functionOwarnings )
+                  function_ _functionOallTypeConstructors _functionOmiscerrors _functionOoptions _functionOtypeConstructors _functionOwarnings
               ( _argumentsImiscerrors,_argumentsIself,_argumentsItypevariables,_argumentsIwarnings) =
-                  (arguments_ _argumentsOallTypeConstructors _argumentsOmiscerrors _argumentsOoptions _argumentsOtypeConstructors _argumentsOwarnings )
+                  arguments_ _argumentsOallTypeConstructors _argumentsOmiscerrors _argumentsOoptions _argumentsOtypeConstructors _argumentsOwarnings
           in  ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)))
 sem_Type_Constructor :: T_Range ->
                         T_Name ->
                         T_Type
-sem_Type_Constructor range_ name_  =
+sem_Type_Constructor range_ name_ =
     (\ _lhsIallTypeConstructors
        _lhsImiscerrors
        _lhsIoptions
@@ -12128,15 +11899,15 @@ sem_Type_Constructor range_ name_  =
               _lhsOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
           in  ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)))
 sem_Type_Exists :: T_Range ->
                    T_Names ->
                    T_Type ->
                    T_Type
-sem_Type_Exists range_ typevariables_ type_  =
+sem_Type_Exists range_ typevariables_ type_ =
     (\ _lhsIallTypeConstructors
        _lhsImiscerrors
        _lhsIoptions
@@ -12182,17 +11953,17 @@ sem_Type_Exists range_ typevariables_ type_  =
               _typeOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _typevariablesIself) =
-                  (typevariables_ )
+                  typevariables_
               ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
-                  (type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings )
+                  type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings
           in  ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)))
 sem_Type_Forall :: T_Range ->
                    T_Names ->
                    T_Type ->
                    T_Type
-sem_Type_Forall range_ typevariables_ type_  =
+sem_Type_Forall range_ typevariables_ type_ =
     (\ _lhsIallTypeConstructors
        _lhsImiscerrors
        _lhsIoptions
@@ -12238,16 +12009,16 @@ sem_Type_Forall range_ typevariables_ type_  =
               _typeOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _typevariablesIself) =
-                  (typevariables_ )
+                  typevariables_
               ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
-                  (type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings )
+                  type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings
           in  ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)))
 sem_Type_Parenthesized :: T_Range ->
                           T_Type ->
                           T_Type
-sem_Type_Parenthesized range_ type_  =
+sem_Type_Parenthesized range_ type_ =
     (\ _lhsIallTypeConstructors
        _lhsImiscerrors
        _lhsIoptions
@@ -12292,15 +12063,15 @@ sem_Type_Parenthesized range_ type_  =
               _typeOwarnings =
                   _lhsIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
-                  (type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings )
+                  type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings
           in  ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)))
 sem_Type_Qualified :: T_Range ->
                       T_ContextItems ->
                       T_Type ->
                       T_Type
-sem_Type_Qualified range_ context_ type_  =
+sem_Type_Qualified range_ context_ type_ =
     (\ _lhsIallTypeConstructors
        _lhsImiscerrors
        _lhsIoptions
@@ -12373,16 +12144,16 @@ sem_Type_Qualified range_ context_ type_  =
               _typeOwarnings =
                   _contextIwarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _contextIcontextRanges,_contextIcontextVars,_contextImiscerrors,_contextIself,_contextIwarnings) =
-                  (context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings )
+                  context_ _contextOallTypeConstructors _contextOmiscerrors _contextOoptions _contextOtypeConstructors _contextOwarnings
               ( _typeIcontextRange,_typeImiscerrors,_typeIself,_typeItypevariables,_typeIwarnings) =
-                  (type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings )
+                  type_ _typeOallTypeConstructors _typeOmiscerrors _typeOoptions _typeOtypeConstructors _typeOwarnings
           in  ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)))
 sem_Type_Variable :: T_Range ->
                      T_Name ->
                      T_Type
-sem_Type_Variable range_ name_  =
+sem_Type_Variable range_ name_ =
     (\ _lhsIallTypeConstructors
        _lhsImiscerrors
        _lhsIoptions
@@ -12413,16 +12184,16 @@ sem_Type_Variable range_ name_  =
               _lhsOmiscerrors =
                   _lhsImiscerrors
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
           in  ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)))
 -- Types -------------------------------------------------------
 -- cata
 sem_Types :: Types ->
              T_Types
-sem_Types list  =
-    (Prelude.foldr sem_Types_Cons sem_Types_Nil (Prelude.map sem_Type list) )
+sem_Types list =
+    (Prelude.foldr sem_Types_Cons sem_Types_Nil (Prelude.map sem_Type list))
 -- semantic domain
 type T_Types = Names ->
                ([Error]) ->
@@ -12433,7 +12204,7 @@ type T_Types = Names ->
 sem_Types_Cons :: T_Type ->
                   T_Types ->
                   T_Types
-sem_Types_Cons hd_ tl_  =
+sem_Types_Cons hd_ tl_ =
     (\ _lhsIallTypeConstructors
        _lhsImiscerrors
        _lhsIoptions
@@ -12493,12 +12264,12 @@ sem_Types_Cons hd_ tl_  =
               _tlOwarnings =
                   _hdIwarnings
               ( _hdIcontextRange,_hdImiscerrors,_hdIself,_hdItypevariables,_hdIwarnings) =
-                  (hd_ _hdOallTypeConstructors _hdOmiscerrors _hdOoptions _hdOtypeConstructors _hdOwarnings )
+                  hd_ _hdOallTypeConstructors _hdOmiscerrors _hdOoptions _hdOtypeConstructors _hdOwarnings
               ( _tlImiscerrors,_tlIself,_tlItypevariables,_tlIwarnings) =
-                  (tl_ _tlOallTypeConstructors _tlOmiscerrors _tlOoptions _tlOtypeConstructors _tlOwarnings )
+                  tl_ _tlOallTypeConstructors _tlOmiscerrors _tlOoptions _tlOtypeConstructors _tlOwarnings
           in  ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings)))
 sem_Types_Nil :: T_Types
-sem_Types_Nil  =
+sem_Types_Nil =
     (\ _lhsIallTypeConstructors
        _lhsImiscerrors
        _lhsIoptions

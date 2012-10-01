@@ -1,12 +1,13 @@
 
--- UUAGC 0.9.5 (TS_Apply.ag)
+
+-- UUAGC 0.9.40.3 (TS_Apply.ag)
 module TS_Apply where
 
 import UHA_Syntax
 import TypeConstraints
 import ConstraintInfo
 --import Top.Types
-import Data.List
+import List
 import Utils (internalError)
 import Messages
 import TypeErrors
@@ -63,8 +64,8 @@ type Core_TypingStrategies = [Core_TypingStrategy]
 -- cata
 sem_Core_Judgement :: Core_Judgement ->
                       T_Core_Judgement
-sem_Core_Judgement (Judgement _expression _type )  =
-    (sem_Core_Judgement_Judgement _expression _type )
+sem_Core_Judgement (Judgement _expression _type) =
+    (sem_Core_Judgement_Judgement _expression _type)
 -- semantic domain
 type T_Core_Judgement = MetaVariableInfo ->
                         MetaVariableTable ->
@@ -73,7 +74,7 @@ type T_Core_Judgement = MetaVariableInfo ->
 sem_Core_Judgement_Judgement :: String ->
                                 Tp ->
                                 T_Core_Judgement
-sem_Core_Judgement_Judgement expression_ type_  =
+sem_Core_Judgement_Judgement expression_ type_ =
     (\ _lhsIinfoTuple
        _lhsImetaVariableTable
        _lhsIsubstitution ->
@@ -88,8 +89,8 @@ sem_Core_Judgement_Judgement expression_ type_  =
 -- cata
 sem_Core_Judgements :: Core_Judgements ->
                        T_Core_Judgements
-sem_Core_Judgements list  =
-    (Prelude.foldr sem_Core_Judgements_Cons sem_Core_Judgements_Nil (Prelude.map sem_Core_Judgement list) )
+sem_Core_Judgements list =
+    (Prelude.foldr sem_Core_Judgements_Cons sem_Core_Judgements_Nil (Prelude.map sem_Core_Judgement list))
 -- semantic domain
 type T_Core_Judgements = MetaVariableInfo ->
                          MetaVariableTable ->
@@ -98,7 +99,7 @@ type T_Core_Judgements = MetaVariableInfo ->
 sem_Core_Judgements_Cons :: T_Core_Judgement ->
                             T_Core_Judgements ->
                             T_Core_Judgements
-sem_Core_Judgements_Cons hd_ tl_  =
+sem_Core_Judgements_Cons hd_ tl_ =
     (\ _lhsIinfoTuple
        _lhsImetaVariableTable
        _lhsIsubstitution ->
@@ -131,12 +132,12 @@ sem_Core_Judgements_Cons hd_ tl_  =
               _tlOsubstitution =
                   _lhsIsubstitution
               ( _hdIftv,_hdIjudgements) =
-                  (hd_ _hdOinfoTuple _hdOmetaVariableTable _hdOsubstitution )
+                  hd_ _hdOinfoTuple _hdOmetaVariableTable _hdOsubstitution
               ( _tlIftv,_tlIjudgements) =
-                  (tl_ _tlOinfoTuple _tlOmetaVariableTable _tlOsubstitution )
+                  tl_ _tlOinfoTuple _tlOmetaVariableTable _tlOsubstitution
           in  ( _lhsOftv,_lhsOjudgements)))
 sem_Core_Judgements_Nil :: T_Core_Judgements
-sem_Core_Judgements_Nil  =
+sem_Core_Judgements_Nil =
     (\ _lhsIinfoTuple
        _lhsImetaVariableTable
        _lhsIsubstitution ->
@@ -151,8 +152,8 @@ sem_Core_Judgements_Nil  =
 -- cata
 sem_Core_TypeRule :: Core_TypeRule ->
                      T_Core_TypeRule
-sem_Core_TypeRule (TypeRule _premises _conclusion )  =
-    (sem_Core_TypeRule_TypeRule (sem_Core_Judgements _premises ) (sem_Core_Judgement _conclusion ) )
+sem_Core_TypeRule (TypeRule _premises _conclusion) =
+    (sem_Core_TypeRule_TypeRule (sem_Core_Judgements _premises) (sem_Core_Judgement _conclusion))
 -- semantic domain
 type T_Core_TypeRule = MetaVariableInfo ->
                        MetaVariableTable ->
@@ -161,7 +162,7 @@ type T_Core_TypeRule = MetaVariableInfo ->
 sem_Core_TypeRule_TypeRule :: T_Core_Judgements ->
                               T_Core_Judgement ->
                               T_Core_TypeRule
-sem_Core_TypeRule_TypeRule premises_ conclusion_  =
+sem_Core_TypeRule_TypeRule premises_ conclusion_ =
     (\ _lhsIinfoTuple
        _lhsImetaVariableTable
        _lhsIsubstitution ->
@@ -212,18 +213,18 @@ sem_Core_TypeRule_TypeRule premises_ conclusion_  =
               _conclusionOsubstitution =
                   _lhsIsubstitution
               ( _premisesIftv,_premisesIjudgements) =
-                  (premises_ _premisesOinfoTuple _premisesOmetaVariableTable _premisesOsubstitution )
+                  premises_ _premisesOinfoTuple _premisesOmetaVariableTable _premisesOsubstitution
               ( _conclusionIftv,_conclusionIjudgements) =
-                  (conclusion_ _conclusionOinfoTuple _conclusionOmetaVariableTable _conclusionOsubstitution )
+                  conclusion_ _conclusionOinfoTuple _conclusionOmetaVariableTable _conclusionOsubstitution
           in  ( _lhsOconstraints,_lhsOftv,_lhsOjudgements)))
 -- Core_TypingStrategy -----------------------------------------
 -- cata
 sem_Core_TypingStrategy :: Core_TypingStrategy ->
                            T_Core_TypingStrategy
-sem_Core_TypingStrategy (Siblings _functions )  =
-    (sem_Core_TypingStrategy_Siblings _functions )
-sem_Core_TypingStrategy (TypingStrategy _typeEnv _typerule _statements )  =
-    (sem_Core_TypingStrategy_TypingStrategy _typeEnv (sem_Core_TypeRule _typerule ) (sem_Core_UserStatements _statements ) )
+sem_Core_TypingStrategy (Siblings _functions) =
+    (sem_Core_TypingStrategy_Siblings _functions)
+sem_Core_TypingStrategy (TypingStrategy _typeEnv _typerule _statements) =
+    (sem_Core_TypingStrategy_TypingStrategy _typeEnv (sem_Core_TypeRule _typerule) (sem_Core_UserStatements _statements))
 -- semantic domain
 type T_Core_TypingStrategy = MetaVariableInfo ->
                              MetaVariableTable ->
@@ -231,7 +232,7 @@ type T_Core_TypingStrategy = MetaVariableInfo ->
                              ( Assumptions,ConstraintSet,(IO ()),Int)
 sem_Core_TypingStrategy_Siblings :: ([String]) ->
                                     T_Core_TypingStrategy
-sem_Core_TypingStrategy_Siblings functions_  =
+sem_Core_TypingStrategy_Siblings functions_ =
     (\ _lhsIinfoTuple
        _lhsImetaVariableTable
        _lhsIunique ->
@@ -252,7 +253,7 @@ sem_Core_TypingStrategy_TypingStrategy :: ([(String, Tp)]) ->
                                           T_Core_TypeRule ->
                                           T_Core_UserStatements ->
                                           T_Core_TypingStrategy
-sem_Core_TypingStrategy_TypingStrategy typeEnv_ typerule_ statements_  =
+sem_Core_TypingStrategy_TypingStrategy typeEnv_ typerule_ statements_ =
     (\ _lhsIinfoTuple
        _lhsImetaVariableTable
        _lhsIunique ->
@@ -350,22 +351,22 @@ sem_Core_TypingStrategy_TypingStrategy typeEnv_ typerule_ statements_  =
               _statementsOsubstitution =
                   _substitution
               ( _typeruleIconstraints,_typeruleIftv,_typeruleIjudgements) =
-                  (typerule_ _typeruleOinfoTuple _typeruleOmetaVariableTable _typeruleOsubstitution )
+                  typerule_ _typeruleOinfoTuple _typeruleOmetaVariableTable _typeruleOsubstitution
               ( _statementsIcollectConstraints,_statementsIcurrentPhase,_statementsIcurrentPosition,_statementsIftv,_statementsImetavarConstraints) =
-                  (statements_ _statementsOcollectConstraints _statementsOcurrentPhase _statementsOcurrentPosition _statementsOfromAttribute _statementsOinfoTuple _statementsOmetaVariableTable _statementsOmetavarConstraints _statementsOsubstitution )
+                  statements_ _statementsOcollectConstraints _statementsOcurrentPhase _statementsOcurrentPosition _statementsOfromAttribute _statementsOinfoTuple _statementsOmetaVariableTable _statementsOmetavarConstraints _statementsOsubstitution
           in  ( _lhsOassumptions,_lhsOconstraintSet,_lhsOdebugIO,_lhsOunique)))
 -- Core_UserStatement ------------------------------------------
 -- cata
 sem_Core_UserStatement :: Core_UserStatement ->
                           T_Core_UserStatement
-sem_Core_UserStatement (CorePhase _phase )  =
-    (sem_Core_UserStatement_CorePhase _phase )
-sem_Core_UserStatement (Equal _leftType _rightType _message )  =
-    (sem_Core_UserStatement_Equal _leftType _rightType _message )
-sem_Core_UserStatement (MetaVariableConstraints _name )  =
-    (sem_Core_UserStatement_MetaVariableConstraints _name )
-sem_Core_UserStatement (Pred _predClass _predType _message )  =
-    (sem_Core_UserStatement_Pred _predClass _predType _message )
+sem_Core_UserStatement (CorePhase _phase) =
+    (sem_Core_UserStatement_CorePhase _phase)
+sem_Core_UserStatement (Equal _leftType _rightType _message) =
+    (sem_Core_UserStatement_Equal _leftType _rightType _message)
+sem_Core_UserStatement (MetaVariableConstraints _name) =
+    (sem_Core_UserStatement_MetaVariableConstraints _name)
+sem_Core_UserStatement (Pred _predClass _predType _message) =
+    (sem_Core_UserStatement_Pred _predClass _predType _message)
 -- semantic domain
 type T_Core_UserStatement = (Trees (TypeConstraint ConstraintInfo)) ->
                             (Maybe Int) ->
@@ -378,7 +379,7 @@ type T_Core_UserStatement = (Trees (TypeConstraint ConstraintInfo)) ->
                             ( (Trees (TypeConstraint ConstraintInfo)),(Maybe Int),((Int, Int)),([Int]),([(String,Tree (TypeConstraint ConstraintInfo))]))
 sem_Core_UserStatement_CorePhase :: Int ->
                                     T_Core_UserStatement
-sem_Core_UserStatement_CorePhase phase_  =
+sem_Core_UserStatement_CorePhase phase_ =
     (\ _lhsIcollectConstraints
        _lhsIcurrentPhase
        _lhsIcurrentPosition
@@ -407,7 +408,7 @@ sem_Core_UserStatement_Equal :: Tp ->
                                 Tp ->
                                 String ->
                                 T_Core_UserStatement
-sem_Core_UserStatement_Equal leftType_ rightType_ message_  =
+sem_Core_UserStatement_Equal leftType_ rightType_ message_ =
     (\ _lhsIcollectConstraints
        _lhsIcurrentPhase
        _lhsIcurrentPosition
@@ -448,7 +449,7 @@ sem_Core_UserStatement_Equal leftType_ rightType_ message_  =
           in  ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints)))
 sem_Core_UserStatement_MetaVariableConstraints :: String ->
                                                   T_Core_UserStatement
-sem_Core_UserStatement_MetaVariableConstraints name_  =
+sem_Core_UserStatement_MetaVariableConstraints name_ =
     (\ _lhsIcollectConstraints
        _lhsIcurrentPhase
        _lhsIcurrentPosition
@@ -479,7 +480,7 @@ sem_Core_UserStatement_Pred :: String ->
                                Tp ->
                                String ->
                                T_Core_UserStatement
-sem_Core_UserStatement_Pred predClass_ predType_ message_  =
+sem_Core_UserStatement_Pred predClass_ predType_ message_ =
     (\ _lhsIcollectConstraints
        _lhsIcurrentPhase
        _lhsIcurrentPosition
@@ -516,8 +517,8 @@ sem_Core_UserStatement_Pred predClass_ predType_ message_  =
 -- cata
 sem_Core_UserStatements :: Core_UserStatements ->
                            T_Core_UserStatements
-sem_Core_UserStatements list  =
-    (Prelude.foldr sem_Core_UserStatements_Cons sem_Core_UserStatements_Nil (Prelude.map sem_Core_UserStatement list) )
+sem_Core_UserStatements list =
+    (Prelude.foldr sem_Core_UserStatements_Cons sem_Core_UserStatements_Nil (Prelude.map sem_Core_UserStatement list))
 -- semantic domain
 type T_Core_UserStatements = (Trees (TypeConstraint ConstraintInfo)) ->
                              (Maybe Int) ->
@@ -531,7 +532,7 @@ type T_Core_UserStatements = (Trees (TypeConstraint ConstraintInfo)) ->
 sem_Core_UserStatements_Cons :: T_Core_UserStatement ->
                                 T_Core_UserStatements ->
                                 T_Core_UserStatements
-sem_Core_UserStatements_Cons hd_ tl_  =
+sem_Core_UserStatements_Cons hd_ tl_ =
     (\ _lhsIcollectConstraints
        _lhsIcurrentPhase
        _lhsIcurrentPosition
@@ -614,12 +615,12 @@ sem_Core_UserStatements_Cons hd_ tl_  =
               _tlOsubstitution =
                   _lhsIsubstitution
               ( _hdIcollectConstraints,_hdIcurrentPhase,_hdIcurrentPosition,_hdIftv,_hdImetavarConstraints) =
-                  (hd_ _hdOcollectConstraints _hdOcurrentPhase _hdOcurrentPosition _hdOfromAttribute _hdOinfoTuple _hdOmetaVariableTable _hdOmetavarConstraints _hdOsubstitution )
+                  hd_ _hdOcollectConstraints _hdOcurrentPhase _hdOcurrentPosition _hdOfromAttribute _hdOinfoTuple _hdOmetaVariableTable _hdOmetavarConstraints _hdOsubstitution
               ( _tlIcollectConstraints,_tlIcurrentPhase,_tlIcurrentPosition,_tlIftv,_tlImetavarConstraints) =
-                  (tl_ _tlOcollectConstraints _tlOcurrentPhase _tlOcurrentPosition _tlOfromAttribute _tlOinfoTuple _tlOmetaVariableTable _tlOmetavarConstraints _tlOsubstitution )
+                  tl_ _tlOcollectConstraints _tlOcurrentPhase _tlOcurrentPosition _tlOfromAttribute _tlOinfoTuple _tlOmetaVariableTable _tlOmetavarConstraints _tlOsubstitution
           in  ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints)))
 sem_Core_UserStatements_Nil :: T_Core_UserStatements
-sem_Core_UserStatements_Nil  =
+sem_Core_UserStatements_Nil =
     (\ _lhsIcollectConstraints
        _lhsIcurrentPhase
        _lhsIcurrentPosition

@@ -27,8 +27,8 @@ import qualified Data.Map as M
 import TypeConversion
 import Char (ord)
 
-import Id
-import IdSet 
+import Lvm.Common.Id
+import Lvm.Common.IdSet 
 import Utils(internalError)
 
 import Top.Types
@@ -41,9 +41,10 @@ import DerivingEq
 import CoreUtils
 
 -- Daan
-import qualified Core
-import qualified Module
-import qualified Byte
+import qualified Lvm.Core.Expr as Core
+import qualified Lvm.Core.Module as Core
+import qualified Lvm.Core.Module as Module
+import qualified Lvm.Common.Byte as Byte
 }
 
 {

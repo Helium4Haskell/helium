@@ -40,11 +40,10 @@ import Args
 import qualified Data.Map as M
 import TypeConstraints
 import Utils (internalError)
-import TopSort (topSort)
 import ImportEnvironment hiding (setTypeSynonyms)
 import KindErrors
 import Char (isLower)
-import BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, combine, single) 
+import BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, combine, single, topSort) 
 }
 
 -------------------------------------------------------------------------------
