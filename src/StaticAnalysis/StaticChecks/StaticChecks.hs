@@ -3,7 +3,7 @@
 -- UUAGC 0.9.40.3 (StaticChecks.ag)
 module StaticChecks where
 
-import Similarity ( similar )
+import Utils.Similarity ( similar )
 import Main.Args
 import UHA_Syntax
 import UHA_Utils
@@ -13,7 +13,7 @@ import StaticErrors
 import Warnings
 import Messages
 import List
-import Utils ( internalError, minInt, maxInt )
+import Utils.Utils ( internalError, minInt, maxInt )
 import TypeConversion
 import DerivingShow
 import qualified Data.Map as M

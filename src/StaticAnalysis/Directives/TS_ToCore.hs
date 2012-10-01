@@ -12,9 +12,9 @@ import ConstraintInfo
 import UHA_Utils (getNameName, nameFromString)
 import qualified UHA_OneLine 
 import TypeConversion
-import Utils (internalError)
+import Utils.Utils (internalError)
 import List
-import OneLiner
+import Utils.OneLiner
 import TS_Attributes
 import TypeConstraints
 

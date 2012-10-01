@@ -8,7 +8,7 @@ import TypeConstraints
 import ConstraintInfo
 --import Top.Types
 import List
-import Utils (internalError)
+import Utils.Utils (internalError)
 import Messages
 import TypeErrors
 import ImportEnvironment

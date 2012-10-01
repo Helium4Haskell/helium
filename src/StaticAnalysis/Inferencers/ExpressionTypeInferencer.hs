@@ -18,7 +18,7 @@ import Top.Types
 import qualified Data.Map as M
 import UHA_Utils (nameFromString)
 import UHA_Range (noRange)
-import Utils (internalError)
+import Utils.Utils (internalError)
 import UHA_Syntax
 
 expressionTypeInferencer :: ImportEnvironment -> Expression -> (TpScheme, Assumptions, TypeErrors)

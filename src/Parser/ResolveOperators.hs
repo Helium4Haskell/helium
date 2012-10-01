@@ -8,7 +8,7 @@ import UHA_Syntax
 import UHA_Range
 import Parser.OperatorTable
 import Char
-import Utils
+import Utils.Utils
 import Messages
 import qualified Data.Map as M
 

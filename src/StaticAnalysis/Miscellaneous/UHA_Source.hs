@@ -11,7 +11,7 @@
 
 module UHA_Source where
 
-import OneLiner
+import Utils.OneLiner
 import UHA_Range
 import UHA_Syntax
 import UHA_Utils

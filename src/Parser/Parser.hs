@@ -37,14 +37,14 @@ import Parser.ParseLibrary hiding (satisfy)
 import Text.ParserCombinators.Parsec
 import Parser.Lexer
 import Parser.LayoutRule
-import qualified Texts
+import qualified Utils.Texts as Texts
 
 import UHA_Syntax
 import UHA_Utils
 import UHA_Range
 
 import qualified Parser.CollectFunctionBindings as CollectFunctionBindings
-import Utils
+import Utils.Utils
 
 parseOnlyImports :: String -> IO [String]
 parseOnlyImports fullName = do

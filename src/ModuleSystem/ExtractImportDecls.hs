@@ -8,7 +8,7 @@ import UHA_Utils
 import Lvm.Common.Id
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
-import Utils (internalError)
+import Utils.Utils (internalError)
 -- Alternative -------------------------------------------------
 -- cata
 sem_Alternative :: Alternative ->

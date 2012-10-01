@@ -26,7 +26,7 @@ import Top.Implementation.Overloading
 import Top.Interface.Basic (ErrorLabel)
 import Top.Interface.Substitution (unificationErrorLabel)
 import Top.Interface.TypeInference
-import Utils (internalError)
+import Utils.Utils (internalError)
 import Data.Maybe
 -- import Data.Char
 import Data.List

@@ -11,7 +11,7 @@
 
 module DoublyLinkedTree where
 
-import Utils (internalError)
+import Utils.Utils (internalError)
 
 data DoublyLinkedTree attributes = 
      DoublyLinkedTree { parent    :: Maybe (DoublyLinkedTree attributes)

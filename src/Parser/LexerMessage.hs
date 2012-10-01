@@ -18,7 +18,7 @@ module Parser.LexerMessage
 import Text.ParserCombinators.Parsec.Pos
 import UHA_Syntax(Range(..), Position(..))
 import Messages
-import qualified Texts
+import qualified Utils.Texts as Texts
 
 instance HasMessage LexerError where
     getRanges (LexerError _ (StillOpenAtEOF brackets)) =

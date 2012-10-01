@@ -14,7 +14,7 @@ import UHA_Utils
 import UHA_Range
 import Lvm.Common.Id
 import Data.Char
-import Utils
+import Utils.Utils
 import CoreUtils
 
 patternsToCore :: [(Id, Pattern)] -> Core.Expr -> Core.Expr

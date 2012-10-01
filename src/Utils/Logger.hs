@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module Logger ( logger, logInternalError ) where
+module Utils.Logger ( logger, logInternalError ) where
 
 import Network
 import Control.Concurrent

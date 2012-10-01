@@ -31,7 +31,7 @@ import UHA_Syntax
 import UHA_Range                 
          
 -- other
-import Utils                     (internalError)
+import Utils.Utils (internalError)
 import ImportEnvironment  hiding (setTypeSynonyms)
 import DictionaryEnvironment
 import Main.Args

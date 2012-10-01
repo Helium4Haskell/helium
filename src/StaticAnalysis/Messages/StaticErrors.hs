@@ -15,7 +15,7 @@ import UHA_Range
 import Messages
 import Data.List        (nub, intersperse, sort, partition)
 import Data.Maybe       (fromJust)
-import Utils       (commaList, internalError, maxInt)
+import Utils.Utils       (commaList, internalError, maxInt)
 import Top.Types
 
 -------------------------------------------------------------

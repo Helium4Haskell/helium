@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module OneLiner(OneLineTree(..), showOneLine) where
+module Utils.OneLiner(OneLineTree(..), showOneLine) where
 
 import Data.List
 

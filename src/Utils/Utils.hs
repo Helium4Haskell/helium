@@ -8,12 +8,12 @@
 	Some Prelude-like functions
 -}
 
-module Utils where
+module Utils.Utils where
 
 import Data.IORef
 import GHC.IO (unsafePerformIO)
 import Data.List (group, groupBy, sort, elemIndex)
-import Logger
+import Utils.Logger
 
 -------------------------------------------------------
 -- String utils

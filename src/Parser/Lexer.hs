@@ -17,7 +17,7 @@ import Parser.LexerMonad
 import Parser.LexerMessage
 import Parser.LexerToken
 import Text.ParserCombinators.Parsec.Pos
-import Utils(internalError)
+import Utils.Utils(internalError)
 
 import Control.Monad(when)
 import Data.Char(ord)

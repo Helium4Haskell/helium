@@ -18,7 +18,7 @@ import UHA_Syntax --added for Holmes
 import Lvm.Common.Id(Id, idFromString, stringFromId)
 import Data.Char
 import Top.Types(isTupleConstructor)
-import Utils(internalError)
+import Utils.Utils(internalError)
 
 
 instance Eq Name where

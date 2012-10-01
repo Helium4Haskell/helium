@@ -19,7 +19,7 @@ import Main.PhaseTypeInferencer
 import Main.PhaseDesugarer
 import Main.PhaseCodeGenerator
 import Main.CompileUtils
-import Utils
+import Utils.Utils
 import Data.IORef
 import StaticErrors(errorsLogCode)
 

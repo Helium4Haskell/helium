@@ -10,7 +10,7 @@ module Parser.ParseMessage() where
 
 import Messages hiding (Message)
 import UHA_Syntax(Range(..), Position(..))
-import Texts
+import qualified Utils.Texts as Texts
 
 import Text.ParserCombinators.Parsec.Error
 import Text.ParserCombinators.Parsec.Pos

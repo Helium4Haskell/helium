@@ -51,7 +51,7 @@ status :
 	@echo "*******************************************************************"
 
 HC	= @WithHc@
-IFACES	= $(LVMLIBDIR):./Utils:./StaticAnalysis/Miscellaneous:./StaticAnalysis/Inferencers:./StaticAnalysis/Directives:./StaticAnalysis/StaticChecks:./StaticAnalysis/Heuristics:./StaticAnalysis/Messages:./Syntax:./CodeGeneration:./ModuleSystem:./TextHint
+IFACES	= $(LVMLIBDIR):./StaticAnalysis/Miscellaneous:./StaticAnalysis/Inferencers:./StaticAnalysis/Directives:./StaticAnalysis/StaticChecks:./StaticAnalysis/Heuristics:./StaticAnalysis/Messages:./Syntax:./CodeGeneration:./ModuleSystem:./TextHint
 GHCWARN = -Wall
 HC_OPTS = --make $(GHCWARN) -odir $(OUTDIR) -hidir $(OUTDIR) -i$(IFACES) $(EXTRA_HC_OPTS)
 

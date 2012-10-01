@@ -8,7 +8,7 @@ import qualified Text.PrettyPrint.Leijen as PPrint
 import Char
 import Top.Types (isTupleConstructor)
 import UHA_Syntax
-import Utils (internalError)
+import Utils.Utils (internalError)
 
 intErr = internalError "UHA_Pretty"
 

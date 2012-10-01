@@ -19,7 +19,7 @@ import CoreUtils
 import Lvm.Core.Expr
 import Lvm.Core.Utils
 import Lvm.Common.Id
-import Utils
+import Utils.Utils
 import Top.Types
 
 -- Show function for a data type declaration

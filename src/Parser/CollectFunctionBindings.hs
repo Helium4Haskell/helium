@@ -11,7 +11,7 @@ module Parser.CollectFunctionBindings where
 import UHA_Syntax
 import UHA_Utils ()
 import UHA_Range
-import Utils
+import Utils.Utils
 
 -- Assumption: each FunctionBindings contains exactly one FunctionBinding
 

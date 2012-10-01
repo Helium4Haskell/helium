@@ -10,7 +10,7 @@ module UHA_Range where
 
 import UHA_Syntax
 import Lvm.Common.Id(Id, stringFromId)
-import Utils(internalError)
+import Utils.Utils(internalError)
 import Data.Maybe(isJust)
 import Data.List(sort, partition)
 

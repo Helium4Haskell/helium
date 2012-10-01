@@ -16,9 +16,9 @@ import UHA_Syntax
 import UHA_Range
 import UHA_Utils ()
 import Top.Types 
-import OneLiner
-import Similarity (similar)
-import Utils      (internalError)
+import Utils.OneLiner
+import Utils.Similarity (similar)
+import Utils.Utils      (internalError)
 import Data.List       (sortBy, partition)
 import Data.Char       (toUpper)
 

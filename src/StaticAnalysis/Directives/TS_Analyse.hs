@@ -17,7 +17,7 @@ import Messages
 import TS_Messages
 import ImportEnvironment hiding (setTypeSynonyms)
 import ExpressionTypeInferencer (expressionTypeInferencer)
-import Utils (internalError)
+import Utils.Utils (internalError)
 import qualified UHA_Pretty as PP
 import qualified Data.Map as M
 

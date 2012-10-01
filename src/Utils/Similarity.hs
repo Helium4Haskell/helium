@@ -12,10 +12,10 @@
 	- two characters are swapped (filtre and filter)
 -}
 
-module Similarity(similar) where
+module Utils.Similarity(similar) where
 
 import Data.Char
-import Utils(internalError)
+import Utils.Utils(internalError)
 
 similar :: String -> String -> Bool
 -- ignore primitives

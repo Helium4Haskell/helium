@@ -29,7 +29,7 @@ import Char (ord)
 
 import Lvm.Common.Id
 import Lvm.Common.IdSet 
-import Utils(internalError)
+import Utils.Utils(internalError)
 
 import Top.Types
 

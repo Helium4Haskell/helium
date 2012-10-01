@@ -18,13 +18,13 @@ import TieBreakerHeuristics
 import OnlyResultHeuristics
 import UnifierHeuristics
 import DoublyLinkedTree
-import OneLiner
+import Utils.OneLiner
 import UHA_Source
 import UHA_Syntax
 import Messages
 import HeliumMessages ()
 import TypeErrors
-import Utils (internalError)
+import Utils.Utils (internalError)
 import Top.Types
 import Top.Implementation.TypeGraph.Heuristic
 import Data.Maybe

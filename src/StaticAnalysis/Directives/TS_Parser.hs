@@ -31,7 +31,7 @@ import Data.List (intersperse)
 --import Data.IORef
 --import Data.Char
 import Parser.OperatorTable
-import Utils (internalError)
+import Utils.Utils (internalError)
 
 parseTypingStrategies :: OperatorTable -> String -> [Token] -> Either ParseError TypingStrategies
 parseTypingStrategies operatorTable filename tokens = 

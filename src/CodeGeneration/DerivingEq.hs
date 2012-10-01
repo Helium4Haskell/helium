@@ -14,7 +14,7 @@ import CoreUtils
 import Lvm.Core.Expr
 import Lvm.Core.Utils
 import Lvm.Common.Id
-import Utils
+import Utils.Utils
 
 -- Eq Dictionary for a data type declaration
 dataDictionary :: UHA.Declaration -> CoreDecl

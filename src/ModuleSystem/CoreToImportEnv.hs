@@ -10,7 +10,7 @@ module CoreToImportEnv(getImportEnvironment) where
 
 import Lvm.Core.Expr
 import Lvm.Core.Utils
-import Utils
+import Utils.Utils
 import TypeConversion
 import Parser.ParseLibrary
 import Parser.Lexer(lexer)

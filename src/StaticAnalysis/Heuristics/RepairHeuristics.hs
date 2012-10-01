@@ -15,7 +15,7 @@ import Top.Types
 import Top.Interface.TypeInference
 import Top.Interface.Qualification hiding (contextReduction)
 import UHA_Syntax (Range)
-import OneLiner (OneLineTree)
+import Utils.OneLiner (OneLineTree)
 import Top.Implementation.TypeGraph.Heuristic
 import Top.Implementation.TypeGraph.Basics
 import Top.Implementation.TypeGraph.ClassMonadic

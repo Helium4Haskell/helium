@@ -20,10 +20,10 @@ import Main.Args(Option(..))
 import Messages(HasMessage)
 import HeliumMessages(sortAndShowMessages)
 import Control.Monad(when, unless)
-import Utils(splitFilePath, combinePathAndFile)
+import Utils.Utils(splitFilePath, combinePathAndFile)
 import System.Exit(exitWith, ExitCode(..))
 import System.Environment(getArgs)
-import Logger
+import Utils.Logger
 import ImportEnvironment
 import UHA_Syntax(Module(..))
 import Data.Maybe

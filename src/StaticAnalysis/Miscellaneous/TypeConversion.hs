@@ -12,7 +12,7 @@ module TypeConversion where
 
 import UHA_Utils (getNameName, nameFromString)
 import UHA_Range (noRange)
-import Utils (internalError)
+import Utils.Utils (internalError)
 import Data.List (union)
 import UHA_Syntax
 import Top.Types

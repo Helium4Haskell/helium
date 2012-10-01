@@ -16,10 +16,10 @@ import BindingGroupAnalysis (Assumptions)
 import ConstraintInfo       (ConstraintSet, LocalInfo, assignedType, self)
 import Messages             (MessageBlock(..))
 import Top.Types            (Tp, toTpScheme)
-import OneLiner             (OneLineTree)
+import Utils.OneLiner       (OneLineTree)
 import UHA_Syntax           (Range) 
 import UHA_Source           (rangeOfSource, oneLinerSource)
-import Utils                (internalError)
+import Utils.Utils          (internalError)
 import Data.Char            (isAlphaNum)
 
 type MetaVariableTable = [(String, MetaVariableInfo)]

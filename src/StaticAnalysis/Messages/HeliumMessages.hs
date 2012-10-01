@@ -14,7 +14,7 @@ module HeliumMessages where
 import Messages 
 import Top.Types
 import qualified Text.PrettyPrint.Leijen as PPrint
-import qualified OneLiner
+import qualified Utils.OneLiner as OneLiner
 import Data.List                (intersperse, zipWith4)
 import TypesToAlignedDocs  (qualifiedTypesToAlignedDocs)
 import UHA_Range           (isImportRange, showRanges)
