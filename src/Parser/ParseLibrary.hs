@@ -6,11 +6,11 @@
     Portability :  portable
 -}
 
-module ParseLibrary where 
+module Parser.ParseLibrary where 
 
 import Text.ParserCombinators.Parsec hiding (satisfy)
 import Text.ParserCombinators.Parsec.Pos(newPos)
-import Lexer
+import Parser.Lexer
 import UHA_Syntax(Name(..), Range(..), Position(..))
 import qualified Texts
 

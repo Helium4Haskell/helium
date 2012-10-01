@@ -1,8 +1,8 @@
 module Information where
 
 import Top.Types
-import CompileUtils
-import OperatorTable
+import Main.CompileUtils
+import Parser.OperatorTable
 import Messages hiding (Constructor)
 import UHA_Syntax hiding (Fixity)
 import UHA_Utils

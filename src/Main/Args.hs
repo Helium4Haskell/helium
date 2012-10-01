@@ -7,7 +7,7 @@
 
 -}
 
-module Args
+module Main.Args
     ( Option(..)
     , processHeliumArgs
     , processTexthintArgs
@@ -23,7 +23,7 @@ module Args
 
 import System.Environment
 import System.Exit
-import Version
+import Main.Version
 import Data.Char
 import Control.Monad(when)
 import System.Console.GetOpt

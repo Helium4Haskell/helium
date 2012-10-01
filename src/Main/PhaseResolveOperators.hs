@@ -6,10 +6,10 @@
     Portability :  portable
 -}
 
-module PhaseResolveOperators(phaseResolveOperators) where
+module Main.PhaseResolveOperators(phaseResolveOperators) where
 
-import CompileUtils
-import ResolveOperators(resolveOperators, operatorsFromModule, ResolveError)
+import Main.CompileUtils
+import Parser.ResolveOperators(resolveOperators, operatorsFromModule, ResolveError)
 import qualified UHA_Pretty as PP(sem_Module)
 import qualified Data.Map as M
 

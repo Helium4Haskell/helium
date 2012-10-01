@@ -4,7 +4,7 @@
 module StaticChecks where
 
 import Similarity ( similar )
-import Args
+import Main.Args
 import UHA_Syntax
 import UHA_Utils
 import UHA_Range
@@ -18,7 +18,7 @@ import TypeConversion
 import DerivingShow
 import qualified Data.Map as M
 import ImportEnvironment
-import OperatorTable
+import Parser.OperatorTable
 import Char ( isUpper )
 
 -- filter undefined errors that are caused by the removal of a duplicate definition

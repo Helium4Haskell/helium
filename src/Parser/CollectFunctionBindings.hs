@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module CollectFunctionBindings where
+module Parser.CollectFunctionBindings where
 
 import UHA_Syntax
 import UHA_Utils ()

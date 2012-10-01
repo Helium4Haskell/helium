@@ -12,7 +12,7 @@
 
 module SelectConstraintSolver (selectConstraintSolver) where
 
-import Args (Option(..))
+import Main.Args (Option(..))
 import ConstraintInfo
 import TypeConstraints
 import ImportEnvironment (ImportEnvironment, getSiblings)

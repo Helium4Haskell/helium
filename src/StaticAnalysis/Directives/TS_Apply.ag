@@ -23,11 +23,11 @@ import Messages
 import TypeErrors
 import ImportEnvironment
 import BindingGroupAnalysis (Assumptions, combine, noAssumptions)
-import OperatorTable (OperatorTable)
-import Parser (exp_)
-import Lexer (strategiesLexer)
-import ParseLibrary (runHParser)
-import qualified ResolveOperators
+import Parser.OperatorTable (OperatorTable)
+import Parser.Parser (exp_)
+import Parser.Lexer (strategiesLexer)
+import Parser.ParseLibrary (runHParser)
+import qualified Parser.ResolveOperators as ResolveOperators
 import qualified Data.Map as M
 import TS_Attributes
 import TS_CoreSyntax

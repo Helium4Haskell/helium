@@ -6,9 +6,9 @@
     Portability :  portable
 -}
 
-module PhaseDesugarer(phaseDesugarer) where
+module Main.PhaseDesugarer(phaseDesugarer) where
 
-import CompileUtils
+import Main.CompileUtils
 import Text.PrettyPrint.Leijen
 import Lvm.Core.Expr(CoreModule, CoreDecl)
 import Lvm.Core.RemoveDead( coreRemoveDead ) -- remove dead (import) declarations

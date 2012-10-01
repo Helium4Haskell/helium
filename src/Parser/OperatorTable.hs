@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module OperatorTable
+module Parser.OperatorTable
     (   Assoc(..)
     ,   OperatorTable
     ,   assoc, prio

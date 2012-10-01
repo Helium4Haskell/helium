@@ -6,9 +6,9 @@
     Portability :  portable
 -}
 
-module PhaseKindInferencer (phaseKindInferencer) where
+module Main.PhaseKindInferencer (phaseKindInferencer) where
 
-import CompileUtils
+import Main.CompileUtils
 import KindInferencing as KI
 -- import ImportEnvironment
 import qualified Data.Map as M

@@ -18,12 +18,12 @@ import TS_ToCore      (typingStrategyToCore)
 import System.Exit         (exitWith, ExitCode(..) )
 import System.Directory      (doesFileExist)
 import TS_Parser      (parseTypingStrategies)
-import Lexer          (strategiesLexer)
+import Parser.Lexer          (strategiesLexer)
 import TS_Analyse     (analyseTypingStrategies)
 import HeliumMessages (sortAndShowMessages)
 import Control.Monad          (unless, when)
-import qualified Args (Option(..))
-import ParseMessage ()
+import qualified Main.Args as Args
+import Parser.ParseMessage ()
 import CoreUtils
 import Lvm.Core.Expr
 

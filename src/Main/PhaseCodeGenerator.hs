@@ -6,10 +6,10 @@
     Portability :  portable
 -}
 
-module PhaseCodeGenerator(phaseCodeGenerator) where
+module Main.PhaseCodeGenerator(phaseCodeGenerator) where
 
 import Lvm.Core.Expr(CoreModule)
-import CompileUtils
+import Main.CompileUtils
 import CoreToLvm(coreToLvm)
 
 phaseCodeGenerator :: String -> CoreModule -> [Option] -> IO ()

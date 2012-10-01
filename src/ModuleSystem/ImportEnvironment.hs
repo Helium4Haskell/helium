@@ -13,7 +13,7 @@ import Utils (internalError)
 import UHA_Syntax -- (Name)
 import UHA_Utils
 import Top.Types
-import OperatorTable
+import Parser.OperatorTable
 import Messages () -- instance Show Name
 import RepairHeuristics (Siblings)
 import TS_CoreSyntax

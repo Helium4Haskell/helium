@@ -11,7 +11,7 @@
 
 module ListOfHeuristics (listOfHeuristics) where
 
-import Args (Option(..))
+import Main.Args (Option(..))
 import ConstraintInfo
 import HeuristicsInfo () -- instances
 import Top.Implementation.TypeGraph.Heuristic

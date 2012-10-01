@@ -7,15 +7,15 @@
 -}
 module Main where
 
-import Compile(compile)
-import Parser(parseOnlyImports)
+import Main.Compile(compile)
+import Parser.Parser(parseOnlyImports)
 
 import Data.List(nub, elemIndex, isSuffixOf, intersperse)
 import Data.Maybe(fromJust)
 import Lvm.Path(getLvmPath, splitPath)
 import System.Directory(doesFileExist, getModificationTime)
-import Args
-import CompileUtils
+import Main.Args
+import Main.CompileUtils
 import Data.IORef
 import System.Environment
 -- import Utils

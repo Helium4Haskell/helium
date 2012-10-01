@@ -6,9 +6,9 @@
     Portability :  portable
 -}
 
-module PhaseTypingStrategies(phaseTypingStrategies) where
+module Main.PhaseTypingStrategies(phaseTypingStrategies) where
 
-import CompileUtils
+import Main.CompileUtils
 import Lvm.Core.Expr (CoreDecl)
 import TS_Compile (readTypingStrategiesFromFile)
 import qualified Data.Map as M

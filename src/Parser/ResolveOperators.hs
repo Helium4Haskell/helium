@@ -1,12 +1,12 @@
 
 
 -- UUAGC 0.9.40.3 (ResolveOperators.ag)
-module ResolveOperators where
+module Parser.ResolveOperators where
 
 import UHA_Utils
 import UHA_Syntax 
 import UHA_Range
-import OperatorTable
+import Parser.OperatorTable
 import Char
 import Utils
 import Messages

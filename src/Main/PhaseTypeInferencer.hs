@@ -6,9 +6,9 @@
     Portability :  portable
 -}
 
-module PhaseTypeInferencer (phaseTypeInferencer) where
+module Main.PhaseTypeInferencer (phaseTypeInferencer) where
 
-import CompileUtils
+import Main.CompileUtils
 import Warnings(Warning)
 import TypeInferencing(typeInferencing)
 import DictionaryEnvironment (DictionaryEnvironment)

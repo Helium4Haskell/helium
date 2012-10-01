@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module LexerToken where
+module Parser.LexerToken where
 
 import Text.ParserCombinators.Parsec.Pos(SourcePos)
 import qualified Texts

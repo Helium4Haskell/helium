@@ -6,9 +6,9 @@
     Portability :  portable
 -}
 
-module PhaseImport(phaseImport) where
+module Main.PhaseImport(phaseImport) where
 
-import CompileUtils
+import Main.CompileUtils
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Utils as Core
 import Lvm.Common.Id(Id)

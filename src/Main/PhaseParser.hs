@@ -6,12 +6,12 @@
     Portability :  portable
 -}
 
-module PhaseParser(phaseParser) where
+module Main.PhaseParser(phaseParser) where
 
-import CompileUtils
-import LexerToken(Token)
-import qualified Parser(module_)
-import ParseLibrary(runHParser)
+import Main.CompileUtils
+import Parser.LexerToken(Token)
+import Parser.Parser (module_)
+import Parser.ParseLibrary(runHParser)
 import Text.ParserCombinators.Parsec.Error (ParseError)
 
 phaseParser :: 
@@ -19,7 +19,7 @@ phaseParser ::
    Phase ParseError Module
 phaseParser fullName tokens options = do
     enterNewPhase "Parsing" options
-    case runHParser Parser.module_ fullName tokens True of
+    case runHParser module_ fullName tokens True of
         Left parseError -> do
             return (Left [parseError])
         Right m ->

@@ -6,16 +6,16 @@
     Portability :  portable
 -}
 
-module Lexer
+module Parser.Lexer
     ( lexer, strategiesLexer
     , Token, Lexeme(..)
     , lexemeLength
-    , module LexerMessage
+    , module Parser.LexerMessage
     ) where
 
-import LexerMonad
-import LexerMessage
-import LexerToken
+import Parser.LexerMonad
+import Parser.LexerMessage
+import Parser.LexerToken
 import Text.ParserCombinators.Parsec.Pos
 import Utils(internalError)
 

@@ -6,8 +6,8 @@
     Portability :  portable
 -}
 
-module CompileUtils
-    ( module CompileUtils
+module Main.CompileUtils
+    ( module Main.CompileUtils
     , Option(..)
     , splitFilePath, combinePathAndFile
     , when, unless
@@ -16,7 +16,7 @@ module CompileUtils
     , Module(..)
     ) where
 
-import Args(Option(..))
+import Main.Args(Option(..))
 import Messages(HasMessage)
 import HeliumMessages(sortAndShowMessages)
 import Control.Monad(when, unless)

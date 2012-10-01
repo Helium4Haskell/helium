@@ -34,7 +34,7 @@ import UHA_Range
 import Utils                     (internalError)
 import ImportEnvironment  hiding (setTypeSynonyms)
 import DictionaryEnvironment
-import Args
+import Main.Args
 
 -- standard
 import qualified Data.Map as M

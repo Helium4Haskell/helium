@@ -6,19 +6,19 @@
     Portability :  portable
 -}
 
-module Compile where
+module Main.Compile where
 
-import PhaseLexer
-import PhaseParser
-import PhaseImport
-import PhaseResolveOperators
-import PhaseStaticChecks
-import PhaseKindInferencer
-import PhaseTypingStrategies
-import PhaseTypeInferencer
-import PhaseDesugarer
-import PhaseCodeGenerator
-import CompileUtils
+import Main.PhaseLexer
+import Main.PhaseParser
+import Main.PhaseImport
+import Main.PhaseResolveOperators
+import Main.PhaseStaticChecks
+import Main.PhaseKindInferencer
+import Main.PhaseTypingStrategies
+import Main.PhaseTypeInferencer
+import Main.PhaseDesugarer
+import Main.PhaseCodeGenerator
+import Main.CompileUtils
 import Utils
 import Data.IORef
 import StaticErrors(errorsLogCode)

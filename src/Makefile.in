@@ -51,7 +51,7 @@ status :
 	@echo "*******************************************************************"
 
 HC	= @WithHc@
-IFACES	= $(LVMLIBDIR):./Utils:./Parser:./StaticAnalysis/Miscellaneous:./StaticAnalysis/Inferencers:./StaticAnalysis/Directives:./StaticAnalysis/StaticChecks:./StaticAnalysis/Heuristics:./StaticAnalysis/Messages:./Syntax:./CodeGeneration:./Main:./ModuleSystem:./TextHint
+IFACES	= $(LVMLIBDIR):./Utils:./StaticAnalysis/Miscellaneous:./StaticAnalysis/Inferencers:./StaticAnalysis/Directives:./StaticAnalysis/StaticChecks:./StaticAnalysis/Heuristics:./StaticAnalysis/Messages:./Syntax:./CodeGeneration:./ModuleSystem:./TextHint
 GHCWARN = -Wall
 HC_OPTS = --make $(GHCWARN) -odir $(OUTDIR) -hidir $(OUTDIR) -i$(IFACES) $(EXTRA_HC_OPTS)
 
@@ -127,7 +127,7 @@ ifdef AG
 Parser/ResolveOperators.hs : \
 		Parser/ResolveOperators.ag Syntax/UHA_Syntax.ag
 	# AG ResolveOperators
-	cd Parser;$(AG) $(AG_OPTS) --self ResolveOperators.ag;cd ..
+	cd Parser;$(AG) $(AG_OPTS) --self --module=Parser.ResolveOperators ResolveOperators.ag;cd ..
 
 Syntax/UHA_Pretty.hs : \
 		Syntax/UHA_Pretty.ag Syntax/UHA_Syntax.ag

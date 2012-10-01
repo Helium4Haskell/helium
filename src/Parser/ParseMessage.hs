@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module ParseMessage() where
+module Parser.ParseMessage() where
 
 import Messages hiding (Message)
 import UHA_Syntax(Range(..), Position(..))

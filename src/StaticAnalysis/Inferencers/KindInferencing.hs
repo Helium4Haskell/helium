@@ -9,7 +9,7 @@ import Top.Solver
 import Top.Constraint.Information
 import TypeConstraints
 import UHA_Syntax
-import Args
+import Main.Args
 import qualified Data.Map as M
 import TypeConstraints
 import Utils (internalError)

@@ -21,16 +21,16 @@ import TS_Syntax
 --import TS_CoreSyntax
 --import qualified TS_ToCore
 -- Parser/Lexer
-import Lexer (Token, Lexeme)
-import ParseLibrary hiding (satisfy)
-import Parser (exp0, type_, atype)
-import qualified ResolveOperators (expression)
+import Parser.Lexer (Token, Lexeme)
+import Parser.ParseLibrary hiding (satisfy)
+import Parser.Parser (exp0, type_, atype)
+import qualified Parser.ResolveOperators as ResolveOperators
 import Text.ParserCombinators.Parsec
 -- Rest
 import Data.List (intersperse)
 --import Data.IORef
 --import Data.Char
-import OperatorTable
+import Parser.OperatorTable
 import Utils (internalError)
 
 parseTypingStrategies :: OperatorTable -> String -> [Token] -> Either ParseError TypingStrategies

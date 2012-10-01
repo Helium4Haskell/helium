@@ -6,11 +6,11 @@
     Portability :  portable
 -}
 
-module PhaseLexer(phaseLexer) where
+module Main.PhaseLexer(phaseLexer) where
 
-import CompileUtils
-import Lexer
-import LayoutRule(layout)
+import Main.CompileUtils
+import Parser.Lexer
+import Parser.LayoutRule(layout)
 
 phaseLexer :: 
    String -> String -> [Option] -> 

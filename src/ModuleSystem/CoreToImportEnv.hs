@@ -12,14 +12,14 @@ import Lvm.Core.Expr
 import Lvm.Core.Utils
 import Utils
 import TypeConversion
-import ParseLibrary
-import Lexer(lexer)
-import Parser(type_, contextAndType)
+import Parser.ParseLibrary
+import Parser.Lexer(lexer)
+import Parser.Parser(type_, contextAndType)
 import ImportEnvironment
 import UHA_Utils
 import Lvm.Common.Id
 import UHA_Syntax
-import OperatorTable
+import Parser.OperatorTable
 import Top.Types
 import Lvm.Common.Byte(stringFromBytes)
 import UHA_Range(makeImportRange, setNameRange)

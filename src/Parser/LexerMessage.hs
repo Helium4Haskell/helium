@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module LexerMessage
+module Parser.LexerMessage
     ( LexerError(..)
     , LexerErrorInfo(..)
     , LexerWarning(..)

@@ -6,9 +6,9 @@
     Portability :  portable
 -}
 
-module PhaseStaticChecks(phaseStaticChecks) where
+module Main.PhaseStaticChecks(phaseStaticChecks) where
 
-import CompileUtils
+import Main.CompileUtils
 import Warnings(Warning)
 import qualified StaticChecks(sem_Module)
 import UHA_Syntax (Name)

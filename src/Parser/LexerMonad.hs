@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module LexerMonad
+module Parser.LexerMonad
     ( LexerMonad
     , getPos, incPos, nextPos, addPos
     , openBracket, closeBracket, checkBracketsAtEOF
@@ -14,7 +14,7 @@ module LexerMonad
     , runLexerMonad
     ) where
 
-import LexerMessage
+import Parser.LexerMessage
 import Text.ParserCombinators.Parsec.Pos
 
 type Bracket = (SourcePos, Char)

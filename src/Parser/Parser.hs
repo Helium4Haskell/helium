@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module Parser
+module Parser.Parser
     ( module_, exp_, exp0, type_, atype, contextAndType
     , parseOnlyImports
     ) where
@@ -33,17 +33,17 @@ Simplified:
 - fixity declarations only at top-level
 -}
 
-import ParseLibrary hiding (satisfy)
+import Parser.ParseLibrary hiding (satisfy)
 import Text.ParserCombinators.Parsec
-import Lexer
-import LayoutRule
+import Parser.Lexer
+import Parser.LayoutRule
 import qualified Texts
 
 import UHA_Syntax
 import UHA_Utils
 import UHA_Range
 
-import qualified CollectFunctionBindings
+import qualified Parser.CollectFunctionBindings as CollectFunctionBindings
 import Utils
 
 parseOnlyImports :: String -> IO [String]

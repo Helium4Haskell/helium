@@ -14,9 +14,9 @@ import Control.Monad
 import System.Environment
 import Data.Char
 -- import List
-import Args
+import Main.Args
 import System.IO
-import Version
+import Main.Version
 
 {-# NOTINLINE logger #-}
 
