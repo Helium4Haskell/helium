@@ -14,7 +14,7 @@ module BindingGroupAnalysis where
 
 import qualified Data.Graph as G
 import qualified Data.Tree as G
-import UHA_Syntax
+import Syntax.UHA_Syntax
 import TypeConstraints
 import ConstraintInfo
 import Top.Types

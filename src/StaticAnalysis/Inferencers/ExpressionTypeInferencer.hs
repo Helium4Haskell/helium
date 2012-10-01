@@ -16,10 +16,10 @@ import BindingGroupAnalysis (Assumptions)
 import TypeErrors
 import Top.Types
 import qualified Data.Map as M
-import UHA_Utils (nameFromString)
-import UHA_Range (noRange)
+import Syntax.UHA_Utils (nameFromString)
+import Syntax.UHA_Range (noRange)
 import Utils.Utils (internalError)
-import UHA_Syntax
+import Syntax.UHA_Syntax
 
 expressionTypeInferencer :: ImportEnvironment -> Expression -> (TpScheme, Assumptions, TypeErrors)
 expressionTypeInferencer importEnvironment expression = 

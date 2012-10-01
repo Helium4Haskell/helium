@@ -9,8 +9,8 @@ import ImportEnvironment
 import Messages
 import Top.Types
 import ConstraintInfo
-import UHA_Utils (getNameName, nameFromString)
-import qualified UHA_OneLine 
+import Syntax.UHA_Utils (getNameName, nameFromString)
+import qualified Syntax.UHA_OneLine as UHA_OneLine
 import TypeConversion
 import Utils.Utils (internalError)
 import List
@@ -19,7 +19,7 @@ import TS_Attributes
 import TypeConstraints
 
 
-import UHA_Syntax
+import Syntax.UHA_Syntax
 
 
 import ExpressionTypeInferencer (expressionTypeInferencer)

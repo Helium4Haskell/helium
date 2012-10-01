@@ -3,9 +3,9 @@
 -- UUAGC 0.9.40.3 (CodeGeneration.ag)
 module CodeGeneration where
 
-import UHA_Syntax
-import UHA_Utils
-import UHA_Range 
+import Syntax.UHA_Syntax
+import Syntax.UHA_Utils
+import Syntax.UHA_Range 
 import ImportEnvironment
 import DictionaryEnvironment
 import qualified Data.Map as M

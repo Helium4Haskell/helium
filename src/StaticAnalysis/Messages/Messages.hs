@@ -12,9 +12,9 @@
 
 module Messages where
 
-import UHA_Syntax
-import UHA_Range
-import UHA_Utils ()
+import Syntax.UHA_Syntax
+import Syntax.UHA_Range
+import Syntax.UHA_Utils ()
 import Top.Types 
 import Utils.OneLiner
 import Utils.Similarity (similar)

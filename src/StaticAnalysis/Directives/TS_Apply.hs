@@ -3,7 +3,7 @@
 -- UUAGC 0.9.40.3 (TS_Apply.ag)
 module TS_Apply where
 
-import UHA_Syntax
+import Syntax.UHA_Syntax
 import TypeConstraints
 import ConstraintInfo
 --import Top.Types

@@ -10,8 +10,8 @@
 
 module StaticErrors where
 
-import UHA_Syntax
-import UHA_Range
+import Syntax.UHA_Syntax
+import Syntax.UHA_Range
 import Messages
 import Data.List        (nub, intersperse, sort, partition)
 import Data.Maybe       (fromJust)

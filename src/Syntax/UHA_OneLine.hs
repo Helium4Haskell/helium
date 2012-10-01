@@ -1,13 +1,13 @@
 
 
 -- UUAGC 0.9.40.3 (UHA_OneLine.ag)
-module UHA_OneLine where
+module Syntax.UHA_OneLine where
 
 import Utils.OneLiner
 import Char
-import UHA_Utils (showNameAsOperator)
+import Syntax.UHA_Utils (showNameAsOperator)
 import TypeConversion
-import UHA_Syntax
+import Syntax.UHA_Syntax
 import List
 import Utils.Utils (internalError)
 

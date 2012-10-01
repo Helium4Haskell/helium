@@ -12,9 +12,9 @@ import Main.CompileUtils
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Utils as Core
 import Lvm.Common.Id(Id)
-import UHA_Syntax
-import UHA_Utils
-import UHA_Range(noRange)
+import Syntax.UHA_Syntax
+import Syntax.UHA_Utils
+import Syntax.UHA_Range(noRange)
 import Lvm.Path(searchPath)
 import Lvm.Import(lvmImportDecls)
 import Lvm.Common.Id(stringFromId)

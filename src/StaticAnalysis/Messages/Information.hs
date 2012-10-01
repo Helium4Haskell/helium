@@ -4,9 +4,9 @@ import Top.Types
 import Main.CompileUtils
 import Parser.OperatorTable
 import Messages hiding (Constructor)
-import UHA_Syntax hiding (Fixity)
-import UHA_Utils
-import UHA_Range
+import Syntax.UHA_Syntax hiding (Fixity)
+import Syntax.UHA_Utils
+import Syntax.UHA_Range
 import qualified Data.Map as M
 import Data.List (intersperse)
 

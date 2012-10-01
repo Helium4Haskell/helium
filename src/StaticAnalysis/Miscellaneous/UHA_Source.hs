@@ -12,10 +12,10 @@
 module UHA_Source where
 
 import Utils.OneLiner
-import UHA_Range
-import UHA_Syntax
-import UHA_Utils
-import qualified UHA_OneLine as PP
+import Syntax.UHA_Range
+import Syntax.UHA_Syntax
+import Syntax.UHA_Utils
+import qualified Syntax.UHA_OneLine as PP
 
 data UHA_Source =
      UHA_Expr   Expression              

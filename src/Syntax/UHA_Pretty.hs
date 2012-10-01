@@ -1,13 +1,13 @@
 
 
 -- UUAGC 0.9.40.3 (UHA_Pretty.ag)
-module UHA_Pretty where
+module Syntax.UHA_Pretty where
 
 import Text.PrettyPrint.Leijen
 import qualified Text.PrettyPrint.Leijen as PPrint
 import Char
 import Top.Types (isTupleConstructor)
-import UHA_Syntax
+import Syntax.UHA_Syntax
 import Utils.Utils (internalError)
 
 intErr = internalError "UHA_Pretty"

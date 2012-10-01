@@ -11,11 +11,11 @@
 module KindErrors where
 
 import Top.Types
-import UHA_Syntax (Range, Type)
+import Syntax.UHA_Syntax (Range, Type)
 import Text.PrettyPrint.Leijen (Doc)
 import Messages
 import Data.List (union)
-import qualified UHA_Pretty as PP
+import qualified Syntax.UHA_Pretty as PP
 import qualified Text.PrettyPrint.Leijen as PPrint
 
 type KindErrors = [KindError]

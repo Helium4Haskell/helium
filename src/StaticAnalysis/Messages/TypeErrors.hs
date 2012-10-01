@@ -13,8 +13,8 @@ module TypeErrors where
 import Messages
 import Top.Types
 import Data.List       (union, partition)
-import UHA_Syntax (Range, Name)
-import UHA_Range  (getNameRange)
+import Syntax.UHA_Syntax (Range, Name)
+import Syntax.UHA_Range  (getNameRange)
 import UHA_Source
 import Data.Maybe
 

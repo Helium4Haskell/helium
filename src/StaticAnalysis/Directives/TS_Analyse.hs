@@ -11,18 +11,18 @@ import ConstraintInfo
 import TS_Syntax
 import TypeConversion
 import List
-import UHA_Utils (nameFromString)
-import UHA_Range (noRange)
+import Syntax.UHA_Utils (nameFromString)
+import Syntax.UHA_Range (noRange)
 import Messages
 import TS_Messages
 import ImportEnvironment hiding (setTypeSynonyms)
 import ExpressionTypeInferencer (expressionTypeInferencer)
 import Utils.Utils (internalError)
-import qualified UHA_Pretty as PP
+import qualified Syntax.UHA_Pretty as PP
 import qualified Data.Map as M
 
 
-import UHA_Syntax
+import Syntax.UHA_Syntax
 
 
 import ExpressionTypeInferencer (expressionTypeInferencer)

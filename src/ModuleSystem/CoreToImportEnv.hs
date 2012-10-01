@@ -16,13 +16,13 @@ import Parser.ParseLibrary
 import Parser.Lexer(lexer)
 import Parser.Parser(type_, contextAndType)
 import ImportEnvironment
-import UHA_Utils
+import Syntax.UHA_Utils
 import Lvm.Common.Id
-import UHA_Syntax
+import Syntax.UHA_Syntax
 import Parser.OperatorTable
 import Top.Types
 import Lvm.Common.Byte(stringFromBytes)
-import UHA_Range(makeImportRange, setNameRange)
+import Syntax.UHA_Range(makeImportRange, setNameRange)
 
 typeFromCustoms :: String -> [Custom] -> TpScheme
 typeFromCustoms n [] =

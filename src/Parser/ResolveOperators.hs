@@ -3,9 +3,9 @@
 -- UUAGC 0.9.40.3 (ResolveOperators.ag)
 module Parser.ResolveOperators where
 
-import UHA_Utils
-import UHA_Syntax 
-import UHA_Range
+import Syntax.UHA_Utils
+import Syntax.UHA_Syntax 
+import Syntax.UHA_Range
 import Parser.OperatorTable
 import Char
 import Utils.Utils

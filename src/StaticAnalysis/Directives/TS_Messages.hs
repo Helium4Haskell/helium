@@ -19,7 +19,7 @@ import ConstraintInfo
 import HeliumMessages () -- instance Show MessageLines
 import Top.Types
 import Utils.Utils (commaList)
-import UHA_Syntax
+import Syntax.UHA_Syntax
 
 type TS_Errors = [TS_Error]
 data TS_Error 

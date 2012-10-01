@@ -8,7 +8,7 @@ import Top.Solver.Greedy
 import Top.Solver
 import Top.Constraint.Information
 import TypeConstraints
-import UHA_Syntax
+import Syntax.UHA_Syntax
 import Main.Args
 import qualified Data.Map as M
 import TypeConstraints

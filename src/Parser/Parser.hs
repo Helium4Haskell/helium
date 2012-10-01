@@ -39,9 +39,9 @@ import Parser.Lexer
 import Parser.LayoutRule
 import qualified Utils.Texts as Texts
 
-import UHA_Syntax
-import UHA_Utils
-import UHA_Range
+import Syntax.UHA_Syntax
+import Syntax.UHA_Utils
+import Syntax.UHA_Range
 
 import qualified Parser.CollectFunctionBindings as CollectFunctionBindings
 import Utils.Utils

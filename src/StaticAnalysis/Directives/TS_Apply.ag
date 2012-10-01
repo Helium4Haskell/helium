@@ -13,7 +13,7 @@
 INCLUDE "TS_CoreSyntax.ag"
 
 imports {
-import UHA_Syntax
+import Syntax.UHA_Syntax
 import TypeConstraints
 import ConstraintInfo
 --import Top.Types

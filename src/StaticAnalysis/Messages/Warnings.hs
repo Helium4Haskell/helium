@@ -11,13 +11,13 @@
 
 module Warnings where
 
-import UHA_Range    (getNameRange, showRange, sortRanges)
-import UHA_Syntax
-import UHA_Utils
+import Syntax.UHA_Range    (getNameRange, showRange, sortRanges)
+import Syntax.UHA_Syntax
+import Syntax.UHA_Utils
 import Top.Types
 import Messages
 import Data.List    (intersperse)
-import qualified UHA_Pretty as PP (sem_Pattern, sem_LeftHandSide, sem_Expression)
+import qualified Syntax.UHA_Pretty as PP (sem_Pattern, sem_LeftHandSide, sem_Expression)
 
 -------------------------------------------------------------
 -- (Static) Warnings

@@ -14,9 +14,9 @@ module ConstraintInfo where
 
 import Top.Types
 import Top.Ordering.Tree
-import UHA_Syntax
+import Syntax.UHA_Syntax
 import UHA_Source
-import UHA_Range
+import Syntax.UHA_Range
 import TypeErrors
 import Messages
 import DoublyLinkedTree

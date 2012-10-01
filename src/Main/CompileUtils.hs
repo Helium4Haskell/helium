@@ -25,7 +25,7 @@ import System.Exit(exitWith, ExitCode(..))
 import System.Environment(getArgs)
 import Utils.Logger
 import ImportEnvironment
-import UHA_Syntax(Module(..))
+import Syntax.UHA_Syntax(Module(..))
 import Data.Maybe
 import Lvm.Path(searchPathMaybe)
 

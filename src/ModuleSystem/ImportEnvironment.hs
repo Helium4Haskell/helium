@@ -10,8 +10,8 @@ module ImportEnvironment where
 
 import qualified Data.Map as M
 import Utils.Utils (internalError)
-import UHA_Syntax -- (Name)
-import UHA_Utils
+import Syntax.UHA_Syntax -- (Name)
+import Syntax.UHA_Utils
 import Top.Types
 import Parser.OperatorTable
 import Messages () -- instance Show Name

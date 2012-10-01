@@ -20,7 +20,7 @@ import UnifierHeuristics
 import DoublyLinkedTree
 import Utils.OneLiner
 import UHA_Source
-import UHA_Syntax
+import Syntax.UHA_Syntax
 import Messages
 import HeliumMessages ()
 import TypeErrors

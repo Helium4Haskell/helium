@@ -16,7 +16,7 @@ module Parser.LexerMessage
     ) where
 
 import Text.ParserCombinators.Parsec.Pos
-import UHA_Syntax(Range(..), Position(..))
+import Syntax.UHA_Syntax(Range(..), Position(..))
 import Messages
 import qualified Utils.Texts as Texts
 

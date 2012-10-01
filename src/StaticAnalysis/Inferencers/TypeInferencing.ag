@@ -99,8 +99,8 @@ import HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
 import BindingGroupAnalysis
 
 -- UHA syntax
-import UHA_Syntax
-import UHA_Range                 
+import Syntax.UHA_Syntax
+import Syntax.UHA_Range                 
          
 -- other
 import Utils.Utils (internalError)

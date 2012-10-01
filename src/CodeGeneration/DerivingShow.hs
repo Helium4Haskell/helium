@@ -13,8 +13,8 @@ module DerivingShow
     , nameOfShowFunction, typeOfShowFunction, showFunctionOfType
     ) where
 
-import qualified UHA_Syntax as UHA
-import UHA_Utils
+import qualified Syntax.UHA_Syntax as UHA
+import Syntax.UHA_Utils
 import CoreUtils
 import Lvm.Core.Expr
 import Lvm.Core.Utils

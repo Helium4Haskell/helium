@@ -36,9 +36,9 @@ INCLUDE "ScopeErrors.ag"
 imports {
 import Utils.Similarity ( similar )
 import Main.Args
-import UHA_Syntax
-import UHA_Utils
-import UHA_Range
+import Syntax.UHA_Syntax
+import Syntax.UHA_Utils
+import Syntax.UHA_Range
 import Top.Types
 import StaticErrors
 import Warnings

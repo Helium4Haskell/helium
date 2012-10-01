@@ -12,8 +12,8 @@ module Parser.OperatorTable
     ,   assoc, prio
     ) where
 
-import UHA_Syntax
-import UHA_Utils ()
+import Syntax.UHA_Syntax
+import Syntax.UHA_Utils ()
 import qualified Data.Map as M
 
 type OperatorTable = M.Map Name (Int, Assoc)

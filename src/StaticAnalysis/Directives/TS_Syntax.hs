@@ -3,7 +3,7 @@
 -- UUAGC 0.9.40.3 (TS_Syntax.ag)
 module TS_Syntax where
 
-import UHA_Syntax
+import Syntax.UHA_Syntax
 -- Judgement ---------------------------------------------------
 data Judgement = Judgement_Judgement (Expression) (Type)
 -- SimpleJudgement ---------------------------------------------

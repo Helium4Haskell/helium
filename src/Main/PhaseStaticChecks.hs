@@ -11,7 +11,7 @@ module Main.PhaseStaticChecks(phaseStaticChecks) where
 import Main.CompileUtils
 import Warnings(Warning)
 import qualified StaticChecks(sem_Module)
-import UHA_Syntax (Name)
+import Syntax.UHA_Syntax (Name)
 import Top.Types (TpScheme)
 import StaticErrors
 import Information (showInformation)

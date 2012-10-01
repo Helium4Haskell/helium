@@ -27,8 +27,8 @@ import HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
 import BindingGroupAnalysis
 
 -- UHA syntax
-import UHA_Syntax
-import UHA_Range                 
+import Syntax.UHA_Syntax
+import Syntax.UHA_Range                 
          
 -- other
 import Utils.Utils (internalError)
@@ -48,7 +48,7 @@ import TS_CoreSyntax
 import TS_Attributes
 
 
-import UHA_Utils
+import Syntax.UHA_Utils
 
 typeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (IO (), DictionaryEnvironment, TypeEnvironment, TypeErrors, Warnings)

@@ -18,9 +18,9 @@ INCLUDE "ToCorePat.ag"
 INCLUDE "ToCoreName.ag"
 
 imports{
-import UHA_Syntax
-import UHA_Utils
-import UHA_Range 
+import Syntax.UHA_Syntax
+import Syntax.UHA_Utils
+import Syntax.UHA_Range 
 import ImportEnvironment
 import DictionaryEnvironment
 import qualified Data.Map as M

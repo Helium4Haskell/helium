@@ -9,9 +9,9 @@
 module PatternMatch(patternToCore, patternsToCore, nextClauseId, freshIds) where
 
 import qualified Lvm.Core.Expr as Core
-import UHA_Syntax
-import UHA_Utils
-import UHA_Range
+import Syntax.UHA_Syntax
+import Syntax.UHA_Utils
+import Syntax.UHA_Range
 import Lvm.Common.Id
 import Data.Char
 import Utils.Utils

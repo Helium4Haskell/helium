@@ -12,7 +12,7 @@
 
 module Matchers where
 
-import UHA_Syntax
+import Syntax.UHA_Syntax
 import Messages () -- instance Eq Name
 
 -------------------------------------------------------------

@@ -12,7 +12,7 @@ import Main.CompileUtils
 import Lvm.Core.Expr (CoreDecl)
 import TS_Compile (readTypingStrategiesFromFile)
 import qualified Data.Map as M
-import UHA_Syntax (Name)
+import Syntax.UHA_Syntax (Name)
 import Top.Types (TpScheme)
 
 phaseTypingStrategies :: String -> ImportEnvironment -> [(Name, TpScheme)] -> [Option] ->

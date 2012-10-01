@@ -13,9 +13,9 @@
 module TS_Parser where
  
 -- UHA
-import UHA_Syntax
-import UHA_Utils (nameFromString)
-import qualified UHA_Pretty as PP
+import Syntax.UHA_Syntax
+import Syntax.UHA_Utils (nameFromString)
+import qualified Syntax.UHA_Pretty as PP
 -- Typing strategies
 import TS_Syntax
 --import TS_CoreSyntax

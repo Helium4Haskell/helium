@@ -6,9 +6,9 @@
     Portability :  portable
 -}
 
-module UHA_Range where
+module Syntax.UHA_Range where
 
-import UHA_Syntax
+import Syntax.UHA_Syntax
 import Lvm.Common.Id(Id, stringFromId)
 import Utils.Utils(internalError)
 import Data.Maybe(isJust)

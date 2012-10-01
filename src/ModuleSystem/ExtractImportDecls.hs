@@ -3,8 +3,8 @@
 -- UUAGC 0.9.40.3 (ExtractImportDecls.ag)
 module ExtractImportDecls where
 
-import UHA_Syntax
-import UHA_Utils
+import Syntax.UHA_Syntax
+import Syntax.UHA_Utils
 import Lvm.Common.Id
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core

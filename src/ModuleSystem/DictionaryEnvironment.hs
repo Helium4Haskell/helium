@@ -14,8 +14,8 @@ module DictionaryEnvironment
    ) where
 
 import qualified Data.Map as M
-import UHA_Syntax (Name)
-import UHA_Utils (NameWithRange(..) )
+import Syntax.UHA_Syntax (Name)
+import Syntax.UHA_Utils (NameWithRange(..) )
 import Utils.Utils (internalError)
 import Top.Types
 

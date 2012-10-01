@@ -10,11 +10,11 @@
 
 module TypeConversion where
 
-import UHA_Utils (getNameName, nameFromString)
-import UHA_Range (noRange)
+import Syntax.UHA_Utils (getNameName, nameFromString)
+import Syntax.UHA_Range (noRange)
 import Utils.Utils (internalError)
 import Data.List (union)
-import UHA_Syntax
+import Syntax.UHA_Syntax
 import Top.Types
 
 ----------------------------------------------------------------------

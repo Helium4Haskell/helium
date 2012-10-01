@@ -10,7 +10,7 @@ module Main.PhaseResolveOperators(phaseResolveOperators) where
 
 import Main.CompileUtils
 import Parser.ResolveOperators(resolveOperators, operatorsFromModule, ResolveError)
-import qualified UHA_Pretty as PP(sem_Module)
+import qualified Syntax.UHA_Pretty as PP(sem_Module)
 import qualified Data.Map as M
 
 phaseResolveOperators :: 
