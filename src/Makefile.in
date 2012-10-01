@@ -17,6 +17,7 @@ VERSION = 1.7
 HELIUMBINDIR = ../bin
 LVMLIBDIR  = ../../lvm/src/lib
 LVMRUNTIMEDIR  = ../../lvm/src/runtime
+OUTDIR = ../out
 
 #the main program you want to generate
 MAIN	= helium
@@ -51,8 +52,8 @@ status :
 
 HC	= @WithHc@
 IFACES	= $(LVMLIBDIR):./utils:./parser:./staticanalysis/miscellaneous:./staticanalysis/inferencers:./staticanalysis/directives:./staticanalysis/staticchecks:./staticanalysis/heuristics:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem:./texthint
-GHCWARN = -W -fwarn-tabs -fwarn-duplicate-exports -fwarn-unused-imports # -fwarn-missing-signatures
-HC_OPTS = --make $(GHCWARN) -static -i$(IFACES) $(EXTRA_HC_OPTS)
+GHCWARN = -Wall
+HC_OPTS = --make $(GHCWARN) -odir $(OUTDIR) -hidir $(OUTDIR) -i$(IFACES) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@
 AG_OPTS = -mscfr
@@ -268,76 +269,3 @@ clean:
 	$(RM) $(HELIUMBINDIR)/texthint$(EXE)	
 	cd $(LVMLIBDIR); $(MAKE) clean
 	cd $(LVMRUNTIMEDIR); $(MAKE) clean
-
-# UTRECHT ONLY
-
-smaller:
-	# *** UPX helium, texthint & lvmrun
-ifdef UPX
-	$(UPX) -q -9 $(HELIUMBINDIR)/$(MAIN)$(EXE) || echo "helium is al gecomprimeerd"
-	cd $(LVMRUNTIMEDIR); $(UPX) -q -9 lvmrun$(EXE)  || echo "lvmrun is al gecomprimeerd"
-	$(UPX) -q -9 $(HELIUMBINDIR)/texthint$(EXE) || echo "texthint is al gecomprimeerd"
-endif
-
-install : smaller
-	# *** Copy sources to library directory
-	$(MKDIR) $(bindir) $(hbindir) $(libdir) $(libdir)/simple $(demodir) 
-  # Copy library sources, non-overloaded
-	$(INSTALL) -m 644 ../lib/simple/*.hs $(libdir)/simple
-  # Copy library sources, overloaded
-	$(INSTALL) -m 644 ../lib/*.hs $(libdir)
-  # Copy executables
-	$(INSTALL) -m 755 $(HELIUMBINDIR)/$(MAIN)$(EXE) $(bindir)   # This now becomes the default helium
-	$(INSTALL) -m 755 $(HELIUMBINDIR)/$(MAIN)$(EXE) $(hbindir)  # An additional one, to enable multiple heliums. I did not think it worthwhile to use symlinks.
-	$(INSTALL) -m 755 $(LVMRUNTIMEDIR)/lvmrun$(EXE) $(bindir)
-	$(INSTALL) -m 755 $(HELIUMBINDIR)/texthint$(EXE) $(bindir)
-	$(INSTALL) -m 755 $(LVMRUNTIMEDIR)/lvmrun$(EXE) $(hbindir) # See above.
-	$(INSTALL) -m 755 $(HELIUMBINDIR)/texthint$(EXE) $(hbindir) # See above.
-	# *** Copying demos to demo directory
-	$(INSTALL) -m 644 ../demo/*.hs $(demodir)
-        
-	# *** Copy generated lvms and touch them
-	$(INSTALL) -m 644 ../lib/simple/*.lvm $(libdir)/simple
-	$(INSTALL) -m 644 ../lib/simple/Prelude.type $(libdir)/simple
-	# *** Copy generated overloaded lvms and touch them
-	$(INSTALL) -m 644 ../lib/*.lvm $(libdir)
-	$(INSTALL) -m 644 ../lib/Prelude.type $(libdir)
-	$(INSTALL) -m 644 hint.conf $(basedir)
-	touch $(libdir)/simple/*.lvm
-	touch $(libdir)/*.lvm
-	
-# $(INSTALL) -m -b 666 hint.conf "$(HOME)/.hint-$(VERSION).conf"  # Unfortunately, this will have root ownership
-# ln -s -f "$(HOME)/.hint-$(VERSION).conf" "$(HOME)/.hint.conf"  # Makes it the default.
-
-movetohome: smaller
-	# *** Copying simple library sources to distribution directory
-	cp ../lib/simple/Prelude.hs ../lib/simple/List.hs ../lib/simple/Maybe.hs ../distribution/helium/lib/simple
-	# *** Copying overloaded library sources to distribution directory
-	cp ../lib/simple/Prelude.hs ../lib/simple/List.hs ../lib/simple/Maybe.hs ../lib/Char.hs ../distribution/helium/lib
-	# *** Copying executables to projects directory
-	cp $(HELIUMBINDIR)/$(MAIN)$(EXE) ../distribution/helium/bin
-	cp $(LVMRUNTIMEDIR)/lvmrun$(EXE) ../distribution/helium/bin
-	cp $(HELIUMBINDIR)/texthint$(EXE) ../distribution/helium/bin
-	# *** Copy simple and overloaded generated lvms and touch them
-	cp ../lib/simple/*.lvm ../distribution/helium/lib/simple
-	cp ../lib/*.lvm ../distribution/helium/lib
-	touch ../distribution/helium/lib/*.lvm # so that they are seen as up to date
-	touch ../distribution/helium/lib/simple/*.lvm # so that they are seen as up to date
-
-movetobbl: smaller
-	# *** Copying library sources to projects directory
-	cp ../lib/simple/Prelude.hs ../lib/simple/List.hs ../lib/simple/Maybe.hs /cygdrive/r/helium/lib/simple
-	# *** Copying overloaded library sources to projects directory
-	cp ../lib/simple/Prelude.hs ../lib/simple/List.hs ../lib/simple/Maybe.hs ../lib/Char.hs /cygdrive/r/helium/lib	
-	# *** Copying executables to projects directory
-	cp $(HELIUMBINDIR)/$(MAIN)$(EXE) /cygdrive/r/helium/bin
-	cp $(LVMRUNTIMEDIR)/lvmrun$(EXE) /cygdrive/r/helium/bin
-	cp $(HELIUMBINDIR)/texthint$(EXE) /cygdrive/r/helium/bin
-	# *** Copy generated simple and overloaded lvms and touch them
-	cp ../lib/simple/*.lvm /cygdrive/r/helium/lib/simple
-	cp ../lib/*.lvm /cygdrive/r/helium/lib
-	touch /cygdrive/r/helium/lib/simple/*.lvm # so that they are seen as up to date	
-	touch /cygdrive/r/helium/lib/*.lvm # so that they are seen as up to date
-	# DON'T FORGET TO CHECK PERMISSIONS
-	cp ../../hint/release/Hint.jar /cygdrive/r/helium/bin
-
