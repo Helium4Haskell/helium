@@ -1,10 +1,10 @@
 
 
 -- UUAGC 0.9.40.3 (TS_ToCore.ag)
-module TS_ToCore where
+module StaticAnalysis.Directives.TS_ToCore where
 
-import TS_Syntax
-import TS_CoreSyntax
+import StaticAnalysis.Directives.TS_Syntax
+import StaticAnalysis.Directives.TS_CoreSyntax
 import ModuleSystem.ImportEnvironment
 import Messages
 import Top.Types
@@ -15,7 +15,7 @@ import StaticAnalysis.Miscellaneous.TypeConversion
 import Utils.Utils (internalError)
 import List
 import Utils.OneLiner
-import TS_Attributes
+import StaticAnalysis.Directives.TS_Attributes
 import StaticAnalysis.Miscellaneous.TypeConstraints
 
 

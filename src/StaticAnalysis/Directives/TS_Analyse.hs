@@ -1,20 +1,20 @@
 
 
 -- UUAGC 0.9.40.3 (TS_Analyse.ag)
-module TS_Analyse where
+module StaticAnalysis.Directives.TS_Analyse where
 
 import Top.Types
 import Top.Solver.Greedy
 import Top.Solver
 import StaticAnalysis.Miscellaneous.TypeConstraints
 import StaticAnalysis.Miscellaneous.ConstraintInfo
-import TS_Syntax
+import StaticAnalysis.Directives.TS_Syntax
 import StaticAnalysis.Miscellaneous.TypeConversion
 import List
 import Syntax.UHA_Utils (nameFromString)
 import Syntax.UHA_Range (noRange)
 import Messages
-import TS_Messages
+import StaticAnalysis.Directives.TS_Messages
 import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
 import StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
 import Utils.Utils (internalError)

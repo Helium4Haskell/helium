@@ -10,7 +10,7 @@ module Main.PhaseTypingStrategies(phaseTypingStrategies) where
 
 import Main.CompileUtils
 import Lvm.Core.Expr (CoreDecl)
-import TS_Compile (readTypingStrategiesFromFile)
+import StaticAnalysis.Directives.TS_Compile (readTypingStrategiesFromFile)
 import qualified Data.Map as M
 import Syntax.UHA_Syntax (Name)
 import Top.Types (TpScheme)

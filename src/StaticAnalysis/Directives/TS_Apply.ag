@@ -29,8 +29,8 @@ import Parser.Lexer (strategiesLexer)
 import Parser.ParseLibrary (runHParser)
 import qualified Parser.ResolveOperators as ResolveOperators
 import qualified Data.Map as M
-import TS_Attributes
-import TS_CoreSyntax
+import StaticAnalysis.Directives.TS_Attributes
+import StaticAnalysis.Directives.TS_CoreSyntax
 import Top.Ordering.Tree
 }
 

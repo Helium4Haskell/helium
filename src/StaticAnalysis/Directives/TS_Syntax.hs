@@ -1,7 +1,7 @@
 
 
 -- UUAGC 0.9.40.3 (TS_Syntax.ag)
-module TS_Syntax where
+module StaticAnalysis.Directives.TS_Syntax where
 
 import Syntax.UHA_Syntax
 -- Judgement ---------------------------------------------------

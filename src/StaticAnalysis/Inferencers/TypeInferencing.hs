@@ -42,10 +42,10 @@ import Data.Maybe
 
 
 import List
-import Matchers
-import TS_Apply (applyTypingStrategy, matchInformation)
-import TS_CoreSyntax
-import TS_Attributes
+import StaticAnalysis.Directives.Matchers
+import StaticAnalysis.Directives.TS_Apply (applyTypingStrategy, matchInformation)
+import StaticAnalysis.Directives.TS_CoreSyntax
+import StaticAnalysis.Directives.TS_Attributes
 
 
 import Syntax.UHA_Utils

@@ -1,7 +1,7 @@
 
 
 -- UUAGC 0.9.40.3 (TS_CoreSyntax.ag)
-module TS_CoreSyntax where
+module StaticAnalysis.Directives.TS_CoreSyntax where
 
 import Top.Types
 

@@ -10,7 +10,7 @@
 	(directives based on "Scripting the Type Inference Process", ICFP 2003)
 -}
 
-module TS_Attributes where
+module StaticAnalysis.Directives.TS_Attributes where
 
 import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions)
 import StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintSet, LocalInfo, assignedType, self)

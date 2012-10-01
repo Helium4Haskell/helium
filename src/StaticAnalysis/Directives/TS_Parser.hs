@@ -10,14 +10,14 @@
 	(directives based on "Scripting the Type Inference Process", ICFP 2003) 
 -}
 
-module TS_Parser where
+module StaticAnalysis.Directives.TS_Parser where
  
 -- UHA
 import Syntax.UHA_Syntax
 import Syntax.UHA_Utils (nameFromString)
 import qualified Syntax.UHA_Pretty as PP
 -- Typing strategies
-import TS_Syntax
+import StaticAnalysis.Directives.TS_Syntax
 --import TS_CoreSyntax
 --import qualified TS_ToCore
 -- Parser/Lexer

@@ -51,7 +51,7 @@ status :
 	@echo "*******************************************************************"
 
 HC	= @WithHc@
-IFACES	= $(LVMLIBDIR):./StaticAnalysis/Directives:./StaticAnalysis/StaticChecks:./StaticAnalysis/Heuristics:./StaticAnalysis/Messages
+IFACES	= $(LVMLIBDIR):./StaticAnalysis/StaticChecks:./StaticAnalysis/Heuristics:./StaticAnalysis/Messages
 GHCWARN = -Wall
 HC_OPTS = --make $(GHCWARN) -odir $(OUTDIR) -hidir $(OUTDIR) -i$(IFACES) $(EXTRA_HC_OPTS)
 
@@ -198,7 +198,7 @@ ModuleSystem/ExtractImportDecls.hs : \
 StaticAnalysis/Directives/TS_Syntax.hs : \
 	StaticAnalysis/Directives/TS_Syntax.ag
 	# AG TS_Syntax
-	cd StaticAnalysis/Directives;$(AG) -dmr TS_Syntax.ag;cd ../..
+	cd StaticAnalysis/Directives;$(AG) -dmr --module=StaticAnalysis.Directives.TS_Syntax TS_Syntax.ag;cd ../..
 
 StaticAnalysis/Directives/TS_Analyse.hs : \
         StaticAnalysis/Directives/TS_Syntax.ag \
@@ -206,7 +206,7 @@ StaticAnalysis/Directives/TS_Analyse.hs : \
         StaticAnalysis/Directives/TS_Analyse.ag \
         Syntax/UHA_Syntax.ag 
 	# AG TS_Analyse
-	cd StaticAnalysis/Directives;$(AG) $(AG_OPTS) --self TS_Analyse.ag;cd ../..
+	cd StaticAnalysis/Directives;$(AG) $(AG_OPTS) --self --module=StaticAnalysis.Directives.TS_Analyse TS_Analyse.ag;cd ../..
 
 StaticAnalysis/Directives/TS_Apply.hs : \
         StaticAnalysis/Directives/TS_Syntax.ag \
@@ -215,12 +215,12 @@ StaticAnalysis/Directives/TS_Apply.hs : \
         StaticAnalysis/Directives/TS_CoreSyntax.ag \
         Syntax/UHA_Syntax.ag \
 	# AG TS_Syntax
-	cd StaticAnalysis/Directives;$(AG) -mscf TS_Apply.ag;cd ../..
+	cd StaticAnalysis/Directives;$(AG) -mscf --module=StaticAnalysis.Directives.TS_Apply TS_Apply.ag;cd ../..
 
 StaticAnalysis/Directives/TS_CoreSyntax.hs : \
 	StaticAnalysis/Directives/TS_CoreSyntax.ag \
 	# AG TS_CoreSyntax
-	cd StaticAnalysis/Directives;$(AG) -md TS_CoreSyntax.ag;cd ../..
+	cd StaticAnalysis/Directives;$(AG) -md --module=StaticAnalysis.Directives.TS_CoreSyntax TS_CoreSyntax.ag;cd ../..
 
 StaticAnalysis/Directives/TS_ToCore.hs : \
         StaticAnalysis/Directives/TS_Syntax.ag \
@@ -229,7 +229,7 @@ StaticAnalysis/Directives/TS_ToCore.hs : \
         Syntax/UHA_Syntax.ag \
         Syntax/UHA_OneLine.ag 
 	# AG TS_Syntax
-	cd StaticAnalysis/Directives;$(AG) -mscrf --self TS_ToCore.ag;cd ../..
+	cd StaticAnalysis/Directives;$(AG) -mscrf --self --module=StaticAnalysis.Directives.TS_ToCore TS_ToCore.ag;cd ../..
                         
 endif
 

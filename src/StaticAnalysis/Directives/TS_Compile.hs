@@ -10,16 +10,16 @@
 	(directives based on "Scripting the Type Inference Process", ICFP 2003)
 -}
 
-module TS_Compile where
+module StaticAnalysis.Directives.TS_Compile where
 
-import TS_CoreSyntax
+import StaticAnalysis.Directives.TS_CoreSyntax
 import ModuleSystem.ImportEnvironment
-import TS_ToCore      (typingStrategyToCore)
+import StaticAnalysis.Directives.TS_ToCore      (typingStrategyToCore)
 import System.Exit         (exitWith, ExitCode(..) )
 import System.Directory      (doesFileExist)
-import TS_Parser      (parseTypingStrategies)
+import StaticAnalysis.Directives.TS_Parser      (parseTypingStrategies)
 import Parser.Lexer          (strategiesLexer)
-import TS_Analyse     (analyseTypingStrategies)
+import StaticAnalysis.Directives.TS_Analyse     (analyseTypingStrategies)
 import HeliumMessages (sortAndShowMessages)
 import Control.Monad          (unless, when)
 import qualified Main.Args as Args

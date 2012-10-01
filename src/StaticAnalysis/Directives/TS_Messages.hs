@@ -11,7 +11,7 @@
 	(directives based on "Scripting the Type Inference Process", ICFP 2003)
 -}
 
-module TS_Messages where
+module StaticAnalysis.Directives.TS_Messages where
 
 import Messages
 import TypeErrors

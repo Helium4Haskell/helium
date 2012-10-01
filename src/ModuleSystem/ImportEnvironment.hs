@@ -16,7 +16,7 @@ import Top.Types
 import Parser.OperatorTable
 import Messages () -- instance Show Name
 import RepairHeuristics (Siblings)
-import TS_CoreSyntax
+import StaticAnalysis.Directives.TS_CoreSyntax
 import Data.List 
 import Data.Maybe (catMaybes)
 

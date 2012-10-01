@@ -1,7 +1,7 @@
 
 
 -- UUAGC 0.9.40.3 (TS_Apply.ag)
-module TS_Apply where
+module StaticAnalysis.Directives.TS_Apply where
 
 import Syntax.UHA_Syntax
 import StaticAnalysis.Miscellaneous.TypeConstraints
@@ -19,8 +19,8 @@ import Parser.Lexer (strategiesLexer)
 import Parser.ParseLibrary (runHParser)
 import qualified Parser.ResolveOperators as ResolveOperators
 import qualified Data.Map as M
-import TS_Attributes
-import TS_CoreSyntax
+import StaticAnalysis.Directives.TS_Attributes
+import StaticAnalysis.Directives.TS_CoreSyntax
 import Top.Ordering.Tree
 
 

@@ -31,13 +31,13 @@ import Top.Solver.Greedy
 import Top.Solver
 import StaticAnalysis.Miscellaneous.TypeConstraints
 import StaticAnalysis.Miscellaneous.ConstraintInfo
-import TS_Syntax
+import StaticAnalysis.Directives.TS_Syntax
 import StaticAnalysis.Miscellaneous.TypeConversion
 import List
 import Syntax.UHA_Utils (nameFromString)
 import Syntax.UHA_Range (noRange)
 import Messages
-import TS_Messages
+import StaticAnalysis.Directives.TS_Messages
 import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
 import StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
 import Utils.Utils (internalError)
