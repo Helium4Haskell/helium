@@ -8,7 +8,7 @@
     The conversion from UHA types to Tp (a simpler representation), and vice versa.
 -}
 
-module TypeConversion where
+module StaticAnalysis.Miscellaneous.TypeConversion where
 
 import Syntax.UHA_Utils (getNameName, nameFromString)
 import Syntax.UHA_Range (noRange)

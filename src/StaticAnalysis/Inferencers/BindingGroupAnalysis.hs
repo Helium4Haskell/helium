@@ -10,13 +10,13 @@
 
 -- To do: clean up this module. Also see BGA for kind inferencing
 
-module BindingGroupAnalysis where
+module StaticAnalysis.Inferencers.BindingGroupAnalysis where
 
 import qualified Data.Graph as G
 import qualified Data.Tree as G
 import Syntax.UHA_Syntax
-import TypeConstraints
-import ConstraintInfo
+import StaticAnalysis.Miscellaneous.TypeConstraints
+import StaticAnalysis.Miscellaneous.ConstraintInfo
 import Top.Types
 import Top.Ordering.Tree
 import qualified Data.Map as M

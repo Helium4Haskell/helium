@@ -12,7 +12,7 @@
 module ListOfHeuristics (listOfHeuristics) where
 
 import Main.Args (Option(..))
-import ConstraintInfo
+import StaticAnalysis.Miscellaneous.ConstraintInfo
 import HeuristicsInfo () -- instances
 import Top.Implementation.TypeGraph.Heuristic
 import Top.Implementation.TypeGraph.DefaultHeuristics

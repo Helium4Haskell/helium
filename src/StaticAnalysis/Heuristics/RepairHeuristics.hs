@@ -23,7 +23,7 @@ import Data.Maybe
 import Messages (showNumber, ordinal, prettyAndList)
 import OnlyResultHeuristics
 import Data.List
-import UHA_Source
+import StaticAnalysis.Miscellaneous.UHA_Source
 
 -----------------------------------------------------------------------------
 

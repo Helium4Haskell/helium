@@ -29,17 +29,17 @@ imports {
 import Top.Types
 import Top.Solver.Greedy
 import Top.Solver
-import TypeConstraints
-import ConstraintInfo
+import StaticAnalysis.Miscellaneous.TypeConstraints
+import StaticAnalysis.Miscellaneous.ConstraintInfo
 import TS_Syntax
-import TypeConversion
+import StaticAnalysis.Miscellaneous.TypeConversion
 import List
 import Syntax.UHA_Utils (nameFromString)
 import Syntax.UHA_Range (noRange)
 import Messages
 import TS_Messages
 import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
-import ExpressionTypeInferencer (expressionTypeInferencer)
+import StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
 import Utils.Utils (internalError)
 import qualified Syntax.UHA_Pretty as PP
 import qualified Data.Map as M

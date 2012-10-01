@@ -14,7 +14,7 @@ module OnlyResultHeuristics where
 import Top.Implementation.TypeGraph.Heuristic
 import Top.Interface.TypeInference
 import Top.Types
-import UHA_Source
+import StaticAnalysis.Miscellaneous.UHA_Source
       
 -----------------------------------------------------------------------------
 

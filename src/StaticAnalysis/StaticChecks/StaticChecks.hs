@@ -14,7 +14,7 @@ import Warnings
 import Messages
 import List
 import Utils.Utils ( internalError, minInt, maxInt )
-import TypeConversion
+import StaticAnalysis.Miscellaneous.TypeConversion
 import CodeGeneration.DerivingShow
 import qualified Data.Map as M
 import ModuleSystem.ImportEnvironment

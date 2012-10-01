@@ -1,22 +1,22 @@
 
 
 -- UUAGC 0.9.40.3 (KindInferencing.ag)
-module KindInferencing where
+module StaticAnalysis.Inferencers.KindInferencing where
 
 import Top.Types
 import Top.Solver.Greedy
 import Top.Solver
 import Top.Constraint.Information
-import TypeConstraints
+import StaticAnalysis.Miscellaneous.TypeConstraints
 import Syntax.UHA_Syntax
 import Main.Args
 import qualified Data.Map as M
-import TypeConstraints
+import StaticAnalysis.Miscellaneous.TypeConstraints
 import Utils.Utils (internalError)
 import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
 import KindErrors
 import Char (isLower)
-import BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, combine, single, topSort) 
+import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, combine, single, topSort) 
 
 type KindEnvironment = M.Map Name TpScheme
 type KindConstraint  = TypeConstraint  KindError

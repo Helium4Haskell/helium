@@ -4,15 +4,15 @@
 module TS_Apply where
 
 import Syntax.UHA_Syntax
-import TypeConstraints
-import ConstraintInfo
+import StaticAnalysis.Miscellaneous.TypeConstraints
+import StaticAnalysis.Miscellaneous.ConstraintInfo
 --import Top.Types
 import List
 import Utils.Utils (internalError)
 import Messages
 import TypeErrors
 import ModuleSystem.ImportEnvironment
-import BindingGroupAnalysis (Assumptions, combine, noAssumptions)
+import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions, combine, noAssumptions)
 import Parser.OperatorTable (OperatorTable)
 import Parser.Parser (exp_)
 import Parser.Lexer (strategiesLexer)

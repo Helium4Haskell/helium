@@ -11,7 +11,7 @@ module ModuleSystem.CoreToImportEnv(getImportEnvironment) where
 import Lvm.Core.Expr
 import Lvm.Core.Utils
 import Utils.Utils
-import TypeConversion
+import StaticAnalysis.Miscellaneous.TypeConversion
 import Parser.ParseLibrary
 import Parser.Lexer(lexer)
 import Parser.Parser(type_, contextAndType)

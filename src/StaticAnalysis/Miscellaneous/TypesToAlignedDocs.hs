@@ -8,7 +8,7 @@
     Functions to align and show types.
 -}
 
-module TypesToAlignedDocs (qualifiedTypesToAlignedDocs, typesToAlignedDocs) where
+module StaticAnalysis.Miscellaneous.TypesToAlignedDocs (qualifiedTypesToAlignedDocs, typesToAlignedDocs) where
 
 import Data.List     ( transpose )
 import Top.Types

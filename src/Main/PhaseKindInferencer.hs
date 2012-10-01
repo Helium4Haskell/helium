@@ -9,7 +9,7 @@
 module Main.PhaseKindInferencer (phaseKindInferencer) where
 
 import Main.CompileUtils
-import KindInferencing as KI
+import StaticAnalysis.Inferencers.KindInferencing as KI
 -- import ImportEnvironment
 import qualified Data.Map as M
 import Top.Types

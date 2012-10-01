@@ -9,7 +9,7 @@ import Syntax.UHA_Range
 import ModuleSystem.ImportEnvironment
 import ModuleSystem.DictionaryEnvironment
 import qualified Data.Map as M
-import TypeConversion
+import StaticAnalysis.Miscellaneous.TypeConversion
 import Char (ord)
 
 import Lvm.Common.Id

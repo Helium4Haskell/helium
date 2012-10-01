@@ -6,7 +6,7 @@ module Syntax.UHA_OneLine where
 import Utils.OneLiner
 import Char
 import Syntax.UHA_Utils (showNameAsOperator)
-import TypeConversion
+import StaticAnalysis.Miscellaneous.TypeConversion
 import Syntax.UHA_Syntax
 import List
 import Utils.Utils (internalError)

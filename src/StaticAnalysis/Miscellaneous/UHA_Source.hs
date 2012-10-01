@@ -9,7 +9,7 @@
     syntax (UHA),  including expressions and patterns.
 -}
 
-module UHA_Source where
+module StaticAnalysis.Miscellaneous.UHA_Source where
 
 import Utils.OneLiner
 import Syntax.UHA_Range

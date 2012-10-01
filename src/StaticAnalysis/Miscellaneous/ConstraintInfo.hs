@@ -10,17 +10,17 @@
 	during type inference.
 -}
 
-module ConstraintInfo where
+module StaticAnalysis.Miscellaneous.ConstraintInfo where
 
 import Top.Types
 import Top.Ordering.Tree
 import Syntax.UHA_Syntax
-import UHA_Source
+import StaticAnalysis.Miscellaneous.UHA_Source
 import Syntax.UHA_Range
 import TypeErrors
 import Messages
-import DoublyLinkedTree
-import TypeConstraints
+import StaticAnalysis.Miscellaneous.DoublyLinkedTree
+import StaticAnalysis.Miscellaneous.TypeConstraints
 import Top.Constraint.Information
 import Top.Implementation.Overloading
 import Top.Interface.Basic (ErrorLabel)

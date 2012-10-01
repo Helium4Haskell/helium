@@ -12,14 +12,14 @@
 
 module HeuristicsInfo where
 
-import ConstraintInfo
+import StaticAnalysis.Miscellaneous.ConstraintInfo
 import RepairHeuristics
 import TieBreakerHeuristics
 import OnlyResultHeuristics
 import UnifierHeuristics
-import DoublyLinkedTree
+import StaticAnalysis.Miscellaneous.DoublyLinkedTree
 import Utils.OneLiner
-import UHA_Source
+import StaticAnalysis.Miscellaneous.UHA_Source
 import Syntax.UHA_Syntax
 import Messages
 import HeliumMessages ()

@@ -10,11 +10,11 @@
     Select the type constraint solver of your own liking
 -}
 
-module SelectConstraintSolver (selectConstraintSolver) where
+module StaticAnalysis.Inferencers.SelectConstraintSolver (selectConstraintSolver) where
 
 import Main.Args (Option(..))
-import ConstraintInfo
-import TypeConstraints
+import StaticAnalysis.Miscellaneous.ConstraintInfo
+import StaticAnalysis.Miscellaneous.TypeConstraints
 import ModuleSystem.ImportEnvironment (ImportEnvironment, getSiblings)
 import ListOfHeuristics (listOfHeuristics)
 import Top.Types

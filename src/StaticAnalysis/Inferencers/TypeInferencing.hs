@@ -1,30 +1,30 @@
 
 
 -- UUAGC 0.9.40.3 (TypeInferencing.ag)
-module TypeInferencing where
+module StaticAnalysis.Inferencers.TypeInferencing where
 
 
 -- types
 import Top.Types
-import TypeConversion
+import StaticAnalysis.Miscellaneous.TypeConversion
 
 -- error messages and warnings
 import Messages
 import TypeErrors
 import Warnings
-import ConstraintInfo
-import DoublyLinkedTree
-import UHA_Source
+import StaticAnalysis.Miscellaneous.ConstraintInfo
+import StaticAnalysis.Miscellaneous.DoublyLinkedTree
+import StaticAnalysis.Miscellaneous.UHA_Source
 
 -- constraints and constraint trees
-import TypeConstraints
+import StaticAnalysis.Miscellaneous.TypeConstraints
 import Top.Ordering.Tree
 
 -- constraint solving
-import SelectConstraintSolver (selectConstraintSolver)
+import StaticAnalysis.Inferencers.SelectConstraintSolver (selectConstraintSolver)
 import Top.Solver (SolveResult(..), LogEntries)
 import HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
-import BindingGroupAnalysis
+import StaticAnalysis.Inferencers.BindingGroupAnalysis
 
 -- UHA syntax
 import Syntax.UHA_Syntax
@@ -54,7 +54,7 @@ typeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (IO (), DictionaryEnvironment, TypeEnvironment, TypeErrors, Warnings)
 typeInferencing options importEnv module_ =
    let (_, dictionaryEnv, _, logEntries, _, _, toplevelTypes, typeErrors, warnings) =
-            TypeInferencing.sem_Module module_ importEnv options
+            sem_Module module_ importEnv options
        debugIO = putStrLn (show logEntries)
    in (debugIO, dictionaryEnv, toplevelTypes, typeErrors, warnings)
 
@@ -62,7 +62,7 @@ proximaTypeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (TypeErrors, Warnings, TypeEnvironment, [(Range, TpScheme)])  
 proximaTypeInferencing options importEnv module_ =
    let (_, _, infoTree, _, _, solveResult, toplevelTypes, typeErrors, warnings) =
-            TypeInferencing.sem_Module module_ importEnv options
+            sem_Module module_ importEnv options
        localTypeSchemes = typeSchemesInInfoTree (substitutionFromResult solveResult)
                                                 (qualifiersFromResult solveResult) 
                                                 infoTree

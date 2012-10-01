@@ -16,7 +16,7 @@ import Top.Types
 import qualified Text.PrettyPrint.Leijen as PPrint
 import qualified Utils.OneLiner as OneLiner
 import Data.List                (intersperse, zipWith4)
-import TypesToAlignedDocs  (qualifiedTypesToAlignedDocs)
+import StaticAnalysis.Miscellaneous.TypesToAlignedDocs  (qualifiedTypesToAlignedDocs)
 import Syntax.UHA_Range           (isImportRange, showRanges)
 import Data.Char                (isSpace)
 

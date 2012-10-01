@@ -51,7 +51,7 @@ status :
 	@echo "*******************************************************************"
 
 HC	= @WithHc@
-IFACES	= $(LVMLIBDIR):./StaticAnalysis/Miscellaneous:./StaticAnalysis/Inferencers:./StaticAnalysis/Directives:./StaticAnalysis/StaticChecks:./StaticAnalysis/Heuristics:./StaticAnalysis/Messages
+IFACES	= $(LVMLIBDIR):./StaticAnalysis/Directives:./StaticAnalysis/StaticChecks:./StaticAnalysis/Heuristics:./StaticAnalysis/Messages
 GHCWARN = -Wall
 HC_OPTS = --make $(GHCWARN) -odir $(OUTDIR) -hidir $(OUTDIR) -i$(IFACES) $(EXTRA_HC_OPTS)
 
@@ -170,14 +170,14 @@ StaticAnalysis/Inferencers/TypeInferencing.hs : \
                 StaticAnalysis/Directives/TS_PatternMatching.ag
                 
 	# AG TypeInferencing
-	cd StaticAnalysis/Inferencers;$(AG) $(AG_OPTS) --self TypeInferencing.ag;cd ../..
+	cd StaticAnalysis/Inferencers;$(AG) $(AG_OPTS) --self --module=StaticAnalysis.Inferencers.TypeInferencing TypeInferencing.ag;cd ../..
 
 StaticAnalysis/Inferencers/KindInferencing.hs : \
 		StaticAnalysis/Inferencers/KindInferencing.ag \
                 Syntax/UHA_Syntax.ag \
                 
 	# AG TypeInferencing
-	cd StaticAnalysis/Inferencers;$(AG) $(AG_OPTS) --self KindInferencing.ag;cd ../..
+	cd StaticAnalysis/Inferencers;$(AG) $(AG_OPTS) --self --module=StaticAnalysis.Inferencers.KindInferencing KindInferencing.ag;cd ../..
 
 CodeGeneration/CodeGeneration.hs : \
 		CodeGeneration/CodeGeneration.ag \

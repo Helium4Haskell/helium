@@ -8,11 +8,11 @@
     Infer the type of an expression, and return the type errors that are encountered.
 -}
 
-module ExpressionTypeInferencer (expressionTypeInferencer) where
+module StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer) where
 
-import TypeInferencing (sem_Module)
+import StaticAnalysis.Inferencers.TypeInferencing (sem_Module)
 import ModuleSystem.ImportEnvironment
-import BindingGroupAnalysis (Assumptions)
+import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions)
 import TypeErrors
 import Top.Types
 import qualified Data.Map as M

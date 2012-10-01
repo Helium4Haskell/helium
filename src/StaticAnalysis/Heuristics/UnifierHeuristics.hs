@@ -18,7 +18,7 @@ import Top.Implementation.TypeGraph.Basics
 import Top.Implementation.TypeGraph.ClassMonadic
 import Top.Implementation.TypeGraph.Heuristic
 import RepairHeuristics
-import ConstraintInfo
+import StaticAnalysis.Miscellaneous.ConstraintInfo
 import Data.List (partition, sortBy)
 import Data.Maybe (isNothing, fromJust)
 

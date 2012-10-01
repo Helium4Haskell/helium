@@ -15,7 +15,7 @@ import Top.Types
 import Data.List       (union, partition)
 import Syntax.UHA_Syntax (Range, Name)
 import Syntax.UHA_Range  (getNameRange)
-import UHA_Source
+import StaticAnalysis.Miscellaneous.UHA_Source
 import Data.Maybe
 
 type TypeErrors = [TypeError]

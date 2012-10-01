@@ -8,21 +8,21 @@ import TS_CoreSyntax
 import ModuleSystem.ImportEnvironment
 import Messages
 import Top.Types
-import ConstraintInfo
+import StaticAnalysis.Miscellaneous.ConstraintInfo
 import Syntax.UHA_Utils (getNameName, nameFromString)
 import qualified Syntax.UHA_OneLine as UHA_OneLine
-import TypeConversion
+import StaticAnalysis.Miscellaneous.TypeConversion
 import Utils.Utils (internalError)
 import List
 import Utils.OneLiner
 import TS_Attributes
-import TypeConstraints
+import StaticAnalysis.Miscellaneous.TypeConstraints
 
 
 import Syntax.UHA_Syntax
 
 
-import ExpressionTypeInferencer (expressionTypeInferencer)
+import StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
 import qualified Data.Map as M
 
 typingStrategyToCore :: ImportEnvironment -> TypingStrategy -> Core_TypingStrategy

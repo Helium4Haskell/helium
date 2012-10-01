@@ -15,7 +15,7 @@ module TS_Messages where
 
 import Messages
 import TypeErrors
-import ConstraintInfo
+import StaticAnalysis.Miscellaneous.ConstraintInfo
 import HeliumMessages () -- instance Show MessageLines
 import Top.Types
 import Utils.Utils (commaList)

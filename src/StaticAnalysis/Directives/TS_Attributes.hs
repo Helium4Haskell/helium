@@ -12,13 +12,13 @@
 
 module TS_Attributes where
 
-import BindingGroupAnalysis (Assumptions)
-import ConstraintInfo       (ConstraintSet, LocalInfo, assignedType, self)
+import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions)
+import StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintSet, LocalInfo, assignedType, self)
 import Messages             (MessageBlock(..))
 import Top.Types            (Tp, toTpScheme)
 import Utils.OneLiner       (OneLineTree)
 import Syntax.UHA_Syntax    (Range) 
-import UHA_Source           (rangeOfSource, oneLinerSource)
+import StaticAnalysis.Miscellaneous.UHA_Source (rangeOfSource, oneLinerSource)
 import Utils.Utils          (internalError)
 import Data.Char            (isAlphaNum)
 

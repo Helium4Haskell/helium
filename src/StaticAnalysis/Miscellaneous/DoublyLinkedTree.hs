@@ -9,7 +9,7 @@
 	At each node, extra information (attributes) can be stored.
 -}
 
-module DoublyLinkedTree where
+module StaticAnalysis.Miscellaneous.DoublyLinkedTree where
 
 import Utils.Utils (internalError)
 

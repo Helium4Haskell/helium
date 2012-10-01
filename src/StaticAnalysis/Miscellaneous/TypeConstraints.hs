@@ -12,7 +12,7 @@
 	are lifted to work on finite maps as well.
 -}
 
-module TypeConstraints where
+module StaticAnalysis.Miscellaneous.TypeConstraints where
 
 import Top.Constraint
 import Top.Constraint.Equality hiding ((.==.))

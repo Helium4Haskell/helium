@@ -10,7 +10,7 @@ module Main.PhaseTypeInferencer (phaseTypeInferencer) where
 
 import Main.CompileUtils
 import Warnings(Warning)
-import TypeInferencing(typeInferencing)
+import StaticAnalysis.Inferencers.TypeInferencing(typeInferencing)
 import ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
 --import UHA_Syntax
 import TypeErrors
