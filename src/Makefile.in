@@ -51,7 +51,7 @@ status :
 	@echo "*******************************************************************"
 
 HC	= @WithHc@
-IFACES	= $(LVMLIBDIR):./Utils:./parser:./staticanalysis/miscellaneous:./staticanalysis/inferencers:./staticanalysis/directives:./staticanalysis/staticchecks:./staticanalysis/heuristics:./staticanalysis/messages:./syntax:./codegeneration:./main:./modulesystem:./texthint
+IFACES	= $(LVMLIBDIR):./Utils:./Parser:./StaticAnalysis/Miscellaneous:./StaticAnalysis/Inferencers:./StaticAnalysis/Directives:./StaticAnalysis/StaticChecks:./StaticAnalysis/Heuristics:./StaticAnalysis/Messages:./Syntax:./CodeGeneration:./Main:./ModuleSystem:./TextHint
 GHCWARN = -Wall
 HC_OPTS = --make $(GHCWARN) -odir $(OUTDIR) -hidir $(OUTDIR) -i$(IFACES) $(EXTRA_HC_OPTS)
 
@@ -60,14 +60,14 @@ AG_OPTS = -mscfr
 
 # AG sources
 AGSOURCES = \
-     syntax/UHA_Pretty.hs syntax/UHA_OneLine.hs \
-     staticanalysis/staticchecks/StaticChecks.hs staticanalysis/inferencers/TypeInferencing.hs \
-     staticanalysis/inferencers/KindInferencing.hs \
-     codegeneration/CodeGeneration.hs \
-     syntax/UHA_Syntax.hs modulesystem/ExtractImportDecls.hs staticanalysis/directives/TS_Syntax.hs \
-     staticanalysis/directives/TS_Apply.hs staticanalysis/directives/TS_Analyse.hs \
-     staticanalysis/directives/TS_CoreSyntax.hs \
-     staticanalysis/directives/TS_ToCore.hs parser/ResolveOperators.hs
+     Syntax/UHA_Pretty.hs Syntax/UHA_OneLine.hs \
+     StaticAnalysis/StaticChecks/StaticChecks.hs StaticAnalysis/Inferencers/TypeInferencing.hs \
+     StaticAnalysis/Inferencers/KindInferencing.hs \
+     CodeGeneration/CodeGeneration.hs \
+     Syntax/UHA_Syntax.hs ModuleSystem/ExtractImportDecls.hs StaticAnalysis/Directives/TS_Syntax.hs \
+     StaticAnalysis/Directives/TS_Apply.hs StaticAnalysis/Directives/TS_Analyse.hs \
+     StaticAnalysis/Directives/TS_CoreSyntax.hs \
+     StaticAnalysis/Directives/TS_ToCore.hs Parser/ResolveOperators.hs
 
 # The main target
 compiler: $(AGSOURCES)
@@ -124,112 +124,112 @@ cleanag :
 	$(RM) $(AGSOURCES)
 
 ifdef AG
-parser/ResolveOperators.hs : \
-		parser/ResolveOperators.ag syntax/UHA_Syntax.ag
+Parser/ResolveOperators.hs : \
+		Parser/ResolveOperators.ag Syntax/UHA_Syntax.ag
 	# AG ResolveOperators
-	cd parser;$(AG) $(AG_OPTS) --self ResolveOperators.ag;cd ..
+	cd Parser;$(AG) $(AG_OPTS) --self ResolveOperators.ag;cd ..
 
-syntax/UHA_Pretty.hs : \
-		syntax/UHA_Pretty.ag syntax/UHA_Syntax.ag
+Syntax/UHA_Pretty.hs : \
+		Syntax/UHA_Pretty.ag Syntax/UHA_Syntax.ag
 	# AG UHA_Pretty
-	cd syntax;$(AG) $(AG_OPTS) UHA_Pretty.ag;cd ..
+	cd Syntax;$(AG) $(AG_OPTS) UHA_Pretty.ag;cd ..
 
-syntax/UHA_OneLine.hs : \
-		syntax/UHA_OneLine.ag syntax/UHA_Syntax.ag
+Syntax/UHA_OneLine.hs : \
+		Syntax/UHA_OneLine.ag Syntax/UHA_Syntax.ag
 	# AG UHA_OneLine
-	cd syntax;$(AG) $(AG_OPTS) --self UHA_OneLine.ag;cd ..
+	cd Syntax;$(AG) $(AG_OPTS) --self UHA_OneLine.ag;cd ..
 
-staticanalysis/staticchecks/StaticChecks.hs : \
-		staticanalysis/staticchecks/StaticChecks.ag \
-		staticanalysis/staticchecks/KindChecking.ag \
-                staticanalysis/staticchecks/TopLevelErrors.ag \
-                staticanalysis/staticchecks/MiscErrors.ag \
-                staticanalysis/staticchecks/Warnings.ag \
-		staticanalysis/staticchecks/ExportErrors.ag \
-                staticanalysis/staticchecks/Collect.ag \
-                staticanalysis/staticchecks/HeliumPartialSyntax.ag \
-                staticanalysis/staticchecks/Scope.ag \
-                staticanalysis/staticchecks/ScopeErrors.ag \
-		syntax/UHA_Syntax.ag 
+StaticAnalysis/StaticChecks/StaticChecks.hs : \
+		StaticAnalysis/StaticChecks/StaticChecks.ag \
+		StaticAnalysis/StaticChecks/KindChecking.ag \
+                StaticAnalysis/StaticChecks/TopLevelErrors.ag \
+                StaticAnalysis/StaticChecks/MiscErrors.ag \
+                StaticAnalysis/StaticChecks/Warnings.ag \
+		StaticAnalysis/StaticChecks/ExportErrors.ag \
+                StaticAnalysis/StaticChecks/Collect.ag \
+                StaticAnalysis/StaticChecks/HeliumPartialSyntax.ag \
+                StaticAnalysis/StaticChecks/Scope.ag \
+                StaticAnalysis/StaticChecks/ScopeErrors.ag \
+		Syntax/UHA_Syntax.ag 
                 
 	# AG StaticAnalysis
-	cd staticanalysis/staticchecks;$(AG) $(AG_OPTS) --self StaticChecks.ag;cd ../..
+	cd StaticAnalysis/StaticChecks;$(AG) $(AG_OPTS) --self StaticChecks.ag;cd ../..
 
-staticanalysis/inferencers/TypeInferencing.hs : \
-		staticanalysis/inferencers/TypeInferencing.ag \
-                staticanalysis/inferencers/TypeInferenceRules.ag \
-                staticanalysis/inferencers/TypeInferenceOverloading.ag \
-                staticanalysis/inferencers/TypeInferenceCollect.ag \
-                staticanalysis/inferencers/TypeInferenceInfo.ag \
-                staticanalysis/inferencers/PatternMatchWarnings.ag \
-                staticanalysis/inferencers/LocalInfo.ag \
-                staticanalysis/inferencers/GlobalInfo.ag \
-                staticanalysis/staticchecks/HeliumPartialSyntax.ag \
-		syntax/UHA_Syntax.ag \
-                staticanalysis/staticchecks/Scope.ag\
-                staticanalysis/directives/TS_PatternMatching.ag
+StaticAnalysis/Inferencers/TypeInferencing.hs : \
+		StaticAnalysis/Inferencers/TypeInferencing.ag \
+                StaticAnalysis/Inferencers/TypeInferenceRules.ag \
+                StaticAnalysis/Inferencers/TypeInferenceOverloading.ag \
+                StaticAnalysis/Inferencers/TypeInferenceCollect.ag \
+                StaticAnalysis/Inferencers/TypeInferenceInfo.ag \
+                StaticAnalysis/Inferencers/PatternMatchWarnings.ag \
+                StaticAnalysis/Inferencers/LocalInfo.ag \
+                StaticAnalysis/Inferencers/GlobalInfo.ag \
+                StaticAnalysis/StaticChecks/HeliumPartialSyntax.ag \
+		Syntax/UHA_Syntax.ag \
+                StaticAnalysis/StaticChecks/Scope.ag\
+                StaticAnalysis/Directives/TS_PatternMatching.ag
                 
 	# AG TypeInferencing
-	cd staticanalysis/inferencers;$(AG) $(AG_OPTS) --self TypeInferencing.ag;cd ../..
+	cd StaticAnalysis/Inferencers;$(AG) $(AG_OPTS) --self TypeInferencing.ag;cd ../..
 
-staticanalysis/inferencers/KindInferencing.hs : \
-		staticanalysis/inferencers/KindInferencing.ag \
-                syntax/UHA_Syntax.ag \
+StaticAnalysis/Inferencers/KindInferencing.hs : \
+		StaticAnalysis/Inferencers/KindInferencing.ag \
+                Syntax/UHA_Syntax.ag \
                 
 	# AG TypeInferencing
-	cd staticanalysis/inferencers;$(AG) $(AG_OPTS) --self KindInferencing.ag;cd ../..
+	cd StaticAnalysis/Inferencers;$(AG) $(AG_OPTS) --self KindInferencing.ag;cd ../..
 
-codegeneration/CodeGeneration.hs : \
-		codegeneration/CodeGeneration.ag \
-		syntax/UHA_Syntax.ag codegeneration/ToCoreModule.ag codegeneration/ToCoreDecl.ag \
-		codegeneration/ToCoreExpr.ag codegeneration/ToCorePat.ag codegeneration/ToCoreName.ag
+CodeGeneration/CodeGeneration.hs : \
+		CodeGeneration/CodeGeneration.ag \
+		Syntax/UHA_Syntax.ag CodeGeneration/ToCoreModule.ag CodeGeneration/ToCoreDecl.ag \
+		CodeGeneration/ToCoreExpr.ag CodeGeneration/ToCorePat.ag CodeGeneration/ToCoreName.ag
 	# AG CodeGeneration
-	cd codegeneration;$(AG) $(AG_OPTS) --self CodeGeneration.ag;cd ..
+	cd CodeGeneration;$(AG) $(AG_OPTS) --self CodeGeneration.ag;cd ..
 
-syntax/UHA_Syntax.hs : syntax/UHA_Syntax.ag
+Syntax/UHA_Syntax.hs : Syntax/UHA_Syntax.ag
 	# AG UHA_Syntax
-	cd syntax;$(AG) -dmr UHA_Syntax.ag;cd ..
+	cd Syntax;$(AG) -dmr UHA_Syntax.ag;cd ..
 
-modulesystem/ExtractImportDecls.hs : \
-		modulesystem/ExtractImportDecls.ag codegeneration/ToCoreName.ag syntax/UHA_Syntax.ag
+ModuleSystem/ExtractImportDecls.hs : \
+		ModuleSystem/ExtractImportDecls.ag CodeGeneration/ToCoreName.ag Syntax/UHA_Syntax.ag
 	# AG ExtractImportDecls
-	cd modulesystem;$(AG) $(AG_OPTS) --self ExtractImportDecls.ag;cd ..
+	cd ModuleSystem;$(AG) $(AG_OPTS) --self ExtractImportDecls.ag;cd ..
         
-staticanalysis/directives/TS_Syntax.hs : \
-	staticanalysis/directives/TS_Syntax.ag
+StaticAnalysis/Directives/TS_Syntax.hs : \
+	StaticAnalysis/Directives/TS_Syntax.ag
 	# AG TS_Syntax
-	cd staticanalysis/directives;$(AG) -dmr TS_Syntax.ag;cd ../..
+	cd StaticAnalysis/Directives;$(AG) -dmr TS_Syntax.ag;cd ../..
 
-staticanalysis/directives/TS_Analyse.hs : \
-        staticanalysis/directives/TS_Syntax.ag \
-        staticanalysis/directives/TS_Collect.ag \
-        staticanalysis/directives/TS_Analyse.ag \
-        syntax/UHA_Syntax.ag 
+StaticAnalysis/Directives/TS_Analyse.hs : \
+        StaticAnalysis/Directives/TS_Syntax.ag \
+        StaticAnalysis/Directives/TS_Collect.ag \
+        StaticAnalysis/Directives/TS_Analyse.ag \
+        Syntax/UHA_Syntax.ag 
 	# AG TS_Analyse
-	cd staticanalysis/directives;$(AG) $(AG_OPTS) --self TS_Analyse.ag;cd ../..
+	cd StaticAnalysis/Directives;$(AG) $(AG_OPTS) --self TS_Analyse.ag;cd ../..
 
-staticanalysis/directives/TS_Apply.hs : \
-        staticanalysis/directives/TS_Syntax.ag \
-        staticanalysis/directives/TS_Collect.ag \
-        staticanalysis/directives/TS_Apply.ag \
-        staticanalysis/directives/TS_CoreSyntax.ag \
-        syntax/UHA_Syntax.ag \
+StaticAnalysis/Directives/TS_Apply.hs : \
+        StaticAnalysis/Directives/TS_Syntax.ag \
+        StaticAnalysis/Directives/TS_Collect.ag \
+        StaticAnalysis/Directives/TS_Apply.ag \
+        StaticAnalysis/Directives/TS_CoreSyntax.ag \
+        Syntax/UHA_Syntax.ag \
 	# AG TS_Syntax
-	cd staticanalysis/directives;$(AG) -mscf TS_Apply.ag;cd ../..
+	cd StaticAnalysis/Directives;$(AG) -mscf TS_Apply.ag;cd ../..
 
-staticanalysis/directives/TS_CoreSyntax.hs : \
-	staticanalysis/directives/TS_CoreSyntax.ag \
+StaticAnalysis/Directives/TS_CoreSyntax.hs : \
+	StaticAnalysis/Directives/TS_CoreSyntax.ag \
 	# AG TS_CoreSyntax
-	cd staticanalysis/directives;$(AG) -md TS_CoreSyntax.ag;cd ../..
+	cd StaticAnalysis/Directives;$(AG) -md TS_CoreSyntax.ag;cd ../..
 
-staticanalysis/directives/TS_ToCore.hs : \
-        staticanalysis/directives/TS_Syntax.ag \
-        staticanalysis/directives/TS_Collect.ag \
-        staticanalysis/directives/TS_ToCore.ag \
-        syntax/UHA_Syntax.ag \
-        syntax/UHA_OneLine.ag 
+StaticAnalysis/Directives/TS_ToCore.hs : \
+        StaticAnalysis/Directives/TS_Syntax.ag \
+        StaticAnalysis/Directives/TS_Collect.ag \
+        StaticAnalysis/Directives/TS_ToCore.ag \
+        Syntax/UHA_Syntax.ag \
+        Syntax/UHA_OneLine.ag 
 	# AG TS_Syntax
-	cd staticanalysis/directives;$(AG) -mscrf --self TS_ToCore.ag;cd ../..
+	cd StaticAnalysis/Directives;$(AG) -mscrf --self TS_ToCore.ag;cd ../..
                         
 endif
 
