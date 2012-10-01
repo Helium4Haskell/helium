@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module DerivingShow
+module CodeGeneration.DerivingShow
     ( dataShowFunction
     , typeShowFunction
     , dataDictionary
@@ -15,7 +15,7 @@ module DerivingShow
 
 import qualified Syntax.UHA_Syntax as UHA
 import Syntax.UHA_Utils
-import CoreUtils
+import CodeGeneration.CoreUtils
 import Lvm.Core.Expr
 import Lvm.Core.Utils
 import Lvm.Common.Id

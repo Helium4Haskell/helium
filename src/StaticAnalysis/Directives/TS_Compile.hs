@@ -13,7 +13,7 @@
 module TS_Compile where
 
 import TS_CoreSyntax
-import ImportEnvironment
+import ModuleSystem.ImportEnvironment
 import TS_ToCore      (typingStrategyToCore)
 import System.Exit         (exitWith, ExitCode(..) )
 import System.Directory      (doesFileExist)
@@ -24,7 +24,7 @@ import HeliumMessages (sortAndShowMessages)
 import Control.Monad          (unless, when)
 import qualified Main.Args as Args
 import Parser.ParseMessage ()
-import CoreUtils
+import CodeGeneration.CoreUtils
 import Lvm.Core.Expr
 
 readTypingStrategiesFromFile :: [Args.Option] -> String -> ImportEnvironment -> 

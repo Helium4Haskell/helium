@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module PatternMatch(patternToCore, patternsToCore, nextClauseId, freshIds) where
+module CodeGeneration.PatternMatch(patternToCore, patternsToCore, nextClauseId, freshIds) where
 
 import qualified Lvm.Core.Expr as Core
 import Syntax.UHA_Syntax
@@ -15,7 +15,7 @@ import Syntax.UHA_Range
 import Lvm.Common.Id
 import Data.Char
 import Utils.Utils
-import CoreUtils
+import CodeGeneration.CoreUtils
 
 patternsToCore :: [(Id, Pattern)] -> Core.Expr -> Core.Expr
 patternsToCore nps continue = fst (patternsToCore' nps continue 0)

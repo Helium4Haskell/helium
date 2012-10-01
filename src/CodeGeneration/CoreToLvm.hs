@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module CoreToLvm ( coreToLvm ) where
+module CodeGeneration.CoreToLvm ( coreToLvm ) where
 
 import Lvm.Common.Id  (newNameSupply)
 import Lvm.Core.ToAsm (coreToAsm)         -- enriched lambda expressions (Core) to Asm

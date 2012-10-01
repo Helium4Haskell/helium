@@ -11,7 +11,7 @@ module Main.PhaseTypeInferencer (phaseTypeInferencer) where
 import Main.CompileUtils
 import Warnings(Warning)
 import TypeInferencing(typeInferencing)
-import DictionaryEnvironment (DictionaryEnvironment)
+import ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
 --import UHA_Syntax
 import TypeErrors
 import Information (showInformation)

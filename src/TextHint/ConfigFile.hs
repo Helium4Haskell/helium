@@ -1,4 +1,4 @@
-module ConfigFile (Config, readConfig) where
+module TextHint.ConfigFile (Config, readConfig) where
 
 import Data.Char
 --  import Control.Monad

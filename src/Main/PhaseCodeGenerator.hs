@@ -10,7 +10,7 @@ module Main.PhaseCodeGenerator(phaseCodeGenerator) where
 
 import Lvm.Core.Expr(CoreModule)
 import Main.CompileUtils
-import CoreToLvm(coreToLvm)
+import CodeGeneration.CoreToLvm(coreToLvm)
 
 phaseCodeGenerator :: String -> CoreModule -> [Option] -> IO ()
 phaseCodeGenerator fullName coreModule options = do

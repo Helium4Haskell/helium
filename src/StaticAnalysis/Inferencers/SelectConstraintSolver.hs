@@ -15,7 +15,7 @@ module SelectConstraintSolver (selectConstraintSolver) where
 import Main.Args (Option(..))
 import ConstraintInfo
 import TypeConstraints
-import ImportEnvironment (ImportEnvironment, getSiblings)
+import ModuleSystem.ImportEnvironment (ImportEnvironment, getSiblings)
 import ListOfHeuristics (listOfHeuristics)
 import Top.Types
 import Top.Solver

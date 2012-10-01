@@ -40,7 +40,7 @@ import Main.Args
 import qualified Data.Map as M
 import TypeConstraints
 import Utils.Utils (internalError)
-import ImportEnvironment hiding (setTypeSynonyms)
+import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
 import KindErrors
 import Char (isLower)
 import BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, combine, single, topSort) 

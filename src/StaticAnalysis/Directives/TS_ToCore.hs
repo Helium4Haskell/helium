@@ -5,7 +5,7 @@ module TS_ToCore where
 
 import TS_Syntax
 import TS_CoreSyntax
-import ImportEnvironment
+import ModuleSystem.ImportEnvironment
 import Messages
 import Top.Types
 import ConstraintInfo

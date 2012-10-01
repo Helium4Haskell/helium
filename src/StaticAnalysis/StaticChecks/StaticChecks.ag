@@ -46,9 +46,9 @@ import Messages
 import List
 import Utils.Utils ( internalError, minInt, maxInt )
 import TypeConversion
-import DerivingShow
+import CodeGeneration.DerivingShow
 import qualified Data.Map as M
-import ImportEnvironment
+import ModuleSystem.ImportEnvironment
 import Parser.OperatorTable
 import Char ( isUpper )
 }

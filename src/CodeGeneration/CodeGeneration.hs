@@ -1,13 +1,13 @@
 
 
 -- UUAGC 0.9.40.3 (CodeGeneration.ag)
-module CodeGeneration where
+module CodeGeneration.CodeGeneration where
 
 import Syntax.UHA_Syntax
 import Syntax.UHA_Utils
 import Syntax.UHA_Range 
-import ImportEnvironment
-import DictionaryEnvironment
+import ModuleSystem.ImportEnvironment
+import ModuleSystem.DictionaryEnvironment
 import qualified Data.Map as M
 import TypeConversion
 import Char (ord)
@@ -18,12 +18,12 @@ import Utils.Utils(internalError)
 
 import Top.Types
 
-import PatternMatch
-import DerivingShow
-import DerivingEq
+import CodeGeneration.PatternMatch
+import qualified CodeGeneration.DerivingShow as DerivingShow
+import qualified CodeGeneration.DerivingEq as DerivingEq
 
 -- Semi-Daan
-import CoreUtils
+import CodeGeneration.CoreUtils
 
 -- Daan
 import qualified Lvm.Core.Expr as Core
@@ -81,7 +81,7 @@ insertedMain toplevelTypes =
                         var name
                     | otherwise ->
                         var "$primPutStrLn" `app_` 
-                            (showFunctionOfType True (makeTypeFromTp tp) `app_` 
+                            (DerivingShow.showFunctionOfType True (makeTypeFromTp tp) `app_` 
                                 var name)
                     where                        
                         (qs, tp) = split (snd (instantiate 123456789 tpScheme))

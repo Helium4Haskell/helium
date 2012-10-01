@@ -21,7 +21,7 @@ import List
 import Utils.Utils (internalError)
 import Messages
 import TypeErrors
-import ImportEnvironment
+import ModuleSystem.ImportEnvironment
 import BindingGroupAnalysis (Assumptions, combine, noAssumptions)
 import Parser.OperatorTable (OperatorTable)
 import Parser.Parser (exp_)

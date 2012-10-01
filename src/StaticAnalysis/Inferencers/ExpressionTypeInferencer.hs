@@ -11,7 +11,7 @@
 module ExpressionTypeInferencer (expressionTypeInferencer) where
 
 import TypeInferencing (sem_Module)
-import ImportEnvironment
+import ModuleSystem.ImportEnvironment
 import BindingGroupAnalysis (Assumptions)
 import TypeErrors
 import Top.Types

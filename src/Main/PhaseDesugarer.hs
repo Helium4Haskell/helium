@@ -14,9 +14,9 @@ import Lvm.Core.Expr(CoreModule, CoreDecl)
 import Lvm.Core.RemoveDead( coreRemoveDead ) -- remove dead (import) declarations
 import Syntax.UHA_Syntax(Name(..), MaybeName(..))
 import Syntax.UHA_Range(noRange)
-import ImportEnvironment()
-import DictionaryEnvironment (DictionaryEnvironment)
-import qualified CodeGeneration(sem_Module)
+import ModuleSystem.ImportEnvironment()
+import ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
+import qualified CodeGeneration.CodeGeneration as CodeGeneration
 
 phaseDesugarer :: DictionaryEnvironment -> 
                   String -> Module -> [CoreDecl] -> 

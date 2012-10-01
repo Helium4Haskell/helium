@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module DictionaryEnvironment 
+module ModuleSystem.DictionaryEnvironment 
    ( DictionaryEnvironment, DictionaryTree(..) 
    , emptyDictionaryEnvironment, addForDeclaration, addForVariable
    , getPredicateForDecl, getDictionaryTrees

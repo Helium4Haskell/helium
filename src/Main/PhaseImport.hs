@@ -18,8 +18,8 @@ import Syntax.UHA_Range(noRange)
 import Lvm.Path(searchPath)
 import Lvm.Import(lvmImportDecls)
 import Lvm.Common.Id(stringFromId)
-import CoreToImportEnv(getImportEnvironment)
-import qualified ExtractImportDecls(sem_Module)
+import ModuleSystem.CoreToImportEnv(getImportEnvironment)
+import qualified ModuleSystem.ExtractImportDecls as ExtractImportDecls
 import Data.List(isPrefixOf)
 
 phaseImport :: String -> Module -> [String] -> [Option] -> 

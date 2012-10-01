@@ -25,7 +25,7 @@ INCLUDE "../../syntax/UHA_Syntax.ag"
 imports {
 import TS_Syntax
 import TS_CoreSyntax
-import ImportEnvironment
+import ModuleSystem.ImportEnvironment
 import Messages
 import Top.Types
 import ConstraintInfo

@@ -15,7 +15,7 @@ import Syntax.UHA_Utils (nameFromString)
 import Syntax.UHA_Range (noRange)
 import Messages
 import TS_Messages
-import ImportEnvironment hiding (setTypeSynonyms)
+import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
 import ExpressionTypeInferencer (expressionTypeInferencer)
 import Utils.Utils (internalError)
 import qualified Syntax.UHA_Pretty as PP

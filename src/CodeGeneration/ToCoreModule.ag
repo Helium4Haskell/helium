@@ -50,7 +50,7 @@ insertedMain toplevelTypes =
                         var name
                     | otherwise ->
                         var "$primPutStrLn" `app_` 
-                            (showFunctionOfType True (makeTypeFromTp tp) `app_` 
+                            (DerivingShow.showFunctionOfType True (makeTypeFromTp tp) `app_` 
                                 var name)
                     where                        
                         (qs, tp) = split (snd (instantiate 123456789 tpScheme))

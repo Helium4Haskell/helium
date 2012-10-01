@@ -51,7 +51,7 @@ status :
 	@echo "*******************************************************************"
 
 HC	= @WithHc@
-IFACES	= $(LVMLIBDIR):./StaticAnalysis/Miscellaneous:./StaticAnalysis/Inferencers:./StaticAnalysis/Directives:./StaticAnalysis/StaticChecks:./StaticAnalysis/Heuristics:./StaticAnalysis/Messages:./CodeGeneration:./ModuleSystem:./TextHint
+IFACES	= $(LVMLIBDIR):./StaticAnalysis/Miscellaneous:./StaticAnalysis/Inferencers:./StaticAnalysis/Directives:./StaticAnalysis/StaticChecks:./StaticAnalysis/Heuristics:./StaticAnalysis/Messages
 GHCWARN = -Wall
 HC_OPTS = --make $(GHCWARN) -odir $(OUTDIR) -hidir $(OUTDIR) -i$(IFACES) $(EXTRA_HC_OPTS)
 
@@ -184,7 +184,7 @@ CodeGeneration/CodeGeneration.hs : \
 		Syntax/UHA_Syntax.ag CodeGeneration/ToCoreModule.ag CodeGeneration/ToCoreDecl.ag \
 		CodeGeneration/ToCoreExpr.ag CodeGeneration/ToCorePat.ag CodeGeneration/ToCoreName.ag
 	# AG CodeGeneration
-	cd CodeGeneration;$(AG) $(AG_OPTS) --self CodeGeneration.ag;cd ..
+	cd CodeGeneration;$(AG) $(AG_OPTS) --self --module=CodeGeneration.CodeGeneration CodeGeneration.ag;cd ..
 
 Syntax/UHA_Syntax.hs : Syntax/UHA_Syntax.ag
 	# AG UHA_Syntax
@@ -193,7 +193,7 @@ Syntax/UHA_Syntax.hs : Syntax/UHA_Syntax.ag
 ModuleSystem/ExtractImportDecls.hs : \
 		ModuleSystem/ExtractImportDecls.ag CodeGeneration/ToCoreName.ag Syntax/UHA_Syntax.ag
 	# AG ExtractImportDecls
-	cd ModuleSystem;$(AG) $(AG_OPTS) --self ExtractImportDecls.ag;cd ..
+	cd ModuleSystem;$(AG) $(AG_OPTS) --self --module=ModuleSystem.ExtractImportDecls ExtractImportDecls.ag;cd ..
         
 StaticAnalysis/Directives/TS_Syntax.hs : \
 	StaticAnalysis/Directives/TS_Syntax.ag

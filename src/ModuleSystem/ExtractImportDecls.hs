@@ -1,7 +1,7 @@
 
 
 -- UUAGC 0.9.40.3 (ExtractImportDecls.ag)
-module ExtractImportDecls where
+module ModuleSystem.ExtractImportDecls where
 
 import Syntax.UHA_Syntax
 import Syntax.UHA_Utils

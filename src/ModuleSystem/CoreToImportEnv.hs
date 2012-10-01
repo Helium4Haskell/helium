@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module CoreToImportEnv(getImportEnvironment) where
+module ModuleSystem.CoreToImportEnv(getImportEnvironment) where
 
 import Lvm.Core.Expr
 import Lvm.Core.Utils
@@ -15,7 +15,7 @@ import TypeConversion
 import Parser.ParseLibrary
 import Parser.Lexer(lexer)
 import Parser.Parser(type_, contextAndType)
-import ImportEnvironment
+import ModuleSystem.ImportEnvironment
 import Syntax.UHA_Utils
 import Lvm.Common.Id
 import Syntax.UHA_Syntax

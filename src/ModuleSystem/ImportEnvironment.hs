@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module ImportEnvironment where
+module ModuleSystem.ImportEnvironment where
 
 import qualified Data.Map as M
 import Utils.Utils (internalError)

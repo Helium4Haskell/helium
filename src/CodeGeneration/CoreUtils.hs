@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module CoreUtils
+module CodeGeneration.CoreUtils
     (   custom, customStrategy
     ,   stringToCore, coreList
     ,   let_, if_, app_, letrec_

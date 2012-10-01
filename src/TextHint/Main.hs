@@ -25,10 +25,10 @@ import System.IO.Unsafe ( unsafePerformIO )
 import System.Environment(getEnv, getArgs)
 import System.Process(system)
 import System.Exit(exitWith, ExitCode(..))
-import OSSpecific(slash)
+import Utils.OSSpecific(slash)
 import System.Directory
-import ConfigFile(Config, readConfig)
-import Args
+import TextHint.ConfigFile(Config, readConfig)
+import Main.Args
 
 -- Constants for configuration files
 configFilename = ".hint.conf" 

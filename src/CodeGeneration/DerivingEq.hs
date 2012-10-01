@@ -6,11 +6,11 @@
     Portability :  portable
 -}
 
-module DerivingEq(dataDictionary) where
+module CodeGeneration.DerivingEq(dataDictionary) where
 
 import qualified Syntax.UHA_Syntax as UHA
 import Syntax.UHA_Utils
-import CoreUtils
+import CodeGeneration.CoreUtils
 import Lvm.Core.Expr
 import Lvm.Core.Utils
 import Lvm.Common.Id

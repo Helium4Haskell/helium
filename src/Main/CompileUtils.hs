@@ -12,7 +12,7 @@ module Main.CompileUtils
     , splitFilePath, combinePathAndFile
     , when, unless
     , exitWith, ExitCode(..), getArgs
-    , module ImportEnvironment
+    , module ModuleSystem.ImportEnvironment
     , Module(..)
     ) where
 
@@ -24,7 +24,7 @@ import Utils.Utils(splitFilePath, combinePathAndFile)
 import System.Exit(exitWith, ExitCode(..))
 import System.Environment(getArgs)
 import Utils.Logger
-import ImportEnvironment
+import ModuleSystem.ImportEnvironment
 import Syntax.UHA_Syntax(Module(..))
 import Data.Maybe
 import Lvm.Path(searchPathMaybe)
