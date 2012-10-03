@@ -1,4 +1,4 @@
-module RepairSystem (repairSystem) where
+module StaticAnalysis.Heuristics.RepairSystem (repairSystem) where
 
 import Top.Types
 import Top.States.BasicState (printMessage)

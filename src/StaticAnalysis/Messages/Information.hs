@@ -1,9 +1,9 @@
-module Information where
+module StaticAnalysis.Messages.Information where
 
 import Top.Types
 import Main.CompileUtils
 import Parser.OperatorTable
-import Messages hiding (Constructor)
+import StaticAnalysis.Messages.Messages hiding (Constructor)
 import Syntax.UHA_Syntax hiding (Fixity)
 import Syntax.UHA_Utils
 import Syntax.UHA_Range

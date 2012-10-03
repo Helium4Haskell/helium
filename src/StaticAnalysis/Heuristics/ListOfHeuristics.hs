@@ -9,19 +9,19 @@
     A list of all type graph heuristics that is used.
 -}
 
-module ListOfHeuristics (listOfHeuristics) where
+module StaticAnalysis.Heuristics.ListOfHeuristics (listOfHeuristics) where
 
 import Main.Args (Option(..))
 import StaticAnalysis.Miscellaneous.ConstraintInfo
-import HeuristicsInfo () -- instances
+import StaticAnalysis.Heuristics.HeuristicsInfo () -- instances
 import Top.Implementation.TypeGraph.Heuristic
 import Top.Implementation.TypeGraph.DefaultHeuristics
 -- import RepairSystem (repairSystem)
 import Top.Implementation.TypeGraph.ClassMonadic
-import RepairHeuristics
-import UnifierHeuristics
-import OnlyResultHeuristics
-import TieBreakerHeuristics
+import StaticAnalysis.Heuristics.RepairHeuristics
+import StaticAnalysis.Heuristics.UnifierHeuristics
+import StaticAnalysis.Heuristics.OnlyResultHeuristics
+import StaticAnalysis.Heuristics.TieBreakerHeuristics
 
 -- temporary
 import Top.Implementation.TypeGraph.Path

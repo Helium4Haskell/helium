@@ -14,7 +14,7 @@ import qualified Data.Map as M
 import StaticAnalysis.Miscellaneous.TypeConstraints
 import Utils.Utils (internalError)
 import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
-import KindErrors
+import StaticAnalysis.Messages.KindErrors
 import Char (isLower)
 import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, combine, single, topSort) 
 

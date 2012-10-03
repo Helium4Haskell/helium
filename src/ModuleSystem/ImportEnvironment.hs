@@ -14,8 +14,8 @@ import Syntax.UHA_Syntax -- (Name)
 import Syntax.UHA_Utils
 import Top.Types
 import Parser.OperatorTable
-import Messages () -- instance Show Name
-import RepairHeuristics (Siblings)
+import StaticAnalysis.Messages.Messages () -- instance Show Name
+import StaticAnalysis.Heuristics.RepairHeuristics (Siblings)
 import StaticAnalysis.Directives.TS_CoreSyntax
 import Data.List 
 import Data.Maybe (catMaybes)

@@ -9,8 +9,8 @@ import StaticAnalysis.Miscellaneous.ConstraintInfo
 --import Top.Types
 import List
 import Utils.Utils (internalError)
-import Messages
-import TypeErrors
+import StaticAnalysis.Messages.Messages
+import StaticAnalysis.Messages.TypeErrors
 import ModuleSystem.ImportEnvironment
 import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions, combine, noAssumptions)
 import Parser.OperatorTable (OperatorTable)

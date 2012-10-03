@@ -9,12 +9,12 @@
 module Main.PhaseTypeInferencer (phaseTypeInferencer) where
 
 import Main.CompileUtils
-import Warnings(Warning)
+import StaticAnalysis.Messages.Warnings(Warning)
 import StaticAnalysis.Inferencers.TypeInferencing(typeInferencing)
 import ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
 --import UHA_Syntax
-import TypeErrors
-import Information (showInformation)
+import StaticAnalysis.Messages.TypeErrors
+import StaticAnalysis.Messages.Information (showInformation)
 import System.FilePath.Posix
 
 phaseTypeInferencer :: 

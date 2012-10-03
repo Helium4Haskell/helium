@@ -81,9 +81,9 @@ import Top.Types
 import StaticAnalysis.Miscellaneous.TypeConversion
 
 -- error messages and warnings
-import Messages
-import TypeErrors
-import Warnings
+import StaticAnalysis.Messages.Messages
+import StaticAnalysis.Messages.TypeErrors
+import StaticAnalysis.Messages.Warnings
 import StaticAnalysis.Miscellaneous.ConstraintInfo
 import StaticAnalysis.Miscellaneous.DoublyLinkedTree
 import StaticAnalysis.Miscellaneous.UHA_Source
@@ -95,7 +95,7 @@ import Top.Ordering.Tree
 -- constraint solving
 import StaticAnalysis.Inferencers.SelectConstraintSolver (selectConstraintSolver)
 import Top.Solver (SolveResult(..), LogEntries)
-import HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
+import StaticAnalysis.Heuristics.HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
 import StaticAnalysis.Inferencers.BindingGroupAnalysis
 
 -- UHA syntax

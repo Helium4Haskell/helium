@@ -18,6 +18,7 @@ HELIUMBINDIR = ../bin
 LVMLIBDIR  = ../../lvm/src/lib
 LVMRUNTIMEDIR  = ../../lvm/src/runtime
 OUTDIR = ../out
+DOCDIR = ../out
 
 #the main program you want to generate
 MAIN	= helium
@@ -26,6 +27,7 @@ STRIP   = @STRIP@
 EXE	= @EXEEXT@
 INSTALL = @INSTALL@
 MKDIR   = ../mkinstalldirs
+HLINT   = hlint
 
 # Installation paths
 prefix      = @prefix@
@@ -51,7 +53,7 @@ status :
 	@echo "*******************************************************************"
 
 HC	= @WithHc@
-IFACES	= $(LVMLIBDIR):./StaticAnalysis/StaticChecks:./StaticAnalysis/Heuristics:./StaticAnalysis/Messages
+IFACES	= $(LVMLIBDIR)
 GHCWARN = -Wall
 HC_OPTS = --make $(GHCWARN) -odir $(OUTDIR) -hidir $(OUTDIR) -i$(IFACES) $(EXTRA_HC_OPTS)
 
@@ -153,7 +155,7 @@ StaticAnalysis/StaticChecks/StaticChecks.hs : \
 		Syntax/UHA_Syntax.ag 
                 
 	# AG StaticAnalysis
-	cd StaticAnalysis/StaticChecks;$(AG) $(AG_OPTS) --self StaticChecks.ag;cd ../..
+	cd StaticAnalysis/StaticChecks;$(AG) $(AG_OPTS) --self --module=StaticAnalysis.StaticChecks.StaticChecks StaticChecks.ag;cd ../..
 
 StaticAnalysis/Inferencers/TypeInferencing.hs : \
 		StaticAnalysis/Inferencers/TypeInferencing.ag \
@@ -232,6 +234,9 @@ StaticAnalysis/Directives/TS_ToCore.hs : \
 	cd StaticAnalysis/Directives;$(AG) -mscrf --self --module=StaticAnalysis.Directives.TS_ToCore TS_ToCore.ag;cd ../..
                         
 endif
+
+report:
+	$(HLINT) --report=$(DOCDIR)/report.html .
 
 # Standard suffix rules
 .o.hi:

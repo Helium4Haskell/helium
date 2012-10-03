@@ -7,9 +7,9 @@ import Syntax.UHA_Utils
 import Syntax.UHA_Syntax 
 import Syntax.UHA_Range
 import Parser.OperatorTable
-import Char
+import Data.Char
 import Utils.Utils
-import Messages
+import StaticAnalysis.Messages.Messages
 import qualified Data.Map as M
 
 

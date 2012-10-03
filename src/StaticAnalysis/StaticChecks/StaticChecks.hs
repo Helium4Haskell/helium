@@ -1,7 +1,7 @@
 
 
 -- UUAGC 0.9.40.3 (StaticChecks.ag)
-module StaticChecks where
+module StaticAnalysis.StaticChecks.StaticChecks where
 
 import Utils.Similarity ( similar )
 import Main.Args
@@ -9,17 +9,17 @@ import Syntax.UHA_Syntax
 import Syntax.UHA_Utils
 import Syntax.UHA_Range
 import Top.Types
-import StaticErrors
-import Warnings
-import Messages
-import List
+import StaticAnalysis.Messages.StaticErrors
+import StaticAnalysis.Messages.Warnings
+import StaticAnalysis.Messages.Messages
+import Data.List
 import Utils.Utils ( internalError, minInt, maxInt )
 import StaticAnalysis.Miscellaneous.TypeConversion
 import CodeGeneration.DerivingShow
 import qualified Data.Map as M
 import ModuleSystem.ImportEnvironment
 import Parser.OperatorTable
-import Char ( isUpper )
+import Data.Char ( isUpper )
 
 -- filter undefined errors that are caused by the removal of a duplicate definition
 filterRemovedNames :: [(Name,Entity)] -> Error -> Bool

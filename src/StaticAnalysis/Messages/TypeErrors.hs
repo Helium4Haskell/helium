@@ -8,9 +8,9 @@
     Errors that are constructed during type inferece.
 -}
 
-module TypeErrors where
+module StaticAnalysis.Messages.TypeErrors where
 
-import Messages
+import StaticAnalysis.Messages.Messages
 import Top.Types
 import Data.List       (union, partition)
 import Syntax.UHA_Syntax (Range, Name)

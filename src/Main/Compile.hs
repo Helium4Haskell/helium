@@ -21,7 +21,7 @@ import Main.PhaseCodeGenerator
 import Main.CompileUtils
 import Utils.Utils
 import Data.IORef
-import StaticErrors(errorsLogCode)
+import StaticAnalysis.Messages.StaticErrors(errorsLogCode)
 
 compile :: String -> String -> [Option] -> [String] -> [String] -> IO ()
 compile basedir fullName options lvmPath doneModules =

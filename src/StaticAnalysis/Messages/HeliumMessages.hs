@@ -9,9 +9,9 @@
         (For instance, one could define another layout, or produce XML-like output).
 -}
 
-module HeliumMessages where
+module StaticAnalysis.Messages.HeliumMessages where
 
-import Messages 
+import StaticAnalysis.Messages.Messages 
 import Top.Types
 import qualified Text.PrettyPrint.Leijen as PPrint
 import qualified Utils.OneLiner as OneLiner

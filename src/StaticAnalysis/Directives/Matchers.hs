@@ -13,7 +13,7 @@
 module StaticAnalysis.Directives.Matchers where
 
 import Syntax.UHA_Syntax
-import Messages () -- instance Eq Name
+import StaticAnalysis.Messages.Messages () -- instance Eq Name
 
 -------------------------------------------------------------
 -- Expression

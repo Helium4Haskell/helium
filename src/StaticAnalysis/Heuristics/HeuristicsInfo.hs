@@ -10,20 +10,20 @@
 	each type constraint
 -}
 
-module HeuristicsInfo where
+module StaticAnalysis.Heuristics.HeuristicsInfo where
 
 import StaticAnalysis.Miscellaneous.ConstraintInfo
-import RepairHeuristics
-import TieBreakerHeuristics
-import OnlyResultHeuristics
-import UnifierHeuristics
+import StaticAnalysis.Heuristics.RepairHeuristics
+import StaticAnalysis.Heuristics.TieBreakerHeuristics
+import StaticAnalysis.Heuristics.OnlyResultHeuristics
+import StaticAnalysis.Heuristics.UnifierHeuristics
 import StaticAnalysis.Miscellaneous.DoublyLinkedTree
 import Utils.OneLiner
 import StaticAnalysis.Miscellaneous.UHA_Source
 import Syntax.UHA_Syntax
-import Messages
-import HeliumMessages ()
-import TypeErrors
+import StaticAnalysis.Messages.Messages
+import StaticAnalysis.Messages.HeliumMessages ()
+import StaticAnalysis.Messages.TypeErrors
 import Utils.Utils (internalError)
 import Top.Types
 import Top.Implementation.TypeGraph.Heuristic

@@ -9,13 +9,13 @@
         (the phase before type inference, as well as during type inference)
 -}
 
-module Warnings where
+module StaticAnalysis.Messages.Warnings where
 
 import Syntax.UHA_Range    (getNameRange, showRange, sortRanges)
 import Syntax.UHA_Syntax
 import Syntax.UHA_Utils
 import Top.Types
-import Messages
+import StaticAnalysis.Messages.Messages
 import Data.List    (intersperse)
 import qualified Syntax.UHA_Pretty as PP (sem_Pattern, sem_LeftHandSide, sem_Expression)
 

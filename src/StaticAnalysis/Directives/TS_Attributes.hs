@@ -14,7 +14,7 @@ module StaticAnalysis.Directives.TS_Attributes where
 
 import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions)
 import StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintSet, LocalInfo, assignedType, self)
-import Messages             (MessageBlock(..))
+import StaticAnalysis.Messages.Messages             (MessageBlock(..))
 import Top.Types            (Tp, toTpScheme)
 import Utils.OneLiner       (OneLineTree)
 import Syntax.UHA_Syntax    (Range) 

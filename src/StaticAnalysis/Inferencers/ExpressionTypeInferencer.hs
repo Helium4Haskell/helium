@@ -13,7 +13,7 @@ module StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInfere
 import StaticAnalysis.Inferencers.TypeInferencing (sem_Module)
 import ModuleSystem.ImportEnvironment
 import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions)
-import TypeErrors
+import StaticAnalysis.Messages.TypeErrors
 import Top.Types
 import qualified Data.Map as M
 import Syntax.UHA_Utils (nameFromString)

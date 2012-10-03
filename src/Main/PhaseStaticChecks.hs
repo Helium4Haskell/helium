@@ -9,12 +9,12 @@
 module Main.PhaseStaticChecks(phaseStaticChecks) where
 
 import Main.CompileUtils
-import Warnings(Warning)
-import qualified StaticChecks(sem_Module)
+import StaticAnalysis.Messages.Warnings(Warning)
+import qualified StaticAnalysis.StaticChecks.StaticChecks as StaticChecks
 import Syntax.UHA_Syntax (Name)
 import Top.Types (TpScheme)
-import StaticErrors
-import Information (showInformation)
+import StaticAnalysis.Messages.StaticErrors
+import StaticAnalysis.Messages.Information (showInformation)
 
 phaseStaticChecks :: 
    String -> Module -> [ImportEnvironment] -> [Option] -> 

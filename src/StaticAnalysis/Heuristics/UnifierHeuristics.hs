@@ -10,14 +10,14 @@
 	other. The type error messages will be more "symmetric".
 -}
 
-module UnifierHeuristics where
+module StaticAnalysis.Heuristics.UnifierHeuristics where
 
 import Top.Types
 import Top.Interface.TypeInference
 import Top.Implementation.TypeGraph.Basics
 import Top.Implementation.TypeGraph.ClassMonadic
 import Top.Implementation.TypeGraph.Heuristic
-import RepairHeuristics
+import StaticAnalysis.Heuristics.RepairHeuristics
 import StaticAnalysis.Miscellaneous.ConstraintInfo
 import Data.List (partition, sortBy)
 import Data.Maybe (isNothing, fromJust)

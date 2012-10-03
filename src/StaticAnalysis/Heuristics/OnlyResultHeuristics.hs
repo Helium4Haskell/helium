@@ -9,7 +9,7 @@
 	reported as incorrect if only the result type is reponsible for non-unifiability.
 -}
 
-module OnlyResultHeuristics where
+module StaticAnalysis.Heuristics.OnlyResultHeuristics where
 
 import Top.Implementation.TypeGraph.Heuristic
 import Top.Interface.TypeInference

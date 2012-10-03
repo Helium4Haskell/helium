@@ -13,10 +13,10 @@
 
 module StaticAnalysis.Directives.TS_Messages where
 
-import Messages
-import TypeErrors
+import StaticAnalysis.Messages.Messages
+import StaticAnalysis.Messages.TypeErrors
 import StaticAnalysis.Miscellaneous.ConstraintInfo
-import HeliumMessages () -- instance Show MessageLines
+import StaticAnalysis.Messages.HeliumMessages () -- instance Show MessageLines
 import Top.Types
 import Utils.Utils (commaList)
 import Syntax.UHA_Syntax

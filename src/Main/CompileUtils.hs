@@ -17,8 +17,8 @@ module Main.CompileUtils
     ) where
 
 import Main.Args(Option(..))
-import Messages(HasMessage)
-import HeliumMessages(sortAndShowMessages)
+import StaticAnalysis.Messages.Messages(HasMessage)
+import StaticAnalysis.Messages.HeliumMessages(sortAndShowMessages)
 import Control.Monad(when, unless)
 import Utils.Utils(splitFilePath, combinePathAndFile)
 import System.Exit(exitWith, ExitCode(..))

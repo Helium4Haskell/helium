@@ -8,12 +8,12 @@
     Error messages repoted by kind inference.
 -}
 
-module KindErrors where
+module StaticAnalysis.Messages.KindErrors where
 
 import Top.Types
 import Syntax.UHA_Syntax (Range, Type)
 import Text.PrettyPrint.Leijen (Doc)
-import Messages
+import StaticAnalysis.Messages.Messages
 import Data.List (union)
 import qualified Syntax.UHA_Pretty as PP
 import qualified Text.PrettyPrint.Leijen as PPrint

@@ -20,7 +20,7 @@ import System.Directory      (doesFileExist)
 import StaticAnalysis.Directives.TS_Parser      (parseTypingStrategies)
 import Parser.Lexer          (strategiesLexer)
 import StaticAnalysis.Directives.TS_Analyse     (analyseTypingStrategies)
-import HeliumMessages (sortAndShowMessages)
+import StaticAnalysis.Messages.HeliumMessages (sortAndShowMessages)
 import Control.Monad          (unless, when)
 import qualified Main.Args as Args
 import Parser.ParseMessage ()

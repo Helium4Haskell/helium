@@ -17,8 +17,8 @@ import Top.Ordering.Tree
 import Syntax.UHA_Syntax
 import StaticAnalysis.Miscellaneous.UHA_Source
 import Syntax.UHA_Range
-import TypeErrors
-import Messages
+import StaticAnalysis.Messages.TypeErrors
+import StaticAnalysis.Messages.Messages
 import StaticAnalysis.Miscellaneous.DoublyLinkedTree
 import StaticAnalysis.Miscellaneous.TypeConstraints
 import Top.Constraint.Information

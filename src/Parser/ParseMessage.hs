@@ -8,7 +8,7 @@
 
 module Parser.ParseMessage() where
 
-import Messages hiding (Message)
+import StaticAnalysis.Messages.Messages hiding (Message)
 import Syntax.UHA_Syntax(Range(..), Position(..))
 import qualified Utils.Texts as Texts
 

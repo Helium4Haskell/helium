@@ -9,7 +9,7 @@
     can be corrected.
 -}
 
-module RepairHeuristics where
+module StaticAnalysis.Heuristics.RepairHeuristics where
 
 import Top.Types
 import Top.Interface.TypeInference
@@ -20,8 +20,8 @@ import Top.Implementation.TypeGraph.Heuristic
 import Top.Implementation.TypeGraph.Basics
 import Top.Implementation.TypeGraph.ClassMonadic
 import Data.Maybe
-import Messages (showNumber, ordinal, prettyAndList)
-import OnlyResultHeuristics
+import StaticAnalysis.Messages.Messages (showNumber, ordinal, prettyAndList)
+import StaticAnalysis.Heuristics.OnlyResultHeuristics
 import Data.List
 import StaticAnalysis.Miscellaneous.UHA_Source
 

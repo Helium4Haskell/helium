@@ -17,7 +17,7 @@ module Parser.LexerMessage
 
 import Text.ParserCombinators.Parsec.Pos
 import Syntax.UHA_Syntax(Range(..), Position(..))
-import Messages
+import StaticAnalysis.Messages.Messages
 import qualified Utils.Texts as Texts
 
 instance HasMessage LexerError where

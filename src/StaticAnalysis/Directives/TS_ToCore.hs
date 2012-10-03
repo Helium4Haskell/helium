@@ -6,14 +6,14 @@ module StaticAnalysis.Directives.TS_ToCore where
 import StaticAnalysis.Directives.TS_Syntax
 import StaticAnalysis.Directives.TS_CoreSyntax
 import ModuleSystem.ImportEnvironment
-import Messages
+import StaticAnalysis.Messages.Messages
 import Top.Types
 import StaticAnalysis.Miscellaneous.ConstraintInfo
 import Syntax.UHA_Utils (getNameName, nameFromString)
 import qualified Syntax.UHA_OneLine as UHA_OneLine
 import StaticAnalysis.Miscellaneous.TypeConversion
 import Utils.Utils (internalError)
-import List
+import Data.List
 import Utils.OneLiner
 import StaticAnalysis.Directives.TS_Attributes
 import StaticAnalysis.Miscellaneous.TypeConstraints

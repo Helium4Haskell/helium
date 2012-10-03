@@ -10,10 +10,10 @@ import StaticAnalysis.Miscellaneous.TypeConstraints
 import StaticAnalysis.Miscellaneous.ConstraintInfo
 import StaticAnalysis.Directives.TS_Syntax
 import StaticAnalysis.Miscellaneous.TypeConversion
-import List
+import Data.List
 import Syntax.UHA_Utils (nameFromString)
 import Syntax.UHA_Range (noRange)
-import Messages
+import StaticAnalysis.Messages.Messages
 import StaticAnalysis.Directives.TS_Messages
 import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
 import StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)

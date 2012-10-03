@@ -16,7 +16,7 @@ import Main.Args (Option(..))
 import StaticAnalysis.Miscellaneous.ConstraintInfo
 import StaticAnalysis.Miscellaneous.TypeConstraints
 import ModuleSystem.ImportEnvironment (ImportEnvironment, getSiblings)
-import ListOfHeuristics (listOfHeuristics)
+import StaticAnalysis.Heuristics.ListOfHeuristics (listOfHeuristics)
 import Top.Types
 import Top.Solver
 import Top.Ordering.TreeWalk

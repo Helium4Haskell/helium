@@ -13,7 +13,7 @@ import StaticAnalysis.Inferencers.KindInferencing as KI
 -- import ImportEnvironment
 import qualified Data.Map as M
 import Top.Types
-import KindErrors
+import StaticAnalysis.Messages.KindErrors
 
 phaseKindInferencer :: ImportEnvironment -> Module -> [Option] -> Phase KindError ()
 phaseKindInferencer importEnvironment module_ options =

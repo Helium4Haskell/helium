@@ -10,7 +10,7 @@
     reported in the error messages such as types, ranges and code fragments.
 -}
 
-module Messages where
+module StaticAnalysis.Messages.Messages where
 
 import Syntax.UHA_Syntax
 import Syntax.UHA_Range
