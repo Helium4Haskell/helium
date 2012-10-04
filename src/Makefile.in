@@ -208,6 +208,7 @@ StaticAnalysis/Directives/TS_ToCore.hs : \
 endif
 
 report:
+	make cleanag # do not analyze output of AG files
 	$(HLINT) --report=$(DOCDIR)/report.html .
 
 # Clean	up

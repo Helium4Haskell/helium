@@ -12,11 +12,11 @@ module Main where
 
 import Data.Char
 import Data.List(isPrefixOf, isSuffixOf)
-import Control.Monad(when)
+import Control.Monad
 import System.IO(stdout, hFlush)
 import System(system, getEnv, getArgs, exitWith, ExitCode(..))  
 import OSSpecific(slash)
-import Directory
+import System.Directory
 
 data State = 
     State
@@ -88,9 +88,8 @@ loop state = do
             putStrLn "Expecting command after colon. Type :? for help"
             return state
         expression -> do
-            if null expression 
-                then return ()
-                else processExpression expression state
+            unless (null expression) $
+               processExpression expression state
             return state
     loop newState
   where
@@ -175,7 +174,7 @@ cmdLoadModule fileName state = do
 loadExistingModule :: String -> State -> IO State
 loadExistingModule fileName state = do
     let (path, baseName, _) = splitFilePath fileName
-    when (not (null path)) $
+    unless (null path) $
         setCurrentDirectory path
     let newState = state{ maybeModName = Just baseName, maybeFileName = Just fileName }
         moduleContents = expressionModule "()" newState

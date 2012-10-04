@@ -95,8 +95,8 @@ sourcePosToPosition sourcePos =
         (sourceLine sourcePos)
         (sourceColumn sourcePos)
 
-lexBACKQUOTEs p = between lexBACKQUOTE lexBACKQUOTE p
-brackets   p = between lexLBRACKET  lexRBRACKET  p
+lexBACKQUOTEs = between lexBACKQUOTE lexBACKQUOTE
+brackets = between lexLBRACKET  lexRBRACKET 
 
 commas  p = p `sepBy`  lexCOMMA
 commas1 p = p `sepBy1` lexCOMMA
@@ -209,8 +209,8 @@ semiSepTerm  p = p `sepEndBy`  lexSEMI
 semiOrInsertedSemiSepTerm1 p = p `sepEndBy1` (lexINSERTED_SEMI <|> lexSEMI)
 semiOrInsertedSemiSepTerm  p = p `sepEndBy`  (lexINSERTED_SEMI <|> lexSEMI)
 
-parens  p     = between lexLPAREN lexRPAREN p
-braces  p     = between lexLBRACE lexRBRACE p
+parens = between lexLPAREN lexRPAREN
+braces = between lexLBRACE lexRBRACE
 
 ----------------------------------------------------------------
 -- Basic parsers

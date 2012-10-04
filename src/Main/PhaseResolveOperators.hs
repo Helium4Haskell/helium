@@ -33,7 +33,7 @@ phaseResolveOperators moduleBeforeResolve importEnvs options = do
           
        [] ->
           do when (DumpUHA `elem` options) $
-                putStrLn $ show $ PP.sem_Module module_
+                print $ PP.sem_Module module_
     
              return (Right module_)
 

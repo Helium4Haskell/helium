@@ -54,13 +54,13 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options = do
        [] -> 
           do -- Dump information
              when (DumpInformationForAllModules `elem` options) $ 
-                putStrLn (show finalEnv)
+                print finalEnv
              when (HFullQualification `elem` options) $
                 writeFile (combinePathAndFile basedir (dropExtension $ takeFileName fullName) ++ ".fqn") 
                           (holmesShowImpEnv module_ finalEnv)
              when (  DumpInformationForThisModule `elem` options 
                   && DumpInformationForAllModules `notElem` options
                   ) 
-                  $ putStrLn (show (addToTypeEnvironment toplevelTypes localEnv))
+                  $ print (addToTypeEnvironment toplevelTypes localEnv)
                   
              return (Right (dictionaryEnv, finalEnv, toplevelTypes, warnings))

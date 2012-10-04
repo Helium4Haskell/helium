@@ -77,7 +77,7 @@ typeShowFunction (UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names
     { declName    = idFromString ("show" ++ getNameName name)
     , declAccess  = public
     , valueEnc    = Nothing
-    , valueValue  = foldr Lam (showFunctionOfType False type_) (map idFromName names)
+    , valueValue  = foldr (Lam . idFromName) (showFunctionOfType False type_) names
     , declCustoms = [ custom "type" typeString ] 
     }
 

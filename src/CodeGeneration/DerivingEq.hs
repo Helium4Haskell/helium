@@ -52,7 +52,7 @@ makeAlt constructor =
             --                  _ -> False
             (Match sndArg 
                 [ Alt (PatCon (ConId id) ws)
-                      ( if length types == 0 then Con (ConId (idFromString "True"))
+                      ( if null types then Con (ConId (idFromString "True"))
                         else
                             foldr1 andCore [ Ap (Ap (eqFunForType tp) (Var v)) (Var w)
                                            | (v, w, tp) <- zip3 vs ws types

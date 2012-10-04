@@ -31,7 +31,7 @@ phaseStaticChecks fullName module_ importEnvs options = do
     
        _:_ ->
           do when (DumpInformationForAllModules `elem` options) $
-                putStrLn (show (foldr combineImportEnvironments emptyEnvironment importEnvs))
+                print (foldr combineImportEnvironments emptyEnvironment importEnvs)
              
              -- display name information
              let combinedEnv = foldr combineImportEnvironments emptyEnvironment importEnvs

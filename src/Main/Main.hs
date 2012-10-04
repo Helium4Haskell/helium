@@ -47,13 +47,13 @@ main = do
         else do
             let filePlusHS = fullName ++ ".hs"
             filePlusHSExists <- doesFileExist filePlusHS
-            when (not filePlusHSExists) $ do
+            unless filePlusHSExists $ do
                 putStrLn $ "Can't find file " ++ show fullName ++ " or " ++ show filePlusHS
                 exitWith (ExitFailure 1)
             return filePlusHS
 
     -- Libraries must exist somewhere in the search path
-    mapM (checkExistence lvmPath) 
+    mapM_ (checkExistence lvmPath) 
         ["Prelude", "PreludePrim", "HeliumLang", "LvmLang", "LvmIO", "LvmException"]
 
 {-

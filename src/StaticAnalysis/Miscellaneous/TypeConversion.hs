@@ -21,7 +21,7 @@ import Top.Types
 -- conversion functions from and to UHA
 
 namesInTypes :: Types -> Names
-namesInTypes = foldr union [] . map namesInType
+namesInTypes = foldr (union . namesInType) []
 
 namesInType :: Type -> Names
 namesInType uhaType = case uhaType of

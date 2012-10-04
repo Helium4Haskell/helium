@@ -48,16 +48,15 @@ siblingFunctions siblings =
                  subPreds <- allSubstPredicates       -- Which predicates must also be satisfied?
                  case mtp of 
                     Nothing -> return Nothing
-                    Just contextTp                         
-                       | otherwise -> 
-                            do fits <- mapM (schemeFits contextTp subPreds) (map snd candidates)
-                               case [ s | (True, (s, _)) <- zip fits candidates ] of
-                                  [] -> return Nothing
-                                  siblings ->    -- TODO: put all siblings in the message
-                                     let siblingsTextual = orList siblings
-                                         hint = fixHint ("use "++siblingsTextual++" instead")
-                                      in return $ Just
-                                            (10,"Sibling(s) "++siblingsTextual++" instead of "++show name, [edge], hint info)
+                    Just contextTp  ->                       
+                       do fits <- mapM (schemeFits contextTp subPreds) (map snd candidates)
+                          case [ s | (True, (s, _)) <- zip fits candidates ] of
+                             [] -> return Nothing
+                             siblings ->    -- TODO: put all siblings in the message
+                                let siblingsTextual = orList siblings
+                                    hint = fixHint ("use "++siblingsTextual++" instead")
+                                in return $ Just
+                                       (10,"Sibling(s) "++siblingsTextual++" instead of "++show name, [edge], hint info)
                                   
        where
         orList :: [String] -> String
@@ -450,7 +449,7 @@ variableFunction =
               edges1 <- edgesFrom v1
               edges2 <- edgesFrom v2
               let f ((EdgeId v1 v2 _), _) = [v1,v2]
-                  special = concatMap f (filter (isEmptyInfixApplication . (\(_, info) -> info)) (edges1 ++ edges2)) \\ [v1,v2]
+                  special = concatMap f (filter (isEmptyInfixApplication . snd) (edges1 ++ edges2)) \\ [v1,v2]
               edges3 <- mapM edgesFrom special
               let isApplicationEdge = isJust . maybeApplicationEdge
                   application = any (\(_, info) -> isApplicationEdge info) (edges1 ++ edges2 ++ concat edges3)                                                               

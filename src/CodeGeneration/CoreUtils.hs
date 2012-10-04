@@ -86,8 +86,8 @@ cons x xs = Con (ConId consId) `app_` x `app_` xs
 nil :: Expr
 nil = Con (ConId nilId)
 
-( nilId : consId :  trueId :  guardId : []) = map idFromString $
-  "[]"  : ":"    : "True"  : "guard$" : []
+( nilId : consId :  trueId :  guardId : []) =
+   map idFromString ["[]", ":", "True", "guard$"]
 
 -- Function "stringToCore" converts a string to a Core expression
 stringToCore :: String -> Expr

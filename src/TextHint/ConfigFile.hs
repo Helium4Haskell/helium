@@ -50,7 +50,7 @@ file = do lines <- many line
 readConfig :: SourceName -> IO Config
 readConfig name = do{ result <- parseFromFile file name
                     ; case (result) of
-                       Left err  -> do{ putStrLn (show err)
+                       Left err  -> do{ print err
                                       ; putStrLn "Error"
                                       ; return []
                                       }

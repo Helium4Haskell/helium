@@ -18,7 +18,7 @@ module Main where
 
 import Data.Char
 import Data.List(isInfixOf, isPrefixOf, isSuffixOf)
-import Control.Monad(when)
+import Control.Monad
 import System.IO(stdout, hFlush)
 import Data.IORef       ( IORef, readIORef, newIORef, writeIORef )
 import System.IO.Unsafe ( unsafePerformIO )
@@ -232,9 +232,7 @@ cmdShowType expression state = do
     (success, output) <- compileInternalModule "-i" state
     if success then do
         let typeLine = filter (interpreterMain `isPrefixOf`) (map trim (lines output))
-        if null typeLine then
-            return ()
-          else 
+        unless (null typeLine) $ do
             let typeString = 
                       trim
                     . dropWhile (== ':')
@@ -242,8 +240,7 @@ cmdShowType expression state = do
                     . drop (length interpreterMain) 
                     . head
                     $ typeLine
-            in do 
-                  putStrLn (expression ++ " :: " ++ typeString)
+            putStrLn (expression ++ " :: " ++ typeString)
       else
         putStr (removeEvidence output)
     return state
@@ -271,7 +268,7 @@ cmdLoadModule fileName state = do
 loadExistingModule :: String -> State -> IO State
 loadExistingModule fileName state = do
     let (path, baseName, _) = splitFilePath fileName
-    when (not (null path)) $
+    unless (null path) $
         setCurrentDirectory path
     let newState = state{ maybeModName = Just baseName, maybeFileName = Just fileName }
         moduleContents = expressionModule "()" newState

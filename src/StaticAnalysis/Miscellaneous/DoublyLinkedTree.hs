@@ -20,10 +20,10 @@ data DoublyLinkedTree attributes =
                       }
                       
 root :: a -> [DoublyLinkedTree a] -> DoublyLinkedTree a
-root a ts = DoublyLinkedTree Nothing a ts
+root = DoublyLinkedTree Nothing
 
 node :: DoublyLinkedTree a -> a -> [DoublyLinkedTree a] -> DoublyLinkedTree a
-node p a cs = DoublyLinkedTree (Just p) a cs                        
+node p = DoublyLinkedTree (Just p)                      
 
 selectChild ::  Int -> DoublyLinkedTree a -> DoublyLinkedTree a
 selectChild i tree = 

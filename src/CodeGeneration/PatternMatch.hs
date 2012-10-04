@@ -206,8 +206,7 @@ nextClauseAlternative :: Core.Alt
 nextClauseAlternative =
     Core.Alt Core.PatDefault (Core.Var nextClauseId)
 
-( wildcardId :  nextClauseId : [] ) = map idFromString $
-  "_"        : "nextClause$" : [] 
+( wildcardId :  nextClauseId : [] ) = map idFromString ["_", "nextClause$"] 
 
 case_ :: Id -> [Core.Alt] -> Core.Expr
 case_ id alts = 

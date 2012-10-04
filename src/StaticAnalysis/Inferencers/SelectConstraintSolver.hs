@@ -1,4 +1,4 @@
-{-# OPTIONS -fglasgow-exts -XUndecidableInstances -XOverlappingInstances #-}
+{-# LANGUAGE UndecidableInstances, OverlappingInstances #-}
 
 {-| Module      :  SelectConstraintSolver
     License     :  GPL
