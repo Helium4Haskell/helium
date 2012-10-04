@@ -69,7 +69,7 @@ compiler: $(AGSOURCES)
 	@echo "****************************************************"
 	@echo "  Helium: the Helium compiler"
 	@echo "****************************************************"
-	$(HC)	-o $(HELIUMBINDIR)/$(MAIN)$(EXE) $(HC_OPTS) main/Main.hs
+	$(HC)	-o $(HELIUMBINDIR)/$(MAIN)$(EXE) $(HC_OPTS) Main/Main.hs
 	$(STRIP) $(HELIUMBINDIR)/$(MAIN)$(EXE)
 
 all: ag compiler libraries texthint
