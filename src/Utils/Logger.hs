@@ -13,7 +13,7 @@ import Control.Concurrent
 import Control.Monad
 import System.Environment
 import Data.Char
--- import List
+import Data.Maybe
 import Main.Args
 import System.IO
 import Main.Version
@@ -47,7 +47,7 @@ loggerESCAPABLES :: String
 loggerESCAPABLES     = [loggerADMINSEPARATOR, escapeChar]
 
 alertESCAPABLES :: String
-alertESCAPABLES     = ['\"']
+alertESCAPABLES     = "\""
 
 debug :: String -> Bool -> IO ()
 debug s loggerDEBUGMODE = when loggerDEBUGMODE (putStrLn s)
@@ -55,9 +55,9 @@ debug s loggerDEBUGMODE = when loggerDEBUGMODE (putStrLn s)
 -- Make sure that options that contain a space are quoted with double quotes.
 -- And all double quotes in the options are escaped.
 unwordsQuoted :: [String] -> String
-unwordsQuoted words = unwords (map (quote . (escape alertESCAPABLES)) words)
+unwordsQuoted words = unwords (map (quote . escape alertESCAPABLES) words)
  where
-   quote s   = if (' ' `elem` s) then "\"" ++ s ++ "\"" else s -- Not efficient, but balanced.
+   quote s = if ' ' `elem` s then "\"" ++ s ++ "\"" else s -- Not efficient, but balanced.
 
 ------------------------------------------------------
 -- Normalization/escaping functions
@@ -69,18 +69,18 @@ normalizeName name = let
                        if null newname then loggerDEFAULTNAME else newname
 
 -- Escapes all characters from the list escapables
-escape :: [Char] -> String -> String
+escape :: String -> String -> String
 escape _          []     = []
 escape escapables (x:xs) = 
-    if (x `elem` escapables) 
+    if x `elem` escapables
       then escapeChar : rest 
       else rest
     where 
-      rest = x:(escape escapables xs)
+      rest = x : escape escapables xs
 
 -- Remove line breaks and escape special characters                
 normalize :: String -> String
-normalize xs = escape loggerESCAPABLES (filter ((/=) '\n') xs)
+normalize = escape loggerESCAPABLES . filter ('\n' /=)
 
 logInternalError :: Maybe ([String],String) -> IO ()
 logInternalError maybeSources = 
@@ -97,27 +97,23 @@ logger logcode maybeSources options =
    let
      debugLogger = DebugLogger `elem` options
      reallyLog   = EnableLogging `elem` options -- We use that the presence of an alert adds EnableLogging in Options.hs
-     hostName    = case hostFromOptions options of
-                     Nothing  -> loggerDEFAULTHOST
-                     Just host -> host
-     portNumber  = case portFromOptions options of
-                     Nothing  -> loggerDEFAULTPORT
-                     Just pn  -> pn
+     hostName    = fromMaybe loggerDEFAULTHOST (hostFromOptions options)
+     portNumber  = fromMaybe loggerDEFAULTPORT (portFromOptions options)
    in
      if reallyLog then
        do
-         debug (hostName ++ ":" ++ (show portNumber)) debugLogger
-         username     <- (getEnv loggerUSERNAME) `catch` (\_ -> return loggerDEFAULTNAME)
+         debug (hostName ++ ":" ++ show portNumber) debugLogger
+         username     <- getEnv loggerUSERNAME `catch` (\_ -> return loggerDEFAULTNAME)
          optionString <- getArgs
          sources      <- case maybeSources of 
              Nothing -> 
-                 return (loggerTERMINATOR)
+                 return loggerTERMINATOR
              Just (imports,hsFile) -> 
                  do let allHsFiles = hsFile:imports
                         allFiles   = allHsFiles ++ map toTypeFile allHsFiles
                     xs <- mapM (getContentOfFile debugLogger) allFiles
                     return (concat (loggerSEPARATOR:xs)++loggerTERMINATOR) 
-                      `catch` (\_ -> return (loggerTERMINATOR) )
+                      `catch` (\_ -> return loggerTERMINATOR)
          {- putStr (normalizeName username ++ 
                         (loggerADMINSEPARATOR : normalize logcode) ++ 
                         (loggerADMINSEPARATOR : normalize version) ++
@@ -134,7 +130,7 @@ logger logcode maybeSources options =
                        ) 
                        debugLogger
      else                  
-       do return ()
+       return ()
 
 toTypeFile :: String -> String
 toTypeFile fullName = fullNameNoExt ++ ".type"

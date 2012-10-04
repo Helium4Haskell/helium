@@ -16,7 +16,7 @@ import Syntax.UHA_Syntax
 import Syntax.UHA_Utils
 import Top.Types
 import StaticAnalysis.Messages.Messages
-import Data.List    (intersperse)
+import Data.List    (intercalate)
 import qualified Syntax.UHA_Pretty as PP (sem_Pattern, sem_LeftHandSide, sem_Expression)
 
 -------------------------------------------------------------
@@ -88,7 +88,7 @@ showWarning warning = case warning of
       )
 
    ReduceContext _ predicates reduced ->
-      let showPredicates ps = "(" ++ concat (intersperse ", " (map show ps)) ++ ")"  
+      let showPredicates ps = "(" ++ intercalate ", " (map show ps) ++ ")"  
       in ( MessageString ( "The context " ++ showPredicates predicates ++ " has superfluous predicates." )
          , [ MessageString ("You may change it into " ++ showPredicates reduced ++ ".") ]
          )
@@ -139,7 +139,7 @@ showWarning warning = case warning of
                 "Declared type signature for "++show (show name)++" could be more general\n"++
                 "   declared type : ")
            , MessageType signature
-           , MessageString ("\n"++"   inferred type : ")
+           , MessageString ('\n' : "   inferred type : ")
            , MessageType scheme
            ]
       , []
