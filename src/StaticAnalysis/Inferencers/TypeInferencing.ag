@@ -61,7 +61,7 @@ INCLUDE "Scope.ag"
 INCLUDE "UHA_Syntax.ag"
 
 --- Type Inference Directives (may be turned off)
-INCLUDE "../directives/TS_PatternMatching.ag"
+INCLUDE "TS_PatternMatching.ag"
 
 -- SEM Module | Module   lhs . solveResult = @solveResult { debugFromResult =  debugFromResult @solveResult 
 --                                                                          ++ "Inference Strategies:" 
