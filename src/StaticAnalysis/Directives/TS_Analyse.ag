@@ -21,7 +21,7 @@ analyseTypingStrategy ts ie =
     let (errs, _, wars) = sem_TypingStrategy ts ie in (errs, wars)
 }
 
-INCLUDE "../../syntax/UHA_Syntax.ag"
+INCLUDE "UHA_Syntax.ag"
 INCLUDE "TS_Syntax.ag"
 INCLUDE "TS_Collect.ag"
 

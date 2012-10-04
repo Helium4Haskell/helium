@@ -1,6 +1,6 @@
 
 
--- UUAGC 0.9.40.3 (TS_Syntax.ag)
+-- UUAGC 0.9.40.3 (StaticAnalysis/Directives/TS_Syntax.ag)
 module StaticAnalysis.Directives.TS_Syntax where
 
 import Syntax.UHA_Syntax

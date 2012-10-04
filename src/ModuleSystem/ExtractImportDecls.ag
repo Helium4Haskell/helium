@@ -1,7 +1,7 @@
 ATTR Module [ | | coreImportDecls : { [(Core.CoreDecl,[Id])] } ] 
 
-INCLUDE "../syntax/UHA_Syntax.ag"
-INCLUDE "../codegeneration/ToCoreName.ag"
+INCLUDE "UHA_Syntax.ag"
+INCLUDE "ToCoreName.ag"
 
 imports{
 import Syntax.UHA_Syntax

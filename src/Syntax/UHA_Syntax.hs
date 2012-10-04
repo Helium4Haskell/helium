@@ -1,6 +1,6 @@
 
 
--- UUAGC 0.9.40.3 (UHA_Syntax.ag)
+-- UUAGC 0.9.40.3 (Syntax/UHA_Syntax.ag)
 module Syntax.UHA_Syntax where
 -- Alternative -------------------------------------------------
 data Alternative = Alternative_Alternative (Range) (Pattern) (RightHandSide)

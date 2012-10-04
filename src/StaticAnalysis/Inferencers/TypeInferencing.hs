@@ -1,5 +1,6 @@
 
--- UUAGC 0.9.5 (TypeInferencing.ag)
+
+-- UUAGC 0.9.40.3 (StaticAnalysis/Inferencers/TypeInferencing.ag)
 module StaticAnalysis.Inferencers.TypeInferencing where
 
 
@@ -537,10 +538,10 @@ thin (e               : es) | elem e thines =     thines
 -- cata
 sem_Alternative :: Alternative ->
                    T_Alternative
-sem_Alternative (Alternative_Alternative _range _pattern _righthandside )  =
-    (sem_Alternative_Alternative (sem_Range _range ) (sem_Pattern _pattern ) (sem_RightHandSide _righthandside ) )
-sem_Alternative (Alternative_Empty _range )  =
-    (sem_Alternative_Empty (sem_Range _range ) )
+sem_Alternative (Alternative_Alternative _range _pattern _righthandside) =
+    (sem_Alternative_Alternative (sem_Range _range) (sem_Pattern _pattern) (sem_RightHandSide _righthandside))
+sem_Alternative (Alternative_Empty _range) =
+    (sem_Alternative_Empty (sem_Range _range))
 -- semantic domain
 type T_Alternative = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (M.Map NameWithRange TpScheme) ->
@@ -568,7 +569,7 @@ sem_Alternative_Alternative :: T_Range ->
                                T_Pattern ->
                                T_RightHandSide ->
                                T_Alternative
-sem_Alternative_Alternative range_ pattern_ righthandside_  =
+sem_Alternative_Alternative range_ pattern_ righthandside_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -665,12 +666,8 @@ sem_Alternative_Alternative range_ pattern_ righthandside_  =
                        ]
               _conLeft =
                   [ (_patternIbeta .==. _lhsIbetaLeft) _cinfoLeft ]
-              __tup1 =
+              (_csetBinds,_lhsOassumptions) =
                   (_patternIenvironment .===. _righthandsideIassumptions) _cinfoBind
-              (_csetBinds,_) =
-                  __tup1
-              (_,_lhsOassumptions) =
-                  __tup1
               _cinfoLeft =
                   resultConstraint "case pattern" _patternIinfoTree
                      [ Unifier (head (ftv _lhsIbetaLeft)) ("case patterns", attribute _lhsIparentTree, "case pattern") ]
@@ -681,14 +678,8 @@ sem_Alternative_Alternative range_ pattern_ righthandside_  =
                      ]
               _lhsOinfoTrees =
                   [_patternIinfoTree, _righthandsideIinfoTree]
-              __tup2 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _patternIpatVarNames _righthandsideIunboundNames _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup2
-              (_,_unboundNames,_) =
-                  __tup2
-              (_,_,_scopeInfo) =
-                  __tup2
               _lhsOunboundNames =
                   _unboundNames
               _lhsOelements =
@@ -768,15 +759,15 @@ sem_Alternative_Alternative range_ pattern_ righthandside_  =
               _righthandsideOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternIbeta,_patternIbetaUnique,_patternIconstraints,_patternIelements,_patternIenvironment,_patternIinfoTree,_patternIpatVarNames,_patternIpatternMatchWarnings,_patternIself,_patternIunboundNames) =
-                  (pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings )
+                  pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings
               ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectErrors,_righthandsideIcollectInstances,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTree,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
-                  (righthandside_ _righthandsideOallPatterns _righthandsideOallTypeSchemes _righthandsideOavailablePredicates _righthandsideObetaRight _righthandsideObetaUnique _righthandsideOclassEnvironment _righthandsideOcollectErrors _righthandsideOcollectWarnings _righthandsideOcurrentChunk _righthandsideOdictionaryEnvironment _righthandsideOimportEnvironment _righthandsideOmatchIO _righthandsideOmonos _righthandsideOnamesInScope _righthandsideOorderedTypeSynonyms _righthandsideOparentTree _righthandsideOpatternMatchWarnings _righthandsideOsubstitution _righthandsideOtypeschemeMap _righthandsideOuniqueChunk )
+                  righthandside_ _righthandsideOallPatterns _righthandsideOallTypeSchemes _righthandsideOavailablePredicates _righthandsideObetaRight _righthandsideObetaUnique _righthandsideOclassEnvironment _righthandsideOcollectErrors _righthandsideOcollectWarnings _righthandsideOcurrentChunk _righthandsideOdictionaryEnvironment _righthandsideOimportEnvironment _righthandsideOmatchIO _righthandsideOmonos _righthandsideOnamesInScope _righthandsideOorderedTypeSynonyms _righthandsideOparentTree _righthandsideOpatternMatchWarnings _righthandsideOsubstitution _righthandsideOtypeschemeMap _righthandsideOuniqueChunk
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOelements,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwar)))
 sem_Alternative_Empty :: T_Range ->
                          T_Alternative
-sem_Alternative_Empty range_  =
+sem_Alternative_Empty range_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -849,14 +840,14 @@ sem_Alternative_Empty range_  =
               _lhsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOelements,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwar)))
 -- Alternatives ------------------------------------------------
 -- cata
 sem_Alternatives :: Alternatives ->
                     T_Alternatives
-sem_Alternatives list  =
-    (Prelude.foldr sem_Alternatives_Cons sem_Alternatives_Nil (Prelude.map sem_Alternative list) )
+sem_Alternatives list =
+    (Prelude.foldr sem_Alternatives_Cons sem_Alternatives_Nil (Prelude.map sem_Alternative list))
 -- semantic domain
 type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (M.Map NameWithRange TpScheme) ->
@@ -883,7 +874,7 @@ type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
 sem_Alternatives_Cons :: T_Alternative ->
                          T_Alternatives ->
                          T_Alternatives
-sem_Alternatives_Cons hd_ tl_  =
+sem_Alternatives_Cons hd_ tl_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -1109,12 +1100,12 @@ sem_Alternatives_Cons hd_ tl_  =
               _tlOuniqueChunk =
                   _hdIuniqueChunk
               ( _hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIelements,_hdIinfoTrees,_hdImatchIO,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIunrwar) =
-                  (hd_ _hdOallPatterns _hdOallTypeSchemes _hdOavailablePredicates _hdObetaLeft _hdObetaRight _hdObetaUnique _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOcurrentChunk _hdOdictionaryEnvironment _hdOimportEnvironment _hdOmatchIO _hdOmonos _hdOnamesInScope _hdOorderedTypeSynonyms _hdOparentTree _hdOpatternMatchWarnings _hdOsubstitution _hdOtypeschemeMap _hdOuniqueChunk )
+                  hd_ _hdOallPatterns _hdOallTypeSchemes _hdOavailablePredicates _hdObetaLeft _hdObetaRight _hdObetaUnique _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOcurrentChunk _hdOdictionaryEnvironment _hdOimportEnvironment _hdOmatchIO _hdOmonos _hdOnamesInScope _hdOorderedTypeSynonyms _hdOparentTree _hdOpatternMatchWarnings _hdOsubstitution _hdOtypeschemeMap _hdOuniqueChunk
               ( _tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIconstraintslist,_tlIdictionaryEnvironment,_tlIelementss,_tlIinfoTrees,_tlImatchIO,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIunrwars) =
-                  (tl_ _tlOallPatterns _tlOallTypeSchemes _tlOavailablePredicates _tlObetaLeft _tlObetaRight _tlObetaUnique _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOcurrentChunk _tlOdictionaryEnvironment _tlOimportEnvironment _tlOmatchIO _tlOmonos _tlOnamesInScope _tlOorderedTypeSynonyms _tlOparentTree _tlOpatternMatchWarnings _tlOsubstitution _tlOtypeschemeMap _tlOuniqueChunk )
+                  tl_ _tlOallPatterns _tlOallTypeSchemes _tlOavailablePredicates _tlObetaLeft _tlObetaRight _tlObetaUnique _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOcurrentChunk _tlOdictionaryEnvironment _tlOimportEnvironment _tlOmatchIO _tlOmonos _tlOnamesInScope _tlOorderedTypeSynonyms _tlOparentTree _tlOpatternMatchWarnings _tlOsubstitution _tlOtypeschemeMap _tlOuniqueChunk
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOelementss,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwars)))
 sem_Alternatives_Nil :: T_Alternatives
-sem_Alternatives_Nil  =
+sem_Alternatives_Nil =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -1188,8 +1179,8 @@ sem_Alternatives_Nil  =
 -- cata
 sem_AnnotatedType :: AnnotatedType ->
                      T_AnnotatedType
-sem_AnnotatedType (AnnotatedType_AnnotatedType _range _strict _type )  =
-    (sem_AnnotatedType_AnnotatedType (sem_Range _range ) _strict (sem_Type _type ) )
+sem_AnnotatedType (AnnotatedType_AnnotatedType _range _strict _type) =
+    (sem_AnnotatedType_AnnotatedType (sem_Range _range) _strict (sem_Type _type))
 -- semantic domain
 type T_AnnotatedType = Names ->
                        ( AnnotatedType,Names)
@@ -1197,7 +1188,7 @@ sem_AnnotatedType_AnnotatedType :: T_Range ->
                                    Bool ->
                                    T_Type ->
                                    T_AnnotatedType
-sem_AnnotatedType_AnnotatedType range_ strict_ type_  =
+sem_AnnotatedType_AnnotatedType range_ strict_ type_ =
     (\ _lhsInamesInScope ->
          (let _lhsOunboundNames :: Names
               _lhsOself :: AnnotatedType
@@ -1210,23 +1201,23 @@ sem_AnnotatedType_AnnotatedType range_ strict_ type_  =
               _lhsOself =
                   _self
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _typeIself) =
-                  (type_ )
+                  type_
           in  ( _lhsOself,_lhsOunboundNames)))
 -- AnnotatedTypes ----------------------------------------------
 -- cata
 sem_AnnotatedTypes :: AnnotatedTypes ->
                       T_AnnotatedTypes
-sem_AnnotatedTypes list  =
-    (Prelude.foldr sem_AnnotatedTypes_Cons sem_AnnotatedTypes_Nil (Prelude.map sem_AnnotatedType list) )
+sem_AnnotatedTypes list =
+    (Prelude.foldr sem_AnnotatedTypes_Cons sem_AnnotatedTypes_Nil (Prelude.map sem_AnnotatedType list))
 -- semantic domain
 type T_AnnotatedTypes = Names ->
                         ( AnnotatedTypes,Names)
 sem_AnnotatedTypes_Cons :: T_AnnotatedType ->
                            T_AnnotatedTypes ->
                            T_AnnotatedTypes
-sem_AnnotatedTypes_Cons hd_ tl_  =
+sem_AnnotatedTypes_Cons hd_ tl_ =
     (\ _lhsInamesInScope ->
          (let _lhsOunboundNames :: Names
               _lhsOself :: AnnotatedTypes
@@ -1247,12 +1238,12 @@ sem_AnnotatedTypes_Cons hd_ tl_  =
               _tlOnamesInScope =
                   _lhsInamesInScope
               ( _hdIself,_hdIunboundNames) =
-                  (hd_ _hdOnamesInScope )
+                  hd_ _hdOnamesInScope
               ( _tlIself,_tlIunboundNames) =
-                  (tl_ _tlOnamesInScope )
+                  tl_ _tlOnamesInScope
           in  ( _lhsOself,_lhsOunboundNames)))
 sem_AnnotatedTypes_Nil :: T_AnnotatedTypes
-sem_AnnotatedTypes_Nil  =
+sem_AnnotatedTypes_Nil =
     (\ _lhsInamesInScope ->
          (let _lhsOunboundNames :: Names
               _lhsOself :: AnnotatedTypes
@@ -1267,8 +1258,8 @@ sem_AnnotatedTypes_Nil  =
 -- cata
 sem_Body :: Body ->
             T_Body
-sem_Body (Body_Body _range _importdeclarations _declarations )  =
-    (sem_Body_Body (sem_Range _range ) (sem_ImportDeclarations _importdeclarations ) (sem_Declarations _declarations ) )
+sem_Body (Body_Body _range _importdeclarations _declarations) =
+    (sem_Body_Body (sem_Range _range) (sem_ImportDeclarations _importdeclarations) (sem_Declarations _declarations))
 -- semantic domain
 type T_Body = ([((Expression, [String]), Core_TypingStrategy)]) ->
               (M.Map NameWithRange TpScheme) ->
@@ -1293,7 +1284,7 @@ sem_Body_Body :: T_Range ->
                  T_ImportDeclarations ->
                  T_Declarations ->
                  T_Body
-sem_Body_Body range_ importdeclarations_ declarations_  =
+sem_Body_Body range_ importdeclarations_ declarations_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -1369,29 +1360,13 @@ sem_Body_Body range_ importdeclarations_ declarations_  =
               _declarationsIuniqueChunk :: Int
               _declarationsObindingGroups =
                   []
-              __tup3 =
+              (_csetBinds,_lhsOassumptions) =
                   (typeEnvironment _lhsIimportEnvironment .:::. _aset) _cinfo
-              (_csetBinds,_) =
-                  __tup3
-              (_,_lhsOassumptions) =
-                  __tup3
               _constraints =
                   _csetBinds .>>. _cset
-              __tup4 =
+              (_aset,_cset,_inheritedBDG,_chunkNr,_lhsObetaUnique,_implicitsFM) =
                   let inputBDG = (True, _lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, Nothing, _declarationsIbetaUnique)
                   in performBindingGroup inputBDG _declarationsIbindingGroups
-              (_aset,_,_,_,_,_) =
-                  __tup4
-              (_,_cset,_,_,_,_) =
-                  __tup4
-              (_,_,_inheritedBDG,_,_,_) =
-                  __tup4
-              (_,_,_,_chunkNr,_,_) =
-                  __tup4
-              (_,_,_,_,_lhsObetaUnique,_) =
-                  __tup4
-              (_,_,_,_,_,_implicitsFM) =
-                  __tup4
               _inferredTypes =
                   findInferredTypes _lhsItypeschemeMap _implicitsFM
               _lhsOcollectWarnings =
@@ -1481,22 +1456,22 @@ sem_Body_Body range_ importdeclarations_ declarations_  =
               _declarationsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _importdeclarationsIself) =
-                  (importdeclarations_ )
+                  importdeclarations_
               ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectInstances,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
-                  (declarations_ _declarationsOallPatterns _declarationsOallTypeSchemes _declarationsOavailablePredicates _declarationsObetaUnique _declarationsObindingGroups _declarationsOclassEnvironment _declarationsOcollectErrors _declarationsOcollectWarnings _declarationsOcurrentChunk _declarationsOdictionaryEnvironment _declarationsOimportEnvironment _declarationsOinheritedBDG _declarationsOmatchIO _declarationsOmonos _declarationsOnamesInScope _declarationsOorderedTypeSynonyms _declarationsOparentTree _declarationsOpatternMatchWarnings _declarationsOsubstitution _declarationsOtypeSignatures _declarationsOtypeschemeMap _declarationsOuniqueChunk )
+                  declarations_ _declarationsOallPatterns _declarationsOallTypeSchemes _declarationsOavailablePredicates _declarationsObetaUnique _declarationsObindingGroups _declarationsOclassEnvironment _declarationsOcollectErrors _declarationsOcollectWarnings _declarationsOcurrentChunk _declarationsOdictionaryEnvironment _declarationsOimportEnvironment _declarationsOinheritedBDG _declarationsOmatchIO _declarationsOmonos _declarationsOnamesInScope _declarationsOorderedTypeSynonyms _declarationsOparentTree _declarationsOpatternMatchWarnings _declarationsOsubstitution _declarationsOtypeSignatures _declarationsOtypeschemeMap _declarationsOuniqueChunk
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOtoplevelTypes,_lhsOunboundNames,_lhsOuniqueChunk)))
 -- Constructor -------------------------------------------------
 -- cata
 sem_Constructor :: Constructor ->
                    T_Constructor
-sem_Constructor (Constructor_Constructor _range _constructor _types )  =
-    (sem_Constructor_Constructor (sem_Range _range ) (sem_Name _constructor ) (sem_AnnotatedTypes _types ) )
-sem_Constructor (Constructor_Infix _range _leftType _constructorOperator _rightType )  =
-    (sem_Constructor_Infix (sem_Range _range ) (sem_AnnotatedType _leftType ) (sem_Name _constructorOperator ) (sem_AnnotatedType _rightType ) )
-sem_Constructor (Constructor_Record _range _constructor _fieldDeclarations )  =
-    (sem_Constructor_Record (sem_Range _range ) (sem_Name _constructor ) (sem_FieldDeclarations _fieldDeclarations ) )
+sem_Constructor (Constructor_Constructor _range _constructor _types) =
+    (sem_Constructor_Constructor (sem_Range _range) (sem_Name _constructor) (sem_AnnotatedTypes _types))
+sem_Constructor (Constructor_Infix _range _leftType _constructorOperator _rightType) =
+    (sem_Constructor_Infix (sem_Range _range) (sem_AnnotatedType _leftType) (sem_Name _constructorOperator) (sem_AnnotatedType _rightType))
+sem_Constructor (Constructor_Record _range _constructor _fieldDeclarations) =
+    (sem_Constructor_Record (sem_Range _range) (sem_Name _constructor) (sem_FieldDeclarations _fieldDeclarations))
 -- semantic domain
 type T_Constructor = Names ->
                      ( Constructor,Names)
@@ -1504,7 +1479,7 @@ sem_Constructor_Constructor :: T_Range ->
                                T_Name ->
                                T_AnnotatedTypes ->
                                T_Constructor
-sem_Constructor_Constructor range_ constructor_ types_  =
+sem_Constructor_Constructor range_ constructor_ types_ =
     (\ _lhsInamesInScope ->
          (let _lhsOunboundNames :: Names
               _lhsOself :: Constructor
@@ -1522,18 +1497,18 @@ sem_Constructor_Constructor range_ constructor_ types_  =
               _typesOnamesInScope =
                   _lhsInamesInScope
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _constructorIself) =
-                  (constructor_ )
+                  constructor_
               ( _typesIself,_typesIunboundNames) =
-                  (types_ _typesOnamesInScope )
+                  types_ _typesOnamesInScope
           in  ( _lhsOself,_lhsOunboundNames)))
 sem_Constructor_Infix :: T_Range ->
                          T_AnnotatedType ->
                          T_Name ->
                          T_AnnotatedType ->
                          T_Constructor
-sem_Constructor_Infix range_ leftType_ constructorOperator_ rightType_  =
+sem_Constructor_Infix range_ leftType_ constructorOperator_ rightType_ =
     (\ _lhsInamesInScope ->
          (let _lhsOunboundNames :: Names
               _lhsOself :: Constructor
@@ -1556,19 +1531,19 @@ sem_Constructor_Infix range_ leftType_ constructorOperator_ rightType_  =
               _rightTypeOnamesInScope =
                   _lhsInamesInScope
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _leftTypeIself,_leftTypeIunboundNames) =
-                  (leftType_ _leftTypeOnamesInScope )
+                  leftType_ _leftTypeOnamesInScope
               ( _constructorOperatorIself) =
-                  (constructorOperator_ )
+                  constructorOperator_
               ( _rightTypeIself,_rightTypeIunboundNames) =
-                  (rightType_ _rightTypeOnamesInScope )
+                  rightType_ _rightTypeOnamesInScope
           in  ( _lhsOself,_lhsOunboundNames)))
 sem_Constructor_Record :: T_Range ->
                           T_Name ->
                           T_FieldDeclarations ->
                           T_Constructor
-sem_Constructor_Record range_ constructor_ fieldDeclarations_  =
+sem_Constructor_Record range_ constructor_ fieldDeclarations_ =
     (\ _lhsInamesInScope ->
          (let _lhsOunboundNames :: Names
               _lhsOself :: Constructor
@@ -1586,25 +1561,25 @@ sem_Constructor_Record range_ constructor_ fieldDeclarations_  =
               _fieldDeclarationsOnamesInScope =
                   _lhsInamesInScope
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _constructorIself) =
-                  (constructor_ )
+                  constructor_
               ( _fieldDeclarationsIself,_fieldDeclarationsIunboundNames) =
-                  (fieldDeclarations_ _fieldDeclarationsOnamesInScope )
+                  fieldDeclarations_ _fieldDeclarationsOnamesInScope
           in  ( _lhsOself,_lhsOunboundNames)))
 -- Constructors ------------------------------------------------
 -- cata
 sem_Constructors :: Constructors ->
                     T_Constructors
-sem_Constructors list  =
-    (Prelude.foldr sem_Constructors_Cons sem_Constructors_Nil (Prelude.map sem_Constructor list) )
+sem_Constructors list =
+    (Prelude.foldr sem_Constructors_Cons sem_Constructors_Nil (Prelude.map sem_Constructor list))
 -- semantic domain
 type T_Constructors = Names ->
                       ( Constructors,Names)
 sem_Constructors_Cons :: T_Constructor ->
                          T_Constructors ->
                          T_Constructors
-sem_Constructors_Cons hd_ tl_  =
+sem_Constructors_Cons hd_ tl_ =
     (\ _lhsInamesInScope ->
          (let _lhsOunboundNames :: Names
               _lhsOself :: Constructors
@@ -1625,12 +1600,12 @@ sem_Constructors_Cons hd_ tl_  =
               _tlOnamesInScope =
                   _lhsInamesInScope
               ( _hdIself,_hdIunboundNames) =
-                  (hd_ _hdOnamesInScope )
+                  hd_ _hdOnamesInScope
               ( _tlIself,_tlIunboundNames) =
-                  (tl_ _tlOnamesInScope )
+                  tl_ _tlOnamesInScope
           in  ( _lhsOself,_lhsOunboundNames)))
 sem_Constructors_Nil :: T_Constructors
-sem_Constructors_Nil  =
+sem_Constructors_Nil =
     (\ _lhsInamesInScope ->
          (let _lhsOunboundNames :: Names
               _lhsOself :: Constructors
@@ -1645,15 +1620,15 @@ sem_Constructors_Nil  =
 -- cata
 sem_ContextItem :: ContextItem ->
                    T_ContextItem
-sem_ContextItem (ContextItem_ContextItem _range _name _types )  =
-    (sem_ContextItem_ContextItem (sem_Range _range ) (sem_Name _name ) (sem_Types _types ) )
+sem_ContextItem (ContextItem_ContextItem _range _name _types) =
+    (sem_ContextItem_ContextItem (sem_Range _range) (sem_Name _name) (sem_Types _types))
 -- semantic domain
 type T_ContextItem = ( ContextItem)
 sem_ContextItem_ContextItem :: T_Range ->
                                T_Name ->
                                T_Types ->
                                T_ContextItem
-sem_ContextItem_ContextItem range_ name_ types_  =
+sem_ContextItem_ContextItem range_ name_ types_ =
     (let _lhsOself :: ContextItem
          _rangeIself :: Range
          _nameIself :: Name
@@ -1665,24 +1640,24 @@ sem_ContextItem_ContextItem range_ name_ types_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
          ( _typesIself) =
-             (types_ )
+             types_
      in  ( _lhsOself))
 -- ContextItems ------------------------------------------------
 -- cata
 sem_ContextItems :: ContextItems ->
                     T_ContextItems
-sem_ContextItems list  =
-    (Prelude.foldr sem_ContextItems_Cons sem_ContextItems_Nil (Prelude.map sem_ContextItem list) )
+sem_ContextItems list =
+    (Prelude.foldr sem_ContextItems_Cons sem_ContextItems_Nil (Prelude.map sem_ContextItem list))
 -- semantic domain
 type T_ContextItems = ( ContextItems)
 sem_ContextItems_Cons :: T_ContextItem ->
                          T_ContextItems ->
                          T_ContextItems
-sem_ContextItems_Cons hd_ tl_  =
+sem_ContextItems_Cons hd_ tl_ =
     (let _lhsOself :: ContextItems
          _hdIself :: ContextItem
          _tlIself :: ContextItems
@@ -1691,12 +1666,12 @@ sem_ContextItems_Cons hd_ tl_  =
          _lhsOself =
              _self
          ( _hdIself) =
-             (hd_ )
+             hd_
          ( _tlIself) =
-             (tl_ )
+             tl_
      in  ( _lhsOself))
 sem_ContextItems_Nil :: T_ContextItems
-sem_ContextItems_Nil  =
+sem_ContextItems_Nil =
     (let _lhsOself :: ContextItems
          _self =
              []
@@ -1707,28 +1682,28 @@ sem_ContextItems_Nil  =
 -- cata
 sem_Declaration :: Declaration ->
                    T_Declaration
-sem_Declaration (Declaration_Class _range _context _simpletype _where )  =
-    (sem_Declaration_Class (sem_Range _range ) (sem_ContextItems _context ) (sem_SimpleType _simpletype ) (sem_MaybeDeclarations _where ) )
-sem_Declaration (Declaration_Data _range _context _simpletype _constructors _derivings )  =
-    (sem_Declaration_Data (sem_Range _range ) (sem_ContextItems _context ) (sem_SimpleType _simpletype ) (sem_Constructors _constructors ) (sem_Names _derivings ) )
-sem_Declaration (Declaration_Default _range _types )  =
-    (sem_Declaration_Default (sem_Range _range ) (sem_Types _types ) )
-sem_Declaration (Declaration_Empty _range )  =
-    (sem_Declaration_Empty (sem_Range _range ) )
-sem_Declaration (Declaration_Fixity _range _fixity _priority _operators )  =
-    (sem_Declaration_Fixity (sem_Range _range ) (sem_Fixity _fixity ) (sem_MaybeInt _priority ) (sem_Names _operators ) )
-sem_Declaration (Declaration_FunctionBindings _range _bindings )  =
-    (sem_Declaration_FunctionBindings (sem_Range _range ) (sem_FunctionBindings _bindings ) )
-sem_Declaration (Declaration_Instance _range _context _name _types _where )  =
-    (sem_Declaration_Instance (sem_Range _range ) (sem_ContextItems _context ) (sem_Name _name ) (sem_Types _types ) (sem_MaybeDeclarations _where ) )
-sem_Declaration (Declaration_Newtype _range _context _simpletype _constructor _derivings )  =
-    (sem_Declaration_Newtype (sem_Range _range ) (sem_ContextItems _context ) (sem_SimpleType _simpletype ) (sem_Constructor _constructor ) (sem_Names _derivings ) )
-sem_Declaration (Declaration_PatternBinding _range _pattern _righthandside )  =
-    (sem_Declaration_PatternBinding (sem_Range _range ) (sem_Pattern _pattern ) (sem_RightHandSide _righthandside ) )
-sem_Declaration (Declaration_Type _range _simpletype _type )  =
-    (sem_Declaration_Type (sem_Range _range ) (sem_SimpleType _simpletype ) (sem_Type _type ) )
-sem_Declaration (Declaration_TypeSignature _range _names _type )  =
-    (sem_Declaration_TypeSignature (sem_Range _range ) (sem_Names _names ) (sem_Type _type ) )
+sem_Declaration (Declaration_Class _range _context _simpletype _where) =
+    (sem_Declaration_Class (sem_Range _range) (sem_ContextItems _context) (sem_SimpleType _simpletype) (sem_MaybeDeclarations _where))
+sem_Declaration (Declaration_Data _range _context _simpletype _constructors _derivings) =
+    (sem_Declaration_Data (sem_Range _range) (sem_ContextItems _context) (sem_SimpleType _simpletype) (sem_Constructors _constructors) (sem_Names _derivings))
+sem_Declaration (Declaration_Default _range _types) =
+    (sem_Declaration_Default (sem_Range _range) (sem_Types _types))
+sem_Declaration (Declaration_Empty _range) =
+    (sem_Declaration_Empty (sem_Range _range))
+sem_Declaration (Declaration_Fixity _range _fixity _priority _operators) =
+    (sem_Declaration_Fixity (sem_Range _range) (sem_Fixity _fixity) (sem_MaybeInt _priority) (sem_Names _operators))
+sem_Declaration (Declaration_FunctionBindings _range _bindings) =
+    (sem_Declaration_FunctionBindings (sem_Range _range) (sem_FunctionBindings _bindings))
+sem_Declaration (Declaration_Instance _range _context _name _types _where) =
+    (sem_Declaration_Instance (sem_Range _range) (sem_ContextItems _context) (sem_Name _name) (sem_Types _types) (sem_MaybeDeclarations _where))
+sem_Declaration (Declaration_Newtype _range _context _simpletype _constructor _derivings) =
+    (sem_Declaration_Newtype (sem_Range _range) (sem_ContextItems _context) (sem_SimpleType _simpletype) (sem_Constructor _constructor) (sem_Names _derivings))
+sem_Declaration (Declaration_PatternBinding _range _pattern _righthandside) =
+    (sem_Declaration_PatternBinding (sem_Range _range) (sem_Pattern _pattern) (sem_RightHandSide _righthandside))
+sem_Declaration (Declaration_Type _range _simpletype _type) =
+    (sem_Declaration_Type (sem_Range _range) (sem_SimpleType _simpletype) (sem_Type _type))
+sem_Declaration (Declaration_TypeSignature _range _names _type) =
+    (sem_Declaration_TypeSignature (sem_Range _range) (sem_Names _names) (sem_Type _type))
 -- semantic domain
 type T_Declaration = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (M.Map NameWithRange TpScheme) ->
@@ -1758,7 +1733,7 @@ sem_Declaration_Class :: T_Range ->
                          T_SimpleType ->
                          T_MaybeDeclarations ->
                          T_Declaration
-sem_Declaration_Class range_ context_ simpletype_ where_  =
+sem_Declaration_Class range_ context_ simpletype_ where_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -1839,14 +1814,8 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
               _whereIself :: MaybeDeclarations
               _whereIunboundNames :: Names
               _whereIuniqueChunk :: Int
-              __tup5 =
+              (_assumptions,_constraints,_unboundNames) =
                   internalError "PartialSyntax.ag" "n/a" "Declaration.Class"
-              (_assumptions,_,_) =
-                  __tup5
-              (_,_constraints,_) =
-                  __tup5
-              (_,_,_unboundNames) =
-                  __tup5
               _lhsOcollectInstances =
                   _whereIcollectInstances
               _lhsOdeclVarNames =
@@ -1926,13 +1895,13 @@ sem_Declaration_Class range_ context_ simpletype_ where_  =
               _whereOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _contextIself) =
-                  (context_ )
+                  context_
               ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
-                  (simpletype_ )
+                  simpletype_
               ( _whereIassumptions,_whereIbetaUnique,_whereIcollectErrors,_whereIcollectInstances,_whereIcollectWarnings,_whereIconstraints,_whereIdictionaryEnvironment,_whereIinfoTrees,_whereIlocalTypes,_whereImatchIO,_whereInamesInScope,_whereIpatternMatchWarnings,_whereIself,_whereIunboundNames,_whereIuniqueChunk) =
-                  (where_ _whereOallPatterns _whereOallTypeSchemes _whereOassumptions _whereOavailablePredicates _whereObetaUnique _whereOclassEnvironment _whereOcollectErrors _whereOcollectWarnings _whereOconstraints _whereOcurrentChunk _whereOdictionaryEnvironment _whereOimportEnvironment _whereOmatchIO _whereOmonos _whereOnamesInScope _whereOorderedTypeSynonyms _whereOparentTree _whereOpatternMatchWarnings _whereOsubstitution _whereOtypeschemeMap _whereOunboundNames _whereOuniqueChunk )
+                  where_ _whereOallPatterns _whereOallTypeSchemes _whereOassumptions _whereOavailablePredicates _whereObetaUnique _whereOclassEnvironment _whereOcollectErrors _whereOcollectWarnings _whereOconstraints _whereOcurrentChunk _whereOdictionaryEnvironment _whereOimportEnvironment _whereOmatchIO _whereOmonos _whereOnamesInScope _whereOorderedTypeSynonyms _whereOparentTree _whereOpatternMatchWarnings _whereOsubstitution _whereOtypeschemeMap _whereOunboundNames _whereOuniqueChunk
           in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)))
 sem_Declaration_Data :: T_Range ->
                         T_ContextItems ->
@@ -1940,7 +1909,7 @@ sem_Declaration_Data :: T_Range ->
                         T_Constructors ->
                         T_Names ->
                         T_Declaration
-sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_  =
+sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -2027,20 +1996,20 @@ sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_  =
               _constructorsOnamesInScope =
                   _lhsInamesInScope
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _contextIself) =
-                  (context_ )
+                  context_
               ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
-                  (simpletype_ )
+                  simpletype_
               ( _constructorsIself,_constructorsIunboundNames) =
-                  (constructors_ _constructorsOnamesInScope )
+                  constructors_ _constructorsOnamesInScope
               ( _derivingsIself) =
-                  (derivings_ )
+                  derivings_
           in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)))
 sem_Declaration_Default :: T_Range ->
                            T_Types ->
                            T_Declaration
-sem_Declaration_Default range_ types_  =
+sem_Declaration_Default range_ types_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -2118,13 +2087,13 @@ sem_Declaration_Default range_ types_  =
               _lhsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _typesIself) =
-                  (types_ )
+                  types_
           in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)))
 sem_Declaration_Empty :: T_Range ->
                          T_Declaration
-sem_Declaration_Empty range_  =
+sem_Declaration_Empty range_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -2199,14 +2168,14 @@ sem_Declaration_Empty range_  =
               _lhsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)))
 sem_Declaration_Fixity :: T_Range ->
                           T_Fixity ->
                           T_MaybeInt ->
                           T_Names ->
                           T_Declaration
-sem_Declaration_Fixity range_ fixity_ priority_ operators_  =
+sem_Declaration_Fixity range_ fixity_ priority_ operators_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -2284,18 +2253,18 @@ sem_Declaration_Fixity range_ fixity_ priority_ operators_  =
               _lhsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _fixityIself) =
-                  (fixity_ )
+                  fixity_
               ( _priorityIself) =
-                  (priority_ )
+                  priority_
               ( _operatorsIself) =
-                  (operators_ )
+                  operators_
           in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)))
 sem_Declaration_FunctionBindings :: T_Range ->
                                     T_FunctionBindings ->
                                     T_Declaration
-sem_Declaration_FunctionBindings range_ bindings_  =
+sem_Declaration_FunctionBindings range_ bindings_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -2496,9 +2465,9 @@ sem_Declaration_FunctionBindings range_ bindings_  =
               _bindingsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _bindingsIargcount,_bindingsIassumptions,_bindingsIbetaUnique,_bindingsIcollectErrors,_bindingsIcollectInstances,_bindingsIcollectWarnings,_bindingsIconstraintslist,_bindingsIdictionaryEnvironment,_bindingsIelementss,_bindingsIinfoTrees,_bindingsImatchIO,_bindingsIname,_bindingsInumberOfPatterns,_bindingsIpatternMatchWarnings,_bindingsIself,_bindingsIunboundNames,_bindingsIuniqueChunk,_bindingsIunrwars) =
-                  (bindings_ _bindingsOallPatterns _bindingsOallTypeSchemes _bindingsOavailablePredicates _bindingsObetaRight _bindingsObetaUnique _bindingsObetasLeft _bindingsOclassEnvironment _bindingsOcollectErrors _bindingsOcollectWarnings _bindingsOcurrentChunk _bindingsOdictionaryEnvironment _bindingsOimportEnvironment _bindingsOmatchIO _bindingsOmonos _bindingsOnamesInScope _bindingsOorderedTypeSynonyms _bindingsOparentTree _bindingsOpatternMatchWarnings _bindingsOsubstitution _bindingsOtypeschemeMap _bindingsOuniqueChunk )
+                  bindings_ _bindingsOallPatterns _bindingsOallTypeSchemes _bindingsOavailablePredicates _bindingsObetaRight _bindingsObetaUnique _bindingsObetasLeft _bindingsOclassEnvironment _bindingsOcollectErrors _bindingsOcollectWarnings _bindingsOcurrentChunk _bindingsOdictionaryEnvironment _bindingsOimportEnvironment _bindingsOmatchIO _bindingsOmonos _bindingsOnamesInScope _bindingsOorderedTypeSynonyms _bindingsOparentTree _bindingsOpatternMatchWarnings _bindingsOsubstitution _bindingsOtypeschemeMap _bindingsOuniqueChunk
           in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)))
 sem_Declaration_Instance :: T_Range ->
                             T_ContextItems ->
@@ -2506,7 +2475,7 @@ sem_Declaration_Instance :: T_Range ->
                             T_Types ->
                             T_MaybeDeclarations ->
                             T_Declaration
-sem_Declaration_Instance range_ context_ name_ types_ where_  =
+sem_Declaration_Instance range_ context_ name_ types_ where_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -2586,14 +2555,8 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _whereIself :: MaybeDeclarations
               _whereIunboundNames :: Names
               _whereIuniqueChunk :: Int
-              __tup6 =
+              (_assumptions,_constraints,_unboundNames) =
                   internalError "PartialSyntax.ag" "n/a" "Declaration.Instance"
-              (_assumptions,_,_) =
-                  __tup6
-              (_,_constraints,_) =
-                  __tup6
-              (_,_,_unboundNames) =
-                  __tup6
               _lhsOcollectInstances =
                   _whereIcollectInstances
               _lhsOdeclVarNames =
@@ -2673,15 +2636,15 @@ sem_Declaration_Instance range_ context_ name_ types_ where_  =
               _whereOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _contextIself) =
-                  (context_ )
+                  context_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _typesIself) =
-                  (types_ )
+                  types_
               ( _whereIassumptions,_whereIbetaUnique,_whereIcollectErrors,_whereIcollectInstances,_whereIcollectWarnings,_whereIconstraints,_whereIdictionaryEnvironment,_whereIinfoTrees,_whereIlocalTypes,_whereImatchIO,_whereInamesInScope,_whereIpatternMatchWarnings,_whereIself,_whereIunboundNames,_whereIuniqueChunk) =
-                  (where_ _whereOallPatterns _whereOallTypeSchemes _whereOassumptions _whereOavailablePredicates _whereObetaUnique _whereOclassEnvironment _whereOcollectErrors _whereOcollectWarnings _whereOconstraints _whereOcurrentChunk _whereOdictionaryEnvironment _whereOimportEnvironment _whereOmatchIO _whereOmonos _whereOnamesInScope _whereOorderedTypeSynonyms _whereOparentTree _whereOpatternMatchWarnings _whereOsubstitution _whereOtypeschemeMap _whereOunboundNames _whereOuniqueChunk )
+                  where_ _whereOallPatterns _whereOallTypeSchemes _whereOassumptions _whereOavailablePredicates _whereObetaUnique _whereOclassEnvironment _whereOcollectErrors _whereOcollectWarnings _whereOconstraints _whereOcurrentChunk _whereOdictionaryEnvironment _whereOimportEnvironment _whereOmatchIO _whereOmonos _whereOnamesInScope _whereOorderedTypeSynonyms _whereOparentTree _whereOpatternMatchWarnings _whereOsubstitution _whereOtypeschemeMap _whereOunboundNames _whereOuniqueChunk
           in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)))
 sem_Declaration_Newtype :: T_Range ->
                            T_ContextItems ->
@@ -2689,7 +2652,7 @@ sem_Declaration_Newtype :: T_Range ->
                            T_Constructor ->
                            T_Names ->
                            T_Declaration
-sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_  =
+sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -2776,21 +2739,21 @@ sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_  =
               _constructorOnamesInScope =
                   _lhsInamesInScope
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _contextIself) =
-                  (context_ )
+                  context_
               ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
-                  (simpletype_ )
+                  simpletype_
               ( _constructorIself,_constructorIunboundNames) =
-                  (constructor_ _constructorOnamesInScope )
+                  constructor_ _constructorOnamesInScope
               ( _derivingsIself) =
-                  (derivings_ )
+                  derivings_
           in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)))
 sem_Declaration_PatternBinding :: T_Range ->
                                   T_Pattern ->
                                   T_RightHandSide ->
                                   T_Declaration
-sem_Declaration_PatternBinding range_ pattern_ righthandside_  =
+sem_Declaration_PatternBinding range_ pattern_ righthandside_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -2818,7 +2781,6 @@ sem_Declaration_PatternBinding range_ pattern_ righthandside_  =
               _righthandsideOmonos :: Monos
               _righthandsideOavailablePredicates :: Predicates
               _lhsOdictionaryEnvironment :: DictionaryEnvironment
-              __tup7 :: ((Names,Names))
               _lhsOrestrictedNames :: Names
               _lhsOsimplePatNames :: Names
               _righthandsideOcurrentChunk :: Int
@@ -2918,14 +2880,10 @@ sem_Declaration_PatternBinding range_ pattern_ righthandside_  =
                   case _declPredicates of
                      Just (n, ps) -> addForDeclaration n ps _righthandsideIdictionaryEnvironment
                      Nothing      -> _righthandsideIdictionaryEnvironment
-              __tup7 =
+              (_lhsOrestrictedNames,_lhsOsimplePatNames) =
                   if isSimplePattern _patternIself
                     then ([], _patternIpatVarNames)
                     else (_patternIpatVarNames, [])
-              (_lhsOrestrictedNames,_) =
-                  __tup7
-              (_,_lhsOsimplePatNames) =
-                  __tup7
               _righthandsideOcurrentChunk =
                   findCurrentChunk (head (M.keys _patternIenvironment)) _lhsIinheritedBDG
               _cinfo =
@@ -3020,17 +2978,17 @@ sem_Declaration_PatternBinding range_ pattern_ righthandside_  =
               _righthandsideOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternIbeta,_patternIbetaUnique,_patternIconstraints,_patternIelements,_patternIenvironment,_patternIinfoTree,_patternIpatVarNames,_patternIpatternMatchWarnings,_patternIself,_patternIunboundNames) =
-                  (pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings )
+                  pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings
               ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectErrors,_righthandsideIcollectInstances,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTree,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
-                  (righthandside_ _righthandsideOallPatterns _righthandsideOallTypeSchemes _righthandsideOavailablePredicates _righthandsideObetaRight _righthandsideObetaUnique _righthandsideOclassEnvironment _righthandsideOcollectErrors _righthandsideOcollectWarnings _righthandsideOcurrentChunk _righthandsideOdictionaryEnvironment _righthandsideOimportEnvironment _righthandsideOmatchIO _righthandsideOmonos _righthandsideOnamesInScope _righthandsideOorderedTypeSynonyms _righthandsideOparentTree _righthandsideOpatternMatchWarnings _righthandsideOsubstitution _righthandsideOtypeschemeMap _righthandsideOuniqueChunk )
+                  righthandside_ _righthandsideOallPatterns _righthandsideOallTypeSchemes _righthandsideOavailablePredicates _righthandsideObetaRight _righthandsideObetaUnique _righthandsideOclassEnvironment _righthandsideOcollectErrors _righthandsideOcollectWarnings _righthandsideOcurrentChunk _righthandsideOdictionaryEnvironment _righthandsideOimportEnvironment _righthandsideOmatchIO _righthandsideOmonos _righthandsideOnamesInScope _righthandsideOorderedTypeSynonyms _righthandsideOparentTree _righthandsideOpatternMatchWarnings _righthandsideOsubstitution _righthandsideOtypeschemeMap _righthandsideOuniqueChunk
           in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)))
 sem_Declaration_Type :: T_Range ->
                         T_SimpleType ->
                         T_Type ->
                         T_Declaration
-sem_Declaration_Type range_ simpletype_ type_  =
+sem_Declaration_Type range_ simpletype_ type_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -3109,17 +3067,17 @@ sem_Declaration_Type range_ simpletype_ type_  =
               _lhsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
-                  (simpletype_ )
+                  simpletype_
               ( _typeIself) =
-                  (type_ )
+                  type_
           in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)))
 sem_Declaration_TypeSignature :: T_Range ->
                                  T_Names ->
                                  T_Type ->
                                  T_Declaration
-sem_Declaration_TypeSignature range_ names_ type_  =
+sem_Declaration_TypeSignature range_ names_ type_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -3198,18 +3156,18 @@ sem_Declaration_TypeSignature range_ names_ type_  =
               _lhsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _namesIself) =
-                  (names_ )
+                  names_
               ( _typeIself) =
-                  (type_ )
+                  type_
           in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)))
 -- Declarations ------------------------------------------------
 -- cata
 sem_Declarations :: Declarations ->
                     T_Declarations
-sem_Declarations list  =
-    (Prelude.foldr sem_Declarations_Cons sem_Declarations_Nil (Prelude.map sem_Declaration list) )
+sem_Declarations list =
+    (Prelude.foldr sem_Declarations_Cons sem_Declarations_Nil (Prelude.map sem_Declaration list))
 -- semantic domain
 type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (M.Map NameWithRange TpScheme) ->
@@ -3237,7 +3195,7 @@ type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
 sem_Declarations_Cons :: T_Declaration ->
                          T_Declarations ->
                          T_Declarations
-sem_Declarations_Cons hd_ tl_  =
+sem_Declarations_Cons hd_ tl_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -3475,12 +3433,12 @@ sem_Declarations_Cons hd_ tl_  =
               _tlOuniqueChunk =
                   _hdIuniqueChunk
               ( _hdIbetaUnique,_hdIbindingGroups,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIdeclVarNames,_hdIdictionaryEnvironment,_hdIinfoTrees,_hdImatchIO,_hdIpatternMatchWarnings,_hdIrestrictedNames,_hdIself,_hdIsimplePatNames,_hdItypeSignatures,_hdIunboundNames,_hdIuniqueChunk) =
-                  (hd_ _hdOallPatterns _hdOallTypeSchemes _hdOavailablePredicates _hdObetaUnique _hdObindingGroups _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOcurrentChunk _hdOdictionaryEnvironment _hdOimportEnvironment _hdOinheritedBDG _hdOmatchIO _hdOmonos _hdOnamesInScope _hdOorderedTypeSynonyms _hdOparentTree _hdOpatternMatchWarnings _hdOsubstitution _hdOtypeSignatures _hdOtypeschemeMap _hdOuniqueChunk )
+                  hd_ _hdOallPatterns _hdOallTypeSchemes _hdOavailablePredicates _hdObetaUnique _hdObindingGroups _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOcurrentChunk _hdOdictionaryEnvironment _hdOimportEnvironment _hdOinheritedBDG _hdOmatchIO _hdOmonos _hdOnamesInScope _hdOorderedTypeSynonyms _hdOparentTree _hdOpatternMatchWarnings _hdOsubstitution _hdOtypeSignatures _hdOtypeschemeMap _hdOuniqueChunk
               ( _tlIbetaUnique,_tlIbindingGroups,_tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIdeclVarNames,_tlIdictionaryEnvironment,_tlIinfoTrees,_tlImatchIO,_tlIpatternMatchWarnings,_tlIrestrictedNames,_tlIself,_tlIsimplePatNames,_tlItypeSignatures,_tlIunboundNames,_tlIuniqueChunk) =
-                  (tl_ _tlOallPatterns _tlOallTypeSchemes _tlOavailablePredicates _tlObetaUnique _tlObindingGroups _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOcurrentChunk _tlOdictionaryEnvironment _tlOimportEnvironment _tlOinheritedBDG _tlOmatchIO _tlOmonos _tlOnamesInScope _tlOorderedTypeSynonyms _tlOparentTree _tlOpatternMatchWarnings _tlOsubstitution _tlOtypeSignatures _tlOtypeschemeMap _tlOuniqueChunk )
+                  tl_ _tlOallPatterns _tlOallTypeSchemes _tlOavailablePredicates _tlObetaUnique _tlObindingGroups _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOcurrentChunk _tlOdictionaryEnvironment _tlOimportEnvironment _tlOinheritedBDG _tlOmatchIO _tlOmonos _tlOnamesInScope _tlOorderedTypeSynonyms _tlOparentTree _tlOpatternMatchWarnings _tlOsubstitution _tlOtypeSignatures _tlOtypeschemeMap _tlOuniqueChunk
           in  ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk)))
 sem_Declarations_Nil :: T_Declarations
-sem_Declarations_Nil  =
+sem_Declarations_Nil =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -3558,20 +3516,20 @@ sem_Declarations_Nil  =
 -- cata
 sem_Export :: Export ->
               T_Export
-sem_Export (Export_Module _range _name )  =
-    (sem_Export_Module (sem_Range _range ) (sem_Name _name ) )
-sem_Export (Export_TypeOrClass _range _name _names )  =
-    (sem_Export_TypeOrClass (sem_Range _range ) (sem_Name _name ) (sem_MaybeNames _names ) )
-sem_Export (Export_TypeOrClassComplete _range _name )  =
-    (sem_Export_TypeOrClassComplete (sem_Range _range ) (sem_Name _name ) )
-sem_Export (Export_Variable _range _name )  =
-    (sem_Export_Variable (sem_Range _range ) (sem_Name _name ) )
+sem_Export (Export_Module _range _name) =
+    (sem_Export_Module (sem_Range _range) (sem_Name _name))
+sem_Export (Export_TypeOrClass _range _name _names) =
+    (sem_Export_TypeOrClass (sem_Range _range) (sem_Name _name) (sem_MaybeNames _names))
+sem_Export (Export_TypeOrClassComplete _range _name) =
+    (sem_Export_TypeOrClassComplete (sem_Range _range) (sem_Name _name))
+sem_Export (Export_Variable _range _name) =
+    (sem_Export_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Export = ( Export)
 sem_Export_Module :: T_Range ->
                      T_Name ->
                      T_Export
-sem_Export_Module range_ name_  =
+sem_Export_Module range_ name_ =
     (let _lhsOself :: Export
          _rangeIself :: Range
          _nameIself :: Name
@@ -3580,15 +3538,15 @@ sem_Export_Module range_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
      in  ( _lhsOself))
 sem_Export_TypeOrClass :: T_Range ->
                           T_Name ->
                           T_MaybeNames ->
                           T_Export
-sem_Export_TypeOrClass range_ name_ names_  =
+sem_Export_TypeOrClass range_ name_ names_ =
     (let _lhsOself :: Export
          _rangeIself :: Range
          _nameIself :: Name
@@ -3598,16 +3556,16 @@ sem_Export_TypeOrClass range_ name_ names_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
          ( _namesIself) =
-             (names_ )
+             names_
      in  ( _lhsOself))
 sem_Export_TypeOrClassComplete :: T_Range ->
                                   T_Name ->
                                   T_Export
-sem_Export_TypeOrClassComplete range_ name_  =
+sem_Export_TypeOrClassComplete range_ name_ =
     (let _lhsOself :: Export
          _rangeIself :: Range
          _nameIself :: Name
@@ -3616,14 +3574,14 @@ sem_Export_TypeOrClassComplete range_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
      in  ( _lhsOself))
 sem_Export_Variable :: T_Range ->
                        T_Name ->
                        T_Export
-sem_Export_Variable range_ name_  =
+sem_Export_Variable range_ name_ =
     (let _lhsOself :: Export
          _rangeIself :: Range
          _nameIself :: Name
@@ -3632,22 +3590,22 @@ sem_Export_Variable range_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
      in  ( _lhsOself))
 -- Exports -----------------------------------------------------
 -- cata
 sem_Exports :: Exports ->
                T_Exports
-sem_Exports list  =
-    (Prelude.foldr sem_Exports_Cons sem_Exports_Nil (Prelude.map sem_Export list) )
+sem_Exports list =
+    (Prelude.foldr sem_Exports_Cons sem_Exports_Nil (Prelude.map sem_Export list))
 -- semantic domain
 type T_Exports = ( Exports)
 sem_Exports_Cons :: T_Export ->
                     T_Exports ->
                     T_Exports
-sem_Exports_Cons hd_ tl_  =
+sem_Exports_Cons hd_ tl_ =
     (let _lhsOself :: Exports
          _hdIself :: Export
          _tlIself :: Exports
@@ -3656,12 +3614,12 @@ sem_Exports_Cons hd_ tl_  =
          _lhsOself =
              _self
          ( _hdIself) =
-             (hd_ )
+             hd_
          ( _tlIself) =
-             (tl_ )
+             tl_
      in  ( _lhsOself))
 sem_Exports_Nil :: T_Exports
-sem_Exports_Nil  =
+sem_Exports_Nil =
     (let _lhsOself :: Exports
          _self =
              []
@@ -3672,46 +3630,46 @@ sem_Exports_Nil  =
 -- cata
 sem_Expression :: Expression ->
                   T_Expression
-sem_Expression (Expression_Case _range _expression _alternatives )  =
-    (sem_Expression_Case (sem_Range _range ) (sem_Expression _expression ) (sem_Alternatives _alternatives ) )
-sem_Expression (Expression_Comprehension _range _expression _qualifiers )  =
-    (sem_Expression_Comprehension (sem_Range _range ) (sem_Expression _expression ) (sem_Qualifiers _qualifiers ) )
-sem_Expression (Expression_Constructor _range _name )  =
-    (sem_Expression_Constructor (sem_Range _range ) (sem_Name _name ) )
-sem_Expression (Expression_Do _range _statements )  =
-    (sem_Expression_Do (sem_Range _range ) (sem_Statements _statements ) )
-sem_Expression (Expression_Enum _range _from _then _to )  =
-    (sem_Expression_Enum (sem_Range _range ) (sem_Expression _from ) (sem_MaybeExpression _then ) (sem_MaybeExpression _to ) )
-sem_Expression (Expression_If _range _guardExpression _thenExpression _elseExpression )  =
-    (sem_Expression_If (sem_Range _range ) (sem_Expression _guardExpression ) (sem_Expression _thenExpression ) (sem_Expression _elseExpression ) )
-sem_Expression (Expression_InfixApplication _range _leftExpression _operator _rightExpression )  =
-    (sem_Expression_InfixApplication (sem_Range _range ) (sem_MaybeExpression _leftExpression ) (sem_Expression _operator ) (sem_MaybeExpression _rightExpression ) )
-sem_Expression (Expression_Lambda _range _patterns _expression )  =
-    (sem_Expression_Lambda (sem_Range _range ) (sem_Patterns _patterns ) (sem_Expression _expression ) )
-sem_Expression (Expression_Let _range _declarations _expression )  =
-    (sem_Expression_Let (sem_Range _range ) (sem_Declarations _declarations ) (sem_Expression _expression ) )
-sem_Expression (Expression_List _range _expressions )  =
-    (sem_Expression_List (sem_Range _range ) (sem_Expressions _expressions ) )
-sem_Expression (Expression_Literal _range _literal )  =
-    (sem_Expression_Literal (sem_Range _range ) (sem_Literal _literal ) )
-sem_Expression (Expression_Negate _range _expression )  =
-    (sem_Expression_Negate (sem_Range _range ) (sem_Expression _expression ) )
-sem_Expression (Expression_NegateFloat _range _expression )  =
-    (sem_Expression_NegateFloat (sem_Range _range ) (sem_Expression _expression ) )
-sem_Expression (Expression_NormalApplication _range _function _arguments )  =
-    (sem_Expression_NormalApplication (sem_Range _range ) (sem_Expression _function ) (sem_Expressions _arguments ) )
-sem_Expression (Expression_Parenthesized _range _expression )  =
-    (sem_Expression_Parenthesized (sem_Range _range ) (sem_Expression _expression ) )
-sem_Expression (Expression_RecordConstruction _range _name _recordExpressionBindings )  =
-    (sem_Expression_RecordConstruction (sem_Range _range ) (sem_Name _name ) (sem_RecordExpressionBindings _recordExpressionBindings ) )
-sem_Expression (Expression_RecordUpdate _range _expression _recordExpressionBindings )  =
-    (sem_Expression_RecordUpdate (sem_Range _range ) (sem_Expression _expression ) (sem_RecordExpressionBindings _recordExpressionBindings ) )
-sem_Expression (Expression_Tuple _range _expressions )  =
-    (sem_Expression_Tuple (sem_Range _range ) (sem_Expressions _expressions ) )
-sem_Expression (Expression_Typed _range _expression _type )  =
-    (sem_Expression_Typed (sem_Range _range ) (sem_Expression _expression ) (sem_Type _type ) )
-sem_Expression (Expression_Variable _range _name )  =
-    (sem_Expression_Variable (sem_Range _range ) (sem_Name _name ) )
+sem_Expression (Expression_Case _range _expression _alternatives) =
+    (sem_Expression_Case (sem_Range _range) (sem_Expression _expression) (sem_Alternatives _alternatives))
+sem_Expression (Expression_Comprehension _range _expression _qualifiers) =
+    (sem_Expression_Comprehension (sem_Range _range) (sem_Expression _expression) (sem_Qualifiers _qualifiers))
+sem_Expression (Expression_Constructor _range _name) =
+    (sem_Expression_Constructor (sem_Range _range) (sem_Name _name))
+sem_Expression (Expression_Do _range _statements) =
+    (sem_Expression_Do (sem_Range _range) (sem_Statements _statements))
+sem_Expression (Expression_Enum _range _from _then _to) =
+    (sem_Expression_Enum (sem_Range _range) (sem_Expression _from) (sem_MaybeExpression _then) (sem_MaybeExpression _to))
+sem_Expression (Expression_If _range _guardExpression _thenExpression _elseExpression) =
+    (sem_Expression_If (sem_Range _range) (sem_Expression _guardExpression) (sem_Expression _thenExpression) (sem_Expression _elseExpression))
+sem_Expression (Expression_InfixApplication _range _leftExpression _operator _rightExpression) =
+    (sem_Expression_InfixApplication (sem_Range _range) (sem_MaybeExpression _leftExpression) (sem_Expression _operator) (sem_MaybeExpression _rightExpression))
+sem_Expression (Expression_Lambda _range _patterns _expression) =
+    (sem_Expression_Lambda (sem_Range _range) (sem_Patterns _patterns) (sem_Expression _expression))
+sem_Expression (Expression_Let _range _declarations _expression) =
+    (sem_Expression_Let (sem_Range _range) (sem_Declarations _declarations) (sem_Expression _expression))
+sem_Expression (Expression_List _range _expressions) =
+    (sem_Expression_List (sem_Range _range) (sem_Expressions _expressions))
+sem_Expression (Expression_Literal _range _literal) =
+    (sem_Expression_Literal (sem_Range _range) (sem_Literal _literal))
+sem_Expression (Expression_Negate _range _expression) =
+    (sem_Expression_Negate (sem_Range _range) (sem_Expression _expression))
+sem_Expression (Expression_NegateFloat _range _expression) =
+    (sem_Expression_NegateFloat (sem_Range _range) (sem_Expression _expression))
+sem_Expression (Expression_NormalApplication _range _function _arguments) =
+    (sem_Expression_NormalApplication (sem_Range _range) (sem_Expression _function) (sem_Expressions _arguments))
+sem_Expression (Expression_Parenthesized _range _expression) =
+    (sem_Expression_Parenthesized (sem_Range _range) (sem_Expression _expression))
+sem_Expression (Expression_RecordConstruction _range _name _recordExpressionBindings) =
+    (sem_Expression_RecordConstruction (sem_Range _range) (sem_Name _name) (sem_RecordExpressionBindings _recordExpressionBindings))
+sem_Expression (Expression_RecordUpdate _range _expression _recordExpressionBindings) =
+    (sem_Expression_RecordUpdate (sem_Range _range) (sem_Expression _expression) (sem_RecordExpressionBindings _recordExpressionBindings))
+sem_Expression (Expression_Tuple _range _expressions) =
+    (sem_Expression_Tuple (sem_Range _range) (sem_Expressions _expressions))
+sem_Expression (Expression_Typed _range _expression _type) =
+    (sem_Expression_Typed (sem_Range _range) (sem_Expression _expression) (sem_Type _type))
+sem_Expression (Expression_Variable _range _name) =
+    (sem_Expression_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Expression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (M.Map NameWithRange TpScheme) ->
@@ -3739,7 +3697,7 @@ sem_Expression_Case :: T_Range ->
                        T_Expression ->
                        T_Alternatives ->
                        T_Expression
-sem_Expression_Case range_ expression_ alternatives_  =
+sem_Expression_Case range_ expression_ alternatives_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -4004,17 +3962,17 @@ sem_Expression_Case range_ expression_ alternatives_  =
               _alternativesOuniqueChunk =
                   _expressionIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
               ( _alternativesIassumptions,_alternativesIbetaUnique,_alternativesIcollectErrors,_alternativesIcollectInstances,_alternativesIcollectWarnings,_alternativesIconstraintslist,_alternativesIdictionaryEnvironment,_alternativesIelementss,_alternativesIinfoTrees,_alternativesImatchIO,_alternativesIpatternMatchWarnings,_alternativesIself,_alternativesIunboundNames,_alternativesIuniqueChunk,_alternativesIunrwars) =
-                  (alternatives_ _alternativesOallPatterns _alternativesOallTypeSchemes _alternativesOavailablePredicates _alternativesObetaLeft _alternativesObetaRight _alternativesObetaUnique _alternativesOclassEnvironment _alternativesOcollectErrors _alternativesOcollectWarnings _alternativesOcurrentChunk _alternativesOdictionaryEnvironment _alternativesOimportEnvironment _alternativesOmatchIO _alternativesOmonos _alternativesOnamesInScope _alternativesOorderedTypeSynonyms _alternativesOparentTree _alternativesOpatternMatchWarnings _alternativesOsubstitution _alternativesOtypeschemeMap _alternativesOuniqueChunk )
+                  alternatives_ _alternativesOallPatterns _alternativesOallTypeSchemes _alternativesOavailablePredicates _alternativesObetaLeft _alternativesObetaRight _alternativesObetaUnique _alternativesOclassEnvironment _alternativesOcollectErrors _alternativesOcollectWarnings _alternativesOcurrentChunk _alternativesOdictionaryEnvironment _alternativesOimportEnvironment _alternativesOmatchIO _alternativesOmonos _alternativesOnamesInScope _alternativesOorderedTypeSynonyms _alternativesOparentTree _alternativesOpatternMatchWarnings _alternativesOsubstitution _alternativesOtypeschemeMap _alternativesOuniqueChunk
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_Comprehension :: T_Range ->
                                 T_Expression ->
                                 T_Qualifiers ->
                                 T_Expression
-sem_Expression_Comprehension range_ expression_ qualifiers_  =
+sem_Expression_Comprehension range_ expression_ qualifiers_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -4271,16 +4229,16 @@ sem_Expression_Comprehension range_ expression_ qualifiers_  =
               _qualifiersOuniqueSecondRound =
                   _expressionIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
               ( _qualifiersIassumptions,_qualifiersIbetaUnique,_qualifiersIcollectErrors,_qualifiersIcollectInstances,_qualifiersIcollectWarnings,_qualifiersIconstraints,_qualifiersIdictionaryEnvironment,_qualifiersIinfoTrees,_qualifiersImatchIO,_qualifiersImonos,_qualifiersInamesInScope,_qualifiersIpatternMatchWarnings,_qualifiersIself,_qualifiersIunboundNames,_qualifiersIuniqueChunk,_qualifiersIuniqueSecondRound) =
-                  (qualifiers_ _qualifiersOallPatterns _qualifiersOallTypeSchemes _qualifiersOassumptions _qualifiersOavailablePredicates _qualifiersObetaUnique _qualifiersOclassEnvironment _qualifiersOcollectErrors _qualifiersOcollectWarnings _qualifiersOconstraints _qualifiersOcurrentChunk _qualifiersOdictionaryEnvironment _qualifiersOimportEnvironment _qualifiersOmatchIO _qualifiersOmonos _qualifiersOnamesInScope _qualifiersOorderedTypeSynonyms _qualifiersOparentTree _qualifiersOpatternMatchWarnings _qualifiersOsubstitution _qualifiersOtypeschemeMap _qualifiersOunboundNames _qualifiersOuniqueChunk _qualifiersOuniqueSecondRound )
+                  qualifiers_ _qualifiersOallPatterns _qualifiersOallTypeSchemes _qualifiersOassumptions _qualifiersOavailablePredicates _qualifiersObetaUnique _qualifiersOclassEnvironment _qualifiersOcollectErrors _qualifiersOcollectWarnings _qualifiersOconstraints _qualifiersOcurrentChunk _qualifiersOdictionaryEnvironment _qualifiersOimportEnvironment _qualifiersOmatchIO _qualifiersOmonos _qualifiersOnamesInScope _qualifiersOorderedTypeSynonyms _qualifiersOparentTree _qualifiersOpatternMatchWarnings _qualifiersOsubstitution _qualifiersOtypeschemeMap _qualifiersOunboundNames _qualifiersOuniqueChunk _qualifiersOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_Constructor :: T_Range ->
                               T_Name ->
                               T_Expression
-sem_Expression_Constructor range_ name_  =
+sem_Expression_Constructor range_ name_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -4344,24 +4302,12 @@ sem_Expression_Constructor range_ name_  =
                   node _lhsIparentTree _localInfo []
               _lhsOinfoTree =
                   _parentTree
-              __tup8 =
+              ((),_lhsOmatches,_lhsOconstraints,_lhsOassumptions,_lhsOuniqueSecondRound,_ioMatch) =
                   let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                   in match0 infoTuple _lhsIuniqueSecondRound
                             (match_Expression_Constructor _nameIself)
                             _lhsItryPatterns _lhsIallPatterns
                             []
-              (__tup9,_,_,_,_,_) =
-                  __tup8
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup8
-              (_,_,_lhsOconstraints,_,_,_) =
-                  __tup8
-              (_,_,_,_lhsOassumptions,_,_) =
-                  __tup8
-              (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup8
-              (_,_,_,_,_,_ioMatch) =
-                  __tup8
               _lhsOmatchIO =
                   _lhsImatchIO             >> _ioMatch
               _lhsOcollectInstances =
@@ -4385,14 +4331,14 @@ sem_Expression_Constructor range_ name_  =
               _lhsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_Do :: T_Range ->
                      T_Statements ->
                      T_Expression
-sem_Expression_Do range_ statements_  =
+sem_Expression_Do range_ statements_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -4575,16 +4521,16 @@ sem_Expression_Do range_ statements_  =
               _statementsOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _statementsIassumptions,_statementsIbetaUnique,_statementsIcollectErrors,_statementsIcollectInstances,_statementsIcollectWarnings,_statementsIconstraints,_statementsIdictionaryEnvironment,_statementsIgeneratorBeta,_statementsIinfoTrees,_statementsImatchIO,_statementsInamesInScope,_statementsIpatternMatchWarnings,_statementsIself,_statementsIunboundNames,_statementsIuniqueChunk,_statementsIuniqueSecondRound) =
-                  (statements_ _statementsOallPatterns _statementsOallTypeSchemes _statementsOassumptions _statementsOavailablePredicates _statementsObetaUnique _statementsOclassEnvironment _statementsOcollectErrors _statementsOcollectWarnings _statementsOconstraints _statementsOcurrentChunk _statementsOdictionaryEnvironment _statementsOgeneratorBeta _statementsOimportEnvironment _statementsOmatchIO _statementsOmonos _statementsOnamesInScope _statementsOorderedTypeSynonyms _statementsOparentTree _statementsOpatternMatchWarnings _statementsOsubstitution _statementsOtypeschemeMap _statementsOunboundNames _statementsOuniqueChunk _statementsOuniqueSecondRound )
+                  statements_ _statementsOallPatterns _statementsOallTypeSchemes _statementsOassumptions _statementsOavailablePredicates _statementsObetaUnique _statementsOclassEnvironment _statementsOcollectErrors _statementsOcollectWarnings _statementsOconstraints _statementsOcurrentChunk _statementsOdictionaryEnvironment _statementsOgeneratorBeta _statementsOimportEnvironment _statementsOmatchIO _statementsOmonos _statementsOnamesInScope _statementsOorderedTypeSynonyms _statementsOparentTree _statementsOpatternMatchWarnings _statementsOsubstitution _statementsOtypeschemeMap _statementsOunboundNames _statementsOuniqueChunk _statementsOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_Enum :: T_Range ->
                        T_Expression ->
                        T_MaybeExpression ->
                        T_MaybeExpression ->
                        T_Expression
-sem_Expression_Enum range_ from_ then_ to_  =
+sem_Expression_Enum range_ from_ then_ to_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -4609,7 +4555,6 @@ sem_Expression_Enum range_ from_ then_ to_  =
          (let _fromObetaUnique :: Int
               _lhsOdictionaryEnvironment :: DictionaryEnvironment
               _lhsOinfoTree :: InfoTree
-              __tup11 :: (([(Expression     , [String])],[(MaybeExpression, [String])],[(MaybeExpression, [String])]))
               _fromOtryPatterns :: ([(Expression     , [String])])
               _thenOtryPatterns :: ([(MaybeExpression, [String])])
               _toOtryPatterns :: ([(MaybeExpression, [String])])
@@ -4807,30 +4752,12 @@ sem_Expression_Enum range_ from_ then_ to_  =
                   node _lhsIparentTree _localInfo (_fromIinfoTree : _thenIinfoTrees ++ _toIinfoTrees)
               _lhsOinfoTree =
                   _parentTree
-              __tup10 =
+              ((_fromOtryPatterns,_thenOtryPatterns,_toOtryPatterns),_lhsOmatches,_lhsOconstraints,_lhsOassumptions,_lhsOuniqueSecondRound,_ioMatch) =
                   let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                   in match3 infoTuple _toIuniqueSecondRound
                             match_Expression_Enum
                             _lhsItryPatterns _lhsIallPatterns
                             [_fromImatches, _thenImatches, _toImatches]
-              (__tup11,_,_,_,_,_) =
-                  __tup10
-              (_fromOtryPatterns,_,_) =
-                  __tup11
-              (_,_thenOtryPatterns,_) =
-                  __tup11
-              (_,_,_toOtryPatterns) =
-                  __tup11
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup10
-              (_,_,_lhsOconstraints,_,_,_) =
-                  __tup10
-              (_,_,_,_lhsOassumptions,_,_) =
-                  __tup10
-              (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup10
-              (_,_,_,_,_,_ioMatch) =
-                  __tup10
               _lhsOmatchIO =
                   _toImatchIO              >> _ioMatch
               _lhsOcollectInstances =
@@ -4972,20 +4899,20 @@ sem_Expression_Enum range_ from_ then_ to_  =
               _toOuniqueSecondRound =
                   _thenIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _fromIassumptions,_fromIbeta,_fromIbetaUnique,_fromIcollectErrors,_fromIcollectInstances,_fromIcollectWarnings,_fromIconstraints,_fromIdictionaryEnvironment,_fromIinfoTree,_fromImatchIO,_fromImatches,_fromIpatternMatchWarnings,_fromIself,_fromIunboundNames,_fromIuniqueChunk,_fromIuniqueSecondRound) =
-                  (from_ _fromOallPatterns _fromOallTypeSchemes _fromOavailablePredicates _fromObetaUnique _fromOclassEnvironment _fromOcollectErrors _fromOcollectWarnings _fromOcurrentChunk _fromOdictionaryEnvironment _fromOimportEnvironment _fromOmatchIO _fromOmonos _fromOnamesInScope _fromOorderedTypeSynonyms _fromOparentTree _fromOpatternMatchWarnings _fromOsubstitution _fromOtryPatterns _fromOtypeschemeMap _fromOuniqueChunk _fromOuniqueSecondRound )
+                  from_ _fromOallPatterns _fromOallTypeSchemes _fromOavailablePredicates _fromObetaUnique _fromOclassEnvironment _fromOcollectErrors _fromOcollectWarnings _fromOcurrentChunk _fromOdictionaryEnvironment _fromOimportEnvironment _fromOmatchIO _fromOmonos _fromOnamesInScope _fromOorderedTypeSynonyms _fromOparentTree _fromOpatternMatchWarnings _fromOsubstitution _fromOtryPatterns _fromOtypeschemeMap _fromOuniqueChunk _fromOuniqueSecondRound
               ( _thenIassumptions,_thenIbeta,_thenIbetaUnique,_thenIcollectErrors,_thenIcollectInstances,_thenIcollectWarnings,_thenIconstraints,_thenIdictionaryEnvironment,_thenIinfoTrees,_thenImatchIO,_thenImatches,_thenIpatternMatchWarnings,_thenIsection,_thenIself,_thenIunboundNames,_thenIuniqueChunk,_thenIuniqueSecondRound) =
-                  (then_ _thenOallPatterns _thenOallTypeSchemes _thenOavailablePredicates _thenObetaUnique _thenOclassEnvironment _thenOcollectErrors _thenOcollectWarnings _thenOcurrentChunk _thenOdictionaryEnvironment _thenOimportEnvironment _thenOmatchIO _thenOmonos _thenOnamesInScope _thenOorderedTypeSynonyms _thenOparentTree _thenOpatternMatchWarnings _thenOsubstitution _thenOtryPatterns _thenOtypeschemeMap _thenOuniqueChunk _thenOuniqueSecondRound )
+                  then_ _thenOallPatterns _thenOallTypeSchemes _thenOavailablePredicates _thenObetaUnique _thenOclassEnvironment _thenOcollectErrors _thenOcollectWarnings _thenOcurrentChunk _thenOdictionaryEnvironment _thenOimportEnvironment _thenOmatchIO _thenOmonos _thenOnamesInScope _thenOorderedTypeSynonyms _thenOparentTree _thenOpatternMatchWarnings _thenOsubstitution _thenOtryPatterns _thenOtypeschemeMap _thenOuniqueChunk _thenOuniqueSecondRound
               ( _toIassumptions,_toIbeta,_toIbetaUnique,_toIcollectErrors,_toIcollectInstances,_toIcollectWarnings,_toIconstraints,_toIdictionaryEnvironment,_toIinfoTrees,_toImatchIO,_toImatches,_toIpatternMatchWarnings,_toIsection,_toIself,_toIunboundNames,_toIuniqueChunk,_toIuniqueSecondRound) =
-                  (to_ _toOallPatterns _toOallTypeSchemes _toOavailablePredicates _toObetaUnique _toOclassEnvironment _toOcollectErrors _toOcollectWarnings _toOcurrentChunk _toOdictionaryEnvironment _toOimportEnvironment _toOmatchIO _toOmonos _toOnamesInScope _toOorderedTypeSynonyms _toOparentTree _toOpatternMatchWarnings _toOsubstitution _toOtryPatterns _toOtypeschemeMap _toOuniqueChunk _toOuniqueSecondRound )
+                  to_ _toOallPatterns _toOallTypeSchemes _toOavailablePredicates _toObetaUnique _toOclassEnvironment _toOcollectErrors _toOcollectWarnings _toOcurrentChunk _toOdictionaryEnvironment _toOimportEnvironment _toOmatchIO _toOmonos _toOnamesInScope _toOorderedTypeSynonyms _toOparentTree _toOpatternMatchWarnings _toOsubstitution _toOtryPatterns _toOtypeschemeMap _toOuniqueChunk _toOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_If :: T_Range ->
                      T_Expression ->
                      T_Expression ->
                      T_Expression ->
                      T_Expression
-sem_Expression_If range_ guardExpression_ thenExpression_ elseExpression_  =
+sem_Expression_If range_ guardExpression_ thenExpression_ elseExpression_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -5009,7 +4936,6 @@ sem_Expression_If range_ guardExpression_ thenExpression_ elseExpression_  =
        _lhsIuniqueSecondRound ->
          (let _guardExpressionObetaUnique :: Int
               _lhsOinfoTree :: InfoTree
-              __tup13 :: (([(Expression     , [String])],[(Expression     , [String])],[(Expression     , [String])]))
               _guardExpressionOtryPatterns :: ([(Expression     , [String])])
               _thenExpressionOtryPatterns :: ([(Expression     , [String])])
               _elseExpressionOtryPatterns :: ([(Expression     , [String])])
@@ -5171,30 +5097,12 @@ sem_Expression_If range_ guardExpression_ thenExpression_ elseExpression_  =
                   node _lhsIparentTree _localInfo [_guardExpressionIinfoTree, _thenExpressionIinfoTree, _elseExpressionIinfoTree]
               _lhsOinfoTree =
                   _parentTree
-              __tup12 =
+              ((_guardExpressionOtryPatterns,_thenExpressionOtryPatterns,_elseExpressionOtryPatterns),_lhsOmatches,_lhsOconstraints,_lhsOassumptions,_lhsOuniqueSecondRound,_ioMatch) =
                   let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                   in match3 infoTuple _elseExpressionIuniqueSecondRound
                             match_Expression_If
                             _lhsItryPatterns _lhsIallPatterns
                             [_guardExpressionImatches,_thenExpressionImatches,_elseExpressionImatches]
-              (__tup13,_,_,_,_,_) =
-                  __tup12
-              (_guardExpressionOtryPatterns,_,_) =
-                  __tup13
-              (_,_thenExpressionOtryPatterns,_) =
-                  __tup13
-              (_,_,_elseExpressionOtryPatterns) =
-                  __tup13
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup12
-              (_,_,_lhsOconstraints,_,_,_) =
-                  __tup12
-              (_,_,_,_lhsOassumptions,_,_) =
-                  __tup12
-              (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup12
-              (_,_,_,_,_,_ioMatch) =
-                  __tup12
               _lhsOmatchIO =
                   _elseExpressionImatchIO  >> _ioMatch
               _lhsOcollectInstances =
@@ -5338,20 +5246,20 @@ sem_Expression_If range_ guardExpression_ thenExpression_ elseExpression_  =
               _elseExpressionOuniqueSecondRound =
                   _thenExpressionIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _guardExpressionIassumptions,_guardExpressionIbeta,_guardExpressionIbetaUnique,_guardExpressionIcollectErrors,_guardExpressionIcollectInstances,_guardExpressionIcollectWarnings,_guardExpressionIconstraints,_guardExpressionIdictionaryEnvironment,_guardExpressionIinfoTree,_guardExpressionImatchIO,_guardExpressionImatches,_guardExpressionIpatternMatchWarnings,_guardExpressionIself,_guardExpressionIunboundNames,_guardExpressionIuniqueChunk,_guardExpressionIuniqueSecondRound) =
-                  (guardExpression_ _guardExpressionOallPatterns _guardExpressionOallTypeSchemes _guardExpressionOavailablePredicates _guardExpressionObetaUnique _guardExpressionOclassEnvironment _guardExpressionOcollectErrors _guardExpressionOcollectWarnings _guardExpressionOcurrentChunk _guardExpressionOdictionaryEnvironment _guardExpressionOimportEnvironment _guardExpressionOmatchIO _guardExpressionOmonos _guardExpressionOnamesInScope _guardExpressionOorderedTypeSynonyms _guardExpressionOparentTree _guardExpressionOpatternMatchWarnings _guardExpressionOsubstitution _guardExpressionOtryPatterns _guardExpressionOtypeschemeMap _guardExpressionOuniqueChunk _guardExpressionOuniqueSecondRound )
+                  guardExpression_ _guardExpressionOallPatterns _guardExpressionOallTypeSchemes _guardExpressionOavailablePredicates _guardExpressionObetaUnique _guardExpressionOclassEnvironment _guardExpressionOcollectErrors _guardExpressionOcollectWarnings _guardExpressionOcurrentChunk _guardExpressionOdictionaryEnvironment _guardExpressionOimportEnvironment _guardExpressionOmatchIO _guardExpressionOmonos _guardExpressionOnamesInScope _guardExpressionOorderedTypeSynonyms _guardExpressionOparentTree _guardExpressionOpatternMatchWarnings _guardExpressionOsubstitution _guardExpressionOtryPatterns _guardExpressionOtypeschemeMap _guardExpressionOuniqueChunk _guardExpressionOuniqueSecondRound
               ( _thenExpressionIassumptions,_thenExpressionIbeta,_thenExpressionIbetaUnique,_thenExpressionIcollectErrors,_thenExpressionIcollectInstances,_thenExpressionIcollectWarnings,_thenExpressionIconstraints,_thenExpressionIdictionaryEnvironment,_thenExpressionIinfoTree,_thenExpressionImatchIO,_thenExpressionImatches,_thenExpressionIpatternMatchWarnings,_thenExpressionIself,_thenExpressionIunboundNames,_thenExpressionIuniqueChunk,_thenExpressionIuniqueSecondRound) =
-                  (thenExpression_ _thenExpressionOallPatterns _thenExpressionOallTypeSchemes _thenExpressionOavailablePredicates _thenExpressionObetaUnique _thenExpressionOclassEnvironment _thenExpressionOcollectErrors _thenExpressionOcollectWarnings _thenExpressionOcurrentChunk _thenExpressionOdictionaryEnvironment _thenExpressionOimportEnvironment _thenExpressionOmatchIO _thenExpressionOmonos _thenExpressionOnamesInScope _thenExpressionOorderedTypeSynonyms _thenExpressionOparentTree _thenExpressionOpatternMatchWarnings _thenExpressionOsubstitution _thenExpressionOtryPatterns _thenExpressionOtypeschemeMap _thenExpressionOuniqueChunk _thenExpressionOuniqueSecondRound )
+                  thenExpression_ _thenExpressionOallPatterns _thenExpressionOallTypeSchemes _thenExpressionOavailablePredicates _thenExpressionObetaUnique _thenExpressionOclassEnvironment _thenExpressionOcollectErrors _thenExpressionOcollectWarnings _thenExpressionOcurrentChunk _thenExpressionOdictionaryEnvironment _thenExpressionOimportEnvironment _thenExpressionOmatchIO _thenExpressionOmonos _thenExpressionOnamesInScope _thenExpressionOorderedTypeSynonyms _thenExpressionOparentTree _thenExpressionOpatternMatchWarnings _thenExpressionOsubstitution _thenExpressionOtryPatterns _thenExpressionOtypeschemeMap _thenExpressionOuniqueChunk _thenExpressionOuniqueSecondRound
               ( _elseExpressionIassumptions,_elseExpressionIbeta,_elseExpressionIbetaUnique,_elseExpressionIcollectErrors,_elseExpressionIcollectInstances,_elseExpressionIcollectWarnings,_elseExpressionIconstraints,_elseExpressionIdictionaryEnvironment,_elseExpressionIinfoTree,_elseExpressionImatchIO,_elseExpressionImatches,_elseExpressionIpatternMatchWarnings,_elseExpressionIself,_elseExpressionIunboundNames,_elseExpressionIuniqueChunk,_elseExpressionIuniqueSecondRound) =
-                  (elseExpression_ _elseExpressionOallPatterns _elseExpressionOallTypeSchemes _elseExpressionOavailablePredicates _elseExpressionObetaUnique _elseExpressionOclassEnvironment _elseExpressionOcollectErrors _elseExpressionOcollectWarnings _elseExpressionOcurrentChunk _elseExpressionOdictionaryEnvironment _elseExpressionOimportEnvironment _elseExpressionOmatchIO _elseExpressionOmonos _elseExpressionOnamesInScope _elseExpressionOorderedTypeSynonyms _elseExpressionOparentTree _elseExpressionOpatternMatchWarnings _elseExpressionOsubstitution _elseExpressionOtryPatterns _elseExpressionOtypeschemeMap _elseExpressionOuniqueChunk _elseExpressionOuniqueSecondRound )
+                  elseExpression_ _elseExpressionOallPatterns _elseExpressionOallTypeSchemes _elseExpressionOavailablePredicates _elseExpressionObetaUnique _elseExpressionOclassEnvironment _elseExpressionOcollectErrors _elseExpressionOcollectWarnings _elseExpressionOcurrentChunk _elseExpressionOdictionaryEnvironment _elseExpressionOimportEnvironment _elseExpressionOmatchIO _elseExpressionOmonos _elseExpressionOnamesInScope _elseExpressionOorderedTypeSynonyms _elseExpressionOparentTree _elseExpressionOpatternMatchWarnings _elseExpressionOsubstitution _elseExpressionOtryPatterns _elseExpressionOtypeschemeMap _elseExpressionOuniqueChunk _elseExpressionOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_InfixApplication :: T_Range ->
                                    T_MaybeExpression ->
                                    T_Expression ->
                                    T_MaybeExpression ->
                                    T_Expression
-sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression_  =
+sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -5375,7 +5283,6 @@ sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression
        _lhsIuniqueSecondRound ->
          (let _leftExpressionObetaUnique :: Int
               _lhsOinfoTree :: InfoTree
-              __tup15 :: (([(MaybeExpression, [String])],[(Expression     , [String])],[(MaybeExpression, [String])]))
               _leftExpressionOtryPatterns :: ([(MaybeExpression, [String])])
               _operatorOtryPatterns :: ([(Expression     , [String])])
               _rightExpressionOtryPatterns :: ([(MaybeExpression, [String])])
@@ -5559,30 +5466,12 @@ sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression
                     (_leftExpressionIinfoTrees ++ [_operatorIinfoTree] ++ _rightExpressionIinfoTrees)
               _lhsOinfoTree =
                   _parentTree
-              __tup14 =
+              ((_leftExpressionOtryPatterns,_operatorOtryPatterns,_rightExpressionOtryPatterns),_lhsOmatches,_lhsOconstraints,_lhsOassumptions,_lhsOuniqueSecondRound,_ioMatch) =
                   let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                   in match3 infoTuple _rightExpressionIuniqueSecondRound
                             match_Expression_InfixApplication
                             _lhsItryPatterns _lhsIallPatterns
                             [_leftExpressionImatches, _operatorImatches,_rightExpressionImatches]
-              (__tup15,_,_,_,_,_) =
-                  __tup14
-              (_leftExpressionOtryPatterns,_,_) =
-                  __tup15
-              (_,_operatorOtryPatterns,_) =
-                  __tup15
-              (_,_,_rightExpressionOtryPatterns) =
-                  __tup15
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup14
-              (_,_,_lhsOconstraints,_,_,_) =
-                  __tup14
-              (_,_,_,_lhsOassumptions,_,_) =
-                  __tup14
-              (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup14
-              (_,_,_,_,_,_ioMatch) =
-                  __tup14
               _lhsOmatchIO =
                   _rightExpressionImatchIO >> _ioMatch
               _lhsOcollectInstances =
@@ -5726,19 +5615,19 @@ sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression
               _rightExpressionOuniqueSecondRound =
                   _operatorIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _leftExpressionIassumptions,_leftExpressionIbeta,_leftExpressionIbetaUnique,_leftExpressionIcollectErrors,_leftExpressionIcollectInstances,_leftExpressionIcollectWarnings,_leftExpressionIconstraints,_leftExpressionIdictionaryEnvironment,_leftExpressionIinfoTrees,_leftExpressionImatchIO,_leftExpressionImatches,_leftExpressionIpatternMatchWarnings,_leftExpressionIsection,_leftExpressionIself,_leftExpressionIunboundNames,_leftExpressionIuniqueChunk,_leftExpressionIuniqueSecondRound) =
-                  (leftExpression_ _leftExpressionOallPatterns _leftExpressionOallTypeSchemes _leftExpressionOavailablePredicates _leftExpressionObetaUnique _leftExpressionOclassEnvironment _leftExpressionOcollectErrors _leftExpressionOcollectWarnings _leftExpressionOcurrentChunk _leftExpressionOdictionaryEnvironment _leftExpressionOimportEnvironment _leftExpressionOmatchIO _leftExpressionOmonos _leftExpressionOnamesInScope _leftExpressionOorderedTypeSynonyms _leftExpressionOparentTree _leftExpressionOpatternMatchWarnings _leftExpressionOsubstitution _leftExpressionOtryPatterns _leftExpressionOtypeschemeMap _leftExpressionOuniqueChunk _leftExpressionOuniqueSecondRound )
+                  leftExpression_ _leftExpressionOallPatterns _leftExpressionOallTypeSchemes _leftExpressionOavailablePredicates _leftExpressionObetaUnique _leftExpressionOclassEnvironment _leftExpressionOcollectErrors _leftExpressionOcollectWarnings _leftExpressionOcurrentChunk _leftExpressionOdictionaryEnvironment _leftExpressionOimportEnvironment _leftExpressionOmatchIO _leftExpressionOmonos _leftExpressionOnamesInScope _leftExpressionOorderedTypeSynonyms _leftExpressionOparentTree _leftExpressionOpatternMatchWarnings _leftExpressionOsubstitution _leftExpressionOtryPatterns _leftExpressionOtypeschemeMap _leftExpressionOuniqueChunk _leftExpressionOuniqueSecondRound
               ( _operatorIassumptions,_operatorIbeta,_operatorIbetaUnique,_operatorIcollectErrors,_operatorIcollectInstances,_operatorIcollectWarnings,_operatorIconstraints,_operatorIdictionaryEnvironment,_operatorIinfoTree,_operatorImatchIO,_operatorImatches,_operatorIpatternMatchWarnings,_operatorIself,_operatorIunboundNames,_operatorIuniqueChunk,_operatorIuniqueSecondRound) =
-                  (operator_ _operatorOallPatterns _operatorOallTypeSchemes _operatorOavailablePredicates _operatorObetaUnique _operatorOclassEnvironment _operatorOcollectErrors _operatorOcollectWarnings _operatorOcurrentChunk _operatorOdictionaryEnvironment _operatorOimportEnvironment _operatorOmatchIO _operatorOmonos _operatorOnamesInScope _operatorOorderedTypeSynonyms _operatorOparentTree _operatorOpatternMatchWarnings _operatorOsubstitution _operatorOtryPatterns _operatorOtypeschemeMap _operatorOuniqueChunk _operatorOuniqueSecondRound )
+                  operator_ _operatorOallPatterns _operatorOallTypeSchemes _operatorOavailablePredicates _operatorObetaUnique _operatorOclassEnvironment _operatorOcollectErrors _operatorOcollectWarnings _operatorOcurrentChunk _operatorOdictionaryEnvironment _operatorOimportEnvironment _operatorOmatchIO _operatorOmonos _operatorOnamesInScope _operatorOorderedTypeSynonyms _operatorOparentTree _operatorOpatternMatchWarnings _operatorOsubstitution _operatorOtryPatterns _operatorOtypeschemeMap _operatorOuniqueChunk _operatorOuniqueSecondRound
               ( _rightExpressionIassumptions,_rightExpressionIbeta,_rightExpressionIbetaUnique,_rightExpressionIcollectErrors,_rightExpressionIcollectInstances,_rightExpressionIcollectWarnings,_rightExpressionIconstraints,_rightExpressionIdictionaryEnvironment,_rightExpressionIinfoTrees,_rightExpressionImatchIO,_rightExpressionImatches,_rightExpressionIpatternMatchWarnings,_rightExpressionIsection,_rightExpressionIself,_rightExpressionIunboundNames,_rightExpressionIuniqueChunk,_rightExpressionIuniqueSecondRound) =
-                  (rightExpression_ _rightExpressionOallPatterns _rightExpressionOallTypeSchemes _rightExpressionOavailablePredicates _rightExpressionObetaUnique _rightExpressionOclassEnvironment _rightExpressionOcollectErrors _rightExpressionOcollectWarnings _rightExpressionOcurrentChunk _rightExpressionOdictionaryEnvironment _rightExpressionOimportEnvironment _rightExpressionOmatchIO _rightExpressionOmonos _rightExpressionOnamesInScope _rightExpressionOorderedTypeSynonyms _rightExpressionOparentTree _rightExpressionOpatternMatchWarnings _rightExpressionOsubstitution _rightExpressionOtryPatterns _rightExpressionOtypeschemeMap _rightExpressionOuniqueChunk _rightExpressionOuniqueSecondRound )
+                  rightExpression_ _rightExpressionOallPatterns _rightExpressionOallTypeSchemes _rightExpressionOavailablePredicates _rightExpressionObetaUnique _rightExpressionOclassEnvironment _rightExpressionOcollectErrors _rightExpressionOcollectWarnings _rightExpressionOcurrentChunk _rightExpressionOdictionaryEnvironment _rightExpressionOimportEnvironment _rightExpressionOmatchIO _rightExpressionOmonos _rightExpressionOnamesInScope _rightExpressionOorderedTypeSynonyms _rightExpressionOparentTree _rightExpressionOpatternMatchWarnings _rightExpressionOsubstitution _rightExpressionOtryPatterns _rightExpressionOtypeschemeMap _rightExpressionOuniqueChunk _rightExpressionOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_Lambda :: T_Range ->
                          T_Patterns ->
                          T_Expression ->
                          T_Expression
-sem_Expression_Lambda range_ patterns_ expression_  =
+sem_Expression_Lambda range_ patterns_ expression_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -5844,12 +5733,8 @@ sem_Expression_Lambda range_ patterns_ expression_  =
                   TVar _lhsIbetaUnique
               _newcon =
                   [ (foldr (.->.) _expressionIbeta _patternsIbetas .==. _beta) _cinfoType ]
-              __tup16 =
+              (_csetBinds,_assumptions) =
                   (_patternsIenvironment .===. _expressionIassumptions) _cinfoBind
-              (_csetBinds,_) =
-                  __tup16
-              (_,_assumptions) =
-                  __tup16
               _cinfoBind =
                   \name -> variableConstraint "variable" (nameToUHA_Expr name)
                      [ FolkloreConstraint
@@ -5867,14 +5752,8 @@ sem_Expression_Lambda range_ patterns_ expression_  =
                   node _lhsIparentTree _localInfo (_patternsIinfoTrees ++ [_expressionIinfoTree])
               _lhsOinfoTree =
                   _parentTree
-              __tup17 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _patternsIpatVarNames _expressionIunboundNames _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup17
-              (_,_unboundNames,_) =
-                  __tup17
-              (_,_,_scopeInfo) =
-                  __tup17
               _lhsOunboundNames =
                   _unboundNames
               _lhsOmatches =
@@ -5970,17 +5849,17 @@ sem_Expression_Lambda range_ patterns_ expression_  =
               _expressionOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternsIbetaUnique,_patternsIbetas,_patternsIconstraintslist,_patternsIelementss,_patternsIenvironment,_patternsIinfoTrees,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIpatternMatchWarnings,_patternsIself,_patternsIunboundNames) =
-                  (patterns_ _patternsObetaUnique _patternsOimportEnvironment _patternsOmonos _patternsOnamesInScope _patternsOparentTree _patternsOpatternMatchWarnings )
+                  patterns_ _patternsObetaUnique _patternsOimportEnvironment _patternsOmonos _patternsOnamesInScope _patternsOparentTree _patternsOpatternMatchWarnings
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_Let :: T_Range ->
                       T_Declarations ->
                       T_Expression ->
                       T_Expression
-sem_Expression_Let range_ declarations_ expression_  =
+sem_Expression_Let range_ declarations_ expression_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -6102,22 +5981,10 @@ sem_Expression_Let range_ declarations_ expression_  =
                   [ (_expressionIbeta .==. _beta) _cinfoType ] .>. _cset
               _beta =
                   TVar _lhsIbetaUnique
-              __tup18 =
+              (_assumptions,_cset,_inheritedBDG,_chunkNr,_lhsObetaUnique,_implicitsFM) =
                   let inputBDG   = (False, _lhsIcurrentChunk, _expressionIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _expressionIbetaUnique)
                       mybdggroup = Just (_expressionIassumptions, [_expressionIconstraints])
                   in performBindingGroup inputBDG _declarationsIbindingGroups
-              (_assumptions,_,_,_,_,_) =
-                  __tup18
-              (_,_cset,_,_,_,_) =
-                  __tup18
-              (_,_,_inheritedBDG,_,_,_) =
-                  __tup18
-              (_,_,_,_chunkNr,_,_) =
-                  __tup18
-              (_,_,_,_,_lhsObetaUnique,_) =
-                  __tup18
-              (_,_,_,_,_,_implicitsFM) =
-                  __tup18
               _inferredTypes =
                   findInferredTypes _lhsItypeschemeMap _implicitsFM
               _lhsOcollectWarnings =
@@ -6157,28 +6024,10 @@ sem_Expression_Let range_ declarations_ expression_  =
                   _thisTree
               _declarationsOparentTree =
                   _declTree
-              __tup19 =
+              (_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities) =
                   internalError "PartialSyntax.ag" "n/a" "toplevel Expression"
-              (_collectTypeConstructors,_,_,_,_,_) =
-                  __tup19
-              (_,_collectValueConstructors,_,_,_,_) =
-                  __tup19
-              (_,_,_collectTypeSynonyms,_,_,_) =
-                  __tup19
-              (_,_,_,_collectConstructorEnv,_,_) =
-                  __tup19
-              (_,_,_,_,_derivedFunctions,_) =
-                  __tup19
-              (_,_,_,_,_,_operatorFixities) =
-                  __tup19
-              __tup20 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _expressionIunboundNames) _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup20
-              (_,_unboundNames,_) =
-                  __tup20
-              (_,_,_scopeInfo) =
-                  __tup20
               _lhsOunboundNames =
                   _unboundNames
               _lhsOmatches =
@@ -6281,16 +6130,16 @@ sem_Expression_Let range_ declarations_ expression_  =
               _expressionOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectInstances,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
-                  (declarations_ _declarationsOallPatterns _declarationsOallTypeSchemes _declarationsOavailablePredicates _declarationsObetaUnique _declarationsObindingGroups _declarationsOclassEnvironment _declarationsOcollectErrors _declarationsOcollectWarnings _declarationsOcurrentChunk _declarationsOdictionaryEnvironment _declarationsOimportEnvironment _declarationsOinheritedBDG _declarationsOmatchIO _declarationsOmonos _declarationsOnamesInScope _declarationsOorderedTypeSynonyms _declarationsOparentTree _declarationsOpatternMatchWarnings _declarationsOsubstitution _declarationsOtypeSignatures _declarationsOtypeschemeMap _declarationsOuniqueChunk )
+                  declarations_ _declarationsOallPatterns _declarationsOallTypeSchemes _declarationsOavailablePredicates _declarationsObetaUnique _declarationsObindingGroups _declarationsOclassEnvironment _declarationsOcollectErrors _declarationsOcollectWarnings _declarationsOcurrentChunk _declarationsOdictionaryEnvironment _declarationsOimportEnvironment _declarationsOinheritedBDG _declarationsOmatchIO _declarationsOmonos _declarationsOnamesInScope _declarationsOorderedTypeSynonyms _declarationsOparentTree _declarationsOpatternMatchWarnings _declarationsOsubstitution _declarationsOtypeSignatures _declarationsOtypeschemeMap _declarationsOuniqueChunk
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_List :: T_Range ->
                        T_Expressions ->
                        T_Expression
-sem_Expression_List range_ expressions_  =
+sem_Expression_List range_ expressions_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -6396,24 +6245,12 @@ sem_Expression_List range_ expressions_  =
                   node _lhsIparentTree _localInfo (_expressionsIinfoTrees)
               _lhsOinfoTree =
                   _parentTree
-              __tup21 =
+              (_expressionsOtryPatterns,_lhsOmatches,_lhsOconstraints,_lhsOassumptions,_lhsOuniqueSecondRound,_ioMatch) =
                   let infoTuple = metaVarInfo _constraints _expressionsIassumptions _localInfo
                   in match1 infoTuple _expressionsIuniqueSecondRound
                             match_Expression_List
                             _lhsItryPatterns _lhsIallPatterns
                             [_expressionsImatches]
-              (_expressionsOtryPatterns,_,_,_,_,_) =
-                  __tup21
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup21
-              (_,_,_lhsOconstraints,_,_,_) =
-                  __tup21
-              (_,_,_,_lhsOassumptions,_,_) =
-                  __tup21
-              (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup21
-              (_,_,_,_,_,_ioMatch) =
-                  __tup21
               _lhsOmatchIO =
                   _expressionsImatchIO     >> _ioMatch
               _lhsOcollectInstances =
@@ -6477,14 +6314,14 @@ sem_Expression_List range_ expressions_  =
               _expressionsOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionsIassumptions,_expressionsIbetaUnique,_expressionsIbetas,_expressionsIcollectErrors,_expressionsIcollectInstances,_expressionsIcollectWarnings,_expressionsIconstraintslist,_expressionsIdictionaryEnvironment,_expressionsIinfoTrees,_expressionsImatchIO,_expressionsImatches,_expressionsIpatternMatchWarnings,_expressionsIself,_expressionsIunboundNames,_expressionsIuniqueChunk,_expressionsIuniqueSecondRound) =
-                  (expressions_ _expressionsOallPatterns _expressionsOallTypeSchemes _expressionsOavailablePredicates _expressionsObetaUnique _expressionsOclassEnvironment _expressionsOcollectErrors _expressionsOcollectWarnings _expressionsOcurrentChunk _expressionsOdictionaryEnvironment _expressionsOimportEnvironment _expressionsOmatchIO _expressionsOmonos _expressionsOnamesInScope _expressionsOorderedTypeSynonyms _expressionsOparentTree _expressionsOpatternMatchWarnings _expressionsOsubstitution _expressionsOtryPatterns _expressionsOtypeschemeMap _expressionsOuniqueChunk _expressionsOuniqueSecondRound )
+                  expressions_ _expressionsOallPatterns _expressionsOallTypeSchemes _expressionsOavailablePredicates _expressionsObetaUnique _expressionsOclassEnvironment _expressionsOcollectErrors _expressionsOcollectWarnings _expressionsOcurrentChunk _expressionsOdictionaryEnvironment _expressionsOimportEnvironment _expressionsOmatchIO _expressionsOmonos _expressionsOnamesInScope _expressionsOorderedTypeSynonyms _expressionsOparentTree _expressionsOpatternMatchWarnings _expressionsOsubstitution _expressionsOtryPatterns _expressionsOtypeschemeMap _expressionsOuniqueChunk _expressionsOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_Literal :: T_Range ->
                           T_Literal ->
                           T_Expression
-sem_Expression_Literal range_ literal_  =
+sem_Expression_Literal range_ literal_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -6546,24 +6383,12 @@ sem_Expression_Literal range_ literal_  =
                   node _lhsIparentTree _localInfo []
               _lhsOinfoTree =
                   _parentTree
-              __tup22 =
+              ((),_lhsOmatches,_lhsOconstraints,_lhsOassumptions,_lhsOuniqueSecondRound,_ioMatch) =
                   let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                   in match0 infoTuple _lhsIuniqueSecondRound
                             (match_Expression_Literal _literalIself)
                             _lhsItryPatterns _lhsIallPatterns
                             []
-              (__tup23,_,_,_,_,_) =
-                  __tup22
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup22
-              (_,_,_lhsOconstraints,_,_,_) =
-                  __tup22
-              (_,_,_,_lhsOassumptions,_,_) =
-                  __tup22
-              (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup22
-              (_,_,_,_,_,_ioMatch) =
-                  __tup22
               _lhsOmatchIO =
                   _lhsImatchIO             >> _ioMatch
               _lhsOcollectInstances =
@@ -6587,14 +6412,14 @@ sem_Expression_Literal range_ literal_  =
               _lhsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _literalIelements,_literalIliteralType,_literalIself) =
-                  (literal_ )
+                  literal_
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_Negate :: T_Range ->
                          T_Expression ->
                          T_Expression
-sem_Expression_Negate range_ expression_  =
+sem_Expression_Negate range_ expression_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -6713,24 +6538,12 @@ sem_Expression_Negate range_ expression_  =
                   node _lhsIparentTree _localInfo [_expressionIinfoTree]
               _lhsOinfoTree =
                   _parentTree
-              __tup24 =
+              (_expressionOtryPatterns,_lhsOmatches,_lhsOconstraints,_lhsOassumptions,_lhsOuniqueSecondRound,_ioMatch) =
                   let infoTuple = metaVarInfo _constraints _expressionIassumptions _localInfo
                   in match1 infoTuple _expressionIuniqueSecondRound
                             match_Expression_Negate
                             _lhsItryPatterns _lhsIallPatterns
                             [_expressionImatches]
-              (_expressionOtryPatterns,_,_,_,_,_) =
-                  __tup24
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup24
-              (_,_,_lhsOconstraints,_,_,_) =
-                  __tup24
-              (_,_,_,_lhsOassumptions,_,_) =
-                  __tup24
-              (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup24
-              (_,_,_,_,_,_ioMatch) =
-                  __tup24
               _lhsOmatchIO =
                   _expressionImatchIO      >> _ioMatch
               _lhsOcollectInstances =
@@ -6792,14 +6605,14 @@ sem_Expression_Negate range_ expression_  =
               _expressionOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_NegateFloat :: T_Range ->
                               T_Expression ->
                               T_Expression
-sem_Expression_NegateFloat range_ expression_  =
+sem_Expression_NegateFloat range_ expression_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -6896,24 +6709,12 @@ sem_Expression_NegateFloat range_ expression_  =
                   node _lhsIparentTree _localInfo [_expressionIinfoTree]
               _lhsOinfoTree =
                   _parentTree
-              __tup25 =
+              (_expressionOtryPatterns,_lhsOmatches,_lhsOconstraints,_lhsOassumptions,_lhsOuniqueSecondRound,_ioMatch) =
                   let infoTuple = metaVarInfo _constraints _expressionIassumptions _localInfo
                   in match1 infoTuple _expressionIuniqueSecondRound
                             match_Expression_NegateFloat
                             _lhsItryPatterns _lhsIallPatterns
                             [_expressionImatches]
-              (_expressionOtryPatterns,_,_,_,_,_) =
-                  __tup25
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup25
-              (_,_,_lhsOconstraints,_,_,_) =
-                  __tup25
-              (_,_,_,_lhsOassumptions,_,_) =
-                  __tup25
-              (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup25
-              (_,_,_,_,_,_ioMatch) =
-                  __tup25
               _lhsOmatchIO =
                   _expressionImatchIO      >> _ioMatch
               _lhsOcollectInstances =
@@ -6977,15 +6778,15 @@ sem_Expression_NegateFloat range_ expression_  =
               _expressionOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_NormalApplication :: T_Range ->
                                     T_Expression ->
                                     T_Expressions ->
                                     T_Expression
-sem_Expression_NormalApplication range_ function_ arguments_  =
+sem_Expression_NormalApplication range_ function_ arguments_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -7009,7 +6810,6 @@ sem_Expression_NormalApplication range_ function_ arguments_  =
        _lhsIuniqueSecondRound ->
          (let _functionObetaUnique :: Int
               _lhsOinfoTree :: InfoTree
-              __tup27 :: (([(Expression     , [String])],[(Expressions    , [String])]))
               _functionOtryPatterns :: ([(Expression     , [String])])
               _argumentsOtryPatterns :: ([(Expressions    , [String])])
               _lhsOmatches :: ([Maybe MetaVariableTable])
@@ -7124,28 +6924,12 @@ sem_Expression_NormalApplication range_ function_ arguments_  =
                   node _lhsIparentTree _localInfo (_functionIinfoTree : _argumentsIinfoTrees)
               _lhsOinfoTree =
                   _parentTree
-              __tup26 =
+              ((_functionOtryPatterns,_argumentsOtryPatterns),_lhsOmatches,_lhsOconstraints,_lhsOassumptions,_lhsOuniqueSecondRound,_ioMatch) =
                   let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                   in match2 infoTuple _argumentsIuniqueSecondRound
                             match_Expression_NormalApplication
                             _lhsItryPatterns _lhsIallPatterns
                             [_functionImatches, _argumentsImatches]
-              (__tup27,_,_,_,_,_) =
-                  __tup26
-              (_functionOtryPatterns,_) =
-                  __tup27
-              (_,_argumentsOtryPatterns) =
-                  __tup27
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup26
-              (_,_,_lhsOconstraints,_,_,_) =
-                  __tup26
-              (_,_,_,_lhsOassumptions,_,_) =
-                  __tup26
-              (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup26
-              (_,_,_,_,_,_ioMatch) =
-                  __tup26
               _lhsOmatchIO =
                   _argumentsImatchIO       >> _ioMatch
               _lhsOcollectInstances =
@@ -7249,16 +7033,16 @@ sem_Expression_NormalApplication range_ function_ arguments_  =
               _argumentsOuniqueSecondRound =
                   _functionIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _functionIassumptions,_functionIbeta,_functionIbetaUnique,_functionIcollectErrors,_functionIcollectInstances,_functionIcollectWarnings,_functionIconstraints,_functionIdictionaryEnvironment,_functionIinfoTree,_functionImatchIO,_functionImatches,_functionIpatternMatchWarnings,_functionIself,_functionIunboundNames,_functionIuniqueChunk,_functionIuniqueSecondRound) =
-                  (function_ _functionOallPatterns _functionOallTypeSchemes _functionOavailablePredicates _functionObetaUnique _functionOclassEnvironment _functionOcollectErrors _functionOcollectWarnings _functionOcurrentChunk _functionOdictionaryEnvironment _functionOimportEnvironment _functionOmatchIO _functionOmonos _functionOnamesInScope _functionOorderedTypeSynonyms _functionOparentTree _functionOpatternMatchWarnings _functionOsubstitution _functionOtryPatterns _functionOtypeschemeMap _functionOuniqueChunk _functionOuniqueSecondRound )
+                  function_ _functionOallPatterns _functionOallTypeSchemes _functionOavailablePredicates _functionObetaUnique _functionOclassEnvironment _functionOcollectErrors _functionOcollectWarnings _functionOcurrentChunk _functionOdictionaryEnvironment _functionOimportEnvironment _functionOmatchIO _functionOmonos _functionOnamesInScope _functionOorderedTypeSynonyms _functionOparentTree _functionOpatternMatchWarnings _functionOsubstitution _functionOtryPatterns _functionOtypeschemeMap _functionOuniqueChunk _functionOuniqueSecondRound
               ( _argumentsIassumptions,_argumentsIbetaUnique,_argumentsIbetas,_argumentsIcollectErrors,_argumentsIcollectInstances,_argumentsIcollectWarnings,_argumentsIconstraintslist,_argumentsIdictionaryEnvironment,_argumentsIinfoTrees,_argumentsImatchIO,_argumentsImatches,_argumentsIpatternMatchWarnings,_argumentsIself,_argumentsIunboundNames,_argumentsIuniqueChunk,_argumentsIuniqueSecondRound) =
-                  (arguments_ _argumentsOallPatterns _argumentsOallTypeSchemes _argumentsOavailablePredicates _argumentsObetaUnique _argumentsOclassEnvironment _argumentsOcollectErrors _argumentsOcollectWarnings _argumentsOcurrentChunk _argumentsOdictionaryEnvironment _argumentsOimportEnvironment _argumentsOmatchIO _argumentsOmonos _argumentsOnamesInScope _argumentsOorderedTypeSynonyms _argumentsOparentTree _argumentsOpatternMatchWarnings _argumentsOsubstitution _argumentsOtryPatterns _argumentsOtypeschemeMap _argumentsOuniqueChunk _argumentsOuniqueSecondRound )
+                  arguments_ _argumentsOallPatterns _argumentsOallTypeSchemes _argumentsOavailablePredicates _argumentsObetaUnique _argumentsOclassEnvironment _argumentsOcollectErrors _argumentsOcollectWarnings _argumentsOcurrentChunk _argumentsOdictionaryEnvironment _argumentsOimportEnvironment _argumentsOmatchIO _argumentsOmonos _argumentsOnamesInScope _argumentsOorderedTypeSynonyms _argumentsOparentTree _argumentsOpatternMatchWarnings _argumentsOsubstitution _argumentsOtryPatterns _argumentsOtypeschemeMap _argumentsOuniqueChunk _argumentsOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_Parenthesized :: T_Range ->
                                 T_Expression ->
                                 T_Expression
-sem_Expression_Parenthesized range_ expression_  =
+sem_Expression_Parenthesized range_ expression_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -7411,15 +7195,15 @@ sem_Expression_Parenthesized range_ expression_  =
               _expressionOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_RecordConstruction :: T_Range ->
                                      T_Name ->
                                      T_RecordExpressionBindings ->
                                      T_Expression
-sem_Expression_RecordConstruction range_ name_ recordExpressionBindings_  =
+sem_Expression_RecordConstruction range_ name_ recordExpressionBindings_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -7483,14 +7267,8 @@ sem_Expression_RecordConstruction range_ name_ recordExpressionBindings_  =
               _recordExpressionBindingsIuniqueChunk :: Int
               _infoTree =
                   globalInfoError
-              __tup28 =
+              (_assumptions,_constraints,_beta) =
                   internalError "PartialSyntax.ag" "n/a" "Expression.RecordConstruction"
-              (_assumptions,_,_) =
-                  __tup28
-              (_,_constraints,_) =
-                  __tup28
-              (_,_,_beta) =
-                  __tup28
               _matches =
                   internalError "TS_PatternMatching.ag" "n/a" "RecordConstruction is not supported"
               _lhsOcollectInstances =
@@ -7556,17 +7334,17 @@ sem_Expression_RecordConstruction range_ name_ recordExpressionBindings_  =
               _recordExpressionBindingsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _recordExpressionBindingsIcollectErrors,_recordExpressionBindingsIcollectInstances,_recordExpressionBindingsIcollectWarnings,_recordExpressionBindingsIdictionaryEnvironment,_recordExpressionBindingsIpatternMatchWarnings,_recordExpressionBindingsIself,_recordExpressionBindingsIunboundNames,_recordExpressionBindingsIuniqueChunk) =
-                  (recordExpressionBindings_ _recordExpressionBindingsOallTypeSchemes _recordExpressionBindingsOavailablePredicates _recordExpressionBindingsOclassEnvironment _recordExpressionBindingsOcollectErrors _recordExpressionBindingsOcollectWarnings _recordExpressionBindingsOcurrentChunk _recordExpressionBindingsOdictionaryEnvironment _recordExpressionBindingsOimportEnvironment _recordExpressionBindingsOnamesInScope _recordExpressionBindingsOorderedTypeSynonyms _recordExpressionBindingsOpatternMatchWarnings _recordExpressionBindingsOsubstitution _recordExpressionBindingsOtypeschemeMap _recordExpressionBindingsOuniqueChunk )
+                  recordExpressionBindings_ _recordExpressionBindingsOallTypeSchemes _recordExpressionBindingsOavailablePredicates _recordExpressionBindingsOclassEnvironment _recordExpressionBindingsOcollectErrors _recordExpressionBindingsOcollectWarnings _recordExpressionBindingsOcurrentChunk _recordExpressionBindingsOdictionaryEnvironment _recordExpressionBindingsOimportEnvironment _recordExpressionBindingsOnamesInScope _recordExpressionBindingsOorderedTypeSynonyms _recordExpressionBindingsOpatternMatchWarnings _recordExpressionBindingsOsubstitution _recordExpressionBindingsOtypeschemeMap _recordExpressionBindingsOuniqueChunk
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_RecordUpdate :: T_Range ->
                                T_Expression ->
                                T_RecordExpressionBindings ->
                                T_Expression
-sem_Expression_RecordUpdate range_ expression_ recordExpressionBindings_  =
+sem_Expression_RecordUpdate range_ expression_ recordExpressionBindings_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -7769,16 +7547,16 @@ sem_Expression_RecordUpdate range_ expression_ recordExpressionBindings_  =
               _recordExpressionBindingsOuniqueChunk =
                   _expressionIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
               ( _recordExpressionBindingsIcollectErrors,_recordExpressionBindingsIcollectInstances,_recordExpressionBindingsIcollectWarnings,_recordExpressionBindingsIdictionaryEnvironment,_recordExpressionBindingsIpatternMatchWarnings,_recordExpressionBindingsIself,_recordExpressionBindingsIunboundNames,_recordExpressionBindingsIuniqueChunk) =
-                  (recordExpressionBindings_ _recordExpressionBindingsOallTypeSchemes _recordExpressionBindingsOavailablePredicates _recordExpressionBindingsOclassEnvironment _recordExpressionBindingsOcollectErrors _recordExpressionBindingsOcollectWarnings _recordExpressionBindingsOcurrentChunk _recordExpressionBindingsOdictionaryEnvironment _recordExpressionBindingsOimportEnvironment _recordExpressionBindingsOnamesInScope _recordExpressionBindingsOorderedTypeSynonyms _recordExpressionBindingsOpatternMatchWarnings _recordExpressionBindingsOsubstitution _recordExpressionBindingsOtypeschemeMap _recordExpressionBindingsOuniqueChunk )
+                  recordExpressionBindings_ _recordExpressionBindingsOallTypeSchemes _recordExpressionBindingsOavailablePredicates _recordExpressionBindingsOclassEnvironment _recordExpressionBindingsOcollectErrors _recordExpressionBindingsOcollectWarnings _recordExpressionBindingsOcurrentChunk _recordExpressionBindingsOdictionaryEnvironment _recordExpressionBindingsOimportEnvironment _recordExpressionBindingsOnamesInScope _recordExpressionBindingsOorderedTypeSynonyms _recordExpressionBindingsOpatternMatchWarnings _recordExpressionBindingsOsubstitution _recordExpressionBindingsOtypeschemeMap _recordExpressionBindingsOuniqueChunk
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_Tuple :: T_Range ->
                         T_Expressions ->
                         T_Expression
-sem_Expression_Tuple range_ expressions_  =
+sem_Expression_Tuple range_ expressions_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -7874,24 +7652,12 @@ sem_Expression_Tuple range_ expressions_  =
                   node _lhsIparentTree _localInfo (_expressionsIinfoTrees)
               _lhsOinfoTree =
                   _parentTree
-              __tup29 =
+              (_expressionsOtryPatterns,_lhsOmatches,_lhsOconstraints,_lhsOassumptions,_lhsOuniqueSecondRound,_ioMatch) =
                   let infoTuple = metaVarInfo _constraints _expressionsIassumptions _localInfo
                   in match1 infoTuple _expressionsIuniqueSecondRound
                             match_Expression_Tuple
                             _lhsItryPatterns _lhsIallPatterns
                             [_expressionsImatches]
-              (_expressionsOtryPatterns,_,_,_,_,_) =
-                  __tup29
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup29
-              (_,_,_lhsOconstraints,_,_,_) =
-                  __tup29
-              (_,_,_,_lhsOassumptions,_,_) =
-                  __tup29
-              (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup29
-              (_,_,_,_,_,_ioMatch) =
-                  __tup29
               _lhsOmatchIO =
                   _expressionsImatchIO     >> _ioMatch
               _lhsOcollectInstances =
@@ -7955,15 +7721,15 @@ sem_Expression_Tuple range_ expressions_  =
               _expressionsOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionsIassumptions,_expressionsIbetaUnique,_expressionsIbetas,_expressionsIcollectErrors,_expressionsIcollectInstances,_expressionsIcollectWarnings,_expressionsIconstraintslist,_expressionsIdictionaryEnvironment,_expressionsIinfoTrees,_expressionsImatchIO,_expressionsImatches,_expressionsIpatternMatchWarnings,_expressionsIself,_expressionsIunboundNames,_expressionsIuniqueChunk,_expressionsIuniqueSecondRound) =
-                  (expressions_ _expressionsOallPatterns _expressionsOallTypeSchemes _expressionsOavailablePredicates _expressionsObetaUnique _expressionsOclassEnvironment _expressionsOcollectErrors _expressionsOcollectWarnings _expressionsOcurrentChunk _expressionsOdictionaryEnvironment _expressionsOimportEnvironment _expressionsOmatchIO _expressionsOmonos _expressionsOnamesInScope _expressionsOorderedTypeSynonyms _expressionsOparentTree _expressionsOpatternMatchWarnings _expressionsOsubstitution _expressionsOtryPatterns _expressionsOtypeschemeMap _expressionsOuniqueChunk _expressionsOuniqueSecondRound )
+                  expressions_ _expressionsOallPatterns _expressionsOallTypeSchemes _expressionsOavailablePredicates _expressionsObetaUnique _expressionsOclassEnvironment _expressionsOcollectErrors _expressionsOcollectWarnings _expressionsOcurrentChunk _expressionsOdictionaryEnvironment _expressionsOimportEnvironment _expressionsOmatchIO _expressionsOmonos _expressionsOnamesInScope _expressionsOorderedTypeSynonyms _expressionsOparentTree _expressionsOpatternMatchWarnings _expressionsOsubstitution _expressionsOtryPatterns _expressionsOtypeschemeMap _expressionsOuniqueChunk _expressionsOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_Typed :: T_Range ->
                         T_Expression ->
                         T_Type ->
                         T_Expression
-sem_Expression_Typed range_ expression_ type_  =
+sem_Expression_Typed range_ expression_ type_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -8144,16 +7910,16 @@ sem_Expression_Typed range_ expression_ type_  =
               _expressionOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
               ( _typeIself) =
-                  (type_ )
+                  type_
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expression_Variable :: T_Range ->
                            T_Name ->
                            T_Expression
-sem_Expression_Variable range_ name_  =
+sem_Expression_Variable range_ name_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -8235,24 +8001,12 @@ sem_Expression_Variable range_ name_  =
                   _parentTree
               _lhsOunboundNames =
                   [ _nameIself ]
-              __tup30 =
+              ((),_lhsOmatches,_lhsOconstraints,_lhsOassumptions,_lhsOuniqueSecondRound,_ioMatch) =
                   let infoTuple = metaVarInfo _constraints _assumptions _localInfo
                   in match0 infoTuple _lhsIuniqueSecondRound
                             (match_Expression_Variable _nameIself)
                             _lhsItryPatterns _lhsIallPatterns
                             []
-              (__tup31,_,_,_,_,_) =
-                  __tup30
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup30
-              (_,_,_lhsOconstraints,_,_,_) =
-                  __tup30
-              (_,_,_,_lhsOassumptions,_,_) =
-                  __tup30
-              (_,_,_,_,_lhsOuniqueSecondRound,_) =
-                  __tup30
-              (_,_,_,_,_,_ioMatch) =
-                  __tup30
               _lhsOmatchIO =
                   _lhsImatchIO             >> _ioMatch
               _lhsOcollectInstances =
@@ -8272,16 +8026,16 @@ sem_Expression_Variable range_ name_  =
               _lhsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 -- Expressions -------------------------------------------------
 -- cata
 sem_Expressions :: Expressions ->
                    T_Expressions
-sem_Expressions list  =
-    (Prelude.foldr sem_Expressions_Cons sem_Expressions_Nil (Prelude.map sem_Expression list) )
+sem_Expressions list =
+    (Prelude.foldr sem_Expressions_Cons sem_Expressions_Nil (Prelude.map sem_Expression list))
 -- semantic domain
 type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (M.Map NameWithRange TpScheme) ->
@@ -8308,7 +8062,7 @@ type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
 sem_Expressions_Cons :: T_Expression ->
                         T_Expressions ->
                         T_Expressions
-sem_Expressions_Cons hd_ tl_  =
+sem_Expressions_Cons hd_ tl_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -8334,7 +8088,6 @@ sem_Expressions_Cons hd_ tl_  =
               _lhsOassumptions :: Assumptions
               _lhsOconstraintslist :: ConstraintSets
               _lhsOinfoTrees :: InfoTrees
-              __tup33 :: (([(Expression     , [String])],[(Expressions    , [String])]))
               _hdOtryPatterns :: ([(Expression     , [String])])
               _tlOtryPatterns :: ([(Expressions    , [String])])
               _lhsOmatches :: ([Maybe MetaVariableTable])
@@ -8429,16 +8182,8 @@ sem_Expressions_Cons hd_ tl_  =
                   _hdIconstraints : _tlIconstraintslist
               _lhsOinfoTrees =
                   _hdIinfoTree : _tlIinfoTrees
-              __tup32 =
+              ((_hdOtryPatterns,_tlOtryPatterns),_lhsOmatches,_,_,_,_) =
                   match2' match_Expressions_Cons _lhsItryPatterns [] [_hdImatches, _tlImatches]
-              (__tup33,_,_,_,_,_) =
-                  __tup32
-              (_hdOtryPatterns,_) =
-                  __tup33
-              (_,_tlOtryPatterns) =
-                  __tup33
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup32
               _lhsOcollectInstances =
                   _hdIcollectInstances  ++  _tlIcollectInstances
               _lhsOunboundNames =
@@ -8544,12 +8289,12 @@ sem_Expressions_Cons hd_ tl_  =
               _tlOuniqueSecondRound =
                   _hdIuniqueSecondRound
               ( _hdIassumptions,_hdIbeta,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIinfoTree,_hdImatchIO,_hdImatches,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIuniqueSecondRound) =
-                  (hd_ _hdOallPatterns _hdOallTypeSchemes _hdOavailablePredicates _hdObetaUnique _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOcurrentChunk _hdOdictionaryEnvironment _hdOimportEnvironment _hdOmatchIO _hdOmonos _hdOnamesInScope _hdOorderedTypeSynonyms _hdOparentTree _hdOpatternMatchWarnings _hdOsubstitution _hdOtryPatterns _hdOtypeschemeMap _hdOuniqueChunk _hdOuniqueSecondRound )
+                  hd_ _hdOallPatterns _hdOallTypeSchemes _hdOavailablePredicates _hdObetaUnique _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOcurrentChunk _hdOdictionaryEnvironment _hdOimportEnvironment _hdOmatchIO _hdOmonos _hdOnamesInScope _hdOorderedTypeSynonyms _hdOparentTree _hdOpatternMatchWarnings _hdOsubstitution _hdOtryPatterns _hdOtypeschemeMap _hdOuniqueChunk _hdOuniqueSecondRound
               ( _tlIassumptions,_tlIbetaUnique,_tlIbetas,_tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIconstraintslist,_tlIdictionaryEnvironment,_tlIinfoTrees,_tlImatchIO,_tlImatches,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIuniqueSecondRound) =
-                  (tl_ _tlOallPatterns _tlOallTypeSchemes _tlOavailablePredicates _tlObetaUnique _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOcurrentChunk _tlOdictionaryEnvironment _tlOimportEnvironment _tlOmatchIO _tlOmonos _tlOnamesInScope _tlOorderedTypeSynonyms _tlOparentTree _tlOpatternMatchWarnings _tlOsubstitution _tlOtryPatterns _tlOtypeschemeMap _tlOuniqueChunk _tlOuniqueSecondRound )
+                  tl_ _tlOallPatterns _tlOallTypeSchemes _tlOavailablePredicates _tlObetaUnique _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOcurrentChunk _tlOdictionaryEnvironment _tlOimportEnvironment _tlOmatchIO _tlOmonos _tlOnamesInScope _tlOorderedTypeSynonyms _tlOparentTree _tlOpatternMatchWarnings _tlOsubstitution _tlOtryPatterns _tlOtypeschemeMap _tlOuniqueChunk _tlOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsObetas,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Expressions_Nil :: T_Expressions
-sem_Expressions_Nil  =
+sem_Expressions_Nil =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -8595,12 +8340,8 @@ sem_Expressions_Nil  =
                   []
               _lhsOinfoTrees =
                   []
-              __tup34 =
+              ((),_lhsOmatches,_,_,_,_) =
                   match0' match_Expressions_Nil _lhsItryPatterns [] []
-              (__tup35,_,_,_,_,_) =
-                  __tup34
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup34
               _lhsOcollectInstances =
                   []
               _lhsOunboundNames =
@@ -8630,8 +8371,8 @@ sem_Expressions_Nil  =
 -- cata
 sem_FieldDeclaration :: FieldDeclaration ->
                         T_FieldDeclaration
-sem_FieldDeclaration (FieldDeclaration_FieldDeclaration _range _names _type )  =
-    (sem_FieldDeclaration_FieldDeclaration (sem_Range _range ) (sem_Names _names ) (sem_AnnotatedType _type ) )
+sem_FieldDeclaration (FieldDeclaration_FieldDeclaration _range _names _type) =
+    (sem_FieldDeclaration_FieldDeclaration (sem_Range _range) (sem_Names _names) (sem_AnnotatedType _type))
 -- semantic domain
 type T_FieldDeclaration = Names ->
                           ( FieldDeclaration,Names)
@@ -8639,7 +8380,7 @@ sem_FieldDeclaration_FieldDeclaration :: T_Range ->
                                          T_Names ->
                                          T_AnnotatedType ->
                                          T_FieldDeclaration
-sem_FieldDeclaration_FieldDeclaration range_ names_ type_  =
+sem_FieldDeclaration_FieldDeclaration range_ names_ type_ =
     (\ _lhsInamesInScope ->
          (let _lhsOunboundNames :: Names
               _lhsOself :: FieldDeclaration
@@ -8648,26 +8389,8 @@ sem_FieldDeclaration_FieldDeclaration range_ names_ type_  =
               _namesIself :: Names
               _typeIself :: AnnotatedType
               _typeIunboundNames :: Names
-              __tup36 =
+              (_kindErrors,_tyconEnv,_constructorenv,_importEnvironment,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_warnings) =
                   internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
-              (_kindErrors,_,_,_,_,_,_,_,_) =
-                  __tup36
-              (_,_tyconEnv,_,_,_,_,_,_,_) =
-                  __tup36
-              (_,_,_constructorenv,_,_,_,_,_,_) =
-                  __tup36
-              (_,_,_,_importEnvironment,_,_,_,_,_) =
-                  __tup36
-              (_,_,_,_,_valueConstructors,_,_,_,_) =
-                  __tup36
-              (_,_,_,_,_,_allValueConstructors,_,_,_) =
-                  __tup36
-              (_,_,_,_,_,_,_typeConstructors,_,_) =
-                  __tup36
-              (_,_,_,_,_,_,_,_allTypeConstructors,_) =
-                  __tup36
-              (_,_,_,_,_,_,_,_,_warnings) =
-                  __tup36
               _lhsOunboundNames =
                   _typeIunboundNames
               _self =
@@ -8677,25 +8400,25 @@ sem_FieldDeclaration_FieldDeclaration range_ names_ type_  =
               _typeOnamesInScope =
                   _lhsInamesInScope
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _namesIself) =
-                  (names_ )
+                  names_
               ( _typeIself,_typeIunboundNames) =
-                  (type_ _typeOnamesInScope )
+                  type_ _typeOnamesInScope
           in  ( _lhsOself,_lhsOunboundNames)))
 -- FieldDeclarations -------------------------------------------
 -- cata
 sem_FieldDeclarations :: FieldDeclarations ->
                          T_FieldDeclarations
-sem_FieldDeclarations list  =
-    (Prelude.foldr sem_FieldDeclarations_Cons sem_FieldDeclarations_Nil (Prelude.map sem_FieldDeclaration list) )
+sem_FieldDeclarations list =
+    (Prelude.foldr sem_FieldDeclarations_Cons sem_FieldDeclarations_Nil (Prelude.map sem_FieldDeclaration list))
 -- semantic domain
 type T_FieldDeclarations = Names ->
                            ( FieldDeclarations,Names)
 sem_FieldDeclarations_Cons :: T_FieldDeclaration ->
                               T_FieldDeclarations ->
                               T_FieldDeclarations
-sem_FieldDeclarations_Cons hd_ tl_  =
+sem_FieldDeclarations_Cons hd_ tl_ =
     (\ _lhsInamesInScope ->
          (let _lhsOunboundNames :: Names
               _lhsOself :: FieldDeclarations
@@ -8716,12 +8439,12 @@ sem_FieldDeclarations_Cons hd_ tl_  =
               _tlOnamesInScope =
                   _lhsInamesInScope
               ( _hdIself,_hdIunboundNames) =
-                  (hd_ _hdOnamesInScope )
+                  hd_ _hdOnamesInScope
               ( _tlIself,_tlIunboundNames) =
-                  (tl_ _tlOnamesInScope )
+                  tl_ _tlOnamesInScope
           in  ( _lhsOself,_lhsOunboundNames)))
 sem_FieldDeclarations_Nil :: T_FieldDeclarations
-sem_FieldDeclarations_Nil  =
+sem_FieldDeclarations_Nil =
     (\ _lhsInamesInScope ->
          (let _lhsOunboundNames :: Names
               _lhsOself :: FieldDeclarations
@@ -8736,17 +8459,17 @@ sem_FieldDeclarations_Nil  =
 -- cata
 sem_Fixity :: Fixity ->
               T_Fixity
-sem_Fixity (Fixity_Infix _range )  =
-    (sem_Fixity_Infix (sem_Range _range ) )
-sem_Fixity (Fixity_Infixl _range )  =
-    (sem_Fixity_Infixl (sem_Range _range ) )
-sem_Fixity (Fixity_Infixr _range )  =
-    (sem_Fixity_Infixr (sem_Range _range ) )
+sem_Fixity (Fixity_Infix _range) =
+    (sem_Fixity_Infix (sem_Range _range))
+sem_Fixity (Fixity_Infixl _range) =
+    (sem_Fixity_Infixl (sem_Range _range))
+sem_Fixity (Fixity_Infixr _range) =
+    (sem_Fixity_Infixr (sem_Range _range))
 -- semantic domain
 type T_Fixity = ( Fixity)
 sem_Fixity_Infix :: T_Range ->
                     T_Fixity
-sem_Fixity_Infix range_  =
+sem_Fixity_Infix range_ =
     (let _lhsOself :: Fixity
          _rangeIself :: Range
          _self =
@@ -8754,11 +8477,11 @@ sem_Fixity_Infix range_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
      in  ( _lhsOself))
 sem_Fixity_Infixl :: T_Range ->
                      T_Fixity
-sem_Fixity_Infixl range_  =
+sem_Fixity_Infixl range_ =
     (let _lhsOself :: Fixity
          _rangeIself :: Range
          _self =
@@ -8766,11 +8489,11 @@ sem_Fixity_Infixl range_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
      in  ( _lhsOself))
 sem_Fixity_Infixr :: T_Range ->
                      T_Fixity
-sem_Fixity_Infixr range_  =
+sem_Fixity_Infixr range_ =
     (let _lhsOself :: Fixity
          _rangeIself :: Range
          _self =
@@ -8778,14 +8501,14 @@ sem_Fixity_Infixr range_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
      in  ( _lhsOself))
 -- FunctionBinding ---------------------------------------------
 -- cata
 sem_FunctionBinding :: FunctionBinding ->
                        T_FunctionBinding
-sem_FunctionBinding (FunctionBinding_FunctionBinding _range _lefthandside _righthandside )  =
-    (sem_FunctionBinding_FunctionBinding (sem_Range _range ) (sem_LeftHandSide _lefthandside ) (sem_RightHandSide _righthandside ) )
+sem_FunctionBinding (FunctionBinding_FunctionBinding _range _lefthandside _righthandside) =
+    (sem_FunctionBinding_FunctionBinding (sem_Range _range) (sem_LeftHandSide _lefthandside) (sem_RightHandSide _righthandside))
 -- semantic domain
 type T_FunctionBinding = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (M.Map NameWithRange TpScheme) ->
@@ -8813,7 +8536,7 @@ sem_FunctionBinding_FunctionBinding :: T_Range ->
                                        T_LeftHandSide ->
                                        T_RightHandSide ->
                                        T_FunctionBinding
-sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_  =
+sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -8916,12 +8639,8 @@ sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_  =
                        ]
               _conLeft =
                   zipWith3 (\t1 t2 nr -> (t1 .==. t2) (_cinfoLeft nr)) _lefthandsideIbetas _lhsIbetasLeft [0..]
-              __tup37 =
+              (_csetBinds,_lhsOassumptions) =
                   (_lefthandsideIenvironment .===. _righthandsideIassumptions) _cinfoBind
-              (_csetBinds,_) =
-                  __tup37
-              (_,_lhsOassumptions) =
-                  __tup37
               _cinfoLeft =
                   \num  ->
                   orphanConstraint num "pattern of function binding" _parentTree
@@ -8940,14 +8659,8 @@ sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_  =
                   node _lhsIparentTree _localInfo (_lefthandsideIinfoTrees ++ [_righthandsideIinfoTree])
               _lhsOinfoTree =
                   _parentTree
-              __tup38 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _lefthandsideIpatVarNames _righthandsideIunboundNames _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup38
-              (_,_unboundNames,_) =
-                  __tup38
-              (_,_,_scopeInfo) =
-                  __tup38
               _lhsOunboundNames =
                   _unboundNames
               _lhsOunrwar =
@@ -9033,18 +8746,18 @@ sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_  =
               _righthandsideOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _lefthandsideIargcount,_lefthandsideIbetaUnique,_lefthandsideIbetas,_lefthandsideIconstraints,_lefthandsideIelements,_lefthandsideIenvironment,_lefthandsideIinfoTrees,_lefthandsideIname,_lefthandsideInumberOfPatterns,_lefthandsideIpatVarNames,_lefthandsideIpatternMatchWarnings,_lefthandsideIself,_lefthandsideIunboundNames) =
-                  (lefthandside_ _lefthandsideObetaUnique _lefthandsideOimportEnvironment _lefthandsideOmonos _lefthandsideOnamesInScope _lefthandsideOparentTree _lefthandsideOpatternMatchWarnings )
+                  lefthandside_ _lefthandsideObetaUnique _lefthandsideOimportEnvironment _lefthandsideOmonos _lefthandsideOnamesInScope _lefthandsideOparentTree _lefthandsideOpatternMatchWarnings
               ( _righthandsideIassumptions,_righthandsideIbetaUnique,_righthandsideIcollectErrors,_righthandsideIcollectInstances,_righthandsideIcollectWarnings,_righthandsideIconstraints,_righthandsideIdictionaryEnvironment,_righthandsideIfallthrough,_righthandsideIinfoTree,_righthandsideImatchIO,_righthandsideIpatternMatchWarnings,_righthandsideIself,_righthandsideIunboundNames,_righthandsideIuniqueChunk) =
-                  (righthandside_ _righthandsideOallPatterns _righthandsideOallTypeSchemes _righthandsideOavailablePredicates _righthandsideObetaRight _righthandsideObetaUnique _righthandsideOclassEnvironment _righthandsideOcollectErrors _righthandsideOcollectWarnings _righthandsideOcurrentChunk _righthandsideOdictionaryEnvironment _righthandsideOimportEnvironment _righthandsideOmatchIO _righthandsideOmonos _righthandsideOnamesInScope _righthandsideOorderedTypeSynonyms _righthandsideOparentTree _righthandsideOpatternMatchWarnings _righthandsideOsubstitution _righthandsideOtypeschemeMap _righthandsideOuniqueChunk )
+                  righthandside_ _righthandsideOallPatterns _righthandsideOallTypeSchemes _righthandsideOavailablePredicates _righthandsideObetaRight _righthandsideObetaUnique _righthandsideOclassEnvironment _righthandsideOcollectErrors _righthandsideOcollectWarnings _righthandsideOcurrentChunk _righthandsideOdictionaryEnvironment _righthandsideOimportEnvironment _righthandsideOmatchIO _righthandsideOmonos _righthandsideOnamesInScope _righthandsideOorderedTypeSynonyms _righthandsideOparentTree _righthandsideOpatternMatchWarnings _righthandsideOsubstitution _righthandsideOtypeschemeMap _righthandsideOuniqueChunk
           in  ( _lhsOargcount,_lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOelements,_lhsOinfoTree,_lhsOmatchIO,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwar)))
 -- FunctionBindings --------------------------------------------
 -- cata
 sem_FunctionBindings :: FunctionBindings ->
                         T_FunctionBindings
-sem_FunctionBindings list  =
-    (Prelude.foldr sem_FunctionBindings_Cons sem_FunctionBindings_Nil (Prelude.map sem_FunctionBinding list) )
+sem_FunctionBindings list =
+    (Prelude.foldr sem_FunctionBindings_Cons sem_FunctionBindings_Nil (Prelude.map sem_FunctionBinding list))
 -- semantic domain
 type T_FunctionBindings = ([((Expression, [String]), Core_TypingStrategy)]) ->
                           (M.Map NameWithRange TpScheme) ->
@@ -9071,7 +8784,7 @@ type T_FunctionBindings = ([((Expression, [String]), Core_TypingStrategy)]) ->
 sem_FunctionBindings_Cons :: T_FunctionBinding ->
                              T_FunctionBindings ->
                              T_FunctionBindings
-sem_FunctionBindings_Cons hd_ tl_  =
+sem_FunctionBindings_Cons hd_ tl_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -9312,12 +9025,12 @@ sem_FunctionBindings_Cons hd_ tl_  =
               _tlOuniqueChunk =
                   _hdIuniqueChunk
               ( _hdIargcount,_hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIelements,_hdIinfoTree,_hdImatchIO,_hdIname,_hdInumberOfPatterns,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIunrwar) =
-                  (hd_ _hdOallPatterns _hdOallTypeSchemes _hdOavailablePredicates _hdObetaRight _hdObetaUnique _hdObetasLeft _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOcurrentChunk _hdOdictionaryEnvironment _hdOimportEnvironment _hdOmatchIO _hdOmonos _hdOnamesInScope _hdOorderedTypeSynonyms _hdOparentTree _hdOpatternMatchWarnings _hdOsubstitution _hdOtypeschemeMap _hdOuniqueChunk )
+                  hd_ _hdOallPatterns _hdOallTypeSchemes _hdOavailablePredicates _hdObetaRight _hdObetaUnique _hdObetasLeft _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOcurrentChunk _hdOdictionaryEnvironment _hdOimportEnvironment _hdOmatchIO _hdOmonos _hdOnamesInScope _hdOorderedTypeSynonyms _hdOparentTree _hdOpatternMatchWarnings _hdOsubstitution _hdOtypeschemeMap _hdOuniqueChunk
               ( _tlIargcount,_tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIconstraintslist,_tlIdictionaryEnvironment,_tlIelementss,_tlIinfoTrees,_tlImatchIO,_tlIname,_tlInumberOfPatterns,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIunrwars) =
-                  (tl_ _tlOallPatterns _tlOallTypeSchemes _tlOavailablePredicates _tlObetaRight _tlObetaUnique _tlObetasLeft _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOcurrentChunk _tlOdictionaryEnvironment _tlOimportEnvironment _tlOmatchIO _tlOmonos _tlOnamesInScope _tlOorderedTypeSynonyms _tlOparentTree _tlOpatternMatchWarnings _tlOsubstitution _tlOtypeschemeMap _tlOuniqueChunk )
+                  tl_ _tlOallPatterns _tlOallTypeSchemes _tlOavailablePredicates _tlObetaRight _tlObetaUnique _tlObetasLeft _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOcurrentChunk _tlOdictionaryEnvironment _tlOimportEnvironment _tlOmatchIO _tlOmonos _tlOnamesInScope _tlOorderedTypeSynonyms _tlOparentTree _tlOpatternMatchWarnings _tlOsubstitution _tlOtypeschemeMap _tlOuniqueChunk
           in  ( _lhsOargcount,_lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOelementss,_lhsOinfoTrees,_lhsOmatchIO,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwars)))
 sem_FunctionBindings_Nil :: T_FunctionBindings
-sem_FunctionBindings_Nil  =
+sem_FunctionBindings_Nil =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -9400,8 +9113,8 @@ sem_FunctionBindings_Nil  =
 -- cata
 sem_GuardedExpression :: GuardedExpression ->
                          T_GuardedExpression
-sem_GuardedExpression (GuardedExpression_GuardedExpression _range _guard _expression )  =
-    (sem_GuardedExpression_GuardedExpression (sem_Range _range ) (sem_Expression _guard ) (sem_Expression _expression ) )
+sem_GuardedExpression (GuardedExpression_GuardedExpression _range _guard _expression) =
+    (sem_GuardedExpression_GuardedExpression (sem_Range _range) (sem_Expression _guard) (sem_Expression _expression))
 -- semantic domain
 type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (M.Map NameWithRange TpScheme) ->
@@ -9430,7 +9143,7 @@ sem_GuardedExpression_GuardedExpression :: T_Range ->
                                            T_Expression ->
                                            T_Expression ->
                                            T_GuardedExpression
-sem_GuardedExpression_GuardedExpression range_ guard_ expression_  =
+sem_GuardedExpression_GuardedExpression range_ guard_ expression_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -9682,18 +9395,18 @@ sem_GuardedExpression_GuardedExpression range_ guard_ expression_  =
               _expressionOuniqueSecondRound =
                   _guardIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _guardIassumptions,_guardIbeta,_guardIbetaUnique,_guardIcollectErrors,_guardIcollectInstances,_guardIcollectWarnings,_guardIconstraints,_guardIdictionaryEnvironment,_guardIinfoTree,_guardImatchIO,_guardImatches,_guardIpatternMatchWarnings,_guardIself,_guardIunboundNames,_guardIuniqueChunk,_guardIuniqueSecondRound) =
-                  (guard_ _guardOallPatterns _guardOallTypeSchemes _guardOavailablePredicates _guardObetaUnique _guardOclassEnvironment _guardOcollectErrors _guardOcollectWarnings _guardOcurrentChunk _guardOdictionaryEnvironment _guardOimportEnvironment _guardOmatchIO _guardOmonos _guardOnamesInScope _guardOorderedTypeSynonyms _guardOparentTree _guardOpatternMatchWarnings _guardOsubstitution _guardOtryPatterns _guardOtypeschemeMap _guardOuniqueChunk _guardOuniqueSecondRound )
+                  guard_ _guardOallPatterns _guardOallTypeSchemes _guardOavailablePredicates _guardObetaUnique _guardOclassEnvironment _guardOcollectErrors _guardOcollectWarnings _guardOcurrentChunk _guardOdictionaryEnvironment _guardOimportEnvironment _guardOmatchIO _guardOmonos _guardOnamesInScope _guardOorderedTypeSynonyms _guardOparentTree _guardOpatternMatchWarnings _guardOsubstitution _guardOtryPatterns _guardOtypeschemeMap _guardOuniqueChunk _guardOuniqueSecondRound
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrange,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound,_lhsOunrwar)))
 -- GuardedExpressions ------------------------------------------
 -- cata
 sem_GuardedExpressions :: GuardedExpressions ->
                           T_GuardedExpressions
-sem_GuardedExpressions list  =
-    (Prelude.foldr sem_GuardedExpressions_Cons sem_GuardedExpressions_Nil (Prelude.map sem_GuardedExpression list) )
+sem_GuardedExpressions list =
+    (Prelude.foldr sem_GuardedExpressions_Cons sem_GuardedExpressions_Nil (Prelude.map sem_GuardedExpression list))
 -- semantic domain
 type T_GuardedExpressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                             (M.Map NameWithRange TpScheme) ->
@@ -9722,7 +9435,7 @@ type T_GuardedExpressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
 sem_GuardedExpressions_Cons :: T_GuardedExpression ->
                                T_GuardedExpressions ->
                                T_GuardedExpressions
-sem_GuardedExpressions_Cons hd_ tl_  =
+sem_GuardedExpressions_Cons hd_ tl_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -9962,12 +9675,12 @@ sem_GuardedExpressions_Cons hd_ tl_  =
               _tlOuniqueSecondRound =
                   _hdIuniqueSecondRound
               ( _hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIfallthrough,_hdIinfoTrees,_hdImatchIO,_hdIpatternMatchWarnings,_hdIrange,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIuniqueSecondRound,_hdIunrwar) =
-                  (hd_ _hdOallPatterns _hdOallTypeSchemes _hdOavailablePredicates _hdObetaRight _hdObetaUnique _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOcurrentChunk _hdOdictionaryEnvironment _hdOimportEnvironment _hdOmatchIO _hdOmonos _hdOnamesInScope _hdOnumberOfGuards _hdOorderedTypeSynonyms _hdOparentTree _hdOpatternMatchWarnings _hdOsubstitution _hdOtypeschemeMap _hdOuniqueChunk _hdOuniqueSecondRound )
+                  hd_ _hdOallPatterns _hdOallTypeSchemes _hdOavailablePredicates _hdObetaRight _hdObetaUnique _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOcurrentChunk _hdOdictionaryEnvironment _hdOimportEnvironment _hdOmatchIO _hdOmonos _hdOnamesInScope _hdOnumberOfGuards _hdOorderedTypeSynonyms _hdOparentTree _hdOpatternMatchWarnings _hdOsubstitution _hdOtypeschemeMap _hdOuniqueChunk _hdOuniqueSecondRound
               ( _tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIconstraintslist,_tlIdictionaryEnvironment,_tlIfallthrough,_tlIinfoTrees,_tlImatchIO,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIuniqueSecondRound) =
-                  (tl_ _tlOallPatterns _tlOallTypeSchemes _tlOavailablePredicates _tlObetaRight _tlObetaUnique _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOcurrentChunk _tlOdictionaryEnvironment _tlOimportEnvironment _tlOmatchIO _tlOmonos _tlOnamesInScope _tlOnumberOfGuards _tlOopen _tlOorderedTypeSynonyms _tlOparentTree _tlOpatternMatchWarnings _tlOsubstitution _tlOtypeschemeMap _tlOuniqueChunk _tlOuniqueSecondRound )
+                  tl_ _tlOallPatterns _tlOallTypeSchemes _tlOavailablePredicates _tlObetaRight _tlObetaUnique _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOcurrentChunk _tlOdictionaryEnvironment _tlOimportEnvironment _tlOmatchIO _tlOmonos _tlOnamesInScope _tlOnumberOfGuards _tlOopen _tlOorderedTypeSynonyms _tlOparentTree _tlOpatternMatchWarnings _tlOsubstitution _tlOtypeschemeMap _tlOuniqueChunk _tlOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_GuardedExpressions_Nil :: T_GuardedExpressions
-sem_GuardedExpressions_Nil  =
+sem_GuardedExpressions_Nil =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -10043,19 +9756,19 @@ sem_GuardedExpressions_Nil  =
 -- cata
 sem_Import :: Import ->
               T_Import
-sem_Import (Import_TypeOrClass _range _name _names )  =
-    (sem_Import_TypeOrClass (sem_Range _range ) (sem_Name _name ) (sem_MaybeNames _names ) )
-sem_Import (Import_TypeOrClassComplete _range _name )  =
-    (sem_Import_TypeOrClassComplete (sem_Range _range ) (sem_Name _name ) )
-sem_Import (Import_Variable _range _name )  =
-    (sem_Import_Variable (sem_Range _range ) (sem_Name _name ) )
+sem_Import (Import_TypeOrClass _range _name _names) =
+    (sem_Import_TypeOrClass (sem_Range _range) (sem_Name _name) (sem_MaybeNames _names))
+sem_Import (Import_TypeOrClassComplete _range _name) =
+    (sem_Import_TypeOrClassComplete (sem_Range _range) (sem_Name _name))
+sem_Import (Import_Variable _range _name) =
+    (sem_Import_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Import = ( Import)
 sem_Import_TypeOrClass :: T_Range ->
                           T_Name ->
                           T_MaybeNames ->
                           T_Import
-sem_Import_TypeOrClass range_ name_ names_  =
+sem_Import_TypeOrClass range_ name_ names_ =
     (let _lhsOself :: Import
          _rangeIself :: Range
          _nameIself :: Name
@@ -10065,16 +9778,16 @@ sem_Import_TypeOrClass range_ name_ names_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
          ( _namesIself) =
-             (names_ )
+             names_
      in  ( _lhsOself))
 sem_Import_TypeOrClassComplete :: T_Range ->
                                   T_Name ->
                                   T_Import
-sem_Import_TypeOrClassComplete range_ name_  =
+sem_Import_TypeOrClassComplete range_ name_ =
     (let _lhsOself :: Import
          _rangeIself :: Range
          _nameIself :: Name
@@ -10083,14 +9796,14 @@ sem_Import_TypeOrClassComplete range_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
      in  ( _lhsOself))
 sem_Import_Variable :: T_Range ->
                        T_Name ->
                        T_Import
-sem_Import_Variable range_ name_  =
+sem_Import_Variable range_ name_ =
     (let _lhsOself :: Import
          _rangeIself :: Range
          _nameIself :: Name
@@ -10099,23 +9812,23 @@ sem_Import_Variable range_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
      in  ( _lhsOself))
 -- ImportDeclaration -------------------------------------------
 -- cata
 sem_ImportDeclaration :: ImportDeclaration ->
                          T_ImportDeclaration
-sem_ImportDeclaration (ImportDeclaration_Empty _range )  =
-    (sem_ImportDeclaration_Empty (sem_Range _range ) )
-sem_ImportDeclaration (ImportDeclaration_Import _range _qualified _name _asname _importspecification )  =
-    (sem_ImportDeclaration_Import (sem_Range _range ) _qualified (sem_Name _name ) (sem_MaybeName _asname ) (sem_MaybeImportSpecification _importspecification ) )
+sem_ImportDeclaration (ImportDeclaration_Empty _range) =
+    (sem_ImportDeclaration_Empty (sem_Range _range))
+sem_ImportDeclaration (ImportDeclaration_Import _range _qualified _name _asname _importspecification) =
+    (sem_ImportDeclaration_Import (sem_Range _range) _qualified (sem_Name _name) (sem_MaybeName _asname) (sem_MaybeImportSpecification _importspecification))
 -- semantic domain
 type T_ImportDeclaration = ( ImportDeclaration)
 sem_ImportDeclaration_Empty :: T_Range ->
                                T_ImportDeclaration
-sem_ImportDeclaration_Empty range_  =
+sem_ImportDeclaration_Empty range_ =
     (let _lhsOself :: ImportDeclaration
          _rangeIself :: Range
          _self =
@@ -10123,7 +9836,7 @@ sem_ImportDeclaration_Empty range_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
      in  ( _lhsOself))
 sem_ImportDeclaration_Import :: T_Range ->
                                 Bool ->
@@ -10131,7 +9844,7 @@ sem_ImportDeclaration_Import :: T_Range ->
                                 T_MaybeName ->
                                 T_MaybeImportSpecification ->
                                 T_ImportDeclaration
-sem_ImportDeclaration_Import range_ qualified_ name_ asname_ importspecification_  =
+sem_ImportDeclaration_Import range_ qualified_ name_ asname_ importspecification_ =
     (let _lhsOself :: ImportDeclaration
          _rangeIself :: Range
          _nameIself :: Name
@@ -10142,26 +9855,26 @@ sem_ImportDeclaration_Import range_ qualified_ name_ asname_ importspecification
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
          ( _asnameIself) =
-             (asname_ )
+             asname_
          ( _importspecificationIself) =
-             (importspecification_ )
+             importspecification_
      in  ( _lhsOself))
 -- ImportDeclarations ------------------------------------------
 -- cata
 sem_ImportDeclarations :: ImportDeclarations ->
                           T_ImportDeclarations
-sem_ImportDeclarations list  =
-    (Prelude.foldr sem_ImportDeclarations_Cons sem_ImportDeclarations_Nil (Prelude.map sem_ImportDeclaration list) )
+sem_ImportDeclarations list =
+    (Prelude.foldr sem_ImportDeclarations_Cons sem_ImportDeclarations_Nil (Prelude.map sem_ImportDeclaration list))
 -- semantic domain
 type T_ImportDeclarations = ( ImportDeclarations)
 sem_ImportDeclarations_Cons :: T_ImportDeclaration ->
                                T_ImportDeclarations ->
                                T_ImportDeclarations
-sem_ImportDeclarations_Cons hd_ tl_  =
+sem_ImportDeclarations_Cons hd_ tl_ =
     (let _lhsOself :: ImportDeclarations
          _hdIself :: ImportDeclaration
          _tlIself :: ImportDeclarations
@@ -10170,12 +9883,12 @@ sem_ImportDeclarations_Cons hd_ tl_  =
          _lhsOself =
              _self
          ( _hdIself) =
-             (hd_ )
+             hd_
          ( _tlIself) =
-             (tl_ )
+             tl_
      in  ( _lhsOself))
 sem_ImportDeclarations_Nil :: T_ImportDeclarations
-sem_ImportDeclarations_Nil  =
+sem_ImportDeclarations_Nil =
     (let _lhsOself :: ImportDeclarations
          _self =
              []
@@ -10186,15 +9899,15 @@ sem_ImportDeclarations_Nil  =
 -- cata
 sem_ImportSpecification :: ImportSpecification ->
                            T_ImportSpecification
-sem_ImportSpecification (ImportSpecification_Import _range _hiding _imports )  =
-    (sem_ImportSpecification_Import (sem_Range _range ) _hiding (sem_Imports _imports ) )
+sem_ImportSpecification (ImportSpecification_Import _range _hiding _imports) =
+    (sem_ImportSpecification_Import (sem_Range _range) _hiding (sem_Imports _imports))
 -- semantic domain
 type T_ImportSpecification = ( ImportSpecification)
 sem_ImportSpecification_Import :: T_Range ->
                                   Bool ->
                                   T_Imports ->
                                   T_ImportSpecification
-sem_ImportSpecification_Import range_ hiding_ imports_  =
+sem_ImportSpecification_Import range_ hiding_ imports_ =
     (let _lhsOself :: ImportSpecification
          _rangeIself :: Range
          _importsIself :: Imports
@@ -10203,22 +9916,22 @@ sem_ImportSpecification_Import range_ hiding_ imports_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _importsIself) =
-             (imports_ )
+             imports_
      in  ( _lhsOself))
 -- Imports -----------------------------------------------------
 -- cata
 sem_Imports :: Imports ->
                T_Imports
-sem_Imports list  =
-    (Prelude.foldr sem_Imports_Cons sem_Imports_Nil (Prelude.map sem_Import list) )
+sem_Imports list =
+    (Prelude.foldr sem_Imports_Cons sem_Imports_Nil (Prelude.map sem_Import list))
 -- semantic domain
 type T_Imports = ( Imports)
 sem_Imports_Cons :: T_Import ->
                     T_Imports ->
                     T_Imports
-sem_Imports_Cons hd_ tl_  =
+sem_Imports_Cons hd_ tl_ =
     (let _lhsOself :: Imports
          _hdIself :: Import
          _tlIself :: Imports
@@ -10227,12 +9940,12 @@ sem_Imports_Cons hd_ tl_  =
          _lhsOself =
              _self
          ( _hdIself) =
-             (hd_ )
+             hd_
          ( _tlIself) =
-             (tl_ )
+             tl_
      in  ( _lhsOself))
 sem_Imports_Nil :: T_Imports
-sem_Imports_Nil  =
+sem_Imports_Nil =
     (let _lhsOself :: Imports
          _self =
              []
@@ -10243,12 +9956,12 @@ sem_Imports_Nil  =
 -- cata
 sem_LeftHandSide :: LeftHandSide ->
                     T_LeftHandSide
-sem_LeftHandSide (LeftHandSide_Function _range _name _patterns )  =
-    (sem_LeftHandSide_Function (sem_Range _range ) (sem_Name _name ) (sem_Patterns _patterns ) )
-sem_LeftHandSide (LeftHandSide_Infix _range _leftPattern _operator _rightPattern )  =
-    (sem_LeftHandSide_Infix (sem_Range _range ) (sem_Pattern _leftPattern ) (sem_Name _operator ) (sem_Pattern _rightPattern ) )
-sem_LeftHandSide (LeftHandSide_Parenthesized _range _lefthandside _patterns )  =
-    (sem_LeftHandSide_Parenthesized (sem_Range _range ) (sem_LeftHandSide _lefthandside ) (sem_Patterns _patterns ) )
+sem_LeftHandSide (LeftHandSide_Function _range _name _patterns) =
+    (sem_LeftHandSide_Function (sem_Range _range) (sem_Name _name) (sem_Patterns _patterns))
+sem_LeftHandSide (LeftHandSide_Infix _range _leftPattern _operator _rightPattern) =
+    (sem_LeftHandSide_Infix (sem_Range _range) (sem_Pattern _leftPattern) (sem_Name _operator) (sem_Pattern _rightPattern))
+sem_LeftHandSide (LeftHandSide_Parenthesized _range _lefthandside _patterns) =
+    (sem_LeftHandSide_Parenthesized (sem_Range _range) (sem_LeftHandSide _lefthandside) (sem_Patterns _patterns))
 -- semantic domain
 type T_LeftHandSide = Int ->
                       ImportEnvironment ->
@@ -10261,7 +9974,7 @@ sem_LeftHandSide_Function :: T_Range ->
                              T_Name ->
                              T_Patterns ->
                              T_LeftHandSide
-sem_LeftHandSide_Function range_ name_ patterns_  =
+sem_LeftHandSide_Function range_ name_ patterns_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -10343,18 +10056,18 @@ sem_LeftHandSide_Function range_ name_ patterns_  =
               _patternsOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _patternsIbetaUnique,_patternsIbetas,_patternsIconstraintslist,_patternsIelementss,_patternsIenvironment,_patternsIinfoTrees,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIpatternMatchWarnings,_patternsIself,_patternsIunboundNames) =
-                  (patterns_ _patternsObetaUnique _patternsOimportEnvironment _patternsOmonos _patternsOnamesInScope _patternsOparentTree _patternsOpatternMatchWarnings )
+                  patterns_ _patternsObetaUnique _patternsOimportEnvironment _patternsOmonos _patternsOnamesInScope _patternsOparentTree _patternsOpatternMatchWarnings
           in  ( _lhsOargcount,_lhsObetaUnique,_lhsObetas,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTrees,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_LeftHandSide_Infix :: T_Range ->
                           T_Pattern ->
                           T_Name ->
                           T_Pattern ->
                           T_LeftHandSide
-sem_LeftHandSide_Infix range_ leftPattern_ operator_ rightPattern_  =
+sem_LeftHandSide_Infix range_ leftPattern_ operator_ rightPattern_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -10465,19 +10178,19 @@ sem_LeftHandSide_Infix range_ leftPattern_ operator_ rightPattern_  =
               _rightPatternOpatternMatchWarnings =
                   _leftPatternIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _leftPatternIbeta,_leftPatternIbetaUnique,_leftPatternIconstraints,_leftPatternIelements,_leftPatternIenvironment,_leftPatternIinfoTree,_leftPatternIpatVarNames,_leftPatternIpatternMatchWarnings,_leftPatternIself,_leftPatternIunboundNames) =
-                  (leftPattern_ _leftPatternObetaUnique _leftPatternOimportEnvironment _leftPatternOmonos _leftPatternOnamesInScope _leftPatternOparentTree _leftPatternOpatternMatchWarnings )
+                  leftPattern_ _leftPatternObetaUnique _leftPatternOimportEnvironment _leftPatternOmonos _leftPatternOnamesInScope _leftPatternOparentTree _leftPatternOpatternMatchWarnings
               ( _operatorIself) =
-                  (operator_ )
+                  operator_
               ( _rightPatternIbeta,_rightPatternIbetaUnique,_rightPatternIconstraints,_rightPatternIelements,_rightPatternIenvironment,_rightPatternIinfoTree,_rightPatternIpatVarNames,_rightPatternIpatternMatchWarnings,_rightPatternIself,_rightPatternIunboundNames) =
-                  (rightPattern_ _rightPatternObetaUnique _rightPatternOimportEnvironment _rightPatternOmonos _rightPatternOnamesInScope _rightPatternOparentTree _rightPatternOpatternMatchWarnings )
+                  rightPattern_ _rightPatternObetaUnique _rightPatternOimportEnvironment _rightPatternOmonos _rightPatternOnamesInScope _rightPatternOparentTree _rightPatternOpatternMatchWarnings
           in  ( _lhsOargcount,_lhsObetaUnique,_lhsObetas,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTrees,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_LeftHandSide_Parenthesized :: T_Range ->
                                   T_LeftHandSide ->
                                   T_Patterns ->
                                   T_LeftHandSide
-sem_LeftHandSide_Parenthesized range_ lefthandside_ patterns_  =
+sem_LeftHandSide_Parenthesized range_ lefthandside_ patterns_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -10589,30 +10302,30 @@ sem_LeftHandSide_Parenthesized range_ lefthandside_ patterns_  =
               _patternsOpatternMatchWarnings =
                   _lefthandsideIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _lefthandsideIargcount,_lefthandsideIbetaUnique,_lefthandsideIbetas,_lefthandsideIconstraints,_lefthandsideIelements,_lefthandsideIenvironment,_lefthandsideIinfoTrees,_lefthandsideIname,_lefthandsideInumberOfPatterns,_lefthandsideIpatVarNames,_lefthandsideIpatternMatchWarnings,_lefthandsideIself,_lefthandsideIunboundNames) =
-                  (lefthandside_ _lefthandsideObetaUnique _lefthandsideOimportEnvironment _lefthandsideOmonos _lefthandsideOnamesInScope _lefthandsideOparentTree _lefthandsideOpatternMatchWarnings )
+                  lefthandside_ _lefthandsideObetaUnique _lefthandsideOimportEnvironment _lefthandsideOmonos _lefthandsideOnamesInScope _lefthandsideOparentTree _lefthandsideOpatternMatchWarnings
               ( _patternsIbetaUnique,_patternsIbetas,_patternsIconstraintslist,_patternsIelementss,_patternsIenvironment,_patternsIinfoTrees,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIpatternMatchWarnings,_patternsIself,_patternsIunboundNames) =
-                  (patterns_ _patternsObetaUnique _patternsOimportEnvironment _patternsOmonos _patternsOnamesInScope _patternsOparentTree _patternsOpatternMatchWarnings )
+                  patterns_ _patternsObetaUnique _patternsOimportEnvironment _patternsOmonos _patternsOnamesInScope _patternsOparentTree _patternsOpatternMatchWarnings
           in  ( _lhsOargcount,_lhsObetaUnique,_lhsObetas,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTrees,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 -- Literal -----------------------------------------------------
 -- cata
 sem_Literal :: Literal ->
                T_Literal
-sem_Literal (Literal_Char _range _value )  =
-    (sem_Literal_Char (sem_Range _range ) _value )
-sem_Literal (Literal_Float _range _value )  =
-    (sem_Literal_Float (sem_Range _range ) _value )
-sem_Literal (Literal_Int _range _value )  =
-    (sem_Literal_Int (sem_Range _range ) _value )
-sem_Literal (Literal_String _range _value )  =
-    (sem_Literal_String (sem_Range _range ) _value )
+sem_Literal (Literal_Char _range _value) =
+    (sem_Literal_Char (sem_Range _range) _value)
+sem_Literal (Literal_Float _range _value) =
+    (sem_Literal_Float (sem_Range _range) _value)
+sem_Literal (Literal_Int _range _value) =
+    (sem_Literal_Int (sem_Range _range) _value)
+sem_Literal (Literal_String _range _value) =
+    (sem_Literal_String (sem_Range _range) _value)
 -- semantic domain
 type T_Literal = ( (  [PatternElement]        ),Tp,Literal)
 sem_Literal_Char :: T_Range ->
                     String ->
                     T_Literal
-sem_Literal_Char range_ value_  =
+sem_Literal_Char range_ value_ =
     (let _lhsOliteralType :: Tp
          _lhsOelements :: (  [PatternElement]        )
          _lhsOself :: Literal
@@ -10626,12 +10339,12 @@ sem_Literal_Char range_ value_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
      in  ( _lhsOelements,_lhsOliteralType,_lhsOself))
 sem_Literal_Float :: T_Range ->
                      String ->
                      T_Literal
-sem_Literal_Float range_ value_  =
+sem_Literal_Float range_ value_ =
     (let _lhsOliteralType :: Tp
          _lhsOelements :: (  [PatternElement]        )
          _lhsOself :: Literal
@@ -10645,12 +10358,12 @@ sem_Literal_Float range_ value_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
      in  ( _lhsOelements,_lhsOliteralType,_lhsOself))
 sem_Literal_Int :: T_Range ->
                    String ->
                    T_Literal
-sem_Literal_Int range_ value_  =
+sem_Literal_Int range_ value_ =
     (let _lhsOliteralType :: Tp
          _lhsOelements :: (  [PatternElement]        )
          _lhsOself :: Literal
@@ -10664,12 +10377,12 @@ sem_Literal_Int range_ value_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
      in  ( _lhsOelements,_lhsOliteralType,_lhsOself))
 sem_Literal_String :: T_Range ->
                       String ->
                       T_Literal
-sem_Literal_String range_ value_  =
+sem_Literal_String range_ value_ =
     (let _lhsOliteralType :: Tp
          _lhsOelements :: (  [PatternElement]        )
          _lhsOself :: Literal
@@ -10683,16 +10396,16 @@ sem_Literal_String range_ value_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
      in  ( _lhsOelements,_lhsOliteralType,_lhsOself))
 -- MaybeDeclarations -------------------------------------------
 -- cata
 sem_MaybeDeclarations :: MaybeDeclarations ->
                          T_MaybeDeclarations
-sem_MaybeDeclarations (MaybeDeclarations_Just _declarations )  =
-    (sem_MaybeDeclarations_Just (sem_Declarations _declarations ) )
-sem_MaybeDeclarations (MaybeDeclarations_Nothing )  =
-    (sem_MaybeDeclarations_Nothing )
+sem_MaybeDeclarations (MaybeDeclarations_Just _declarations) =
+    (sem_MaybeDeclarations_Just (sem_Declarations _declarations))
+sem_MaybeDeclarations (MaybeDeclarations_Nothing) =
+    (sem_MaybeDeclarations_Nothing)
 -- semantic domain
 type T_MaybeDeclarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            (M.Map NameWithRange TpScheme) ->
@@ -10719,7 +10432,7 @@ type T_MaybeDeclarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            ( Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,DictionaryEnvironment,InfoTrees,(M.Map NameWithRange TpScheme),(IO ()),Names,([Warning]),MaybeDeclarations,Names,Int)
 sem_MaybeDeclarations_Just :: T_Declarations ->
                               T_MaybeDeclarations
-sem_MaybeDeclarations_Just declarations_  =
+sem_MaybeDeclarations_Just declarations_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIassumptions
@@ -10797,22 +10510,10 @@ sem_MaybeDeclarations_Just declarations_  =
               _declarationsIuniqueChunk :: Int
               _declarationsObindingGroups =
                   []
-              __tup39 =
+              (_lhsOassumptions,_lhsOconstraints,_inheritedBDG,_chunkNr,_lhsObetaUnique,_implicitsFM) =
                   let inputBDG   = (False, _lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _declarationsIbetaUnique)
                       mybdggroup = Just (_lhsIassumptions, [_lhsIconstraints])
                   in performBindingGroup inputBDG _declarationsIbindingGroups
-              (_lhsOassumptions,_,_,_,_,_) =
-                  __tup39
-              (_,_lhsOconstraints,_,_,_,_) =
-                  __tup39
-              (_,_,_inheritedBDG,_,_,_) =
-                  __tup39
-              (_,_,_,_chunkNr,_,_) =
-                  __tup39
-              (_,_,_,_,_lhsObetaUnique,_) =
-                  __tup39
-              (_,_,_,_,_,_implicitsFM) =
-                  __tup39
               _inferredTypes =
                   findInferredTypes _lhsItypeschemeMap _implicitsFM
               _lhsOcollectWarnings =
@@ -10838,28 +10539,10 @@ sem_MaybeDeclarations_Just declarations_  =
                   [_theNode]
               _declarationsOparentTree =
                   _theNode
-              __tup40 =
+              (_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities) =
                   internalError "PartialSyntax.ag" "n/a" "toplevel MaybeDeclaration"
-              (_collectTypeConstructors,_,_,_,_,_) =
-                  __tup40
-              (_,_collectValueConstructors,_,_,_,_) =
-                  __tup40
-              (_,_,_collectTypeSynonyms,_,_,_) =
-                  __tup40
-              (_,_,_,_collectConstructorEnv,_,_) =
-                  __tup40
-              (_,_,_,_,_derivedFunctions,_) =
-                  __tup40
-              (_,_,_,_,_,_operatorFixities) =
-                  __tup40
-              __tup41 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup41
-              (_,_unboundNames,_) =
-                  __tup41
-              (_,_,_scopeInfo) =
-                  __tup41
               _lhsOunboundNames =
                   _unboundNames
               _lhsOcollectInstances =
@@ -10915,10 +10598,10 @@ sem_MaybeDeclarations_Just declarations_  =
               _declarationsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectInstances,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
-                  (declarations_ _declarationsOallPatterns _declarationsOallTypeSchemes _declarationsOavailablePredicates _declarationsObetaUnique _declarationsObindingGroups _declarationsOclassEnvironment _declarationsOcollectErrors _declarationsOcollectWarnings _declarationsOcurrentChunk _declarationsOdictionaryEnvironment _declarationsOimportEnvironment _declarationsOinheritedBDG _declarationsOmatchIO _declarationsOmonos _declarationsOnamesInScope _declarationsOorderedTypeSynonyms _declarationsOparentTree _declarationsOpatternMatchWarnings _declarationsOsubstitution _declarationsOtypeSignatures _declarationsOtypeschemeMap _declarationsOuniqueChunk )
+                  declarations_ _declarationsOallPatterns _declarationsOallTypeSchemes _declarationsOavailablePredicates _declarationsObetaUnique _declarationsObindingGroups _declarationsOclassEnvironment _declarationsOcollectErrors _declarationsOcollectWarnings _declarationsOcurrentChunk _declarationsOdictionaryEnvironment _declarationsOimportEnvironment _declarationsOinheritedBDG _declarationsOmatchIO _declarationsOmonos _declarationsOnamesInScope _declarationsOorderedTypeSynonyms _declarationsOparentTree _declarationsOpatternMatchWarnings _declarationsOsubstitution _declarationsOtypeSignatures _declarationsOtypeschemeMap _declarationsOuniqueChunk
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOlocalTypes,_lhsOmatchIO,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)))
 sem_MaybeDeclarations_Nothing :: T_MaybeDeclarations
-sem_MaybeDeclarations_Nothing  =
+sem_MaybeDeclarations_Nothing =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIassumptions
@@ -10993,15 +10676,15 @@ sem_MaybeDeclarations_Nothing  =
 -- cata
 sem_MaybeExports :: MaybeExports ->
                     T_MaybeExports
-sem_MaybeExports (MaybeExports_Just _exports )  =
-    (sem_MaybeExports_Just (sem_Exports _exports ) )
-sem_MaybeExports (MaybeExports_Nothing )  =
-    (sem_MaybeExports_Nothing )
+sem_MaybeExports (MaybeExports_Just _exports) =
+    (sem_MaybeExports_Just (sem_Exports _exports))
+sem_MaybeExports (MaybeExports_Nothing) =
+    (sem_MaybeExports_Nothing)
 -- semantic domain
 type T_MaybeExports = ( MaybeExports)
 sem_MaybeExports_Just :: T_Exports ->
                          T_MaybeExports
-sem_MaybeExports_Just exports_  =
+sem_MaybeExports_Just exports_ =
     (let _lhsOself :: MaybeExports
          _exportsIself :: Exports
          _self =
@@ -11009,10 +10692,10 @@ sem_MaybeExports_Just exports_  =
          _lhsOself =
              _self
          ( _exportsIself) =
-             (exports_ )
+             exports_
      in  ( _lhsOself))
 sem_MaybeExports_Nothing :: T_MaybeExports
-sem_MaybeExports_Nothing  =
+sem_MaybeExports_Nothing =
     (let _lhsOself :: MaybeExports
          _self =
              MaybeExports_Nothing
@@ -11023,10 +10706,10 @@ sem_MaybeExports_Nothing  =
 -- cata
 sem_MaybeExpression :: MaybeExpression ->
                        T_MaybeExpression
-sem_MaybeExpression (MaybeExpression_Just _expression )  =
-    (sem_MaybeExpression_Just (sem_Expression _expression ) )
-sem_MaybeExpression (MaybeExpression_Nothing )  =
-    (sem_MaybeExpression_Nothing )
+sem_MaybeExpression (MaybeExpression_Just _expression) =
+    (sem_MaybeExpression_Just (sem_Expression _expression))
+sem_MaybeExpression (MaybeExpression_Nothing) =
+    (sem_MaybeExpression_Nothing)
 -- semantic domain
 type T_MaybeExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (M.Map NameWithRange TpScheme) ->
@@ -11052,7 +10735,7 @@ type T_MaybeExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          ( Assumptions,Tp,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,DictionaryEnvironment,InfoTrees,(IO ()),([Maybe MetaVariableTable]),([Warning]),Bool,MaybeExpression,Names,Int,Int)
 sem_MaybeExpression_Just :: T_Expression ->
                             T_MaybeExpression
-sem_MaybeExpression_Just expression_  =
+sem_MaybeExpression_Just expression_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -11132,12 +10815,8 @@ sem_MaybeExpression_Just expression_  =
                   False
               _lhsOinfoTrees =
                   [_expressionIinfoTree]
-              __tup42 =
+              (_expressionOtryPatterns,_lhsOmatches,_,_,_,_) =
                   match1' match_MaybeExpression_Just _lhsItryPatterns [] [_expressionImatches]
-              (_expressionOtryPatterns,_,_,_,_,_) =
-                  __tup42
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup42
               _lhsOcollectInstances =
                   _expressionIcollectInstances
               _lhsOunboundNames =
@@ -11209,10 +10888,10 @@ sem_MaybeExpression_Just expression_  =
               _expressionOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOsection,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_MaybeExpression_Nothing :: T_MaybeExpression
-sem_MaybeExpression_Nothing  =
+sem_MaybeExpression_Nothing =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -11263,12 +10942,8 @@ sem_MaybeExpression_Nothing  =
                   TVar _lhsIbetaUnique
               _lhsOinfoTrees =
                   []
-              __tup43 =
+              ((),_lhsOmatches,_,_,_,_) =
                   match0' match_MaybeExpression_Nothing _lhsItryPatterns [] []
-              (__tup44,_,_,_,_,_) =
-                  __tup43
-              (_,_lhsOmatches,_,_,_,_) =
-                  __tup43
               _lhsOcollectInstances =
                   []
               _lhsOunboundNames =
@@ -11298,15 +10973,15 @@ sem_MaybeExpression_Nothing  =
 -- cata
 sem_MaybeImportSpecification :: MaybeImportSpecification ->
                                 T_MaybeImportSpecification
-sem_MaybeImportSpecification (MaybeImportSpecification_Just _importspecification )  =
-    (sem_MaybeImportSpecification_Just (sem_ImportSpecification _importspecification ) )
-sem_MaybeImportSpecification (MaybeImportSpecification_Nothing )  =
-    (sem_MaybeImportSpecification_Nothing )
+sem_MaybeImportSpecification (MaybeImportSpecification_Just _importspecification) =
+    (sem_MaybeImportSpecification_Just (sem_ImportSpecification _importspecification))
+sem_MaybeImportSpecification (MaybeImportSpecification_Nothing) =
+    (sem_MaybeImportSpecification_Nothing)
 -- semantic domain
 type T_MaybeImportSpecification = ( MaybeImportSpecification)
 sem_MaybeImportSpecification_Just :: T_ImportSpecification ->
                                      T_MaybeImportSpecification
-sem_MaybeImportSpecification_Just importspecification_  =
+sem_MaybeImportSpecification_Just importspecification_ =
     (let _lhsOself :: MaybeImportSpecification
          _importspecificationIself :: ImportSpecification
          _self =
@@ -11314,10 +10989,10 @@ sem_MaybeImportSpecification_Just importspecification_  =
          _lhsOself =
              _self
          ( _importspecificationIself) =
-             (importspecification_ )
+             importspecification_
      in  ( _lhsOself))
 sem_MaybeImportSpecification_Nothing :: T_MaybeImportSpecification
-sem_MaybeImportSpecification_Nothing  =
+sem_MaybeImportSpecification_Nothing =
     (let _lhsOself :: MaybeImportSpecification
          _self =
              MaybeImportSpecification_Nothing
@@ -11328,15 +11003,15 @@ sem_MaybeImportSpecification_Nothing  =
 -- cata
 sem_MaybeInt :: MaybeInt ->
                 T_MaybeInt
-sem_MaybeInt (MaybeInt_Just _int )  =
-    (sem_MaybeInt_Just _int )
-sem_MaybeInt (MaybeInt_Nothing )  =
-    (sem_MaybeInt_Nothing )
+sem_MaybeInt (MaybeInt_Just _int) =
+    (sem_MaybeInt_Just _int)
+sem_MaybeInt (MaybeInt_Nothing) =
+    (sem_MaybeInt_Nothing)
 -- semantic domain
 type T_MaybeInt = ( MaybeInt)
 sem_MaybeInt_Just :: Int ->
                      T_MaybeInt
-sem_MaybeInt_Just int_  =
+sem_MaybeInt_Just int_ =
     (let _lhsOself :: MaybeInt
          _self =
              MaybeInt_Just int_
@@ -11344,7 +11019,7 @@ sem_MaybeInt_Just int_  =
              _self
      in  ( _lhsOself))
 sem_MaybeInt_Nothing :: T_MaybeInt
-sem_MaybeInt_Nothing  =
+sem_MaybeInt_Nothing =
     (let _lhsOself :: MaybeInt
          _self =
              MaybeInt_Nothing
@@ -11355,15 +11030,15 @@ sem_MaybeInt_Nothing  =
 -- cata
 sem_MaybeName :: MaybeName ->
                  T_MaybeName
-sem_MaybeName (MaybeName_Just _name )  =
-    (sem_MaybeName_Just (sem_Name _name ) )
-sem_MaybeName (MaybeName_Nothing )  =
-    (sem_MaybeName_Nothing )
+sem_MaybeName (MaybeName_Just _name) =
+    (sem_MaybeName_Just (sem_Name _name))
+sem_MaybeName (MaybeName_Nothing) =
+    (sem_MaybeName_Nothing)
 -- semantic domain
 type T_MaybeName = ( MaybeName)
 sem_MaybeName_Just :: T_Name ->
                       T_MaybeName
-sem_MaybeName_Just name_  =
+sem_MaybeName_Just name_ =
     (let _lhsOself :: MaybeName
          _nameIself :: Name
          _self =
@@ -11371,10 +11046,10 @@ sem_MaybeName_Just name_  =
          _lhsOself =
              _self
          ( _nameIself) =
-             (name_ )
+             name_
      in  ( _lhsOself))
 sem_MaybeName_Nothing :: T_MaybeName
-sem_MaybeName_Nothing  =
+sem_MaybeName_Nothing =
     (let _lhsOself :: MaybeName
          _self =
              MaybeName_Nothing
@@ -11385,15 +11060,15 @@ sem_MaybeName_Nothing  =
 -- cata
 sem_MaybeNames :: MaybeNames ->
                   T_MaybeNames
-sem_MaybeNames (MaybeNames_Just _names )  =
-    (sem_MaybeNames_Just (sem_Names _names ) )
-sem_MaybeNames (MaybeNames_Nothing )  =
-    (sem_MaybeNames_Nothing )
+sem_MaybeNames (MaybeNames_Just _names) =
+    (sem_MaybeNames_Just (sem_Names _names))
+sem_MaybeNames (MaybeNames_Nothing) =
+    (sem_MaybeNames_Nothing)
 -- semantic domain
 type T_MaybeNames = ( MaybeNames)
 sem_MaybeNames_Just :: T_Names ->
                        T_MaybeNames
-sem_MaybeNames_Just names_  =
+sem_MaybeNames_Just names_ =
     (let _lhsOself :: MaybeNames
          _namesIself :: Names
          _self =
@@ -11401,10 +11076,10 @@ sem_MaybeNames_Just names_  =
          _lhsOself =
              _self
          ( _namesIself) =
-             (names_ )
+             names_
      in  ( _lhsOself))
 sem_MaybeNames_Nothing :: T_MaybeNames
-sem_MaybeNames_Nothing  =
+sem_MaybeNames_Nothing =
     (let _lhsOself :: MaybeNames
          _self =
              MaybeNames_Nothing
@@ -11415,8 +11090,8 @@ sem_MaybeNames_Nothing  =
 -- cata
 sem_Module :: Module ->
               T_Module
-sem_Module (Module_Module _range _name _exports _body )  =
-    (sem_Module_Module (sem_Range _range ) (sem_MaybeName _name ) (sem_MaybeExports _exports ) (sem_Body _body ) )
+sem_Module (Module_Module _range _name _exports _body) =
+    (sem_Module_Module (sem_Range _range) (sem_MaybeName _name) (sem_MaybeExports _exports) (sem_Body _body))
 -- semantic domain
 type T_Module = ImportEnvironment ->
                 ([Option]) ->
@@ -11426,7 +11101,7 @@ sem_Module_Module :: T_Range ->
                      T_MaybeExports ->
                      T_Body ->
                      T_Module
-sem_Module_Module range_ name_ exports_ body_  =
+sem_Module_Module range_ name_ exports_ body_ =
     (\ _lhsIimportEnvironment
        _lhsIoptions ->
          (let _lhsOwarnings :: Warnings
@@ -11476,18 +11151,14 @@ sem_Module_Module range_ name_ exports_ body_  =
               _bodyIuniqueChunk :: Int
               _lhsOwarnings =
                   _warnings     ++ _bodyIpatternMatchWarnings
-              (SolveResult _betaUniqueAtTheEnd _substitution _typeschemeMap _ _solveErrors ) =
+              (SolveResult _betaUniqueAtTheEnd _substitution _typeschemeMap _ _solveErrors) =
                   _solveResult
-              __tup45 =
+              (_solveResult,_logEntries) =
                   (selectConstraintSolver _lhsIoptions _lhsIimportEnvironment)
                      _classEnv
                      _orderedTypeSynonyms
                      _bodyIbetaUnique
                      _bodyIconstraints
-              (_solveResult,_) =
-                  __tup45
-              (_,_logEntries) =
-                  __tup45
               _orderedTypeSynonyms =
                   getOrderedTypeSynonyms _lhsIimportEnvironment
               _classEnv =
@@ -11537,14 +11208,8 @@ sem_Module_Module range_ name_ exports_ body_  =
                   0
               _bodyOuniqueChunk =
                   1
-              __tup46 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope (_initialScope ++ _bodyIdeclVarNames) _bodyIunboundNames []
-              (_namesInScope,_,_) =
-                  __tup46
-              (_,_unboundNames,_) =
-                  __tup46
-              (_,_,_scopeInfo) =
-                  __tup46
               _bodyOmatchIO =
                   return ()
               _bodyOallPatterns =
@@ -11583,31 +11248,31 @@ sem_Module_Module range_ name_ exports_ body_  =
               _bodyOsubstitution =
                   _substitution
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _exportsIself) =
-                  (exports_ )
+                  exports_
               ( _bodyIassumptions,_bodyIbetaUnique,_bodyIcollectErrors,_bodyIcollectInstances,_bodyIcollectWarnings,_bodyIconstraints,_bodyIdeclVarNames,_bodyIdictionaryEnvironment,_bodyIinfoTree,_bodyImatchIO,_bodyIpatternMatchWarnings,_bodyIself,_bodyItoplevelTypes,_bodyIunboundNames,_bodyIuniqueChunk) =
-                  (body_ _bodyOallPatterns _bodyOallTypeSchemes _bodyOavailablePredicates _bodyObetaUnique _bodyOclassEnvironment _bodyOcollectErrors _bodyOcollectWarnings _bodyOcurrentChunk _bodyOdictionaryEnvironment _bodyOimportEnvironment _bodyOmatchIO _bodyOmonos _bodyOnamesInScope _bodyOorderedTypeSynonyms _bodyOpatternMatchWarnings _bodyOsubstitution _bodyOtypeschemeMap _bodyOuniqueChunk )
+                  body_ _bodyOallPatterns _bodyOallTypeSchemes _bodyOavailablePredicates _bodyObetaUnique _bodyOclassEnvironment _bodyOcollectErrors _bodyOcollectWarnings _bodyOcurrentChunk _bodyOdictionaryEnvironment _bodyOimportEnvironment _bodyOmatchIO _bodyOmonos _bodyOnamesInScope _bodyOorderedTypeSynonyms _bodyOpatternMatchWarnings _bodyOsubstitution _bodyOtypeschemeMap _bodyOuniqueChunk
           in  ( _lhsOassumptions,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOlogEntries,_lhsOself,_lhsOsolveResult,_lhsOtoplevelTypes,_lhsOtypeErrors,_lhsOwarnings)))
 -- Name --------------------------------------------------------
 -- cata
 sem_Name :: Name ->
             T_Name
-sem_Name (Name_Identifier _range _module _name )  =
-    (sem_Name_Identifier (sem_Range _range ) (sem_Strings _module ) _name )
-sem_Name (Name_Operator _range _module _name )  =
-    (sem_Name_Operator (sem_Range _range ) (sem_Strings _module ) _name )
-sem_Name (Name_Special _range _module _name )  =
-    (sem_Name_Special (sem_Range _range ) (sem_Strings _module ) _name )
+sem_Name (Name_Identifier _range _module _name) =
+    (sem_Name_Identifier (sem_Range _range) (sem_Strings _module) _name)
+sem_Name (Name_Operator _range _module _name) =
+    (sem_Name_Operator (sem_Range _range) (sem_Strings _module) _name)
+sem_Name (Name_Special _range _module _name) =
+    (sem_Name_Special (sem_Range _range) (sem_Strings _module) _name)
 -- semantic domain
 type T_Name = ( Name)
 sem_Name_Identifier :: T_Range ->
                        T_Strings ->
                        String ->
                        T_Name
-sem_Name_Identifier range_ module_ name_  =
+sem_Name_Identifier range_ module_ name_ =
     (let _lhsOself :: Name
          _rangeIself :: Range
          _moduleIself :: Strings
@@ -11616,15 +11281,15 @@ sem_Name_Identifier range_ module_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _moduleIself) =
-             (module_ )
+             module_
      in  ( _lhsOself))
 sem_Name_Operator :: T_Range ->
                      T_Strings ->
                      String ->
                      T_Name
-sem_Name_Operator range_ module_ name_  =
+sem_Name_Operator range_ module_ name_ =
     (let _lhsOself :: Name
          _rangeIself :: Range
          _moduleIself :: Strings
@@ -11633,15 +11298,15 @@ sem_Name_Operator range_ module_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _moduleIself) =
-             (module_ )
+             module_
      in  ( _lhsOself))
 sem_Name_Special :: T_Range ->
                     T_Strings ->
                     String ->
                     T_Name
-sem_Name_Special range_ module_ name_  =
+sem_Name_Special range_ module_ name_ =
     (let _lhsOself :: Name
          _rangeIself :: Range
          _moduleIself :: Strings
@@ -11650,22 +11315,22 @@ sem_Name_Special range_ module_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _moduleIself) =
-             (module_ )
+             module_
      in  ( _lhsOself))
 -- Names -------------------------------------------------------
 -- cata
 sem_Names :: Names ->
              T_Names
-sem_Names list  =
-    (Prelude.foldr sem_Names_Cons sem_Names_Nil (Prelude.map sem_Name list) )
+sem_Names list =
+    (Prelude.foldr sem_Names_Cons sem_Names_Nil (Prelude.map sem_Name list))
 -- semantic domain
 type T_Names = ( Names)
 sem_Names_Cons :: T_Name ->
                   T_Names ->
                   T_Names
-sem_Names_Cons hd_ tl_  =
+sem_Names_Cons hd_ tl_ =
     (let _lhsOself :: Names
          _hdIself :: Name
          _tlIself :: Names
@@ -11674,12 +11339,12 @@ sem_Names_Cons hd_ tl_  =
          _lhsOself =
              _self
          ( _hdIself) =
-             (hd_ )
+             hd_
          ( _tlIself) =
-             (tl_ )
+             tl_
      in  ( _lhsOself))
 sem_Names_Nil :: T_Names
-sem_Names_Nil  =
+sem_Names_Nil =
     (let _lhsOself :: Names
          _self =
              []
@@ -11690,34 +11355,34 @@ sem_Names_Nil  =
 -- cata
 sem_Pattern :: Pattern ->
                T_Pattern
-sem_Pattern (Pattern_As _range _name _pattern )  =
-    (sem_Pattern_As (sem_Range _range ) (sem_Name _name ) (sem_Pattern _pattern ) )
-sem_Pattern (Pattern_Constructor _range _name _patterns )  =
-    (sem_Pattern_Constructor (sem_Range _range ) (sem_Name _name ) (sem_Patterns _patterns ) )
-sem_Pattern (Pattern_InfixConstructor _range _leftPattern _constructorOperator _rightPattern )  =
-    (sem_Pattern_InfixConstructor (sem_Range _range ) (sem_Pattern _leftPattern ) (sem_Name _constructorOperator ) (sem_Pattern _rightPattern ) )
-sem_Pattern (Pattern_Irrefutable _range _pattern )  =
-    (sem_Pattern_Irrefutable (sem_Range _range ) (sem_Pattern _pattern ) )
-sem_Pattern (Pattern_List _range _patterns )  =
-    (sem_Pattern_List (sem_Range _range ) (sem_Patterns _patterns ) )
-sem_Pattern (Pattern_Literal _range _literal )  =
-    (sem_Pattern_Literal (sem_Range _range ) (sem_Literal _literal ) )
-sem_Pattern (Pattern_Negate _range _literal )  =
-    (sem_Pattern_Negate (sem_Range _range ) (sem_Literal _literal ) )
-sem_Pattern (Pattern_NegateFloat _range _literal )  =
-    (sem_Pattern_NegateFloat (sem_Range _range ) (sem_Literal _literal ) )
-sem_Pattern (Pattern_Parenthesized _range _pattern )  =
-    (sem_Pattern_Parenthesized (sem_Range _range ) (sem_Pattern _pattern ) )
-sem_Pattern (Pattern_Record _range _name _recordPatternBindings )  =
-    (sem_Pattern_Record (sem_Range _range ) (sem_Name _name ) (sem_RecordPatternBindings _recordPatternBindings ) )
-sem_Pattern (Pattern_Successor _range _name _literal )  =
-    (sem_Pattern_Successor (sem_Range _range ) (sem_Name _name ) (sem_Literal _literal ) )
-sem_Pattern (Pattern_Tuple _range _patterns )  =
-    (sem_Pattern_Tuple (sem_Range _range ) (sem_Patterns _patterns ) )
-sem_Pattern (Pattern_Variable _range _name )  =
-    (sem_Pattern_Variable (sem_Range _range ) (sem_Name _name ) )
-sem_Pattern (Pattern_Wildcard _range )  =
-    (sem_Pattern_Wildcard (sem_Range _range ) )
+sem_Pattern (Pattern_As _range _name _pattern) =
+    (sem_Pattern_As (sem_Range _range) (sem_Name _name) (sem_Pattern _pattern))
+sem_Pattern (Pattern_Constructor _range _name _patterns) =
+    (sem_Pattern_Constructor (sem_Range _range) (sem_Name _name) (sem_Patterns _patterns))
+sem_Pattern (Pattern_InfixConstructor _range _leftPattern _constructorOperator _rightPattern) =
+    (sem_Pattern_InfixConstructor (sem_Range _range) (sem_Pattern _leftPattern) (sem_Name _constructorOperator) (sem_Pattern _rightPattern))
+sem_Pattern (Pattern_Irrefutable _range _pattern) =
+    (sem_Pattern_Irrefutable (sem_Range _range) (sem_Pattern _pattern))
+sem_Pattern (Pattern_List _range _patterns) =
+    (sem_Pattern_List (sem_Range _range) (sem_Patterns _patterns))
+sem_Pattern (Pattern_Literal _range _literal) =
+    (sem_Pattern_Literal (sem_Range _range) (sem_Literal _literal))
+sem_Pattern (Pattern_Negate _range _literal) =
+    (sem_Pattern_Negate (sem_Range _range) (sem_Literal _literal))
+sem_Pattern (Pattern_NegateFloat _range _literal) =
+    (sem_Pattern_NegateFloat (sem_Range _range) (sem_Literal _literal))
+sem_Pattern (Pattern_Parenthesized _range _pattern) =
+    (sem_Pattern_Parenthesized (sem_Range _range) (sem_Pattern _pattern))
+sem_Pattern (Pattern_Record _range _name _recordPatternBindings) =
+    (sem_Pattern_Record (sem_Range _range) (sem_Name _name) (sem_RecordPatternBindings _recordPatternBindings))
+sem_Pattern (Pattern_Successor _range _name _literal) =
+    (sem_Pattern_Successor (sem_Range _range) (sem_Name _name) (sem_Literal _literal))
+sem_Pattern (Pattern_Tuple _range _patterns) =
+    (sem_Pattern_Tuple (sem_Range _range) (sem_Patterns _patterns))
+sem_Pattern (Pattern_Variable _range _name) =
+    (sem_Pattern_Variable (sem_Range _range) (sem_Name _name))
+sem_Pattern (Pattern_Wildcard _range) =
+    (sem_Pattern_Wildcard (sem_Range _range))
 -- semantic domain
 type T_Pattern = Int ->
                  ImportEnvironment ->
@@ -11730,7 +11395,7 @@ sem_Pattern_As :: T_Range ->
                   T_Name ->
                   T_Pattern ->
                   T_Pattern
-sem_Pattern_As range_ name_ pattern_  =
+sem_Pattern_As range_ name_ pattern_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -11820,17 +11485,17 @@ sem_Pattern_As range_ name_ pattern_  =
               _patternOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _patternIbeta,_patternIbetaUnique,_patternIconstraints,_patternIelements,_patternIenvironment,_patternIinfoTree,_patternIpatVarNames,_patternIpatternMatchWarnings,_patternIself,_patternIunboundNames) =
-                  (pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings )
+                  pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings
           in  ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_Pattern_Constructor :: T_Range ->
                            T_Name ->
                            T_Patterns ->
                            T_Pattern
-sem_Pattern_Constructor range_ name_ patterns_  =
+sem_Pattern_Constructor range_ name_ patterns_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -11934,18 +11599,18 @@ sem_Pattern_Constructor range_ name_ patterns_  =
               _patternsOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _patternsIbetaUnique,_patternsIbetas,_patternsIconstraintslist,_patternsIelementss,_patternsIenvironment,_patternsIinfoTrees,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIpatternMatchWarnings,_patternsIself,_patternsIunboundNames) =
-                  (patterns_ _patternsObetaUnique _patternsOimportEnvironment _patternsOmonos _patternsOnamesInScope _patternsOparentTree _patternsOpatternMatchWarnings )
+                  patterns_ _patternsObetaUnique _patternsOimportEnvironment _patternsOmonos _patternsOnamesInScope _patternsOparentTree _patternsOpatternMatchWarnings
           in  ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_Pattern_InfixConstructor :: T_Range ->
                                 T_Pattern ->
                                 T_Name ->
                                 T_Pattern ->
                                 T_Pattern
-sem_Pattern_InfixConstructor range_ leftPattern_ constructorOperator_ rightPattern_  =
+sem_Pattern_InfixConstructor range_ leftPattern_ constructorOperator_ rightPattern_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -12073,18 +11738,18 @@ sem_Pattern_InfixConstructor range_ leftPattern_ constructorOperator_ rightPatte
               _rightPatternOpatternMatchWarnings =
                   _leftPatternIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _leftPatternIbeta,_leftPatternIbetaUnique,_leftPatternIconstraints,_leftPatternIelements,_leftPatternIenvironment,_leftPatternIinfoTree,_leftPatternIpatVarNames,_leftPatternIpatternMatchWarnings,_leftPatternIself,_leftPatternIunboundNames) =
-                  (leftPattern_ _leftPatternObetaUnique _leftPatternOimportEnvironment _leftPatternOmonos _leftPatternOnamesInScope _leftPatternOparentTree _leftPatternOpatternMatchWarnings )
+                  leftPattern_ _leftPatternObetaUnique _leftPatternOimportEnvironment _leftPatternOmonos _leftPatternOnamesInScope _leftPatternOparentTree _leftPatternOpatternMatchWarnings
               ( _constructorOperatorIself) =
-                  (constructorOperator_ )
+                  constructorOperator_
               ( _rightPatternIbeta,_rightPatternIbetaUnique,_rightPatternIconstraints,_rightPatternIelements,_rightPatternIenvironment,_rightPatternIinfoTree,_rightPatternIpatVarNames,_rightPatternIpatternMatchWarnings,_rightPatternIself,_rightPatternIunboundNames) =
-                  (rightPattern_ _rightPatternObetaUnique _rightPatternOimportEnvironment _rightPatternOmonos _rightPatternOnamesInScope _rightPatternOparentTree _rightPatternOpatternMatchWarnings )
+                  rightPattern_ _rightPatternObetaUnique _rightPatternOimportEnvironment _rightPatternOmonos _rightPatternOnamesInScope _rightPatternOparentTree _rightPatternOpatternMatchWarnings
           in  ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_Pattern_Irrefutable :: T_Range ->
                            T_Pattern ->
                            T_Pattern
-sem_Pattern_Irrefutable range_ pattern_  =
+sem_Pattern_Irrefutable range_ pattern_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -12153,14 +11818,14 @@ sem_Pattern_Irrefutable range_ pattern_  =
               _patternOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternIbeta,_patternIbetaUnique,_patternIconstraints,_patternIelements,_patternIenvironment,_patternIinfoTree,_patternIpatVarNames,_patternIpatternMatchWarnings,_patternIself,_patternIunboundNames) =
-                  (pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings )
+                  pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings
           in  ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_Pattern_List :: T_Range ->
                     T_Patterns ->
                     T_Pattern
-sem_Pattern_List range_ patterns_  =
+sem_Pattern_List range_ patterns_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -12256,14 +11921,14 @@ sem_Pattern_List range_ patterns_  =
               _patternsOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternsIbetaUnique,_patternsIbetas,_patternsIconstraintslist,_patternsIelementss,_patternsIenvironment,_patternsIinfoTrees,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIpatternMatchWarnings,_patternsIself,_patternsIunboundNames) =
-                  (patterns_ _patternsObetaUnique _patternsOimportEnvironment _patternsOmonos _patternsOnamesInScope _patternsOparentTree _patternsOpatternMatchWarnings )
+                  patterns_ _patternsObetaUnique _patternsOimportEnvironment _patternsOmonos _patternsOnamesInScope _patternsOparentTree _patternsOpatternMatchWarnings
           in  ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_Pattern_Literal :: T_Range ->
                        T_Literal ->
                        T_Pattern
-sem_Pattern_Literal range_ literal_  =
+sem_Pattern_Literal range_ literal_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -12321,14 +11986,14 @@ sem_Pattern_Literal range_ literal_  =
               _lhsOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _literalIelements,_literalIliteralType,_literalIself) =
-                  (literal_ )
+                  literal_
           in  ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_Pattern_Negate :: T_Range ->
                       T_Literal ->
                       T_Pattern
-sem_Pattern_Negate range_ literal_  =
+sem_Pattern_Negate range_ literal_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -12390,14 +12055,14 @@ sem_Pattern_Negate range_ literal_  =
               _lhsOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _literalIelements,_literalIliteralType,_literalIself) =
-                  (literal_ )
+                  literal_
           in  ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_Pattern_NegateFloat :: T_Range ->
                            T_Literal ->
                            T_Pattern
-sem_Pattern_NegateFloat range_ literal_  =
+sem_Pattern_NegateFloat range_ literal_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -12457,14 +12122,14 @@ sem_Pattern_NegateFloat range_ literal_  =
               _lhsOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _literalIelements,_literalIliteralType,_literalIself) =
-                  (literal_ )
+                  literal_
           in  ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_Pattern_Parenthesized :: T_Range ->
                              T_Pattern ->
                              T_Pattern
-sem_Pattern_Parenthesized range_ pattern_  =
+sem_Pattern_Parenthesized range_ pattern_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -12533,15 +12198,15 @@ sem_Pattern_Parenthesized range_ pattern_  =
               _patternOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternIbeta,_patternIbetaUnique,_patternIconstraints,_patternIelements,_patternIenvironment,_patternIinfoTree,_patternIpatVarNames,_patternIpatternMatchWarnings,_patternIself,_patternIunboundNames) =
-                  (pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings )
+                  pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings
           in  ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_Pattern_Record :: T_Range ->
                       T_Name ->
                       T_RecordPatternBindings ->
                       T_Pattern
-sem_Pattern_Record range_ name_ recordPatternBindings_  =
+sem_Pattern_Record range_ name_ recordPatternBindings_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -12567,14 +12232,8 @@ sem_Pattern_Record range_ name_ recordPatternBindings_  =
               _recordPatternBindingsIunboundNames :: Names
               _infoTree =
                   globalInfoError
-              __tup47 =
+              (_beta,_constraints,_environment) =
                   internalError "PartialSyntax.ag" "n/a" "Pattern.Record"
-              (_beta,_,_) =
-                  __tup47
-              (_,_constraints,_) =
-                  __tup47
-              (_,_,_environment) =
-                  __tup47
               _lhsOelements =
                   pmError "Pattern_Record.elements" "Records are not supported"
               _lhsOpatVarNames =
@@ -12602,17 +12261,17 @@ sem_Pattern_Record range_ name_ recordPatternBindings_  =
               _recordPatternBindingsOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _recordPatternBindingsIpatternMatchWarnings,_recordPatternBindingsIself,_recordPatternBindingsIunboundNames) =
-                  (recordPatternBindings_ _recordPatternBindingsOnamesInScope _recordPatternBindingsOpatternMatchWarnings )
+                  recordPatternBindings_ _recordPatternBindingsOnamesInScope _recordPatternBindingsOpatternMatchWarnings
           in  ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_Pattern_Successor :: T_Range ->
                          T_Name ->
                          T_Literal ->
                          T_Pattern
-sem_Pattern_Successor range_ name_ literal_  =
+sem_Pattern_Successor range_ name_ literal_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -12636,14 +12295,8 @@ sem_Pattern_Successor range_ name_ literal_  =
               _literalIself :: Literal
               _infoTree =
                   globalInfoError
-              __tup48 =
+              (_beta,_constraints,_environment) =
                   internalError "PartialSyntax.ag" "n/a" "Pattern.Successor"
-              (_beta,_,_) =
-                  __tup48
-              (_,_constraints,_) =
-                  __tup48
-              (_,_,_environment) =
-                  __tup48
               _lhsOelements =
                   pmError "Pattern_Successor.elements" "Successors are not supported"
               _lhsOpatVarNames =
@@ -12667,16 +12320,16 @@ sem_Pattern_Successor range_ name_ literal_  =
               _lhsOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _literalIelements,_literalIliteralType,_literalIself) =
-                  (literal_ )
+                  literal_
           in  ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_Pattern_Tuple :: T_Range ->
                      T_Patterns ->
                      T_Pattern
-sem_Pattern_Tuple range_ patterns_  =
+sem_Pattern_Tuple range_ patterns_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -12762,14 +12415,14 @@ sem_Pattern_Tuple range_ patterns_  =
               _patternsOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternsIbetaUnique,_patternsIbetas,_patternsIconstraintslist,_patternsIelementss,_patternsIenvironment,_patternsIinfoTrees,_patternsInumberOfPatterns,_patternsIpatVarNames,_patternsIpatternMatchWarnings,_patternsIself,_patternsIunboundNames) =
-                  (patterns_ _patternsObetaUnique _patternsOimportEnvironment _patternsOmonos _patternsOnamesInScope _patternsOparentTree _patternsOpatternMatchWarnings )
+                  patterns_ _patternsObetaUnique _patternsOimportEnvironment _patternsOmonos _patternsOnamesInScope _patternsOparentTree _patternsOpatternMatchWarnings
           in  ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_Pattern_Variable :: T_Range ->
                         T_Name ->
                         T_Pattern
-sem_Pattern_Variable range_ name_  =
+sem_Pattern_Variable range_ name_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -12822,13 +12475,13 @@ sem_Pattern_Variable range_ name_  =
               _lhsOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
           in  ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_Pattern_Wildcard :: T_Range ->
                         T_Pattern
-sem_Pattern_Wildcard range_  =
+sem_Pattern_Wildcard range_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -12880,14 +12533,14 @@ sem_Pattern_Wildcard range_  =
               _lhsOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 -- Patterns ----------------------------------------------------
 -- cata
 sem_Patterns :: Patterns ->
                 T_Patterns
-sem_Patterns list  =
-    (Prelude.foldr sem_Patterns_Cons sem_Patterns_Nil (Prelude.map sem_Pattern list) )
+sem_Patterns list =
+    (Prelude.foldr sem_Patterns_Cons sem_Patterns_Nil (Prelude.map sem_Pattern list))
 -- semantic domain
 type T_Patterns = Int ->
                   ImportEnvironment ->
@@ -12899,7 +12552,7 @@ type T_Patterns = Int ->
 sem_Patterns_Cons :: T_Pattern ->
                      T_Patterns ->
                      T_Patterns
-sem_Patterns_Cons hd_ tl_  =
+sem_Patterns_Cons hd_ tl_ =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -12999,12 +12652,12 @@ sem_Patterns_Cons hd_ tl_  =
               _tlOpatternMatchWarnings =
                   _hdIpatternMatchWarnings
               ( _hdIbeta,_hdIbetaUnique,_hdIconstraints,_hdIelements,_hdIenvironment,_hdIinfoTree,_hdIpatVarNames,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames) =
-                  (hd_ _hdObetaUnique _hdOimportEnvironment _hdOmonos _hdOnamesInScope _hdOparentTree _hdOpatternMatchWarnings )
+                  hd_ _hdObetaUnique _hdOimportEnvironment _hdOmonos _hdOnamesInScope _hdOparentTree _hdOpatternMatchWarnings
               ( _tlIbetaUnique,_tlIbetas,_tlIconstraintslist,_tlIelementss,_tlIenvironment,_tlIinfoTrees,_tlInumberOfPatterns,_tlIpatVarNames,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames) =
-                  (tl_ _tlObetaUnique _tlOimportEnvironment _tlOmonos _tlOnamesInScope _tlOparentTree _tlOpatternMatchWarnings )
+                  tl_ _tlObetaUnique _tlOimportEnvironment _tlOmonos _tlOnamesInScope _tlOparentTree _tlOpatternMatchWarnings
           in  ( _lhsObetaUnique,_lhsObetas,_lhsOconstraintslist,_lhsOelementss,_lhsOenvironment,_lhsOinfoTrees,_lhsOnumberOfPatterns,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_Patterns_Nil :: T_Patterns
-sem_Patterns_Nil  =
+sem_Patterns_Nil =
     (\ _lhsIbetaUnique
        _lhsIimportEnvironment
        _lhsImonos
@@ -13051,17 +12704,17 @@ sem_Patterns_Nil  =
 -- cata
 sem_Position :: Position ->
                 T_Position
-sem_Position (Position_Position _filename _line _column )  =
-    (sem_Position_Position _filename _line _column )
-sem_Position (Position_Unknown )  =
-    (sem_Position_Unknown )
+sem_Position (Position_Position _filename _line _column) =
+    (sem_Position_Position _filename _line _column)
+sem_Position (Position_Unknown) =
+    (sem_Position_Unknown)
 -- semantic domain
 type T_Position = ( Position)
 sem_Position_Position :: String ->
                          Int ->
                          Int ->
                          T_Position
-sem_Position_Position filename_ line_ column_  =
+sem_Position_Position filename_ line_ column_ =
     (let _lhsOself :: Position
          _self =
              Position_Position filename_ line_ column_
@@ -13069,7 +12722,7 @@ sem_Position_Position filename_ line_ column_  =
              _self
      in  ( _lhsOself))
 sem_Position_Unknown :: T_Position
-sem_Position_Unknown  =
+sem_Position_Unknown =
     (let _lhsOself :: Position
          _self =
              Position_Unknown
@@ -13080,14 +12733,14 @@ sem_Position_Unknown  =
 -- cata
 sem_Qualifier :: Qualifier ->
                  T_Qualifier
-sem_Qualifier (Qualifier_Empty _range )  =
-    (sem_Qualifier_Empty (sem_Range _range ) )
-sem_Qualifier (Qualifier_Generator _range _pattern _expression )  =
-    (sem_Qualifier_Generator (sem_Range _range ) (sem_Pattern _pattern ) (sem_Expression _expression ) )
-sem_Qualifier (Qualifier_Guard _range _guard )  =
-    (sem_Qualifier_Guard (sem_Range _range ) (sem_Expression _guard ) )
-sem_Qualifier (Qualifier_Let _range _declarations )  =
-    (sem_Qualifier_Let (sem_Range _range ) (sem_Declarations _declarations ) )
+sem_Qualifier (Qualifier_Empty _range) =
+    (sem_Qualifier_Empty (sem_Range _range))
+sem_Qualifier (Qualifier_Generator _range _pattern _expression) =
+    (sem_Qualifier_Generator (sem_Range _range) (sem_Pattern _pattern) (sem_Expression _expression))
+sem_Qualifier (Qualifier_Guard _range _guard) =
+    (sem_Qualifier_Guard (sem_Range _range) (sem_Expression _guard))
+sem_Qualifier (Qualifier_Let _range _declarations) =
+    (sem_Qualifier_Let (sem_Range _range) (sem_Declarations _declarations))
 -- semantic domain
 type T_Qualifier = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (M.Map NameWithRange TpScheme) ->
@@ -13115,7 +12768,7 @@ type T_Qualifier = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    ( Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,DictionaryEnvironment,InfoTree,(IO ()),Monos,Names,([Warning]),Qualifier,Names,Int,Int)
 sem_Qualifier_Empty :: T_Range ->
                        T_Qualifier
-sem_Qualifier_Empty range_  =
+sem_Qualifier_Empty range_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIassumptions
@@ -13198,13 +12851,13 @@ sem_Qualifier_Empty range_  =
               _lhsOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Qualifier_Generator :: T_Range ->
                            T_Pattern ->
                            T_Expression ->
                            T_Qualifier
-sem_Qualifier_Generator range_ pattern_ expression_  =
+sem_Qualifier_Generator range_ pattern_ expression_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIassumptions
@@ -13310,12 +12963,8 @@ sem_Qualifier_Generator range_ pattern_ expression_  =
                           , _expressionIconstraints
                           , _lhsIconstraints
                           ]
-              __tup49 =
+              (_csetBinds,_assumptions') =
                   (_patternIenvironment .===. _lhsIassumptions) _cinfoBind
-              (_csetBinds,_) =
-                  __tup49
-              (_,_assumptions') =
-                  __tup49
               _newcon =
                   [ (_expressionIbeta .==. listType _patternIbeta) _cinfoResult ]
               _cinfoResult =
@@ -13335,14 +12984,8 @@ sem_Qualifier_Generator range_ pattern_ expression_  =
                   node _lhsIparentTree _localInfo [_patternIinfoTree, _expressionIinfoTree]
               _lhsOinfoTree =
                   _parentTree
-              __tup50 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _patternIpatVarNames (_expressionIunboundNames  ++ _lhsIunboundNames)  _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup50
-              (_,_unboundNames,_) =
-                  __tup50
-              (_,_,_scopeInfo) =
-                  __tup50
               _lhsOnamesInScope =
                   _namesInScope
               _lhsOunboundNames =
@@ -13435,16 +13078,16 @@ sem_Qualifier_Generator range_ pattern_ expression_  =
               _expressionOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternIbeta,_patternIbetaUnique,_patternIconstraints,_patternIelements,_patternIenvironment,_patternIinfoTree,_patternIpatVarNames,_patternIpatternMatchWarnings,_patternIself,_patternIunboundNames) =
-                  (pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings )
+                  pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Qualifier_Guard :: T_Range ->
                        T_Expression ->
                        T_Qualifier
-sem_Qualifier_Guard range_ guard_  =
+sem_Qualifier_Guard range_ guard_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIassumptions
@@ -13615,14 +13258,14 @@ sem_Qualifier_Guard range_ guard_  =
               _guardOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _guardIassumptions,_guardIbeta,_guardIbetaUnique,_guardIcollectErrors,_guardIcollectInstances,_guardIcollectWarnings,_guardIconstraints,_guardIdictionaryEnvironment,_guardIinfoTree,_guardImatchIO,_guardImatches,_guardIpatternMatchWarnings,_guardIself,_guardIunboundNames,_guardIuniqueChunk,_guardIuniqueSecondRound) =
-                  (guard_ _guardOallPatterns _guardOallTypeSchemes _guardOavailablePredicates _guardObetaUnique _guardOclassEnvironment _guardOcollectErrors _guardOcollectWarnings _guardOcurrentChunk _guardOdictionaryEnvironment _guardOimportEnvironment _guardOmatchIO _guardOmonos _guardOnamesInScope _guardOorderedTypeSynonyms _guardOparentTree _guardOpatternMatchWarnings _guardOsubstitution _guardOtryPatterns _guardOtypeschemeMap _guardOuniqueChunk _guardOuniqueSecondRound )
+                  guard_ _guardOallPatterns _guardOallTypeSchemes _guardOavailablePredicates _guardObetaUnique _guardOclassEnvironment _guardOcollectErrors _guardOcollectWarnings _guardOcurrentChunk _guardOdictionaryEnvironment _guardOimportEnvironment _guardOmatchIO _guardOmonos _guardOnamesInScope _guardOorderedTypeSynonyms _guardOparentTree _guardOpatternMatchWarnings _guardOsubstitution _guardOtryPatterns _guardOtypeschemeMap _guardOuniqueChunk _guardOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Qualifier_Let :: T_Range ->
                      T_Declarations ->
                      T_Qualifier
-sem_Qualifier_Let range_ declarations_  =
+sem_Qualifier_Let range_ declarations_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIassumptions
@@ -13703,22 +13346,10 @@ sem_Qualifier_Let range_ declarations_  =
               _declarationsIuniqueChunk :: Int
               _declarationsObindingGroups =
                   []
-              __tup51 =
+              (_lhsOassumptions,_lhsOconstraints,_inheritedBDG,_chunkNr,_lhsObetaUnique,_implicitsFM) =
                   let inputBDG   = (False, _lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _declarationsIbetaUnique)
                       mybdggroup = Just (_lhsIassumptions, [_lhsIconstraints])
                   in performBindingGroup inputBDG _declarationsIbindingGroups
-              (_lhsOassumptions,_,_,_,_,_) =
-                  __tup51
-              (_,_lhsOconstraints,_,_,_,_) =
-                  __tup51
-              (_,_,_inheritedBDG,_,_,_) =
-                  __tup51
-              (_,_,_,_chunkNr,_,_) =
-                  __tup51
-              (_,_,_,_,_lhsObetaUnique,_) =
-                  __tup51
-              (_,_,_,_,_,_implicitsFM) =
-                  __tup51
               _inferredTypes =
                   findInferredTypes _lhsItypeschemeMap _implicitsFM
               _lhsOcollectWarnings =
@@ -13753,28 +13384,10 @@ sem_Qualifier_Let range_ declarations_  =
                   _thisTree
               _declarationsOparentTree =
                   _declTree
-              __tup52 =
+              (_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities) =
                   internalError "PartialSyntax.ag" "n/a" "toplevel Qualifier"
-              (_collectTypeConstructors,_,_,_,_,_) =
-                  __tup52
-              (_,_collectValueConstructors,_,_,_,_) =
-                  __tup52
-              (_,_,_collectTypeSynonyms,_,_,_) =
-                  __tup52
-              (_,_,_,_collectConstructorEnv,_,_) =
-                  __tup52
-              (_,_,_,_,_derivedFunctions,_) =
-                  __tup52
-              (_,_,_,_,_,_operatorFixities) =
-                  __tup52
-              __tup53 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup53
-              (_,_unboundNames,_) =
-                  __tup53
-              (_,_,_scopeInfo) =
-                  __tup53
               _lhsOunboundNames =
                   _unboundNames
               _lhsOcollectInstances =
@@ -13834,16 +13447,16 @@ sem_Qualifier_Let range_ declarations_  =
               _declarationsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectInstances,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
-                  (declarations_ _declarationsOallPatterns _declarationsOallTypeSchemes _declarationsOavailablePredicates _declarationsObetaUnique _declarationsObindingGroups _declarationsOclassEnvironment _declarationsOcollectErrors _declarationsOcollectWarnings _declarationsOcurrentChunk _declarationsOdictionaryEnvironment _declarationsOimportEnvironment _declarationsOinheritedBDG _declarationsOmatchIO _declarationsOmonos _declarationsOnamesInScope _declarationsOorderedTypeSynonyms _declarationsOparentTree _declarationsOpatternMatchWarnings _declarationsOsubstitution _declarationsOtypeSignatures _declarationsOtypeschemeMap _declarationsOuniqueChunk )
+                  declarations_ _declarationsOallPatterns _declarationsOallTypeSchemes _declarationsOavailablePredicates _declarationsObetaUnique _declarationsObindingGroups _declarationsOclassEnvironment _declarationsOcollectErrors _declarationsOcollectWarnings _declarationsOcurrentChunk _declarationsOdictionaryEnvironment _declarationsOimportEnvironment _declarationsOinheritedBDG _declarationsOmatchIO _declarationsOmonos _declarationsOnamesInScope _declarationsOorderedTypeSynonyms _declarationsOparentTree _declarationsOpatternMatchWarnings _declarationsOsubstitution _declarationsOtypeSignatures _declarationsOtypeschemeMap _declarationsOuniqueChunk
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 -- Qualifiers --------------------------------------------------
 -- cata
 sem_Qualifiers :: Qualifiers ->
                   T_Qualifiers
-sem_Qualifiers list  =
-    (Prelude.foldr sem_Qualifiers_Cons sem_Qualifiers_Nil (Prelude.map sem_Qualifier list) )
+sem_Qualifiers list =
+    (Prelude.foldr sem_Qualifiers_Cons sem_Qualifiers_Nil (Prelude.map sem_Qualifier list))
 -- semantic domain
 type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (M.Map NameWithRange TpScheme) ->
@@ -13872,7 +13485,7 @@ type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
 sem_Qualifiers_Cons :: T_Qualifier ->
                        T_Qualifiers ->
                        T_Qualifiers
-sem_Qualifiers_Cons hd_ tl_  =
+sem_Qualifiers_Cons hd_ tl_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIassumptions
@@ -14117,12 +13730,12 @@ sem_Qualifiers_Cons hd_ tl_  =
               _tlOuniqueSecondRound =
                   _hdIuniqueSecondRound
               ( _hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIinfoTree,_hdImatchIO,_hdImonos,_hdInamesInScope,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIuniqueSecondRound) =
-                  (hd_ _hdOallPatterns _hdOallTypeSchemes _hdOassumptions _hdOavailablePredicates _hdObetaUnique _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOconstraints _hdOcurrentChunk _hdOdictionaryEnvironment _hdOimportEnvironment _hdOmatchIO _hdOmonos _hdOnamesInScope _hdOorderedTypeSynonyms _hdOparentTree _hdOpatternMatchWarnings _hdOsubstitution _hdOtypeschemeMap _hdOunboundNames _hdOuniqueChunk _hdOuniqueSecondRound )
+                  hd_ _hdOallPatterns _hdOallTypeSchemes _hdOassumptions _hdOavailablePredicates _hdObetaUnique _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOconstraints _hdOcurrentChunk _hdOdictionaryEnvironment _hdOimportEnvironment _hdOmatchIO _hdOmonos _hdOnamesInScope _hdOorderedTypeSynonyms _hdOparentTree _hdOpatternMatchWarnings _hdOsubstitution _hdOtypeschemeMap _hdOunboundNames _hdOuniqueChunk _hdOuniqueSecondRound
               ( _tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIconstraints,_tlIdictionaryEnvironment,_tlIinfoTrees,_tlImatchIO,_tlImonos,_tlInamesInScope,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIuniqueSecondRound) =
-                  (tl_ _tlOallPatterns _tlOallTypeSchemes _tlOassumptions _tlOavailablePredicates _tlObetaUnique _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOconstraints _tlOcurrentChunk _tlOdictionaryEnvironment _tlOimportEnvironment _tlOmatchIO _tlOmonos _tlOnamesInScope _tlOorderedTypeSynonyms _tlOparentTree _tlOpatternMatchWarnings _tlOsubstitution _tlOtypeschemeMap _tlOunboundNames _tlOuniqueChunk _tlOuniqueSecondRound )
+                  tl_ _tlOallPatterns _tlOallTypeSchemes _tlOassumptions _tlOavailablePredicates _tlObetaUnique _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOconstraints _tlOcurrentChunk _tlOdictionaryEnvironment _tlOimportEnvironment _tlOmatchIO _tlOmonos _tlOnamesInScope _tlOorderedTypeSynonyms _tlOparentTree _tlOpatternMatchWarnings _tlOsubstitution _tlOtypeschemeMap _tlOunboundNames _tlOuniqueChunk _tlOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Qualifiers_Nil :: T_Qualifiers
-sem_Qualifiers_Nil  =
+sem_Qualifiers_Nil =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIassumptions
@@ -14201,14 +13814,14 @@ sem_Qualifiers_Nil  =
 -- cata
 sem_Range :: Range ->
              T_Range
-sem_Range (Range_Range _start _stop )  =
-    (sem_Range_Range (sem_Position _start ) (sem_Position _stop ) )
+sem_Range (Range_Range _start _stop) =
+    (sem_Range_Range (sem_Position _start) (sem_Position _stop))
 -- semantic domain
 type T_Range = ( Range)
 sem_Range_Range :: T_Position ->
                    T_Position ->
                    T_Range
-sem_Range_Range start_ stop_  =
+sem_Range_Range start_ stop_ =
     (let _lhsOself :: Range
          _startIself :: Position
          _stopIself :: Position
@@ -14217,16 +13830,16 @@ sem_Range_Range start_ stop_  =
          _lhsOself =
              _self
          ( _startIself) =
-             (start_ )
+             start_
          ( _stopIself) =
-             (stop_ )
+             stop_
      in  ( _lhsOself))
 -- RecordExpressionBinding -------------------------------------
 -- cata
 sem_RecordExpressionBinding :: RecordExpressionBinding ->
                                T_RecordExpressionBinding
-sem_RecordExpressionBinding (RecordExpressionBinding_RecordExpressionBinding _range _name _expression )  =
-    (sem_RecordExpressionBinding_RecordExpressionBinding (sem_Range _range ) (sem_Name _name ) (sem_Expression _expression ) )
+sem_RecordExpressionBinding (RecordExpressionBinding_RecordExpressionBinding _range _name _expression) =
+    (sem_RecordExpressionBinding_RecordExpressionBinding (sem_Range _range) (sem_Name _name) (sem_Expression _expression))
 -- semantic domain
 type T_RecordExpressionBinding = (M.Map NameWithRange TpScheme) ->
                                  Predicates ->
@@ -14247,7 +13860,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding :: T_Range ->
                                                        T_Name ->
                                                        T_Expression ->
                                                        T_RecordExpressionBinding
-sem_RecordExpressionBinding_RecordExpressionBinding range_ name_ expression_  =
+sem_RecordExpressionBinding_RecordExpressionBinding range_ name_ expression_ =
     (\ _lhsIallTypeSchemes
        _lhsIavailablePredicates
        _lhsIclassEnvironment
@@ -14311,40 +13924,10 @@ sem_RecordExpressionBinding_RecordExpressionBinding range_ name_ expression_  =
               _expressionIuniqueSecondRound :: Int
               _parentTree =
                   globalInfoError
-              __tup54 =
+              (_monos,_constructorenv,_betaUnique,_miscerrors,_warnings,_kindErrors,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_importEnvironment) =
                   internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
-              (_monos,_,_,_,_,_,_,_,_,_,_) =
-                  __tup54
-              (_,_constructorenv,_,_,_,_,_,_,_,_,_) =
-                  __tup54
-              (_,_,_betaUnique,_,_,_,_,_,_,_,_) =
-                  __tup54
-              (_,_,_,_miscerrors,_,_,_,_,_,_,_) =
-                  __tup54
-              (_,_,_,_,_warnings,_,_,_,_,_,_) =
-                  __tup54
-              (_,_,_,_,_,_kindErrors,_,_,_,_,_) =
-                  __tup54
-              (_,_,_,_,_,_,_valueConstructors,_,_,_,_) =
-                  __tup54
-              (_,_,_,_,_,_,_,_allValueConstructors,_,_,_) =
-                  __tup54
-              (_,_,_,_,_,_,_,_,_typeConstructors,_,_) =
-                  __tup54
-              (_,_,_,_,_,_,_,_,_,_allTypeConstructors,_) =
-                  __tup54
-              (_,_,_,_,_,_,_,_,_,_,_importEnvironment) =
-                  __tup54
-              __tup55 =
+              (_allPatterns,_tryPatterns,_matchIO,_uniqueSecondRound) =
                   internalError "TS_PatternMatching.ag" "n/a" "RecordExpressionBinding is not supported"
-              (_allPatterns,_,_,_) =
-                  __tup55
-              (_,_tryPatterns,_,_) =
-                  __tup55
-              (_,_,_matchIO,_) =
-                  __tup55
-              (_,_,_,_uniqueSecondRound) =
-                  __tup55
               _lhsOcollectInstances =
                   _expressionIcollectInstances
               _lhsOunboundNames =
@@ -14406,18 +13989,18 @@ sem_RecordExpressionBinding_RecordExpressionBinding range_ name_ expression_  =
               _expressionOuniqueSecondRound =
                   _uniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
           in  ( _lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdictionaryEnvironment,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)))
 -- RecordExpressionBindings ------------------------------------
 -- cata
 sem_RecordExpressionBindings :: RecordExpressionBindings ->
                                 T_RecordExpressionBindings
-sem_RecordExpressionBindings list  =
-    (Prelude.foldr sem_RecordExpressionBindings_Cons sem_RecordExpressionBindings_Nil (Prelude.map sem_RecordExpressionBinding list) )
+sem_RecordExpressionBindings list =
+    (Prelude.foldr sem_RecordExpressionBindings_Cons sem_RecordExpressionBindings_Nil (Prelude.map sem_RecordExpressionBinding list))
 -- semantic domain
 type T_RecordExpressionBindings = (M.Map NameWithRange TpScheme) ->
                                   Predicates ->
@@ -14437,7 +14020,7 @@ type T_RecordExpressionBindings = (M.Map NameWithRange TpScheme) ->
 sem_RecordExpressionBindings_Cons :: T_RecordExpressionBinding ->
                                      T_RecordExpressionBindings ->
                                      T_RecordExpressionBindings
-sem_RecordExpressionBindings_Cons hd_ tl_  =
+sem_RecordExpressionBindings_Cons hd_ tl_ =
     (\ _lhsIallTypeSchemes
        _lhsIavailablePredicates
        _lhsIclassEnvironment
@@ -14579,12 +14162,12 @@ sem_RecordExpressionBindings_Cons hd_ tl_  =
               _tlOuniqueChunk =
                   _hdIuniqueChunk
               ( _hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIdictionaryEnvironment,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk) =
-                  (hd_ _hdOallTypeSchemes _hdOavailablePredicates _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOcurrentChunk _hdOdictionaryEnvironment _hdOimportEnvironment _hdOnamesInScope _hdOorderedTypeSynonyms _hdOpatternMatchWarnings _hdOsubstitution _hdOtypeschemeMap _hdOuniqueChunk )
+                  hd_ _hdOallTypeSchemes _hdOavailablePredicates _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOcurrentChunk _hdOdictionaryEnvironment _hdOimportEnvironment _hdOnamesInScope _hdOorderedTypeSynonyms _hdOpatternMatchWarnings _hdOsubstitution _hdOtypeschemeMap _hdOuniqueChunk
               ( _tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIdictionaryEnvironment,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk) =
-                  (tl_ _tlOallTypeSchemes _tlOavailablePredicates _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOcurrentChunk _tlOdictionaryEnvironment _tlOimportEnvironment _tlOnamesInScope _tlOorderedTypeSynonyms _tlOpatternMatchWarnings _tlOsubstitution _tlOtypeschemeMap _tlOuniqueChunk )
+                  tl_ _tlOallTypeSchemes _tlOavailablePredicates _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOcurrentChunk _tlOdictionaryEnvironment _tlOimportEnvironment _tlOnamesInScope _tlOorderedTypeSynonyms _tlOpatternMatchWarnings _tlOsubstitution _tlOtypeschemeMap _tlOuniqueChunk
           in  ( _lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOdictionaryEnvironment,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)))
 sem_RecordExpressionBindings_Nil :: T_RecordExpressionBindings
-sem_RecordExpressionBindings_Nil  =
+sem_RecordExpressionBindings_Nil =
     (\ _lhsIallTypeSchemes
        _lhsIavailablePredicates
        _lhsIclassEnvironment
@@ -14630,8 +14213,8 @@ sem_RecordExpressionBindings_Nil  =
 -- cata
 sem_RecordPatternBinding :: RecordPatternBinding ->
                             T_RecordPatternBinding
-sem_RecordPatternBinding (RecordPatternBinding_RecordPatternBinding _range _name _pattern )  =
-    (sem_RecordPatternBinding_RecordPatternBinding (sem_Range _range ) (sem_Name _name ) (sem_Pattern _pattern ) )
+sem_RecordPatternBinding (RecordPatternBinding_RecordPatternBinding _range _name _pattern) =
+    (sem_RecordPatternBinding_RecordPatternBinding (sem_Range _range) (sem_Name _name) (sem_Pattern _pattern))
 -- semantic domain
 type T_RecordPatternBinding = Names ->
                               ([Warning]) ->
@@ -14640,7 +14223,7 @@ sem_RecordPatternBinding_RecordPatternBinding :: T_Range ->
                                                  T_Name ->
                                                  T_Pattern ->
                                                  T_RecordPatternBinding
-sem_RecordPatternBinding_RecordPatternBinding range_ name_ pattern_  =
+sem_RecordPatternBinding_RecordPatternBinding range_ name_ pattern_ =
     (\ _lhsInamesInScope
        _lhsIpatternMatchWarnings ->
          (let _lhsOunboundNames :: Names
@@ -14666,28 +14249,8 @@ sem_RecordPatternBinding_RecordPatternBinding range_ name_ pattern_  =
               _patternIunboundNames :: Names
               _parentTree =
                   globalInfoError
-              __tup56 =
+              (_monos,_constructorenv,_betaUnique,_miscerrors,_warnings,_valueConstructors,_allValueConstructors,_typeConstructors,_allTypeConstructors,_importEnvironment) =
                   internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
-              (_monos,_,_,_,_,_,_,_,_,_) =
-                  __tup56
-              (_,_constructorenv,_,_,_,_,_,_,_,_) =
-                  __tup56
-              (_,_,_betaUnique,_,_,_,_,_,_,_) =
-                  __tup56
-              (_,_,_,_miscerrors,_,_,_,_,_,_) =
-                  __tup56
-              (_,_,_,_,_warnings,_,_,_,_,_) =
-                  __tup56
-              (_,_,_,_,_,_valueConstructors,_,_,_,_) =
-                  __tup56
-              (_,_,_,_,_,_,_allValueConstructors,_,_,_) =
-                  __tup56
-              (_,_,_,_,_,_,_,_typeConstructors,_,_) =
-                  __tup56
-              (_,_,_,_,_,_,_,_,_allTypeConstructors,_) =
-                  __tup56
-              (_,_,_,_,_,_,_,_,_,_importEnvironment) =
-                  __tup56
               _lhsOunboundNames =
                   _patternIunboundNames
               _self =
@@ -14709,18 +14272,18 @@ sem_RecordPatternBinding_RecordPatternBinding range_ name_ pattern_  =
               _patternOpatternMatchWarnings =
                   _lhsIpatternMatchWarnings
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _nameIself) =
-                  (name_ )
+                  name_
               ( _patternIbeta,_patternIbetaUnique,_patternIconstraints,_patternIelements,_patternIenvironment,_patternIinfoTree,_patternIpatVarNames,_patternIpatternMatchWarnings,_patternIself,_patternIunboundNames) =
-                  (pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings )
+                  pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings
           in  ( _lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 -- RecordPatternBindings ---------------------------------------
 -- cata
 sem_RecordPatternBindings :: RecordPatternBindings ->
                              T_RecordPatternBindings
-sem_RecordPatternBindings list  =
-    (Prelude.foldr sem_RecordPatternBindings_Cons sem_RecordPatternBindings_Nil (Prelude.map sem_RecordPatternBinding list) )
+sem_RecordPatternBindings list =
+    (Prelude.foldr sem_RecordPatternBindings_Cons sem_RecordPatternBindings_Nil (Prelude.map sem_RecordPatternBinding list))
 -- semantic domain
 type T_RecordPatternBindings = Names ->
                                ([Warning]) ->
@@ -14728,7 +14291,7 @@ type T_RecordPatternBindings = Names ->
 sem_RecordPatternBindings_Cons :: T_RecordPatternBinding ->
                                   T_RecordPatternBindings ->
                                   T_RecordPatternBindings
-sem_RecordPatternBindings_Cons hd_ tl_  =
+sem_RecordPatternBindings_Cons hd_ tl_ =
     (\ _lhsInamesInScope
        _lhsIpatternMatchWarnings ->
          (let _lhsOunboundNames :: Names
@@ -14761,12 +14324,12 @@ sem_RecordPatternBindings_Cons hd_ tl_  =
               _tlOpatternMatchWarnings =
                   _hdIpatternMatchWarnings
               ( _hdIpatternMatchWarnings,_hdIself,_hdIunboundNames) =
-                  (hd_ _hdOnamesInScope _hdOpatternMatchWarnings )
+                  hd_ _hdOnamesInScope _hdOpatternMatchWarnings
               ( _tlIpatternMatchWarnings,_tlIself,_tlIunboundNames) =
-                  (tl_ _tlOnamesInScope _tlOpatternMatchWarnings )
+                  tl_ _tlOnamesInScope _tlOpatternMatchWarnings
           in  ( _lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames)))
 sem_RecordPatternBindings_Nil :: T_RecordPatternBindings
-sem_RecordPatternBindings_Nil  =
+sem_RecordPatternBindings_Nil =
     (\ _lhsInamesInScope
        _lhsIpatternMatchWarnings ->
          (let _lhsOunboundNames :: Names
@@ -14785,10 +14348,10 @@ sem_RecordPatternBindings_Nil  =
 -- cata
 sem_RightHandSide :: RightHandSide ->
                      T_RightHandSide
-sem_RightHandSide (RightHandSide_Expression _range _expression _where )  =
-    (sem_RightHandSide_Expression (sem_Range _range ) (sem_Expression _expression ) (sem_MaybeDeclarations _where ) )
-sem_RightHandSide (RightHandSide_Guarded _range _guardedexpressions _where )  =
-    (sem_RightHandSide_Guarded (sem_Range _range ) (sem_GuardedExpressions _guardedexpressions ) (sem_MaybeDeclarations _where ) )
+sem_RightHandSide (RightHandSide_Expression _range _expression _where) =
+    (sem_RightHandSide_Expression (sem_Range _range) (sem_Expression _expression) (sem_MaybeDeclarations _where))
+sem_RightHandSide (RightHandSide_Guarded _range _guardedexpressions _where) =
+    (sem_RightHandSide_Guarded (sem_Range _range) (sem_GuardedExpressions _guardedexpressions) (sem_MaybeDeclarations _where))
 -- semantic domain
 type T_RightHandSide = ([((Expression, [String]), Core_TypingStrategy)]) ->
                        (M.Map NameWithRange TpScheme) ->
@@ -14815,7 +14378,7 @@ sem_RightHandSide_Expression :: T_Range ->
                                 T_Expression ->
                                 T_MaybeDeclarations ->
                                 T_RightHandSide
-sem_RightHandSide_Expression range_ expression_ where_  =
+sem_RightHandSide_Expression range_ expression_ where_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -15056,17 +14619,17 @@ sem_RightHandSide_Expression range_ expression_ where_  =
               _whereOuniqueChunk =
                   _expressionIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
               ( _whereIassumptions,_whereIbetaUnique,_whereIcollectErrors,_whereIcollectInstances,_whereIcollectWarnings,_whereIconstraints,_whereIdictionaryEnvironment,_whereIinfoTrees,_whereIlocalTypes,_whereImatchIO,_whereInamesInScope,_whereIpatternMatchWarnings,_whereIself,_whereIunboundNames,_whereIuniqueChunk) =
-                  (where_ _whereOallPatterns _whereOallTypeSchemes _whereOassumptions _whereOavailablePredicates _whereObetaUnique _whereOclassEnvironment _whereOcollectErrors _whereOcollectWarnings _whereOconstraints _whereOcurrentChunk _whereOdictionaryEnvironment _whereOimportEnvironment _whereOmatchIO _whereOmonos _whereOnamesInScope _whereOorderedTypeSynonyms _whereOparentTree _whereOpatternMatchWarnings _whereOsubstitution _whereOtypeschemeMap _whereOunboundNames _whereOuniqueChunk )
+                  where_ _whereOallPatterns _whereOallTypeSchemes _whereOassumptions _whereOavailablePredicates _whereObetaUnique _whereOclassEnvironment _whereOcollectErrors _whereOcollectWarnings _whereOconstraints _whereOcurrentChunk _whereOdictionaryEnvironment _whereOimportEnvironment _whereOmatchIO _whereOmonos _whereOnamesInScope _whereOorderedTypeSynonyms _whereOparentTree _whereOpatternMatchWarnings _whereOsubstitution _whereOtypeschemeMap _whereOunboundNames _whereOuniqueChunk
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTree,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)))
 sem_RightHandSide_Guarded :: T_Range ->
                              T_GuardedExpressions ->
                              T_MaybeDeclarations ->
                              T_RightHandSide
-sem_RightHandSide_Guarded range_ guardedexpressions_ where_  =
+sem_RightHandSide_Guarded range_ guardedexpressions_ where_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIavailablePredicates
@@ -15308,25 +14871,25 @@ sem_RightHandSide_Guarded range_ guardedexpressions_ where_  =
               _whereOuniqueChunk =
                   _guardedexpressionsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _guardedexpressionsIassumptions,_guardedexpressionsIbetaUnique,_guardedexpressionsIcollectErrors,_guardedexpressionsIcollectInstances,_guardedexpressionsIcollectWarnings,_guardedexpressionsIconstraintslist,_guardedexpressionsIdictionaryEnvironment,_guardedexpressionsIfallthrough,_guardedexpressionsIinfoTrees,_guardedexpressionsImatchIO,_guardedexpressionsIpatternMatchWarnings,_guardedexpressionsIself,_guardedexpressionsIunboundNames,_guardedexpressionsIuniqueChunk,_guardedexpressionsIuniqueSecondRound) =
-                  (guardedexpressions_ _guardedexpressionsOallPatterns _guardedexpressionsOallTypeSchemes _guardedexpressionsOavailablePredicates _guardedexpressionsObetaRight _guardedexpressionsObetaUnique _guardedexpressionsOclassEnvironment _guardedexpressionsOcollectErrors _guardedexpressionsOcollectWarnings _guardedexpressionsOcurrentChunk _guardedexpressionsOdictionaryEnvironment _guardedexpressionsOimportEnvironment _guardedexpressionsOmatchIO _guardedexpressionsOmonos _guardedexpressionsOnamesInScope _guardedexpressionsOnumberOfGuards _guardedexpressionsOopen _guardedexpressionsOorderedTypeSynonyms _guardedexpressionsOparentTree _guardedexpressionsOpatternMatchWarnings _guardedexpressionsOsubstitution _guardedexpressionsOtypeschemeMap _guardedexpressionsOuniqueChunk _guardedexpressionsOuniqueSecondRound )
+                  guardedexpressions_ _guardedexpressionsOallPatterns _guardedexpressionsOallTypeSchemes _guardedexpressionsOavailablePredicates _guardedexpressionsObetaRight _guardedexpressionsObetaUnique _guardedexpressionsOclassEnvironment _guardedexpressionsOcollectErrors _guardedexpressionsOcollectWarnings _guardedexpressionsOcurrentChunk _guardedexpressionsOdictionaryEnvironment _guardedexpressionsOimportEnvironment _guardedexpressionsOmatchIO _guardedexpressionsOmonos _guardedexpressionsOnamesInScope _guardedexpressionsOnumberOfGuards _guardedexpressionsOopen _guardedexpressionsOorderedTypeSynonyms _guardedexpressionsOparentTree _guardedexpressionsOpatternMatchWarnings _guardedexpressionsOsubstitution _guardedexpressionsOtypeschemeMap _guardedexpressionsOuniqueChunk _guardedexpressionsOuniqueSecondRound
               ( _whereIassumptions,_whereIbetaUnique,_whereIcollectErrors,_whereIcollectInstances,_whereIcollectWarnings,_whereIconstraints,_whereIdictionaryEnvironment,_whereIinfoTrees,_whereIlocalTypes,_whereImatchIO,_whereInamesInScope,_whereIpatternMatchWarnings,_whereIself,_whereIunboundNames,_whereIuniqueChunk) =
-                  (where_ _whereOallPatterns _whereOallTypeSchemes _whereOassumptions _whereOavailablePredicates _whereObetaUnique _whereOclassEnvironment _whereOcollectErrors _whereOcollectWarnings _whereOconstraints _whereOcurrentChunk _whereOdictionaryEnvironment _whereOimportEnvironment _whereOmatchIO _whereOmonos _whereOnamesInScope _whereOorderedTypeSynonyms _whereOparentTree _whereOpatternMatchWarnings _whereOsubstitution _whereOtypeschemeMap _whereOunboundNames _whereOuniqueChunk )
+                  where_ _whereOallPatterns _whereOallTypeSchemes _whereOassumptions _whereOavailablePredicates _whereObetaUnique _whereOclassEnvironment _whereOcollectErrors _whereOcollectWarnings _whereOconstraints _whereOcurrentChunk _whereOdictionaryEnvironment _whereOimportEnvironment _whereOmatchIO _whereOmonos _whereOnamesInScope _whereOorderedTypeSynonyms _whereOparentTree _whereOpatternMatchWarnings _whereOsubstitution _whereOtypeschemeMap _whereOunboundNames _whereOuniqueChunk
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTree,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk)))
 -- SimpleType --------------------------------------------------
 -- cata
 sem_SimpleType :: SimpleType ->
                   T_SimpleType
-sem_SimpleType (SimpleType_SimpleType _range _name _typevariables )  =
-    (sem_SimpleType_SimpleType (sem_Range _range ) (sem_Name _name ) (sem_Names _typevariables ) )
+sem_SimpleType (SimpleType_SimpleType _range _name _typevariables) =
+    (sem_SimpleType_SimpleType (sem_Range _range) (sem_Name _name) (sem_Names _typevariables))
 -- semantic domain
 type T_SimpleType = ( Name,SimpleType,Names)
 sem_SimpleType_SimpleType :: T_Range ->
                              T_Name ->
                              T_Names ->
                              T_SimpleType
-sem_SimpleType_SimpleType range_ name_ typevariables_  =
+sem_SimpleType_SimpleType range_ name_ typevariables_ =
     (let _lhsOname :: Name
          _lhsOtypevariables :: Names
          _lhsOself :: SimpleType
@@ -15342,24 +14905,24 @@ sem_SimpleType_SimpleType range_ name_ typevariables_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
          ( _typevariablesIself) =
-             (typevariables_ )
+             typevariables_
      in  ( _lhsOname,_lhsOself,_lhsOtypevariables))
 -- Statement ---------------------------------------------------
 -- cata
 sem_Statement :: Statement ->
                  T_Statement
-sem_Statement (Statement_Empty _range )  =
-    (sem_Statement_Empty (sem_Range _range ) )
-sem_Statement (Statement_Expression _range _expression )  =
-    (sem_Statement_Expression (sem_Range _range ) (sem_Expression _expression ) )
-sem_Statement (Statement_Generator _range _pattern _expression )  =
-    (sem_Statement_Generator (sem_Range _range ) (sem_Pattern _pattern ) (sem_Expression _expression ) )
-sem_Statement (Statement_Let _range _declarations )  =
-    (sem_Statement_Let (sem_Range _range ) (sem_Declarations _declarations ) )
+sem_Statement (Statement_Empty _range) =
+    (sem_Statement_Empty (sem_Range _range))
+sem_Statement (Statement_Expression _range _expression) =
+    (sem_Statement_Expression (sem_Range _range) (sem_Expression _expression))
+sem_Statement (Statement_Generator _range _pattern _expression) =
+    (sem_Statement_Generator (sem_Range _range) (sem_Pattern _pattern) (sem_Expression _expression))
+sem_Statement (Statement_Let _range _declarations) =
+    (sem_Statement_Let (sem_Range _range) (sem_Declarations _declarations))
 -- semantic domain
 type T_Statement = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    (M.Map NameWithRange TpScheme) ->
@@ -15388,7 +14951,7 @@ type T_Statement = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    ( Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,DictionaryEnvironment,(Maybe Tp),InfoTree,(IO ()),Monos,Names,([Warning]),Statement,Names,Int,Int)
 sem_Statement_Empty :: T_Range ->
                        T_Statement
-sem_Statement_Empty range_  =
+sem_Statement_Empty range_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIassumptions
@@ -15475,12 +15038,12 @@ sem_Statement_Empty range_  =
               _lhsOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Statement_Expression :: T_Range ->
                             T_Expression ->
                             T_Statement
-sem_Statement_Expression range_ expression_  =
+sem_Statement_Expression range_ expression_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIassumptions
@@ -15657,15 +15220,15 @@ sem_Statement_Expression range_ expression_  =
               _expressionOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Statement_Generator :: T_Range ->
                            T_Pattern ->
                            T_Expression ->
                            T_Statement
-sem_Statement_Generator range_ pattern_ expression_  =
+sem_Statement_Generator range_ pattern_ expression_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIassumptions
@@ -15777,12 +15340,8 @@ sem_Statement_Generator range_ pattern_ expression_  =
                           ]
               _newcon =
                   [ (_expressionIbeta .==. ioType _patternIbeta) _cinfoResult ]
-              __tup57 =
+              (_csetBinds,_assumptions') =
                   (_patternIenvironment .===. _lhsIassumptions) _cinfoBind
-              (_csetBinds,_) =
-                  __tup57
-              (_,_assumptions') =
-                  __tup57
               _cinfoResult =
                   childConstraint 1 "generator" _parentTree
                      []
@@ -15800,14 +15359,8 @@ sem_Statement_Generator range_ pattern_ expression_  =
                   node _lhsIparentTree _localInfo [_patternIinfoTree, _expressionIinfoTree]
               _lhsOinfoTree =
                   _parentTree
-              __tup58 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _patternIpatVarNames (_expressionIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup58
-              (_,_unboundNames,_) =
-                  __tup58
-              (_,_,_scopeInfo) =
-                  __tup58
               _lhsOnamesInScope =
                   _namesInScope
               _lhsOunboundNames =
@@ -15900,16 +15453,16 @@ sem_Statement_Generator range_ pattern_ expression_  =
               _expressionOuniqueSecondRound =
                   _lhsIuniqueSecondRound
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _patternIbeta,_patternIbetaUnique,_patternIconstraints,_patternIelements,_patternIenvironment,_patternIinfoTree,_patternIpatVarNames,_patternIpatternMatchWarnings,_patternIself,_patternIunboundNames) =
-                  (pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings )
+                  pattern_ _patternObetaUnique _patternOimportEnvironment _patternOmonos _patternOnamesInScope _patternOparentTree _patternOpatternMatchWarnings
               ( _expressionIassumptions,_expressionIbeta,_expressionIbetaUnique,_expressionIcollectErrors,_expressionIcollectInstances,_expressionIcollectWarnings,_expressionIconstraints,_expressionIdictionaryEnvironment,_expressionIinfoTree,_expressionImatchIO,_expressionImatches,_expressionIpatternMatchWarnings,_expressionIself,_expressionIunboundNames,_expressionIuniqueChunk,_expressionIuniqueSecondRound) =
-                  (expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound )
+                  expression_ _expressionOallPatterns _expressionOallTypeSchemes _expressionOavailablePredicates _expressionObetaUnique _expressionOclassEnvironment _expressionOcollectErrors _expressionOcollectWarnings _expressionOcurrentChunk _expressionOdictionaryEnvironment _expressionOimportEnvironment _expressionOmatchIO _expressionOmonos _expressionOnamesInScope _expressionOorderedTypeSynonyms _expressionOparentTree _expressionOpatternMatchWarnings _expressionOsubstitution _expressionOtryPatterns _expressionOtypeschemeMap _expressionOuniqueChunk _expressionOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Statement_Let :: T_Range ->
                      T_Declarations ->
                      T_Statement
-sem_Statement_Let range_ declarations_  =
+sem_Statement_Let range_ declarations_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIassumptions
@@ -15994,22 +15547,10 @@ sem_Statement_Let range_ declarations_  =
                   Nothing
               _declarationsObindingGroups =
                   []
-              __tup59 =
+              (_lhsOassumptions,_lhsOconstraints,_inheritedBDG,_chunkNr,_lhsObetaUnique,_implicitsFM) =
                   let inputBDG    = (False, _lhsIcurrentChunk, _declarationsIuniqueChunk, _lhsImonos, _declarationsItypeSignatures, mybdggroup, _declarationsIbetaUnique)
                       mybdggroup = Just (_lhsIassumptions, [_lhsIconstraints])
                   in performBindingGroup inputBDG _declarationsIbindingGroups
-              (_lhsOassumptions,_,_,_,_,_) =
-                  __tup59
-              (_,_lhsOconstraints,_,_,_,_) =
-                  __tup59
-              (_,_,_inheritedBDG,_,_,_) =
-                  __tup59
-              (_,_,_,_chunkNr,_,_) =
-                  __tup59
-              (_,_,_,_,_lhsObetaUnique,_) =
-                  __tup59
-              (_,_,_,_,_,_implicitsFM) =
-                  __tup59
               _inferredTypes =
                   findInferredTypes _lhsItypeschemeMap _implicitsFM
               _lhsOcollectWarnings =
@@ -16044,28 +15585,10 @@ sem_Statement_Let range_ declarations_  =
                   _thisTree
               _declarationsOparentTree =
                   _declTree
-              __tup60 =
+              (_collectTypeConstructors,_collectValueConstructors,_collectTypeSynonyms,_collectConstructorEnv,_derivedFunctions,_operatorFixities) =
                   internalError "PartialSyntax.ag" "n/a" "toplevel Statement"
-              (_collectTypeConstructors,_,_,_,_,_) =
-                  __tup60
-              (_,_collectValueConstructors,_,_,_,_) =
-                  __tup60
-              (_,_,_collectTypeSynonyms,_,_,_) =
-                  __tup60
-              (_,_,_,_collectConstructorEnv,_,_) =
-                  __tup60
-              (_,_,_,_,_derivedFunctions,_) =
-                  __tup60
-              (_,_,_,_,_,_operatorFixities) =
-                  __tup60
-              __tup61 =
+              (_namesInScope,_unboundNames,_scopeInfo) =
                   changeOfScope _declarationsIdeclVarNames (_declarationsIunboundNames ++ _lhsIunboundNames) _lhsInamesInScope
-              (_namesInScope,_,_) =
-                  __tup61
-              (_,_unboundNames,_) =
-                  __tup61
-              (_,_,_scopeInfo) =
-                  __tup61
               _lhsOunboundNames =
                   _unboundNames
               _lhsOcollectInstances =
@@ -16125,16 +15648,16 @@ sem_Statement_Let range_ declarations_  =
               _declarationsOuniqueChunk =
                   _lhsIuniqueChunk
               ( _rangeIself) =
-                  (range_ )
+                  range_
               ( _declarationsIbetaUnique,_declarationsIbindingGroups,_declarationsIcollectErrors,_declarationsIcollectInstances,_declarationsIcollectWarnings,_declarationsIdeclVarNames,_declarationsIdictionaryEnvironment,_declarationsIinfoTrees,_declarationsImatchIO,_declarationsIpatternMatchWarnings,_declarationsIrestrictedNames,_declarationsIself,_declarationsIsimplePatNames,_declarationsItypeSignatures,_declarationsIunboundNames,_declarationsIuniqueChunk) =
-                  (declarations_ _declarationsOallPatterns _declarationsOallTypeSchemes _declarationsOavailablePredicates _declarationsObetaUnique _declarationsObindingGroups _declarationsOclassEnvironment _declarationsOcollectErrors _declarationsOcollectWarnings _declarationsOcurrentChunk _declarationsOdictionaryEnvironment _declarationsOimportEnvironment _declarationsOinheritedBDG _declarationsOmatchIO _declarationsOmonos _declarationsOnamesInScope _declarationsOorderedTypeSynonyms _declarationsOparentTree _declarationsOpatternMatchWarnings _declarationsOsubstitution _declarationsOtypeSignatures _declarationsOtypeschemeMap _declarationsOuniqueChunk )
+                  declarations_ _declarationsOallPatterns _declarationsOallTypeSchemes _declarationsOavailablePredicates _declarationsObetaUnique _declarationsObindingGroups _declarationsOclassEnvironment _declarationsOcollectErrors _declarationsOcollectWarnings _declarationsOcurrentChunk _declarationsOdictionaryEnvironment _declarationsOimportEnvironment _declarationsOinheritedBDG _declarationsOmatchIO _declarationsOmonos _declarationsOnamesInScope _declarationsOorderedTypeSynonyms _declarationsOparentTree _declarationsOpatternMatchWarnings _declarationsOsubstitution _declarationsOtypeSignatures _declarationsOtypeschemeMap _declarationsOuniqueChunk
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 -- Statements --------------------------------------------------
 -- cata
 sem_Statements :: Statements ->
                   T_Statements
-sem_Statements list  =
-    (Prelude.foldr sem_Statements_Cons sem_Statements_Nil (Prelude.map sem_Statement list) )
+sem_Statements list =
+    (Prelude.foldr sem_Statements_Cons sem_Statements_Nil (Prelude.map sem_Statement list))
 -- semantic domain
 type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     (M.Map NameWithRange TpScheme) ->
@@ -16164,7 +15687,7 @@ type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
 sem_Statements_Cons :: T_Statement ->
                        T_Statements ->
                        T_Statements
-sem_Statements_Cons hd_ tl_  =
+sem_Statements_Cons hd_ tl_ =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIassumptions
@@ -16417,12 +15940,12 @@ sem_Statements_Cons hd_ tl_  =
               _tlOuniqueSecondRound =
                   _hdIuniqueSecondRound
               ( _hdIassumptions,_hdIbetaUnique,_hdIcollectErrors,_hdIcollectInstances,_hdIcollectWarnings,_hdIconstraints,_hdIdictionaryEnvironment,_hdIgeneratorBeta,_hdIinfoTree,_hdImatchIO,_hdImonos,_hdInamesInScope,_hdIpatternMatchWarnings,_hdIself,_hdIunboundNames,_hdIuniqueChunk,_hdIuniqueSecondRound) =
-                  (hd_ _hdOallPatterns _hdOallTypeSchemes _hdOassumptions _hdOavailablePredicates _hdObetaUnique _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOconstraints _hdOcurrentChunk _hdOdictionaryEnvironment _hdOgeneratorBeta _hdOimportEnvironment _hdOmatchIO _hdOmonos _hdOnamesInScope _hdOorderedTypeSynonyms _hdOparentTree _hdOpatternMatchWarnings _hdOsubstitution _hdOtypeschemeMap _hdOunboundNames _hdOuniqueChunk _hdOuniqueSecondRound )
+                  hd_ _hdOallPatterns _hdOallTypeSchemes _hdOassumptions _hdOavailablePredicates _hdObetaUnique _hdOclassEnvironment _hdOcollectErrors _hdOcollectWarnings _hdOconstraints _hdOcurrentChunk _hdOdictionaryEnvironment _hdOgeneratorBeta _hdOimportEnvironment _hdOmatchIO _hdOmonos _hdOnamesInScope _hdOorderedTypeSynonyms _hdOparentTree _hdOpatternMatchWarnings _hdOsubstitution _hdOtypeschemeMap _hdOunboundNames _hdOuniqueChunk _hdOuniqueSecondRound
               ( _tlIassumptions,_tlIbetaUnique,_tlIcollectErrors,_tlIcollectInstances,_tlIcollectWarnings,_tlIconstraints,_tlIdictionaryEnvironment,_tlIgeneratorBeta,_tlIinfoTrees,_tlImatchIO,_tlInamesInScope,_tlIpatternMatchWarnings,_tlIself,_tlIunboundNames,_tlIuniqueChunk,_tlIuniqueSecondRound) =
-                  (tl_ _tlOallPatterns _tlOallTypeSchemes _tlOassumptions _tlOavailablePredicates _tlObetaUnique _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOconstraints _tlOcurrentChunk _tlOdictionaryEnvironment _tlOgeneratorBeta _tlOimportEnvironment _tlOmatchIO _tlOmonos _tlOnamesInScope _tlOorderedTypeSynonyms _tlOparentTree _tlOpatternMatchWarnings _tlOsubstitution _tlOtypeschemeMap _tlOunboundNames _tlOuniqueChunk _tlOuniqueSecondRound )
+                  tl_ _tlOallPatterns _tlOallTypeSchemes _tlOassumptions _tlOavailablePredicates _tlObetaUnique _tlOclassEnvironment _tlOcollectErrors _tlOcollectWarnings _tlOconstraints _tlOcurrentChunk _tlOdictionaryEnvironment _tlOgeneratorBeta _tlOimportEnvironment _tlOmatchIO _tlOmonos _tlOnamesInScope _tlOorderedTypeSynonyms _tlOparentTree _tlOpatternMatchWarnings _tlOsubstitution _tlOtypeschemeMap _tlOunboundNames _tlOuniqueChunk _tlOuniqueSecondRound
           in  ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTrees,_lhsOmatchIO,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound)))
 sem_Statements_Nil :: T_Statements
-sem_Statements_Nil  =
+sem_Statements_Nil =
     (\ _lhsIallPatterns
        _lhsIallTypeSchemes
        _lhsIassumptions
@@ -16502,14 +16025,14 @@ sem_Statements_Nil  =
 -- cata
 sem_Strings :: Strings ->
                T_Strings
-sem_Strings list  =
-    (Prelude.foldr sem_Strings_Cons sem_Strings_Nil list )
+sem_Strings list =
+    (Prelude.foldr sem_Strings_Cons sem_Strings_Nil list)
 -- semantic domain
 type T_Strings = ( Strings)
 sem_Strings_Cons :: String ->
                     T_Strings ->
                     T_Strings
-sem_Strings_Cons hd_ tl_  =
+sem_Strings_Cons hd_ tl_ =
     (let _lhsOself :: Strings
          _tlIself :: Strings
          _self =
@@ -16517,10 +16040,10 @@ sem_Strings_Cons hd_ tl_  =
          _lhsOself =
              _self
          ( _tlIself) =
-             (tl_ )
+             tl_
      in  ( _lhsOself))
 sem_Strings_Nil :: T_Strings
-sem_Strings_Nil  =
+sem_Strings_Nil =
     (let _lhsOself :: Strings
          _self =
              []
@@ -16531,20 +16054,20 @@ sem_Strings_Nil  =
 -- cata
 sem_Type :: Type ->
             T_Type
-sem_Type (Type_Application _range _prefix _function _arguments )  =
-    (sem_Type_Application (sem_Range _range ) _prefix (sem_Type _function ) (sem_Types _arguments ) )
-sem_Type (Type_Constructor _range _name )  =
-    (sem_Type_Constructor (sem_Range _range ) (sem_Name _name ) )
-sem_Type (Type_Exists _range _typevariables _type )  =
-    (sem_Type_Exists (sem_Range _range ) (sem_Names _typevariables ) (sem_Type _type ) )
-sem_Type (Type_Forall _range _typevariables _type )  =
-    (sem_Type_Forall (sem_Range _range ) (sem_Names _typevariables ) (sem_Type _type ) )
-sem_Type (Type_Parenthesized _range _type )  =
-    (sem_Type_Parenthesized (sem_Range _range ) (sem_Type _type ) )
-sem_Type (Type_Qualified _range _context _type )  =
-    (sem_Type_Qualified (sem_Range _range ) (sem_ContextItems _context ) (sem_Type _type ) )
-sem_Type (Type_Variable _range _name )  =
-    (sem_Type_Variable (sem_Range _range ) (sem_Name _name ) )
+sem_Type (Type_Application _range _prefix _function _arguments) =
+    (sem_Type_Application (sem_Range _range) _prefix (sem_Type _function) (sem_Types _arguments))
+sem_Type (Type_Constructor _range _name) =
+    (sem_Type_Constructor (sem_Range _range) (sem_Name _name))
+sem_Type (Type_Exists _range _typevariables _type) =
+    (sem_Type_Exists (sem_Range _range) (sem_Names _typevariables) (sem_Type _type))
+sem_Type (Type_Forall _range _typevariables _type) =
+    (sem_Type_Forall (sem_Range _range) (sem_Names _typevariables) (sem_Type _type))
+sem_Type (Type_Parenthesized _range _type) =
+    (sem_Type_Parenthesized (sem_Range _range) (sem_Type _type))
+sem_Type (Type_Qualified _range _context _type) =
+    (sem_Type_Qualified (sem_Range _range) (sem_ContextItems _context) (sem_Type _type))
+sem_Type (Type_Variable _range _name) =
+    (sem_Type_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Type = ( Type)
 sem_Type_Application :: T_Range ->
@@ -16552,7 +16075,7 @@ sem_Type_Application :: T_Range ->
                         T_Type ->
                         T_Types ->
                         T_Type
-sem_Type_Application range_ prefix_ function_ arguments_  =
+sem_Type_Application range_ prefix_ function_ arguments_ =
     (let _lhsOself :: Type
          _rangeIself :: Range
          _functionIself :: Type
@@ -16562,16 +16085,16 @@ sem_Type_Application range_ prefix_ function_ arguments_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _functionIself) =
-             (function_ )
+             function_
          ( _argumentsIself) =
-             (arguments_ )
+             arguments_
      in  ( _lhsOself))
 sem_Type_Constructor :: T_Range ->
                         T_Name ->
                         T_Type
-sem_Type_Constructor range_ name_  =
+sem_Type_Constructor range_ name_ =
     (let _lhsOself :: Type
          _rangeIself :: Range
          _nameIself :: Name
@@ -16580,15 +16103,15 @@ sem_Type_Constructor range_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
      in  ( _lhsOself))
 sem_Type_Exists :: T_Range ->
                    T_Names ->
                    T_Type ->
                    T_Type
-sem_Type_Exists range_ typevariables_ type_  =
+sem_Type_Exists range_ typevariables_ type_ =
     (let _lhsOself :: Type
          _rangeIself :: Range
          _typevariablesIself :: Names
@@ -16598,17 +16121,17 @@ sem_Type_Exists range_ typevariables_ type_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _typevariablesIself) =
-             (typevariables_ )
+             typevariables_
          ( _typeIself) =
-             (type_ )
+             type_
      in  ( _lhsOself))
 sem_Type_Forall :: T_Range ->
                    T_Names ->
                    T_Type ->
                    T_Type
-sem_Type_Forall range_ typevariables_ type_  =
+sem_Type_Forall range_ typevariables_ type_ =
     (let _lhsOself :: Type
          _rangeIself :: Range
          _typevariablesIself :: Names
@@ -16618,16 +16141,16 @@ sem_Type_Forall range_ typevariables_ type_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _typevariablesIself) =
-             (typevariables_ )
+             typevariables_
          ( _typeIself) =
-             (type_ )
+             type_
      in  ( _lhsOself))
 sem_Type_Parenthesized :: T_Range ->
                           T_Type ->
                           T_Type
-sem_Type_Parenthesized range_ type_  =
+sem_Type_Parenthesized range_ type_ =
     (let _lhsOself :: Type
          _rangeIself :: Range
          _typeIself :: Type
@@ -16636,15 +16159,15 @@ sem_Type_Parenthesized range_ type_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _typeIself) =
-             (type_ )
+             type_
      in  ( _lhsOself))
 sem_Type_Qualified :: T_Range ->
                       T_ContextItems ->
                       T_Type ->
                       T_Type
-sem_Type_Qualified range_ context_ type_  =
+sem_Type_Qualified range_ context_ type_ =
     (let _lhsOself :: Type
          _rangeIself :: Range
          _contextIself :: ContextItems
@@ -16654,16 +16177,16 @@ sem_Type_Qualified range_ context_ type_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _contextIself) =
-             (context_ )
+             context_
          ( _typeIself) =
-             (type_ )
+             type_
      in  ( _lhsOself))
 sem_Type_Variable :: T_Range ->
                      T_Name ->
                      T_Type
-sem_Type_Variable range_ name_  =
+sem_Type_Variable range_ name_ =
     (let _lhsOself :: Type
          _rangeIself :: Range
          _nameIself :: Name
@@ -16672,22 +16195,22 @@ sem_Type_Variable range_ name_  =
          _lhsOself =
              _self
          ( _rangeIself) =
-             (range_ )
+             range_
          ( _nameIself) =
-             (name_ )
+             name_
      in  ( _lhsOself))
 -- Types -------------------------------------------------------
 -- cata
 sem_Types :: Types ->
              T_Types
-sem_Types list  =
-    (Prelude.foldr sem_Types_Cons sem_Types_Nil (Prelude.map sem_Type list) )
+sem_Types list =
+    (Prelude.foldr sem_Types_Cons sem_Types_Nil (Prelude.map sem_Type list))
 -- semantic domain
 type T_Types = ( Types)
 sem_Types_Cons :: T_Type ->
                   T_Types ->
                   T_Types
-sem_Types_Cons hd_ tl_  =
+sem_Types_Cons hd_ tl_ =
     (let _lhsOself :: Types
          _hdIself :: Type
          _tlIself :: Types
@@ -16696,12 +16219,12 @@ sem_Types_Cons hd_ tl_  =
          _lhsOself =
              _self
          ( _hdIself) =
-             (hd_ )
+             hd_
          ( _tlIself) =
-             (tl_ )
+             tl_
      in  ( _lhsOself))
 sem_Types_Nil :: T_Types
-sem_Types_Nil  =
+sem_Types_Nil =
     (let _lhsOself :: Types
          _self =
              []

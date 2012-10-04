@@ -1,6 +1,6 @@
 
 
--- UUAGC 0.9.40.3 (StaticChecks.ag)
+-- UUAGC 0.9.40.3 (StaticAnalysis/StaticChecks/StaticChecks.ag)
 module StaticAnalysis.StaticChecks.StaticChecks where
 
 import Utils.Similarity ( similar )

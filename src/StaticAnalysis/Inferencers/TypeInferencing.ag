@@ -56,9 +56,9 @@ INCLUDE "TypeInferenceCollect.ag"
 INCLUDE "TypeInferenceInfo.ag"
 INCLUDE "LocalInfo.ag"
 INCLUDE "GlobalInfo.ag"
-INCLUDE "../staticchecks/HeliumPartialSyntax.ag"
-INCLUDE "../staticchecks/Scope.ag"  
-INCLUDE "../../syntax/UHA_Syntax.ag"
+INCLUDE "HeliumPartialSyntax.ag"
+INCLUDE "Scope.ag"  
+INCLUDE "UHA_Syntax.ag"
 
 --- Type Inference Directives (may be turned off)
 INCLUDE "../directives/TS_PatternMatching.ag"

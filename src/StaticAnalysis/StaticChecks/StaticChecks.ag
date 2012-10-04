@@ -23,7 +23,7 @@ ATTR Module
 ATTR Module -> Type [ options : {[Option]} || ]
 
 INCLUDE "Collect.ag"
-INCLUDE "../../syntax/UHA_Syntax.ag"
+INCLUDE "UHA_Syntax.ag"
 INCLUDE "Scope.ag"
 INCLUDE "KindChecking.ag"
 INCLUDE "Warnings.ag"

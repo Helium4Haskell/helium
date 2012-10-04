@@ -1,6 +1,6 @@
 
 
--- UUAGC 0.9.40.3 (TS_CoreSyntax.ag)
+-- UUAGC 0.9.40.3 (StaticAnalysis/Directives/TS_CoreSyntax.ag)
 module StaticAnalysis.Directives.TS_CoreSyntax where
 
 import Top.Types

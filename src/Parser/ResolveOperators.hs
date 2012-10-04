@@ -1,6 +1,6 @@
 
 
--- UUAGC 0.9.40.3 (ResolveOperators.ag)
+-- UUAGC 0.9.40.3 (Parser/ResolveOperators.ag)
 module Parser.ResolveOperators where
 
 import Syntax.UHA_Utils
