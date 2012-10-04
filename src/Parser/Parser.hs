@@ -33,6 +33,7 @@ Simplified:
 - fixity declarations only at top-level
 -}
 
+import Control.Monad
 import Parser.ParseLibrary hiding (satisfy)
 import Text.ParserCombinators.Parsec
 import Parser.Lexer
@@ -181,19 +182,14 @@ topdecl = addRange (
 
 derivings :: HParser [Name]
 derivings = 
-    do
-        lexDERIVING
-        ds <- 
-            do
-                cls <- tycls
-                return [cls]
-            <|>
-            do
-                lexLPAREN           
-                clss <- tycls `sepBy` lexCOMMA
-                lexRPAREN
-                return clss
-        return ds            
+    do  lexDERIVING
+        ( do cls <- tycls
+             return [cls] )
+          <|> (
+          do lexLPAREN           
+             clss <- tycls `sepBy` lexCOMMA
+             lexRPAREN
+             return clss )
     
 simpleType :: HParser SimpleType
 simpleType =
@@ -215,8 +211,7 @@ infixdecl =
     do
         f <- fixity
         p <- fmap fromInteger (option 9 (fmap read lexInt)) :: HParser Int
-        if p < 0 || p > 9 then fail Texts.parserSingleDigitPriority
-                          else return ()
+        when (p < 0 || p > 9) (fail Texts.parserSingleDigitPriority)
         os <- ops
         return $ \r -> Declaration_Fixity r f (MaybeInt_Just p) os
 

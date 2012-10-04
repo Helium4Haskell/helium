@@ -50,15 +50,11 @@ addForVariable name trees dEnv
 
 getPredicateForDecl :: Name -> DictionaryEnvironment -> Predicates
 getPredicateForDecl name dEnv =
-   case M.lookup (NameWithRange name) (declMap dEnv) of
-      Just ps -> ps
-      Nothing -> []
+   M.findWithDefault [] (NameWithRange name) (declMap dEnv)
 
 getDictionaryTrees :: Name -> DictionaryEnvironment -> [DictionaryTree]
-getDictionaryTrees name dEnv = 
-   case M.lookup (NameWithRange name) (varMap dEnv) of
-      Just dt -> dt
-      Nothing -> []
+getDictionaryTrees name dEnv =
+   M.findWithDefault [] (NameWithRange name) (varMap dEnv)
 
 makeDictionaryTrees :: ClassEnvironment -> Predicates -> Predicates -> Maybe [DictionaryTree]
 makeDictionaryTrees classEnv ps = mapM (makeDictionaryTree classEnv ps)

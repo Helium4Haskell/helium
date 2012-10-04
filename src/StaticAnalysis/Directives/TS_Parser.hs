@@ -27,7 +27,7 @@ import Parser.Parser (exp0, type_, atype)
 import qualified Parser.ResolveOperators as ResolveOperators
 import Text.ParserCombinators.Parsec
 -- Rest
-import Data.List (intersperse)
+import Data.List (intersperse, intercalate)
 --import Data.IORef
 --import Data.Char
 import Parser.OperatorTable
@@ -101,7 +101,7 @@ parseTypingStrategies operatorTable filename tokens =
            rightType <- type_
            lexCOL
            msgLines  <- many1 lexString
-           let message = concat (intersperse "\n" msgLines)
+           let message = intercalate "\n" msgLines
            return (UserStatement_Equal leftType rightType message)
 
 special ::  GenParser (SourcePos,Lexeme) SourcePos Name

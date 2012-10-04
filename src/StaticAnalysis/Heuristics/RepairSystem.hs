@@ -7,14 +7,12 @@ import Top.TypeGraph.Heuristics
 import Top.TypeGraph.TypeGraphState
 import Top.Repair.Repair (repair)
 import Top.Repair.AExpr
-
+import Data.Maybe
 import ConstraintInfo
 import DoublyLinkedTree
 import UHA_Syntax
 import UHA_Source
 import Utils (internalError)
-
-import Data.Maybe (isJust, fromJust)
 
 type HeliumRepairInfo = (Maybe Tp, Maybe UHA_Source)
 
@@ -98,11 +96,11 @@ makeAExpr infoTree =
    make :: Expression -> AExpr LocalInfo
    make expression = 
       case expression of
-         Expression_If _ _ _ _ ->
+         Expression_If{} ->
             case aexprs of
                [ae1, ae2, ae3] -> If info ae1 ae2 ae3
                _ -> internalError "RepairSystem.hs" "makeAExpr" "Cannot make conditional"
-         Expression_NormalApplication _ _ _ ->
+         Expression_NormalApplication{} ->
             case aexprs of
                fun:a:as -> App info fun (a:as)
                _ -> internalError "RepairSystem.hs" "makeAExpr" "Cannot make (normal) application"
@@ -118,7 +116,7 @@ whichEdges :: HasTypeGraph m ConstraintInfo => AExpr LocalInfo -> m [(EdgeId, Co
 whichEdges aexpr
    | isBlock aexpr = return []
    | otherwise = 
-        do let vs = [ v | Just v <- map infoToVar (aexpr : subexpressions aexpr) ]
+        do let vs = mapMaybe infoToVar (aexpr : subexpressions aexpr)
            allEdges <- mapM edgesFrom vs
            let edges = filter (fromTheSameLocation aexpr) (concat allEdges)
            rest <- mapM whichEdges (subexpressions aexpr)

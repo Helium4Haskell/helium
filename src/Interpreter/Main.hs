@@ -134,9 +134,7 @@ cmdShowType expression state = do
     (success, output) <- compileInternalModule "-i" state
     if success then do
         let typeLine = filter (interpreterMain `isPrefixOf`) (map trim (lines output))
-        if null typeLine then
-            return ()
-          else 
+        unless (null typeLine)
             let typeString = 
                       trim
                     . dropWhile (== ':')
@@ -144,9 +142,7 @@ cmdShowType expression state = do
                     . drop (length interpreterMain) 
                     . head
                     $ typeLine
-            in do 
-
-                  putStrLn (expression ++ " :: " ++ typeString)
+            in putStrLn (expression ++ " :: " ++ typeString)
       else
         putStr (removeEvidence output)
     return state

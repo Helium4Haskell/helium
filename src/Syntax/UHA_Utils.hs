@@ -56,18 +56,18 @@ getNameName (Name_Special    _ _ name) = name
 
 -- added for Holmes
 getHolmesName :: String -> Name -> String -- !!!Name
-getHolmesName altname (Name_Identifier range _ name) = (getFrom range altname) ++ "." ++ name
-getHolmesName altname (Name_Operator   range _ name)  = (getFrom range altname) ++ "." ++ name
-getHolmesName altname (Name_Special    range _ name)  = (getFrom range altname) ++ "." ++ name
+getHolmesName altname (Name_Identifier range _ name) = getFrom range altname ++ "." ++ name
+getHolmesName altname (Name_Operator   range _ name) = getFrom range altname ++ "." ++ name
+getHolmesName altname (Name_Special    range _ name) = getFrom range altname ++ "." ++ name
 
 getFrom range altname = if result == "" then altname else result
         where
              result = snd $ checkRange range
-             checkRange _ = if moduleFI == Nothing then ("","") else fromJust $ moduleFI
+             checkRange _ = fromMaybe ("","") moduleFI
              moduleFI = modulesFromImportRange range
 
 getModuleName :: Module -> String       -- added for Holmes
-getModuleName (Module_Module _ (MaybeName_Nothing) _ _) = ""
+getModuleName (Module_Module _ MaybeName_Nothing _ _) = ""
 getModuleName (Module_Module _ (MaybeName_Just name) _ _) = show name
 
 idFromName :: Name -> Id -- !!!Name
@@ -87,7 +87,7 @@ nameFromString str@(first:_)
 nameFromString _ = internalError "UHA_Utils" "nameFromString" "empty string"
 
 isOperatorName :: Name -> Bool -- !!!Name
-isOperatorName (Name_Operator _ _ _) = True
+isOperatorName (Name_Operator{}) = True
 isOperatorName _ = False
 
 isConstructor :: Name -> Bool -- !!!Name
@@ -100,7 +100,7 @@ isConstructor name =
         _                             -> False
         
 isIdentifierName :: Name -> Bool -- !!!Name
-isIdentifierName (Name_Identifier _ _ _) = True
+isIdentifierName (Name_Identifier{}) = True
 isIdentifierName _ = False
 
 showNameAsOperator :: Name -> String

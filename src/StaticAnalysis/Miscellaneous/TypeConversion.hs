@@ -14,6 +14,7 @@ import Syntax.UHA_Utils (getNameName, nameFromString)
 import Syntax.UHA_Range (noRange)
 import Utils.Utils (internalError)
 import Data.List (union)
+import Data.Maybe
 import Syntax.UHA_Syntax
 import Top.Types
 
@@ -31,8 +32,8 @@ namesInType uhaType = case uhaType of
       Type_Constructor _ _          -> []
       Type_Parenthesized _ t        -> namesInType t                    
       Type_Qualified _ _ t          -> namesInType t
-      Type_Forall _ _ _             -> internalError "TypeConversion.hs" "namesInType" "universal types are currently not supported"            
-      Type_Exists _ _ _             -> internalError "TypeConversion.hs" "namesInType" "existential types are currently not supported"
+      Type_Forall{}                 -> internalError "TypeConversion.hs" "namesInType" "universal types are currently not supported"            
+      Type_Exists{}                 -> internalError "TypeConversion.hs" "namesInType" "existential types are currently not supported"
       
 -- name maps play an important role in converting since they map UHA type variables (string) to TVar's (int)  
 makeNameMap :: Names -> [(Name,Tp)]
@@ -69,12 +70,12 @@ makeTpFromType nameMap = rec_
         rec_ :: Type -> Tp
         rec_ uhaType = case uhaType of  
              Type_Application _ _ fun args -> foldl TApp (rec_ fun) (map rec_ args)
-             Type_Variable _ name          -> maybe (TCon "???") id (lookup name nameMap)                                                      
+             Type_Variable _ name          -> fromMaybe (TCon "???") (lookup name nameMap)                                                      
              Type_Constructor _ name       -> TCon (getNameName name)
              Type_Parenthesized _ t        -> rec_ t                                                 
              Type_Qualified _ _ t          -> rec_ t
-             Type_Forall _ _ _             -> internalError "TypeConversion.hs" "makeTpFromType" "universal types are currently not supported"            
-             Type_Exists _ _ _             -> internalError "TypeConversion.hs" "makeTpFromType" "existential types are currently not supported"
+             Type_Forall{}                 -> internalError "TypeConversion.hs" "makeTpFromType" "universal types are currently not supported"            
+             Type_Exists{}                 -> internalError "TypeConversion.hs" "makeTpFromType" "existential types are currently not supported"
 
 convertFromSimpleTypeAndTypes :: SimpleType -> Types -> (Tp,Tps)
 convertFromSimpleTypeAndTypes stp  tps = 

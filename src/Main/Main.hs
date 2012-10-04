@@ -9,8 +9,8 @@ module Main where
 
 import Main.Compile(compile)
 import Parser.Parser(parseOnlyImports)
-
-import Data.List(nub, elemIndex, isSuffixOf, intersperse)
+import Control.Monad
+import Data.List(nub, elemIndex, isSuffixOf, intersperse, intercalate)
 import Data.Maybe(fromJust)
 import Lvm.Path(getLvmPath, splitPath)
 import System.Directory(doesFileExist, getModificationTime)
@@ -104,7 +104,7 @@ buildImportGraph fullName lvmPath fullNamesRef verticesRef edgesRef = do
         addIORef moduleName verticesRef
 
         imports <- parseOnlyImports fullName
-        foreach imports $ \importModuleName -> do
+        forM_ imports $ \importModuleName -> do
             maybeImportFullName <- resolve lvmPath importModuleName
             
             when (isNothing maybeImportFullName) $ do
@@ -120,7 +120,6 @@ buildImportGraph fullName lvmPath fullNamesRef verticesRef edgesRef = do
             unless (".lvm" `isSuffixOf` importFullName) $ do
                 addIORef (moduleName, importModuleName) edgesRef
                 buildImportGraph importFullName lvmPath fullNamesRef verticesRef edgesRef    
-        return ()
 -}
 
 -- fullName = file name including path of ".hs" file that is to be compiled
@@ -154,7 +153,7 @@ make basedir fullName lvmPath chain options doneRef =
             resolvedImports <- mapM (resolve lvmPath) imports
             
             -- For each of the imports...
-            compileResults <- foreach (zip imports resolvedImports) 
+            compileResults <- forM (zip imports resolvedImports) 
               $ \(importModuleName, maybeImportFullName) -> do
 
                 -- Issue error if import can not be found in the search path
@@ -202,7 +201,7 @@ make basedir fullName lvmPath chain options doneRef =
             return isRecompiled
             
 showImportChain :: [String] -> String
-showImportChain = concat . intersperse " imports "
+showImportChain = intercalate " imports "
 
 showSearchPath :: [String] -> String
 showSearchPath = unlines . map ("\t" ++)
@@ -213,8 +212,6 @@ circularityCheck (import_:imports) chain =
         Just index -> Just (drop index chain ++ [import_])
         Nothing -> circularityCheck imports chain
 circularityCheck [] _ = Nothing
-
-foreach = flip mapM
 
 -- | upToDateCheck returns true if the .lvm is newer than the .hs
 upToDateCheck :: String -> IO Bool

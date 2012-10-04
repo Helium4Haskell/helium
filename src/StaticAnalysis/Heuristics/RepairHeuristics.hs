@@ -49,7 +49,7 @@ siblingFunctions siblings =
                  case mtp of 
                     Nothing -> return Nothing
                     Just contextTp  ->                       
-                       do fits <- mapM (schemeFits contextTp subPreds) (map snd candidates)
+                       do fits <- mapM (schemeFits contextTp subPreds . snd) candidates
                           case [ s | (True, (s, _)) <- zip fits candidates ] of
                              [] -> return Nothing
                              siblings ->    -- TODO: put all siblings in the message
@@ -294,14 +294,14 @@ applicationHeuristic =
                       -- is there a permutation of the arguments that resolves the type inconsistency?
                       argumentPermutations = [ p 
                                              | length functionArguments == length expectedArguments 
-                                             , p <- take heuristics_MAX (permutationsForLength numberOfArguments)
+                                             , p <- take heuristicsMAX (permutationsForLength numberOfArguments)
                                              , unifiableTypeLists (functionResult : functionArguments) 
                                                                   (expectedResult : permute p expectedArguments) 
                                              ]                                                            
 
                       -- at which locations should an extra argument be inserted?
                       typesZippedWithHoles  = [ is 
-                                              | (is,zl) <- take heuristics_MAX (zipWithHoles allFunctionArgs allExpectedArgs)
+                                              | (is,zl) <- take heuristicsMAX (zipWithHoles allFunctionArgs allExpectedArgs)
                                               , let (as,bs) = unzip zl
                                               , unifiableTypeLists (allFunctionRes : as) 
                                                                    (allExpectedRes : bs)
@@ -360,7 +360,7 @@ tupleHeuristic =
             case compare (length tupleTps) (length expectedTps) of
             
                EQ -> -- try if a permutation can make the tuple types equivalent
-                  let perms = take heuristics_MAX (permutationsForLength (length tupleTps))
+                  let perms = take heuristicsMAX (permutationsForLength (length tupleTps))
                       notUnifiable = not (unifiableInContext classEnv synonyms subPreds (tupleType tupleTps) (tupleType expectedTps))
                       test perm = 
                          let t1 = tupleType tupleTps
@@ -374,7 +374,7 @@ tupleHeuristic =
                         _ -> return Nothing
                                  
                compare -> case [ is 
-                               | (is,zl) <- take heuristics_MAX (zipWithHoles tupleTps expectedTps)
+                               | (is,zl) <- take heuristicsMAX (zipWithHoles tupleTps expectedTps)
                                , let (xs, ys) = unzip zl in unifiable synonyms (tupleType xs) (tupleType ys)
                                ] of
                        [is] -> case compare of
@@ -410,7 +410,7 @@ fbHasTooManyArguments =
    
          edgeList <- edgesFrom (VertexId tvar)      
          let maybeNumberOfPatterns = 
-                case [ i | Just i <- map (\(_, info) -> maybeFunctionBinding info) edgeList ] of 
+                case mapMaybe (maybeFunctionBinding . snd) edgeList of 
                    [i] -> Just i
                    _   -> Nothing
                                       
@@ -448,7 +448,7 @@ variableFunction =
               let EdgeId v1 v2 _ = edge
               edges1 <- edgesFrom v1
               edges2 <- edgesFrom v2
-              let f ((EdgeId v1 v2 _), _) = [v1,v2]
+              let f (EdgeId v1 v2 _, _) = [v1,v2]
                   special = concatMap f (filter (isEmptyInfixApplication . snd) (edges1 ++ edges2)) \\ [v1,v2]
               edges3 <- mapM edgesFrom special
               let isApplicationEdge = isJust . maybeApplicationEdge
@@ -511,7 +511,7 @@ unaryMinus overloading =
 -----------------------------------------------------------------------------
 -- REST 
 
-heuristics_MAX = 120 :: Int
+heuristicsMAX = 120 :: Int
 
 zipWithHoles :: [a] -> [b] -> [ ( [Int] , [(a,b)] ) ] 
 zipWithHoles = rec_ 0 where

@@ -19,6 +19,7 @@ import StaticAnalysis.Heuristics.RepairHeuristics (Siblings)
 import StaticAnalysis.Directives.TS_CoreSyntax
 import Data.List 
 import Data.Maybe (catMaybes)
+import Data.Function (on)
 
 type TypeEnvironment             = M.Map Name TpScheme
 type ValueConstructorEnvironment = M.Map Name TpScheme
@@ -192,7 +193,7 @@ createClassEnvironment importenv =
     in classEnv
 
 superClassRelation :: ClassEnvironment
-superClassRelation = M.fromList $ 
+superClassRelation = M.fromList
    [ ("Num",  ( ["Eq","Show"],   []))
    , ("Enum", ( [],              []))
    , ("Eq" ,  ( [],              []))
@@ -231,8 +232,8 @@ instance Show ImportEnvironment where
     
        fixities =    
           let sorted  = let cmp (name, (prio, assoc)) = (10 - prio, assoc, not (isOperatorName name), name)
-                        in sortBy (\x y -> cmp x `compare` cmp y) (M.assocs ot)
-              grouped = groupBy (\x y -> snd x == snd y) sorted
+                        in sortBy (compare `on` cmp) (M.assocs ot)
+              grouped = groupBy ((==) `on` snd) sorted
               list = let f ((name, (prio, assoc)) : rest) =
                             let names  = name : map fst rest 
                                 prefix = (case assoc of
@@ -248,7 +249,7 @@ instance Show ImportEnvironment where
           let allDatas = filter ((`notElem` M.keys tss). fst) (M.assocs tcs)
               (xs, ys) = partition (isIdentifierName . fst) allDatas
               list     = map f (ys++xs)
-              f (n,i)  = unwords ("data" : (showNameAsVariable n) : take i variableList)
+              f (n,i)  = unwords ("data" : showNameAsVariable n : take i variableList)
           in showWithTitle "Data types" list
        
        typesynonyms =

@@ -119,12 +119,12 @@ instance HasMessage InfoItem where
 
          TypeSynonym name i f ->
             let tps  = take i [ TCon [c] | c <- ['a'..] ] 
-                text = concat (intersperse " " ("type" : show name : map show tps ++ ["=", show (f tps)]))
+                text = unwords ("type" : show name : map show tps ++ ["=", show (f tps)])
             in [ MessageOneLiner (MessageString text) ]
 
          DataTypeConstructor name i cons ->
             let tps     = take i [ TCon [c] | c <- ['a'..] ]
-                text    = concat (intersperse " " ("data" : show name : map show tps))
+                text    = unwords ("data" : show name : map show tps)
                 related = let f (name, ts) = "   " ++ showNameAsVariable name ++ " :: " ++ show ts
                           in if null cons then [] else "   -- value constructors" : map f cons
             in map MessageOneLiner 

@@ -15,7 +15,7 @@ import StaticAnalysis.Messages.Messages
 import Top.Types
 import qualified Text.PrettyPrint.Leijen as PPrint
 import qualified Utils.OneLiner as OneLiner
-import Data.List                (intersperse, zipWith4)
+import Data.List
 import StaticAnalysis.Miscellaneous.TypesToAlignedDocs  (qualifiedTypesToAlignedDocs)
 import Syntax.UHA_Range           (isImportRange, showRanges)
 import Data.Char                (isSpace)
@@ -81,7 +81,7 @@ showHints pre ms =
        restPrefix  = replicate (4 + length pre) ' '
        prefixes    = firstPrefix : repeat restPrefix
        width       = lineLength - length firstPrefix
-       combine     = concat . intersperse ("\n" ++ restPrefix)
+       combine     = intercalate ('\n' : restPrefix)
    in unlines . zipWith (++) prefixes . map (combine . splitString width . show) $ ms
 
 showTable :: [(Bool, MessageBlock, MessageBlock)] -> String

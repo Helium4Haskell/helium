@@ -214,9 +214,7 @@ sendToAndFlush handle msg loggerDEBUGMODE = do
 --  hClose handle
   where
     getRetriedLine i = 
-      do
-        line <- hGetLine handle
-        return line
+      hGetLine handle
       `catch`
         \_ -> 
           if i+1 >= loggerTRIES 

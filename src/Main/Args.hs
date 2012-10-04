@@ -25,6 +25,7 @@ import System.Environment
 import System.Exit
 import Main.Version
 import Data.Char
+import Data.Maybe
 import Control.Monad(when)
 import System.Console.GetOpt
 
@@ -280,7 +281,7 @@ alertMessageFromOptions (Alert message: _) = Just message
 alertMessageFromOptions (_ : rest) = alertMessageFromOptions rest
 
 hasAlertOption :: [Option] -> Bool
-hasAlertOption options = alertMessageFromOptions options /= Nothing
+hasAlertOption = isJust . alertMessageFromOptions
 
 selectPort :: String -> Option
 selectPort pn 

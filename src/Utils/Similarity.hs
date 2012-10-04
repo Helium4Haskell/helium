@@ -40,7 +40,7 @@ oneMore :: String -> String -> Bool
 oneMore xs ys = 
     length xs - length ys == 1
     &&
-    or (map (== ys) (dropOne xs))
+    ys `elem` dropOne xs
 
 dropOne :: String -> [String]
 dropOne []     = []
