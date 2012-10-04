@@ -14,7 +14,7 @@
 -----------------------------------------------------------------------------
 
 imports {
-import List
+import Data.List
 import StaticAnalysis.Directives.Matchers
 import StaticAnalysis.Directives.TS_Apply (applyTypingStrategy, matchInformation)
 import StaticAnalysis.Directives.TS_CoreSyntax

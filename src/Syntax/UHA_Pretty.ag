@@ -3,7 +3,7 @@ INCLUDE "../syntax/UHA_Syntax.ag"
 imports{
 import Text.PrettyPrint.Leijen
 import qualified Text.PrettyPrint.Leijen as PPrint
-import Char
+import Data.Char
 import Top.Types (isTupleConstructor)
 import Syntax.UHA_Syntax
 import Utils.Utils (internalError)

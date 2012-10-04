@@ -17,7 +17,7 @@ import Syntax.UHA_Syntax
 import StaticAnalysis.Miscellaneous.TypeConstraints
 import StaticAnalysis.Miscellaneous.ConstraintInfo
 --import Top.Types
-import List
+import Data.List
 import Utils.Utils (internalError)
 import StaticAnalysis.Messages.Messages
 import StaticAnalysis.Messages.TypeErrors

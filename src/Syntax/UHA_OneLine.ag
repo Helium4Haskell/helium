@@ -2,11 +2,11 @@ INCLUDE "UHA_Syntax.ag"
 
 imports{
 import Utils.OneLiner
-import Char
+import Data.Char
 import Syntax.UHA_Utils (showNameAsOperator)
 import StaticAnalysis.Miscellaneous.TypeConversion
 import Syntax.UHA_Syntax
-import List
+import Data.List
 import Utils.Utils (internalError)
 }
 

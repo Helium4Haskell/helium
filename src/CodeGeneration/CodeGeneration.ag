@@ -25,7 +25,7 @@ import ModuleSystem.ImportEnvironment
 import ModuleSystem.DictionaryEnvironment
 import qualified Data.Map as M
 import StaticAnalysis.Miscellaneous.TypeConversion
-import Char (ord)
+import Data.Char (ord)
 
 import Lvm.Common.Id
 import Lvm.Common.IdSet 

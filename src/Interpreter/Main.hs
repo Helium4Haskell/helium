@@ -10,10 +10,10 @@
 
 module Main where
 
-import Char
-import List(isPrefixOf, isSuffixOf)
-import Monad(when)
-import IO(stdout, hFlush)
+import Data.Char
+import Data.List(isPrefixOf, isSuffixOf)
+import Control.Monad(when)
+import System.IO(stdout, hFlush)
 import System(system, getEnv, getArgs, exitWith, ExitCode(..))  
 import OSSpecific(slash)
 import Directory
