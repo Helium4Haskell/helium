@@ -8,25 +8,19 @@
 
 default: all
 
-.PHONY : default compiler all coreasm lvmrun libraries clean \
-         texthint smaller install movetohome status
+.PHONY : default compiler all libraries clean texthint 
 
 VERSION = 1.7
 
 #directories
 HELIUMBINDIR = ../bin
-LVMLIBDIR  = ../../lvm/src/lib
-LVMRUNTIMEDIR  = ../../lvm/src/runtime
 OUTDIR = ../out
 DOCDIR = ../out
 
 #the main program you want to generate
 MAIN	= helium
-UPX	= @UPX@
 STRIP   = @STRIP@
 EXE	= @EXEEXT@
-INSTALL = @INSTALL@
-MKDIR   = ../mkinstalldirs
 HLINT   = hlint
 
 # Installation paths
@@ -53,9 +47,8 @@ status :
 	@echo "*******************************************************************"
 
 HC	= @WithHc@
-IFACES	= $(LVMLIBDIR)
 GHCWARN = -Wall
-HC_OPTS = --make $(GHCWARN) -odir $(OUTDIR) -hidir $(OUTDIR) -i$(IFACES) $(EXTRA_HC_OPTS)
+HC_OPTS = --make $(GHCWARN) -odir $(OUTDIR) -hidir $(OUTDIR) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@ -P Syntax -P StaticAnalysis/StaticChecks -P StaticAnalysis/Inferencers -P CodeGeneration -P StaticAnalysis/Directives
 AG_OPTS = -mscfr
@@ -77,29 +70,9 @@ compiler: $(AGSOURCES)
 	@echo "  Helium: the Helium compiler"
 	@echo "****************************************************"
 	$(HC)	-o $(HELIUMBINDIR)/$(MAIN)$(EXE) $(HC_OPTS) main/Main.hs
-ifdef STRIP
 	$(STRIP) $(HELIUMBINDIR)/$(MAIN)$(EXE)
-endif
 
-all: ag compiler coreasm lvmrun libraries texthint status
-
-coreasm:
-	@echo "****************************************************"
-	@echo "  COREASM: the Core code compiler"
-	@echo "****************************************************"
-	cd $(LVMLIBDIR); $(MAKE) EXTRA_HC_OPTS="$(EXTRA_HC_OPTS)"
-
-lvmrun:
-	@echo "****************************************************"
-	@echo "  LVMRUN: the bytecode interpreter"
-	@echo "****************************************************"
-	cd $(LVMRUNTIMEDIR); $(MAKE)
-
-.SUFFIXES : .o .hs .hi .lhs .hc	.s .ag
-
-$(LVMLIBDIR)/common/ghc/Special.hi: $(LVMLIBDIR)/common/ghc/Special.hs
-	# GHC Special.hs
-	$(HC) -c $< -fglasgow-exts $(HC_OPTS) 
+all: ag compiler libraries texthint
 
 libraries:
 	@echo "****************************************************"
@@ -231,42 +204,16 @@ StaticAnalysis/Directives/TS_ToCore.hs : \
         Syntax/UHA_Syntax.ag \
         Syntax/UHA_OneLine.ag 
 	# AG TS_Syntax
-	$(AG) -mscrf --self --module=StaticAnalysis.Directives.TS_ToCore StaticAnalysis/Directives/TS_ToCore.ag
-                        
+	$(AG) -mscrf --self --module=StaticAnalysis.Directives.TS_ToCore StaticAnalysis/Directives/TS_ToCore.ag                 
 endif
 
 report:
 	$(HLINT) --report=$(DOCDIR)/report.html .
 
-# Standard suffix rules
-.o.hi:
-	@:
-
-.lhs.o:
-	$(HC) -c $< $(HC_OPTS)
-
-.hs.o:
-	$(HC) -c $< $(HC_OPTS)
-
-.hs.hi:
-	$(HC) -c $< $(HC_OPTS) 
-
-.lhs.hi:
-	$(HC) -c $< $(HC_OPTS)
-
-.ag.hs:
-	$(AG) -a $<
-
-
 # Clean	up
 clean:
 	$(RM) -rf $(OUTDIR)
-	$(RM) `find . -name "*.o" -print`
-	$(RM) `find . -name "*.hi" -print`
-	$(RM) `find . -name "*.class" -print`
 	$(RM) ../lib/*.lvm
 	$(RM) ../lib/simple/*.lvm
 	$(RM) $(HELIUMBINDIR)/$(MAIN)$(EXE)
-	$(RM) $(HELIUMBINDIR)/texthint$(EXE)	
-	cd $(LVMLIBDIR); $(MAKE) clean
-	cd $(LVMRUNTIMEDIR); $(MAKE) clean
+	$(RM) $(HELIUMBINDIR)/texthint$(EXE)
