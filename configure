@@ -2978,7 +2978,7 @@ fi
 
 PWD=`pwd`
 HELIUM=${PWD}/bin/helium${EXEEXT}
-COREASM=${PWD}/../lvm/src/lib/coreasm
+COREASM=coreasm
 LVMPATH=${PWD}/lib
 
 
