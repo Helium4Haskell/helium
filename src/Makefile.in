@@ -88,7 +88,7 @@ texthint:
 	@echo "****************************************************"
 	@echo "  TextHint: the textual Helium interpreter"
 	@echo "****************************************************"
-	$(HC) -o $(HELIUMBINDIR)/texthint$(EXE) $(HC_OPTS) texthint/Main.hs
+	$(HC) -o $(HELIUMBINDIR)/texthint$(EXE) $(HC_OPTS) TextHint/Main.hs
 	$(STRIP) $(HELIUMBINDIR)/texthint$(EXE)
 
 # AG sources
