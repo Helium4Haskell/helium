@@ -11,9 +11,14 @@
 module Utils.Utils where
 
 import Data.IORef
+
 import GHC.IO (unsafePerformIO)
 import Data.List (group, groupBy, sort, elemIndex)
 import Utils.Logger
+
+
+-- | Concrete representation of holes
+hole = "?"
 
 -------------------------------------------------------
 -- String utils

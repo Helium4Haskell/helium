@@ -3,6 +3,7 @@
 -- UUAGC 0.9.40.3 (Parser/ResolveOperators.ag)
 module Parser.ResolveOperators where
 
+
 import Syntax.UHA_Utils
 import Syntax.UHA_Syntax 
 import Syntax.UHA_Range
@@ -10,6 +11,7 @@ import Parser.OperatorTable
 import Data.Char
 import Utils.Utils
 import StaticAnalysis.Messages.Messages
+
 import qualified Data.Map as M
 
 
@@ -203,6 +205,10 @@ sem_Alternative (Alternative_Alternative _range _pattern _righthandside) =
     (sem_Alternative_Alternative (sem_Range _range) (sem_Pattern _pattern) (sem_RightHandSide _righthandside))
 sem_Alternative (Alternative_Empty _range) =
     (sem_Alternative_Empty (sem_Range _range))
+sem_Alternative (Alternative_Feedback _range _feedback _alternative) =
+    (sem_Alternative_Feedback (sem_Range _range) _feedback (sem_Alternative _alternative))
+sem_Alternative (Alternative_Hole _range _id) =
+    (sem_Alternative_Hole (sem_Range _range) _id)
 -- semantic domain
 type T_Alternative = OperatorTable ->
                      ( [ResolveError] ) ->
@@ -256,6 +262,53 @@ sem_Alternative_Empty range_ =
               _rangeIself :: Range
               _self =
                   Alternative_Empty _rangeIself
+              _lhsOself =
+                  _self
+              _lhsOresolveErrors =
+                  _lhsIresolveErrors
+              ( _rangeIself) =
+                  range_
+          in  ( _lhsOresolveErrors,_lhsOself)))
+sem_Alternative_Feedback :: T_Range ->
+                            String ->
+                            T_Alternative ->
+                            T_Alternative
+sem_Alternative_Feedback range_ feedback_ alternative_ =
+    (\ _lhsIopTable
+       _lhsIresolveErrors ->
+         (let _lhsOself :: Alternative
+              _lhsOresolveErrors :: ( [ResolveError] )
+              _alternativeOopTable :: OperatorTable
+              _alternativeOresolveErrors :: ( [ResolveError] )
+              _rangeIself :: Range
+              _alternativeIresolveErrors :: ( [ResolveError] )
+              _alternativeIself :: Alternative
+              _self =
+                  Alternative_Feedback _rangeIself feedback_ _alternativeIself
+              _lhsOself =
+                  _self
+              _lhsOresolveErrors =
+                  _alternativeIresolveErrors
+              _alternativeOopTable =
+                  _lhsIopTable
+              _alternativeOresolveErrors =
+                  _lhsIresolveErrors
+              ( _rangeIself) =
+                  range_
+              ( _alternativeIresolveErrors,_alternativeIself) =
+                  alternative_ _alternativeOopTable _alternativeOresolveErrors
+          in  ( _lhsOresolveErrors,_lhsOself)))
+sem_Alternative_Hole :: T_Range ->
+                        Integer ->
+                        T_Alternative
+sem_Alternative_Hole range_ id_ =
+    (\ _lhsIopTable
+       _lhsIresolveErrors ->
+         (let _lhsOself :: Alternative
+              _lhsOresolveErrors :: ( [ResolveError] )
+              _rangeIself :: Range
+              _self =
+                  Alternative_Hole _rangeIself id_
               _lhsOself =
                   _self
               _lhsOresolveErrors =
@@ -384,6 +437,8 @@ sem_Body :: Body ->
             T_Body
 sem_Body (Body_Body _range _importdeclarations _declarations) =
     (sem_Body_Body (sem_Range _range) (sem_ImportDeclarations _importdeclarations) (sem_Declarations _declarations))
+sem_Body (Body_Hole _range _id) =
+    (sem_Body_Hole (sem_Range _range) _id)
 -- semantic domain
 type T_Body = OperatorTable ->
               ( [ResolveError] ) ->
@@ -419,6 +474,24 @@ sem_Body_Body range_ importdeclarations_ declarations_ =
                   importdeclarations_
               ( _declarationsIresolveErrors,_declarationsIself) =
                   declarations_ _declarationsOopTable _declarationsOresolveErrors
+          in  ( _lhsOresolveErrors,_lhsOself)))
+sem_Body_Hole :: T_Range ->
+                 Integer ->
+                 T_Body
+sem_Body_Hole range_ id_ =
+    (\ _lhsIopTable
+       _lhsIresolveErrors ->
+         (let _lhsOself :: Body
+              _lhsOresolveErrors :: ( [ResolveError] )
+              _rangeIself :: Range
+              _self =
+                  Body_Hole _rangeIself id_
+              _lhsOself =
+                  _self
+              _lhsOresolveErrors =
+                  _lhsIresolveErrors
+              ( _rangeIself) =
+                  range_
           in  ( _lhsOresolveErrors,_lhsOself)))
 -- Constructor -------------------------------------------------
 -- cata
@@ -604,6 +677,8 @@ sem_Declaration (Declaration_Fixity _range _fixity _priority _operators) =
     (sem_Declaration_Fixity (sem_Range _range) (sem_Fixity _fixity) (sem_MaybeInt _priority) (sem_Names _operators))
 sem_Declaration (Declaration_FunctionBindings _range _bindings) =
     (sem_Declaration_FunctionBindings (sem_Range _range) (sem_FunctionBindings _bindings))
+sem_Declaration (Declaration_Hole _range _id) =
+    (sem_Declaration_Hole (sem_Range _range) _id)
 sem_Declaration (Declaration_Instance _range _context _name _types _where) =
     (sem_Declaration_Instance (sem_Range _range) (sem_ContextItems _context) (sem_Name _name) (sem_Types _types) (sem_MaybeDeclarations _where))
 sem_Declaration (Declaration_Newtype _range _context _simpletype _constructor _derivings) =
@@ -781,6 +856,24 @@ sem_Declaration_FunctionBindings range_ bindings_ =
                   range_
               ( _bindingsIresolveErrors,_bindingsIself) =
                   bindings_ _bindingsOopTable _bindingsOresolveErrors
+          in  ( _lhsOresolveErrors,_lhsOself)))
+sem_Declaration_Hole :: T_Range ->
+                        Integer ->
+                        T_Declaration
+sem_Declaration_Hole range_ id_ =
+    (\ _lhsIopTable
+       _lhsIresolveErrors ->
+         (let _lhsOself :: Declaration
+              _lhsOresolveErrors :: ( [ResolveError] )
+              _rangeIself :: Range
+              _self =
+                  Declaration_Hole _rangeIself id_
+              _lhsOself =
+                  _self
+              _lhsOresolveErrors =
+                  _lhsIresolveErrors
+              ( _rangeIself) =
+                  range_
           in  ( _lhsOresolveErrors,_lhsOself)))
 sem_Declaration_Instance :: T_Range ->
                             T_ContextItems ->
@@ -1130,6 +1223,10 @@ sem_Expression (Expression_Do _range _statements) =
     (sem_Expression_Do (sem_Range _range) (sem_Statements _statements))
 sem_Expression (Expression_Enum _range _from _then _to) =
     (sem_Expression_Enum (sem_Range _range) (sem_Expression _from) (sem_MaybeExpression _then) (sem_MaybeExpression _to))
+sem_Expression (Expression_Feedback _range _feedback _expression) =
+    (sem_Expression_Feedback (sem_Range _range) _feedback (sem_Expression _expression))
+sem_Expression (Expression_Hole _range _id) =
+    (sem_Expression_Hole (sem_Range _range) _id)
 sem_Expression (Expression_If _range _guardExpression _thenExpression _elseExpression) =
     (sem_Expression_If (sem_Range _range) (sem_Expression _guardExpression) (sem_Expression _thenExpression) (sem_Expression _elseExpression))
 sem_Expression (Expression_InfixApplication _range _leftExpression _operator _rightExpression) =
@@ -1142,6 +1239,8 @@ sem_Expression (Expression_List _range _expressions) =
     (sem_Expression_List (sem_Range _range) (sem_Expressions _expressions))
 sem_Expression (Expression_Literal _range _literal) =
     (sem_Expression_Literal (sem_Range _range) (sem_Literal _literal))
+sem_Expression (Expression_MustUse _range _expression) =
+    (sem_Expression_MustUse (sem_Range _range) (sem_Expression _expression))
 sem_Expression (Expression_Negate _range _expression) =
     (sem_Expression_Negate (sem_Range _range) (sem_Expression _expression))
 sem_Expression (Expression_NegateFloat _range _expression) =
@@ -1340,6 +1439,53 @@ sem_Expression_Enum range_ from_ then_ to_ =
                   then_ _thenOopTable _thenOresolveErrors
               ( _toIresolveErrors,_toIself) =
                   to_ _toOopTable _toOresolveErrors
+          in  ( _lhsOresolveErrors,_lhsOself)))
+sem_Expression_Feedback :: T_Range ->
+                           String ->
+                           T_Expression ->
+                           T_Expression
+sem_Expression_Feedback range_ feedback_ expression_ =
+    (\ _lhsIopTable
+       _lhsIresolveErrors ->
+         (let _lhsOself :: Expression
+              _lhsOresolveErrors :: ( [ResolveError] )
+              _expressionOopTable :: OperatorTable
+              _expressionOresolveErrors :: ( [ResolveError] )
+              _rangeIself :: Range
+              _expressionIresolveErrors :: ( [ResolveError] )
+              _expressionIself :: Expression
+              _self =
+                  Expression_Feedback _rangeIself feedback_ _expressionIself
+              _lhsOself =
+                  _self
+              _lhsOresolveErrors =
+                  _expressionIresolveErrors
+              _expressionOopTable =
+                  _lhsIopTable
+              _expressionOresolveErrors =
+                  _lhsIresolveErrors
+              ( _rangeIself) =
+                  range_
+              ( _expressionIresolveErrors,_expressionIself) =
+                  expression_ _expressionOopTable _expressionOresolveErrors
+          in  ( _lhsOresolveErrors,_lhsOself)))
+sem_Expression_Hole :: T_Range ->
+                       Integer ->
+                       T_Expression
+sem_Expression_Hole range_ id_ =
+    (\ _lhsIopTable
+       _lhsIresolveErrors ->
+         (let _lhsOself :: Expression
+              _lhsOresolveErrors :: ( [ResolveError] )
+              _rangeIself :: Range
+              _self =
+                  Expression_Hole _rangeIself id_
+              _lhsOself =
+                  _self
+              _lhsOresolveErrors =
+                  _lhsIresolveErrors
+              ( _rangeIself) =
+                  range_
           in  ( _lhsOresolveErrors,_lhsOself)))
 sem_Expression_If :: T_Range ->
                      T_Expression ->
@@ -1570,6 +1716,34 @@ sem_Expression_Literal range_ literal_ =
                   range_
               ( _literalIself) =
                   literal_
+          in  ( _lhsOresolveErrors,_lhsOself)))
+sem_Expression_MustUse :: T_Range ->
+                          T_Expression ->
+                          T_Expression
+sem_Expression_MustUse range_ expression_ =
+    (\ _lhsIopTable
+       _lhsIresolveErrors ->
+         (let _lhsOself :: Expression
+              _lhsOresolveErrors :: ( [ResolveError] )
+              _expressionOopTable :: OperatorTable
+              _expressionOresolveErrors :: ( [ResolveError] )
+              _rangeIself :: Range
+              _expressionIresolveErrors :: ( [ResolveError] )
+              _expressionIself :: Expression
+              _self =
+                  Expression_MustUse _rangeIself _expressionIself
+              _lhsOself =
+                  _self
+              _lhsOresolveErrors =
+                  _expressionIresolveErrors
+              _expressionOopTable =
+                  _lhsIopTable
+              _expressionOresolveErrors =
+                  _lhsIresolveErrors
+              ( _rangeIself) =
+                  range_
+              ( _expressionIresolveErrors,_expressionIself) =
+                  expression_ _expressionOopTable _expressionOresolveErrors
           in  ( _lhsOresolveErrors,_lhsOself)))
 sem_Expression_Negate :: T_Range ->
                          T_Expression ->
@@ -2016,12 +2190,45 @@ sem_Fixity_Infixr range_ =
 -- cata
 sem_FunctionBinding :: FunctionBinding ->
                        T_FunctionBinding
+sem_FunctionBinding (FunctionBinding_Feedback _range _feedback _functionBinding) =
+    (sem_FunctionBinding_Feedback (sem_Range _range) _feedback (sem_FunctionBinding _functionBinding))
 sem_FunctionBinding (FunctionBinding_FunctionBinding _range _lefthandside _righthandside) =
     (sem_FunctionBinding_FunctionBinding (sem_Range _range) (sem_LeftHandSide _lefthandside) (sem_RightHandSide _righthandside))
+sem_FunctionBinding (FunctionBinding_Hole _range _id) =
+    (sem_FunctionBinding_Hole (sem_Range _range) _id)
 -- semantic domain
 type T_FunctionBinding = OperatorTable ->
                          ( [ResolveError] ) ->
                          ( ( [ResolveError] ),FunctionBinding)
+sem_FunctionBinding_Feedback :: T_Range ->
+                                String ->
+                                T_FunctionBinding ->
+                                T_FunctionBinding
+sem_FunctionBinding_Feedback range_ feedback_ functionBinding_ =
+    (\ _lhsIopTable
+       _lhsIresolveErrors ->
+         (let _lhsOself :: FunctionBinding
+              _lhsOresolveErrors :: ( [ResolveError] )
+              _functionBindingOopTable :: OperatorTable
+              _functionBindingOresolveErrors :: ( [ResolveError] )
+              _rangeIself :: Range
+              _functionBindingIresolveErrors :: ( [ResolveError] )
+              _functionBindingIself :: FunctionBinding
+              _self =
+                  FunctionBinding_Feedback _rangeIself feedback_ _functionBindingIself
+              _lhsOself =
+                  _self
+              _lhsOresolveErrors =
+                  _functionBindingIresolveErrors
+              _functionBindingOopTable =
+                  _lhsIopTable
+              _functionBindingOresolveErrors =
+                  _lhsIresolveErrors
+              ( _rangeIself) =
+                  range_
+              ( _functionBindingIresolveErrors,_functionBindingIself) =
+                  functionBinding_ _functionBindingOopTable _functionBindingOresolveErrors
+          in  ( _lhsOresolveErrors,_lhsOself)))
 sem_FunctionBinding_FunctionBinding :: T_Range ->
                                        T_LeftHandSide ->
                                        T_RightHandSide ->
@@ -2060,6 +2267,24 @@ sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_ =
                   lefthandside_ _lefthandsideOopTable _lefthandsideOresolveErrors
               ( _righthandsideIresolveErrors,_righthandsideIself) =
                   righthandside_ _righthandsideOopTable _righthandsideOresolveErrors
+          in  ( _lhsOresolveErrors,_lhsOself)))
+sem_FunctionBinding_Hole :: T_Range ->
+                            Integer ->
+                            T_FunctionBinding
+sem_FunctionBinding_Hole range_ id_ =
+    (\ _lhsIopTable
+       _lhsIresolveErrors ->
+         (let _lhsOself :: FunctionBinding
+              _lhsOresolveErrors :: ( [ResolveError] )
+              _rangeIself :: Range
+              _self =
+                  FunctionBinding_Hole _rangeIself id_
+              _lhsOself =
+                  _self
+              _lhsOresolveErrors =
+                  _lhsIresolveErrors
+              ( _rangeIself) =
+                  range_
           in  ( _lhsOresolveErrors,_lhsOself)))
 -- FunctionBindings --------------------------------------------
 -- cata
@@ -3014,6 +3239,8 @@ sem_Pattern (Pattern_As _range _name _pattern) =
     (sem_Pattern_As (sem_Range _range) (sem_Name _name) (sem_Pattern _pattern))
 sem_Pattern (Pattern_Constructor _range _name _patterns) =
     (sem_Pattern_Constructor (sem_Range _range) (sem_Name _name) (sem_Patterns _patterns))
+sem_Pattern (Pattern_Hole _range _id) =
+    (sem_Pattern_Hole (sem_Range _range) _id)
 sem_Pattern (Pattern_InfixConstructor _range _leftPattern _constructorOperator _rightPattern) =
     (sem_Pattern_InfixConstructor (sem_Range _range) (sem_Pattern _leftPattern) (sem_Name _constructorOperator) (sem_Pattern _rightPattern))
 sem_Pattern (Pattern_Irrefutable _range _pattern) =
@@ -3105,6 +3332,24 @@ sem_Pattern_Constructor range_ name_ patterns_ =
                   name_
               ( _patternsIresolveErrors,_patternsIself) =
                   patterns_ _patternsOopTable _patternsOresolveErrors
+          in  ( _lhsOresolveErrors,_lhsOself)))
+sem_Pattern_Hole :: T_Range ->
+                    Integer ->
+                    T_Pattern
+sem_Pattern_Hole range_ id_ =
+    (\ _lhsIopTable
+       _lhsIresolveErrors ->
+         (let _lhsOself :: Pattern
+              _lhsOresolveErrors :: ( [ResolveError] )
+              _rangeIself :: Range
+              _self =
+                  Pattern_Hole _rangeIself id_
+              _lhsOself =
+                  _self
+              _lhsOresolveErrors =
+                  _lhsIresolveErrors
+              ( _rangeIself) =
+                  range_
           in  ( _lhsOresolveErrors,_lhsOself)))
 sem_Pattern_InfixConstructor :: T_Range ->
                                 T_Pattern ->

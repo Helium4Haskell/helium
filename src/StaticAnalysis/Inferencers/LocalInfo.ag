@@ -12,6 +12,11 @@
 -- FunctionBinding
 
 SEM FunctionBinding 
+  | Hole
+       loc . localInfo  = LocalInfo { self = UHA_FB @self
+                                    , assignedType = Nothing
+                                    , monos = @lhs.monos
+                                    }
   | FunctionBinding 
        loc . localInfo  = LocalInfo { self = UHA_FB @self
                                     , assignedType = Nothing
@@ -59,6 +64,11 @@ SEM Expression
                                     , monos = @lhs.monos
                                     }
   | Variable            
+       loc . localInfo  = LocalInfo { self = UHA_Expr @self
+                                    , assignedType = Just @beta
+                                    , monos = @lhs.monos
+                                    }
+  | Hole
        loc . localInfo  = LocalInfo { self = UHA_Expr @self
                                     , assignedType = Just @beta
                                     , monos = @lhs.monos
@@ -143,6 +153,11 @@ SEM Expression
 -- Pattern
 
 SEM Pattern
+  | Hole           
+       loc . localInfo  = LocalInfo { self = UHA_Pat @self
+                                    , assignedType = Just @beta 
+                                    , monos = @lhs.monos
+                                    }
   | Literal           
        loc . localInfo  = LocalInfo { self = UHA_Pat @self
                                     , assignedType = Just @beta 

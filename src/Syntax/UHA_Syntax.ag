@@ -42,6 +42,9 @@ DATA Export
 -- or between types and type classes, we do not have different cases (yet?).
 
 DATA Body
+    | Hole
+        range                    : Range
+        id                       : Integer
     | Body
         range                    : Range
         importdeclarations       : ImportDeclarations
@@ -98,6 +101,9 @@ DATA MaybeDeclarations
 TYPE Declarations                = [ Declaration ]
 
 DATA Declaration                                  {- *** -}
+    | Hole
+        range                    : Range
+        id                       : Integer
     | Type
         range                    : Range
         simpletype               : SimpleType
@@ -298,6 +304,16 @@ DATA MaybeExpression
         expression               : Expression
 
 DATA Expression                                   {- *** -}
+    | Hole
+        range                    : Range
+        id                       : Integer
+    | Feedback
+        range                    : Range
+        feedback                 : String
+        expression               : Expression
+    | MustUse
+        range                    : Range
+        expression               : Expression
     | Literal                          {- *** -}
         range                    : Range
         literal                  : Literal
@@ -510,6 +526,13 @@ DATA Qualifier
 TYPE Alternatives                = [ Alternative ]
 
 DATA Alternative
+    | Hole
+        range                    : Range
+        id                       : Integer
+    | Feedback
+        range                    : Range
+        feedback                 : String
+        alternative              : Alternative
     | Alternative
         range                    : Range
         pattern                  : Pattern
@@ -544,6 +567,13 @@ DATA RecordPatternBinding
 TYPE FunctionBindings            = [ FunctionBinding ]
 
 DATA FunctionBinding
+    | Hole
+        range                    : Range
+        id                       : Integer
+    | Feedback
+        range                    : Range
+        feedback                 : String
+        functionBinding          : FunctionBinding
     | FunctionBinding
         range                    : Range
         lefthandside             : LeftHandSide
@@ -581,6 +611,9 @@ DATA RightHandSide
 TYPE Patterns                    = [ Pattern ]
 
 DATA Pattern
+    | Hole
+        range                    : Range
+        id                       : Integer
     | Literal                             {- *** -}
         range                    : Range
         literal                  : Literal

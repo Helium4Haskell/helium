@@ -22,6 +22,9 @@ SEM FunctionBindings
   | Cons  lhs . name = @hd.name
   | Nil   lhs . name = internalError "ToCoreName.ag" "n/a" "empty FunctionBindings"
 
+SEM FunctionBinding
+  | Hole  lhs . name = internalError "ToCoreName.ag" "n/a" "hole FunctionBindings"
+
 SEM LeftHandSide
   | Function  lhs . name = @name.self
   | Infix     lhs . name = @operator.self

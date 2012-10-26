@@ -71,6 +71,7 @@ ATTR ImportDeclarations ImportDeclaration  [ | importedModules : Names | ]
 ATTR Body                                  [ | | importedModules : Names ]  
 
 SEM Body
+  | Hole    lhs . importedModules = []
   | Body    importdeclarations . importedModules = []
     
 SEM ImportDeclaration

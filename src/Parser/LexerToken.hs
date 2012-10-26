@@ -29,6 +29,11 @@ data Lexeme
     | LexResConSym       String
     | LexSpecial         Char
 
+    | LexFeedback        String
+    | LexCaseFeedback    String
+    | LexMustUse
+    | LexHole
+
     | LexInsertedOpenBrace  -- { inserted because of layout
     | LexInsertedCloseBrace -- }
     | LexInsertedSemicolon  -- ;
@@ -53,6 +58,10 @@ instance Show Lexeme where
         LexResConSym s      -> "'" ++ s ++ "'"
         LexSpecial c        -> "'" ++ [c] ++ "'"
         
+        LexFeedback f       -> "Feedback \"" ++ f ++ "\""
+        LexCaseFeedback f   -> "Case feedback \"" ++ f ++ "\""
+        LexMustUse          -> "Must Use"
+
         LexInsertedOpenBrace  -> Texts.parserInsertedLBrace 
         LexInsertedCloseBrace -> Texts.parserEndOfBlock
         LexInsertedSemicolon  -> Texts.parserNextInBlock

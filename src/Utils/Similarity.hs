@@ -14,8 +14,10 @@
 
 module Utils.Similarity(similar) where
 
+
 import Data.Char
 import Utils.Utils(internalError)
+
 
 similar :: String -> String -> Bool
 -- ignore primitives

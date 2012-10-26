@@ -14,7 +14,11 @@ import Data.Char
 import Data.List(isPrefixOf, isSuffixOf)
 import Control.Monad
 import System.IO(stdout, hFlush)
-import System(system, getEnv, getArgs, exitWith, ExitCode(..))  
+import System.Process(system)
+import System.Environment(getEnv, getArgs)
+import System.Exit(exitWith, ExitCode(..))  
+
+
 import OSSpecific(slash)
 import System.Directory
 

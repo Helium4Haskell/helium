@@ -24,10 +24,10 @@ module Main.Args
 import System.Environment
 import System.Exit
 import Main.Version
-import Data.Char
 import Data.Maybe
 import Control.Monad(when)
 import System.Console.GetOpt
+import Data.Char
 
 loggerDEFAULTHOST :: String
 loggerDEFAULTHOST = "helium.zoo.cs.uu.nl"
@@ -45,7 +45,7 @@ unwordsBy sep (w:ws) = w ++ sep ++ unwordsBy sep ws
 -- This function also collects all -P flags together and merges them into one. The order of the
 -- directories is the order in which they were specified.
 simplifyOptions :: [Option] -> [Option]
-simplifyOptions ops = 
+simplifyOptions ops =
     let
       revdefops = reverse ops
       modops    = case alertMessageFromOptions revdefops of
@@ -56,11 +56,11 @@ simplifyOptions ops =
           where
             -- Assumes the options are in reverse order, and also reverses them.
             -- Collects several LvmPath options into one
-            collectPaths [] paths newops       = LvmPath (unwordsBy ":" paths) : newops              
+            collectPaths [] paths newops       = LvmPath (unwordsBy ":" paths) : newops
             collectPaths (LvmPath path : rest) paths newops
                                                = collectPaths rest (path : paths) newops
             collectPaths (opt : rest) paths newops
-                                               = collectPaths rest paths (opt : newops)                                   
+                                               = collectPaths rest paths (opt : newops)
             keepFirst _        []              = []
             keepFirst fromList (opt : rest)    = if (opt `elem` fromList) then
                                                    opt : optionFilter fromList rest
@@ -95,24 +95,24 @@ processHeliumArgs args = do
           return (options, maybeFiles)
 
 -- Sometimes you know the options are correct. Then you can use this.
-argsToOptions args = 
-    let 
+argsToOptions args =
+    let
       (opts,_,_) = getOpt Permute (optionDescription True True) args
-    in 
+    in
       opts
-    
--- The Maybe String indicates that a file may be missing                                           
+
+-- The Maybe String indicates that a file may be missing
 basicProcessArgs :: [Option] -> [String] ->  IO ([Option], Maybe String)
 basicProcessArgs defaults args =
     let (options, arguments, errors) = getOpt Permute (optionDescription True True) args
     in if not (null errors) then do
-          terminateWithMessage options "Error in invocation: list of parameters is erroneous.\nProblem(s):" 
+          terminateWithMessage options "Error in invocation: list of parameters is erroneous.\nProblem(s):"
                                (map ("  " ++) errors)
     else
         if (length arguments > 1) then
             terminateWithMessage options ("Error in invocation: only one non-option parameter expected, but found instead:\n" ++ (unlines (map ("  "++) arguments))) []
-        else 
-            do 
+        else
+            do
               let simpleOptions = simplifyOptions (defaults ++ options)
               when (Verbose `elem` simpleOptions) $
                 putStrLn ("Options after simplification: " ++ (show simpleOptions)++"\n")
@@ -135,7 +135,7 @@ optionDescription moreOptions experimentalOptions =
       , Option "w" [flag NoWarnings]                    (NoArg NoWarnings) "do notflag warnings"
       , Option "X" [flag MoreOptions]                   (NoArg MoreOptions) "show more compiler options"
       , Option ""  [flag (Information "")]             (ReqArg Information "NAME") "display information about NAME"
-      
+
       ]
       ++
       -- More options
@@ -143,7 +143,7 @@ optionDescription moreOptions experimentalOptions =
       [ Option "1" [flag StopAfterParser]               (NoArg StopAfterParser) "stop after parsing"
       , Option "2" [flag StopAfterStaticAnalysis]       (NoArg StopAfterStaticAnalysis) "stop after static analysis"
       , Option "3" [flag StopAfterTypeInferencing]      (NoArg StopAfterTypeInferencing) "stop after type inferencing"
-      , Option "4" [flag StopAfterDesugar]              (NoArg StopAfterDesugar) "stop after desugaring into Core"    
+      , Option "4" [flag StopAfterDesugar]              (NoArg StopAfterDesugar) "stop after desugaring into Core"
       , Option "t" [flag DumpTokens]                    (NoArg DumpTokens) "dump tokens to screen"
       , Option "u" [flag DumpUHA]                       (NoArg DumpUHA) "pretty print abstract syntax tree"
       , Option "c" [flag DumpCore]                      (NoArg DumpCore) "pretty print Core program"
@@ -151,7 +151,7 @@ optionDescription moreOptions experimentalOptions =
       , Option ""  [flag DebugLogger]                   (NoArg DebugLogger) "show logger debug information"
       , Option ""  [flag (Host "")]                     (ReqArg Host "HOST") ("specify which HOST to use for logging (default " ++ loggerDEFAULTHOST ++ ")")
       , Option ""  [flag (Port 0)]                      (ReqArg selectPort "PORT") ("select the PORT number for the logger (default: " ++ show loggerDEFAULTPORT ++ ")")
-      , Option "d" [flag DumpTypeDebug]                 (NoArg DumpTypeDebug) "debug constraint-based type inference"         
+      , Option "d" [flag DumpTypeDebug]                 (NoArg DumpTypeDebug) "debug constraint-based type inference"
       , Option "W" [flag AlgorithmW]                    (NoArg AlgorithmW) "use bottom-up type inference algorithm W"
       , Option "M" [flag AlgorithmM ]                   (NoArg AlgorithmM) "use folklore top-down type inference algorithm M"
       , Option ""  [flag DisableDirectives]             (NoArg DisableDirectives) "disable type inference directives"
@@ -163,7 +163,7 @@ optionDescription moreOptions experimentalOptions =
       if not experimentalOptions then [] else
       [ Option "" [flag ExperimentalOptions]            (NoArg ExperimentalOptions) "show experimental compiler options"
       , Option "" [flag KindInferencing]                (NoArg KindInferencing) "perform kind inference (experimental)"
-      , Option "" [flag SignatureWarnings]              (NoArg SignatureWarnings) "warn for too specific signatures (experimental)" 
+      , Option "" [flag SignatureWarnings]              (NoArg SignatureWarnings) "warn for too specific signatures (experimental)"
       , Option "" [flag RightToLeft]                    (NoArg RightToLeft) "right-to-left treewalk"
       , Option "" [flag NoSpreading]                    (NoArg NoSpreading) "do not spread type constraints (experimental)"
       , Option "" [flag TreeWalkTopDown]                (NoArg TreeWalkTopDown) "top-down treewalk"
@@ -179,25 +179,27 @@ optionDescription moreOptions experimentalOptions =
       , Option "" [flag SolverChunks]                   (NoArg SolverChunks) "solves chunks of constraints (default)"
       , Option "" [flag UnifierHeuristics]              (NoArg UnifierHeuristics)  "use unifier heuristics (experimental)"
       , Option "" [flag (SelectConstraintNumber 0)]     (ReqArg selectCNR "CNR") "select constraint number to be reported"
+      , Option "" [flag NoOverloadingTypeCheck]         (NoArg NoOverloadingTypeCheck)  "disable overloading errors (experimental)"
+      , Option "" [flag NoPrelude]                      (NoArg NoPrelude)  "do not import the prelude (experimental)"
       ]
 
 
-data Option 
+data Option
    -- Main options
    = BuildOne | BuildAll | DumpInformationForThisModule | DumpInformationForAllModules
    | DisableLogging | EnableLogging | Alert String | Overloading | NoOverloading | LvmPath String | Verbose | NoWarnings | MoreOptions
    | Information String
    -- More options
    | StopAfterParser | StopAfterStaticAnalysis | StopAfterTypeInferencing | StopAfterDesugar
-   | DumpTokens | DumpUHA | DumpCore | DumpCoreToFile 
-   | DebugLogger | Host String | Port Int 
+   | DumpTokens | DumpUHA | DumpCore | DumpCoreToFile
+   | DebugLogger | Host String | Port Int
    | DumpTypeDebug | AlgorithmW | AlgorithmM | DisableDirectives | NoRepairHeuristics | HFullQualification
    -- Experimental options
    | ExperimentalOptions | KindInferencing | SignatureWarnings | RightToLeft | NoSpreading
    | TreeWalkTopDown | TreeWalkBottomUp | TreeWalkInorderTopFirstPre | TreeWalkInorderTopLastPre
    | TreeWalkInorderTopFirstPost | TreeWalkInorderTopLastPost | SolverSimple | SolverGreedy
    | SolverTypeGraph | SolverCombination | SolverChunks | UnifierHeuristics
-   | SelectConstraintNumber Int
+   | SelectConstraintNumber Int | NoOverloadingTypeCheck | NoPrelude | UseTutor
  deriving (Eq)
 
 stripShow :: String -> String
@@ -251,11 +253,15 @@ instance Show Option where
  show SolverGreedy                       = "--solver-greedy"
  show SolverTypeGraph                    = "--solver-typegraph"
  show SolverCombination                  = "--solver-combination"
- show SolverChunks                       = "--solver-chunks"     
+ show SolverChunks                       = "--solver-chunks"
  show UnifierHeuristics                  = "--unifier-heuristics"
  show (SelectConstraintNumber cnr)       = "--select-cnr=" ++ (show cnr)
  show HFullQualification                 = "--H-fullqualification"
- 
+ show NoOverloadingTypeCheck             = "--no-overloading-typecheck"
+ show NoPrelude                          = "--no-prelude"
+ show UseTutor                           = "--use-tutor"
+
+
 lvmPathFromOptions :: [Option] -> Maybe String
 lvmPathFromOptions [] = Nothing
 lvmPathFromOptions (LvmPath s : _) = Just s
@@ -284,12 +290,12 @@ hasAlertOption :: [Option] -> Bool
 hasAlertOption = isJust . alertMessageFromOptions
 
 selectPort :: String -> Option
-selectPort pn 
-   | all isDigit pn = Port (read ('0':pn)) 
+selectPort pn
+   | all isDigit pn = Port (read ('0':pn))
    | otherwise     = Port (-1) -- problem with argument
-   
+
 selectCNR :: String -> Option
 selectCNR s
-   | all isDigit s = SelectConstraintNumber (read ('0':s)) 
+   | all isDigit s = SelectConstraintNumber (read ('0':s))
    | otherwise     = SelectConstraintNumber (-1) -- problem with argument
-   
+

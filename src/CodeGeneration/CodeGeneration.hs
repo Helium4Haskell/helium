@@ -12,6 +12,7 @@ import qualified Data.Map as M
 import StaticAnalysis.Miscellaneous.TypeConversion
 import Data.Char (ord)
 
+
 import Lvm.Common.Id
 import Lvm.Common.IdSet 
 import Utils.Utils(internalError)
@@ -199,6 +200,10 @@ sem_Alternative (Alternative_Alternative _range _pattern _righthandside) =
     (sem_Alternative_Alternative (sem_Range _range) (sem_Pattern _pattern) (sem_RightHandSide _righthandside))
 sem_Alternative (Alternative_Empty _range) =
     (sem_Alternative_Empty (sem_Range _range))
+sem_Alternative (Alternative_Feedback _range _feedback _alternative) =
+    (sem_Alternative_Feedback (sem_Range _range) _feedback (sem_Alternative _alternative))
+sem_Alternative (Alternative_Hole _range _id) =
+    (sem_Alternative_Hole (sem_Range _range) _id)
 -- semantic domain
 type T_Alternative = DictionaryEnvironment ->
                      ( ( Core.Expr -> Core.Expr ),Alternative)
@@ -249,6 +254,48 @@ sem_Alternative_Empty range_ =
                   id
               _self =
                   Alternative_Empty _rangeIself
+              _lhsOself =
+                  _self
+              ( _rangeIself) =
+                  range_
+          in  ( _lhsOcore,_lhsOself)))
+sem_Alternative_Feedback :: T_Range ->
+                            String ->
+                            T_Alternative ->
+                            T_Alternative
+sem_Alternative_Feedback range_ feedback_ alternative_ =
+    (\ _lhsIdictionaryEnv ->
+         (let _lhsOself :: Alternative
+              _lhsOcore :: ( Core.Expr -> Core.Expr )
+              _alternativeOdictionaryEnv :: DictionaryEnvironment
+              _rangeIself :: Range
+              _alternativeIcore :: ( Core.Expr -> Core.Expr )
+              _alternativeIself :: Alternative
+              _self =
+                  Alternative_Feedback _rangeIself feedback_ _alternativeIself
+              _lhsOself =
+                  _self
+              _lhsOcore =
+                  _alternativeIcore
+              _alternativeOdictionaryEnv =
+                  _lhsIdictionaryEnv
+              ( _rangeIself) =
+                  range_
+              ( _alternativeIcore,_alternativeIself) =
+                  alternative_ _alternativeOdictionaryEnv
+          in  ( _lhsOcore,_lhsOself)))
+sem_Alternative_Hole :: T_Range ->
+                        Integer ->
+                        T_Alternative
+sem_Alternative_Hole range_ id_ =
+    (\ _lhsIdictionaryEnv ->
+         (let _lhsOcore :: ( Core.Expr -> Core.Expr )
+              _lhsOself :: Alternative
+              _rangeIself :: Range
+              _lhsOcore =
+                  id
+              _self =
+                  Alternative_Hole _rangeIself id_
               _lhsOself =
                   _self
               ( _rangeIself) =
@@ -379,6 +426,8 @@ sem_Body :: Body ->
             T_Body
 sem_Body (Body_Body _range _importdeclarations _declarations) =
     (sem_Body_Body (sem_Range _range) (sem_ImportDeclarations _importdeclarations) (sem_Declarations _declarations))
+sem_Body (Body_Hole _range _id) =
+    (sem_Body_Hole (sem_Range _range) _id)
 -- semantic domain
 type T_Body = DictionaryEnvironment ->
               ImportEnvironment ->
@@ -421,6 +470,24 @@ sem_Body_Body range_ importdeclarations_ declarations_ =
                   importdeclarations_
               ( _declarationsIdecls,_declarationsIpatBindNr,_declarationsIself) =
                   declarations_ _declarationsOdictionaryEnv _declarationsOimportEnv _declarationsOisTopLevel _declarationsOpatBindNr
+          in  ( _lhsOdecls,_lhsOself)))
+sem_Body_Hole :: T_Range ->
+                 Integer ->
+                 T_Body
+sem_Body_Hole range_ id_ =
+    (\ _lhsIdictionaryEnv
+       _lhsIimportEnv ->
+         (let _lhsOdecls :: ( [CoreDecl] )
+              _lhsOself :: Body
+              _rangeIself :: Range
+              _lhsOdecls =
+                  []
+              _self =
+                  Body_Hole _rangeIself id_
+              _lhsOself =
+                  _self
+              ( _rangeIself) =
+                  range_
           in  ( _lhsOdecls,_lhsOself)))
 -- Constructor -------------------------------------------------
 -- cata
@@ -698,6 +765,8 @@ sem_Declaration (Declaration_Fixity _range _fixity _priority _operators) =
     (sem_Declaration_Fixity (sem_Range _range) (sem_Fixity _fixity) (sem_MaybeInt _priority) (sem_Names _operators))
 sem_Declaration (Declaration_FunctionBindings _range _bindings) =
     (sem_Declaration_FunctionBindings (sem_Range _range) (sem_FunctionBindings _bindings))
+sem_Declaration (Declaration_Hole _range _id) =
+    (sem_Declaration_Hole (sem_Range _range) _id)
 sem_Declaration (Declaration_Instance _range _context _name _types _where) =
     (sem_Declaration_Instance (sem_Range _range) (sem_ContextItems _context) (sem_Name _name) (sem_Types _types) (sem_MaybeDeclarations _where))
 sem_Declaration (Declaration_Newtype _range _context _simpletype _constructor _derivings) =
@@ -987,6 +1056,29 @@ sem_Declaration_FunctionBindings range_ bindings_ =
                   range_
               ( _bindingsIarity,_bindingsIcore,_bindingsIname,_bindingsIself) =
                   bindings_ _bindingsOdictionaryEnv _bindingsOids _bindingsOrange
+          in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)))
+sem_Declaration_Hole :: T_Range ->
+                        Integer ->
+                        T_Declaration
+sem_Declaration_Hole range_ id_ =
+    (\ _lhsIdictionaryEnv
+       _lhsIimportEnv
+       _lhsIisTopLevel
+       _lhsIpatBindNr ->
+         (let _lhsOdecls :: ( [CoreDecl] )
+              _lhsOself :: Declaration
+              _lhsOpatBindNr :: Int
+              _rangeIself :: Range
+              _lhsOdecls =
+                  []
+              _self =
+                  Declaration_Hole _rangeIself id_
+              _lhsOself =
+                  _self
+              _lhsOpatBindNr =
+                  _lhsIpatBindNr
+              ( _rangeIself) =
+                  range_
           in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)))
 sem_Declaration_Instance :: T_Range ->
                             T_ContextItems ->
@@ -1548,6 +1640,10 @@ sem_Expression (Expression_Do _range _statements) =
     (sem_Expression_Do (sem_Range _range) (sem_Statements _statements))
 sem_Expression (Expression_Enum _range _from _then _to) =
     (sem_Expression_Enum (sem_Range _range) (sem_Expression _from) (sem_MaybeExpression _then) (sem_MaybeExpression _to))
+sem_Expression (Expression_Feedback _range _feedback _expression) =
+    (sem_Expression_Feedback (sem_Range _range) _feedback (sem_Expression _expression))
+sem_Expression (Expression_Hole _range _id) =
+    (sem_Expression_Hole (sem_Range _range) _id)
 sem_Expression (Expression_If _range _guardExpression _thenExpression _elseExpression) =
     (sem_Expression_If (sem_Range _range) (sem_Expression _guardExpression) (sem_Expression _thenExpression) (sem_Expression _elseExpression))
 sem_Expression (Expression_InfixApplication _range _leftExpression _operator _rightExpression) =
@@ -1560,6 +1656,8 @@ sem_Expression (Expression_List _range _expressions) =
     (sem_Expression_List (sem_Range _range) (sem_Expressions _expressions))
 sem_Expression (Expression_Literal _range _literal) =
     (sem_Expression_Literal (sem_Range _range) (sem_Literal _literal))
+sem_Expression (Expression_MustUse _range _expression) =
+    (sem_Expression_MustUse (sem_Range _range) (sem_Expression _expression))
 sem_Expression (Expression_Negate _range _expression) =
     (sem_Expression_Negate (sem_Range _range) (sem_Expression _expression))
 sem_Expression (Expression_NegateFloat _range _expression) =
@@ -1744,6 +1842,48 @@ sem_Expression_Enum range_ from_ then_ to_ =
                   then_ _thenOdictionaryEnv
               ( _toIcore,_toIself) =
                   to_ _toOdictionaryEnv
+          in  ( _lhsOcore,_lhsOself)))
+sem_Expression_Feedback :: T_Range ->
+                           String ->
+                           T_Expression ->
+                           T_Expression
+sem_Expression_Feedback range_ feedback_ expression_ =
+    (\ _lhsIdictionaryEnv ->
+         (let _lhsOself :: Expression
+              _lhsOcore :: ( Core.Expr )
+              _expressionOdictionaryEnv :: DictionaryEnvironment
+              _rangeIself :: Range
+              _expressionIcore :: ( Core.Expr )
+              _expressionIself :: Expression
+              _self =
+                  Expression_Feedback _rangeIself feedback_ _expressionIself
+              _lhsOself =
+                  _self
+              _lhsOcore =
+                  _expressionIcore
+              _expressionOdictionaryEnv =
+                  _lhsIdictionaryEnv
+              ( _rangeIself) =
+                  range_
+              ( _expressionIcore,_expressionIself) =
+                  expression_ _expressionOdictionaryEnv
+          in  ( _lhsOcore,_lhsOself)))
+sem_Expression_Hole :: T_Range ->
+                       Integer ->
+                       T_Expression
+sem_Expression_Hole range_ id_ =
+    (\ _lhsIdictionaryEnv ->
+         (let _lhsOcore :: ( Core.Expr )
+              _lhsOself :: Expression
+              _rangeIself :: Range
+              _lhsOcore =
+                  Core.Var (idFromString "undefined")
+              _self =
+                  Expression_Hole _rangeIself id_
+              _lhsOself =
+                  _self
+              ( _rangeIself) =
+                  range_
           in  ( _lhsOcore,_lhsOself)))
 sem_Expression_If :: T_Range ->
                      T_Expression ->
@@ -1957,6 +2097,30 @@ sem_Expression_Literal range_ literal_ =
                   range_
               ( _literalIcore,_literalIself) =
                   literal_
+          in  ( _lhsOcore,_lhsOself)))
+sem_Expression_MustUse :: T_Range ->
+                          T_Expression ->
+                          T_Expression
+sem_Expression_MustUse range_ expression_ =
+    (\ _lhsIdictionaryEnv ->
+         (let _lhsOself :: Expression
+              _lhsOcore :: ( Core.Expr )
+              _expressionOdictionaryEnv :: DictionaryEnvironment
+              _rangeIself :: Range
+              _expressionIcore :: ( Core.Expr )
+              _expressionIself :: Expression
+              _self =
+                  Expression_MustUse _rangeIself _expressionIself
+              _lhsOself =
+                  _self
+              _lhsOcore =
+                  _expressionIcore
+              _expressionOdictionaryEnv =
+                  _lhsIdictionaryEnv
+              ( _rangeIself) =
+                  range_
+              ( _expressionIcore,_expressionIself) =
+                  expression_ _expressionOdictionaryEnv
           in  ( _lhsOcore,_lhsOself)))
 sem_Expression_Negate :: T_Range ->
                          T_Expression ->
@@ -2363,12 +2527,53 @@ sem_Fixity_Infixr range_ =
 -- cata
 sem_FunctionBinding :: FunctionBinding ->
                        T_FunctionBinding
+sem_FunctionBinding (FunctionBinding_Feedback _range _feedback _functionBinding) =
+    (sem_FunctionBinding_Feedback (sem_Range _range) _feedback (sem_FunctionBinding _functionBinding))
 sem_FunctionBinding (FunctionBinding_FunctionBinding _range _lefthandside _righthandside) =
     (sem_FunctionBinding_FunctionBinding (sem_Range _range) (sem_LeftHandSide _lefthandside) (sem_RightHandSide _righthandside))
+sem_FunctionBinding (FunctionBinding_Hole _range _id) =
+    (sem_FunctionBinding_Hole (sem_Range _range) _id)
 -- semantic domain
 type T_FunctionBinding = DictionaryEnvironment ->
                          ( [Id] ) ->
                          ( Int,( Core.Expr -> Core.Expr ),Name,FunctionBinding)
+sem_FunctionBinding_Feedback :: T_Range ->
+                                String ->
+                                T_FunctionBinding ->
+                                T_FunctionBinding
+sem_FunctionBinding_Feedback range_ feedback_ functionBinding_ =
+    (\ _lhsIdictionaryEnv
+       _lhsIids ->
+         (let _lhsOself :: FunctionBinding
+              _lhsOarity :: Int
+              _lhsOcore :: ( Core.Expr -> Core.Expr )
+              _lhsOname :: Name
+              _functionBindingOdictionaryEnv :: DictionaryEnvironment
+              _functionBindingOids :: ( [Id] )
+              _rangeIself :: Range
+              _functionBindingIarity :: Int
+              _functionBindingIcore :: ( Core.Expr -> Core.Expr )
+              _functionBindingIname :: Name
+              _functionBindingIself :: FunctionBinding
+              _self =
+                  FunctionBinding_Feedback _rangeIself feedback_ _functionBindingIself
+              _lhsOself =
+                  _self
+              _lhsOarity =
+                  _functionBindingIarity
+              _lhsOcore =
+                  _functionBindingIcore
+              _lhsOname =
+                  _functionBindingIname
+              _functionBindingOdictionaryEnv =
+                  _lhsIdictionaryEnv
+              _functionBindingOids =
+                  _lhsIids
+              ( _rangeIself) =
+                  range_
+              ( _functionBindingIarity,_functionBindingIcore,_functionBindingIname,_functionBindingIself) =
+                  functionBinding_ _functionBindingOdictionaryEnv _functionBindingOids
+          in  ( _lhsOarity,_lhsOcore,_lhsOname,_lhsOself)))
 sem_FunctionBinding_FunctionBinding :: T_Range ->
                                        T_LeftHandSide ->
                                        T_RightHandSide ->
@@ -2418,6 +2623,30 @@ sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_ =
                   lefthandside_
               ( _righthandsideIcore,_righthandsideIisGuarded,_righthandsideIself) =
                   righthandside_ _righthandsideOdictionaryEnv
+          in  ( _lhsOarity,_lhsOcore,_lhsOname,_lhsOself)))
+sem_FunctionBinding_Hole :: T_Range ->
+                            Integer ->
+                            T_FunctionBinding
+sem_FunctionBinding_Hole range_ id_ =
+    (\ _lhsIdictionaryEnv
+       _lhsIids ->
+         (let _lhsOarity :: Int
+              _lhsOcore :: ( Core.Expr -> Core.Expr )
+              _lhsOname :: Name
+              _lhsOself :: FunctionBinding
+              _rangeIself :: Range
+              _lhsOarity =
+                  0
+              _lhsOcore =
+                  internalError "ToCoreDecl" "FunctionBinding" "holes not supported"
+              _lhsOname =
+                  internalError "ToCoreName.ag" "n/a" "hole FunctionBindings"
+              _self =
+                  FunctionBinding_Hole _rangeIself id_
+              _lhsOself =
+                  _self
+              ( _rangeIself) =
+                  range_
           in  ( _lhsOarity,_lhsOcore,_lhsOname,_lhsOself)))
 -- FunctionBindings --------------------------------------------
 -- cata
@@ -3448,6 +3677,8 @@ sem_Pattern (Pattern_As _range _name _pattern) =
     (sem_Pattern_As (sem_Range _range) (sem_Name _name) (sem_Pattern _pattern))
 sem_Pattern (Pattern_Constructor _range _name _patterns) =
     (sem_Pattern_Constructor (sem_Range _range) (sem_Name _name) (sem_Patterns _patterns))
+sem_Pattern (Pattern_Hole _range _id) =
+    (sem_Pattern_Hole (sem_Range _range) _id)
 sem_Pattern (Pattern_InfixConstructor _range _leftPattern _constructorOperator _rightPattern) =
     (sem_Pattern_InfixConstructor (sem_Range _range) (sem_Pattern _leftPattern) (sem_Name _constructorOperator) (sem_Pattern _rightPattern))
 sem_Pattern (Pattern_Irrefutable _range _pattern) =
@@ -3522,6 +3753,22 @@ sem_Pattern_Constructor range_ name_ patterns_ =
              name_
          ( _patternsIlength,_patternsIself,_patternsIvars) =
              patterns_
+     in  ( _lhsOself,_lhsOvars))
+sem_Pattern_Hole :: T_Range ->
+                    Integer ->
+                    T_Pattern
+sem_Pattern_Hole range_ id_ =
+    (let _lhsOvars :: ( [Name] )
+         _lhsOself :: Pattern
+         _rangeIself :: Range
+         _lhsOvars =
+             []
+         _self =
+             Pattern_Hole _rangeIself id_
+         _lhsOself =
+             _self
+         ( _rangeIself) =
+             range_
      in  ( _lhsOself,_lhsOvars))
 sem_Pattern_InfixConstructor :: T_Range ->
                                 T_Pattern ->

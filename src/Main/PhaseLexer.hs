@@ -19,7 +19,7 @@ phaseLexer ::
 phaseLexer fullName contents options = do
     enterNewPhase "Lexing" options
 
-    case lexer fullName contents of 
+    case lexer options fullName contents of 
         Left lexError ->
            return (Left [lexError])
         Right (tokens, lexerWarnings) -> do

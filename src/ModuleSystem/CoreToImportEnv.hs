@@ -37,7 +37,7 @@ typeFromCustoms n ( CustomDecl (DeclKindCustom id) [CustomBytes bytes] : cs)
 
 parseFromString :: HParser a -> String -> a
 parseFromString p string = 
-    case lexer "CoreToImportEnv" string of 
+    case lexer [] "CoreToImportEnv" string of 
         Left _ -> internalError "CoreToImportEnv" "parseFromString" ("lex error in " ++ string)
         Right (tokens, _) ->
             case runHParser p "CoreToImportEnv" tokens True {- wait for EOF -} of

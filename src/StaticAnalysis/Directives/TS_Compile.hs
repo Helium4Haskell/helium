@@ -36,7 +36,7 @@ readTypingStrategiesFromFile options filename importEnvironment =
      \exists -> if not exists then return ([], []) else 
         
         do fileContent <- readFile filename            
-           case strategiesLexer filename fileContent of
+           case strategiesLexer options filename fileContent of
               Left lexError -> do
                 putStrLn "Parse error in typing strategy: "
                 putStr . sortAndShowMessages $ [lexError]

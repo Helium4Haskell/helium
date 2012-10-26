@@ -86,6 +86,7 @@ SEM FunctionBindings
   | Nil  lhs.arities = []
 
 SEM FunctionBinding
+  | Hole            lhs . arity = 0
   | FunctionBinding lhs . arity = @lefthandside.numberOfPatterns
 
 {- utility attribute:  is the last statement an expression? -}  

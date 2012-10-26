@@ -104,6 +104,7 @@ restrictedNameErrors env =
 ATTR Body [ |  | toplevelTypes : TypeEnvironment ]   
   
 SEM Body
+  | Hole   lhs . toplevelTypes = M.empty
   | Body   lhs . toplevelTypes = @declarations.typeSignatures `M.union` @inferredTypes
  
 ---------------------------------------------------------

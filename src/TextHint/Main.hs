@@ -20,8 +20,10 @@ import Data.Char
 import Data.List(isInfixOf, isPrefixOf, isSuffixOf)
 import Control.Monad
 import System.IO(stdout, hFlush)
+
 import Data.IORef       ( IORef, readIORef, newIORef, writeIORef )
 import System.IO.Unsafe ( unsafePerformIO )
+
 import System.Environment(getEnv, getArgs)
 import System.Process(system)
 import System.Exit(exitWith, ExitCode(..))
@@ -29,6 +31,7 @@ import Utils.OSSpecific(slash)
 import System.Directory
 import TextHint.ConfigFile(Config, readConfig)
 import Main.Args
+
 
 -- Constants for configuration files
 configFilename = ".hint.conf" 

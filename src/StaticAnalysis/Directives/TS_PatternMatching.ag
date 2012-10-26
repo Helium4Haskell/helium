@@ -14,11 +14,13 @@
 -----------------------------------------------------------------------------
 
 imports {
+
 import Data.List
 import StaticAnalysis.Directives.Matchers
 import StaticAnalysis.Directives.TS_Apply (applyTypingStrategy, matchInformation)
 import StaticAnalysis.Directives.TS_CoreSyntax
 import StaticAnalysis.Directives.TS_Attributes
+
 }
 
 ATTR Body Statement Qualifier Statements Qualifiers Expression RightHandSide MaybeExpression
@@ -86,6 +88,14 @@ SEM Expression
           let infoTuple = metaVarInfo @constraints @assumptions @localInfo
           in match0 infoTuple @lhs.uniqueSecondRound
                     (match_Expression_Variable @name.self) 
+                    @lhs.tryPatterns @lhs.allPatterns 
+                    []
+           
+  | Hole
+       ((), lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch) = 
+          let infoTuple = metaVarInfo @constraints @assumptions @localInfo
+          in match0 infoTuple @lhs.uniqueSecondRound
+                    (const Nothing) 
                     @lhs.tryPatterns @lhs.allPatterns 
                     []
            
@@ -246,6 +256,7 @@ SEM RightHandSide
 SEM Expression
   | Literal            lhs.matchIO = @lhs.matchIO             >> @ioMatch                   
   | Variable           lhs.matchIO = @lhs.matchIO             >> @ioMatch            
+--  | Hole               lhs.matchIO = @lhs.matchIO             >> @ioMatch            
   | Constructor        lhs.matchIO = @lhs.matchIO             >> @ioMatch  
   | NormalApplication  lhs.matchIO = @arguments.matchIO       >> @ioMatch  
   | InfixApplication   lhs.matchIO = @rightExpression.matchIO >> @ioMatch        

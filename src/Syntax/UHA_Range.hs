@@ -147,9 +147,11 @@ getPatRange (Pattern_Successor r _ _) = r
 getPatRange (Pattern_Tuple r _) = r
 getPatRange (Pattern_Variable r _) = r
 getPatRange (Pattern_Wildcard r) = r
+getPatRange (Pattern_Hole r _) = r
 
 getExprRange :: Expression -> Range
 getExprRange (Expression_Literal            r _    ) = r
+getExprRange (Expression_Hole               r _    ) = r
 getExprRange (Expression_Variable           r _    ) = r
 getExprRange (Expression_Constructor        r _    ) = r
 getExprRange (Expression_Parenthesized      r _    ) = r
@@ -169,6 +171,7 @@ getExprRange (Expression_RecordUpdate       r _ _  ) = r
 getExprRange (Expression_Enum               r _ _ _) = r
 getExprRange (Expression_Negate             r _    ) = r
 getExprRange (Expression_NegateFloat        r _    ) = r
+getExprRange (Expression_Feedback           r _ _  ) = r
 
 getRHSRange :: RightHandSide -> Range
 getRHSRange (RightHandSide_Expression r _ _) = r
@@ -219,6 +222,7 @@ getDeclarationRange decl = case decl of
    Declaration_TypeSignature r _ _  -> r
    Declaration_Fixity r _ _ _       -> r
    Declaration_Empty r              -> r
+   Declaration_Hole r _             -> r
 
 getBodyRange :: Body -> Range
 getBodyRange body = case body of

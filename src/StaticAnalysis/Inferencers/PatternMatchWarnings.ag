@@ -52,6 +52,9 @@ SEM FunctionBindings
                      lhs . argcount  = @hd.argcount
 
 SEM FunctionBinding
+  | Hole             lhs . argcount  = 0
+                         . elements  = ([], False)
+                         . unrwar    = pmError "FunctionBinding_Hole.unrwar" "hole unrwar"
   | FunctionBinding  lhs . unrwar    = UnreachablePatternLHS @lefthandside.self
                      lhs . elements  = (@lefthandside.elements, @righthandside.fallthrough)
 
@@ -68,6 +71,8 @@ SEM Alternatives
                      lhs . unrwars   = @hd.unrwar   : @tl.unrwars
   
 SEM Alternative
+  | Hole             lhs . elements  = ([], False)
+                     lhs . unrwar    = pmError "Alternative_Empty.unrwar" "empty alternative"
   | Alternative      lhs . elements  = (@pattern.elements, @righthandside.fallthrough)
                      lhs . unrwar    = UnreachablePatternCase @range.self @pattern.self
   | Empty            lhs . elements  = ([], False)
@@ -78,6 +83,7 @@ SEM Patterns
   | Cons             lhs . elementss = @hd.elements : @tl.elementss
 
 SEM Pattern
+  | Hole             lhs . elements  = [FiniteElement hole]
   | Variable         lhs . elements  = [WildcardElement]
   | Wildcard         lhs . elements  = [WildcardElement]
   | Constructor      lhs . elements  = FiniteElement (getNameName @name.self) : concat @patterns.elementss

@@ -12,8 +12,10 @@ module Parser.LexerMonad
     , openBracket, closeBracket, checkBracketsAtEOF
     , lexerError, lexerWarning
     , runLexerMonad
+    , getOpts
     ) where
 
+import Main.Args
 import Parser.LexerMessage
 import Text.ParserCombinators.Parsec.Pos
 
@@ -22,62 +24,65 @@ type Bracket = (SourcePos, Char)
 -- Output monad: [LexerWarning]
 -- State monad: SourcePos and [Bracket]
 newtype LexerMonad a = 
-    LM (SourcePos -> [Bracket] -> 
+    LM ([Option] -> SourcePos -> [Bracket] -> 
         Either LexerError (a, [LexerWarning], SourcePos, [Bracket]))
 
 unLM (LM x) = x
 
 bindLM :: LexerMonad a -> (a -> LexerMonad b) -> LexerMonad b
 bindLM (LM f) g = 
-    LM (\pos brackets -> 
-        case f pos brackets of
+    LM (\opts pos brackets -> 
+        case f opts pos brackets of
             Left err -> Left err
             Right (a, warnings, pos2, brackets2) -> 
-                case unLM (g a) pos2 brackets2 of
+                case unLM (g a) opts pos2 brackets2 of
                     Left err -> Left err
                     Right (b, moreWarnings, pos3, brackets3) ->
                         Right (b, warnings ++ moreWarnings, pos3, brackets3))
 
 returnLM :: a -> LexerMonad a
-returnLM x = LM (\pos brackets -> Right (x, [], pos, brackets))
+returnLM x = LM (\opts pos brackets -> Right (x, [], pos, brackets))
 
 instance Monad LexerMonad where
     (>>=) = bindLM
     return = returnLM
 
-runLexerMonad :: String -> LexerMonad a -> Either LexerError (a, [LexerWarning])
-runLexerMonad fileName (LM f) = 
-    case f (initialPos fileName) [] of
+runLexerMonad :: [Option] -> String -> LexerMonad a -> Either LexerError (a, [LexerWarning])
+runLexerMonad opts fileName (LM f) = 
+    case f opts (initialPos fileName) [] of
         Left err -> Left err
         Right (a, warnings, _, _) -> Right (a, keepOneTabWarning warnings)
 
+getOpts :: LexerMonad [Option]
+getOpts = LM (\opts pos brackets -> Right (opts, [], pos, brackets))
+
 getPos :: LexerMonad SourcePos
-getPos = LM (\pos brackets -> Right (pos, [], pos, brackets))
+getPos = LM (\_ pos brackets -> Right (pos, [], pos, brackets))
 
 incPos :: Int -> LexerMonad ()
-incPos i = LM (\pos brackets -> Right ((), [], addPos i pos, brackets))
+incPos i = LM (\_ pos brackets -> Right ((), [], addPos i pos, brackets))
 
 nextPos :: Char -> LexerMonad ()
-nextPos c = LM (\pos brackets -> Right ( (), [], updatePosChar pos c, brackets ))
+nextPos c = LM (\_ pos brackets -> Right ( (), [], updatePosChar pos c, brackets ))
 
 lexerError :: LexerErrorInfo -> SourcePos -> LexerMonad a
 lexerError err pos = 
-    LM (\_ _ -> Left (LexerError pos err))
+    LM (\_ _ _ -> Left (LexerError pos err))
 
 lexerWarning :: LexerWarningInfo -> SourcePos -> LexerMonad ()
 lexerWarning warning warningPos = 
-    LM (\pos brackets -> 
+    LM (\_ pos brackets -> 
         Right ((), [LexerWarning warningPos warning], pos, brackets))
     
 addPos :: Int -> SourcePos -> SourcePos
 addPos i pos = incSourceColumn pos i
 
 openBracket :: Char -> LexerMonad ()
-openBracket c = LM (\pos brackets ->
+openBracket c = LM (\_ pos brackets ->
     Right ( (), [], pos, (pos, c) : brackets ))
 
 closeBracket :: Char -> LexerMonad ()
-closeBracket c = LM (\pos brackets ->
+closeBracket c = LM (\_ pos brackets ->
     case brackets of
         [] -> Left (LexerError pos (TooManyClose c))
         (pos2, c2):rest
@@ -88,7 +93,7 @@ closeBracket c = LM (\pos brackets ->
     )
     
 checkBracketsAtEOF :: LexerMonad ()
-checkBracketsAtEOF = LM (\pos brackets ->
+checkBracketsAtEOF = LM (\_ pos brackets ->
     case brackets of
         [] -> Right ((), [], pos, [])
         _  -> Left (LexerError pos (StillOpenAtEOF brackets))

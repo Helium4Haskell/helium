@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+
 {-| Module      :  ConstraintInfo
     License     :  GPL
 
@@ -12,6 +13,7 @@
 
 module StaticAnalysis.Miscellaneous.ConstraintInfo where
 
+import Main.Args (Option(..))
 import Top.Types
 import Top.Ordering.Tree
 import Syntax.UHA_Syntax
@@ -286,14 +288,17 @@ tooGeneralLabels = [skolemVersusConstantLabel, skolemVersusSkolemLabel, escaping
 -- TODO: get rid of the TypeError and TypeErrorHint data types, and move the following two functions
 -- to the module TypeErrors
     
-makeTypeErrors :: Substitution sub => ClassEnvironment -> OrderedTypeSynonyms -> sub -> [(ConstraintInfo, ErrorLabel)] -> TypeErrors
-makeTypeErrors classEnv synonyms sub errors =
+makeTypeErrors :: Substitution sub => [Option] -> ClassEnvironment -> OrderedTypeSynonyms -> sub -> [(ConstraintInfo, ErrorLabel)] -> TypeErrors
+makeTypeErrors options classEnv synonyms sub errors =
    let --comp l1 l2
        --   | l1 `elem` tooGeneralLabels && l2 `elem` tooGeneralLabels = EQ
        --   | otherwise = l1 `compare` l2
    
        list  = groupBy (\x y -> snd x == snd y) 
              $ sortBy  (\x y -> snd x `compare` snd y)
+             $ (if NoOverloadingTypeCheck `elem` options 
+                then filter ((/= ambiguousLabel) . snd) 
+                else id)
              $ errors
        final = groupBy (\x y -> fst x == fst y) 
              $ sortBy  (\x y -> fst x `compare` fst y) 

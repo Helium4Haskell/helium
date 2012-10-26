@@ -13,7 +13,6 @@
 -- Type Inferencing : Module
 
 SEM Module
-
   | Module
       loc  -- Solve the type constraints.
            . (SolveResult betaUniqueAtTheEnd substitution typeschemeMap _ solveErrors) = @solveResult
@@ -30,8 +29,10 @@ SEM Module
                                    foldr (\(n, i) -> insertInstance (show n) i) 
                                          (createClassEnvironment @lhs.importEnvironment) 
                                          @body.collectInstances
-           . typeErrors          = case makeTypeErrors @classEnv @orderedTypeSynonyms @substitution @solveErrors of
-                                      []   -> @body.collectErrors
+           . typeErrors          = case makeTypeErrors @lhs.options @classEnv @orderedTypeSynonyms @substitution @solveErrors of
+                                      []   -> if NoOverloadingTypeCheck `elem` @lhs.options
+                                                 then filter (\(TypeError _ ms _ _) -> not $ isInfixOf "Illegal overloaded type" $ show ms) @body.collectErrors
+                                                 else @body.collectErrors
                                       errs -> reverse errs
            . warnings            = @body.collectWarnings -- ++ @tooSpecificWarnings
            . assumptions         = let f xs = [ (n, @substitution |-> tp) | (n, tp) <- xs ] 
@@ -59,6 +60,9 @@ ATTR Body
     ]
 
 SEM Body
+  | Hole
+      lhs . assumptions = noAssumptions
+          . constraints = emptyTree
   | Body  
       declarations . bindingGroups    = []       
       (loc.csetBinds,lhs.assumptions) = (typeEnvironment @lhs.importEnvironment .:::. @aset) @cinfo      
@@ -127,6 +131,11 @@ ATTR                 FunctionBindings [ | | constraintslist:ConstraintSets]
 
 SEM FunctionBinding
 
+  | Hole
+      loc . assumptions      = noAssumptions
+          . constraints      = emptyTree
+          . numberOfPatterns = 0
+          . name             = internalError "TypeInferencing.ag" "n/a" "FunctionBindings(2)"
   | FunctionBinding
       righthandside . monos       = M.elems @lefthandside.environment ++ getMonos @csetBinds ++ @lhs.monos
       loc           . constraints = @csetBinds .>>.
@@ -157,7 +166,6 @@ ATTR LeftHandSide               [ | | betas:Tps environment:PatternAssumptions n
 ATTR              RightHandSide [ betaRight:Tp | | assumptions:Assumptions ]
 
 SEM LeftHandSide
-
   | Function
       lhs . name             = @name.self
       loc . constraints      = Node @patterns.constraintslist
@@ -225,6 +233,12 @@ SEM Expression
       lhs . betaUnique  = @lhs.betaUnique + 1
       loc . assumptions = @name.self `single` @beta
           . constraints = Node [ Receive @lhs.betaUnique ]
+          . beta        = TVar @lhs.betaUnique
+
+  | Hole
+      lhs . betaUnique  = @lhs.betaUnique + 1
+      loc . assumptions = noAssumptions
+          . constraints = emptyTree
           . beta        = TVar @lhs.betaUnique
 
   | NormalApplication   
@@ -443,6 +457,11 @@ ATTR Pattern          [ | | beta:Tp constraints:ConstraintSet ]
 ATTR         Patterns [ | | betas:Tps constraintslist:ConstraintSets numberOfPatterns:Int ]
 
 SEM Pattern
+  | Hole 
+      lhs . betaUnique  = @lhs.betaUnique + 1
+          . environment = noAssumptions
+      loc . constraints = emptyTree
+          . beta        = TVar @lhs.betaUnique
 
   | Literal
       lhs . betaUnique  = @lhs.betaUnique + 1
@@ -558,6 +577,10 @@ ATTR Alternative              [ | | constraints:ConstraintSet ]
 ATTR             Alternatives [ | | constraintslist:ConstraintSets ]
 
 SEM Alternative
+
+  | Hole
+      lhs . assumptions = noAssumptions
+      loc . constraints = emptyTree
 
   | Alternative
       righthandside . monos       = M.elems @pattern.environment ++ getMonos @csetBinds ++ @lhs.monos

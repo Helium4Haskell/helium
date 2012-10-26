@@ -10,9 +10,12 @@ module Parser.ParseLibrary where
 
 import Text.ParserCombinators.Parsec hiding (satisfy)
 import Text.ParserCombinators.Parsec.Pos(newPos)
+
 import Parser.Lexer
+import Utils.Utils (hole)
 import Syntax.UHA_Syntax(Name(..), Range(..), Position(..))
 import qualified Utils.Texts as Texts
+
 
 type HParser a = GenParser Token SourcePos a
 
@@ -114,6 +117,8 @@ lexRBRACKET = lexeme (LexSpecial ']')
 lexCOMMA    = lexeme (LexSpecial ',')
 lexSEMI     = lexeme (LexSpecial ';')
 lexBACKQUOTE = lexeme (LexSpecial '`')
+
+lexHOLE     =  lexeme (LexResVarSym hole)
 
 lexASG      = lexeme (LexResVarSym "=")
 lexLARROW   = lexeme (LexResVarSym "<-")
@@ -253,6 +258,13 @@ lexConSym :: HParser String
 lexConSym
   = satisfy (\lex -> case lex of { LexConSym s -> Just s; _ -> Nothing })
 
+lexFeedback :: HParser String
+lexFeedback
+  = satisfy (\lex -> case lex of { LexFeedback s -> Just s; other -> Nothing })
+
+lexCaseFeedback :: HParser String
+lexCaseFeedback
+    = satisfy (\lex -> case lex of { LexCaseFeedback s -> Just s; other -> Nothing })
 
 satisfy :: (Lexeme -> Maybe a) -> HParser a
 satisfy pred

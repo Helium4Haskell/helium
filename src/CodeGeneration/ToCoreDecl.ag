@@ -226,6 +226,8 @@ SEM FunctionBindings [ range : Range | | core : {Core.Expr}  ]
                           .arity = internalError "ToCoreDecl" "FunctionBindings" "arity: empty list of function bindings"
 
 SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
+    | Hole             lhs.arity = 0
+                          . core = internalError "ToCoreDecl" "FunctionBinding" "holes not supported"
     | FunctionBinding  lhs.arity = @lefthandside.arity
                        lhs.core = 
         \nextClause ->

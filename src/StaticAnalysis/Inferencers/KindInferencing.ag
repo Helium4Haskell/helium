@@ -38,12 +38,14 @@ import StaticAnalysis.Miscellaneous.TypeConstraints
 import Syntax.UHA_Syntax
 import Main.Args
 import qualified Data.Map as M
+
 import StaticAnalysis.Miscellaneous.TypeConstraints
 import Utils.Utils (internalError)
 import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
 import StaticAnalysis.Messages.KindErrors
 import Data.Char (isLower)
 import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, combine, single, topSort) 
+
 }
 
 -------------------------------------------------------------------------------
@@ -62,6 +64,9 @@ SEM Module
 ATTR Body [ importEnvironment:ImportEnvironment | | constraints:KindConstraints environment:PatternAssumptions ]
 
 SEM Body 
+  | Hole
+       lhs . constraints = []
+           . environment = noAssumptions
   | Body 
        declarations . bindingGroups  = []
        lhs . constraints             = @newConstraints ++ @cs

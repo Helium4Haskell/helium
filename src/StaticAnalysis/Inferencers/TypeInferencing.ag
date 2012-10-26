@@ -69,7 +69,8 @@ INCLUDE "TS_PatternMatching.ag"
 
 -- Pattern Match Warnings (may be turned off)
 INCLUDE "PatternMatchWarnings.ag"
-SEM Module | Module lhs . warnings = @loc.warnings ++ @body.patternMatchWarnings
+SEM Module 
+  | Module lhs . warnings = @loc.warnings ++ @body.patternMatchWarnings
   
 -------------------------------------------------------------------------------
 -- Imports
@@ -93,17 +94,20 @@ import StaticAnalysis.Miscellaneous.TypeConstraints
 import Top.Ordering.Tree
 
 -- constraint solving
+
 import StaticAnalysis.Inferencers.SelectConstraintSolver (selectConstraintSolver)
-import Top.Solver (SolveResult(..), LogEntries)
+import Top.Solver (SolveResult(..), LogEntries, emptyResult, noLogEntries)
 import StaticAnalysis.Heuristics.HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
 import StaticAnalysis.Inferencers.BindingGroupAnalysis
+
 
 -- UHA syntax
 import Syntax.UHA_Syntax
 import Syntax.UHA_Range                 
          
 -- other
-import Utils.Utils (internalError)
+
+import Utils.Utils (internalError, hole)
 import ModuleSystem.ImportEnvironment  hiding (setTypeSynonyms)
 import ModuleSystem.DictionaryEnvironment
 import Main.Args

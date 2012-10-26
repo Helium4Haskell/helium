@@ -9,7 +9,7 @@ import Syntax.UHA_Utils (showNameAsOperator)
 import StaticAnalysis.Miscellaneous.TypeConversion
 import Syntax.UHA_Syntax
 import Data.List
-import Utils.Utils (internalError)
+import Utils.Utils (internalError, hole)
 
 
 encloseSep :: String -> String -> String -> [OneLineTree] -> OneLineTree
@@ -47,6 +47,10 @@ sem_Alternative (Alternative_Alternative _range _pattern _righthandside) =
     (sem_Alternative_Alternative (sem_Range _range) (sem_Pattern _pattern) (sem_RightHandSide _righthandside))
 sem_Alternative (Alternative_Empty _range) =
     (sem_Alternative_Empty (sem_Range _range))
+sem_Alternative (Alternative_Feedback _range _feedback _alternative) =
+    (sem_Alternative_Feedback (sem_Range _range) _feedback (sem_Alternative _alternative))
+sem_Alternative (Alternative_Hole _range _id) =
+    (sem_Alternative_Hole (sem_Range _range) _id)
 -- semantic domain
 type T_Alternative = ( OneLineTree,Alternative)
 sem_Alternative_Alternative :: T_Range ->
@@ -86,6 +90,45 @@ sem_Alternative_Empty range_ =
              OneLineText ""
          _self =
              Alternative_Empty _rangeIself
+         _lhsOself =
+             _self
+         _lhsOoneLineTree =
+             _oneLineTree
+         ( _rangeIself) =
+             range_
+     in  ( _lhsOoneLineTree,_lhsOself))
+sem_Alternative_Feedback :: T_Range ->
+                            String ->
+                            T_Alternative ->
+                            T_Alternative
+sem_Alternative_Feedback range_ feedback_ alternative_ =
+    (let _lhsOself :: Alternative
+         _lhsOoneLineTree :: OneLineTree
+         _rangeIself :: Range
+         _alternativeIoneLineTree :: OneLineTree
+         _alternativeIself :: Alternative
+         _self =
+             Alternative_Feedback _rangeIself feedback_ _alternativeIself
+         _lhsOself =
+             _self
+         _lhsOoneLineTree =
+             _alternativeIoneLineTree
+         ( _rangeIself) =
+             range_
+         ( _alternativeIoneLineTree,_alternativeIself) =
+             alternative_
+     in  ( _lhsOoneLineTree,_lhsOself))
+sem_Alternative_Hole :: T_Range ->
+                        Integer ->
+                        T_Alternative
+sem_Alternative_Hole range_ id_ =
+    (let _lhsOself :: Alternative
+         _lhsOoneLineTree :: OneLineTree
+         _rangeIself :: Range
+         _oneLineTree =
+             OneLineText hole
+         _self =
+             Alternative_Hole _rangeIself id_
          _lhsOself =
              _self
          _lhsOoneLineTree =
@@ -196,6 +239,8 @@ sem_Body :: Body ->
             T_Body
 sem_Body (Body_Body _range _importdeclarations _declarations) =
     (sem_Body_Body (sem_Range _range) (sem_ImportDeclarations _importdeclarations) (sem_Declarations _declarations))
+sem_Body (Body_Hole _range _id) =
+    (sem_Body_Hole (sem_Range _range) _id)
 -- semantic domain
 type T_Body = ( Body)
 sem_Body_Body :: T_Range ->
@@ -218,6 +263,19 @@ sem_Body_Body range_ importdeclarations_ declarations_ =
              importdeclarations_
          ( _declarationsIoneLineTree,_declarationsIself) =
              declarations_
+     in  ( _lhsOself))
+sem_Body_Hole :: T_Range ->
+                 Integer ->
+                 T_Body
+sem_Body_Hole range_ id_ =
+    (let _lhsOself :: Body
+         _rangeIself :: Range
+         _self =
+             Body_Hole _rangeIself id_
+         _lhsOself =
+             _self
+         ( _rangeIself) =
+             range_
      in  ( _lhsOself))
 -- Constructor -------------------------------------------------
 -- cata
@@ -419,6 +477,8 @@ sem_Declaration (Declaration_Fixity _range _fixity _priority _operators) =
     (sem_Declaration_Fixity (sem_Range _range) (sem_Fixity _fixity) (sem_MaybeInt _priority) (sem_Names _operators))
 sem_Declaration (Declaration_FunctionBindings _range _bindings) =
     (sem_Declaration_FunctionBindings (sem_Range _range) (sem_FunctionBindings _bindings))
+sem_Declaration (Declaration_Hole _range _id) =
+    (sem_Declaration_Hole (sem_Range _range) _id)
 sem_Declaration (Declaration_Instance _range _context _name _types _where) =
     (sem_Declaration_Instance (sem_Range _range) (sem_ContextItems _context) (sem_Name _name) (sem_Types _types) (sem_MaybeDeclarations _where))
 sem_Declaration (Declaration_Newtype _range _context _simpletype _constructor _derivings) =
@@ -590,6 +650,24 @@ sem_Declaration_FunctionBindings range_ bindings_ =
              range_
          ( _bindingsIoneLineTree,_bindingsIself) =
              bindings_
+     in  ( _lhsOoneLineTree,_lhsOself))
+sem_Declaration_Hole :: T_Range ->
+                        Integer ->
+                        T_Declaration
+sem_Declaration_Hole range_ id_ =
+    (let _lhsOself :: Declaration
+         _lhsOoneLineTree :: OneLineTree
+         _rangeIself :: Range
+         _oneLineTree =
+             OneLineText hole
+         _self =
+             Declaration_Hole _rangeIself id_
+         _lhsOself =
+             _self
+         _lhsOoneLineTree =
+             _oneLineTree
+         ( _rangeIself) =
+             range_
      in  ( _lhsOoneLineTree,_lhsOself))
 sem_Declaration_Instance :: T_Range ->
                             T_ContextItems ->
@@ -938,6 +1016,10 @@ sem_Expression (Expression_Do _range _statements) =
     (sem_Expression_Do (sem_Range _range) (sem_Statements _statements))
 sem_Expression (Expression_Enum _range _from _then _to) =
     (sem_Expression_Enum (sem_Range _range) (sem_Expression _from) (sem_MaybeExpression _then) (sem_MaybeExpression _to))
+sem_Expression (Expression_Feedback _range _feedback _expression) =
+    (sem_Expression_Feedback (sem_Range _range) _feedback (sem_Expression _expression))
+sem_Expression (Expression_Hole _range _id) =
+    (sem_Expression_Hole (sem_Range _range) _id)
 sem_Expression (Expression_If _range _guardExpression _thenExpression _elseExpression) =
     (sem_Expression_If (sem_Range _range) (sem_Expression _guardExpression) (sem_Expression _thenExpression) (sem_Expression _elseExpression))
 sem_Expression (Expression_InfixApplication _range _leftExpression _operator _rightExpression) =
@@ -950,6 +1032,8 @@ sem_Expression (Expression_List _range _expressions) =
     (sem_Expression_List (sem_Range _range) (sem_Expressions _expressions))
 sem_Expression (Expression_Literal _range _literal) =
     (sem_Expression_Literal (sem_Range _range) (sem_Literal _literal))
+sem_Expression (Expression_MustUse _range _expression) =
+    (sem_Expression_MustUse (sem_Range _range) (sem_Expression _expression))
 sem_Expression (Expression_Negate _range _expression) =
     (sem_Expression_Negate (sem_Range _range) (sem_Expression _expression))
 sem_Expression (Expression_NegateFloat _range _expression) =
@@ -1128,6 +1212,45 @@ sem_Expression_Enum range_ from_ then_ to_ =
              then_
          ( _toIoneLineTree,_toIself) =
              to_
+     in  ( _lhsOoneLineTree,_lhsOself))
+sem_Expression_Feedback :: T_Range ->
+                           String ->
+                           T_Expression ->
+                           T_Expression
+sem_Expression_Feedback range_ feedback_ expression_ =
+    (let _lhsOself :: Expression
+         _lhsOoneLineTree :: OneLineTree
+         _rangeIself :: Range
+         _expressionIoneLineTree :: OneLineTree
+         _expressionIself :: Expression
+         _self =
+             Expression_Feedback _rangeIself feedback_ _expressionIself
+         _lhsOself =
+             _self
+         _lhsOoneLineTree =
+             _expressionIoneLineTree
+         ( _rangeIself) =
+             range_
+         ( _expressionIoneLineTree,_expressionIself) =
+             expression_
+     in  ( _lhsOoneLineTree,_lhsOself))
+sem_Expression_Hole :: T_Range ->
+                       Integer ->
+                       T_Expression
+sem_Expression_Hole range_ id_ =
+    (let _lhsOself :: Expression
+         _lhsOoneLineTree :: OneLineTree
+         _rangeIself :: Range
+         _oneLineTree =
+             OneLineNode [OneLineText hole]
+         _self =
+             Expression_Hole _rangeIself id_
+         _lhsOself =
+             _self
+         _lhsOoneLineTree =
+             _oneLineTree
+         ( _rangeIself) =
+             range_
      in  ( _lhsOoneLineTree,_lhsOself))
 sem_Expression_If :: T_Range ->
                      T_Expression ->
@@ -1312,6 +1435,26 @@ sem_Expression_Literal range_ literal_ =
              range_
          ( _literalIoneLineTree,_literalIself) =
              literal_
+     in  ( _lhsOoneLineTree,_lhsOself))
+sem_Expression_MustUse :: T_Range ->
+                          T_Expression ->
+                          T_Expression
+sem_Expression_MustUse range_ expression_ =
+    (let _lhsOself :: Expression
+         _lhsOoneLineTree :: OneLineTree
+         _rangeIself :: Range
+         _expressionIoneLineTree :: OneLineTree
+         _expressionIself :: Expression
+         _self =
+             Expression_MustUse _rangeIself _expressionIself
+         _lhsOself =
+             _self
+         _lhsOoneLineTree =
+             _expressionIoneLineTree
+         ( _rangeIself) =
+             range_
+         ( _expressionIoneLineTree,_expressionIself) =
+             expression_
      in  ( _lhsOoneLineTree,_lhsOself))
 sem_Expression_Negate :: T_Range ->
                          T_Expression ->
@@ -1694,10 +1837,35 @@ sem_Fixity_Infixr range_ =
 -- cata
 sem_FunctionBinding :: FunctionBinding ->
                        T_FunctionBinding
+sem_FunctionBinding (FunctionBinding_Feedback _range _feedback _functionBinding) =
+    (sem_FunctionBinding_Feedback (sem_Range _range) _feedback (sem_FunctionBinding _functionBinding))
 sem_FunctionBinding (FunctionBinding_FunctionBinding _range _lefthandside _righthandside) =
     (sem_FunctionBinding_FunctionBinding (sem_Range _range) (sem_LeftHandSide _lefthandside) (sem_RightHandSide _righthandside))
+sem_FunctionBinding (FunctionBinding_Hole _range _id) =
+    (sem_FunctionBinding_Hole (sem_Range _range) _id)
 -- semantic domain
 type T_FunctionBinding = ( OneLineTree,FunctionBinding)
+sem_FunctionBinding_Feedback :: T_Range ->
+                                String ->
+                                T_FunctionBinding ->
+                                T_FunctionBinding
+sem_FunctionBinding_Feedback range_ feedback_ functionBinding_ =
+    (let _lhsOself :: FunctionBinding
+         _lhsOoneLineTree :: OneLineTree
+         _rangeIself :: Range
+         _functionBindingIoneLineTree :: OneLineTree
+         _functionBindingIself :: FunctionBinding
+         _self =
+             FunctionBinding_Feedback _rangeIself feedback_ _functionBindingIself
+         _lhsOself =
+             _self
+         _lhsOoneLineTree =
+             _functionBindingIoneLineTree
+         ( _rangeIself) =
+             range_
+         ( _functionBindingIoneLineTree,_functionBindingIself) =
+             functionBinding_
+     in  ( _lhsOoneLineTree,_lhsOself))
 sem_FunctionBinding_FunctionBinding :: T_Range ->
                                        T_LeftHandSide ->
                                        T_RightHandSide ->
@@ -1724,6 +1892,24 @@ sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_ =
              lefthandside_
          ( _righthandsideIoneLineTree,_righthandsideIself) =
              righthandside_
+     in  ( _lhsOoneLineTree,_lhsOself))
+sem_FunctionBinding_Hole :: T_Range ->
+                            Integer ->
+                            T_FunctionBinding
+sem_FunctionBinding_Hole range_ id_ =
+    (let _lhsOself :: FunctionBinding
+         _lhsOoneLineTree :: OneLineTree
+         _rangeIself :: Range
+         _oneLineTree =
+             OneLineText hole
+         _self =
+             FunctionBinding_Hole _rangeIself id_
+         _lhsOself =
+             _self
+         _lhsOoneLineTree =
+             _oneLineTree
+         ( _rangeIself) =
+             range_
      in  ( _lhsOoneLineTree,_lhsOself))
 -- FunctionBindings --------------------------------------------
 -- cata
@@ -2697,6 +2883,8 @@ sem_Pattern (Pattern_As _range _name _pattern) =
     (sem_Pattern_As (sem_Range _range) (sem_Name _name) (sem_Pattern _pattern))
 sem_Pattern (Pattern_Constructor _range _name _patterns) =
     (sem_Pattern_Constructor (sem_Range _range) (sem_Name _name) (sem_Patterns _patterns))
+sem_Pattern (Pattern_Hole _range _id) =
+    (sem_Pattern_Hole (sem_Range _range) _id)
 sem_Pattern (Pattern_InfixConstructor _range _leftPattern _constructorOperator _rightPattern) =
     (sem_Pattern_InfixConstructor (sem_Range _range) (sem_Pattern _leftPattern) (sem_Name _constructorOperator) (sem_Pattern _rightPattern))
 sem_Pattern (Pattern_Irrefutable _range _pattern) =
@@ -2790,6 +2978,24 @@ sem_Pattern_Constructor range_ name_ patterns_ =
              name_
          ( _patternsIoneLineTree,_patternsIself) =
              patterns_
+     in  ( _lhsOoneLineTree,_lhsOself))
+sem_Pattern_Hole :: T_Range ->
+                    Integer ->
+                    T_Pattern
+sem_Pattern_Hole range_ id_ =
+    (let _lhsOself :: Pattern
+         _lhsOoneLineTree :: OneLineTree
+         _rangeIself :: Range
+         _oneLineTree =
+             OneLineText hole
+         _self =
+             Pattern_Hole _rangeIself id_
+         _lhsOself =
+             _self
+         _lhsOoneLineTree =
+             _oneLineTree
+         ( _rangeIself) =
+             range_
      in  ( _lhsOoneLineTree,_lhsOself))
 sem_Pattern_InfixConstructor :: T_Range ->
                                 T_Pattern ->

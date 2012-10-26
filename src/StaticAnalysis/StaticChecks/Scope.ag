@@ -41,10 +41,11 @@ ATTR Expression RightHandSide
      Alternatives GuardedExpressions RecordPatternBinding
      Patterns Pattern LeftHandSide RecordPatternBindings AnnotatedType
      AnnotatedTypes Constructor Constructors FieldDeclaration FieldDeclarations Body
-     [ namesInScope : Names | | unboundNames USE {++} {[]} : Names ]
+     [ namesInScope : Names | counter : Int | unboundNames USE {++} {[]} : Names ]
 
 SEM Module
   | Module   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@initialScope ++ @body.declVarNames) @body.unboundNames []
+             body . counter = 0
                  
 SEM MaybeDeclarations
   | Just   loc . (namesInScope, unboundNames, scopeInfo)   = changeOfScope @declarations.declVarNames (@declarations.unboundNames ++ @lhs.unboundNames) @lhs.namesInScope
@@ -69,6 +70,8 @@ SEM FunctionBinding
 SEM Expression
   | Lambda            loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope @patterns.patVarNames @expression.unboundNames @lhs.namesInScope
                       lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!
+  -- | Hole              lhs . namesInScope = @namesInScope
+
 
 SEM Alternative
   | Alternative       loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope @pattern.patVarNames @righthandside.unboundNames @lhs.namesInScope
@@ -82,7 +85,7 @@ SEM Qualifier
                       
 -- correct scope for RightHandSides (where)
 
-ATTR MaybeDeclarations [ | unboundNames : Names namesInScope : Names | ]
+ATTR MaybeDeclarations [ | counter : Int unboundNames : Names namesInScope : Names | ]
 
 SEM RightHandSide 
   | Expression   lhs                . unboundNames = @where.unboundNames
@@ -94,7 +97,7 @@ SEM RightHandSide
 
 -- correct scope for Statements/Qualifiers
 
-ATTR Statements Statement Qualifier Qualifiers [ | namesInScope : Names unboundNames : Names | ]
+ATTR Statements Statement Qualifier Qualifiers [ | counter : Int namesInScope : Names unboundNames : Names | ]
 
 SEM Expression
   | Do  statements . unboundNames = []
@@ -139,10 +142,12 @@ ATTR Pattern Patterns
 SEM Pattern 
   | Variable   lhs . patVarNames = [ @name.self ]
   | As         lhs . patVarNames = @name.self : @pattern.patVarNames
+  | Hole       lhs . patVarNames = [ Name_Special noRange [] ("hole" ++ show @loc.i) ]
+               loc . i : UNIQUEREF counter
 
 SEM Expression 
   | Variable   lhs . unboundNames = [ @name.self ]    
-  
+
 ATTR Body Declaration Declarations [ | | declVarNames USE {++} {[]} : Names ]
 
 SEM Declaration 
@@ -168,7 +173,9 @@ changeOfScope names unboundNames namesInScope =
       )
       
 uniqueAppearance :: Ord a => [a] -> ([a],[[a]])
-uniqueAppearance = foldr insert ([],[]) . group . sort
+uniqueAppearance = Prelude.foldr insert ([],[]) . group . sort
    where insert [x] (as,bs) = (x:as,bs)
          insert xs  (as,bs) = (as,xs:bs)
+         
+nextUnique n = (n+1, n)
 }

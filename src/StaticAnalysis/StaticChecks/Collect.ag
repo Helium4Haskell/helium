@@ -222,7 +222,9 @@ uniqueKeys = let comp (x,_) (y,_) = compare x y
 ATTR Declaration Declarations [ | typeSignatures:{[(Name,TpScheme)]} | ]
 ATTR Body                     [ | | typeSignatures:{[(Name,TpScheme)]} ]
 
-SEM Body              | Body    declarations . typeSignatures = []
+SEM Body              
+  | Hole lhs . typeSignatures = []
+  | Body    declarations . typeSignatures = []
 SEM Expression        | Let     declarations . typeSignatures = []
 SEM Statement         | Let     declarations . typeSignatures = []
 SEM Qualifier         | Let     declarations . typeSignatures = []

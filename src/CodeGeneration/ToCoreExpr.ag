@@ -19,6 +19,10 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  name                     : Name
 
+    | Hole               lhs.core = Core.Var (idFromString "undefined")
+    --  range                    : Range
+    --  id                       : Integer
+
     | Constructor        lhs.core = Core.Con (Core.ConId (idFromName @name.self))
     --  range                    : Range
     --  name                     : Name
@@ -256,6 +260,7 @@ SEM Alternatives [ caseRange : Range | | core : { Core.Expr } ]
     | Nil               lhs.core     = patternMatchFail "case expression" @lhs.caseRange
 
 SEM Alternative [ | | core : { Core.Expr -> Core.Expr } ]
+    | Hole              lhs.core   = id
     | Alternative       lhs.core   = \nextCase  ->
                                         let thisCase =
                                                 patternToCore 

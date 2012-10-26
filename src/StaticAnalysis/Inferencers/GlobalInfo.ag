@@ -31,6 +31,9 @@ SEM Expression [ parentTree : InfoTree | | infoTree : InfoTree ]
   | Variable     
        loc . parentTree = node @lhs.parentTree @localInfo []
        lhs . infoTree   = @parentTree
+  | Hole
+       loc . parentTree = node @lhs.parentTree @localInfo []
+       lhs . infoTree   = @parentTree
   | Constructor  
        loc . parentTree = node @lhs.parentTree @localInfo []
        lhs . infoTree   = @parentTree
@@ -89,6 +92,9 @@ SEM Pattern [ parentTree : InfoTree | | infoTree : InfoTree ]
        loc . parentTree = node @lhs.parentTree @localInfo []
        lhs . infoTree   = @parentTree 
   | Variable     
+       loc . parentTree = node @lhs.parentTree @localInfo []
+       lhs . infoTree   = @parentTree 
+  | Hole
        loc . parentTree = node @lhs.parentTree @localInfo []
        lhs . infoTree   = @parentTree 
   | Constructor  
@@ -159,6 +165,7 @@ SEM Qualifier [ parentTree : InfoTree | | infoTree : InfoTree ]
 -- Combining sub-trees without introducing a new node
 
 SEM Body [ | | infoTree : InfoTree ]
+  | Hole         lhs . infoTree = root (LocalInfo {self = UHA_Decls [], assignedType = Nothing, monos = []}) []
   | Body         loc . parentTree = root @declInfo @declarations.infoTrees
                  lhs . infoTree   = @parentTree
 
@@ -179,6 +186,7 @@ SEM Alternatives [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Nil    lhs . infoTrees = []
 
 SEM Alternative [ parentTree : InfoTree | | infoTrees : InfoTrees ]
+  | Hole          lhs . infoTrees = []
   | Alternative   lhs . infoTrees = [@pattern.infoTree, @righthandside.infoTree]  
   | Empty         lhs . infoTrees = []
 
@@ -210,6 +218,7 @@ SEM Declarations [ parentTree : InfoTree | | infoTrees : InfoTrees ]
 SEM Declaration [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Type     lhs . infoTrees = []
   | Data     lhs . infoTrees = []
+  | Hole     lhs . infoTrees = []
   | FunctionBindings    loc . parentTree = node @lhs.parentTree @localInfo @bindings.infoTrees
                         lhs . infoTrees  = [@parentTree]
   | PatternBinding      loc . parentTree = node @lhs.parentTree @localInfo [@pattern.infoTree, @righthandside.infoTree]
@@ -223,6 +232,8 @@ SEM FunctionBindings [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Nil    lhs . infoTrees = []
 
 SEM FunctionBinding [ parentTree : InfoTree | | infoTree : InfoTree ]
+  | Hole             loc . parentTree = node @lhs.parentTree @localInfo []
+                     lhs . infoTree   = @parentTree
   | FunctionBinding  loc . parentTree = node @lhs.parentTree @localInfo (@lefthandside.infoTrees ++ [@righthandside.infoTree])
                      lhs . infoTree   = @parentTree   
   

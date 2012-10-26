@@ -40,6 +40,7 @@ import Syntax.UHA_Syntax
 import Syntax.UHA_Utils
 import Syntax.UHA_Range
 import Top.Types
+
 import StaticAnalysis.Messages.StaticErrors
 import StaticAnalysis.Messages.Warnings
 import StaticAnalysis.Messages.Messages
@@ -47,15 +48,18 @@ import Data.List
 import Utils.Utils ( internalError, minInt, maxInt )
 import StaticAnalysis.Miscellaneous.TypeConversion
 import CodeGeneration.DerivingShow
+
 import qualified Data.Map as M
+
 import ModuleSystem.ImportEnvironment
 import Parser.OperatorTable
 import Data.Char ( isUpper )
+
 }
 
 -- combine all the collected errors, then filter out the "entity is undefined" 
 -- errors that are caused by the removal of "duplicated entities"
-SEM Module
+SEM Module   
   | Module   lhs . errors = filter (\err -> filterRemovedNames @removedEntities err 
                                          && filterDerivedNames @derivedRanges err) @allErrors
                  . warnings  = @scopeWarnings ++ @warnings                                        
@@ -91,6 +95,9 @@ ATTR Patterns LeftHandSide [ | | numberOfPatterns : Int ]
 SEM FunctionBindings 
   | Cons  lhs . name = @hd.name
   | Nil   lhs . name = internalError "StaticChecks.ag" "n/a" "empty FunctionBindings"
+
+SEM FunctionBinding
+  | Hole  lhs . name = internalError "StaticChecks.ag" "n/a" "empty FunctionBindings"
 
 SEM LeftHandSide
   | Function  lhs . name = @name.self

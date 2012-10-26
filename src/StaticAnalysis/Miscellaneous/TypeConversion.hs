@@ -10,12 +10,14 @@
 
 module StaticAnalysis.Miscellaneous.TypeConversion where
 
+
 import Syntax.UHA_Utils (getNameName, nameFromString)
 import Syntax.UHA_Range (noRange)
 import Utils.Utils (internalError)
 import Data.List (union)
 import Data.Maybe
 import Syntax.UHA_Syntax
+
 import Top.Types
 
 ----------------------------------------------------------------------

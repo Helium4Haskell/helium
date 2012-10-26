@@ -5,6 +5,8 @@ module Syntax.UHA_Syntax where
 -- Alternative -------------------------------------------------
 data Alternative = Alternative_Alternative (Range) (Pattern) (RightHandSide)
                  | Alternative_Empty (Range)
+                 | Alternative_Feedback (Range) (String) (Alternative)
+                 | Alternative_Hole (Range) (Integer)
 -- Alternatives ------------------------------------------------
 type Alternatives = [Alternative]
 -- AnnotatedType -----------------------------------------------
@@ -13,6 +15,7 @@ data AnnotatedType = AnnotatedType_AnnotatedType (Range) (Bool) (Type)
 type AnnotatedTypes = [AnnotatedType]
 -- Body --------------------------------------------------------
 data Body = Body_Body (Range) (ImportDeclarations) (Declarations)
+          | Body_Hole (Range) (Integer)
 -- Constructor -------------------------------------------------
 data Constructor = Constructor_Constructor (Range) (Name) (AnnotatedTypes)
                  | Constructor_Infix (Range) (AnnotatedType) (Name) (AnnotatedType)
@@ -30,6 +33,7 @@ data Declaration = Declaration_Class (Range) (ContextItems) (SimpleType) (MaybeD
                  | Declaration_Empty (Range)
                  | Declaration_Fixity (Range) (Fixity) (MaybeInt) (Names)
                  | Declaration_FunctionBindings (Range) (FunctionBindings)
+                 | Declaration_Hole (Range) (Integer)
                  | Declaration_Instance (Range) (ContextItems) (Name) (Types) (MaybeDeclarations)
                  | Declaration_Newtype (Range) (ContextItems) (SimpleType) (Constructor) (Names)
                  | Declaration_PatternBinding (Range) (Pattern) (RightHandSide)
@@ -50,12 +54,15 @@ data Expression = Expression_Case (Range) (Expression) (Alternatives)
                 | Expression_Constructor (Range) (Name)
                 | Expression_Do (Range) (Statements)
                 | Expression_Enum (Range) (Expression) (MaybeExpression) (MaybeExpression)
+                | Expression_Feedback (Range) (String) (Expression)
+                | Expression_Hole (Range) (Integer)
                 | Expression_If (Range) (Expression) (Expression) (Expression)
                 | Expression_InfixApplication (Range) (MaybeExpression) (Expression) (MaybeExpression)
                 | Expression_Lambda (Range) (Patterns) (Expression)
                 | Expression_Let (Range) (Declarations) (Expression)
                 | Expression_List (Range) (Expressions)
                 | Expression_Literal (Range) (Literal)
+                | Expression_MustUse (Range) (Expression)
                 | Expression_Negate (Range) (Expression)
                 | Expression_NegateFloat (Range) (Expression)
                 | Expression_NormalApplication (Range) (Expression) (Expressions)
@@ -76,7 +83,9 @@ data Fixity = Fixity_Infix (Range)
             | Fixity_Infixl (Range)
             | Fixity_Infixr (Range)
 -- FunctionBinding ---------------------------------------------
-data FunctionBinding = FunctionBinding_FunctionBinding (Range) (LeftHandSide) (RightHandSide)
+data FunctionBinding = FunctionBinding_Feedback (Range) (String) (FunctionBinding)
+                     | FunctionBinding_FunctionBinding (Range) (LeftHandSide) (RightHandSide)
+                     | FunctionBinding_Hole (Range) (Integer)
 -- FunctionBindings --------------------------------------------
 type FunctionBindings = [FunctionBinding]
 -- GuardedExpression -------------------------------------------
@@ -137,6 +146,7 @@ type Names = [Name]
 -- Pattern -----------------------------------------------------
 data Pattern = Pattern_As (Range) (Name) (Pattern)
              | Pattern_Constructor (Range) (Name) (Patterns)
+             | Pattern_Hole (Range) (Integer)
              | Pattern_InfixConstructor (Range) (Pattern) (Name) (Pattern)
              | Pattern_Irrefutable (Range) (Pattern)
              | Pattern_List (Range) (Patterns)

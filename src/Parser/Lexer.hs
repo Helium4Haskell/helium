@@ -13,59 +13,78 @@ module Parser.Lexer
     , module Parser.LexerMessage
     ) where
 
+
+import Main.Args
 import Parser.LexerMonad
 import Parser.LexerMessage
 import Parser.LexerToken
 import Text.ParserCombinators.Parsec.Pos
-import Utils.Utils(internalError)
+import Utils.Utils(internalError, hole)
 
-import Control.Monad(when)
+import Control.Monad(when, liftM)
 import Data.Char(ord)
 import Data.List(isPrefixOf)
 
-lexer :: String -> [Char] -> Either LexerError ([Token], [LexerWarning])
-lexer fileName input = runLexerMonad fileName (mainLexer input)
+lexer :: [Option] -> String -> [Char] -> Either LexerError ([Token], [LexerWarning])
+lexer opts fileName input = runLexerMonad opts fileName (mainLexer input)
 
-strategiesLexer :: String -> [Char] -> Either LexerError ([Token], [LexerWarning])
-strategiesLexer fileName input = 
-    case lexer fileName input of
+strategiesLexer :: [Option] -> String -> [Char] -> Either LexerError ([Token], [LexerWarning])
+strategiesLexer opts fileName input = 
+    case lexer opts fileName input of
         Left err -> Left err
         Right (tokens, warnings) -> Right (reserveStrategyNames tokens, warnings)
         
 type Lexer = [Char] -> LexerMonad [Token]
 
 mainLexer :: Lexer
-mainLexer [] = do
+mainLexer a =
+  do useTutor <- elem UseTutor `liftM` getOpts
+     mainLexer' useTutor a
+
+mainLexer' :: Bool -> Lexer
+mainLexer' _ [] = do
     checkBracketsAtEOF
     pos <- getPos
     return [(incSourceLine (setSourceColumn pos 0) 1, LexEOF)]
 
-mainLexer ('-':'-':cs) 
+mainLexer' _ ('-':'-':cs) 
     | not (nextCharSatisfy isSymbol rest) = do
         incPos (2 + length minuses)
         lexOneLineComment rest
     where
         (minuses, rest) = span (== '-') cs
-        
-mainLexer ('{':'-':cs) = do 
+
+mainLexer' useTutor ('{':'-':'#':' ':'M':'U':'S':'T':'U':'S':'E':' ':'#':'-':'}':cs) | useTutor = 
+   returnToken LexMustUse 15 mainLexer cs
+
+mainLexer' useTutor ('{':'-':'#':' ':'F':'C':cs) | useTutor = do 
+    pos <- getPos 
+    lexCaseFeedbackComment "" pos cs
+
+mainLexer' useTutor ('{':'-':'#':' ':'F':cs) | useTutor = do 
+    pos <- getPos 
+    incPos 5
+    lexFeedbackComment "" pos cs 
+
+mainLexer' _ ('{':'-':cs) = do 
     pos <- getPos 
     incPos 2
     lexMultiLineComment [pos] 0 cs 
         
-mainLexer input@('\'':_) = 
+mainLexer' _ input@('\'':_) = 
     lexChar input
 
-mainLexer input@('"':_) = 
+mainLexer' _ input@('"':_) = 
     lexString input
 
 -- warn if we see something like ".2"
-mainLexer ('.':c:cs) 
+mainLexer' _ ('.':c:cs) 
     | myIsDigit c = do
         pos <- getPos
         lexerWarning (LooksLikeFloatNoDigits (takeWhile myIsDigit (c:cs))) pos
         returnToken (LexVarSym ".") 1 mainLexer (c:cs)
         
-mainLexer input@(c:cs) 
+mainLexer' useTutor input@(c:cs) 
     | myIsLower c || c == '_' = -- variable or keyword
         lexName isLetter LexVar LexKeyword keywords input
     | myIsSpace c = do
@@ -75,11 +94,11 @@ mainLexer input@(c:cs)
         nextPos c 
         mainLexer cs        
     | myIsUpper c = -- constructor
-        lexName isLetter LexCon (internalError "Lexer" "mainLexer" "constructor") [] input
+        lexName isLetter LexCon (internalError "Lexer" "mainLexer'" "constructor") [] input
     | c == ':' = -- constructor operator
         lexName isSymbol LexConSym LexResConSym reservedConSyms input
     | isSymbol c = -- variable operator
-        lexName isSymbol LexVarSym LexResVarSym reservedVarSyms input
+        lexName isSymbol LexVarSym LexResVarSym (if useTutor then hole : reservedVarSyms else reservedVarSyms) input
     | c `elem` "([{" = do
         openBracket c
         returnToken (LexSpecial c) 1 mainLexer cs
@@ -269,6 +288,28 @@ lexMultiLineComment starts level input =
             lexerError UnterminatedComment (head starts)
             -- at end-of-file show the most recently opened comment
 
+lexFeedbackComment :: String -> SourcePos -> Lexer
+lexFeedbackComment feedback start input =
+    case input of 
+        '#':'-':'}':cs -> do
+           returnToken (LexFeedback (reverse feedback)) 
+                       (length feedback + 6) mainLexer cs
+        c:cs -> do
+            nextPos c            
+            lexFeedbackComment (c:feedback) start cs
+        [] -> 
+            lexerError UnterminatedComment start
+
+lexCaseFeedbackComment :: String -> SourcePos -> Lexer
+lexCaseFeedbackComment feedback start input =
+    case input of 
+        '#':'-':'}':cs -> do
+            returnToken (LexCaseFeedback (reverse feedback)) 0 mainLexer cs
+        c:cs -> do
+            -- nextPos c            
+            lexCaseFeedbackComment (c:feedback) start cs
+        [] -> 
+            lexerError UnterminatedComment start
 -----------------------------------------------------------
 -- Utility functions
 -----------------------------------------------------------

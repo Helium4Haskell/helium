@@ -55,7 +55,7 @@ parseOnlyImports fullName = do
                        ++ " (" ++ show ioError ++ ")"
             in throw message)
     
-    return $ case lexer fullName contents of
+    return $ case lexer [] fullName contents of
         Left _ -> []
         Right (tokens, _) ->
             case runHParser onlyImports fullName (layout tokens) False {- no EOF -} of
@@ -84,6 +84,7 @@ module_ = addRange $
         return (\r ->
             Module_Module r MaybeName_Nothing MaybeExports_Nothing b)
 
+
 onlyImports :: HParser [ImportDeclaration]
 onlyImports = 
     do
@@ -108,11 +109,15 @@ topdecls  ->  topdecl1 ";" ... ";" topdecln    (n>=0)
 -}
 
 body = addRange $
-    withBraces' $ \explicit -> 
-      do{ (is, ds) <- importsThenTopdecls explicit
-        ; let groupedDecls = CollectFunctionBindings.decls ds
-        ; return $ \r -> Body_Body r is groupedDecls
-        }
+      withBraces' $ \explicit -> 
+        do
+          lexHOLE
+          return (\r -> Body_Hole r 0)
+        <|>
+        do 
+          (is, ds) <- importsThenTopdecls explicit
+          let groupedDecls = CollectFunctionBindings.decls ds
+          return $ \r -> Body_Body r is groupedDecls
 
 importsThenTopdecls explicit =
     do
@@ -176,6 +181,14 @@ topdecl = addRange (
     <|>
     infixdecl
     ) 
+    <|> addRange (
+      do
+         lexHOLE
+         jb <- optionMaybe normalRhs
+         case jb  of
+            Just b ->  return $ \r -> Declaration_PatternBinding r (Pattern_Hole r (-1)) b
+            Nothing -> return $ \r -> Declaration_Hole r (-1)
+      )
     <|>
     decl
     <?> Texts.parserDeclaration
@@ -333,6 +346,17 @@ funlhs1 ->  varop pat10
 
 decl :: HParser Declaration
 decl = addRange (
+    do fb <- lexCaseFeedback
+       return $ \r -> Declaration_FunctionBindings r
+          [FunctionBinding_Feedback r fb $ FunctionBinding_Hole r 0]
+    <|>
+    do
+        lexHOLE
+        jb <- optionMaybe normalRhs
+        case jb  of
+           Just b ->  return $ \r -> Declaration_PatternBinding r (Pattern_Hole r (-1)) b
+           Nothing -> return $ \r -> Declaration_Hole r (-1)
+    <|>
     do 
         nr <- try (withRange var)
         decl1 nr
@@ -341,6 +365,9 @@ decl = addRange (
         pr <- try (withRange pat10)
         decl2 pr
     <|>
+    -- do
+    --     lexHOLE
+    --     return $ \r -> Declaration_Hole r (-1)
     do
         l <- funlhs
         b <- normalRhs
@@ -382,13 +409,13 @@ decl1 (n, nr) =
         (ps, rs) <- fmap unzip (many (withRange apat))
         let lr = if null rs then nr else mergeRanges nr (last rs)
         b <- normalRhs
-        return $ \r -> 
+        return $ \r ->
             if null rs then
                 Declaration_PatternBinding r (Pattern_Variable nr n) b
             else
                 Declaration_FunctionBindings r
-                    [FunctionBinding_FunctionBinding r 
-                        (LeftHandSide_Function lr n ps) b]                
+                    [FunctionBinding_FunctionBinding r
+                        (LeftHandSide_Function lr n ps) b]
 
 decl2 :: (Pattern, Range) -> HParser (Range -> Declaration)
 decl2 (p1, p1r) = 
@@ -477,15 +504,23 @@ gdexp equals = addRange $
         e <- exp_
         return $ \r -> GuardedExpression_GuardedExpression r g e
         
+
+-- exp_ = addRange (
+--    do
+--       feedback <- option Nothing (try $ lexFeedback >>= return . Just)
+--       e <- expOrg_
+--       return (maybe (const e) (\s -> \r -> Expression_Feedback r s e) feedback)
+--    ) <?> Texts.parserExpression
+
 {-
 exp     ->  exp0 "::" type  (expression type signature)  
          |  exp0  
 -}
 
 exp_ = addRange (
-    do 
-        e <- exp0
-        option (\_ -> e) $ 
+    do
+       e <- exp0
+       option (\_ -> e) $ 
             do 
                 lexCOLCOL
                 t <- contextAndType
@@ -614,6 +649,7 @@ fexp = addRange $
           else
             return $ \r -> Expression_NormalApplication r e es
 
+
 {-
 aexp    ->  var  (variable)  
          |  con
@@ -711,6 +747,20 @@ aexp = addRange (
     do
         n <- conid
         return $ \r -> Expression_Constructor r n
+    <|>
+    do 
+        lexHOLE
+        return $ \r -> Expression_Hole r (-1)
+    <|>
+    do
+        feedback <- lexFeedback
+        e        <- aexp
+        return $ \r -> Expression_Feedback r feedback e
+    <|>
+    do
+        lexeme LexMustUse
+        e        <- aexp
+        return $ \r -> Expression_MustUse r e
     <|>
     do 
         l <- literal
@@ -834,7 +884,8 @@ alts    ->  "{" alt1 ";" ... ";" altn "}" (n>=0)
 
 alts :: HParser Alternatives
 alts =
-    withLayout alt
+  do as <- withLayout alt
+     return $ CollectFunctionBindings.mergeCaseFeedback as
 
 {-
 alt -> pat rhs
@@ -842,6 +893,13 @@ alt -> pat rhs
 
 alt :: HParser Alternative
 alt = addRange $
+    do fb <- lexCaseFeedback
+       return $ \r -> Alternative_Feedback r fb $ Alternative_Hole r (-1)
+    <|>
+    do
+       lexHOLE
+       return $ \r -> Alternative_Hole r (-1)
+    <|>
     do
         p <- pat
         b <- caseRhs
@@ -985,7 +1043,14 @@ apat = addRange (
         lexTILDE
         p <- apat
         return $ \r -> Pattern_Irrefutable r p
-    ) <?> Texts.parserPattern
+    ) <|> phole <?> Texts.parserPattern
+
+phole :: HParser Pattern
+phole = addRange (
+    do
+        lexHOLE
+        return $ \r -> Pattern_Hole r (-1)
+    )
 
 {-
 scontext -> class | "(" class1 "," ... "," classn ")"    (n>=0)

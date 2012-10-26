@@ -10,12 +10,14 @@
 
 module StaticAnalysis.Messages.StaticErrors where
 
+
 import Syntax.UHA_Syntax
 import Syntax.UHA_Range
 import StaticAnalysis.Messages.Messages
 import Data.List        (nub, intersperse, sort, partition)
 import Data.Maybe       (fromJust)
 import Utils.Utils       (commaList, internalError, maxInt)
+
 import Top.Types
 
 -------------------------------------------------------------

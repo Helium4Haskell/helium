@@ -29,6 +29,7 @@ imports {
 import Top.Types
 import Top.Solver.Greedy
 import Top.Solver
+
 import StaticAnalysis.Miscellaneous.TypeConstraints
 import StaticAnalysis.Miscellaneous.ConstraintInfo
 import StaticAnalysis.Directives.TS_Syntax
@@ -42,6 +43,7 @@ import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
 import StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
 import Utils.Utils (internalError)
 import qualified Syntax.UHA_Pretty as PP
+
 import qualified Data.Map as M
 }
 

@@ -11,6 +11,7 @@
 module StaticAnalysis.Messages.KindErrors where
 
 import Top.Types
+
 import Syntax.UHA_Syntax (Range, Type)
 import Text.PrettyPrint.Leijen (Doc)
 import StaticAnalysis.Messages.Messages

@@ -3,6 +3,7 @@
 -- UUAGC 0.9.40.3 (StaticAnalysis/Directives/TS_Apply.ag)
 module StaticAnalysis.Directives.TS_Apply where
 
+
 import Syntax.UHA_Syntax
 import StaticAnalysis.Miscellaneous.TypeConstraints
 import StaticAnalysis.Miscellaneous.ConstraintInfo
@@ -18,6 +19,7 @@ import Parser.Parser (exp_)
 import Parser.Lexer (strategiesLexer)
 import Parser.ParseLibrary (runHParser)
 import qualified Parser.ResolveOperators as ResolveOperators
+
 import qualified Data.Map as M
 import StaticAnalysis.Directives.TS_Attributes
 import StaticAnalysis.Directives.TS_CoreSyntax
@@ -42,7 +44,7 @@ matchInformation importEnvironment typingStrategy =
       
 expressionParser :: OperatorTable -> String -> Expression
 expressionParser operatorTable string = 
-    case strategiesLexer "TS_Apply" string of
+    case strategiesLexer [] "TS_Apply" string of
         Left _ -> intErr
         Right (tokens, _) ->
             case runHParser exp_ "TS_Apply" tokens True {- wait for EOF -} of

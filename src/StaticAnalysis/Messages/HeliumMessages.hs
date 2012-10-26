@@ -11,6 +11,7 @@
 
 module StaticAnalysis.Messages.HeliumMessages where
 
+
 import StaticAnalysis.Messages.Messages 
 import Top.Types
 import qualified Text.PrettyPrint.Leijen as PPrint

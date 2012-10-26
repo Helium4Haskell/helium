@@ -1,7 +1,9 @@
 module TextHint.ConfigFile (Config, readConfig) where
 
+
 import Data.Char
---  import Control.Monad
+import Control.Monad
+
 -- import qualified Data.Map as Map
 import Text.ParserCombinators.Parsec
 --import Data.Either

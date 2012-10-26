@@ -7,7 +7,7 @@ import Syntax.UHA_Utils (showNameAsOperator)
 import StaticAnalysis.Miscellaneous.TypeConversion
 import Syntax.UHA_Syntax
 import Data.List
-import Utils.Utils (internalError)
+import Utils.Utils (internalError, hole)
 }
 
 {
@@ -104,6 +104,9 @@ SEM MaybeDeclarations
     --  declarations             : Declarations
 
 SEM Declaration                                  {- *** -}
+    | Hole              loc.oneLineTree = OneLineText hole
+    --  range                    : Range
+    --  id                       : Integer
     | Type              loc.oneLineTree = intErr "Declaration" "type"
     --  range                    : Range
     --  simpletype               : SimpleType
@@ -180,6 +183,9 @@ SEM Expression                                   {- *** -}
     | Variable          loc.oneLineTree = OneLineNode [@name.oneLineTree]
     --  range                    : Range
     --  name                     : Name
+    | Hole              loc.oneLineTree = OneLineNode [OneLineText hole]
+    --  range                    : Range
+    --  id                       : Integer
     | Constructor       loc.oneLineTree = OneLineNode [@name.oneLineTree]
     --  range                    : Range
     --  name                     : Name
@@ -347,6 +353,7 @@ SEM Qualifier
     --  range                    : Range
 
 SEM Alternative
+    | Hole              loc.oneLineTree = OneLineText hole
     | Alternative       loc.oneLineTree =
             OneLineNode [ @pattern.oneLineTree, @righthandside.oneLineTree " -> " ]
     --  range                    : Range
@@ -363,6 +370,7 @@ SEM GuardedExpression -- ToDo: or _Guard?
     --  expression               : Expression
 
 SEM FunctionBinding
+    | Hole              loc.oneLineTree = OneLineText hole
     | FunctionBinding   loc.oneLineTree =
             OneLineNode [@lefthandside.oneLineTree, @righthandside.oneLineTree " = " ]
     --  range                    : Range
@@ -414,6 +422,8 @@ SEM RightHandSide
 -- ------------------------------------------------------------------------
 
 SEM Pattern
+    | Hole   
+             loc.oneLineTree = OneLineText hole
     | Literal
              loc.oneLineTree = @literal.oneLineTree
     --  range                    : Range

@@ -12,10 +12,12 @@ module StaticAnalysis.Messages.TypeErrors where
 
 import StaticAnalysis.Messages.Messages
 import Top.Types
+
 import Data.List       (union, partition)
 import Syntax.UHA_Syntax (Range, Name)
 import Syntax.UHA_Range  (getNameRange)
 import StaticAnalysis.Miscellaneous.UHA_Source
+
 import Data.Maybe
 
 type TypeErrors = [TypeError]
