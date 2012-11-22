@@ -2,7 +2,6 @@ module TextHint.ConfigFile (Config, readConfig) where
 
 
 import Data.Char
-import Control.Monad
 
 -- import qualified Data.Map as Map
 import Text.ParserCombinators.Parsec
@@ -21,7 +20,7 @@ ident = do c  <- letter <|> char '_'
         <?> "identifier"
  
 comment :: Parser ()
-comment = do char '#'
+comment = do _ <- char '#'
              skipMany (noneOf "\r\n")
         <?> "comment"
 
@@ -35,9 +34,9 @@ eol = do oneOf "\n\r"
 item :: Parser (String, String)
 item = do key <- ident
           skipMany space
-          char '='
+          _ <- char '='
           value <- many (noneOf "\n\r")
-          newline
+          _ <- newline
           return (key, strip value)
     where strip = reverse . dropWhile isSpace . reverse . dropWhile isSpace 
 
@@ -46,8 +45,8 @@ line = do skipMany space
           try (comment >> return Nothing) <|> (item >>= return . Just)
           
 file :: Parser [(String, String)]
-file = do lines <- many line
-          return (catMaybes lines)
+file = do ls <- many line
+          return (catMaybes ls)
 
 readConfig :: SourceName -> IO Config
 readConfig name = do{ result <- parseFromFile file name
