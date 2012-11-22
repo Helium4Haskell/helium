@@ -34,10 +34,15 @@ import Main.Args
 
 
 -- Constants for configuration files
+configFilename :: String
 configFilename = ".hint.conf" 
+basepathKey    :: String
 basepathKey    = "basepath"
+temppathKey    :: String
 temppathKey    = "temppath"
+unknown        :: String
 unknown        = "<unknown>"
+passToHelium   :: [String]
 passToHelium   = ["overloadingon", "loggingon", "host", "port",
                   "lvmpaths", "additionalheliumparameters"]
 
@@ -87,7 +92,7 @@ extractOptions ((k,v):xs) =
       rest
    where
      rest = extractOptions xs
-     tfm k = case k of 
+     tfm x = case x of 
                "overloadingon" -> if v == "false" then
                                     show NoOverloading
                                   else
@@ -163,7 +168,7 @@ main = do
             return initialState{ compOptions = addStandardLVMPath basepath configOptions }
     
     -- Enter read-eval-print loop
-    loop stateAfterLoad
+    _ <- loop stateAfterLoad
 
     return ()
 
@@ -218,7 +223,7 @@ processCommand cmd rest state =
         
 cmdSystem :: String -> State -> IO State
 cmdSystem command state = do       
-    system command
+    _ <- system command
     return state
 
 ------------------------
@@ -391,6 +396,7 @@ compileModule fileName options state = do
     setPreviousInvocation heliumInvocation outputFilePath
     execCompileModule heliumInvocation outputFilePath
 
+verbose :: String -> Bool
 verbose = isInfixOf "--verbose" 
 
 execCompileModule :: String -> String -> IO (Bool, String)
@@ -416,7 +422,7 @@ executeModule :: String -> State -> IO ()
 executeModule fileName state = do
     let invocation = "\"" ++ binDir state ++ "lvmrun\" " ++ lvmOptionsFilter (compOptions state) ++ " \""++ fileName ++ "\""
     -- putStrLn invocation
-    sys invocation
+    _ <- sys invocation
     return ()
 
 removeLVM :: State -> IO ()
@@ -433,7 +439,8 @@ expressionModule expression state =
         Just name -> [ "import " ++ name ]
     ++ [ interpreterMain ++ " = " ++ expression ]
     )
-
+    
+sys :: String -> IO ExitCode
 sys s = do
     -- putStrLn ("System:" ++ s)
     system s
@@ -452,32 +459,32 @@ removeEvidence =
   where
     firstState :: [String] -> [String]
     firstState [] = []
-    firstState (line:lines)
+    firstState (line:ls)
         | "Compiling" `isPrefixOf` line && 
                 (internalModule ++ ".hs") `isSuffixOf` line =
-            interpreterState [] lines
+            interpreterState [] ls
         | "Compiling" `isPrefixOf` line =
-            line : otherModuleState lines
+            line : otherModuleState ls
         | "is up to date" `isSuffixOf` line =
-            firstState lines
+            firstState ls
         | otherwise =
-            line : firstState lines
+            line : firstState ls
     
     interpreterState soFar [] = soFar
-    interpreterState soFar (line:lines) 
+    interpreterState soFar (line:ls) 
         | "Compilation successful" `isPrefixOf` line =
-            firstState lines
+            firstState ls
         | "Compilation" `isPrefixOf` line = 
-            map removePositions soFar ++ firstState lines
+            map removePositions soFar ++ firstState ls
         | otherwise =
-            interpreterState (soFar ++ [line]) lines
+            interpreterState (soFar ++ [line]) ls
 
     otherModuleState [] = []
-    otherModuleState (line:lines)  
+    otherModuleState (line:ls)  
         | "Compilation" `isPrefixOf` line = 
-            line : firstState lines
+            line : firstState ls
         | otherwise = 
-            line : otherModuleState lines
+            line : otherModuleState ls
     
     removePositions line = 
         let (upToColon, rest) = span (/= ':') line
@@ -522,10 +529,11 @@ splitFilePath filePath =
 
 -- As copied from Logger.hs
 
+escapeChar :: Char
 escapeChar = '\\';
 
 alertESCAPABLES :: String
-alertESCAPABLES     = ['"', escapeChar]
+alertESCAPABLES = ['"', escapeChar]
 
 -- Escapes all characters from the list escapables
 escape :: [Char] -> String -> String
