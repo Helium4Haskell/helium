@@ -8,12 +8,14 @@
 
 module CodeGeneration.CoreToLvm ( coreToLvm ) where
 
+import Lvm.Core.Expr  (CoreModule)
 import Lvm.Common.Id  (newNameSupply)
 import Lvm.Core.ToAsm (coreToAsm)         -- enriched lambda expressions (Core) to Asm
 import Lvm.Asm.ToLvm  (asmToLvm)          -- translate Asm to instructions
 import Lvm.Asm.Inline (asmInline)       -- optimize Asm (ie. inlining)
 import Lvm.Write      (lvmWriteFile)
 
+coreToLvm :: [Char] -> CoreModule -> IO ()
 coreToLvm source coremod = do
     nameSupply  <- newNameSupply
 

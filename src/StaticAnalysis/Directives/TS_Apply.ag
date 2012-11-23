@@ -52,14 +52,14 @@ matchInformation importEnvironment typingStrategy =
       _ -> []
       
 expressionParser :: OperatorTable -> String -> Expression
-expressionParser operatorTable string = 
+expressionParser theOperatorTable string = 
     case strategiesLexer [] "TS_Apply" string of
         Left _ -> intErr
         Right (tokens, _) ->
             case runHParser exp_ "TS_Apply" tokens True {- wait for EOF -} of
                 Left _  -> intErr
                 Right expression -> 
-                    ResolveOperators.expression operatorTable expression
+                    ResolveOperators.expression theOperatorTable expression
   where
     intErr = internalError "TS_Apply.ag" "n/a" ("unparsable expression: "++show string)
 }
@@ -94,14 +94,14 @@ SEM Core_TypingStrategy
            . specialSubst  = let conclusionVar = case snd (last @typerule.judgements) of
                                                     TVar i -> Just i
                                                     _      -> Nothing
-                                 find i | Just i == conclusionVar = [ (i, getType @lhs.infoTuple) ]
-                                        | otherwise               = [ (i, getType infoTuple)
-                                                                    | (s1, TVar j) <- @typerule.judgements
-                                                                    , i == j
-                                                                    , (s2,infoTuple) <- @lhs.metaVariableTable
-                                                                    , s1 == s2
-                                                                    ]
-                             in concatMap find @specialTV
+                                 find' i | Just i == conclusionVar = [ (i, getType @lhs.infoTuple) ]
+                                         | otherwise               = [ (i, getType infoTuple)
+                                                                     | (s1, TVar j) <- @typerule.judgements
+                                                                     , i == j
+                                                                     , (s2,infoTuple) <- @lhs.metaVariableTable
+                                                                     , s1 == s2
+                                                                     ]
+                             in concatMap find' @specialTV
                              
 
 ATTR Core_TypeRule Core_Judgements Core_Judgement Core_UserStatements Core_UserStatement 

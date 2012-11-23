@@ -11,6 +11,7 @@ module Main.PhaseCodeGenerator(phaseCodeGenerator) where
 import Lvm.Core.Expr(CoreModule)
 import Main.CompileUtils
 import CodeGeneration.CoreToLvm(coreToLvm)
+import qualified Control.Exception as CE (catch, IOException)
 
 phaseCodeGenerator :: String -> CoreModule -> [Option] -> IO ()
 phaseCodeGenerator fullName coreModule options = do
@@ -19,9 +20,9 @@ phaseCodeGenerator fullName coreModule options = do
     let (path, baseName, _) = splitFilePath fullName
         fullNameNoExt = combinePathAndFile path baseName
 
-    catch (coreToLvm fullNameNoExt coreModule) (\ioError -> do
+    CE.catch (coreToLvm fullNameNoExt coreModule) (\ioErr -> do
         putStrLn ("Could not write to file '" ++
-            fullNameNoExt ++ ".lvm" ++ "'" ++ show ioError);
+            fullNameNoExt ++ ".lvm" ++ "'" ++ show (ioErr :: CE.IOException));
         exitWith (ExitFailure 1)
      )
     

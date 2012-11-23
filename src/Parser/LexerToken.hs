@@ -61,7 +61,8 @@ instance Show Lexeme where
         LexFeedback f       -> "Feedback \"" ++ f ++ "\""
         LexCaseFeedback f   -> "Case feedback \"" ++ f ++ "\""
         LexMustUse          -> "Must Use"
-
+        LexHole             -> "Hole"
+        
         LexInsertedOpenBrace  -> Texts.parserInsertedLBrace 
         LexInsertedCloseBrace -> Texts.parserEndOfBlock
         LexInsertedSemicolon  -> Texts.parserNextInBlock

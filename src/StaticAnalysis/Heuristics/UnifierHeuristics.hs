@@ -35,12 +35,12 @@ unifierVertex =
        Nothing -> return Nothing
        Just (unifier, _) -> 
           do neighbours <- edgesFrom (VertexId unifier)
-             let (unifiersUnsorted, contexts) = partition p (map f neighbours)
-                 f (EdgeId (VertexId v1) (VertexId v2) _, info)
-                    | v1 == unifier = (v2, info)
-                    | otherwise     = (v1, info)
-                 p (_, info) = 
-                    case isUnifier info of
+             let (unifiersUnsorted, contexts) = partition p (map f' neighbours)
+                 f' (EdgeId (VertexId v1) (VertexId v2) _, info')
+                     | v1 == unifier = (v2, info')
+                     | otherwise     = (v1, info')
+                 p (_, info') = 
+                    case isUnifier info' of
                        Nothing    -> False
                        Just (u,_) -> u == unifier
 
@@ -59,8 +59,8 @@ unifierVertex =
                       do let unifierTypes = map fromJust unifierMTypes 
                              contextTypes = map fromJust contextMTypes
                              indices =
-                                let p i = unifiableList synonyms (deleteIndex i unifierTypes ++ contextTypes)
-                                in filter p [0..length unifierTypes - 1]
+                                let predicate i = unifiableList synonyms (deleteIndex i unifierTypes ++ contextTypes)
+                                in filter predicate [0..length unifierTypes - 1]
 
                          case indices of
                             -- if there are exactly two branches that cause the problem, then report
@@ -68,8 +68,8 @@ unifierVertex =
                             [index1, index2] | not (unifiableList synonyms (unifierTypes ++ contextTypes)) ->
                                let (v1, info1) = unifiers !! index1
                                    (v2, info2) = unifiers !! index2
-                                   edges   = [ edge | (edge@(EdgeId (VertexId va) (VertexId vb) i), _) <- neighbours, p va vb, this==i ] 
-                                   p va vb =  (va == unifier && vb `elem` [v1, v2])
+                                   edges   = [ edge | (edge@(EdgeId (VertexId va) (VertexId vb) i), _) <- neighbours, predicate va vb, this==i ] 
+                                   predicate va vb =  (va == unifier && vb `elem` [v1, v2])
                                            || (vb == unifier && va `elem` [v1, v2])
                                    newInfo = typeErrorForUnifier (TVar v1, TVar v2) (info1, info2) 
                                in return $ Just 

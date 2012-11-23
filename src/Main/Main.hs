@@ -10,15 +10,13 @@ module Main where
 import Main.Compile(compile)
 import Parser.Parser(parseOnlyImports)
 import Control.Monad
-import Data.List(nub, elemIndex, isSuffixOf, intersperse, intercalate)
+import Data.List(nub, elemIndex, isSuffixOf, intercalate)
 import Data.Maybe(fromJust)
 import Lvm.Path(getLvmPath, splitPath)
 import System.Directory(doesFileExist, getModificationTime)
 import Main.Args
 import Main.CompileUtils
 import Data.IORef
-import System.Environment
--- import Utils
 
 main :: IO ()
 main = do
@@ -76,7 +74,7 @@ main = do
 -}
 
     doneRef <- newIORef []
-    make filePath' newFullName lvmPath [moduleName] options doneRef
+    _ <- make filePath' newFullName lvmPath [moduleName] options doneRef
     return ()
 
 {-
@@ -143,8 +141,8 @@ make basedir fullName lvmPath chain options doneRef =
             
             -- If this module imports a module earlier in the chain, there is a cycle
             case circularityCheck imports chain of
-                Just cycle -> do
-                    putStrLn $ "Circular import chain: \n\t" ++ showImportChain cycle ++ "\n"
+                Just cycl -> do
+                    putStrLn $ "Circular import chain: \n\t" ++ showImportChain cycl ++ "\n"
                     exitWith (ExitFailure 1)
                 Nothing -> 
                     return ()

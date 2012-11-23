@@ -21,7 +21,6 @@ module Main.Args
     , hasAlertOption
     ) where
 
-import System.Environment
 import System.Exit
 import Main.Version
 import Data.Maybe
@@ -95,6 +94,7 @@ processHeliumArgs args = do
           return (options, maybeFiles)
 
 -- Sometimes you know the options are correct. Then you can use this.
+argsToOptions :: [String] -> [Option]
 argsToOptions args =
     let
       (opts,_,_) = getOpt Permute (optionDescription True True) args
@@ -119,6 +119,7 @@ basicProcessArgs defaults args =
               let argument = if null arguments then Nothing else Just (head arguments)
               return (simpleOptions, argument)
 
+optionDescription :: Bool -> Bool -> [OptDescr Option]
 optionDescription moreOptions experimentalOptions =
       -- Main options
       [ Option "b" [flag BuildOne]                      (NoArg BuildOne) "recompile module even if up to date"
@@ -205,6 +206,7 @@ data Option
 stripShow :: String -> String
 stripShow name = tail (tail (takeWhile ('=' /=) name))
 
+flag :: Option -> String
 flag = stripShow . show
 
 instance Show Option where

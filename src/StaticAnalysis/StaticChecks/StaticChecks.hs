@@ -66,23 +66,24 @@ changeOfScope names unboundNames namesInScope =
       )
       
 uniqueAppearance :: Ord a => [a] -> ([a],[[a]])
-uniqueAppearance = Prelude.foldr insert ([],[]) . group . sort
-   where insert [x] (as,bs) = (x:as,bs)
-         insert xs  (as,bs) = (as,xs:bs)
-         
+uniqueAppearance = Prelude.foldr myInsert ([],[]) . group . sort
+   where myInsert [x] (as,bs) = (x:as,bs)
+         myInsert xs  (as,bs) = (as,xs:bs)
+       
+nextUnique :: Num a => a -> (a, a)         
 nextUnique n = (n+1, n)
 
 
 checkType :: M.Map Name Int -> Names -> Type -> [Error]
-checkType typeConstructors namesInScope t =
+checkType theTypeConstructors namesInScope t =
     let (f, xs) = walkSpine t
-        xsErrors = concatMap (checkType typeConstructors namesInScope) xs
+        xsErrors = concatMap (checkType theTypeConstructors namesInScope) xs
     in
         xsErrors
         ++
         case f of
             Type_Constructor r c ->
-                checkKind c typeConstructors (length xs) namesInScope
+                checkKind c theTypeConstructors (length xs) namesInScope
                 ++ [ TupleTooBig r
                    | let nameAsString = show c
                    , isTupleConstructor nameAsString
@@ -102,10 +103,10 @@ walkSpine t =
         Type_Variable _ _ -> (t, [])
         Type_Constructor _ _ -> (t, [])
         Type_Application _ _ f xs ->
-            let (t, ys) = walkSpine f
-            in (t, ys ++ xs)
-        Type_Parenthesized _ t -> walkSpine t
-        Type_Qualified _ _ t -> walkSpine t
+            let (t', ys) = walkSpine f
+            in (t', ys ++ xs)
+        Type_Parenthesized _ t' -> walkSpine t'
+        Type_Qualified _ _ t' -> walkSpine t'
         _ -> internalError "StaticAnalysis" "walkSpine" "unexpected type"
 
 checkKind :: Name -> M.Map Name Int -> Int -> Names -> [Error]
@@ -120,13 +121,13 @@ checkKind tycon@(Name_Special _ _ ('(':commas)) _ useArity _ = -- !!!Name
                  0 -> 0  -- ()
                  n -> n + 1 -- (,) (,,) ...
 
-checkKind tycon typeConstructors useArity namesInScope =
-    case M.lookup tycon typeConstructors of
+checkKind tycon theTypeConstructors useArity namesInScope =
+    case M.lookup tycon theTypeConstructors of
         Nothing ->
             let hint = [ "Constructor "++show (show tycon)++" cannot be used in a type"
                        | tycon `elem` namesInScope
                        ]
-            in [ Undefined TypeConstructor tycon (M.keys typeConstructors) hint ]
+            in [ Undefined TypeConstructor tycon (M.keys theTypeConstructors) hint ]
         Just defArity ->
             if useArity /= defArity then
                 [ ArityMismatch TypeConstructor tycon defArity useArity ]
@@ -226,6 +227,8 @@ isSimplePattern pattern =
       _ -> False
 
 
+
+checkExport :: Entity -> Name -> [Name] -> [Error]
 checkExport entity name inScope =
     makeUndefined entity
         (if name `elem` inScope then
@@ -235,6 +238,7 @@ checkExport entity name inScope =
         )
         (nubBy equalName inScope)
 
+equalName :: Name -> Name -> Bool       
 equalName x y =
     getNameName x == getNameName y        
 

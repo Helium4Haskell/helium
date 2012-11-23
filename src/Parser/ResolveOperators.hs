@@ -8,7 +8,6 @@ import Syntax.UHA_Utils
 import Syntax.UHA_Syntax 
 import Syntax.UHA_Range
 import Parser.OperatorTable
-import Data.Char
 import Utils.Utils
 import StaticAnalysis.Messages.Messages
 
@@ -45,8 +44,9 @@ resolveOperators opTable m =
     let (errs, newModule) = sem_Module m opTable []
     in (newModule, errs)
 
+expression :: OperatorTable -> Expression -> Expression    
 expression opTable e = -- !!! errors ignored
-    let (errs, newE) = sem_Expression e opTable [] 
+    let (_, newE) = sem_Expression e opTable [] 
     in newE
 
 operatorsFromModule :: Module -> OperatorTable
@@ -55,6 +55,7 @@ operatorsFromModule m =
   where
     declToOps (Declaration_Fixity _ f (MaybeInt_Just p) os) = 
         [ (o, (p, fixityToAssoc f)) | o <- os ]
+    declToOps _ = error "not supported"    
     fixityToAssoc f = case f of
         Fixity_Infixl _ -> AssocLeft
         Fixity_Infixr _ -> AssocRight
@@ -66,6 +67,7 @@ collectInfixdecls
     where
         isInfixdecl (Declaration_Fixity _ _ _ _) = True
         isInfixdecl _ = False
+collectInfixdecls (Module_Module _ _ _ (Body_Hole _ _)) = error "not supported"        
 
             
 type State expr = 
@@ -105,14 +107,14 @@ resolvePattern opTable ps = resolve opTable ps (getOp, applyMinus, applyBinary) 
     getOp _ = Nothing
     
     applyMinus :: Name -> Pattern -> Pattern
-    applyMinus n p@(Pattern_Literal r l) 
+    applyMinus n (Pattern_Literal r l) 
         | n == intUnaryMinusName =
             Pattern_Negate (mergeRanges (getNameRange n) r) l
         | n == floatUnaryMinusName = 
             Pattern_NegateFloat (mergeRanges (getNameRange n) r) l            
         | otherwise = internalError 
                 "ResolveOperators.hs" "resolvePattern.applyMinus" "unknown unary operator"        
-    applyMinus n _ =
+    applyMinus _ _ =
         internalError "ResolveOperators" "resolvePattern" "in patterns unary minus is only allowed in front of literals"         
         
     applyBinary :: Name -> Pattern -> Pattern -> Pattern
@@ -132,35 +134,36 @@ resolve ::
 resolve opTable exprs fs@(getOp, applyMinus, applyBinary) state = 
     case exprs of 
         [] -> cleanup state
-        (expr:exprs) ->
+        (expr:restExprs) ->
             let newState = 
                     case getOp expr of
                         Nothing   -> pushExpr expr state
                         Just name -> pushOp opTable name state
             in
-                resolve opTable exprs fs newState
+                resolve opTable restExprs fs newState
   where
 --    popOp :: State expr -> State expr
-    popOp (op:ops, exprs, errs) 
+    popOp (op:ops, restExprs, errs) 
         | isUnary op =
-            case exprs of
+            case restExprs of
                 (expr:rest) -> (ops, applyMinus op expr : rest, errs)
                 _ -> internalError "ResolveOperators" "popOp" "1"
         | otherwise =
-            case exprs of
+            case restExprs of
                 (expr2:expr1:rest) -> (ops, applyBinary op expr1 expr2 : rest, errs)
                 _ -> internalError "ResolveOperators" "popOp" "2"
+    popOp _ = error "pattern match failure in Parser.ResolveOperators.popOp"            
 --    pushOp :: Name -> State expr -> State expr
-    pushOp opTable op state@(top:ops, exprs, errs) =
-        case strongerOp opTable top op of
-            Left True -> pushOp opTable op (popOp state)
-            Left False -> (op:top:ops, exprs, errs)
-            Right err -> (op:top:ops, exprs, err : errs) -- arbitrary choice
-    pushOp _ op ([], exprs, errs) =
-        ([op], exprs, errs)
+    pushOp operTable op theState@(top:ops, restExprs, errs) =
+        case strongerOp operTable top op of
+            Left True -> pushOp operTable op (popOp theState)
+            Left False -> (op:top:ops, restExprs, errs)
+            Right err -> (op:top:ops, restExprs, err : errs) -- arbitrary choice
+    pushOp _ op ([], restExprs, errs) =
+        ([op], restExprs, errs)
 --    cleanup :: State expr -> expr
-    cleanup state@(_:_, _, _)       = cleanup (popOp state)
-    cleanup state@(_, [expr], errs) = (expr, errs)
+    cleanup theState@(_:_, _, _)       = cleanup (popOp theState)
+    cleanup (_, [expr], errs) = (expr, errs)
     cleanup _ = internalError "ResolveOperators" "cleanup" "invalid state"
     
 

@@ -50,8 +50,8 @@ letrec_ :: [CoreDecl] -> Expr -> Expr
 letrec_ bs e = 
     Let 
         (Rec 
-            [ Bind id expr
-            | DeclValue { declName = id, valueValue = expr } <- bs
+            [ Bind ident expr
+            | DeclValue { declName = ident, valueValue = expr } <- bs
             ]
         ) 
         e
@@ -86,6 +86,7 @@ cons x xs = Con (ConId consId) `app_` x `app_` xs
 nil :: Expr
 nil = Con (ConId nilId)
 
+nilId, consId, trueId, guardId :: Id 
 ( nilId : consId :  trueId :  guardId : []) =
    map idFromString ["[]", ":", "True", "guard$"]
 

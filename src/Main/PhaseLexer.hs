@@ -36,10 +36,10 @@ filterLooksLikeFloatWarnings warnings tokens =
    case tokens of
       (_, LexKeyword "module"):_ ->
          case dropWhile test tokens of
-            (sp, _):_ -> filter (pred sp) warnings
+            (sp, _):_ -> filter (predicate sp) warnings
             _         -> warnings
       _               -> warnings
  where
    test (_, t) = t /= LexKeyword "where"
-   pred sp1 (LexerWarning sp2 w) = 
+   predicate sp1 (LexerWarning sp2 w) = 
       not (sp2 <= sp1 && isLooksLikeFloatWarningInfo w)

@@ -61,6 +61,7 @@ getHolmesName altname (Name_Identifier range _ name) = getFrom range altname ++ 
 getHolmesName altname (Name_Operator   range _ name) = getFrom range altname ++ "." ++ name
 getHolmesName altname (Name_Special    range _ name) = getFrom range altname ++ "." ++ name
 
+getFrom :: Range -> [Char] -> [Char]
 getFrom range altname = if result == "" then altname else result
         where
              result = snd $ checkRange range
@@ -135,14 +136,14 @@ patternVars p = case p of
     Pattern_Literal _ _                 -> []
     Pattern_Variable _ n                -> [n]
     Pattern_Constructor _ _ ps          -> concatMap patternVars ps
-    Pattern_Parenthesized _ p           -> patternVars p
+    Pattern_Parenthesized _ pat         -> patternVars pat
     Pattern_InfixConstructor _ p1 _ p2  -> concatMap patternVars [p1, p2]
     Pattern_List _ ps                   -> concatMap patternVars  ps
     Pattern_Tuple _ ps                  -> concatMap patternVars  ps
     Pattern_Negate _ _                  -> []
-    Pattern_As _ n p                    -> n : patternVars p
+    Pattern_As _ n pat                  -> n : patternVars pat
     Pattern_Wildcard _                  -> []
-    Pattern_Irrefutable _ p             -> patternVars p
+    Pattern_Irrefutable _ pat           -> patternVars pat
     Pattern_NegateFloat _ _             -> []
     _ -> internalError "UHA_Utils" "patternVars" "unsupported kind of pattern"
     

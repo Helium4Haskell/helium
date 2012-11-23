@@ -34,8 +34,8 @@ import Parser.OperatorTable
 import Utils.Utils (internalError)
 
 parseTypingStrategies :: OperatorTable -> String -> [Token] -> Either ParseError TypingStrategies
-parseTypingStrategies operatorTable filename tokens = 
-   runHParser (many parseTypingStrategy) filename tokens True {- wait for EOF -}
+parseTypingStrategies operatorTable filename toks = 
+   runHParser (many parseTypingStrategy) filename toks True {- wait for EOF -}
   
   where
 
@@ -76,8 +76,8 @@ parseTypingStrategies operatorTable filename tokens =
       <|>
       do -- constraint set of meta-variable
          lexCONSTRAINTS         
-         name <- varid
-         return (UserStatement_MetaVariableConstraints name)
+         theName <- varid
+         return (UserStatement_MetaVariableConstraints theName)
       <|> 
       parseUserConstraint
       
@@ -111,8 +111,8 @@ special =  do lexCOL    ; return (nameFromString ":")
 judgementToSimpleJudgement :: Judgement -> SimpleJudgement
 judgementToSimpleJudgement judgement = 
    case judgement of
-      Judgement_Judgement (Expression_Variable _ name) tp 
-         -> SimpleJudgement_SimpleJudgement name tp
+      Judgement_Judgement (Expression_Variable _ theName) tp 
+         -> SimpleJudgement_SimpleJudgement theName tp
       Judgement_Judgement expression                   _ 
          -> internalError "TS_Parser.hs" "judgementToSimpleJudgement" 
                ("the following expression should have been a meta-variable: "++showExpression expression)

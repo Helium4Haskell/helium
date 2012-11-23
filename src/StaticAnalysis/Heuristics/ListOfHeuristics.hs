@@ -83,13 +83,13 @@ constraintFromUser path =
    SelectorList ("Constraints from .type file", helper path)
 
  where
-   helper path edges = 
+   helper path' edges = 
       let
-          bestEdge = rec_ path
+          bestEdge = rec_ path'
           edgeNrs  = [ i | (EdgeId _ _ i, _) <- edges ]
  
-          rec_ path =
-             case path of
+          rec_ path'' =
+             case path'' of
                 x :|: y -> f min (rec_ x) (rec_ y)
                 x :+: y -> f max (rec_ x) (rec_ y)
                 Step (EdgeId _ _ cNR, info) |  isJust (maybeUserConstraint info) && cNR `elem` edgeNrs 
@@ -107,8 +107,8 @@ constraintFromUser path =
             [] -> return Nothing
             (edgeID, info):_ -> 
                let (groupID, number) = maybe (0, 0) id (maybeUserConstraint info)
-                   otherEdges = let p info =
-                                       case maybeUserConstraint info of
+                   otherEdges = let p info' =
+                                       case maybeUserConstraint info' of
                                           Just (a, b) -> a == groupID && b > number
                                           Nothing     -> False
                                 in [ e | (e, i) <- edges, p i ] -- perhaps over all edges!

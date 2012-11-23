@@ -20,6 +20,7 @@ import Main.PhaseDesugarer
 import Main.PhaseCodeGenerator
 import Main.CompileUtils
 import Utils.Utils
+import qualified Control.Exception as CE (catch, IOException)
 import Data.IORef
 import StaticAnalysis.Messages.StaticErrors(errorsLogCode)
 
@@ -114,11 +115,11 @@ compile basedir fullName options lvmPath doneModules =
 
 safeReadFile :: String -> IO String
 safeReadFile fullName = 
-    catch 
+    CE.catch 
         (readFile fullName)
-        (\ioError -> 
+        (\ioErr -> 
             let message = "Unable to read file " ++ show fullName 
-                       ++ " (" ++ show ioError ++ ")"
+                       ++ " (" ++ show (ioErr :: CE.IOException) ++ ")"
             in throw message)
 
 stopCompilingIf :: Bool -> IO ()

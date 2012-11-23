@@ -34,8 +34,11 @@ Simplified:
 -}
 
 import Control.Monad
+import qualified Control.Exception as CE (catch, IOException)
 import Parser.ParseLibrary hiding (satisfy)
+import Data.Functor.Identity (Identity)
 import Text.ParserCombinators.Parsec
+import Text.Parsec.Prim (ParsecT)
 import Parser.Lexer
 import Parser.LayoutRule
 import qualified Utils.Texts as Texts
@@ -49,16 +52,16 @@ import Utils.Utils
 
 parseOnlyImports :: String -> IO [String]
 parseOnlyImports fullName = do
-    contents <- catch (readFile fullName)
-        (\ioError -> 
+    contents <- CE.catch (readFile fullName)
+        (\ioErr -> 
             let message = "Unable to read file " ++ show fullName 
-                       ++ " (" ++ show ioError ++ ")"
+                       ++ " (" ++ show (ioErr :: CE.IOException) ++ ")"
             in throw message)
     
     return $ case lexer [] fullName contents of
         Left _ -> []
-        Right (tokens, _) ->
-            case runHParser onlyImports fullName (layout tokens) False {- no EOF -} of
+        Right (toks, _) ->
+            case runHParser onlyImports fullName (layout toks) False {- no EOF -} of
                 Left _ -> []
                 Right imports -> 
                     map stringFromImportDeclaration imports
@@ -89,7 +92,7 @@ onlyImports :: HParser [ImportDeclaration]
 onlyImports = 
     do
         lexMODULE
-        modid
+        _ <- modid
         let _ = MaybeExports_Nothing
         lexWHERE
         lexLBRACE <|> lexINSERTED_LBRACE
@@ -108,6 +111,7 @@ body  ->  "{" topdecls "}"
 topdecls  ->  topdecl1 ";" ... ";" topdecln    (n>=0)  
 -}
 
+body :: HParser Body
 body = addRange $
       withBraces' $ \explicit -> 
         do
@@ -119,6 +123,8 @@ body = addRange $
           let groupedDecls = CollectFunctionBindings.decls ds
           return $ \r -> Body_Body r is groupedDecls
 
+importsThenTopdecls :: Bool -> 
+  ParsecT [Token] SourcePos Identity ([ImportDeclaration], [Declaration])
 importsThenTopdecls explicit =
     do
         is <- many (do { i <- impdecl
@@ -471,6 +477,7 @@ rhs1    -> ( "where" decls )?
 gdexp   ->  "|" exp0 "=" exp
 -}
 
+normalRhs, caseRhs :: HParser RightHandSide
 normalRhs = rhs lexASG
 caseRhs   = rhs lexRARROW
 
@@ -517,6 +524,7 @@ exp     ->  exp0 "::" type  (expression type signature)
          |  exp0  
 -}
 
+exp_ :: ParsecT [Token] SourcePos Identity Expression
 exp_ = addRange (
     do
        e <- exp0
@@ -568,10 +576,11 @@ exprChain =
             do
                 o <- operatorAsExpression False
                 u <- maybeUnaryMinus
-                e <- exp10
-                return ([o] ++ u ++ [e])
+                e' <- exp10
+                return ([o] ++ u ++ [e'])
         return (e:es)
 
+maybeUnaryMinus :: ParsecT [Token] SourcePos Identity [Expression]
 maybeUnaryMinus = 
     option [] (fmap (:[]) unaryMinus)  
     <?> Texts.parserExpression
@@ -954,8 +963,8 @@ pat = addRange $
         ps <- fmap concat $ many $
             do
                 o <- do { n <- conop; return (Pattern_Variable noRange n) }
-                u <- unaryMinusPat
-                return (o : u)
+                u' <- unaryMinusPat
+                return (o : u')
         return $ \_ -> Pattern_List noRange (u ++ ps)
         
 unaryMinusPat :: HParser [Pattern]
@@ -1098,7 +1107,8 @@ btype = addRange (
         ts <- many1 atype
         return $ \r -> case ts of
             [t] -> t
-            (t:ts) -> Type_Application r True t ts
+            (t:ts') -> Type_Application r True t ts'
+            []  -> error "Pattern match failure in Parser.Parser.btype"
     ) <?> Texts.parserType
 
 {-
@@ -1143,6 +1153,7 @@ annotatedType p = addRange $
         t <- p
         return (\r -> AnnotatedType_AnnotatedType r False t)
 
+literal :: ParsecT [Token] SourcePos Identity Literal
 literal = addRange (
     do
         i <- lexInt
@@ -1161,6 +1172,7 @@ literal = addRange (
         return $ \r -> Literal_String r s
     ) <?> Texts.parserLiteral
 
+numericLiteral :: ParsecT [Token] SourcePos Identity Literal
 numericLiteral = addRange (
     do
         i <- lexInt

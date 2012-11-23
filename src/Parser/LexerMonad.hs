@@ -27,6 +27,8 @@ newtype LexerMonad a =
     LM ([Option] -> SourcePos -> [Bracket] -> 
         Either LexerError (a, [LexerWarning], SourcePos, [Bracket]))
 
+unLM :: LexerMonad t -> [Option] -> SourcePos -> [Bracket]
+          -> Either LexerError (t, [LexerWarning], SourcePos, [Bracket])
 unLM (LM x) = x
 
 bindLM :: LexerMonad a -> (a -> LexerMonad b) -> LexerMonad b
@@ -41,7 +43,7 @@ bindLM (LM f) g =
                         Right (b, warnings ++ moreWarnings, pos3, brackets3))
 
 returnLM :: a -> LexerMonad a
-returnLM x = LM (\opts pos brackets -> Right (x, [], pos, brackets))
+returnLM x = LM (\_ pos brackets -> Right (x, [], pos, brackets))
 
 instance Monad LexerMonad where
     (>>=) = bindLM

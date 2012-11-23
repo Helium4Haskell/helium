@@ -172,6 +172,7 @@ getExprRange (Expression_Enum               r _ _ _) = r
 getExprRange (Expression_Negate             r _    ) = r
 getExprRange (Expression_NegateFloat        r _    ) = r
 getExprRange (Expression_Feedback           r _ _  ) = r
+getExprRange (Expression_MustUse            _ _    ) = error "not supported"
 
 getRHSRange :: RightHandSide -> Range
 getRHSRange (RightHandSide_Expression r _ _) = r
@@ -198,7 +199,9 @@ getAlternativeRange :: Alternative -> Range
 getAlternativeRange alternative = case alternative of
    Alternative_Alternative r _ _ -> r
    Alternative_Empty r           -> r
-
+   Alternative_Feedback _ _ _    -> error "not supported"
+   Alternative_Hole _ _          -> error "not supported"
+                     
 getLHSRange :: LeftHandSide -> Range
 getLHSRange lhs = case lhs of
    LeftHandSide_Function r _ _      -> r
@@ -208,7 +211,9 @@ getLHSRange lhs = case lhs of
 getFBRange :: FunctionBinding -> Range
 getFBRange fb = case fb of
    FunctionBinding_FunctionBinding r _ _ -> r
-        
+   FunctionBinding_Feedback _ _ _        -> error "not supported"
+   FunctionBinding_Hole _ _              -> error "not supported"
+                     
 getDeclarationRange :: Declaration -> Range
 getDeclarationRange decl = case decl of
    Declaration_Type r _ _           -> r
@@ -227,7 +232,8 @@ getDeclarationRange decl = case decl of
 getBodyRange :: Body -> Range
 getBodyRange body = case body of
    Body_Body r _ _ -> r
-
+   Body_Hole _ _   -> error "not supported"
+   
 getTypeRange :: Type -> Range
 getTypeRange tp = case tp of
    Type_Application r _ _ _ -> r

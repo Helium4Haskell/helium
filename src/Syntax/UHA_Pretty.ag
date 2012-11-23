@@ -12,20 +12,28 @@ import Utils.Utils (internalError, hole)
 }
 
 {
+intErr :: String -> String -> a
 intErr = internalError "UHA_Pretty"
 
+opt :: Maybe Doc -> Doc
 opt = maybe empty id
 
+parensIf, backQuotesIf :: Bool -> Doc -> Doc
 parensIf     p  n  = if p then parens n else n
 backQuotesIf p  n  = if p then text "`" <> n <> text "`" else n
+
+parensIfList :: [Bool] -> [Doc] -> [Doc]
 parensIfList ps ns = map (uncurry parensIf) (zip ps ns)
 
+tupled1 :: [Doc] -> Doc
 tupled1 []  = empty
 tupled1 xs  = tupled xs
 
+tupled2 :: [Doc] -> Doc
 tupled2 []  = empty
 tupled2 xs  = tupledUnit xs
 
+tupledUnit :: [Doc] -> Doc
 tupledUnit [x] = x
 tupledUnit xs  = tupled xs
 

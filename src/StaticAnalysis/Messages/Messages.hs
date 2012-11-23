@@ -128,11 +128,11 @@ ordinal b i
             [ "first", "second", "third", "fourth", "fifth", "sixth","seventh"
             , "eighth", "ninth", "tenth"
             ]
-        extension i
-            | i > 3 && i < 20 = "th"
-            | i `mod` 10 == 1 = "st"
-            | i `mod` 10 == 2 = "nd"
-            | i `mod` 10 == 3 = "rd"
+        extension j
+            | j > 3 && i < 20 = "th"
+            | j `mod` 10 == 1 = "st"
+            | j `mod` 10 == 2 = "nd"
+            | j `mod` 10 == 3 = "rd"
             | otherwise       = "th"
     
 showNumber :: Int -> String

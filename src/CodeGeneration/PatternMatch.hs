@@ -28,7 +28,9 @@ patternsToCore' (np:nps) continue nr =
     
 patternToCore :: (Id, Pattern) -> Core.Expr -> Core.Expr
 patternToCore np continue = fst (patternToCore' np continue 0)
-    
+
+
+withNr :: a -> b -> (b, a)
 withNr nr e = (e, nr)
 
 patternToCore' :: (Id, Pattern) -> Core.Expr -> Int -> (Core.Expr, Int)
@@ -206,11 +208,12 @@ nextClauseAlternative :: Core.Alt
 nextClauseAlternative =
     Core.Alt Core.PatDefault (Core.Var nextClauseId)
 
+wildcardId, nextClauseId :: Id
 ( wildcardId :  nextClauseId : [] ) = map idFromString ["_", "nextClause$"] 
 
 case_ :: Id -> [Core.Alt] -> Core.Expr
-case_ id alts = 
+case_ ident alts = 
     Core.Let 
-        (Core.Strict (Core.Bind id (Core.Var id)))      -- let! id = id in
-        (Core.Match id (alts++[nextClauseAlternative])) -- match id { alt; ...; alt; _ -> _nextClause }
+        (Core.Strict (Core.Bind ident (Core.Var ident)))      -- let! id = id in
+        (Core.Match ident (alts++[nextClauseAlternative]))    -- match id { alt; ...; alt; _ -> _nextClause }
     

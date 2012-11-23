@@ -15,11 +15,10 @@ import Control.Monad
 import System.Environment
 import Data.Char
 import Data.Maybe
-import Data.List
 import Main.Args
 import System.IO
 import Main.Version
-
+import qualified Control.Exception as CE (catch, IOException)
 
 {-# NOTINLINE logger #-}
 
@@ -58,7 +57,7 @@ debug s loggerDEBUGMODE = when loggerDEBUGMODE (putStrLn s)
 -- Make sure that options that contain a space are quoted with double quotes.
 -- And all double quotes in the options are escaped.
 unwordsQuoted :: [String] -> String
-unwordsQuoted words = unwords (map (quote . escape alertESCAPABLES) words)
+unwordsQuoted wrds = unwords (map (quote . escape alertESCAPABLES) wrds)
  where
    quote s = if ' ' `elem` s then "\"" ++ s ++ "\"" else s -- Not efficient, but balanced.
 
@@ -102,11 +101,15 @@ logger logcode maybeSources options =
      reallyLog   = EnableLogging `elem` options -- We use that the presence of an alert adds EnableLogging in Options.hs
      hostName    = fromMaybe loggerDEFAULTHOST (hostFromOptions options)
      portNumber  = fromMaybe loggerDEFAULTPORT (portFromOptions options)
+     handlerDef :: CE.IOException -> IO String
+     handlerDef _  = return loggerDEFAULTNAME
+     handlerTerm :: CE.IOException -> IO String
+     handlerTerm _ = return loggerTERMINATOR
    in
      if reallyLog then
        do
          debug (hostName ++ ":" ++ show portNumber) debugLogger
-         username     <- getEnv loggerUSERNAME `catch` (\_ -> return loggerDEFAULTNAME)
+         username     <- getEnv loggerUSERNAME `CE.catch` handlerDef
          optionString <- getArgs
          sources      <- case maybeSources of 
              Nothing -> 
@@ -116,7 +119,7 @@ logger logcode maybeSources options =
                         allFiles   = allHsFiles ++ map toTypeFile allHsFiles
                     xs <- mapM (getContentOfFile debugLogger) allFiles
                     return (concat (loggerSEPARATOR:xs)++loggerTERMINATOR) 
-                      `catch` (\_ -> return loggerTERMINATOR)
+                      `CE.catch` handlerTerm
          {- putStr (normalizeName username ++ 
                         (loggerADMINSEPARATOR : normalize logcode) ++ 
                         (loggerADMINSEPARATOR : normalize version) ++
@@ -151,8 +154,10 @@ getContentOfFile loggerDEBUGMODE name =
              ++ "\n"                
              ++ loggerSEPARATOR 
              )
- `catch`
-    (\_ -> return "")
+ `CE.catch` handler
+ where
+    handler :: CE.IOException -> IO String 
+    handler _ = return ""
     
 -- isInterpreterModule :: Maybe ([String],String) -> Bool
 -- isInterpreterModule Nothing = False
@@ -165,10 +170,10 @@ sendLogString hostName portNr message loggerDEBUGMODE = withSocketsDo (rec_ 0)
              handle <- connectTo hostName (PortNumber (fromIntegral portNr))
              hSetBuffering handle (BlockBuffering (Just 1024))
              sendToAndFlush handle message loggerDEBUGMODE
-           `catch`       
+           `CE.catch`       
               \exception -> 
                  if i+1 >= loggerTRIES 
-                   then debug ( "Could not make a connection: no send (" ++ show exception ++ ")" ) loggerDEBUGMODE
+                   then debug ( "Could not make a connection: no send (" ++ show (exception :: CE.IOException) ++ ")" ) loggerDEBUGMODE
                    else do debug ( "Could not make a connection: sleeping (" ++ show exception ++ ")" ) loggerDEBUGMODE
                            threadDelay loggerDELAY
                            rec_ (i+1)
@@ -211,16 +216,16 @@ sendToAndFlush handle msg loggerDEBUGMODE = do
   handshake <- getRetriedLine 0
   debug ("Received a handshake: " ++ show handshake) loggerDEBUGMODE
 --  hClose handle
-  where
-    getRetriedLine i = 
-      hGetLine handle
-      `catch`
-        \_ -> 
-          if i+1 >= loggerTRIES 
+  where    
+    getRetriedLine i = hGetLine handle `CE.catch` (handler i) 
+    handler :: Int -> CE.IOException -> IO String 
+    handler j _ =  
+          if j+1 >= loggerTRIES 
             then do
                    debug "Did not receive anything back" loggerDEBUGMODE
                    return ""
             else do 
                    debug "Waiting to try again" loggerDEBUGMODE
                    threadDelay loggerDELAY
-                   getRetriedLine (i+1)    
+                   getRetriedLine (j+1)    
+                   

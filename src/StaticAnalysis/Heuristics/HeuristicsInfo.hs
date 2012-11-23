@@ -149,9 +149,9 @@ instance IsUnifier ConstraintInfo where
          t:_ -> Just t
 
 makeUnifier :: Name -> String -> M.Map Name Tp -> InfoTree -> Property
-makeUnifier name location environment infoTree = 
+makeUnifier name location' environment infoTree = 
    let unifier = maybe (-1) (head . ftv) (M.lookup name environment)
-       tuple   = ("variable of "++location, attribute (findVariableInPat name infoTree), "variable")
+       tuple   = ("variable of "++location', attribute (findVariableInPat name infoTree), "variable")
    in Unifier unifier tuple
  
 specialApplicationTypeError :: (Bool,Bool) -> Int -> OneLineTree -> (Tp,Tp) -> Range -> ConstraintInfo -> ConstraintInfo
@@ -195,9 +195,9 @@ specialUnifierTypeError (t1, t2) (info1, info2) =
                    , "type"      >:> MessageType (toTpScheme t2)
                    ]
        description = descriptionOfSource source
-       (loc1, localInfo, descr1) = snd (fromJust (isUnifier info1))
+       (loc1, localInfo', descr1) = snd (fromJust (isUnifier info1))
        (_   ,_         , descr2) = snd (fromJust (isUnifier info2))
-       source = self localInfo
+       source = self localInfo'
        (source1, source2) = 
           let f (src, msrc) = maybeAddLocation (maybe src id msrc)
           in (f (sources info1), f (sources info2))

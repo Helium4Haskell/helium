@@ -77,7 +77,8 @@ parseWithAttributes xs =
                            '@' : rest3 -> Right begin : Left (MetaVarAttribute variableName fieldName) : parseWithAttributes rest3
                            _ -> Right (begin++"@"++variableName++"."++fieldName) : parseWithAttributes as
                   _ -> Right (begin++"@"++variableName) : parseWithAttributes as
-
+         _ -> error "error in StaticAnalysis.Directives.parseWithAttributes"
+         
 findAttributes :: String -> [Attribute]
 findAttributes s = [ a | Left a <- parseWithAttributes s ]
 

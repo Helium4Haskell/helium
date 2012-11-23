@@ -69,6 +69,7 @@ instance HasMessage Error where
       CannotDerive name _         -> [getNameRange name]
       TupleTooBig r               -> [r]
 
+sensiblySimilar :: Name -> Names -> [Name]   
 sensiblySimilar name inScope = 
    let
       similars = nub (findSimilar name inScope)

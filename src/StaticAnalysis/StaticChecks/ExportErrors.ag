@@ -46,6 +46,8 @@ ATTR MaybeExports Exports Export
     ]                    
     
 {
+
+checkExport :: Entity -> Name -> [Name] -> [Error]
 checkExport entity name inScope =
     makeUndefined entity
         (if name `elem` inScope then
@@ -55,6 +57,7 @@ checkExport entity name inScope =
         )
         (nubBy equalName inScope)
 
+equalName :: Name -> Name -> Bool       
 equalName x y =
     getNameName x == getNameName y        
 }

@@ -26,10 +26,10 @@ phaseTypingStrategies fullName combinedEnv typeSignatures options
         let (path, baseName, _) = splitFilePath fullName
             fullNameNoExt       = combinePathAndFile path baseName            
         in do enterNewPhase "Type inference directives" options
-              (typingStrategies, typingStrategiesDecls) <-
+              (theTypingStrategies, typingStrategiesDecls) <-
                  readTypingStrategiesFromFile options (fullNameNoExt ++ ".type")        
                             (addToTypeEnvironment (M.fromList typeSignatures) combinedEnv)
               return 
-                 ( addTypingStrategies typingStrategies combinedEnv
+                 ( addTypingStrategies theTypingStrategies combinedEnv
                  , typingStrategiesDecls
                  )              

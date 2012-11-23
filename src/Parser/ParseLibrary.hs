@@ -10,7 +10,8 @@ module Parser.ParseLibrary where
 
 import Text.ParserCombinators.Parsec hiding (satisfy)
 import Text.ParserCombinators.Parsec.Pos(newPos)
-
+import Data.Functor.Identity (Identity)
+import Text.Parsec.Prim (ParsecT)
 import Parser.Lexer
 import Utils.Utils (hole)
 import Syntax.UHA_Syntax(Name(..), Range(..), Position(..))
@@ -20,19 +21,22 @@ import qualified Utils.Texts as Texts
 type HParser a = GenParser Token SourcePos a
 
 runHParser :: HParser a -> FilePath -> [Token] -> Bool -> Either ParseError a
-runHParser p fname tokens withEOF =
+runHParser p fname theTokens withEOF =
     runParser 
         (if withEOF then waitForEOF p else p) 
         (newPos fname 0 0) 
         fname 
-        tokens
+        theTokens
 
+waitForEOF :: ParsecT [Token] SourcePos Identity b
+              -> ParsecT [Token] SourcePos Identity b        
 waitForEOF p
   = do{ x <- p
       ; lexeme LexEOF
       ; return x
       }
 
+tycls, tycon, tyvar, modid, varid, conid, consym, varsym :: ParsecT [Token] SourcePos Identity Name      
 tycls   = name   lexCon  <?> Texts.parserTypeClass
 tycon   = name   lexCon  <?> Texts.parserTypeConstructor
 tyvar   = name   lexVar  <?> Texts.parserTypeVariable
@@ -48,23 +52,28 @@ varsym  = opName (   lexVarSym
        <?> Texts.parserOperator
 
 -- var  ->  varid | ( varsym )  (variable)  
+var :: ParsecT [Token] SourcePos Identity Name
 var = varid <|> parens varsym
    <?> Texts.parserVariable
 
--- con  ->  conid | ( consym )  (constructor)  
+-- con  ->  conid | ( consym )  (constructor)
+con :: ParsecT [Token] SourcePos Identity Name
 con = conid <|> parens consym
    <?> Texts.parserVariable
 
 -- op  ->  varop | conop  (operator)  
 -- expanded for better parse errors
+op :: ParsecT [Token] SourcePos Identity Name
 op = varsym <|> consym <|> lexBACKQUOTEs (varid <|> conid) 
   <?> Texts.parserOperator
 
 -- varop  ->  varsym | `varid ` (variable operator)  
+varop :: ParsecT [Token] SourcePos Identity Name
 varop = varsym <|> lexBACKQUOTEs varid
      <?> Texts.parserOperator
         
 -- conop  ->  consym | `conid ` (constructor operator)  
+conop :: ParsecT [Token] SourcePos Identity Name
 conop = consym <|> lexBACKQUOTEs conid
      <?> Texts.parserOperator
 
@@ -92,22 +101,31 @@ addRange p =
 withRange :: HParser a -> HParser (a, Range)
 withRange p = addRange (do { x <- p; return (\r -> (x, r)); })
 
+sourcePosToPosition :: SourcePos -> Position
 sourcePosToPosition sourcePos =
     Position_Position 
         (sourceName sourcePos) 
         (sourceLine sourcePos)
         (sourceColumn sourcePos)
 
+lexBACKQUOTEs, brackets :: ParsecT [Token] SourcePos Identity a
+                 -> ParsecT [Token] SourcePos Identity a
 lexBACKQUOTEs = between lexBACKQUOTE lexBACKQUOTE
 brackets = between lexLBRACKET  lexRBRACKET 
 
+commas, commas1 :: ParsecT [Token] SourcePos Identity a
+          -> ParsecT [Token] SourcePos Identity [a]
 commas  p = p `sepBy`  lexCOMMA
 commas1 p = p `sepBy1` lexCOMMA
 
+
+
+lexINSERTED_SEMI, lexINSERTED_LBRACE, lexINSERTED_RBRACE:: HParser()
 lexINSERTED_SEMI     = lexeme LexInsertedSemicolon
 lexINSERTED_LBRACE   = lexeme LexInsertedOpenBrace
 lexINSERTED_RBRACE   = lexeme LexInsertedCloseBrace
 
+lexLBRACE, lexRBRACE, lexLPAREN, lexRPAREN, lexLBRACKET,lexRBRACKET, lexCOMMA, lexSEMI, lexBACKQUOTE :: HParser ()
 lexLBRACE   = lexeme (LexSpecial '{')
 lexRBRACE   = lexeme (LexSpecial '}')
 lexLPAREN   = lexeme (LexSpecial '(')
@@ -118,8 +136,11 @@ lexCOMMA    = lexeme (LexSpecial ',')
 lexSEMI     = lexeme (LexSpecial ';')
 lexBACKQUOTE = lexeme (LexSpecial '`')
 
+lexHOLE :: HParser () 
 lexHOLE     =  lexeme (LexResVarSym hole)
 
+
+lexASG, lexLARROW, lexRARROW, lexDARROW, lexBAR, lexMIN, lexMINDOT, lexBSLASH, lexAT, lexDOTDOT, lexTILDE :: HParser ()
 lexASG      = lexeme (LexResVarSym "=")
 lexLARROW   = lexeme (LexResVarSym "<-")
 lexRARROW   = lexeme (LexResVarSym "->")
@@ -132,8 +153,10 @@ lexAT       = lexeme (LexResVarSym "@")
 lexDOTDOT   = lexeme (LexResVarSym "..")
 lexTILDE    = lexeme (LexResVarSym "~")
 
+lexCOLCOL :: HParser ()
 lexCOLCOL   = lexeme (LexResConSym "::")
 
+lexCLASS, lexDATA, lexDERIVING, lexTYPE, lexLET, lexIN, lexDO, lexIF, lexTHEN, lexELSE, lexCASE, lexOF, lexMODULE, lexWHERE, lexIMPORT, lexHIDING, lexINFIX, lexINFIXL, lexINFIXR, lexUNDERSCORE :: HParser ()
 lexCLASS    = lexeme (LexKeyword "class")
 lexDATA     = lexeme (LexKeyword "data")
 lexDERIVING = lexeme (LexKeyword "deriving")
@@ -157,6 +180,7 @@ lexUNDERSCORE = lexeme (LexKeyword "_")
 
 
 -- Typing strategies
+lexPHASE, lexCONSTRAINTS, lexSIBLINGS, lexCOL, lexASGASG :: HParser ()
 lexPHASE       = lexeme (LexKeyword "phase")
 lexCONSTRAINTS = lexeme (LexKeyword "constraints")
 lexSIBLINGS    = lexeme (LexKeyword "siblings")
@@ -186,15 +210,22 @@ Expression_List <<unknown>,<unknown>>
 -- Extra parser combinators
 ----------------------------------------------------------------
 
+withLayout, withLayout1 ::ParsecT [Token] SourcePos Identity a
+                            -> ParsecT [Token] SourcePos Identity [a]
 withLayout p =
     withBraces (semiSepTerm p) (semiOrInsertedSemiSepTerm p)
 
 withLayout1 p =
     withBraces (semiSepTerm1 p) (semiOrInsertedSemiSepTerm1 p)
 
+withBraces' :: (Bool -> ParsecT [Token] SourcePos Identity a)
+                 -> ParsecT [Token] SourcePos Identity a
 withBraces' p = 
     withBraces (p True) (p False)
 
+withBraces :: ParsecT [Token] SourcePos Identity a
+                -> ParsecT [Token] SourcePos Identity a
+                -> ParsecT [Token] SourcePos Identity a
 withBraces p1 p2 =
     do
         lexLBRACE
@@ -208,12 +239,15 @@ withBraces p1 p2 =
         lexINSERTED_RBRACE
         return x
     
+semiSepTerm1, semiSepTerm, semiOrInsertedSemiSepTerm1, semiOrInsertedSemiSepTerm :: ParsecT [Token] SourcePos Identity a
+          -> ParsecT [Token] SourcePos Identity [a]
 semiSepTerm1 p = p `sepEndBy1` lexSEMI
 semiSepTerm  p = p `sepEndBy`  lexSEMI
-
 semiOrInsertedSemiSepTerm1 p = p `sepEndBy1` (lexINSERTED_SEMI <|> lexSEMI)
 semiOrInsertedSemiSepTerm  p = p `sepEndBy`  (lexINSERTED_SEMI <|> lexSEMI)
 
+parens, braces :: ParsecT [Token] SourcePos Identity a
+                    -> ParsecT [Token] SourcePos Identity a
 parens = between lexLPAREN lexRPAREN
 braces = between lexLBRACE lexRBRACE
 
@@ -222,59 +256,59 @@ braces = between lexLBRACE lexRBRACE
 ----------------------------------------------------------------
 
 lexeme :: Lexeme -> HParser ()
-lexeme lex
-  = satisfy (\lex' -> if (lex == lex') then Just () else Nothing) <?> show lex
+lexeme theLexeme
+  = satisfy (\lex' -> if (theLexeme == lex') then Just () else Nothing) <?> show theLexeme
 
 
 lexChar :: HParser String
 lexChar
-  = satisfy (\lex -> case lex of { LexChar c -> Just c; _ -> Nothing })
+  = satisfy (\lex' -> case lex' of { LexChar c -> Just c; _ -> Nothing })
 
 lexString :: HParser String
 lexString
-  = satisfy (\lex -> case lex of { LexString s -> Just s; _ -> Nothing })
+  = satisfy (\lex' -> case lex' of { LexString s -> Just s; _ -> Nothing })
 
 lexDouble :: HParser String
 lexDouble
-  = satisfy (\lex -> case lex of { LexFloat d -> Just d; _ -> Nothing })
+  = satisfy (\lex' -> case lex' of { LexFloat d -> Just d; _ -> Nothing })
 
 lexInt :: HParser String
 lexInt
-  = satisfy (\lex -> case lex of { LexInt i -> Just i; _ -> Nothing })
+  = satisfy (\lex' -> case lex' of { LexInt i -> Just i; _ -> Nothing })
 
 lexVar :: HParser String
 lexVar
-  = satisfy (\lex -> case lex of { LexVar s -> Just s; _ -> Nothing })
+  = satisfy (\lex' -> case lex' of { LexVar s -> Just s; _ -> Nothing })
                           
 lexCon :: HParser String
 lexCon
-  = satisfy (\lex -> case lex of { LexCon s -> Just s; _ -> Nothing })
+  = satisfy (\lex' -> case lex' of { LexCon s -> Just s; _ -> Nothing })
 
 lexVarSym :: HParser String
 lexVarSym
-  = satisfy (\lex -> case lex of { LexVarSym s -> Just s; _ -> Nothing })
+  = satisfy (\lex' -> case lex' of { LexVarSym s -> Just s; _ -> Nothing })
 
 lexConSym :: HParser String
 lexConSym
-  = satisfy (\lex -> case lex of { LexConSym s -> Just s; _ -> Nothing })
+  = satisfy (\lex' -> case lex' of { LexConSym s -> Just s; _ -> Nothing })
 
 lexFeedback :: HParser String
 lexFeedback
-  = satisfy (\lex -> case lex of { LexFeedback s -> Just s; other -> Nothing })
+  = satisfy (\lex' -> case lex' of { LexFeedback s -> Just s; _ -> Nothing })
 
 lexCaseFeedback :: HParser String
 lexCaseFeedback
-    = satisfy (\lex -> case lex of { LexCaseFeedback s -> Just s; other -> Nothing })
+    = satisfy (\lex' -> case lex' of { LexCaseFeedback s -> Just s; _ -> Nothing })
 
 satisfy :: (Lexeme -> Maybe a) -> HParser a
-satisfy pred
+satisfy predicate
   = tokenPrimEx
         showtok 
         nextpos 
-        (Just (\_ (pos,lex) _ _ -> incSourceColumn pos (lexemeLength lex)))
-        (\(_,lex) -> pred lex)
+        (Just (\_ (pos,lex') _ _ -> incSourceColumn pos (lexemeLength lex')))
+        (\(_,lex') -> predicate lex')
   where
-    showtok (_,lex)   = show lex
+    showtok (_,lex')   = show lex'
     nextpos _ _ ((pos,_):_)
        = pos
     nextpos pos _ []

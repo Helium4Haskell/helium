@@ -93,6 +93,8 @@ spreadFromType _        = Nothing
 
 infix 3 .==., .===., .::., .:::., !::!, !:::!, .<=., .<==., !<=!, !<==!
 
+lift :: Ord k => (a1 -> t1 -> t2 -> a) -> M.Map k a1
+                 -> M.Map k [(t, t1)] -> (t -> t2) -> ([a], M.Map k [(t, t1)])
 lift combinator = 
     \as bs cf -> 
        let constraints = concat (M.elems (M.intersectionWith f as bs))

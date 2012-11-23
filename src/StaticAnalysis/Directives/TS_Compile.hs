@@ -47,9 +47,9 @@ readTypingStrategiesFromFile options filename importEnvironment =
                     putStrLn "Parse error in typing strategy: " 
                     putStr . sortAndShowMessages $ [parseError]
                     exitWith (ExitFailure 1)
-                  Right typingStrategies -> 
+                  Right strategies -> 
 
-                     do let (errors, warnings) = analyseTypingStrategies typingStrategies importEnvironment
+                     do let (errors, warnings) = analyseTypingStrategies strategies importEnvironment
 
                         unless (null errors) $ 
                            do putStr . sortAndShowMessages $ errors
@@ -59,14 +59,14 @@ readTypingStrategiesFromFile options filename importEnvironment =
                            do putStrLn "\nWarnings in typing strategies:"
                               putStrLn . sortAndShowMessages $ warnings
 
-                        let number = length typingStrategies
+                        let number = length strategies
                         when (Args.Verbose `elem` options && number > 0) $
                            putStrLn ("   (" ++ 
                               (if number == 1
                                  then "1 strategy is included)"
                                  else show number ++ " strategies are included)")) 
 
-                        let coreTypingStrategies = map (typingStrategyToCore importEnvironment) typingStrategies
+                        let coreTypingStrategies = map (typingStrategyToCore importEnvironment) strategies
                         when (Args.DumpTypeDebug `elem` options) $
                            do putStrLn "Core typing strategies:"
                               mapM_ print coreTypingStrategies

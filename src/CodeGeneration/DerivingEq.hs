@@ -29,6 +29,7 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
   where
 
 -- Example: data X a b = C a b Int | D Char b
+eqFunction :: [UHA.Name] -> [UHA.Constructor] -> Expr
 eqFunction names constructors = 
     let 
         body = 
@@ -39,11 +40,13 @@ eqFunction names constructors =
     in
         foldr Lam body (map idFromName names ++ [fstArg, sndArg]) -- \a b $fstArg $sndArg ->
 
+fstArg, sndArg :: Id        
 [fstArg, sndArg] = map idFromString ["$fstArg", "$sndArg"] 
 
+makeAlt :: UHA.Constructor -> Alt
 makeAlt constructor =
         -- C $v0 $v1 $v2 -> ...
-        Alt (PatCon (ConId id) vs)
+        Alt (PatCon (ConId ident) vs)
             --             case $sndArg of
             --                  C $w0 $w1 $w2 -> ...
             --                      ?? $v0 $w0 &&
@@ -51,7 +54,7 @@ makeAlt constructor =
             --                      ?? $v2 $w2
             --                  _ -> False
             (Match sndArg 
-                [ Alt (PatCon (ConId id) ws)
+                [ Alt (PatCon (ConId ident) ws)
                       ( if null types then Con (ConId (idFromString "True"))
                         else
                             foldr1 andCore [ Ap (Ap (eqFunForType tp) (Var v)) (Var w)
@@ -61,12 +64,12 @@ makeAlt constructor =
                 , Alt PatDefault (Con (ConId (idFromString "False")))
                 ])
   where
-    (id, types) = nameAndTypes constructor
+    (ident, types) = nameAndTypes constructor
     vs = [ idFromString ("$v"++show i) | i <- [0..length types-1] ]
     ws = [ idFromString ("$w"++show i) | i <- [0..length types-1] ]
 {-  constructorToPat :: Id -> [UHA.Type] -> Pat
     constructorToPat id ts =
-        PatCon (ConId id) [ idFromNumber i | i <- [1..length ts] ] -}
+        PatCon (ConId ident) [ idFromNumber i | i <- [1..length ts] ] -}
     andCore x y = Ap (Ap (Var (idFromString "&&")) x) y
     
 nameAndTypes :: UHA.Constructor -> (Id, [UHA.Type])
@@ -78,14 +81,14 @@ nameAndTypes c =
     annotatedTypeToType :: UHA.AnnotatedType -> UHA.Type
     annotatedTypeToType (UHA.AnnotatedType_AnnotatedType _ _ t) = t
 
-idFromNumber :: Int -> Id
-idFromNumber i = idFromString ("v$" ++ show i)
+--idFromNumber :: Int -> Id
+--idFromNumber i = idFromString ("v$" ++ show i)
 
 eqFunForType :: UHA.Type -> Expr
 eqFunForType t = 
     case t of
         UHA.Type_Variable _ n             -> Var (idFromName n) 
-        UHA.Type_Constructor _ n         -> var ("$dictEq" ++ show n)
+        UHA.Type_Constructor _ n          -> var ("$dictEq" ++ show n)
         UHA.Type_Application _ _ f xs     -> foldl Ap (eqFunForType f) (map eqFunForType xs)
-        UHA.Type_Parenthesized _ t         -> eqFunForType  t
+        UHA.Type_Parenthesized _ ty       -> eqFunForType  ty
         _ -> internalError "DerivingEq" "eqFunForType" "unsupported type"

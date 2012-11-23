@@ -28,12 +28,13 @@ typeFromCustoms :: String -> [Custom] -> TpScheme
 typeFromCustoms n [] =
     internalError "CoreToImportEnv" "typeFromCustoms"
         ("function import without type: " ++ n)
-typeFromCustoms n ( CustomDecl (DeclKindCustom id) [CustomBytes bytes] : cs) 
-    | stringFromId id == "type" =
+typeFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : cs) 
+    | stringFromId ident == "type" =
         let string = filter (/= '!') (stringFromBytes bytes) 
         in makeTpSchemeFromType (parseFromString contextAndType string)
     | otherwise =
         typeFromCustoms n cs
+typeFromCustoms _ _ = error "Pattern match failure in ModuleSystem.CoreToImportEnv.typeFromCustoms"
 
 parseFromString :: HParser a -> String -> a
 parseFromString p string = 
@@ -74,16 +75,16 @@ arityFromCustoms n [] =
     internalError "CoreToImportEnv" "arityFromCustoms"
         ("type constructor import without kind: " ++ n)
 arityFromCustoms _ ( CustomInt arity : _ ) = arity
-arityFromCustoms _ ( CustomDecl (DeclKindCustom id) [CustomBytes bytes] : _ ) 
-    | stringFromId id == "kind" = 
+arityFromCustoms _ ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : _ ) 
+    | stringFromId ident == "kind" = 
         (length . filter ('*'==) . stringFromBytes) bytes - 1
         -- the number of stars minus 1 is the arity
 arityFromCustoms n (_:cs) = arityFromCustoms n cs
 
 makeOperatorTable :: Name -> [Custom] -> [(Name, (Int, Assoc))]
-makeOperatorTable op (CustomInt i : CustomBytes bs : _) =
+makeOperatorTable oper (CustomInt i : CustomBytes bs : _) =
     let
-        assoc =
+        associativity =
             case stringFromBytes bs of
                 "left"   -> AssocLeft
                 "right"  -> AssocRight
@@ -92,18 +93,18 @@ makeOperatorTable op (CustomInt i : CustomBytes bs : _) =
         
         intErr = internalError "CoreToImportEnv" "makeOperatorTable"
     in
-        if getNameName op == "-" then
-            -- special rule: unary minus has the assoc
+        if getNameName oper == "-" then
+            -- special rule: unary minus has the associativity
             -- and the priority of the infix operator -
-            [ (op, (i, assoc))
-            , (intUnaryMinusName, (i, assoc))
-            , (floatUnaryMinusName, (i, assoc))
+            [ (oper, (i, associativity))
+            , (intUnaryMinusName, (i, associativity))
+            , (floatUnaryMinusName, (i, associativity))
             ]
         else
-            [(op, (i, assoc))]
-makeOperatorTable op _ = 
+            [(oper, (i, associativity))]
+makeOperatorTable oper _ = 
     internalError "CoreToImportEnv" "makeOperatorTable"
-        ("infix decl missing priority or associativity: " ++ show op)
+        ("infix decl missing priority or associativity: " ++ show oper)
 
 makeImportName :: String -> Id -> Id -> Name
 makeImportName importedInMod importedFromMod n =
@@ -138,7 +139,6 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
            -- constructors
            DeclCon { declName    = n
                    , declAccess  = Imported{importModule = importedFromModId}
-                   , declArity   = arity
                    , declCustoms = cs
                    } ->
               addValueConstructor
@@ -148,10 +148,10 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
            -- type constructor import
            DeclCustom { declName    = n
                       , declAccess  = Imported{importModule = importedFromModId}
-                      , declKind    = DeclKindCustom id
+                      , declKind    = DeclKindCustom ident
                       , declCustoms = cs 
                       } 
-                      | stringFromId id == "data" ->
+                      | stringFromId ident == "data" ->
               addTypeConstructor
                  (makeImportName importedInModule importedFromModId n)
                  (arityFromCustoms (stringFromId n) cs)
@@ -160,28 +160,28 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
            -- important: a type synonym also introduces a new type constructor!
            DeclCustom { declName    = n
                       , declAccess  = Imported{importModule = importedFromModId}
-                      , declKind    = DeclKindCustom id
+                      , declKind    = DeclKindCustom ident
                       , declCustoms = cs
                       }
-                      | stringFromId id == "typedecl" ->
-              let name = makeImportName importedInModule importedFromModId n
+                      | stringFromId ident == "typedecl" ->
+              let typename = makeImportName importedInModule importedFromModId n
                   pair = typeSynFromCustoms (stringFromId n) cs
-              in addTypeSynonym name pair . addTypeConstructor name (fst pair)
+              in addTypeSynonym typename pair . addTypeConstructor typename (fst pair)
                              
            -- infix decls
            DeclCustom { declName    = n
-                      , declKind    = DeclKindCustom id
+                      , declKind    = DeclKindCustom ident
                       , declCustoms = cs
                       }
-                      | stringFromId id == "infix" ->
+                      | stringFromId ident == "infix" ->
               flip (foldr (uncurry addOperator)) (makeOperatorTable (nameFromId n) cs)
 
            -- typing strategies
            DeclCustom { declName    = _
-                      , declKind    = DeclKindCustom id
+                      , declKind    = DeclKindCustom ident
                       , declCustoms = cs
                       }
-                      | stringFromId id == "strategy" ->
+                      | stringFromId ident == "strategy" ->
               let (CustomDecl _  [CustomBytes bytes]) = head cs
                   text = stringFromBytes bytes
               in case reads text of 

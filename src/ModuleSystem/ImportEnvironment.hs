@@ -96,8 +96,8 @@ setOperatorTable new importenv = importenv {operatorTable = new}
 
 getOrderedTypeSynonyms :: ImportEnvironment -> OrderedTypeSynonyms
 getOrderedTypeSynonyms importEnvironment = 
-   let synonyms = let insert name = M.insert (show name)
-                  in M.foldWithKey insert M.empty (typeSynonyms importEnvironment)
+   let synonyms = let insertIt name = M.insert (show name)
+                  in M.foldWithKey insertIt M.empty (typeSynonyms importEnvironment)
        ordering = fst (getTypeSynonymOrdering synonyms)
    in (ordering, synonyms)
 
@@ -225,23 +225,23 @@ instance Show ImportEnvironment where
       unlines (concat [ fixities
                       , datatypes
                       , typesynonyms
-                      , valueConstructors
+                      , theValueConstructors
                       , functions
                       ])
     where
-    
        fixities =    
-          let sorted  = let cmp (name, (prio, assoc)) = (10 - prio, assoc, not (isOperatorName name), name)
+          let sorted  = let cmp (name, (priority, associativity)) = (10 - priority, associativity, not (isOperatorName name), name)
                         in sortBy (compare `on` cmp) (M.assocs ot)
               grouped = groupBy ((==) `on` snd) sorted
-              list = let f ((name, (prio, assoc)) : rest) =
+              list = let f ((name, (priority, associativity)) : rest) =
                             let names  = name : map fst rest 
-                                prefix = (case assoc of
+                                prefix = (case associativity of
                                              AssocRight -> "infixr"
                                              AssocLeft  -> "infixl"
                                              AssocNone  -> "infix "
-                                         )++" "++ show prio ++ " "
+                                         )++" "++ show priority ++ " "
                             in prefix ++ foldr1 (\x y -> x++", "++y) (map showNameAsOperator names)
+                         f [] = error "Pattern match failure in ModuleSystem.ImportEnvironment"   
                      in map f grouped          
           in showWithTitle "Fixity declarations" list
        
@@ -259,7 +259,7 @@ instance Show ImportEnvironment where
                             in unwords ("type" : showNameAsVariable n : map show tcons ++ ["=", show (g tcons)])               
           in showWithTitle "Type synonyms" list  
                  
-       valueConstructors =
+       theValueConstructors =
           let (xs, ys) = partition (isIdentifierName . fst) (M.assocs vcs)
               list     = map (\(n,t) -> showNameAsVariable n ++ " :: "++show t) (ys++xs)         
           in showWithTitle "Value constructors" list    
@@ -274,7 +274,8 @@ instance Show ImportEnvironment where
           | otherwise = (title++":") : map ("   "++) xs
        
 instance Ord Assoc where
-  x <= y = let f AssocLeft  = 0
+  x <= y = let f :: Assoc -> Int
+               f AssocLeft  = 0
                f AssocRight = 1
                f AssocNone  = 2
            in f x <= f y

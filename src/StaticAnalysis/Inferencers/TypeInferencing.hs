@@ -23,7 +23,7 @@ import Top.Ordering.Tree
 -- constraint solving
 
 import StaticAnalysis.Inferencers.SelectConstraintSolver (selectConstraintSolver)
-import Top.Solver (SolveResult(..), LogEntries, emptyResult, noLogEntries)
+import Top.Solver (SolveResult(..), LogEntries)
 import StaticAnalysis.Heuristics.HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
 import StaticAnalysis.Inferencers.BindingGroupAnalysis
 
@@ -165,10 +165,11 @@ changeOfScope names unboundNames namesInScope =
       )
       
 uniqueAppearance :: Ord a => [a] -> ([a],[[a]])
-uniqueAppearance = Prelude.foldr insert ([],[]) . group . sort
-   where insert [x] (as,bs) = (x:as,bs)
-         insert xs  (as,bs) = (as,xs:bs)
-         
+uniqueAppearance = Prelude.foldr myInsert ([],[]) . group . sort
+   where myInsert [x] (as,bs) = (x:as,bs)
+         myInsert xs  (as,bs) = (as,xs:bs)
+       
+nextUnique :: Num a => a -> (a, a)         
 nextUnique n = (n+1, n)
 
 

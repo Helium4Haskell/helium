@@ -17,7 +17,7 @@ import Text.PrettyPrint.Leijen (Doc)
 import StaticAnalysis.Messages.Messages
 import Data.List (union)
 import qualified Syntax.UHA_Pretty as PP
-import qualified Text.PrettyPrint.Leijen as PPrint
+-- import qualified Text.PrettyPrint.Leijen as PPrint
 
 type KindErrors = [KindError]
 data KindError  = MustBeStar Range String Doc Kind

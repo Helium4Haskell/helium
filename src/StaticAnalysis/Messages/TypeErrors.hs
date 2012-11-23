@@ -61,12 +61,12 @@ makeNotGeneralEnoughTypeError isAnnotation range source tpscheme1 tpscheme2 =
    in TypeError [range] [oneliner] table hints
    
 makeMissingConstraintTypeError :: Range -> Maybe UHA_Source -> TpScheme -> (Bool, Predicate) -> UHA_Source -> TypeError
-makeMissingConstraintTypeError range mSource scheme (original, pred) arisingFrom =
+makeMissingConstraintTypeError range mSource scheme (original, predicate) arisingFrom =
    let special  = if isJust mSource then "signature" else "annotation"
        oneliner = MessageOneLiner (MessageString ("Missing class constraint in type "++special))
        table    = maybe [] (\source -> ["function" <:> MessageOneLineTree (oneLinerSource source)]) mSource ++
                   [ (isJust mSource, MessageString "declared type", MessageType scheme)
-                  , "class constraint" <:> MessagePredicate pred
+                  , "class constraint" <:> MessagePredicate predicate
                   , "arising from"     >:> MessageOneLineTree (oneLinerSource arisingFrom)
                   ]
        hints    = [ ("hint", MessageString "add the class constraint to the type signature") | original ]

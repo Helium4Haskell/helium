@@ -59,7 +59,7 @@ type InputBDG     = (Bool, Int, Int, Monos, M.Map Name TpScheme, Maybe (Assumpti
 type OutputBDG    = (Assumptions, ConstraintSet, InheritedBDG, Int, Int, M.Map Name (Sigma Predicates))
 
 performBindingGroup :: InputBDG -> BindingGroups -> OutputBDG
-performBindingGroup (topLevel, currentChunk, uniqueChunk, monos, typeSignatures, chunkContext, unique) groups = 
+performBindingGroup (topLevel, currentChunk, uniqueChunk, monoTypes, typeSignatures, chunkContext, unique) groups = 
    variableDependencies 
 
    where   
@@ -82,7 +82,7 @@ performBindingGroup (topLevel, currentChunk, uniqueChunk, monos, typeSignatures,
         
 {-      monomorphicNames :: [Name]
         monomorphicNames = 
-           let initial = let f (e, a, _) = if any (`elem` ftv monos) (ftv $ map snd $ concat $ M.elems a)
+           let initial = let f (e, a, _) = if any (`elem` ftv monoTypes) (ftv $ map snd $ concat $ M.elems a)
                                              then M.keys e
                                              else []
                          in concatMap f groups
@@ -102,13 +102,13 @@ performBindingGroup (topLevel, currentChunk, uniqueChunk, monos, typeSignatures,
             initial = (noAssumptions, emptyTree, [], unique, M.empty)
           
             op (cnr, (e, a, c)) (aset, cset, mt, un, fm) =
-               let (cset1,e'   )  = (typeSignatures !:::! e) monos cinfoBindingGroupExplicitTypedBinding                
-                   (cset2,a'   )  = (typeSignatures .:::. a) (cinfoBindingGroupExplicit monos (M.keys e))
+               let (cset1,e'   )  = (typeSignatures !:::! e) monoTypes cinfoBindingGroupExplicitTypedBinding                
+                   (cset2,a'   )  = (typeSignatures .:::. a) (cinfoBindingGroupExplicit monoTypes (M.keys e))
                    (cset3,a''  )  = (e' .===. a')            cinfoSameBindingGroup
                    
                    implicits      = zip [un..] (M.assocs e')
                    implicitsFM    = M.fromList [ (name, SigmaVar sv) | (sv, (name, _)) <- implicits ]
-                   cset4          = genConstraints monos cinfoGeneralize implicits                   
+                   cset4          = genConstraints monoTypes cinfoGeneralize implicits                   
                    (cset5, aset') = (implicitsFM .<==. aset) cinfoBindingGroupImplicit
                                     
                    monomorphic    = not topLevel -- simplification: was 

@@ -12,7 +12,7 @@ import Syntax.UHA_Syntax
 import Main.Args
 import qualified Data.Map as M
 
-import StaticAnalysis.Miscellaneous.TypeConstraints
+-- import StaticAnalysis.Miscellaneous.TypeConstraints
 import Utils.Utils (internalError)
 import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
 import StaticAnalysis.Messages.KindErrors
@@ -70,8 +70,8 @@ getTypeVariables = filter p . M.keys
                   c:_ -> isLower c
 
 unexpected :: String -> KindError
-unexpected msg = 
-   internalError "KindInferencing.ag" "unexpected" ("unexpected kind error: "++msg)
+unexpected message = 
+   internalError "KindInferencing.ag" "unexpected" ("unexpected kind error: "++message)
 
 instance TypeConstraintInfo KindError
 instance PolyTypeConstraintInfo KindError

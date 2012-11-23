@@ -43,14 +43,14 @@ matchInformation importEnvironment typingStrategy =
       _ -> []
       
 expressionParser :: OperatorTable -> String -> Expression
-expressionParser operatorTable string = 
+expressionParser theOperatorTable string = 
     case strategiesLexer [] "TS_Apply" string of
         Left _ -> intErr
         Right (tokens, _) ->
             case runHParser exp_ "TS_Apply" tokens True {- wait for EOF -} of
                 Left _  -> intErr
                 Right expression -> 
-                    ResolveOperators.expression operatorTable expression
+                    ResolveOperators.expression theOperatorTable expression
   where
     intErr = internalError "TS_Apply.ag" "n/a" ("unparsable expression: "++show string)
 
@@ -304,14 +304,14 @@ sem_Core_TypingStrategy_TypingStrategy typeEnv_ typerule_ statements_ =
                   let conclusionVar = case snd (last _typeruleIjudgements) of
                                          TVar i -> Just i
                                          _      -> Nothing
-                      find i | Just i == conclusionVar = [ (i, getType _lhsIinfoTuple) ]
-                             | otherwise               = [ (i, getType infoTuple)
-                                                         | (s1, TVar j) <- _typeruleIjudgements
-                                                         , i == j
-                                                         , (s2,infoTuple) <- _lhsImetaVariableTable
-                                                         , s1 == s2
-                                                         ]
-                  in concatMap find _specialTV
+                      find' i | Just i == conclusionVar = [ (i, getType _lhsIinfoTuple) ]
+                              | otherwise               = [ (i, getType infoTuple)
+                                                          | (s1, TVar j) <- _typeruleIjudgements
+                                                          , i == j
+                                                          , (s2,infoTuple) <- _lhsImetaVariableTable
+                                                          , s1 == s2
+                                                          ]
+                  in concatMap find' _specialTV
               _allConstraintTrees =
                   listTree (reverse _typeruleIconstraints) :
                   Phase 999 _patchConstraints :

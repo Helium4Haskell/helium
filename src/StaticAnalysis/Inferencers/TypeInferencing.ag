@@ -96,7 +96,7 @@ import Top.Ordering.Tree
 -- constraint solving
 
 import StaticAnalysis.Inferencers.SelectConstraintSolver (selectConstraintSolver)
-import Top.Solver (SolveResult(..), LogEntries, emptyResult, noLogEntries)
+import Top.Solver (SolveResult(..), LogEntries)
 import StaticAnalysis.Heuristics.HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
 import StaticAnalysis.Inferencers.BindingGroupAnalysis
 

@@ -43,6 +43,7 @@ dataShowFunction (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name nam
         (map idFromName names ++ [valueId])
     , declCustoms = [ custom "type" typeString ] 
     }
+dataShowFunction _ = error "not supported"
 
 -- Show Dictionary for a data type declaration
 dataDictionary :: UHA.Declaration -> CoreDecl
@@ -58,19 +59,21 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
   where
     makeShowDictionary :: Int -> Id -> Expr
     makeShowDictionary nrOfArgs nameId =
-       let ids  = take nrOfArgs [ idFromString ("d" ++ show i) | i <- [1..] ]
+       let ids  = take nrOfArgs [ idFromString ("d" ++ show i) | i <- [(1::Integer)..] ]
            idX  = idFromString "x"
            con  = Con (ConTag (Lit (LitInt 0)) 2)
-           list = [ Ap (Var (idFromString "$show")) (Var id) | id <- ids ]
-           decl = Bind idX (foldl Ap (Var nameId) list)
-           body = Let (Strict decl) (Ap (Ap con (Var idX)) (Ap (Var (idFromString "$showList")) (Var idX)))
+           list = [ Ap (Var (idFromString "$show")) (Var ident) | ident <- ids ]
+           declaration = Bind idX (foldl Ap (Var nameId) list)
+           body = Let (Strict declaration) (Ap (Ap con (Var idX)) (Ap (Var (idFromString "$showList")) (Var idX)))
        in foldr Lam body ids
- 
+dataDictionary _ = error "not supported"
+
 -- Show function for a type synonym
 -- type T a b = (b, a) 
 --   ===>
 -- showT :: (a -> String) -> (b -> String) -> T a b -> String
 -- showT a b = showTuple2 b a 
+typeShowFunction :: UHA.Declaration -> Decl Expr
 typeShowFunction (UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names) type_) =
     let typeString = show (typeOfShowFunction name names) in
     DeclValue 
@@ -80,22 +83,23 @@ typeShowFunction (UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names
     , valueValue  = foldr (Lam . idFromName) (showFunctionOfType False type_) names
     , declCustoms = [ custom "type" typeString ] 
     }
+typeShowFunction _ = error "not supported"
 
 -- Convert a data type constructor to a Core alternative
 makeAlt :: UHA.Constructor -> Alt
-makeAlt c = Alt (constructorToPat id types) (showConstructor id types)
+makeAlt c = Alt (constructorToPat ident types) (showConstructor ident types)
   where
-    (id, types) = nameAndTypes c
+    (ident, types) = nameAndTypes c
     
     nameAndTypes :: UHA.Constructor -> (Id, [UHA.Type])
-    nameAndTypes c =
-        case c of
+    nameAndTypes c' =
+        case c' of
             UHA.Constructor_Constructor _    n ts -> (idFromName n, map annotatedTypeToType ts      )
             UHA.Constructor_Infix       _ t1 n t2 -> (idFromName n, map annotatedTypeToType [t1, t2])
-    
+            UHA.Constructor_Record _ _ _          -> error "not supported"
     constructorToPat :: Id -> [UHA.Type] -> Pat
-    constructorToPat id ts =
-        PatCon (ConId id) [ idFromNumber i | i <- [1..length ts] ]
+    constructorToPat ident' ts =
+        PatCon (ConId ident') [ idFromNumber i | i <- [1..length ts] ]
         
     annotatedTypeToType :: UHA.AnnotatedType -> UHA.Type
     annotatedTypeToType (UHA.AnnotatedType_AnnotatedType _ _ t) = t
@@ -131,7 +135,7 @@ showConstructor c ts -- name of constructor and paramater types
 -- using showPolymorphic. Otherwise, a show function for the type variable
 -- should be available
 showFunctionOfType :: Bool -> UHA.Type -> Expr
-showFunctionOfType isMainType t = sFOT t
+showFunctionOfType isMainType ty = sFOT ty
   where
     sFOT t = 
       case t of
@@ -142,8 +146,8 @@ showFunctionOfType isMainType t = sFOT t
                     [ UHA.Type_Constructor _ (UHA.Name_Identifier _ _ "Char") ] -> -- !!!Name
             var "showString"
         UHA.Type_Constructor _ n         -> var ("show" ++ checkForPrimitive (getNameName n))
-        UHA.Type_Application _ _ f xs     -> foldl Ap (sFOT f) (map sFOT xs)
-        UHA.Type_Parenthesized _ t         -> showFunctionOfType isMainType t
+        UHA.Type_Application _ _ f xs    -> foldl Ap (sFOT f) (map sFOT xs)
+        UHA.Type_Parenthesized _ t'      -> showFunctionOfType isMainType t'
         _ -> internalError "DerivingShow" "showFunctionOfType" "unsupported type"
 
 -- Some primitive types have funny names and their Show function has a different name

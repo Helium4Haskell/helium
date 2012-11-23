@@ -41,8 +41,8 @@ phaseImport fullName module_ lvmPath options = do
     return (indirectionDecls, importEnvs)
 
 chaseImports :: [String] -> Module -> IO [[Core.CoreDecl]]
-chaseImports lvmPath mod = 
-    let (coreImports,_)   = ExtractImportDecls.sem_Module mod -- Expand imports
+chaseImports lvmPath fromModule = 
+    let (coreImports,_)   = ExtractImportDecls.sem_Module fromModule -- Expand imports
         findModule    = searchPath lvmPath ".lvm" . stringFromId
         doImport :: (Core.CoreDecl,[Id]) -> IO [Core.CoreDecl]
         doImport (importDecl,hidings)
@@ -80,7 +80,6 @@ addImplicitImports (Module_Module moduleRange maybeName exports
             ) decls
         )
   where
-
     -- Artificial import declaration for implicit Prelude import
     implicitImportDecl :: String -> ImportDeclaration
     implicitImportDecl moduleName =
@@ -90,4 +89,4 @@ addImplicitImports (Module_Module moduleRange maybeName exports
             (Name_Identifier noRange [] moduleName) -- !!!Name
             MaybeName_Nothing
             MaybeImportSpecification_Nothing
-
+addImplicitImports (Module_Module _ _ _ (Body_Hole _ _)) = error "not supported"

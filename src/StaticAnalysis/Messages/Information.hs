@@ -8,7 +8,6 @@ import Syntax.UHA_Syntax hiding (Fixity)
 import Syntax.UHA_Utils
 import Syntax.UHA_Range
 import qualified Data.Map as M
-import Data.List (intersperse)
 
 type Fixity = (Int, Assoc)
 
@@ -95,7 +94,7 @@ definedOrImported range
 
 showMaybeFixity :: Name -> Maybe Fixity -> MessageBlocks
 showMaybeFixity name =
-   let f (prio, assoc) = show assoc ++ " " ++ show prio ++ " " ++ showNameAsOperator name
+   let f (prio', associativity) = show associativity ++ " " ++ show prio' ++ " " ++ showNameAsOperator name
    in maybe [] ((:[]) . MessageString . f)
 
 instance HasMessage InfoItem where 
@@ -125,18 +124,18 @@ instance HasMessage InfoItem where
          DataTypeConstructor name i cons ->
             let tps     = take i [ TCon [c] | c <- ['a'..] ]
                 text    = unwords ("data" : show name : map show tps)
-                related = let f (name, ts) = "   " ++ showNameAsVariable name ++ " :: " ++ show ts
+                related = let f (name', ts) = "   " ++ showNameAsVariable name' ++ " :: " ++ show ts
                           in if null cons then [] else "   -- value constructors" : map f cons
             in map MessageOneLiner 
                   ( MessageString text
                   : map MessageString related
                   )
 
-         TypeClass name (supers, instances) ->
+         TypeClass name (supers, theInstances) ->
             let f s     = s ++ " a"
                 text    = "class " ++ showContextSimple (map f supers) ++ f name
-                related = let f (p, ps) = "   instance " ++ show (generalizeAll (ps .=>. p))
-                          in if null instances then [] else "   -- instances" : map f instances
+                related = let ef (p, ps) = "   instance " ++ show (generalizeAll (ps .=>. p))
+                          in if null theInstances then [] else "   -- instances" : map ef theInstances
             in map MessageOneLiner 
                   ( MessageString text
                   : map MessageString related

@@ -52,8 +52,8 @@ siblingFunctions siblings =
                        do fits <- mapM (schemeFits contextTp subPreds . snd) candidates
                           case [ s | (True, (s, _)) <- zip fits candidates ] of
                              [] -> return Nothing
-                             siblings ->    -- TODO: put all siblings in the message
-                                let siblingsTextual = orList siblings
+                             siblings' ->    -- TODO: put all siblings in the message
+                                let siblingsTextual = orList siblings'
                                     hint = fixHint ("use "++siblingsTextual++" instead")
                                 in return $ Just
                                        (10,"Sibling(s) "++siblingsTextual++" instead of "++show name, [edge], hint info)
@@ -61,14 +61,14 @@ siblingFunctions siblings =
        where
         orList :: [String] -> String
         orList [s]    = s
-        orList (x:xs) = foldr (\x y-> x ++ ", " ++ y) ("or "++x) xs
+        orList (x:xs) = foldr (\y1 y2-> y1 ++ ", " ++ y2) ("or "++x) xs
         orList []     = "this should never occur"
         
         candidates = 
-           let f list 
+           let fn list 
                   | name `notElem` map fst list = []
                   | otherwise = filter ( (name /=) . fst) list
-           in concatMap f siblings
+           in concatMap fn siblings
            
         schemeFits contextTp sps scheme = 
            do synonyms <- getTypeSynonyms 
@@ -373,17 +373,18 @@ tupleHeuristic =
                                    (4, "tuple: permute with "++show p ++ show (mTupleTp, mExpectedTp), [edge], hint info)
                         _ -> return Nothing
                                  
-               compare -> case [ is 
+               compareVal -> case [ is 
                                | (is,zl) <- take heuristicsMAX (zipWithHoles tupleTps expectedTps)
                                , let (xs, ys) = unzip zl in unifiable synonyms (tupleType xs) (tupleType ys)
                                ] of
-                       [is] -> case compare of
+                       [is] -> case compareVal of
                                  LT -> let hint = fixHint ("insert a "++prettyAndList (map (ordinal True. (+1)) is)++" element to the tuple")
                                        in return $ Just 
                                              (4, "tuple:insert "++show is, [edge], hint info)
                                  GT -> let hint = fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" element of tuple")
                                        in return $ Just 
                                              (4, "tuple:remove "++show is, [edge], hint info)
+                                 EQ -> error "this cannot occur"            
                        _    -> let hint = becauseHint ("a "++show (length tupleTps)++"-tuple does not match a "++show (length expectedTps)++"-tuple")
                                in return $ Just 
                                      (2, "different sizes of tuple", [edge], hint info)
@@ -419,7 +420,7 @@ fbHasTooManyArguments =
                let msg = "the function binding has "++prettyPat n++", but its type signature "++prettyArg maximumExplicit
                    prettyPat i = if i == 1 then "1 pattern" else show i++" patterns"
                    prettyArg 0 = "does not allow patterns"
-                   prettyArg n = "allows at most "++show n
+                   prettyArg x = "allows at most "++show x
                    hint = becauseHint msg
                in return $ Just 
                      (8, "function binding has too many arguments", [edge], hint info)
@@ -448,11 +449,11 @@ variableFunction =
               let EdgeId v1 v2 _ = edge
               edges1 <- edgesFrom v1
               edges2 <- edgesFrom v2
-              let f (EdgeId v1 v2 _, _) = [v1,v2]
-                  special = concatMap f (filter (isEmptyInfixApplication . snd) (edges1 ++ edges2)) \\ [v1,v2]
+              let fn (EdgeId vertex1 vertex2 _, _) = [vertex1,vertex2]
+                  special = concatMap fn (filter (isEmptyInfixApplication . snd) (edges1 ++ edges2)) \\ [v1,v2]
               edges3 <- mapM edgesFrom special
               let isApplicationEdge = isJust . maybeApplicationEdge
-                  application = any (\(_, info) -> isApplicationEdge info) (edges1 ++ edges2 ++ concat edges3)                                                               
+                  application = any (\(_, edgeInfo) -> isApplicationEdge edgeInfo) (edges1 ++ edges2 ++ concat edges3)                                                               
              
               case (mt1, mt2) of
                  (Just functionType, Just expectedType) | not application -> 
@@ -511,7 +512,8 @@ unaryMinus overloading =
 -----------------------------------------------------------------------------
 -- REST 
 
-heuristicsMAX = 120 :: Int
+heuristicsMAX :: Int
+heuristicsMAX = 120
 
 zipWithHoles :: [a] -> [b] -> [ ( [Int] , [(a,b)] ) ] 
 zipWithHoles = rec_ 0 where
@@ -531,8 +533,8 @@ permutationsForLength :: Int -> [Permutation]
 permutationsForLength 0 = [ [] ]
 permutationsForLength i = [ ys | xs <- permutationsForLength (i-1), ys <- insertSomewhere (i-1) xs ]
   where
-   insertSomewhere i []     = [ [i] ]
-   insertSomewhere i (x:xs) = (i:x:xs) : map (x:) (insertSomewhere i xs)
+   insertSomewhere j []     = [ [j] ]
+   insertSomewhere j (x:xs) = (i:x:xs) : map (x:) (insertSomewhere j xs)
          
 deleteIndex :: Int -> [a] -> [a]
 deleteIndex _ []     = []

@@ -339,8 +339,8 @@ makeTypeErrors options classEnv synonyms sub errors =
                       t2      = sub |-> fst (typepair info)
                       tuple   = case mguWithTypeSynonyms synonyms t1 t2 of
                                    Left _ -> (False, p)
-                                   Right (_, sub) ->
-                                      let Predicate className tp = sub |-> p
+                                   Right (_, sub1) ->
+                                      let Predicate className tp = sub1 |-> p
                                           sub' = listToSubstitution [ (i, TCon s) | (i, s) <- getQuantorMap scheme ]
                                       in (True, Predicate className (sub' |-> unfreezeVariablesInType tp))
                       err    = internalError "ConstraintInfo" "makeTypeErrors" "unknown class predicate"
@@ -368,10 +368,10 @@ makeTypeErrors options classEnv synonyms sub errors =
                                      Left (scheme, snd $ typepair info)
                                   Nothing -> --overloaded language construct
                                      Right (location info, sub |-> (assignedType $ attribute $ localInfo info))
-                      pred   = let err = internalError "ConstraintInfo" "makeTypeErrors" 
+                      pred' = let err = internalError "ConstraintInfo" "makeTypeErrors" 
                                                        "unknown predicate which resulted in a reduction error"
                                in maybe err id $ maybeReductionErrorPredicate info
-                  in special info (sub |-> (makeReductionError source extra classEnv pred))
+                  in special info (sub |-> (makeReductionError source extra classEnv pred'))
            in (4, map f infos)     
   
       -- ambiguous class predicates
@@ -399,7 +399,7 @@ makeUnificationTypeError info =
           | isJust (maybeSkolemizedTypeScheme info) = ("inferred type", "declared type")
           | isFolkloreConstraint info               = ("type"         , "expected type")
           | otherwise                                = ("type"         , "does not match")
-       table = [ s <:> MessageOneLineTree (oneLinerSource source) | (s, source) <- convertSources (sources info)] 
+       table = [ s <:> MessageOneLineTree (oneLinerSource source') | (s, source') <- convertSources (sources info)] 
                ++
                [ reason1 >:> MessageType msgtp1
                , reason2 >:> MessageType msgtp2

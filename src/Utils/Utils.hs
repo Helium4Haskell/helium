@@ -14,10 +14,12 @@ import Data.IORef
 
 import GHC.IO (unsafePerformIO)
 import Data.List (group, groupBy, sort, elemIndex)
+import qualified Control.Exception as CE (catch, IOException)
 import Utils.Logger
 
 
 -- | Concrete representation of holes
+hole :: String
 hole = "?"
 
 -------------------------------------------------------
@@ -81,8 +83,7 @@ indexOf = elemIndex
 {--- Returns the index of the last occurrence of the given element in the given list -}
 lastIndexOf :: Eq a => a -> [a] -> Maybe Int
 lastIndexOf x xs =
-    case indexOf x (reverse xs) of
-    
+    case indexOf x (reverse xs) of    
         Nothing     ->  Nothing
         Just idx    ->  Just (length xs - idx - 1)
    
@@ -115,20 +116,24 @@ refToCurrentImported = unsafePerformIO (newIORef [])
 
 internalError :: String -> String -> String -> a
 internalError moduleName functionName message 
-   = unsafePerformIO 
+  = 
+  let
+    handler :: CE.IOException -> IO () 
+    handler _ = return ()
+  in
+   unsafePerformIO 
    $ do (do -- internal errors are automatically logged
             curFileName <- readIORef refToCurrentFileName
             curImports  <- readIORef refToCurrentImported       
             logInternalError (Just (curImports,curFileName)) {- no debugging, we can't get to the command-line option DebugLogger here -}
-            `catch`
-               \_ -> return () )
+            `CE.catch` handler)
         return . error . unlines $
            [ ""
            , "INTERNAL ERROR - " ++ message
            , "** Module   : " ++ moduleName
            , "** Function : " ++ functionName
            ]
-
+    
 maxInt, minInt :: Integer
 maxInt = 1073741823
 minInt = -1073741823

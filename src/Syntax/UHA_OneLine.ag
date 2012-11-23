@@ -15,12 +15,12 @@ import Utils.Utils (internalError, hole)
 encloseSep :: String -> String -> String -> [OneLineTree] -> OneLineTree
 encloseSep left _   right [] = OneLineNode [OneLineText left, OneLineText right]
 encloseSep left sep right (t:ts) =
-    OneLineNode ([ OneLineText left] ++ (t : concatMap (\t -> [OneLineText sep,t]) ts) ++ [OneLineText right] )
+    OneLineNode ([ OneLineText left] ++ (t : concatMap (\t' -> [OneLineText sep,t']) ts) ++ [OneLineText right] )
 
 punctuate :: String -> [OneLineTree] -> OneLineTree
 punctuate _ [] = OneLineText ""
 punctuate _ [t] = t
-punctuate s (t:ts) = OneLineNode (t : concatMap (\t -> [OneLineText s,t]) ts)
+punctuate s (t:ts) = OneLineNode (t : concatMap (\t' -> [OneLineText s,t']) ts)
     
 parens :: OneLineTree -> OneLineTree
 parens tree = OneLineNode [ OneLineText "(", tree, OneLineText ")" ]

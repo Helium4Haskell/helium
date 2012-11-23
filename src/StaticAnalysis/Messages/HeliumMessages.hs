@@ -161,9 +161,9 @@ prepareTypesAndTypeSchemes messageLine = newMessageLine
    
      --step 1
     replaceTypeSchemes :: MessageLine -> (MessageLine, Int, [String])
-    replaceTypeSchemes messageLine = 
-       let unique = nextFTV messageLine
-       in case messageLine of
+    replaceTypeSchemes messageLine' = 
+       let unique = nextFTV messageLine'
+       in case messageLine' of
              MessageOneLiner mb -> let (r, i, ns) = f_MessageBlock unique mb
                                    in (MessageOneLiner r, i, ns)
              MessageTable tab   -> let (r, i, ns) = f_Table unique tab

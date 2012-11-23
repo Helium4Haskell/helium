@@ -52,6 +52,7 @@ functionBindingOfDeclaration _ =
 rangeOfFunctionBinding :: FunctionBinding -> Range
 rangeOfFunctionBinding (FunctionBinding_FunctionBinding r _ _) = r
 rangeOfFunctionBinding (FunctionBinding_Feedback r _ _) = r
+rangeOfFunctionBinding (FunctionBinding_Hole _ _) = error "not supported"
 
 nameOfDeclaration :: Declaration -> Maybe Name
 nameOfDeclaration d =
