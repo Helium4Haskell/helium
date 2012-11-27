@@ -11,6 +11,7 @@
 module StaticAnalysis.Messages.KindErrors where
 
 import Top.Types
+import Top.Constraint.Information(TypeConstraintInfo(..),PolyTypeConstraintInfo(..))
 
 import Syntax.UHA_Syntax (Range, Type)
 import Text.PrettyPrint.Leijen (Doc)
@@ -22,6 +23,9 @@ import qualified Syntax.UHA_Pretty as PP
 type KindErrors = [KindError]
 data KindError  = MustBeStar Range String Doc Kind
                 | KindApplication Range Doc Doc Kind Kind
+
+instance TypeConstraintInfo KindError
+instance PolyTypeConstraintInfo KindError
 
 -- two "smart" constructors
 mustBeStar :: Range -> String -> Type -> (Kind, Kind) -> KindError

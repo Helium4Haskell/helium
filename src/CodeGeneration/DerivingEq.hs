@@ -26,7 +26,8 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
     , valueValue  = eqFunction names constructors
     , declCustoms = [ custom "type" ("DictEq" ++ getNameName name) ] 
     }
-  where
+  where  
+dataDictionary _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 
 -- Example: data X a b = C a b Int | D Char b
 eqFunction :: [UHA.Name] -> [UHA.Constructor] -> Expr
@@ -77,6 +78,7 @@ nameAndTypes c =
     case c of
         UHA.Constructor_Constructor _    n ts -> (idFromName n, map annotatedTypeToType ts      )
         UHA.Constructor_Infix       _ t1 n t2 -> (idFromName n, map annotatedTypeToType [t1, t2])
+        UHA.Constructor_Record          _ _ _ -> error "pattern match failure in CodeGeneration.DerivingEq.nameAndTypes"
   where
     annotatedTypeToType :: UHA.AnnotatedType -> UHA.Type
     annotatedTypeToType (UHA.AnnotatedType_AnnotatedType _ _ t) = t

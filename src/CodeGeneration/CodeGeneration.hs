@@ -2,7 +2,6 @@
 
 -- UUAGC 0.9.40.3 (CodeGeneration/CodeGeneration.ag)
 module CodeGeneration.CodeGeneration where
-{-# LINE 20 "CodeGeneration/CodeGeneration.ag" #-}
 
 import Syntax.UHA_Syntax
 import Syntax.UHA_Utils
@@ -32,19 +31,13 @@ import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
 import qualified Lvm.Core.Module as Module
 import qualified Lvm.Common.Byte as Byte
-{-# LINE 36 "CodeGeneration/CodeGeneration.hs" #-}
 
-{-# LINE 5 "CodeGeneration/ToCoreModule.ag" #-}
 
 import Lvm.Common.Byte(bytesFromString)
-{-# LINE 41 "CodeGeneration/CodeGeneration.hs" #-}
-{-# LINE 51 "CodeGeneration/CodeGeneration.ag" #-}
 
 
 type CoreDecl = Core.Decl Core.Expr
-{-# LINE 46 "CodeGeneration/CodeGeneration.hs" #-}
 
-{-# LINE 9 "CodeGeneration/ToCoreModule.ag" #-}
 
 makeCoreModule :: Maybe Id -> [Module.Decl v] -> Module.Module v
 makeCoreModule name decls =
@@ -98,9 +91,7 @@ insertedMain toplevelTypes =
     where
         unsafePIO = var "$primUnsafePerformIO"    
                 
-{-# LINE 102 "CodeGeneration/CodeGeneration.hs" #-}
 
-{-# LINE 75 "CodeGeneration/ToCoreModule.ag" #-}
 
 -- set the public bit of all declarations except those that are imported from
 -- Prelude or HeliumLang. I.e. export everything everywhere
@@ -116,9 +107,7 @@ everythingPublicButPrelude theModule = theModule { Core.moduleDecls = map setPub
         in 
         declaration{ Core.declAccess = 
                   (Core.declAccess declaration){ Core.accessPublic = public } }
-{-# LINE 120 "CodeGeneration/CodeGeneration.hs" #-}
 
-{-# LINE 250 "CodeGeneration/ToCoreDecl.ag" #-}
 
 predicateToId :: Predicate -> Id
 predicateToId (Predicate class_ tp) =
@@ -142,9 +131,7 @@ insertDictionaries name dictionaryEnv =
    foldl Core.Ap
          (Core.Var (idFromName name))
          (map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv))
-{-# LINE 146 "CodeGeneration/CodeGeneration.hs" #-}
 
-{-# LINE 384 "CodeGeneration/ToCoreDecl.ag" #-}
 
 toplevelType :: Name -> ImportEnvironment -> Bool -> [Core.Custom]
 toplevelType name ie isTopLevel
@@ -168,9 +155,7 @@ constructorCustoms dataTypeName name env =
             ]
         )
         (M.lookup name env)
-{-# LINE 172 "CodeGeneration/CodeGeneration.hs" #-}
 
-{-# LINE 308 "CodeGeneration/ToCoreExpr.ag" #-}
 
 
 -- Function "bind" is used in the translation of do-expressions
@@ -188,9 +173,7 @@ chainCode theCores =
         [core] -> core Nothing
         (core:cores) -> core (Just (chainCode cores))
         [] -> error "pattern match failure in CodeGeneration.ToCoreExpr.chainCode"
-{-# LINE 192 "CodeGeneration/CodeGeneration.hs" #-}
 
-{-# LINE 28 "CodeGeneration/ToCorePat.ag" #-}
 
 
 patternAlwaysSucceeds :: Pattern -> Bool
@@ -213,7 +196,6 @@ patternMatchFail nodeDescription range =
                )
     where
         start = getRangeStart range
-{-# LINE 217 "CodeGeneration/CodeGeneration.hs" #-}
 -- Alternative -------------------------------------------------
 -- cata
 sem_Alternative :: Alternative ->
@@ -245,25 +227,19 @@ sem_Alternative_Alternative range_ pattern_ righthandside_ =
               _righthandsideIisGuarded :: Bool
               _righthandsideIself :: RightHandSide
               _lhsOcore =
-                  ({-# LINE 264 "CodeGeneration/ToCoreExpr.ag" #-}
-                   \nextCase  ->
-                      let thisCase =
-                              patternToCore
-                                  (caseExprId, _patternIself)
-                                  _righthandsideIcore
-                      in
-                          let_ nextClauseId nextCase thisCase
-                   {-# LINE 257 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  \nextCase  ->
+                     let thisCase =
+                             patternToCore
+                                 (caseExprId, _patternIself)
+                                 _righthandsideIcore
+                     in
+                         let_ nextClauseId nextCase thisCase
               _self =
                   Alternative_Alternative _rangeIself _patternIself _righthandsideIself
               _lhsOself =
                   _self
               _righthandsideOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 266 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _patternIself,_patternIvars) =
@@ -279,10 +255,7 @@ sem_Alternative_Empty range_ =
               _lhsOself :: Alternative
               _rangeIself :: Range
               _lhsOcore =
-                  ({-# LINE 275 "CodeGeneration/ToCoreExpr.ag" #-}
-                   id
-                   {-# LINE 285 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  id
               _self =
                   Alternative_Empty _rangeIself
               _lhsOself =
@@ -307,15 +280,9 @@ sem_Alternative_Feedback range_ feedback_ alternative_ =
               _lhsOself =
                   _self
               _lhsOcore =
-                  ({-# LINE 262 "CodeGeneration/ToCoreExpr.ag" #-}
-                   _alternativeIcore
-                   {-# LINE 313 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _alternativeIcore
               _alternativeOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 318 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _alternativeIcore,_alternativeIself) =
@@ -330,10 +297,7 @@ sem_Alternative_Hole range_ id_ =
               _lhsOself :: Alternative
               _rangeIself :: Range
               _lhsOcore =
-                  ({-# LINE 263 "CodeGeneration/ToCoreExpr.ag" #-}
-                   id
-                   {-# LINE 336 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  id
               _self =
                   Alternative_Hole _rangeIself id_
               _lhsOself =
@@ -367,29 +331,17 @@ sem_Alternatives_Cons hd_ tl_ =
               _tlIcore :: ( Core.Expr )
               _tlIself :: Alternatives
               _lhsOcore =
-                  ({-# LINE 259 "CodeGeneration/ToCoreExpr.ag" #-}
-                   _hdIcore _tlIcore
-                   {-# LINE 373 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _hdIcore _tlIcore
               _self =
                   (:) _hdIself _tlIself
               _lhsOself =
                   _self
               _hdOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 382 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _tlOcaseRange =
-                  ({-# LINE 258 "CodeGeneration/ToCoreExpr.ag" #-}
-                   _lhsIcaseRange
-                   {-# LINE 387 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIcaseRange
               _tlOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 392 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _hdIcore,_hdIself) =
                   hd_ _hdOdictionaryEnv
               ( _tlIcore,_tlIself) =
@@ -402,10 +354,7 @@ sem_Alternatives_Nil =
          (let _lhsOcore :: ( Core.Expr )
               _lhsOself :: Alternatives
               _lhsOcore =
-                  ({-# LINE 260 "CodeGeneration/ToCoreExpr.ag" #-}
-                   patternMatchFail "case expression" _lhsIcaseRange
-                   {-# LINE 408 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  patternMatchFail "case expression" _lhsIcaseRange
               _self =
                   []
               _lhsOself =
@@ -454,10 +403,7 @@ sem_AnnotatedTypes_Cons hd_ tl_ =
          _tlIlength :: Int
          _tlIself :: AnnotatedTypes
          _lhsOlength =
-             ({-# LINE 381 "CodeGeneration/ToCoreDecl.ag" #-}
-              1 + _tlIlength
-              {-# LINE 460 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             1 + _tlIlength
          _self =
              (:) _hdIself _tlIself
          _lhsOself =
@@ -472,10 +418,7 @@ sem_AnnotatedTypes_Nil =
     (let _lhsOlength :: Int
          _lhsOself :: AnnotatedTypes
          _lhsOlength =
-             ({-# LINE 382 "CodeGeneration/ToCoreDecl.ag" #-}
-              0
-              {-# LINE 478 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             0
          _self =
              []
          _lhsOself =
@@ -512,34 +455,19 @@ sem_Body_Body range_ importdeclarations_ declarations_ =
               _declarationsIpatBindNr :: Int
               _declarationsIself :: Declarations
               _lhsOdecls =
-                  ({-# LINE 160 "CodeGeneration/ToCoreModule.ag" #-}
-                   _declarationsIdecls
-                   {-# LINE 518 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _declarationsIdecls
               _declarationsOpatBindNr =
-                  ({-# LINE 161 "CodeGeneration/ToCoreModule.ag" #-}
-                   0
-                   {-# LINE 523 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  0
               _declarationsOisTopLevel =
-                  ({-# LINE 162 "CodeGeneration/ToCoreModule.ag" #-}
-                   True
-                   {-# LINE 528 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  True
               _self =
                   Body_Body _rangeIself _importdeclarationsIself _declarationsIself
               _lhsOself =
                   _self
               _declarationsOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 537 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _declarationsOimportEnv =
-                  ({-# LINE 66 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIimportEnv
-                   {-# LINE 542 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIimportEnv
               ( _rangeIself) =
                   range_
               ( _importdeclarationsIself) =
@@ -557,10 +485,7 @@ sem_Body_Hole range_ id_ =
               _lhsOself :: Body
               _rangeIself :: Range
               _lhsOdecls =
-                  ({-# LINE 156 "CodeGeneration/ToCoreModule.ag" #-}
-                   []
-                   {-# LINE 563 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  []
               _self =
                   Body_Hole _rangeIself id_
               _lhsOself =
@@ -600,21 +525,18 @@ sem_Constructor_Constructor range_ constructor_ types_ =
               _typesIlength :: Int
               _typesIself :: AnnotatedTypes
               _lhsOcons =
-                  ({-# LINE 338 "CodeGeneration/ToCoreDecl.ag" #-}
-                   [ (idFromName _constructorIself, Core.DeclCon
-                       { Core.declName    = idFromName _constructorIself
-                       , Core.declAccess  = Core.private
-                       , Core.declArity   = _typesIlength
-                       , Core.conTag      = _lhsItag
-                       , Core.declCustoms = constructorCustoms
-                                               _lhsIdataTypeName
-                                               _constructorIself
-                                               (valueConstructors _lhsIimportEnv)
-                       }
-                     )
-                   ]
-                   {-# LINE 617 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  [ (idFromName _constructorIself, Core.DeclCon
+                      { Core.declName    = idFromName _constructorIself
+                      , Core.declAccess  = Core.private
+                      , Core.declArity   = _typesIlength
+                      , Core.conTag      = _lhsItag
+                      , Core.declCustoms = constructorCustoms
+                                              _lhsIdataTypeName
+                                              _constructorIself
+                                              (valueConstructors _lhsIimportEnv)
+                      }
+                    )
+                  ]
               _self =
                   Constructor_Constructor _rangeIself _constructorIself _typesIself
               _lhsOself =
@@ -643,21 +565,18 @@ sem_Constructor_Infix range_ leftType_ constructorOperator_ rightType_ =
               _constructorOperatorIself :: Name
               _rightTypeIself :: AnnotatedType
               _lhsOcons =
-                  ({-# LINE 355 "CodeGeneration/ToCoreDecl.ag" #-}
-                   [ (idFromName _constructorOperatorIself, Core.DeclCon
-                       { Core.declName    = idFromName _constructorOperatorIself
-                       , Core.declAccess  = Core.private
-                       , Core.declArity   = 2
-                       , Core.conTag      = _lhsItag
-                       , Core.declCustoms = constructorCustoms
-                                               _lhsIdataTypeName
-                                               _constructorOperatorIself
-                                               (valueConstructors _lhsIimportEnv)
-                       }
-                     )
-                   ]
-                   {-# LINE 660 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  [ (idFromName _constructorOperatorIself, Core.DeclCon
+                      { Core.declName    = idFromName _constructorOperatorIself
+                      , Core.declAccess  = Core.private
+                      , Core.declArity   = 2
+                      , Core.conTag      = _lhsItag
+                      , Core.declCustoms = constructorCustoms
+                                              _lhsIdataTypeName
+                                              _constructorOperatorIself
+                                              (valueConstructors _lhsIimportEnv)
+                      }
+                    )
+                  ]
               _self =
                   Constructor_Infix _rangeIself _leftTypeIself _constructorOperatorIself _rightTypeIself
               _lhsOself =
@@ -686,10 +605,7 @@ sem_Constructor_Record range_ constructor_ fieldDeclarations_ =
               _constructorIself :: Name
               _fieldDeclarationsIself :: FieldDeclarations
               _lhsOcons =
-                  ({-# LINE 375 "CodeGeneration/ToCoreDecl.ag" #-}
-                   internalError "ToCoreDecl" "Constructor" "records not supported"
-                   {-# LINE 692 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "ToCoreDecl" "Constructor" "records not supported"
               _self =
                   Constructor_Record _rangeIself _constructorIself _fieldDeclarationsIself
               _lhsOself =
@@ -736,54 +652,27 @@ sem_Constructors_Cons hd_ tl_ =
               _tlIcons :: ( [(Id, CoreDecl)] )
               _tlIself :: Constructors
               _hdOtag =
-                  ({-# LINE 334 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsItag
-                   {-# LINE 742 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsItag
               _tlOtag =
-                  ({-# LINE 335 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsItag + 1
-                   {-# LINE 747 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsItag + 1
               _lhsOcons =
-                  ({-# LINE 330 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _hdIcons  ++  _tlIcons
-                   {-# LINE 752 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _hdIcons  ++  _tlIcons
               _self =
                   (:) _hdIself _tlIself
               _lhsOself =
                   _self
               _hdOdataTypeName =
-                  ({-# LINE 337 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIdataTypeName
-                   {-# LINE 761 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdataTypeName
               _hdOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 766 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _hdOimportEnv =
-                  ({-# LINE 66 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIimportEnv
-                   {-# LINE 771 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIimportEnv
               _tlOdataTypeName =
-                  ({-# LINE 333 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIdataTypeName
-                   {-# LINE 776 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdataTypeName
               _tlOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 781 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _tlOimportEnv =
-                  ({-# LINE 66 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIimportEnv
-                   {-# LINE 786 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIimportEnv
               ( _hdIcons,_hdIself) =
                   hd_ _hdOdataTypeName _hdOdictionaryEnv _hdOimportEnv _hdOtag
               ( _tlIcons,_tlIself) =
@@ -798,10 +687,7 @@ sem_Constructors_Nil =
          (let _lhsOcons :: ( [(Id, CoreDecl)] )
               _lhsOself :: Constructors
               _lhsOcons =
-                  ({-# LINE 330 "CodeGeneration/ToCoreDecl.ag" #-}
-                   []
-                   {-# LINE 804 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  []
               _self =
                   []
               _lhsOself =
@@ -923,24 +809,15 @@ sem_Declaration_Class range_ context_ simpletype_ where_ =
               _whereIcore :: ( Core.Expr -> Core.Expr )
               _whereIself :: MaybeDeclarations
               _lhsOdecls =
-                  ({-# LINE 195 "CodeGeneration/ToCoreDecl.ag" #-}
-                   internalError "ToCoreDecl" "Declaration" "'class' not supported"
-                   {-# LINE 929 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "ToCoreDecl" "Declaration" "'class' not supported"
               _self =
                   Declaration_Class _rangeIself _contextIself _simpletypeIself _whereIself
               _lhsOself =
                   _self
               _lhsOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIpatBindNr
-                   {-# LINE 938 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIpatBindNr
               _whereOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 943 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _contextIself) =
@@ -978,59 +855,41 @@ sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_ =
               _derivingsInames :: ([Name])
               _derivingsIself :: Names
               _constructorsOtag =
-                  ({-# LINE 43 "CodeGeneration/ToCoreDecl.ag" #-}
-                   0
-                   {-# LINE 984 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  0
               _constructorsOdataTypeName =
-                  ({-# LINE 44 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _simpletypeIname
-                   {-# LINE 989 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _simpletypeIname
               _lhsOdecls =
-                  ({-# LINE 45 "CodeGeneration/ToCoreDecl.ag" #-}
-                   map snd _constructorsIcons
-                   ++
-                   [ Core.DeclCustom
-                       { Core.declName    = idFromString (getNameName _simpletypeIname)
-                       , Core.declAccess  = Core.private
-                       , Core.declKind    = Core.DeclKindCustom (idFromString "data")
-                       , Core.declCustoms = [Core.CustomInt (length _simpletypeItypevariables)]
-                       }
-                   ]
-                   ++
-                   [ DerivingShow.dataShowFunction _self ]
-                   ++
-                   (if "Show" `elem` map show _derivingsIself
-                    then [ DerivingShow.dataDictionary _self ]
-                    else []
-                   )
-                   ++
-                   (if "Eq" `elem` map show _derivingsIself
-                    then [ DerivingEq.dataDictionary _self ]
-                    else []
-                   )
-                   {-# LINE 1014 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  map snd _constructorsIcons
+                  ++
+                  [ Core.DeclCustom
+                      { Core.declName    = idFromString (getNameName _simpletypeIname)
+                      , Core.declAccess  = Core.private
+                      , Core.declKind    = Core.DeclKindCustom (idFromString "data")
+                      , Core.declCustoms = [Core.CustomInt (length _simpletypeItypevariables)]
+                      }
+                  ]
+                  ++
+                  [ DerivingShow.dataShowFunction _self ]
+                  ++
+                  (if "Show" `elem` map show _derivingsIself
+                   then [ DerivingShow.dataDictionary _self ]
+                   else []
+                  )
+                  ++
+                  (if "Eq" `elem` map show _derivingsIself
+                   then [ DerivingEq.dataDictionary _self ]
+                   else []
+                  )
               _self =
                   Declaration_Data _rangeIself _contextIself _simpletypeIself _constructorsIself _derivingsIself
               _lhsOself =
                   _self
               _lhsOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIpatBindNr
-                   {-# LINE 1023 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIpatBindNr
               _constructorsOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 1028 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _constructorsOimportEnv =
-                  ({-# LINE 66 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIimportEnv
-                   {-# LINE 1033 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIimportEnv
               ( _rangeIself) =
                   range_
               ( _contextIself) =
@@ -1056,19 +915,13 @@ sem_Declaration_Default range_ types_ =
               _rangeIself :: Range
               _typesIself :: Types
               _lhsOdecls =
-                  ({-# LINE 209 "CodeGeneration/ToCoreDecl.ag" #-}
-                   internalError "ToCoreDecl" "Declaration" "'default' not supported"
-                   {-# LINE 1062 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "ToCoreDecl" "Declaration" "'default' not supported"
               _self =
                   Declaration_Default _rangeIself _typesIself
               _lhsOself =
                   _self
               _lhsOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIpatBindNr
-                   {-# LINE 1071 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIpatBindNr
               ( _rangeIself) =
                   range_
               ( _typesIself) =
@@ -1086,19 +939,13 @@ sem_Declaration_Empty range_ =
               _lhsOpatBindNr :: Int
               _rangeIself :: Range
               _lhsOdecls =
-                  ({-# LINE 213 "CodeGeneration/ToCoreDecl.ag" #-}
-                   internalError "ToCoreDecl" "Declaration" "empty declarations not supported"
-                   {-# LINE 1092 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "ToCoreDecl" "Declaration" "empty declarations not supported"
               _self =
                   Declaration_Empty _rangeIself
               _lhsOself =
                   _self
               _lhsOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIpatBindNr
-                   {-# LINE 1101 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIpatBindNr
               ( _rangeIself) =
                   range_
           in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)))
@@ -1121,42 +968,36 @@ sem_Declaration_Fixity range_ fixity_ priority_ operators_ =
               _operatorsInames :: ([Name])
               _operatorsIself :: Names
               _lhsOdecls =
-                  ({-# LINE 150 "CodeGeneration/ToCoreDecl.ag" #-}
-                   map
-                       ( ( \n ->
-                           Core.DeclCustom
-                               { Core.declName    = idFromString n
-                               , Core.declAccess  = Core.private
-                               , Core.declKind    = (Core.DeclKindCustom . idFromString) "infix"
-                               , Core.declCustoms =
-                                   [ Core.CustomInt
-                                        ( case _priorityIself of
-                                             MaybeInt_Just i  -> i
-                                             MaybeInt_Nothing -> 9 )
-                                   , (Core.CustomBytes . bytesFromString)
-                                         ( case _fixityIself of
-                                              Fixity_Infixr _ -> "right"
-                                              Fixity_Infixl _ -> "left"
-                                              Fixity_Infix  _ -> "none"
-                                         )
-                                   ]
-                               }
-                         )
-                         .
-                         getNameName
-                       )
-                       _operatorsIself
-                   {-# LINE 1150 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  map
+                      ( ( \n ->
+                          Core.DeclCustom
+                              { Core.declName    = idFromString n
+                              , Core.declAccess  = Core.private
+                              , Core.declKind    = (Core.DeclKindCustom . idFromString) "infix"
+                              , Core.declCustoms =
+                                  [ Core.CustomInt
+                                       ( case _priorityIself of
+                                            MaybeInt_Just i  -> i
+                                            MaybeInt_Nothing -> 9 )
+                                  , (Core.CustomBytes . bytesFromString)
+                                        ( case _fixityIself of
+                                             Fixity_Infixr _ -> "right"
+                                             Fixity_Infixl _ -> "left"
+                                             Fixity_Infix  _ -> "none"
+                                        )
+                                  ]
+                              }
+                        )
+                        .
+                        getNameName
+                      )
+                      _operatorsIself
               _self =
                   Declaration_Fixity _rangeIself _fixityIself _priorityIself _operatorsIself
               _lhsOself =
                   _self
               _lhsOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIpatBindNr
-                   {-# LINE 1159 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIpatBindNr
               ( _rangeIself) =
                   range_
               ( _fixityIself) =
@@ -1186,52 +1027,31 @@ sem_Declaration_FunctionBindings range_ bindings_ =
               _bindingsIname :: Name
               _bindingsIself :: FunctionBindings
               _ids =
-                  ({-# LINE 74 "CodeGeneration/ToCoreDecl.ag" #-}
-                   freshIds "u$" _bindingsIarity
-                   {-# LINE 1192 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  freshIds "u$" _bindingsIarity
               _bindingsOids =
-                  ({-# LINE 75 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _ids
-                   {-# LINE 1197 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _ids
               _bindingsOrange =
-                  ({-# LINE 76 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _rangeIself
-                   {-# LINE 1202 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _rangeIself
               _dictionaries =
-                  ({-# LINE 77 "CodeGeneration/ToCoreDecl.ag" #-}
-                   map predicateToId
-                      (getPredicateForDecl _bindingsIname _lhsIdictionaryEnv)
-                   {-# LINE 1208 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  map predicateToId
+                     (getPredicateForDecl _bindingsIname _lhsIdictionaryEnv)
               _lhsOdecls =
-                  ({-# LINE 79 "CodeGeneration/ToCoreDecl.ag" #-}
-                   [ Core.DeclValue
-                       { Core.declName    = idFromName _bindingsIname
-                       , Core.declAccess  = Core.private
-                       , Core.valueEnc    = Nothing
-                       , Core.valueValue  = foldr Core.Lam _bindingsIcore (_dictionaries ++ _ids)
-                       , Core.declCustoms = toplevelType _bindingsIname _lhsIimportEnv _lhsIisTopLevel
-                       }
-                   ]
-                   {-# LINE 1220 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  [ Core.DeclValue
+                      { Core.declName    = idFromName _bindingsIname
+                      , Core.declAccess  = Core.private
+                      , Core.valueEnc    = Nothing
+                      , Core.valueValue  = foldr Core.Lam _bindingsIcore (_dictionaries ++ _ids)
+                      , Core.declCustoms = toplevelType _bindingsIname _lhsIimportEnv _lhsIisTopLevel
+                      }
+                  ]
               _self =
                   Declaration_FunctionBindings _rangeIself _bindingsIself
               _lhsOself =
                   _self
               _lhsOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIpatBindNr
-                   {-# LINE 1229 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIpatBindNr
               _bindingsOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 1234 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _bindingsIarity,_bindingsIcore,_bindingsIname,_bindingsIself) =
@@ -1250,19 +1070,13 @@ sem_Declaration_Hole range_ id_ =
               _lhsOpatBindNr :: Int
               _rangeIself :: Range
               _lhsOdecls =
-                  ({-# LINE 156 "CodeGeneration/ToCoreModule.ag" #-}
-                   []
-                   {-# LINE 1256 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  []
               _self =
                   Declaration_Hole _rangeIself id_
               _lhsOself =
                   _self
               _lhsOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIpatBindNr
-                   {-# LINE 1265 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIpatBindNr
               ( _rangeIself) =
                   range_
           in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)))
@@ -1288,24 +1102,15 @@ sem_Declaration_Instance range_ context_ name_ types_ where_ =
               _whereIcore :: ( Core.Expr -> Core.Expr )
               _whereIself :: MaybeDeclarations
               _lhsOdecls =
-                  ({-# LINE 201 "CodeGeneration/ToCoreDecl.ag" #-}
-                   internalError "ToCoreDecl" "Declaration" "'instance' not supported"
-                   {-# LINE 1294 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "ToCoreDecl" "Declaration" "'instance' not supported"
               _self =
                   Declaration_Instance _rangeIself _contextIself _nameIself _typesIself _whereIself
               _lhsOself =
                   _self
               _lhsOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIpatBindNr
-                   {-# LINE 1303 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIpatBindNr
               _whereOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 1308 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _contextIself) =
@@ -1345,39 +1150,21 @@ sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_ =
               _derivingsInames :: ([Name])
               _derivingsIself :: Names
               _lhsOdecls =
-                  ({-# LINE 186 "CodeGeneration/ToCoreDecl.ag" #-}
-                   internalError "ToCoreDecl" "Declaration" "'newType' not supported"
-                   {-# LINE 1351 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "ToCoreDecl" "Declaration" "'newType' not supported"
               _constructorOtag =
-                  ({-# LINE 187 "CodeGeneration/ToCoreDecl.ag" #-}
-                   0
-                   {-# LINE 1356 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  0
               _constructorOdataTypeName =
-                  ({-# LINE 188 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _simpletypeIname
-                   {-# LINE 1361 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _simpletypeIname
               _self =
                   Declaration_Newtype _rangeIself _contextIself _simpletypeIself _constructorIself _derivingsIself
               _lhsOself =
                   _self
               _lhsOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIpatBindNr
-                   {-# LINE 1370 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIpatBindNr
               _constructorOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 1375 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _constructorOimportEnv =
-                  ({-# LINE 66 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIimportEnv
-                   {-# LINE 1380 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIimportEnv
               ( _rangeIself) =
                   range_
               ( _contextIself) =
@@ -1409,74 +1196,62 @@ sem_Declaration_PatternBinding range_ pattern_ righthandside_ =
               _righthandsideIisGuarded :: Bool
               _righthandsideIself :: RightHandSide
               _lhsOpatBindNr =
-                  ({-# LINE 91 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIpatBindNr + 1
-                   {-# LINE 1415 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIpatBindNr + 1
               _dictionaries =
-                  ({-# LINE 92 "CodeGeneration/ToCoreDecl.ag" #-}
-                   case _patternIself of
-                       Pattern_Variable _ n ->
-                          map predicateToId
-                             (getPredicateForDecl n _lhsIdictionaryEnv)
-                       _ -> []
-                   {-# LINE 1424 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  case _patternIself of
+                      Pattern_Variable _ n ->
+                         map predicateToId
+                            (getPredicateForDecl n _lhsIdictionaryEnv)
+                      _ -> []
               _lhsOdecls =
-                  ({-# LINE 98 "CodeGeneration/ToCoreDecl.ag" #-}
-                   case _patternIself of
-                       Pattern_Variable _ n ->
-                           [ Core.DeclValue
-                               { Core.declName    = idFromName n
-                               , Core.declAccess  = Core.private
-                               , Core.valueEnc    = Nothing
-                               , Core.valueValue  =
-                                   foldr Core.Lam
-                                       ( let_
-                                           nextClauseId (patternMatchFail "pattern binding" _rangeIself)
-                                           _righthandsideIcore
-                                       )
-                                       _dictionaries
-                               , Core.declCustoms = toplevelType n _lhsIimportEnv _lhsIisTopLevel
-                               }
+                  case _patternIself of
+                      Pattern_Variable _ n ->
+                          [ Core.DeclValue
+                              { Core.declName    = idFromName n
+                              , Core.declAccess  = Core.private
+                              , Core.valueEnc    = Nothing
+                              , Core.valueValue  =
+                                  foldr Core.Lam
+                                      ( let_
+                                          nextClauseId (patternMatchFail "pattern binding" _rangeIself)
+                                          _righthandsideIcore
+                                      )
+                                      _dictionaries
+                              , Core.declCustoms = toplevelType n _lhsIimportEnv _lhsIisTopLevel
+                              }
+                         ]
+                      _ ->
+                          Core.DeclValue
+                              { Core.declName    = patBindId
+                              , Core.declAccess  = Core.private
+                              , Core.valueEnc    = Nothing
+                              , Core.valueValue  =
+                                  let_
+                                      nextClauseId (patternMatchFail "pattern binding" _rangeIself)
+                                      _righthandsideIcore
+                              , Core.declCustoms = [custom "type" "patternbinding"]
+                              }
+                          :
+                          [ Core.DeclValue
+                              { Core.declName    = idFromName v
+                              , Core.declAccess  = Core.private
+                              , Core.valueEnc    = Nothing
+                              , Core.valueValue  =
+                                  (let_ nextClauseId (patternMatchFail "pattern binding" _rangeIself)
+                                      (patternToCore (patBindId, _patternIself) (Core.Var (idFromName v)))
+                                  )
+                              , Core.declCustoms = toplevelType v _lhsIimportEnv _lhsIisTopLevel
+                              }
+                          | v <- _patternIvars
                           ]
-                       _ ->
-                           Core.DeclValue
-                               { Core.declName    = patBindId
-                               , Core.declAccess  = Core.private
-                               , Core.valueEnc    = Nothing
-                               , Core.valueValue  =
-                                   let_
-                                       nextClauseId (patternMatchFail "pattern binding" _rangeIself)
-                                       _righthandsideIcore
-                               , Core.declCustoms = [custom "type" "patternbinding"]
-                               }
-                           :
-                           [ Core.DeclValue
-                               { Core.declName    = idFromName v
-                               , Core.declAccess  = Core.private
-                               , Core.valueEnc    = Nothing
-                               , Core.valueValue  =
-                                   (let_ nextClauseId (patternMatchFail "pattern binding" _rangeIself)
-                                       (patternToCore (patBindId, _patternIself) (Core.Var (idFromName v)))
-                                   )
-                               , Core.declCustoms = toplevelType v _lhsIimportEnv _lhsIisTopLevel
-                               }
-                           | v <- _patternIvars
-                           ]
-                           where
-                               patBindId = idFromString ("patBind$" ++ show _lhsIpatBindNr)
-                   {-# LINE 1470 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                          where
+                              patBindId = idFromString ("patBind$" ++ show _lhsIpatBindNr)
               _self =
                   Declaration_PatternBinding _rangeIself _patternIself _righthandsideIself
               _lhsOself =
                   _self
               _righthandsideOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 1479 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _patternIself,_patternIvars) =
@@ -1502,44 +1277,38 @@ sem_Declaration_Type range_ simpletype_ type_ =
               _simpletypeItypevariables :: Names
               _typeIself :: Type
               _lhsOdecls =
-                  ({-# LINE 14 "CodeGeneration/ToCoreDecl.ag" #-}
-                   let
-                       (t1,[t2])   = convertFromSimpleTypeAndTypes _simpletypeIself [_typeIself]
-                       allTypeVars = ftv [t1,t2]
-                       (ts1,ts2)   = ( Quantification (allTypeVars, [], [] .=>. t1) :: TpScheme
-                                     , Quantification (allTypeVars, [], [] .=>. t2) :: TpScheme
-                                     )
-                   in
-                   [ Core.DeclCustom
-                       { Core.declName    = idFromString (getNameName _simpletypeIname)
-                       , Core.declAccess  = Core.private
-                       , Core.declKind    = Core.DeclKindCustom (idFromString "typedecl")
-                       , Core.declCustoms =
-                           [ Core.CustomBytes
-                               (Byte.bytesFromString
-                                   (  show ts1
-                                   ++ " = "
-                                   ++ show ts2
-                                   )
-                               )
-                           , Core.CustomInt
-                               (length _simpletypeItypevariables)
-                           ]
-                       }
-                   ]
-                   ++
-                   [ DerivingShow.typeShowFunction _self ]
-                   {-# LINE 1533 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  let
+                      (t1,[t2])   = convertFromSimpleTypeAndTypes _simpletypeIself [_typeIself]
+                      allTypeVars = ftv [t1,t2]
+                      (ts1,ts2)   = ( Quantification (allTypeVars, [], [] .=>. t1) :: TpScheme
+                                    , Quantification (allTypeVars, [], [] .=>. t2) :: TpScheme
+                                    )
+                  in
+                  [ Core.DeclCustom
+                      { Core.declName    = idFromString (getNameName _simpletypeIname)
+                      , Core.declAccess  = Core.private
+                      , Core.declKind    = Core.DeclKindCustom (idFromString "typedecl")
+                      , Core.declCustoms =
+                          [ Core.CustomBytes
+                              (Byte.bytesFromString
+                                  (  show ts1
+                                  ++ " = "
+                                  ++ show ts2
+                                  )
+                              )
+                          , Core.CustomInt
+                              (length _simpletypeItypevariables)
+                          ]
+                      }
+                  ]
+                  ++
+                  [ DerivingShow.typeShowFunction _self ]
               _self =
                   Declaration_Type _rangeIself _simpletypeIself _typeIself
               _lhsOself =
                   _self
               _lhsOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIpatBindNr
-                   {-# LINE 1542 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIpatBindNr
               ( _rangeIself) =
                   range_
               ( _simpletypeIname,_simpletypeIself,_simpletypeItypevariables) =
@@ -1564,19 +1333,13 @@ sem_Declaration_TypeSignature range_ names_ type_ =
               _namesIself :: Names
               _typeIself :: Type
               _lhsOdecls =
-                  ({-# LINE 145 "CodeGeneration/ToCoreDecl.ag" #-}
-                   []
-                   {-# LINE 1570 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  []
               _self =
                   Declaration_TypeSignature _rangeIself _namesIself _typeIself
               _lhsOself =
                   _self
               _lhsOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIpatBindNr
-                   {-# LINE 1579 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIpatBindNr
               ( _rangeIself) =
                   range_
               ( _namesInames,_namesIself) =
@@ -1622,59 +1385,29 @@ sem_Declarations_Cons hd_ tl_ =
               _tlIpatBindNr :: Int
               _tlIself :: Declarations
               _lhsOdecls =
-                  ({-# LINE 156 "CodeGeneration/ToCoreModule.ag" #-}
-                   _hdIdecls  ++  _tlIdecls
-                   {-# LINE 1628 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _hdIdecls  ++  _tlIdecls
               _self =
                   (:) _hdIself _tlIself
               _lhsOself =
                   _self
               _lhsOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _tlIpatBindNr
-                   {-# LINE 1637 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _tlIpatBindNr
               _hdOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 1642 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _hdOimportEnv =
-                  ({-# LINE 66 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIimportEnv
-                   {-# LINE 1647 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIimportEnv
               _hdOisTopLevel =
-                  ({-# LINE 114 "CodeGeneration/ToCoreModule.ag" #-}
-                   _lhsIisTopLevel
-                   {-# LINE 1652 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIisTopLevel
               _hdOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIpatBindNr
-                   {-# LINE 1657 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIpatBindNr
               _tlOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 1662 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _tlOimportEnv =
-                  ({-# LINE 66 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIimportEnv
-                   {-# LINE 1667 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIimportEnv
               _tlOisTopLevel =
-                  ({-# LINE 114 "CodeGeneration/ToCoreModule.ag" #-}
-                   _lhsIisTopLevel
-                   {-# LINE 1672 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIisTopLevel
               _tlOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _hdIpatBindNr
-                   {-# LINE 1677 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _hdIpatBindNr
               ( _hdIdecls,_hdIpatBindNr,_hdIself) =
                   hd_ _hdOdictionaryEnv _hdOimportEnv _hdOisTopLevel _hdOpatBindNr
               ( _tlIdecls,_tlIpatBindNr,_tlIself) =
@@ -1690,19 +1423,13 @@ sem_Declarations_Nil =
               _lhsOself :: Declarations
               _lhsOpatBindNr :: Int
               _lhsOdecls =
-                  ({-# LINE 156 "CodeGeneration/ToCoreModule.ag" #-}
-                   []
-                   {-# LINE 1696 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  []
               _self =
                   []
               _lhsOself =
                   _self
               _lhsOpatBindNr =
-                  ({-# LINE 5 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIpatBindNr
-                   {-# LINE 1705 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIpatBindNr
           in  ( _lhsOdecls,_lhsOpatBindNr,_lhsOself)))
 -- Export ------------------------------------------------------
 -- cata
@@ -1730,25 +1457,13 @@ sem_Export_Module range_ name_ =
          _rangeIself :: Range
          _nameIself :: Name
          _lhsOvalues =
-             ({-# LINE 146 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 1736 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _lhsOtypes =
-             ({-# LINE 147 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 1741 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _lhsOcons =
-             ({-# LINE 148 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 1746 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _lhsOmods =
-             ({-# LINE 149 "CodeGeneration/ToCoreModule.ag" #-}
-              singleSet (idFromName _nameIself)
-              {-# LINE 1751 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             singleSet (idFromName _nameIself)
          _self =
              Export_Module _rangeIself _nameIself
          _lhsOself =
@@ -1773,25 +1488,13 @@ sem_Export_TypeOrClass range_ name_ names_ =
          _namesInames :: ( Maybe [Name] )
          _namesIself :: MaybeNames
          _lhsOvalues =
-             ({-# LINE 133 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 1779 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _lhsOtypes =
-             ({-# LINE 134 "CodeGeneration/ToCoreModule.ag" #-}
-              singleSet (idFromName _nameIself)
-              {-# LINE 1784 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             singleSet (idFromName _nameIself)
          _lhsOcons =
-             ({-# LINE 135 "CodeGeneration/ToCoreModule.ag" #-}
-              setFromList (maybe [] (map idFromName) _namesInames)
-              {-# LINE 1789 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             setFromList (maybe [] (map idFromName) _namesInames)
          _lhsOmods =
-             ({-# LINE 136 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 1794 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _self =
              Export_TypeOrClass _rangeIself _nameIself _namesIself
          _lhsOself =
@@ -1815,25 +1518,13 @@ sem_Export_TypeOrClassComplete range_ name_ =
          _rangeIself :: Range
          _nameIself :: Name
          _lhsOvalues =
-             ({-# LINE 140 "CodeGeneration/ToCoreModule.ag" #-}
-              internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
-              {-# LINE 1821 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
          _lhsOtypes =
-             ({-# LINE 141 "CodeGeneration/ToCoreModule.ag" #-}
-              internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
-              {-# LINE 1826 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
          _lhsOcons =
-             ({-# LINE 142 "CodeGeneration/ToCoreModule.ag" #-}
-              internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
-              {-# LINE 1831 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
          _lhsOmods =
-             ({-# LINE 143 "CodeGeneration/ToCoreModule.ag" #-}
-              internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
-              {-# LINE 1836 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
          _self =
              Export_TypeOrClassComplete _rangeIself _nameIself
          _lhsOself =
@@ -1855,25 +1546,13 @@ sem_Export_Variable range_ name_ =
          _rangeIself :: Range
          _nameIself :: Name
          _lhsOvalues =
-             ({-# LINE 127 "CodeGeneration/ToCoreModule.ag" #-}
-              singleSet (idFromName _nameIself)
-              {-# LINE 1861 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             singleSet (idFromName _nameIself)
          _lhsOtypes =
-             ({-# LINE 128 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 1866 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _lhsOcons =
-             ({-# LINE 129 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 1871 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _lhsOmods =
-             ({-# LINE 130 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 1876 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _self =
              Export_Variable _rangeIself _nameIself
          _lhsOself =
@@ -1911,25 +1590,13 @@ sem_Exports_Cons hd_ tl_ =
          _tlItypes :: IdSet
          _tlIvalues :: IdSet
          _lhsOcons =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              _hdIcons  `unionSet`  _tlIcons
-              {-# LINE 1917 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _hdIcons  `unionSet`  _tlIcons
          _lhsOmods =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              _hdImods  `unionSet`  _tlImods
-              {-# LINE 1922 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _hdImods  `unionSet`  _tlImods
          _lhsOtypes =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              _hdItypes  `unionSet`  _tlItypes
-              {-# LINE 1927 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _hdItypes  `unionSet`  _tlItypes
          _lhsOvalues =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              _hdIvalues  `unionSet`  _tlIvalues
-              {-# LINE 1932 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _hdIvalues  `unionSet`  _tlIvalues
          _self =
              (:) _hdIself _tlIself
          _lhsOself =
@@ -1947,25 +1614,13 @@ sem_Exports_Nil =
          _lhsOvalues :: IdSet
          _lhsOself :: Exports
          _lhsOcons =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 1953 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _lhsOmods =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 1958 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _lhsOtypes =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 1963 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _lhsOvalues =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 1968 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _self =
              []
          _lhsOself =
@@ -2041,29 +1696,17 @@ sem_Expression_Case range_ expression_ alternatives_ =
               _alternativesIcore :: ( Core.Expr )
               _alternativesIself :: Alternatives
               _lhsOcore =
-                  ({-# LINE 77 "CodeGeneration/ToCoreExpr.ag" #-}
-                   let_ caseExprId _expressionIcore _alternativesIcore
-                   {-# LINE 2047 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  let_ caseExprId _expressionIcore _alternativesIcore
               _alternativesOcaseRange =
-                  ({-# LINE 78 "CodeGeneration/ToCoreExpr.ag" #-}
-                   _rangeIself
-                   {-# LINE 2052 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _rangeIself
               _self =
                   Expression_Case _rangeIself _expressionIself _alternativesIself
               _lhsOself =
                   _self
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2061 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _alternativesOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2066 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _expressionIcore,_expressionIself) =
@@ -2087,25 +1730,16 @@ sem_Expression_Comprehension range_ expression_ qualifiers_ =
               _qualifiersIcore :: ( [Core.Expr -> Core.Expr] )
               _qualifiersIself :: Qualifiers
               _lhsOcore =
-                  ({-# LINE 112 "CodeGeneration/ToCoreExpr.ag" #-}
-                   let singleton x = cons x nil
-                   in foldr ($) (singleton _expressionIcore) _qualifiersIcore
-                   {-# LINE 2094 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  let singleton x = cons x nil
+                  in foldr ($) (singleton _expressionIcore) _qualifiersIcore
               _self =
                   Expression_Comprehension _rangeIself _expressionIself _qualifiersIself
               _lhsOself =
                   _self
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2103 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _qualifiersOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2108 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _expressionIcore,_expressionIself) =
@@ -2123,10 +1757,7 @@ sem_Expression_Constructor range_ name_ =
               _rangeIself :: Range
               _nameIself :: Name
               _lhsOcore =
-                  ({-# LINE 26 "CodeGeneration/ToCoreExpr.ag" #-}
-                   Core.Con (Core.ConId (idFromName _nameIself))
-                   {-# LINE 2129 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  Core.Con (Core.ConId (idFromName _nameIself))
               _self =
                   Expression_Constructor _rangeIself _nameIself
               _lhsOself =
@@ -2148,19 +1779,13 @@ sem_Expression_Do range_ statements_ =
               _statementsIcore :: ( [Maybe Core.Expr -> Core.Expr] )
               _statementsIself :: Statements
               _lhsOcore =
-                  ({-# LINE 91 "CodeGeneration/ToCoreExpr.ag" #-}
-                   chainCode _statementsIcore
-                   {-# LINE 2154 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  chainCode _statementsIcore
               _self =
                   Expression_Do _rangeIself _statementsIself
               _lhsOself =
                   _self
               _statementsOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2163 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _statementsIcore,_statementsIself) =
@@ -2186,41 +1811,29 @@ sem_Expression_Enum range_ from_ then_ to_ =
               _toIcore :: ( Maybe Core.Expr )
               _toIself :: MaybeExpression
               _lhsOcore =
-                  ({-# LINE 136 "CodeGeneration/ToCoreExpr.ag" #-}
-                   case (_thenIcore, _toIcore) of
-                       (Just then_, Just to) ->
-                           insertDictionaries (setNameRange enumFromThenToName _rangeIself) _lhsIdictionaryEnv
-                              `app_` _fromIcore `app_` then_ `app_` to
-                       (Just then_, Nothing) ->
-                           insertDictionaries (setNameRange enumFromThenName _rangeIself) _lhsIdictionaryEnv
-                              `app_` _fromIcore `app_` then_
-                       (Nothing, Just to) ->
-                           insertDictionaries (setNameRange enumFromToName _rangeIself) _lhsIdictionaryEnv
-                              `app_` _fromIcore `app_` to
-                       (Nothing, Nothing) ->
-                           insertDictionaries (setNameRange enumFromName _rangeIself) _lhsIdictionaryEnv
-                              `app_` _fromIcore
-                   {-# LINE 2204 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  case (_thenIcore, _toIcore) of
+                      (Just then_, Just to) ->
+                          insertDictionaries (setNameRange enumFromThenToName _rangeIself) _lhsIdictionaryEnv
+                             `app_` _fromIcore `app_` then_ `app_` to
+                      (Just then_, Nothing) ->
+                          insertDictionaries (setNameRange enumFromThenName _rangeIself) _lhsIdictionaryEnv
+                             `app_` _fromIcore `app_` then_
+                      (Nothing, Just to) ->
+                          insertDictionaries (setNameRange enumFromToName _rangeIself) _lhsIdictionaryEnv
+                             `app_` _fromIcore `app_` to
+                      (Nothing, Nothing) ->
+                          insertDictionaries (setNameRange enumFromName _rangeIself) _lhsIdictionaryEnv
+                             `app_` _fromIcore
               _self =
                   Expression_Enum _rangeIself _fromIself _thenIself _toIself
               _lhsOself =
                   _self
               _fromOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2213 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _thenOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2218 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _toOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2223 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _fromIcore,_fromIself) =
@@ -2247,15 +1860,9 @@ sem_Expression_Feedback range_ feedback_ expression_ =
               _lhsOself =
                   _self
               _lhsOcore =
-                  ({-# LINE 13 "CodeGeneration/ToCoreExpr.ag" #-}
-                   _expressionIcore
-                   {-# LINE 2253 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _expressionIcore
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2258 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _expressionIcore,_expressionIself) =
@@ -2270,10 +1877,7 @@ sem_Expression_Hole range_ id_ =
               _lhsOself :: Expression
               _rangeIself :: Range
               _lhsOcore =
-                  ({-# LINE 22 "CodeGeneration/ToCoreExpr.ag" #-}
-                   Core.Var (idFromString "undefined")
-                   {-# LINE 2276 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  Core.Var (idFromString "undefined")
               _self =
                   Expression_Hole _rangeIself id_
               _lhsOself =
@@ -2301,29 +1905,17 @@ sem_Expression_If range_ guardExpression_ thenExpression_ elseExpression_ =
               _elseExpressionIcore :: ( Core.Expr )
               _elseExpressionIself :: Expression
               _lhsOcore =
-                  ({-# LINE 55 "CodeGeneration/ToCoreExpr.ag" #-}
-                   if_ _guardExpressionIcore _thenExpressionIcore _elseExpressionIcore
-                   {-# LINE 2307 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  if_ _guardExpressionIcore _thenExpressionIcore _elseExpressionIcore
               _self =
                   Expression_If _rangeIself _guardExpressionIself _thenExpressionIself _elseExpressionIself
               _lhsOself =
                   _self
               _guardExpressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2316 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _thenExpressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2321 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _elseExpressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2326 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _guardExpressionIcore,_guardExpressionIself) =
@@ -2353,34 +1945,22 @@ sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression
               _rightExpressionIcore :: ( Maybe Core.Expr )
               _rightExpressionIself :: MaybeExpression
               _lhsOcore =
-                  ({-# LINE 39 "CodeGeneration/ToCoreExpr.ag" #-}
-                   case (_leftExpressionIcore, _rightExpressionIcore) of
-                       (Nothing, Nothing) -> _operatorIcore
-                       (Just l , Nothing) -> Core.Ap _operatorIcore l
-                       (Nothing, Just r ) -> Core.Lam parameterId
-                                               (foldl Core.Ap _operatorIcore [Core.Var parameterId, r])
-                       (Just l , Just r ) -> foldl Core.Ap _operatorIcore [l,r]
-                   {-# LINE 2364 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  case (_leftExpressionIcore, _rightExpressionIcore) of
+                      (Nothing, Nothing) -> _operatorIcore
+                      (Just l , Nothing) -> Core.Ap _operatorIcore l
+                      (Nothing, Just r ) -> Core.Lam parameterId
+                                              (foldl Core.Ap _operatorIcore [Core.Var parameterId, r])
+                      (Just l , Just r ) -> foldl Core.Ap _operatorIcore [l,r]
               _self =
                   Expression_InfixApplication _rangeIself _leftExpressionIself _operatorIself _rightExpressionIself
               _lhsOself =
                   _self
               _leftExpressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2373 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _operatorOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2378 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _rightExpressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2383 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _leftExpressionIcore,_leftExpressionIself) =
@@ -2406,28 +1986,22 @@ sem_Expression_Lambda range_ patterns_ expression_ =
               _expressionIcore :: ( Core.Expr )
               _expressionIself :: Expression
               _lhsOcore =
-                  ({-# LINE 62 "CodeGeneration/ToCoreExpr.ag" #-}
-                   let ids = freshIds "u$" _patternsIlength
-                   in let_ nextClauseId (patternMatchFail "lambda expression" _rangeIself)
-                       (foldr
-                           Core.Lam
-                           (patternsToCore
-                               (zip ids _patternsIself)
-                               _expressionIcore
-                           )
-                           ids
-                       )
-                   {-# LINE 2421 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  let ids = freshIds "u$" _patternsIlength
+                  in let_ nextClauseId (patternMatchFail "lambda expression" _rangeIself)
+                      (foldr
+                          Core.Lam
+                          (patternsToCore
+                              (zip ids _patternsIself)
+                              _expressionIcore
+                          )
+                          ids
+                      )
               _self =
                   Expression_Lambda _rangeIself _patternsIself _expressionIself
               _lhsOself =
                   _self
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2430 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _patternsIlength,_patternsIself,_patternsIvars) =
@@ -2455,44 +2029,23 @@ sem_Expression_Let range_ declarations_ expression_ =
               _expressionIcore :: ( Core.Expr )
               _expressionIself :: Expression
               _importEnv =
-                  ({-# LINE 68 "CodeGeneration/CodeGeneration.ag" #-}
-                   internalError "CodeGeneration.ag" "Expression.Let" ""
-                   {-# LINE 2461 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "CodeGeneration.ag" "Expression.Let" ""
               _declarationsOpatBindNr =
-                  ({-# LINE 83 "CodeGeneration/ToCoreExpr.ag" #-}
-                   0
-                   {-# LINE 2466 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  0
               _declarationsOisTopLevel =
-                  ({-# LINE 84 "CodeGeneration/ToCoreExpr.ag" #-}
-                   False
-                   {-# LINE 2471 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  False
               _lhsOcore =
-                  ({-# LINE 85 "CodeGeneration/ToCoreExpr.ag" #-}
-                   letrec_ _declarationsIdecls _expressionIcore
-                   {-# LINE 2476 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  letrec_ _declarationsIdecls _expressionIcore
               _self =
                   Expression_Let _rangeIself _declarationsIself _expressionIself
               _lhsOself =
                   _self
               _declarationsOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2485 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _declarationsOimportEnv =
-                  ({-# LINE 66 "CodeGeneration/CodeGeneration.ag" #-}
-                   _importEnv
-                   {-# LINE 2490 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _importEnv
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2495 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _declarationsIdecls,_declarationsIpatBindNr,_declarationsIself) =
@@ -2512,19 +2065,13 @@ sem_Expression_List range_ expressions_ =
               _expressionsIcore :: ( [Core.Expr] )
               _expressionsIself :: Expressions
               _lhsOcore =
-                  ({-# LINE 95 "CodeGeneration/ToCoreExpr.ag" #-}
-                   coreList _expressionsIcore
-                   {-# LINE 2518 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  coreList _expressionsIcore
               _self =
                   Expression_List _rangeIself _expressionsIself
               _lhsOself =
                   _self
               _expressionsOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2527 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _expressionsIcore,_expressionsIself) =
@@ -2541,10 +2088,7 @@ sem_Expression_Literal range_ literal_ =
               _literalIcore :: ( Core.Expr )
               _literalIself :: Literal
               _lhsOcore =
-                  ({-# LINE 14 "CodeGeneration/ToCoreExpr.ag" #-}
-                   _literalIcore
-                   {-# LINE 2547 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _literalIcore
               _self =
                   Expression_Literal _rangeIself _literalIself
               _lhsOself =
@@ -2570,15 +2114,9 @@ sem_Expression_MustUse range_ expression_ =
               _lhsOself =
                   _self
               _lhsOcore =
-                  ({-# LINE 13 "CodeGeneration/ToCoreExpr.ag" #-}
-                   _expressionIcore
-                   {-# LINE 2576 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _expressionIcore
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2581 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _expressionIcore,_expressionIself) =
@@ -2596,20 +2134,14 @@ sem_Expression_Negate range_ expression_ =
               _expressionIcore :: ( Core.Expr )
               _expressionIself :: Expression
               _lhsOcore =
-                  ({-# LINE 125 "CodeGeneration/ToCoreExpr.ag" #-}
-                   insertDictionaries (setNameRange intUnaryMinusName _rangeIself) _lhsIdictionaryEnv
-                   `app_` _expressionIcore
-                   {-# LINE 2603 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  insertDictionaries (setNameRange intUnaryMinusName _rangeIself) _lhsIdictionaryEnv
+                  `app_` _expressionIcore
               _self =
                   Expression_Negate _rangeIself _expressionIself
               _lhsOself =
                   _self
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2612 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _expressionIcore,_expressionIself) =
@@ -2627,19 +2159,13 @@ sem_Expression_NegateFloat range_ expression_ =
               _expressionIcore :: ( Core.Expr )
               _expressionIself :: Expression
               _lhsOcore =
-                  ({-# LINE 130 "CodeGeneration/ToCoreExpr.ag" #-}
-                   var "$primNegFloat" `app_` _expressionIcore
-                   {-# LINE 2633 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  var "$primNegFloat" `app_` _expressionIcore
               _self =
                   Expression_NegateFloat _rangeIself _expressionIself
               _lhsOself =
                   _self
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2642 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _expressionIcore,_expressionIself) =
@@ -2661,24 +2187,15 @@ sem_Expression_NormalApplication range_ function_ arguments_ =
               _argumentsIcore :: ( [Core.Expr] )
               _argumentsIself :: Expressions
               _lhsOcore =
-                  ({-# LINE 34 "CodeGeneration/ToCoreExpr.ag" #-}
-                   foldl Core.Ap _functionIcore _argumentsIcore
-                   {-# LINE 2667 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  foldl Core.Ap _functionIcore _argumentsIcore
               _self =
                   Expression_NormalApplication _rangeIself _functionIself _argumentsIself
               _lhsOself =
                   _self
               _functionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2676 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _argumentsOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2681 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _functionIcore,_functionIself) =
@@ -2698,19 +2215,13 @@ sem_Expression_Parenthesized range_ expression_ =
               _expressionIcore :: ( Core.Expr )
               _expressionIself :: Expression
               _lhsOcore =
-                  ({-# LINE 30 "CodeGeneration/ToCoreExpr.ag" #-}
-                   _expressionIcore
-                   {-# LINE 2704 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _expressionIcore
               _self =
                   Expression_Parenthesized _rangeIself _expressionIself
               _lhsOself =
                   _self
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2713 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _expressionIcore,_expressionIself) =
@@ -2729,19 +2240,13 @@ sem_Expression_RecordConstruction range_ name_ recordExpressionBindings_ =
               _nameIself :: Name
               _recordExpressionBindingsIself :: RecordExpressionBindings
               _lhsOcore =
-                  ({-# LINE 156 "CodeGeneration/ToCoreExpr.ag" #-}
-                   internalError "ToCoreExpr" "Expression" "records not supported"
-                   {-# LINE 2735 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "ToCoreExpr" "Expression" "records not supported"
               _self =
                   Expression_RecordConstruction _rangeIself _nameIself _recordExpressionBindingsIself
               _lhsOself =
                   _self
               _recordExpressionBindingsOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2744 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _nameIself) =
@@ -2764,24 +2269,15 @@ sem_Expression_RecordUpdate range_ expression_ recordExpressionBindings_ =
               _expressionIself :: Expression
               _recordExpressionBindingsIself :: RecordExpressionBindings
               _lhsOcore =
-                  ({-# LINE 161 "CodeGeneration/ToCoreExpr.ag" #-}
-                   internalError "ToCoreExpr" "Expression" "records not supported"
-                   {-# LINE 2770 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "ToCoreExpr" "Expression" "records not supported"
               _self =
                   Expression_RecordUpdate _rangeIself _expressionIself _recordExpressionBindingsIself
               _lhsOself =
                   _self
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2779 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _recordExpressionBindingsOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2784 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _expressionIcore,_expressionIself) =
@@ -2801,27 +2297,21 @@ sem_Expression_Tuple range_ expressions_ =
               _expressionsIcore :: ( [Core.Expr] )
               _expressionsIself :: Expressions
               _lhsOcore =
-                  ({-# LINE 99 "CodeGeneration/ToCoreExpr.ag" #-}
-                   foldl
-                       Core.Ap
-                       (Core.Con
-                           (Core.ConTag
-                               (Core.Lit (Core.LitInt 0))
-                               (length _expressionsIcore)
-                           )
-                       )
-                       _expressionsIcore
-                   {-# LINE 2815 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  foldl
+                      Core.Ap
+                      (Core.Con
+                          (Core.ConTag
+                              (Core.Lit (Core.LitInt 0))
+                              (length _expressionsIcore)
+                          )
+                      )
+                      _expressionsIcore
               _self =
                   Expression_Tuple _rangeIself _expressionsIself
               _lhsOself =
                   _self
               _expressionsOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2824 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _expressionsIcore,_expressionsIself) =
@@ -2841,19 +2331,13 @@ sem_Expression_Typed range_ expression_ type_ =
               _expressionIself :: Expression
               _typeIself :: Type
               _lhsOcore =
-                  ({-# LINE 119 "CodeGeneration/ToCoreExpr.ag" #-}
-                   _expressionIcore
-                   {-# LINE 2847 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _expressionIcore
               _self =
                   Expression_Typed _rangeIself _expressionIself _typeIself
               _lhsOself =
                   _self
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2856 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _expressionIcore,_expressionIself) =
@@ -2871,10 +2355,7 @@ sem_Expression_Variable range_ name_ =
               _rangeIself :: Range
               _nameIself :: Name
               _lhsOcore =
-                  ({-# LINE 18 "CodeGeneration/ToCoreExpr.ag" #-}
-                   insertDictionaries _nameIself _lhsIdictionaryEnv
-                   {-# LINE 2877 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  insertDictionaries _nameIself _lhsIdictionaryEnv
               _self =
                   Expression_Variable _rangeIself _nameIself
               _lhsOself =
@@ -2907,24 +2388,15 @@ sem_Expressions_Cons hd_ tl_ =
               _tlIcore :: ( [Core.Expr] )
               _tlIself :: Expressions
               _lhsOcore =
-                  ({-# LINE 11 "CodeGeneration/ToCoreExpr.ag" #-}
-                   _hdIcore  :  _tlIcore
-                   {-# LINE 2913 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _hdIcore  :  _tlIcore
               _self =
                   (:) _hdIself _tlIself
               _lhsOself =
                   _self
               _hdOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2922 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _tlOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 2927 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _hdIcore,_hdIself) =
                   hd_ _hdOdictionaryEnv
               ( _tlIcore,_tlIself) =
@@ -2936,10 +2408,7 @@ sem_Expressions_Nil =
          (let _lhsOcore :: ( [Core.Expr] )
               _lhsOself :: Expressions
               _lhsOcore =
-                  ({-# LINE 11 "CodeGeneration/ToCoreExpr.ag" #-}
-                   []
-                   {-# LINE 2942 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  []
               _self =
                   []
               _lhsOself =
@@ -3091,30 +2560,15 @@ sem_FunctionBinding_Feedback range_ feedback_ functionBinding_ =
               _lhsOself =
                   _self
               _lhsOarity =
-                  ({-# LINE 219 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _functionBindingIarity
-                   {-# LINE 3097 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _functionBindingIarity
               _lhsOcore =
-                  ({-# LINE 228 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _functionBindingIcore
-                   {-# LINE 3102 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _functionBindingIcore
               _lhsOname =
-                  ({-# LINE 19 "CodeGeneration/ToCoreName.ag" #-}
-                   _functionBindingIname
-                   {-# LINE 3107 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _functionBindingIname
               _functionBindingOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 3112 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _functionBindingOids =
-                  ({-# LINE 217 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIids
-                   {-# LINE 3117 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIids
               ( _rangeIself) =
                   range_
               ( _functionBindingIarity,_functionBindingIcore,_functionBindingIname,_functionBindingIself) =
@@ -3141,40 +2595,28 @@ sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_ =
               _righthandsideIisGuarded :: Bool
               _righthandsideIself :: RightHandSide
               _lhsOarity =
-                  ({-# LINE 231 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lefthandsideIarity
-                   {-# LINE 3147 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lefthandsideIarity
               _lhsOcore =
-                  ({-# LINE 232 "CodeGeneration/ToCoreDecl.ag" #-}
-                   \nextClause ->
-                       let thisClause =
-                               patternsToCore
-                                   (zip _lhsIids _lefthandsideIpatterns)
-                                   _righthandsideIcore in
-                       if all patternAlwaysSucceeds _lefthandsideIpatterns
-                          &&
-                          not _righthandsideIisGuarded
-                       then
-                           thisClause
-                       else
-                           let_ nextClauseId nextClause thisClause
-                   {-# LINE 3163 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  \nextClause ->
+                      let thisClause =
+                              patternsToCore
+                                  (zip _lhsIids _lefthandsideIpatterns)
+                                  _righthandsideIcore in
+                      if all patternAlwaysSucceeds _lefthandsideIpatterns
+                         &&
+                         not _righthandsideIisGuarded
+                      then
+                          thisClause
+                      else
+                          let_ nextClauseId nextClause thisClause
               _self =
                   FunctionBinding_FunctionBinding _rangeIself _lefthandsideIself _righthandsideIself
               _lhsOself =
                   _self
               _lhsOname =
-                  ({-# LINE 19 "CodeGeneration/ToCoreName.ag" #-}
-                   _lefthandsideIname
-                   {-# LINE 3172 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lefthandsideIname
               _righthandsideOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 3177 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _lefthandsideIarity,_lefthandsideIname,_lefthandsideIpatterns,_lefthandsideIself) =
@@ -3194,20 +2636,11 @@ sem_FunctionBinding_Hole range_ id_ =
               _lhsOself :: FunctionBinding
               _rangeIself :: Range
               _lhsOarity =
-                  ({-# LINE 229 "CodeGeneration/ToCoreDecl.ag" #-}
-                   0
-                   {-# LINE 3200 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  0
               _lhsOcore =
-                  ({-# LINE 230 "CodeGeneration/ToCoreDecl.ag" #-}
-                   internalError "ToCoreDecl" "FunctionBinding" "holes not supported"
-                   {-# LINE 3205 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "ToCoreDecl" "FunctionBinding" "holes not supported"
               _lhsOname =
-                  ({-# LINE 26 "CodeGeneration/ToCoreName.ag" #-}
-                   internalError "ToCoreName.ag" "n/a" "hole FunctionBindings"
-                   {-# LINE 3210 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "ToCoreName.ag" "n/a" "hole FunctionBindings"
               _self =
                   FunctionBinding_Hole _rangeIself id_
               _lhsOself =
@@ -3251,49 +2684,25 @@ sem_FunctionBindings_Cons hd_ tl_ =
               _tlIname :: Name
               _tlIself :: FunctionBindings
               _lhsOcore =
-                  ({-# LINE 223 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _hdIcore _tlIcore
-                   {-# LINE 3257 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _hdIcore _tlIcore
               _lhsOarity =
-                  ({-# LINE 224 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _hdIarity
-                   {-# LINE 3262 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _hdIarity
               _lhsOname =
-                  ({-# LINE 22 "CodeGeneration/ToCoreName.ag" #-}
-                   _hdIname
-                   {-# LINE 3267 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _hdIname
               _self =
                   (:) _hdIself _tlIself
               _lhsOself =
                   _self
               _hdOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 3276 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _hdOids =
-                  ({-# LINE 217 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIids
-                   {-# LINE 3281 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIids
               _tlOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 3286 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _tlOids =
-                  ({-# LINE 217 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIids
-                   {-# LINE 3291 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIids
               _tlOrange =
-                  ({-# LINE 222 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _lhsIrange
-                   {-# LINE 3296 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIrange
               ( _hdIarity,_hdIcore,_hdIname,_hdIself) =
                   hd_ _hdOdictionaryEnv _hdOids
               ( _tlIarity,_tlIcore,_tlIname,_tlIself) =
@@ -3309,20 +2718,11 @@ sem_FunctionBindings_Nil =
               _lhsOname :: Name
               _lhsOself :: FunctionBindings
               _lhsOcore =
-                  ({-# LINE 225 "CodeGeneration/ToCoreDecl.ag" #-}
-                   patternMatchFail "function bindings" _lhsIrange
-                   {-# LINE 3315 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  patternMatchFail "function bindings" _lhsIrange
               _lhsOarity =
-                  ({-# LINE 226 "CodeGeneration/ToCoreDecl.ag" #-}
-                   internalError "ToCoreDecl" "FunctionBindings" "arity: empty list of function bindings"
-                   {-# LINE 3320 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "ToCoreDecl" "FunctionBindings" "arity: empty list of function bindings"
               _lhsOname =
-                  ({-# LINE 23 "CodeGeneration/ToCoreName.ag" #-}
-                   internalError "ToCoreName.ag" "n/a" "empty FunctionBindings"
-                   {-# LINE 3325 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "ToCoreName.ag" "n/a" "empty FunctionBindings"
               _self =
                   []
               _lhsOself =
@@ -3353,24 +2753,15 @@ sem_GuardedExpression_GuardedExpression range_ guard_ expression_ =
               _expressionIcore :: ( Core.Expr )
               _expressionIself :: Expression
               _lhsOcore =
-                  ({-# LINE 281 "CodeGeneration/ToCoreExpr.ag" #-}
-                   \fail' -> if_ _guardIcore _expressionIcore fail'
-                   {-# LINE 3359 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  \fail' -> if_ _guardIcore _expressionIcore fail'
               _self =
                   GuardedExpression_GuardedExpression _rangeIself _guardIself _expressionIself
               _lhsOself =
                   _self
               _guardOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 3368 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 3373 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _guardIcore,_guardIself) =
@@ -3401,24 +2792,15 @@ sem_GuardedExpressions_Cons hd_ tl_ =
               _tlIcore :: ( [Core.Expr -> Core.Expr] )
               _tlIself :: GuardedExpressions
               _lhsOcore =
-                  ({-# LINE 278 "CodeGeneration/ToCoreExpr.ag" #-}
-                   _hdIcore  :  _tlIcore
-                   {-# LINE 3407 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _hdIcore  :  _tlIcore
               _self =
                   (:) _hdIself _tlIself
               _lhsOself =
                   _self
               _hdOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 3416 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _tlOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 3421 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _hdIcore,_hdIself) =
                   hd_ _hdOdictionaryEnv
               ( _tlIcore,_tlIself) =
@@ -3430,10 +2812,7 @@ sem_GuardedExpressions_Nil =
          (let _lhsOcore :: ( [Core.Expr -> Core.Expr] )
               _lhsOself :: GuardedExpressions
               _lhsOcore =
-                  ({-# LINE 278 "CodeGeneration/ToCoreExpr.ag" #-}
-                   []
-                   {-# LINE 3436 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  []
               _self =
                   []
               _lhsOself =
@@ -3669,20 +3048,11 @@ sem_LeftHandSide_Function range_ name_ patterns_ =
          _patternsIself :: Patterns
          _patternsIvars :: ( [Name] )
          _lhsOarity =
-             ({-# LINE 283 "CodeGeneration/ToCoreDecl.ag" #-}
-              _patternsIlength
-              {-# LINE 3675 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _patternsIlength
          _lhsOpatterns =
-             ({-# LINE 284 "CodeGeneration/ToCoreDecl.ag" #-}
-              _patternsIself
-              {-# LINE 3680 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _patternsIself
          _lhsOname =
-             ({-# LINE 29 "CodeGeneration/ToCoreName.ag" #-}
-              _nameIself
-              {-# LINE 3685 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _nameIself
          _self =
              LeftHandSide_Function _rangeIself _nameIself _patternsIself
          _lhsOself =
@@ -3711,20 +3081,11 @@ sem_LeftHandSide_Infix range_ leftPattern_ operator_ rightPattern_ =
          _rightPatternIself :: Pattern
          _rightPatternIvars :: ( [Name] )
          _lhsOarity =
-             ({-# LINE 289 "CodeGeneration/ToCoreDecl.ag" #-}
-              2
-              {-# LINE 3717 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             2
          _lhsOpatterns =
-             ({-# LINE 290 "CodeGeneration/ToCoreDecl.ag" #-}
-              [_leftPatternIself, _rightPatternIself ]
-              {-# LINE 3722 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             [_leftPatternIself, _rightPatternIself ]
          _lhsOname =
-             ({-# LINE 30 "CodeGeneration/ToCoreName.ag" #-}
-              _operatorIself
-              {-# LINE 3727 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _operatorIself
          _self =
              LeftHandSide_Infix _rangeIself _leftPatternIself _operatorIself _rightPatternIself
          _lhsOself =
@@ -3756,24 +3117,15 @@ sem_LeftHandSide_Parenthesized range_ lefthandside_ patterns_ =
          _patternsIself :: Patterns
          _patternsIvars :: ( [Name] )
          _lhsOarity =
-             ({-# LINE 296 "CodeGeneration/ToCoreDecl.ag" #-}
-              _lefthandsideIarity + _patternsIlength
-              {-# LINE 3762 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _lefthandsideIarity + _patternsIlength
          _lhsOpatterns =
-             ({-# LINE 297 "CodeGeneration/ToCoreDecl.ag" #-}
-              _lefthandsideIpatterns ++ _patternsIself
-              {-# LINE 3767 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _lefthandsideIpatterns ++ _patternsIself
          _self =
              LeftHandSide_Parenthesized _rangeIself _lefthandsideIself _patternsIself
          _lhsOself =
              _self
          _lhsOname =
-             ({-# LINE 19 "CodeGeneration/ToCoreName.ag" #-}
-              _lefthandsideIname
-              {-# LINE 3776 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _lefthandsideIname
          ( _rangeIself) =
              range_
          ( _lefthandsideIarity,_lefthandsideIname,_lefthandsideIpatterns,_lefthandsideIself) =
@@ -3803,11 +3155,8 @@ sem_Literal_Char range_ value_ =
          _lhsOself :: Literal
          _rangeIself :: Range
          _lhsOcore =
-             ({-# LINE 292 "CodeGeneration/ToCoreExpr.ag" #-}
-              Core.Lit (Core.LitInt (ord
-                  (read ("'" ++ value_ ++ "'"))))
-              {-# LINE 3810 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             Core.Lit (Core.LitInt (ord
+                 (read ("'" ++ value_ ++ "'"))))
          _self =
              Literal_Char _rangeIself value_
          _lhsOself =
@@ -3823,10 +3172,7 @@ sem_Literal_Float range_ value_ =
          _lhsOself :: Literal
          _rangeIself :: Range
          _lhsOcore =
-             ({-# LINE 298 "CodeGeneration/ToCoreExpr.ag" #-}
-              float value_
-              {-# LINE 3829 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             float value_
          _self =
              Literal_Float _rangeIself value_
          _lhsOself =
@@ -3842,10 +3188,7 @@ sem_Literal_Int range_ value_ =
          _lhsOself :: Literal
          _rangeIself :: Range
          _lhsOcore =
-             ({-# LINE 288 "CodeGeneration/ToCoreExpr.ag" #-}
-              Core.Lit (Core.LitInt (read value_))
-              {-# LINE 3848 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             Core.Lit (Core.LitInt (read value_))
          _self =
              Literal_Int _rangeIself value_
          _lhsOself =
@@ -3861,11 +3204,8 @@ sem_Literal_String range_ value_ =
          _lhsOself :: Literal
          _rangeIself :: Range
          _lhsOcore =
-             ({-# LINE 302 "CodeGeneration/ToCoreExpr.ag" #-}
-              var "$primPackedToString" `app_`
-                  packedString (read ("\"" ++ value_ ++ "\""))
-              {-# LINE 3868 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             var "$primPackedToString" `app_`
+                 packedString (read ("\"" ++ value_ ++ "\""))
          _self =
              Literal_String _rangeIself value_
          _lhsOself =
@@ -3898,39 +3238,21 @@ sem_MaybeDeclarations_Just declarations_ =
               _declarationsIpatBindNr :: Int
               _declarationsIself :: Declarations
               _importEnv =
-                  ({-# LINE 69 "CodeGeneration/CodeGeneration.ag" #-}
-                   internalError "CodeGeneration.ag" "MaybeDeclarations.Just" ""
-                   {-# LINE 3904 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "CodeGeneration.ag" "MaybeDeclarations.Just" ""
               _declarationsOpatBindNr =
-                  ({-# LINE 9 "CodeGeneration/ToCoreDecl.ag" #-}
-                   0
-                   {-# LINE 3909 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  0
               _declarationsOisTopLevel =
-                  ({-# LINE 10 "CodeGeneration/ToCoreDecl.ag" #-}
-                   False
-                   {-# LINE 3914 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  False
               _lhsOcore =
-                  ({-# LINE 11 "CodeGeneration/ToCoreDecl.ag" #-}
-                   \continue -> letrec_ _declarationsIdecls continue
-                   {-# LINE 3919 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  \continue -> letrec_ _declarationsIdecls continue
               _self =
                   MaybeDeclarations_Just _declarationsIself
               _lhsOself =
                   _self
               _declarationsOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 3928 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _declarationsOimportEnv =
-                  ({-# LINE 66 "CodeGeneration/CodeGeneration.ag" #-}
-                   _importEnv
-                   {-# LINE 3933 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _importEnv
               ( _declarationsIdecls,_declarationsIpatBindNr,_declarationsIself) =
                   declarations_ _declarationsOdictionaryEnv _declarationsOimportEnv _declarationsOisTopLevel _declarationsOpatBindNr
           in  ( _lhsOcore,_lhsOself)))
@@ -3940,10 +3262,7 @@ sem_MaybeDeclarations_Nothing =
          (let _lhsOcore :: ( Core.Expr -> Core.Expr )
               _lhsOself :: MaybeDeclarations
               _lhsOcore =
-                  ({-# LINE 8 "CodeGeneration/ToCoreDecl.ag" #-}
-                   \continue -> continue
-                   {-# LINE 3946 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  \continue -> continue
               _self =
                   MaybeDeclarations_Nothing
               _lhsOself =
@@ -3973,25 +3292,13 @@ sem_MaybeExports_Just exports_ =
          _exportsItypes :: IdSet
          _exportsIvalues :: IdSet
          _lhsOcons =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              _exportsIcons
-              {-# LINE 3979 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _exportsIcons
          _lhsOmods =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              _exportsImods
-              {-# LINE 3984 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _exportsImods
          _lhsOtypes =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              _exportsItypes
-              {-# LINE 3989 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _exportsItypes
          _lhsOvalues =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              _exportsIvalues
-              {-# LINE 3994 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _exportsIvalues
          _self =
              MaybeExports_Just _exportsIself
          _lhsOself =
@@ -4007,25 +3314,13 @@ sem_MaybeExports_Nothing =
          _lhsOvalues :: IdSet
          _lhsOself :: MaybeExports
          _lhsOcons =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 4013 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _lhsOmods =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 4018 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _lhsOtypes =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 4023 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _lhsOvalues =
-             ({-# LINE 123 "CodeGeneration/ToCoreModule.ag" #-}
-              emptySet
-              {-# LINE 4028 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             emptySet
          _self =
              MaybeExports_Nothing
          _lhsOself =
@@ -4052,19 +3347,13 @@ sem_MaybeExpression_Just expression_ =
               _expressionIcore :: ( Core.Expr )
               _expressionIself :: Expression
               _lhsOcore =
-                  ({-# LINE 7 "CodeGeneration/ToCoreExpr.ag" #-}
-                   Just _expressionIcore
-                   {-# LINE 4058 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  Just _expressionIcore
               _self =
                   MaybeExpression_Just _expressionIself
               _lhsOself =
                   _self
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 4067 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _expressionIcore,_expressionIself) =
                   expression_ _expressionOdictionaryEnv
           in  ( _lhsOcore,_lhsOself)))
@@ -4074,10 +3363,7 @@ sem_MaybeExpression_Nothing =
          (let _lhsOcore :: ( Maybe Core.Expr )
               _lhsOself :: MaybeExpression
               _lhsOcore =
-                  ({-# LINE 6 "CodeGeneration/ToCoreExpr.ag" #-}
-                   Nothing
-                   {-# LINE 4080 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  Nothing
               _self =
                   MaybeExpression_Nothing
               _lhsOself =
@@ -4158,15 +3444,9 @@ sem_MaybeName_Just name_ =
          _lhsOself :: MaybeName
          _nameIself :: Name
          _lhsOisNothing =
-             ({-# LINE 4 "CodeGeneration/ToCoreName.ag" #-}
-              False
-              {-# LINE 4164 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             False
          _lhsOname =
-             ({-# LINE 5 "CodeGeneration/ToCoreName.ag" #-}
-              Just _nameIself
-              {-# LINE 4169 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             Just _nameIself
          _self =
              MaybeName_Just _nameIself
          _lhsOself =
@@ -4180,15 +3460,9 @@ sem_MaybeName_Nothing =
          _lhsOname :: ( Maybe Name )
          _lhsOself :: MaybeName
          _lhsOisNothing =
-             ({-# LINE 2 "CodeGeneration/ToCoreName.ag" #-}
-              True
-              {-# LINE 4186 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             True
          _lhsOname =
-             ({-# LINE 3 "CodeGeneration/ToCoreName.ag" #-}
-              Nothing
-              {-# LINE 4191 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             Nothing
          _self =
              MaybeName_Nothing
          _lhsOself =
@@ -4212,10 +3486,7 @@ sem_MaybeNames_Just names_ =
          _namesInames :: ([Name])
          _namesIself :: Names
          _lhsOnames =
-             ({-# LINE 10 "CodeGeneration/ToCoreName.ag" #-}
-              Just _namesInames
-              {-# LINE 4218 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             Just _namesInames
          _self =
              MaybeNames_Just _namesIself
          _lhsOself =
@@ -4228,10 +3499,7 @@ sem_MaybeNames_Nothing =
     (let _lhsOnames :: ( Maybe [Name] )
          _lhsOself :: MaybeNames
          _lhsOnames =
-             ({-# LINE 9 "CodeGeneration/ToCoreName.ag" #-}
-              Nothing
-              {-# LINE 4234 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             Nothing
          _self =
              MaybeNames_Nothing
          _lhsOself =
@@ -4275,33 +3543,21 @@ sem_Module_Module range_ name_ exports_ body_ =
               _bodyIdecls :: ( [CoreDecl] )
               _bodyIself :: Body
               _lhsOcore =
-                  ({-# LINE 66 "CodeGeneration/ToCoreModule.ag" #-}
-                   _module_ { Module.moduleDecls =
-                        insertedMain _lhsItoplevelTypes : Module.moduleDecls _module_ }
-                   {-# LINE 4282 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _module_ { Module.moduleDecls =
+                       insertedMain _lhsItoplevelTypes : Module.moduleDecls _module_ }
               _module_ =
-                  ({-# LINE 68 "CodeGeneration/ToCoreModule.ag" #-}
-                   everythingPublicButPrelude
-                       (makeCoreModule (fmap idFromName _nameIname)
-                           ( _bodyIdecls ++ _lhsIextraDecls
-                           ))
-                   {-# LINE 4290 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  everythingPublicButPrelude
+                      (makeCoreModule (fmap idFromName _nameIname)
+                          ( _bodyIdecls ++ _lhsIextraDecls
+                          ))
               _self =
                   Module_Module _rangeIself _nameIself _exportsIself _bodyIself
               _lhsOself =
                   _self
               _bodyOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 4299 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _bodyOimportEnv =
-                  ({-# LINE 66 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIimportEnv
-                   {-# LINE 4304 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIimportEnv
               ( _rangeIself) =
                   range_
               ( _nameIisNothing,_nameIname,_nameIself) =
@@ -4392,10 +3648,7 @@ sem_Names_Cons hd_ tl_ =
          _tlInames :: ([Name])
          _tlIself :: Names
          _lhsOnames =
-             ({-# LINE 16 "CodeGeneration/ToCoreName.ag" #-}
-              _hdIself : _tlInames
-              {-# LINE 4398 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _hdIself : _tlInames
          _self =
              (:) _hdIself _tlIself
          _lhsOself =
@@ -4410,10 +3663,7 @@ sem_Names_Nil =
     (let _lhsOnames :: ([Name])
          _lhsOself :: Names
          _lhsOnames =
-             ({-# LINE 17 "CodeGeneration/ToCoreName.ag" #-}
-              []
-              {-# LINE 4416 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             []
          _self =
              []
          _lhsOself =
@@ -4467,10 +3717,7 @@ sem_Pattern_As range_ name_ pattern_ =
          _patternIself :: Pattern
          _patternIvars :: ( [Name] )
          _lhsOvars =
-             ({-# LINE 23 "CodeGeneration/ToCorePat.ag" #-}
-              _nameIself : _patternIvars
-              {-# LINE 4473 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _nameIself : _patternIvars
          _self =
              Pattern_As _rangeIself _nameIself _patternIself
          _lhsOself =
@@ -4495,10 +3742,7 @@ sem_Pattern_Constructor range_ name_ patterns_ =
          _patternsIself :: Patterns
          _patternsIvars :: ( [Name] )
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              _patternsIvars
-              {-# LINE 4501 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _patternsIvars
          _self =
              Pattern_Constructor _rangeIself _nameIself _patternsIself
          _lhsOself =
@@ -4518,10 +3762,7 @@ sem_Pattern_Hole range_ id_ =
          _lhsOself :: Pattern
          _rangeIself :: Range
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              []
-              {-# LINE 4524 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             []
          _self =
              Pattern_Hole _rangeIself id_
          _lhsOself =
@@ -4544,10 +3785,7 @@ sem_Pattern_InfixConstructor range_ leftPattern_ constructorOperator_ rightPatte
          _rightPatternIself :: Pattern
          _rightPatternIvars :: ( [Name] )
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              _leftPatternIvars  ++  _rightPatternIvars
-              {-# LINE 4550 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _leftPatternIvars  ++  _rightPatternIvars
          _self =
              Pattern_InfixConstructor _rangeIself _leftPatternIself _constructorOperatorIself _rightPatternIself
          _lhsOself =
@@ -4571,10 +3809,7 @@ sem_Pattern_Irrefutable range_ pattern_ =
          _patternIself :: Pattern
          _patternIvars :: ( [Name] )
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              _patternIvars
-              {-# LINE 4577 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _patternIvars
          _self =
              Pattern_Irrefutable _rangeIself _patternIself
          _lhsOself =
@@ -4595,10 +3830,7 @@ sem_Pattern_List range_ patterns_ =
          _patternsIself :: Patterns
          _patternsIvars :: ( [Name] )
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              _patternsIvars
-              {-# LINE 4601 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _patternsIvars
          _self =
              Pattern_List _rangeIself _patternsIself
          _lhsOself =
@@ -4618,10 +3850,7 @@ sem_Pattern_Literal range_ literal_ =
          _literalIcore :: ( Core.Expr )
          _literalIself :: Literal
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              []
-              {-# LINE 4624 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             []
          _self =
              Pattern_Literal _rangeIself _literalIself
          _lhsOself =
@@ -4641,10 +3870,7 @@ sem_Pattern_Negate range_ literal_ =
          _literalIcore :: ( Core.Expr )
          _literalIself :: Literal
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              []
-              {-# LINE 4647 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             []
          _self =
              Pattern_Negate _rangeIself _literalIself
          _lhsOself =
@@ -4664,10 +3890,7 @@ sem_Pattern_NegateFloat range_ literal_ =
          _literalIcore :: ( Core.Expr )
          _literalIself :: Literal
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              []
-              {-# LINE 4670 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             []
          _self =
              Pattern_NegateFloat _rangeIself _literalIself
          _lhsOself =
@@ -4687,10 +3910,7 @@ sem_Pattern_Parenthesized range_ pattern_ =
          _patternIself :: Pattern
          _patternIvars :: ( [Name] )
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              _patternIvars
-              {-# LINE 4693 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _patternIvars
          _self =
              Pattern_Parenthesized _rangeIself _patternIself
          _lhsOself =
@@ -4711,10 +3931,7 @@ sem_Pattern_Record range_ name_ recordPatternBindings_ =
          _nameIself :: Name
          _recordPatternBindingsIself :: RecordPatternBindings
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              []
-              {-# LINE 4717 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             []
          _self =
              Pattern_Record _rangeIself _nameIself _recordPatternBindingsIself
          _lhsOself =
@@ -4738,10 +3955,7 @@ sem_Pattern_Successor range_ name_ literal_ =
          _literalIcore :: ( Core.Expr )
          _literalIself :: Literal
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              []
-              {-# LINE 4744 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             []
          _self =
              Pattern_Successor _rangeIself _nameIself _literalIself
          _lhsOself =
@@ -4764,10 +3978,7 @@ sem_Pattern_Tuple range_ patterns_ =
          _patternsIself :: Patterns
          _patternsIvars :: ( [Name] )
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              _patternsIvars
-              {-# LINE 4770 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _patternsIvars
          _self =
              Pattern_Tuple _rangeIself _patternsIself
          _lhsOself =
@@ -4786,10 +3997,7 @@ sem_Pattern_Variable range_ name_ =
          _rangeIself :: Range
          _nameIself :: Name
          _lhsOvars =
-             ({-# LINE 19 "CodeGeneration/ToCorePat.ag" #-}
-              [ _nameIself ]
-              {-# LINE 4792 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             [ _nameIself ]
          _self =
              Pattern_Variable _rangeIself _nameIself
          _lhsOself =
@@ -4806,10 +4014,7 @@ sem_Pattern_Wildcard range_ =
          _lhsOself :: Pattern
          _rangeIself :: Range
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              []
-              {-# LINE 4812 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             []
          _self =
              Pattern_Wildcard _rangeIself
          _lhsOself =
@@ -4838,15 +4043,9 @@ sem_Patterns_Cons hd_ tl_ =
          _tlIself :: Patterns
          _tlIvars :: ( [Name] )
          _lhsOlength =
-             ({-# LINE 14 "CodeGeneration/ToCorePat.ag" #-}
-              1 + _tlIlength
-              {-# LINE 4844 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             1 + _tlIlength
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              _hdIvars  ++  _tlIvars
-              {-# LINE 4849 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _hdIvars  ++  _tlIvars
          _self =
              (:) _hdIself _tlIself
          _lhsOself =
@@ -4862,15 +4061,9 @@ sem_Patterns_Nil =
          _lhsOvars :: ( [Name] )
          _lhsOself :: Patterns
          _lhsOlength =
-             ({-# LINE 15 "CodeGeneration/ToCorePat.ag" #-}
-              0
-              {-# LINE 4868 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             0
          _lhsOvars =
-             ({-# LINE 10 "CodeGeneration/ToCorePat.ag" #-}
-              []
-              {-# LINE 4873 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             []
          _self =
              []
          _lhsOself =
@@ -4928,10 +4121,7 @@ sem_Qualifier_Empty range_ =
               _lhsOself :: Qualifier
               _rangeIself :: Range
               _lhsOcore =
-                  ({-# LINE 255 "CodeGeneration/ToCoreExpr.ag" #-}
-                   internalError "ToCoreExpr" "Qualifier" "empty qualifiers not supported"
-                   {-# LINE 4934 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "ToCoreExpr" "Qualifier" "empty qualifiers not supported"
               _self =
                   Qualifier_Empty _rangeIself
               _lhsOself =
@@ -4954,30 +4144,24 @@ sem_Qualifier_Generator range_ pattern_ expression_ =
               _expressionIcore :: ( Core.Expr )
               _expressionIself :: Expression
               _lhsOcore =
-                  ({-# LINE 236 "CodeGeneration/ToCoreExpr.ag" #-}
-                   \continue ->
-                       let_ nextClauseId nil
-                           (let_
-                               okId
-                               (Core.Lam parameterId
-                                   (patternToCore (parameterId, _patternIself) continue)
-                               )
-                               (var "$primConcatMap"
-                                   `app_` Core.Var okId
-                                   `app_` _expressionIcore
-                               )
-                           )
-                   {-# LINE 4971 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  \continue ->
+                      let_ nextClauseId nil
+                          (let_
+                              okId
+                              (Core.Lam parameterId
+                                  (patternToCore (parameterId, _patternIself) continue)
+                              )
+                              (var "$primConcatMap"
+                                  `app_` Core.Var okId
+                                  `app_` _expressionIcore
+                              )
+                          )
               _self =
                   Qualifier_Generator _rangeIself _patternIself _expressionIself
               _lhsOself =
                   _self
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 4980 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _patternIself,_patternIvars) =
@@ -4997,19 +4181,13 @@ sem_Qualifier_Guard range_ guard_ =
               _guardIcore :: ( Core.Expr )
               _guardIself :: Expression
               _lhsOcore =
-                  ({-# LINE 221 "CodeGeneration/ToCoreExpr.ag" #-}
-                   \continue -> if_ _guardIcore continue nil
-                   {-# LINE 5003 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  \continue -> if_ _guardIcore continue nil
               _self =
                   Qualifier_Guard _rangeIself _guardIself
               _lhsOself =
                   _self
               _guardOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5012 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _guardIcore,_guardIself) =
@@ -5031,39 +4209,21 @@ sem_Qualifier_Let range_ declarations_ =
               _declarationsIpatBindNr :: Int
               _declarationsIself :: Declarations
               _importEnv =
-                  ({-# LINE 70 "CodeGeneration/CodeGeneration.ag" #-}
-                   internalError "CodeGeneration.ag" "Qualifier.Let" ""
-                   {-# LINE 5037 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "CodeGeneration.ag" "Qualifier.Let" ""
               _declarationsOpatBindNr =
-                  ({-# LINE 225 "CodeGeneration/ToCoreExpr.ag" #-}
-                   0
-                   {-# LINE 5042 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  0
               _declarationsOisTopLevel =
-                  ({-# LINE 226 "CodeGeneration/ToCoreExpr.ag" #-}
-                   False
-                   {-# LINE 5047 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  False
               _lhsOcore =
-                  ({-# LINE 227 "CodeGeneration/ToCoreExpr.ag" #-}
-                   \continue -> letrec_ _declarationsIdecls continue
-                   {-# LINE 5052 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  \continue -> letrec_ _declarationsIdecls continue
               _self =
                   Qualifier_Let _rangeIself _declarationsIself
               _lhsOself =
                   _self
               _declarationsOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5061 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _declarationsOimportEnv =
-                  ({-# LINE 66 "CodeGeneration/CodeGeneration.ag" #-}
-                   _importEnv
-                   {-# LINE 5066 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _importEnv
               ( _rangeIself) =
                   range_
               ( _declarationsIdecls,_declarationsIpatBindNr,_declarationsIself) =
@@ -5092,24 +4252,15 @@ sem_Qualifiers_Cons hd_ tl_ =
               _tlIcore :: ( [Core.Expr -> Core.Expr] )
               _tlIself :: Qualifiers
               _lhsOcore =
-                  ({-# LINE 218 "CodeGeneration/ToCoreExpr.ag" #-}
-                   _hdIcore  :  _tlIcore
-                   {-# LINE 5098 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _hdIcore  :  _tlIcore
               _self =
                   (:) _hdIself _tlIself
               _lhsOself =
                   _self
               _hdOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5107 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _tlOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5112 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _hdIcore,_hdIself) =
                   hd_ _hdOdictionaryEnv
               ( _tlIcore,_tlIself) =
@@ -5121,10 +4272,7 @@ sem_Qualifiers_Nil =
          (let _lhsOcore :: ( [Core.Expr -> Core.Expr] )
               _lhsOself :: Qualifiers
               _lhsOcore =
-                  ({-# LINE 218 "CodeGeneration/ToCoreExpr.ag" #-}
-                   []
-                   {-# LINE 5127 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  []
               _self =
                   []
               _lhsOself =
@@ -5180,10 +4328,7 @@ sem_RecordExpressionBinding_RecordExpressionBinding range_ name_ expression_ =
               _lhsOself =
                   _self
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5186 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _nameIself) =
@@ -5215,15 +4360,9 @@ sem_RecordExpressionBindings_Cons hd_ tl_ =
               _lhsOself =
                   _self
               _hdOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5221 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _tlOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5226 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _hdIself) =
                   hd_ _hdOdictionaryEnv
               ( _tlIself) =
@@ -5327,29 +4466,17 @@ sem_RightHandSide_Expression range_ expression_ where_ =
               _whereIcore :: ( Core.Expr -> Core.Expr )
               _whereIself :: MaybeDeclarations
               _lhsOcore =
-                  ({-# LINE 309 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _whereIcore _expressionIcore
-                   {-# LINE 5333 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _whereIcore _expressionIcore
               _lhsOisGuarded =
-                  ({-# LINE 310 "CodeGeneration/ToCoreDecl.ag" #-}
-                   False
-                   {-# LINE 5338 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  False
               _self =
                   RightHandSide_Expression _rangeIself _expressionIself _whereIself
               _lhsOself =
                   _self
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5347 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _whereOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5352 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _expressionIcore,_expressionIself) =
@@ -5374,29 +4501,17 @@ sem_RightHandSide_Guarded range_ guardedexpressions_ where_ =
               _whereIcore :: ( Core.Expr -> Core.Expr )
               _whereIself :: MaybeDeclarations
               _lhsOisGuarded =
-                  ({-# LINE 315 "CodeGeneration/ToCoreDecl.ag" #-}
-                   True
-                   {-# LINE 5380 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  True
               _lhsOcore =
-                  ({-# LINE 316 "CodeGeneration/ToCoreDecl.ag" #-}
-                   _whereIcore (foldr ($) (Core.Var nextClauseId) _guardedexpressionsIcore)
-                   {-# LINE 5385 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _whereIcore (foldr ($) (Core.Var nextClauseId) _guardedexpressionsIcore)
               _self =
                   RightHandSide_Guarded _rangeIself _guardedexpressionsIself _whereIself
               _lhsOself =
                   _self
               _guardedexpressionsOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5394 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _whereOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5399 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _guardedexpressionsIcore,_guardedexpressionsIself) =
@@ -5425,15 +4540,9 @@ sem_SimpleType_SimpleType range_ name_ typevariables_ =
          _typevariablesInames :: ([Name])
          _typevariablesIself :: Names
          _lhsOname =
-             ({-# LINE 76 "CodeGeneration/CodeGeneration.ag" #-}
-              _nameIself
-              {-# LINE 5431 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _nameIself
          _lhsOtypevariables =
-             ({-# LINE 77 "CodeGeneration/CodeGeneration.ag" #-}
-              _typevariablesIself
-              {-# LINE 5436 "CodeGeneration/CodeGeneration.hs" #-}
-              )
+             _typevariablesIself
          _self =
              SimpleType_SimpleType _rangeIself _nameIself _typevariablesIself
          _lhsOself =
@@ -5468,13 +4577,10 @@ sem_Statement_Empty range_ =
               _lhsOself :: Statement
               _rangeIself :: Range
               _lhsOcore =
-                  ({-# LINE 209 "CodeGeneration/ToCoreExpr.ag" #-}
-                   \theRest ->
-                       case theRest of
-                           Nothing   -> internalError "ToCoreExpr" "Statement" "empty statements not supported"
-                           Just rest -> rest
-                   {-# LINE 5477 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  \theRest ->
+                      case theRest of
+                          Nothing   -> internalError "ToCoreExpr" "Statement" "empty statements not supported"
+                          Just rest -> rest
               _self =
                   Statement_Empty _rangeIself
               _lhsOself =
@@ -5494,22 +4600,16 @@ sem_Statement_Expression range_ expression_ =
               _expressionIcore :: ( Core.Expr )
               _expressionIself :: Expression
               _lhsOcore =
-                  ({-# LINE 170 "CodeGeneration/ToCoreExpr.ag" #-}
-                   \theRest ->
-                       case theRest of
-                           Nothing   -> _expressionIcore
-                           Just rest -> bind _expressionIcore (Core.Lam dummyId rest)
-                   {-# LINE 5503 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  \theRest ->
+                      case theRest of
+                          Nothing   -> _expressionIcore
+                          Just rest -> bind _expressionIcore (Core.Lam dummyId rest)
               _self =
                   Statement_Expression _rangeIself _expressionIself
               _lhsOself =
                   _self
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5512 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _expressionIcore,_expressionIself) =
@@ -5530,29 +4630,23 @@ sem_Statement_Generator range_ pattern_ expression_ =
               _expressionIcore :: ( Core.Expr )
               _expressionIself :: Expression
               _lhsOcore =
-                  ({-# LINE 191 "CodeGeneration/ToCoreExpr.ag" #-}
-                   \theRest -> case theRest of
-                       Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
-                       Just rest ->
-                           let_ nextClauseId (patternMatchFail "generator" _rangeIself)
-                               (let_
-                                   okId
-                                   (Core.Lam parameterId
-                                       (patternToCore (parameterId, _patternIself) rest)
-                                   )
-                                   (_expressionIcore `bind` Core.Var okId)
-                               )
-                   {-# LINE 5546 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  \theRest -> case theRest of
+                      Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
+                      Just rest ->
+                          let_ nextClauseId (patternMatchFail "generator" _rangeIself)
+                              (let_
+                                  okId
+                                  (Core.Lam parameterId
+                                      (patternToCore (parameterId, _patternIself) rest)
+                                  )
+                                  (_expressionIcore `bind` Core.Var okId)
+                              )
               _self =
                   Statement_Generator _rangeIself _patternIself _expressionIself
               _lhsOself =
                   _self
               _expressionOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5555 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _rangeIself) =
                   range_
               ( _patternIself,_patternIvars) =
@@ -5576,42 +4670,24 @@ sem_Statement_Let range_ declarations_ =
               _declarationsIpatBindNr :: Int
               _declarationsIself :: Declarations
               _importEnv =
-                  ({-# LINE 71 "CodeGeneration/CodeGeneration.ag" #-}
-                   internalError "CodeGeneration.ag" "Statement.Let" ""
-                   {-# LINE 5582 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  internalError "CodeGeneration.ag" "Statement.Let" ""
               _declarationsOpatBindNr =
-                  ({-# LINE 178 "CodeGeneration/ToCoreExpr.ag" #-}
-                   0
-                   {-# LINE 5587 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  0
               _declarationsOisTopLevel =
-                  ({-# LINE 179 "CodeGeneration/ToCoreExpr.ag" #-}
-                   False
-                   {-# LINE 5592 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  False
               _lhsOcore =
-                  ({-# LINE 180 "CodeGeneration/ToCoreExpr.ag" #-}
-                   \theRest ->
-                       case theRest of
-                           Nothing   -> internalError "ToCoreExpr" "Statement" "'let' can't be last in 'do'"
-                           Just rest -> letrec_ _declarationsIdecls rest
-                   {-# LINE 5600 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  \theRest ->
+                      case theRest of
+                          Nothing   -> internalError "ToCoreExpr" "Statement" "'let' can't be last in 'do'"
+                          Just rest -> letrec_ _declarationsIdecls rest
               _self =
                   Statement_Let _rangeIself _declarationsIself
               _lhsOself =
                   _self
               _declarationsOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5609 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _declarationsOimportEnv =
-                  ({-# LINE 66 "CodeGeneration/CodeGeneration.ag" #-}
-                   _importEnv
-                   {-# LINE 5614 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _importEnv
               ( _rangeIself) =
                   range_
               ( _declarationsIdecls,_declarationsIpatBindNr,_declarationsIself) =
@@ -5640,24 +4716,15 @@ sem_Statements_Cons hd_ tl_ =
               _tlIcore :: ( [Maybe Core.Expr -> Core.Expr] )
               _tlIself :: Statements
               _lhsOcore =
-                  ({-# LINE 167 "CodeGeneration/ToCoreExpr.ag" #-}
-                   _hdIcore  :  _tlIcore
-                   {-# LINE 5646 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _hdIcore  :  _tlIcore
               _self =
                   (:) _hdIself _tlIself
               _lhsOself =
                   _self
               _hdOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5655 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               _tlOdictionaryEnv =
-                  ({-# LINE 63 "CodeGeneration/CodeGeneration.ag" #-}
-                   _lhsIdictionaryEnv
-                   {-# LINE 5660 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  _lhsIdictionaryEnv
               ( _hdIcore,_hdIself) =
                   hd_ _hdOdictionaryEnv
               ( _tlIcore,_tlIself) =
@@ -5669,10 +4736,7 @@ sem_Statements_Nil =
          (let _lhsOcore :: ( [Maybe Core.Expr -> Core.Expr] )
               _lhsOself :: Statements
               _lhsOcore =
-                  ({-# LINE 167 "CodeGeneration/ToCoreExpr.ag" #-}
-                   []
-                   {-# LINE 5675 "CodeGeneration/CodeGeneration.hs" #-}
-                   )
+                  []
               _self =
                   []
               _lhsOself =

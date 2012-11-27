@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-| Module      :  UHA_Range
     License     :  GPL
 
@@ -287,3 +288,4 @@ moduleFromPosition pos =
             moduleName
         _ -> 
             internalError "UHA_Range" "moduleFromPosition" "unknown position"
+            

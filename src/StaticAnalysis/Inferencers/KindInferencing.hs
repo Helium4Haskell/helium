@@ -6,7 +6,6 @@ module StaticAnalysis.Inferencers.KindInferencing where
 import Top.Types
 import Top.Solver.Greedy
 import Top.Solver
-import Top.Constraint.Information
 import StaticAnalysis.Miscellaneous.TypeConstraints
 import Syntax.UHA_Syntax
 import Main.Args
@@ -18,6 +17,7 @@ import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
 import StaticAnalysis.Messages.KindErrors
 import Data.Char (isLower)
 import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions, PatternAssumptions, noAssumptions, combine, single, topSort) 
+
 
 
 type KindEnvironment = M.Map Name TpScheme
@@ -72,9 +72,6 @@ getTypeVariables = filter p . M.keys
 unexpected :: String -> KindError
 unexpected message = 
    internalError "KindInferencing.ag" "unexpected" ("unexpected kind error: "++message)
-
-instance TypeConstraintInfo KindError
-instance PolyTypeConstraintInfo KindError
 
 (<==>) :: Kind -> Kind -> ((Kind, Kind) -> KindError) -> KindConstraint
 (k1 <==> k2) info = (k1 .==. k2) (info (k1, k2))

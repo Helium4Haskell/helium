@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-| Module      :  UHA_Utils
     License     :  GPL
 

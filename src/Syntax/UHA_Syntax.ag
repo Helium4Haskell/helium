@@ -739,6 +739,15 @@ DATA Position
         column                   : Int
     | Unknown
 
+{-| Module      :  UHA_Range
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+-}
+
+
 {-
 
 Documented Design Decisions:

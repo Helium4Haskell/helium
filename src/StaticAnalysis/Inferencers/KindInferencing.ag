@@ -33,7 +33,6 @@ imports {
 import Top.Types
 import Top.Solver.Greedy
 import Top.Solver
-import Top.Constraint.Information
 import StaticAnalysis.Miscellaneous.TypeConstraints
 import Syntax.UHA_Syntax
 import Main.Args
@@ -201,6 +200,7 @@ SEM Constructor
   | Record  lhs . assumptions = internalError "KindInferencing.ag" "n/a" "Record constructors are not supported"
 
 {
+
 type KindEnvironment = M.Map Name TpScheme
 type KindConstraint  = TypeConstraint  KindError
 type KindConstraints = TypeConstraints KindError
@@ -253,9 +253,6 @@ getTypeVariables = filter p . M.keys
 unexpected :: String -> KindError
 unexpected message = 
    internalError "KindInferencing.ag" "unexpected" ("unexpected kind error: "++message)
-
-instance TypeConstraintInfo KindError
-instance PolyTypeConstraintInfo KindError
 
 (<==>) :: Kind -> Kind -> ((Kind, Kind) -> KindError) -> KindConstraint
 (k1 <==> k2) info = (k1 .==. k2) (info (k1, k2))

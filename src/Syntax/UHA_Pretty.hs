@@ -2,7 +2,6 @@
 
 -- UUAGC 0.9.40.3 (Syntax/UHA_Pretty.ag)
 module Syntax.UHA_Pretty where
-{-# LINE 3 "Syntax/UHA_Pretty.ag" #-}
 
 -- Below two imports are to avoid clashes of "list" as used by the AG system.
 -- Effectively, only list from the imported library needs to be qualified.
@@ -14,8 +13,6 @@ import Top.Types (isTupleConstructor)
 import Syntax.UHA_Syntax
 import Utils.Utils (internalError, hole)
 
-{-# LINE 18 "Syntax/UHA_Pretty.hs" #-}
-{-# LINE 16 "Syntax/UHA_Pretty.ag" #-}
 
 intErr :: String -> String -> a
 intErr = internalError "UHA_Pretty"
@@ -54,7 +51,6 @@ utrechtList start end (d:ds) =
     in
         start <+> d <$> utrechtList' ds
 
-{-# LINE 58 "Syntax/UHA_Pretty.hs" #-}
 -- Alternative -------------------------------------------------
 -- cata
 sem_Alternative :: Alternative ->
@@ -79,15 +75,9 @@ sem_Alternative_Alternative range_ pattern_ righthandside_ =
          _patternItext :: Doc
          _righthandsideItext :: ( Doc        -> Doc  )
          _text =
-             ({-# LINE 584 "Syntax/UHA_Pretty.ag" #-}
-              _patternItext <$> indent 2 (_righthandsideItext (text "->"))
-              {-# LINE 85 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _patternItext <$> indent 2 (_righthandsideItext (text "->"))
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 90 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _patternItext) =
@@ -101,15 +91,9 @@ sem_Alternative_Empty range_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 588 "Syntax/UHA_Pretty.ag" #-}
-              empty
-              {-# LINE 107 "Syntax/UHA_Pretty.hs" #-}
-              )
+             empty
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 112 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -122,10 +106,7 @@ sem_Alternative_Feedback range_ feedback_ alternative_ =
          _rangeItext :: Doc
          _alternativeItext :: Doc
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _alternativeItext
-              {-# LINE 128 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _alternativeItext
          ( _rangeItext) =
              range_
          ( _alternativeItext) =
@@ -138,15 +119,9 @@ sem_Alternative_Hole range_ id_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 583 "Syntax/UHA_Pretty.ag" #-}
-              text hole
-              {-# LINE 144 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text hole
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 149 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -166,10 +141,7 @@ sem_Alternatives_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 172 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -179,10 +151,7 @@ sem_Alternatives_Nil :: T_Alternatives
 sem_Alternatives_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 185 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- AnnotatedType -----------------------------------------------
 -- cata
@@ -201,15 +170,9 @@ sem_AnnotatedType_AnnotatedType range_ strict_ type_ =
          _rangeItext :: Doc
          _typeItext :: Doc
          _text =
-             ({-# LINE 431 "Syntax/UHA_Pretty.ag" #-}
-              (if strict_ then (text "!" <+>) else id) _typeItext
-              {-# LINE 207 "Syntax/UHA_Pretty.hs" #-}
-              )
+             (if strict_ then (text "!" <+>) else id) _typeItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 212 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _typeItext) =
@@ -231,10 +194,7 @@ sem_AnnotatedTypes_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 237 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -244,10 +204,7 @@ sem_AnnotatedTypes_Nil :: T_AnnotatedTypes
 sem_AnnotatedTypes_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 250 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- Body --------------------------------------------------------
 -- cata
@@ -269,18 +226,12 @@ sem_Body_Body range_ importdeclarations_ declarations_ =
          _importdeclarationsItext :: ( [       Doc ] )
          _declarationsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 176 "Syntax/UHA_Pretty.ag" #-}
-              vcat
-                       (   _importdeclarationsItext
-                       ++                        _declarationsItext
-                       )
-              {-# LINE 278 "Syntax/UHA_Pretty.hs" #-}
-              )
+             vcat
+                      (   _importdeclarationsItext
+                      ++                        _declarationsItext
+                      )
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 283 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _importdeclarationsItext) =
@@ -295,15 +246,9 @@ sem_Body_Hole range_ id_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 175 "Syntax/UHA_Pretty.ag" #-}
-              text hole
-              {-# LINE 301 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text hole
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 306 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -332,15 +277,9 @@ sem_Constructor_Constructor range_ constructor_ types_ =
          _constructorItext :: Doc
          _typesItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 410 "Syntax/UHA_Pretty.ag" #-}
-              foldl (<+>) (parensIf _constructorIisOperator _constructorItext) _typesItext
-              {-# LINE 338 "Syntax/UHA_Pretty.hs" #-}
-              )
+             foldl (<+>) (parensIf _constructorIisOperator _constructorItext) _typesItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 343 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _constructorIisIdentifier,_constructorIisOperator,_constructorIisSpecial,_constructorItext) =
@@ -363,15 +302,9 @@ sem_Constructor_Infix range_ leftType_ constructorOperator_ rightType_ =
          _constructorOperatorItext :: Doc
          _rightTypeItext :: Doc
          _text =
-             ({-# LINE 414 "Syntax/UHA_Pretty.ag" #-}
-              _leftTypeItext <+> _constructorOperatorItext <+> _rightTypeItext
-              {-# LINE 369 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _leftTypeItext <+> _constructorOperatorItext <+> _rightTypeItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 374 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _leftTypeItext) =
@@ -394,15 +327,9 @@ sem_Constructor_Record range_ constructor_ fieldDeclarations_ =
          _constructorItext :: Doc
          _fieldDeclarationsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 419 "Syntax/UHA_Pretty.ag" #-}
-              text "{- !!! record constructor -}"
-              {-# LINE 400 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "{- !!! record constructor -}"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 405 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _constructorIisIdentifier,_constructorIisOperator,_constructorIisSpecial,_constructorItext) =
@@ -426,10 +353,7 @@ sem_Constructors_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 432 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -439,10 +363,7 @@ sem_Constructors_Nil :: T_Constructors
 sem_Constructors_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 445 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- ContextItem -------------------------------------------------
 -- cata
@@ -465,15 +386,9 @@ sem_ContextItem_ContextItem range_ name_ types_ =
          _nameItext :: Doc
          _typesItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 404 "Syntax/UHA_Pretty.ag" #-}
-              _nameItext <+> head _typesItext
-              {-# LINE 471 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _nameItext <+> head _typesItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 476 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -497,10 +412,7 @@ sem_ContextItems_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 503 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -510,10 +422,7 @@ sem_ContextItems_Nil :: T_ContextItems
 sem_ContextItems_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 516 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- Declaration -------------------------------------------------
 -- cata
@@ -557,15 +466,9 @@ sem_Declaration_Class range_ context_ simpletype_ where_ =
          _simpletypeItext :: Doc
          _whereItext :: ( Maybe [       Doc ] )
          _text =
-             ({-# LINE 298 "Syntax/UHA_Pretty.ag" #-}
-              text "{- !!! class decl -}"
-              {-# LINE 563 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "{- !!! class decl -}"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 568 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _contextItext) =
@@ -592,49 +495,37 @@ sem_Declaration_Data range_ context_ simpletype_ constructors_ derivings_ =
          _derivingsIisSpecial :: ( [Bool] )
          _derivingsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 238 "Syntax/UHA_Pretty.ag" #-}
-              text "data" <+>
-              _contextDoc
-              <>
-              _simpletypeItext
-              <$>
-              (indent 4 $
-                  vcat
-                      (   text "="
-                          <+>
-                          head _constructorsItext
-                      :   map
-                              (text "|" <+>)
-                              (tail _constructorsItext)
-                      ++  [_derivingDoc]
-                      )
-              )
-              {-# LINE 613 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "data" <+>
+             _contextDoc
+             <>
+             _simpletypeItext
+             <$>
+             (indent 4 $
+                 vcat
+                     (   text "="
+                         <+>
+                         head _constructorsItext
+                     :   map
+                             (text "|" <+>)
+                             (tail _constructorsItext)
+                     ++  [_derivingDoc]
+                     )
+             )
          _contextDoc =
-             ({-# LINE 255 "Syntax/UHA_Pretty.ag" #-}
-              case _contextItext of
-               []  -> empty
-               [x] -> x <+> text "=>" <+> empty
-               xs  -> tupled xs <+> text "=>" <+> empty
-              {-# LINE 621 "Syntax/UHA_Pretty.hs" #-}
-              )
+             case _contextItext of
+              []  -> empty
+              [x] -> x <+> text "=>" <+> empty
+              xs  -> tupled xs <+> text "=>" <+> empty
          _derivingDoc =
-             ({-# LINE 259 "Syntax/UHA_Pretty.ag" #-}
-              if null _derivingsItext then
-                  empty
-              else
-                  (    empty
-                  <+>  text "deriving"
-                  <+>  tupledUnit _derivingsItext
-                  )
-              {-# LINE 632 "Syntax/UHA_Pretty.hs" #-}
-              )
+             if null _derivingsItext then
+                 empty
+             else
+                 (    empty
+                 <+>  text "deriving"
+                 <+>  tupledUnit _derivingsItext
+                 )
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 637 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _contextItext) =
@@ -654,15 +545,9 @@ sem_Declaration_Default range_ types_ =
          _rangeItext :: Doc
          _typesItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 310 "Syntax/UHA_Pretty.ag" #-}
-              text "default" <+> tupled _typesItext
-              {-# LINE 660 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "default" <+> tupled _typesItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 665 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _typesItext) =
@@ -674,15 +559,9 @@ sem_Declaration_Empty range_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 344 "Syntax/UHA_Pretty.ag" #-}
-              empty
-              {-# LINE 680 "Syntax/UHA_Pretty.hs" #-}
-              )
+             empty
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 685 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -701,29 +580,20 @@ sem_Declaration_Fixity range_ fixity_ priority_ operators_ =
          _operatorsIisSpecial :: ( [Bool] )
          _operatorsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 329 "Syntax/UHA_Pretty.ag" #-}
-              _fixityItext <+> _ops
-              {-# LINE 707 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _fixityItext <+> _ops
          _ops =
-             ({-# LINE 330 "Syntax/UHA_Pretty.ag" #-}
-              opt _priorityItext <+>
-                  commas
-                      (map
-                          (\(n, p) -> if p then
-                              text "`" <> n <> text "`"
-                           else
-                              n
-                          )
-                          (zip _operatorsItext _operatorsIisIdentifier)
-                      )
-              {-# LINE 721 "Syntax/UHA_Pretty.hs" #-}
-              )
+             opt _priorityItext <+>
+                 commas
+                     (map
+                         (\(n, p) -> if p then
+                             text "`" <> n <> text "`"
+                          else
+                             n
+                         )
+                         (zip _operatorsItext _operatorsIisIdentifier)
+                     )
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 726 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _fixityItext) =
@@ -741,17 +611,11 @@ sem_Declaration_FunctionBindings range_ bindings_ =
          _rangeItext :: Doc
          _bindingsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 314 "Syntax/UHA_Pretty.ag" #-}
-              case filter ((/= "") . show) _bindingsItext of
-                 [] -> empty
-                 xs -> foldl1  (<$>) xs
-              {-# LINE 749 "Syntax/UHA_Pretty.hs" #-}
-              )
+             case filter ((/= "") . show) _bindingsItext of
+                [] -> empty
+                xs -> foldl1  (<$>) xs
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 754 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _bindingsItext) =
@@ -764,15 +628,9 @@ sem_Declaration_Hole range_ id_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 233 "Syntax/UHA_Pretty.ag" #-}
-              text hole
-              {-# LINE 770 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text hole
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 775 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -793,15 +651,9 @@ sem_Declaration_Instance range_ context_ name_ types_ where_ =
          _typesItext :: ( [       Doc ] )
          _whereItext :: ( Maybe [       Doc ] )
          _text =
-             ({-# LINE 303 "Syntax/UHA_Pretty.ag" #-}
-              text "{- !!! instance decl -}"
-              {-# LINE 799 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "{- !!! instance decl -}"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 804 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _contextItext) =
@@ -830,42 +682,30 @@ sem_Declaration_Newtype range_ context_ simpletype_ constructor_ derivings_ =
          _derivingsIisSpecial :: ( [Bool] )
          _derivingsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 272 "Syntax/UHA_Pretty.ag" #-}
-              text "newtype"
-              <+>
-              _contextDoc
-              <>
-              _simpletypeItext
-              <+>
-              _constructorItext
-              <>
-              _derivingDoc
-              {-# LINE 844 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "newtype"
+             <+>
+             _contextDoc
+             <>
+             _simpletypeItext
+             <+>
+             _constructorItext
+             <>
+             _derivingDoc
          _contextDoc =
-             ({-# LINE 281 "Syntax/UHA_Pretty.ag" #-}
-              case _contextItext of
-               []  -> empty
-               [x] -> x <+> text "=>" <+> empty
-               xs  -> tupled xs <+> text "=>" <+> empty
-              {-# LINE 852 "Syntax/UHA_Pretty.hs" #-}
-              )
+             case _contextItext of
+              []  -> empty
+              [x] -> x <+> text "=>" <+> empty
+              xs  -> tupled xs <+> text "=>" <+> empty
          _derivingDoc =
-             ({-# LINE 285 "Syntax/UHA_Pretty.ag" #-}
-              if null _derivingsItext then
-                  empty
-              else
-                  (    empty
-                  <+>  text "deriving"
-                  <+>  tupledUnit _derivingsItext
-                  )
-              {-# LINE 863 "Syntax/UHA_Pretty.hs" #-}
-              )
+             if null _derivingsItext then
+                 empty
+             else
+                 (    empty
+                 <+>  text "deriving"
+                 <+>  tupledUnit _derivingsItext
+                 )
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 868 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _contextItext) =
@@ -887,15 +727,9 @@ sem_Declaration_PatternBinding range_ pattern_ righthandside_ =
          _patternItext :: Doc
          _righthandsideItext :: ( Doc        -> Doc  )
          _text =
-             ({-# LINE 320 "Syntax/UHA_Pretty.ag" #-}
-              _patternItext <+> _righthandsideItext (text "=")
-              {-# LINE 893 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _patternItext <+> _righthandsideItext (text "=")
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 898 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _patternItext) =
@@ -913,15 +747,9 @@ sem_Declaration_Type range_ simpletype_ type_ =
          _simpletypeItext :: Doc
          _typeItext :: Doc
          _text =
-             ({-# LINE 234 "Syntax/UHA_Pretty.ag" #-}
-              text "type" <+> _simpletypeItext <+> text "=" <+> _typeItext
-              {-# LINE 919 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "type" <+> _simpletypeItext <+> text "=" <+> _typeItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 924 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _simpletypeItext) =
@@ -942,20 +770,11 @@ sem_Declaration_TypeSignature range_ names_ type_ =
          _namesItext :: ( [       Doc ] )
          _typeItext :: Doc
          _text =
-             ({-# LINE 324 "Syntax/UHA_Pretty.ag" #-}
-              commas _namesDocs <+> text "::" <+> _typeItext
-              {-# LINE 948 "Syntax/UHA_Pretty.hs" #-}
-              )
+             commas _namesDocs <+> text "::" <+> _typeItext
          _namesDocs =
-             ({-# LINE 325 "Syntax/UHA_Pretty.ag" #-}
-              parensIfList _namesIisOperator _namesItext
-              {-# LINE 953 "Syntax/UHA_Pretty.hs" #-}
-              )
+             parensIfList _namesIisOperator _namesItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 958 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _namesIisIdentifier,_namesIisOperator,_namesIisSpecial,_namesItext) =
@@ -979,10 +798,7 @@ sem_Declarations_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 985 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -992,10 +808,7 @@ sem_Declarations_Nil :: T_Declarations
 sem_Declarations_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 998 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- Export ------------------------------------------------------
 -- cata
@@ -1022,15 +835,9 @@ sem_Export_Module range_ name_ =
          _nameIisSpecial :: Bool
          _nameItext :: Doc
          _text =
-             ({-# LINE 162 "Syntax/UHA_Pretty.ag" #-}
-              text "module" <+> _nameItext
-              {-# LINE 1028 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "module" <+> _nameItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1033 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -1049,15 +856,9 @@ sem_Export_TypeOrClass range_ name_ names_ =
          _nameItext :: Doc
          _namesItext :: ( Maybe [       Doc ] )
          _text =
-             ({-# LINE 155 "Syntax/UHA_Pretty.ag" #-}
-              _nameItext <> maybe empty tupled (_namesItext)
-              {-# LINE 1055 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _nameItext <> maybe empty tupled (_namesItext)
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1060 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -1076,15 +877,9 @@ sem_Export_TypeOrClassComplete range_ name_ =
          _nameIisSpecial :: Bool
          _nameItext :: Doc
          _text =
-             ({-# LINE 159 "Syntax/UHA_Pretty.ag" #-}
-              _nameItext
-              {-# LINE 1082 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _nameItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1087 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -1101,15 +896,9 @@ sem_Export_Variable range_ name_ =
          _nameIisSpecial :: Bool
          _nameItext :: Doc
          _text =
-             ({-# LINE 152 "Syntax/UHA_Pretty.ag" #-}
-              _nameItext
-              {-# LINE 1107 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _nameItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1112 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -1131,10 +920,7 @@ sem_Exports_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 1137 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -1144,10 +930,7 @@ sem_Exports_Nil :: T_Exports
 sem_Exports_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 1150 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- Expression --------------------------------------------------
 -- cata
@@ -1211,17 +994,11 @@ sem_Expression_Case range_ expression_ alternatives_ =
          _expressionItext :: Doc
          _alternativesItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 496 "Syntax/UHA_Pretty.ag" #-}
-              (text "case" <+> _expressionItext <+> text "of" <$>
-                             (indent 4 $ vcat _alternativesItext) <$> empty
-                         )
-              {-# LINE 1219 "Syntax/UHA_Pretty.hs" #-}
-              )
+             (text "case" <+> _expressionItext <+> text "of" <$>
+                            (indent 4 $ vcat _alternativesItext) <$> empty
+                        )
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1224 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _expressionItext) =
@@ -1239,16 +1016,10 @@ sem_Expression_Comprehension range_ expression_ qualifiers_ =
          _expressionItext :: Doc
          _qualifiersItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 521 "Syntax/UHA_Pretty.ag" #-}
-              text "[" <+> _expressionItext <+>
-              text "|" <+> commas _qualifiersItext <+> text "]"
-              {-# LINE 1246 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "[" <+> _expressionItext <+>
+             text "|" <+> commas _qualifiersItext <+> text "]"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1251 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _expressionItext) =
@@ -1267,15 +1038,9 @@ sem_Expression_Constructor range_ name_ =
          _nameIisSpecial :: Bool
          _nameItext :: Doc
          _text =
-             ({-# LINE 455 "Syntax/UHA_Pretty.ag" #-}
-              _nameItext
-              {-# LINE 1273 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _nameItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1278 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -1289,15 +1054,9 @@ sem_Expression_Do range_ statements_ =
          _rangeItext :: Doc
          _statementsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 512 "Syntax/UHA_Pretty.ag" #-}
-              text "do" <$> (indent 4 $ vcat _statementsItext) <$> empty
-              {-# LINE 1295 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "do" <$> (indent 4 $ vcat _statementsItext) <$> empty
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1300 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _statementsItext) =
@@ -1315,20 +1074,14 @@ sem_Expression_Enum range_ from_ then_ to_ =
          _thenItext :: (        Maybe Doc  )
          _toItext :: (        Maybe Doc  )
          _text =
-             ({-# LINE 538 "Syntax/UHA_Pretty.ag" #-}
-              text "[" <>
-              _fromItext <>
-              maybe empty (text "," <+>)  _thenItext <+>
-              text ".." <+>
-              opt _toItext <>
-              text "]"
-              {-# LINE 1326 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "[" <>
+             _fromItext <>
+             maybe empty (text "," <+>)  _thenItext <+>
+             text ".." <+>
+             opt _toItext <>
+             text "]"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1331 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _fromItext) =
@@ -1347,10 +1100,7 @@ sem_Expression_Feedback range_ feedback_ expression_ =
          _rangeItext :: Doc
          _expressionItext :: Doc
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _expressionItext
-              {-# LINE 1353 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _expressionItext
          ( _rangeItext) =
              range_
          ( _expressionItext) =
@@ -1363,15 +1113,9 @@ sem_Expression_Hole range_ id_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 446 "Syntax/UHA_Pretty.ag" #-}
-              text hole
-              {-# LINE 1369 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text hole
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1374 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -1387,17 +1131,11 @@ sem_Expression_If range_ guardExpression_ thenExpression_ elseExpression_ =
          _thenExpressionItext :: Doc
          _elseExpressionItext :: Doc
          _text =
-             ({-# LINE 485 "Syntax/UHA_Pretty.ag" #-}
-              text "if" <+> _guardExpressionItext <$>
-                 indent 4 (text "then" <+> _thenExpressionItext <$>
-                           text "else" <+> _elseExpressionItext)
-              {-# LINE 1395 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "if" <+> _guardExpressionItext <$>
+                indent 4 (text "then" <+> _thenExpressionItext <$>
+                          text "else" <+> _elseExpressionItext)
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1400 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _guardExpressionItext) =
@@ -1419,30 +1157,24 @@ sem_Expression_InfixApplication range_ leftExpression_ operator_ rightExpression
          _operatorItext :: Doc
          _rightExpressionItext :: (        Maybe Doc  )
          _text =
-             ({-# LINE 465 "Syntax/UHA_Pretty.ag" #-}
-              let f []     m = m
-                  f (c:cs) m = if isAlpha c && all (\ch -> ch == '_' || ch == '\'' || isAlphaNum ch) cs then char '`' <> m <> char '`' else m
-              in
-                 case (_leftExpressionItext, _rightExpressionItext) of
-                     (Nothing, Nothing) ->
-                         parens _operatorItext
-                     (Just l , Nothing) ->
-                         parens (l <+> _operatorItext)
-                     (Nothing, Just r ) ->
-                         parens (_operatorItext <+> r)
-                     (Just l , Just r ) ->
-                         l
-                         <+>
-                         f (show _operatorItext) _operatorItext
-                         <+>
-                         r
-              {-# LINE 1440 "Syntax/UHA_Pretty.hs" #-}
-              )
+             let f []     m = m
+                 f (c:cs) m = if isAlpha c && all (\ch -> ch == '_' || ch == '\'' || isAlphaNum ch) cs then char '`' <> m <> char '`' else m
+             in
+                case (_leftExpressionItext, _rightExpressionItext) of
+                    (Nothing, Nothing) ->
+                        parens _operatorItext
+                    (Just l , Nothing) ->
+                        parens (l <+> _operatorItext)
+                    (Nothing, Just r ) ->
+                        parens (_operatorItext <+> r)
+                    (Just l , Just r ) ->
+                        l
+                        <+>
+                        f (show _operatorItext) _operatorItext
+                        <+>
+                        r
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1445 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _leftExpressionItext) =
@@ -1462,15 +1194,9 @@ sem_Expression_Lambda range_ patterns_ expression_ =
          _patternsItext :: ( [       Doc ] )
          _expressionItext :: Doc
          _text =
-             ({-# LINE 492 "Syntax/UHA_Pretty.ag" #-}
-              text "\\" <+> foldl1 (<+>) _patternsItext <+> text "->" <+> _expressionItext
-              {-# LINE 1468 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "\\" <+> foldl1 (<+>) _patternsItext <+> text "->" <+> _expressionItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1473 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _patternsItext) =
@@ -1488,19 +1214,13 @@ sem_Expression_Let range_ declarations_ expression_ =
          _declarationsItext :: ( [       Doc ] )
          _expressionItext :: Doc
          _text =
-             ({-# LINE 504 "Syntax/UHA_Pretty.ag" #-}
-              (text "let"<$>
-                             (indent 4 $ vcat _declarationsItext) <+>
-                          text "in" <$>
-                             (indent 4 $ _expressionItext)
-                         ) <$> empty
-              {-# LINE 1498 "Syntax/UHA_Pretty.hs" #-}
-              )
+             (text "let"<$>
+                            (indent 4 $ vcat _declarationsItext) <+>
+                         text "in" <$>
+                            (indent 4 $ _expressionItext)
+                        ) <$> empty
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1503 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _declarationsItext) =
@@ -1516,15 +1236,9 @@ sem_Expression_List range_ expressions_ =
          _rangeItext :: Doc
          _expressionsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 515 "Syntax/UHA_Pretty.ag" #-}
-              PPrint.list _expressionsItext
-              {-# LINE 1522 "Syntax/UHA_Pretty.hs" #-}
-              )
+             PPrint.list _expressionsItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1527 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _expressionsItext) =
@@ -1538,15 +1252,9 @@ sem_Expression_Literal range_ literal_ =
          _rangeItext :: Doc
          _literalItext :: Doc
          _text =
-             ({-# LINE 449 "Syntax/UHA_Pretty.ag" #-}
-              _literalItext
-              {-# LINE 1544 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _literalItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1549 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _literalItext) =
@@ -1560,10 +1268,7 @@ sem_Expression_MustUse range_ expression_ =
          _rangeItext :: Doc
          _expressionItext :: Doc
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _expressionItext
-              {-# LINE 1566 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _expressionItext
          ( _rangeItext) =
              range_
          ( _expressionItext) =
@@ -1577,15 +1282,9 @@ sem_Expression_Negate range_ expression_ =
          _rangeItext :: Doc
          _expressionItext :: Doc
          _text =
-             ({-# LINE 549 "Syntax/UHA_Pretty.ag" #-}
-              text "-"  <> _expressionItext
-              {-# LINE 1583 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "-"  <> _expressionItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1588 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _expressionItext) =
@@ -1599,15 +1298,9 @@ sem_Expression_NegateFloat range_ expression_ =
          _rangeItext :: Doc
          _expressionItext :: Doc
          _text =
-             ({-# LINE 550 "Syntax/UHA_Pretty.ag" #-}
-              text "-." <> _expressionItext
-              {-# LINE 1605 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "-." <> _expressionItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1610 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _expressionItext) =
@@ -1623,15 +1316,9 @@ sem_Expression_NormalApplication range_ function_ arguments_ =
          _functionItext :: Doc
          _argumentsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 461 "Syntax/UHA_Pretty.ag" #-}
-              foldl (<+>) _functionItext _argumentsItext
-              {-# LINE 1629 "Syntax/UHA_Pretty.hs" #-}
-              )
+             foldl (<+>) _functionItext _argumentsItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1634 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _functionItext) =
@@ -1647,15 +1334,9 @@ sem_Expression_Parenthesized range_ expression_ =
          _rangeItext :: Doc
          _expressionItext :: Doc
          _text =
-             ({-# LINE 458 "Syntax/UHA_Pretty.ag" #-}
-              parens _expressionItext
-              {-# LINE 1653 "Syntax/UHA_Pretty.hs" #-}
-              )
+             parens _expressionItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1658 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _expressionItext) =
@@ -1674,15 +1355,9 @@ sem_Expression_RecordConstruction range_ name_ recordExpressionBindings_ =
          _nameItext :: Doc
          _recordExpressionBindingsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 530 "Syntax/UHA_Pretty.ag" #-}
-              intErr "Expression" "record construction"
-              {-# LINE 1680 "Syntax/UHA_Pretty.hs" #-}
-              )
+             intErr "Expression" "record construction"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1685 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -1700,15 +1375,9 @@ sem_Expression_RecordUpdate range_ expression_ recordExpressionBindings_ =
          _expressionItext :: Doc
          _recordExpressionBindingsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 534 "Syntax/UHA_Pretty.ag" #-}
-              intErr "Expression" "record update"
-              {-# LINE 1706 "Syntax/UHA_Pretty.hs" #-}
-              )
+             intErr "Expression" "record update"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1711 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _expressionItext) =
@@ -1724,15 +1393,9 @@ sem_Expression_Tuple range_ expressions_ =
          _rangeItext :: Doc
          _expressionsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 518 "Syntax/UHA_Pretty.ag" #-}
-              tupled _expressionsItext
-              {-# LINE 1730 "Syntax/UHA_Pretty.hs" #-}
-              )
+             tupled _expressionsItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1735 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _expressionsItext) =
@@ -1748,15 +1411,9 @@ sem_Expression_Typed range_ expression_ type_ =
          _expressionItext :: Doc
          _typeItext :: Doc
          _text =
-             ({-# LINE 526 "Syntax/UHA_Pretty.ag" #-}
-              _expressionItext <+> text "::" <+> _typeItext
-              {-# LINE 1754 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _expressionItext <+> text "::" <+> _typeItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1759 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _expressionItext) =
@@ -1775,15 +1432,9 @@ sem_Expression_Variable range_ name_ =
          _nameIisSpecial :: Bool
          _nameItext :: Doc
          _text =
-             ({-# LINE 452 "Syntax/UHA_Pretty.ag" #-}
-              _nameItext
-              {-# LINE 1781 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _nameItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1786 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -1805,10 +1456,7 @@ sem_Expressions_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 1811 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -1818,10 +1466,7 @@ sem_Expressions_Nil :: T_Expressions
 sem_Expressions_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 1824 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- FieldDeclaration --------------------------------------------
 -- cata
@@ -1844,15 +1489,9 @@ sem_FieldDeclaration_FieldDeclaration range_ names_ type_ =
          _namesItext :: ( [       Doc ] )
          _typeItext :: Doc
          _text =
-             ({-# LINE 425 "Syntax/UHA_Pretty.ag" #-}
-              text "{- !!! field declaration -}"
-              {-# LINE 1850 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "{- !!! field declaration -}"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1855 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _namesIisIdentifier,_namesIisOperator,_namesIisSpecial,_namesItext) =
@@ -1876,10 +1515,7 @@ sem_FieldDeclarations_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 1882 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -1889,10 +1525,7 @@ sem_FieldDeclarations_Nil :: T_FieldDeclarations
 sem_FieldDeclarations_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 1895 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- Fixity ------------------------------------------------------
 -- cata
@@ -1912,15 +1545,9 @@ sem_Fixity_Infix range_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 352 "Syntax/UHA_Pretty.ag" #-}
-              text "infix "
-              {-# LINE 1918 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "infix "
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1923 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -1930,15 +1557,9 @@ sem_Fixity_Infixl range_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 348 "Syntax/UHA_Pretty.ag" #-}
-              text "infixl"
-              {-# LINE 1936 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "infixl"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1941 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -1948,15 +1569,9 @@ sem_Fixity_Infixr range_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 350 "Syntax/UHA_Pretty.ag" #-}
-              text "infixr"
-              {-# LINE 1954 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "infixr"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 1959 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -1981,10 +1596,7 @@ sem_FunctionBinding_Feedback range_ feedback_ functionBinding_ =
          _rangeItext :: Doc
          _functionBindingItext :: Doc
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _functionBindingItext
-              {-# LINE 1987 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _functionBindingItext
          ( _rangeItext) =
              range_
          ( _functionBindingItext) =
@@ -2000,15 +1612,9 @@ sem_FunctionBinding_FunctionBinding range_ lefthandside_ righthandside_ =
          _lefthandsideItext :: Doc
          _righthandsideItext :: ( Doc        -> Doc  )
          _text =
-             ({-# LINE 611 "Syntax/UHA_Pretty.ag" #-}
-              _lefthandsideItext <+> _righthandsideItext (text "=")
-              {-# LINE 2006 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _lefthandsideItext <+> _righthandsideItext (text "=")
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2011 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _lefthandsideItext) =
@@ -2023,15 +1629,9 @@ sem_FunctionBinding_Hole range_ id_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 610 "Syntax/UHA_Pretty.ag" #-}
-              empty
-              {-# LINE 2029 "Syntax/UHA_Pretty.hs" #-}
-              )
+             empty
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2034 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -2051,10 +1651,7 @@ sem_FunctionBindings_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 2057 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -2064,10 +1661,7 @@ sem_FunctionBindings_Nil :: T_FunctionBindings
 sem_FunctionBindings_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 2070 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- GuardedExpression -------------------------------------------
 -- cata
@@ -2087,15 +1681,9 @@ sem_GuardedExpression_GuardedExpression range_ guard_ expression_ =
          _guardItext :: Doc
          _expressionItext :: Doc
          _text =
-             ({-# LINE 592 "Syntax/UHA_Pretty.ag" #-}
-              \assign -> text "|" <+> _guardItext <+> assign <+> _expressionItext
-              {-# LINE 2093 "Syntax/UHA_Pretty.hs" #-}
-              )
+             \assign -> text "|" <+> _guardItext <+> assign <+> _expressionItext
          _lhsOtext =
-             ({-# LINE 81 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2098 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _guardItext) =
@@ -2119,10 +1707,7 @@ sem_GuardedExpressions_Cons hd_ tl_ =
          _hdItext :: ( Doc        -> Doc  )
          _tlItext :: ( [        Doc -> Doc  ] )
          _lhsOtext =
-             ({-# LINE 87 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 2125 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -2132,10 +1717,7 @@ sem_GuardedExpressions_Nil :: T_GuardedExpressions
 sem_GuardedExpressions_Nil =
     (let _lhsOtext :: ( [        Doc -> Doc  ] )
          _lhsOtext =
-             ({-# LINE 87 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 2138 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- Import ------------------------------------------------------
 -- cata
@@ -2162,15 +1744,9 @@ sem_Import_TypeOrClass range_ name_ names_ =
          _nameItext :: Doc
          _namesItext :: ( Maybe [       Doc ] )
          _text =
-             ({-# LINE 209 "Syntax/UHA_Pretty.ag" #-}
-              _nameItext <> maybe empty tupled1 _namesItext
-              {-# LINE 2168 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _nameItext <> maybe empty tupled1 _namesItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2173 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -2189,15 +1765,9 @@ sem_Import_TypeOrClassComplete range_ name_ =
          _nameIisSpecial :: Bool
          _nameItext :: Doc
          _text =
-             ({-# LINE 213 "Syntax/UHA_Pretty.ag" #-}
-              _nameItext
-              {-# LINE 2195 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _nameItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2200 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -2214,15 +1784,9 @@ sem_Import_Variable range_ name_ =
          _nameIisSpecial :: Bool
          _nameItext :: Doc
          _text =
-             ({-# LINE 206 "Syntax/UHA_Pretty.ag" #-}
-              _nameItext
-              {-# LINE 2220 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _nameItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2225 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -2244,15 +1808,9 @@ sem_ImportDeclaration_Empty range_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 191 "Syntax/UHA_Pretty.ag" #-}
-              empty
-              {-# LINE 2250 "Syntax/UHA_Pretty.hs" #-}
-              )
+             empty
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2255 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -2272,15 +1830,9 @@ sem_ImportDeclaration_Import range_ qualified_ name_ asname_ importspecification
          _asnameItext :: (        Maybe Doc  )
          _importspecificationItext :: (        Maybe Doc  )
          _text =
-             ({-# LINE 185 "Syntax/UHA_Pretty.ag" #-}
-              text "import" <+> (if qualified_ then (text "qualified" <+>) else id) _nameItext <+> maybe empty id _importspecificationItext
-              {-# LINE 2278 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "import" <+> (if qualified_ then (text "qualified" <+>) else id) _nameItext <+> maybe empty id _importspecificationItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2283 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -2306,10 +1858,7 @@ sem_ImportDeclarations_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 2312 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -2319,10 +1868,7 @@ sem_ImportDeclarations_Nil :: T_ImportDeclarations
 sem_ImportDeclarations_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 2325 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- ImportSpecification -----------------------------------------
 -- cata
@@ -2341,16 +1887,10 @@ sem_ImportSpecification_Import range_ hiding_ imports_ =
          _rangeItext :: Doc
          _importsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 199 "Syntax/UHA_Pretty.ag" #-}
-              (if hiding_ then (text "hiding" <+>) else id)
-                                       (tupled _importsItext)
-              {-# LINE 2348 "Syntax/UHA_Pretty.hs" #-}
-              )
+             (if hiding_ then (text "hiding" <+>) else id)
+                                      (tupled _importsItext)
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2353 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _importsItext) =
@@ -2372,10 +1912,7 @@ sem_Imports_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 2378 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -2385,10 +1922,7 @@ sem_Imports_Nil :: T_Imports
 sem_Imports_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 2391 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- LeftHandSide ------------------------------------------------
 -- cata
@@ -2415,15 +1949,9 @@ sem_LeftHandSide_Function range_ name_ patterns_ =
          _nameItext :: Doc
          _patternsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 617 "Syntax/UHA_Pretty.ag" #-}
-              foldl (<+>) (parensIf _nameIisOperator _nameItext) _patternsItext
-              {-# LINE 2421 "Syntax/UHA_Pretty.hs" #-}
-              )
+             foldl (<+>) (parensIf _nameIisOperator _nameItext) _patternsItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2426 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -2446,15 +1974,9 @@ sem_LeftHandSide_Infix range_ leftPattern_ operator_ rightPattern_ =
          _operatorItext :: Doc
          _rightPatternItext :: Doc
          _text =
-             ({-# LINE 621 "Syntax/UHA_Pretty.ag" #-}
-              _leftPatternItext <+> backQuotesIf (not _operatorIisOperator) _operatorItext <+> _rightPatternItext
-              {-# LINE 2452 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _leftPatternItext <+> backQuotesIf (not _operatorIisOperator) _operatorItext <+> _rightPatternItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2457 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _leftPatternItext) =
@@ -2474,15 +1996,9 @@ sem_LeftHandSide_Parenthesized range_ lefthandside_ patterns_ =
          _lefthandsideItext :: Doc
          _patternsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 626 "Syntax/UHA_Pretty.ag" #-}
-              foldl (<+>) (parens _lefthandsideItext) _patternsItext
-              {-# LINE 2480 "Syntax/UHA_Pretty.hs" #-}
-              )
+             foldl (<+>) (parens _lefthandsideItext) _patternsItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2485 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _lefthandsideItext) =
@@ -2511,15 +2027,9 @@ sem_Literal_Char range_ value_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 730 "Syntax/UHA_Pretty.ag" #-}
-              text ("'" ++ value_ ++ "'")
-              {-# LINE 2517 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text ("'" ++ value_ ++ "'")
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2522 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -2530,15 +2040,9 @@ sem_Literal_Float range_ value_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 733 "Syntax/UHA_Pretty.ag" #-}
-              text value_
-              {-# LINE 2536 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text value_
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2541 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -2549,15 +2053,9 @@ sem_Literal_Int range_ value_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 727 "Syntax/UHA_Pretty.ag" #-}
-              text value_
-              {-# LINE 2555 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text value_
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2560 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -2568,15 +2066,9 @@ sem_Literal_String range_ value_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 736 "Syntax/UHA_Pretty.ag" #-}
-              text ("\"" ++ value_ ++ "\"")
-              {-# LINE 2574 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text ("\"" ++ value_ ++ "\"")
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2579 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -2596,17 +2088,11 @@ sem_MaybeDeclarations_Just declarations_ =
     (let _lhsOtext :: ( Maybe [       Doc ] )
          _declarationsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 226 "Syntax/UHA_Pretty.ag" #-}
-              case filter ((/= "") . show) _declarationsItext of
-                [] -> Nothing
-                xs -> Just xs
-              {-# LINE 2604 "Syntax/UHA_Pretty.hs" #-}
-              )
+             case filter ((/= "") . show) _declarationsItext of
+               [] -> Nothing
+               xs -> Just xs
          _lhsOtext =
-             ({-# LINE 104 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2609 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _declarationsItext) =
              declarations_
      in  ( _lhsOtext))
@@ -2614,15 +2100,9 @@ sem_MaybeDeclarations_Nothing :: T_MaybeDeclarations
 sem_MaybeDeclarations_Nothing =
     (let _lhsOtext :: ( Maybe [       Doc ] )
          _text =
-             ({-# LINE 224 "Syntax/UHA_Pretty.ag" #-}
-              Nothing
-              {-# LINE 2620 "Syntax/UHA_Pretty.hs" #-}
-              )
+             Nothing
          _lhsOtext =
-             ({-# LINE 104 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2625 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
      in  ( _lhsOtext))
 -- MaybeExports ------------------------------------------------
 -- cata
@@ -2640,15 +2120,9 @@ sem_MaybeExports_Just exports_ =
     (let _lhsOtext :: ( Maybe [       Doc ] )
          _exportsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 148 "Syntax/UHA_Pretty.ag" #-}
-              Just _exportsItext
-              {-# LINE 2646 "Syntax/UHA_Pretty.hs" #-}
-              )
+             Just _exportsItext
          _lhsOtext =
-             ({-# LINE 104 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2651 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _exportsItext) =
              exports_
      in  ( _lhsOtext))
@@ -2656,15 +2130,9 @@ sem_MaybeExports_Nothing :: T_MaybeExports
 sem_MaybeExports_Nothing =
     (let _lhsOtext :: ( Maybe [       Doc ] )
          _text =
-             ({-# LINE 147 "Syntax/UHA_Pretty.ag" #-}
-              Nothing
-              {-# LINE 2662 "Syntax/UHA_Pretty.hs" #-}
-              )
+             Nothing
          _lhsOtext =
-             ({-# LINE 104 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2667 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
      in  ( _lhsOtext))
 -- MaybeExpression ---------------------------------------------
 -- cata
@@ -2682,15 +2150,9 @@ sem_MaybeExpression_Just expression_ =
     (let _lhsOtext :: (        Maybe Doc  )
          _expressionItext :: Doc
          _text =
-             ({-# LINE 442 "Syntax/UHA_Pretty.ag" #-}
-              Just _expressionItext
-              {-# LINE 2688 "Syntax/UHA_Pretty.hs" #-}
-              )
+             Just _expressionItext
          _lhsOtext =
-             ({-# LINE 111 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2693 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _expressionItext) =
              expression_
      in  ( _lhsOtext))
@@ -2698,15 +2160,9 @@ sem_MaybeExpression_Nothing :: T_MaybeExpression
 sem_MaybeExpression_Nothing =
     (let _lhsOtext :: (        Maybe Doc  )
          _text =
-             ({-# LINE 441 "Syntax/UHA_Pretty.ag" #-}
-              Nothing
-              {-# LINE 2704 "Syntax/UHA_Pretty.hs" #-}
-              )
+             Nothing
          _lhsOtext =
-             ({-# LINE 111 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2709 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
      in  ( _lhsOtext))
 -- MaybeImportSpecification ------------------------------------
 -- cata
@@ -2724,15 +2180,9 @@ sem_MaybeImportSpecification_Just importspecification_ =
     (let _lhsOtext :: (        Maybe Doc  )
          _importspecificationItext :: Doc
          _text =
-             ({-# LINE 195 "Syntax/UHA_Pretty.ag" #-}
-              Just _importspecificationItext
-              {-# LINE 2730 "Syntax/UHA_Pretty.hs" #-}
-              )
+             Just _importspecificationItext
          _lhsOtext =
-             ({-# LINE 111 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2735 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _importspecificationItext) =
              importspecification_
      in  ( _lhsOtext))
@@ -2740,15 +2190,9 @@ sem_MaybeImportSpecification_Nothing :: T_MaybeImportSpecification
 sem_MaybeImportSpecification_Nothing =
     (let _lhsOtext :: (        Maybe Doc  )
          _text =
-             ({-# LINE 194 "Syntax/UHA_Pretty.ag" #-}
-              Nothing
-              {-# LINE 2746 "Syntax/UHA_Pretty.hs" #-}
-              )
+             Nothing
          _lhsOtext =
-             ({-# LINE 111 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2751 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
      in  ( _lhsOtext))
 -- MaybeInt ----------------------------------------------------
 -- cata
@@ -2765,29 +2209,17 @@ sem_MaybeInt_Just :: Int ->
 sem_MaybeInt_Just int_ =
     (let _lhsOtext :: (        Maybe Doc  )
          _text =
-             ({-# LINE 764 "Syntax/UHA_Pretty.ag" #-}
-              Just (int int_)
-              {-# LINE 2771 "Syntax/UHA_Pretty.hs" #-}
-              )
+             Just (int int_)
          _lhsOtext =
-             ({-# LINE 111 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2776 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
      in  ( _lhsOtext))
 sem_MaybeInt_Nothing :: T_MaybeInt
 sem_MaybeInt_Nothing =
     (let _lhsOtext :: (        Maybe Doc  )
          _text =
-             ({-# LINE 763 "Syntax/UHA_Pretty.ag" #-}
-              Nothing
-              {-# LINE 2785 "Syntax/UHA_Pretty.hs" #-}
-              )
+             Nothing
          _lhsOtext =
-             ({-# LINE 111 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2790 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
      in  ( _lhsOtext))
 -- MaybeName ---------------------------------------------------
 -- cata
@@ -2808,15 +2240,9 @@ sem_MaybeName_Just name_ =
          _nameIisSpecial :: Bool
          _nameItext :: Doc
          _text =
-             ({-# LINE 742 "Syntax/UHA_Pretty.ag" #-}
-              Just _nameItext
-              {-# LINE 2814 "Syntax/UHA_Pretty.hs" #-}
-              )
+             Just _nameItext
          _lhsOtext =
-             ({-# LINE 111 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2819 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
              name_
      in  ( _lhsOtext))
@@ -2824,15 +2250,9 @@ sem_MaybeName_Nothing :: T_MaybeName
 sem_MaybeName_Nothing =
     (let _lhsOtext :: (        Maybe Doc  )
          _text =
-             ({-# LINE 741 "Syntax/UHA_Pretty.ag" #-}
-              Nothing
-              {-# LINE 2830 "Syntax/UHA_Pretty.hs" #-}
-              )
+             Nothing
          _lhsOtext =
-             ({-# LINE 111 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2835 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
      in  ( _lhsOtext))
 -- MaybeNames --------------------------------------------------
 -- cata
@@ -2853,15 +2273,9 @@ sem_MaybeNames_Just names_ =
          _namesIisSpecial :: ( [Bool] )
          _namesItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 168 "Syntax/UHA_Pretty.ag" #-}
-              Just _namesItext
-              {-# LINE 2859 "Syntax/UHA_Pretty.hs" #-}
-              )
+             Just _namesItext
          _lhsOtext =
-             ({-# LINE 104 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2864 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _namesIisIdentifier,_namesIisOperator,_namesIisSpecial,_namesItext) =
              names_
      in  ( _lhsOtext))
@@ -2869,15 +2283,9 @@ sem_MaybeNames_Nothing :: T_MaybeNames
 sem_MaybeNames_Nothing =
     (let _lhsOtext :: ( Maybe [       Doc ] )
          _text =
-             ({-# LINE 167 "Syntax/UHA_Pretty.ag" #-}
-              Nothing
-              {-# LINE 2875 "Syntax/UHA_Pretty.hs" #-}
-              )
+             Nothing
          _lhsOtext =
-             ({-# LINE 104 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2880 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
      in  ( _lhsOtext))
 -- Module ------------------------------------------------------
 -- cata
@@ -2899,28 +2307,22 @@ sem_Module_Module range_ name_ exports_ body_ =
          _exportsItext :: ( Maybe [       Doc ] )
          _bodyItext :: Doc
          _text =
-             ({-# LINE 126 "Syntax/UHA_Pretty.ag" #-}
-              maybe
-                  id
-                  ( \name body ->
-                      text "module" <+> name <+>
-                          (maybe
-                              (text "where")
-                              (\x -> indent 4 (utrechtList (text "(") (text ")") x <+> text "where"))
-                              _exportsItext
-                          )
-                      <$> empty <$>
-                      body
-                  )
-                  _nameItext
-                  _bodyItext
-              {-# LINE 2918 "Syntax/UHA_Pretty.hs" #-}
-              )
+             maybe
+                 id
+                 ( \name body ->
+                     text "module" <+> name <+>
+                         (maybe
+                             (text "where")
+                             (\x -> indent 4 (utrechtList (text "(") (text ")") x <+> text "where"))
+                             _exportsItext
+                         )
+                     <$> empty <$>
+                     body
+                 )
+                 _nameItext
+                 _bodyItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2923 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameItext) =
@@ -2954,30 +2356,15 @@ sem_Name_Identifier range_ module_ name_ =
          _rangeItext :: Doc
          _moduleItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 746 "Syntax/UHA_Pretty.ag" #-}
-              text name_
-              {-# LINE 2960 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text name_
          _lhsOisIdentifier =
-             ({-# LINE 747 "Syntax/UHA_Pretty.ag" #-}
-              True
-              {-# LINE 2965 "Syntax/UHA_Pretty.hs" #-}
-              )
+             True
          _lhsOisOperator =
-             ({-# LINE 116 "Syntax/UHA_Pretty.ag" #-}
-              False
-              {-# LINE 2970 "Syntax/UHA_Pretty.hs" #-}
-              )
+             False
          _lhsOisSpecial =
-             ({-# LINE 116 "Syntax/UHA_Pretty.ag" #-}
-              False
-              {-# LINE 2975 "Syntax/UHA_Pretty.hs" #-}
-              )
+             False
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 2980 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _moduleItext) =
@@ -2995,30 +2382,15 @@ sem_Name_Operator range_ module_ name_ =
          _rangeItext :: Doc
          _moduleItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 751 "Syntax/UHA_Pretty.ag" #-}
-              text name_
-              {-# LINE 3001 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text name_
          _lhsOisOperator =
-             ({-# LINE 752 "Syntax/UHA_Pretty.ag" #-}
-              True
-              {-# LINE 3006 "Syntax/UHA_Pretty.hs" #-}
-              )
+             True
          _lhsOisIdentifier =
-             ({-# LINE 116 "Syntax/UHA_Pretty.ag" #-}
-              False
-              {-# LINE 3011 "Syntax/UHA_Pretty.hs" #-}
-              )
+             False
          _lhsOisSpecial =
-             ({-# LINE 116 "Syntax/UHA_Pretty.ag" #-}
-              False
-              {-# LINE 3016 "Syntax/UHA_Pretty.hs" #-}
-              )
+             False
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3021 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _moduleItext) =
@@ -3036,30 +2408,15 @@ sem_Name_Special range_ module_ name_ =
          _rangeItext :: Doc
          _moduleItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 756 "Syntax/UHA_Pretty.ag" #-}
-              text name_
-              {-# LINE 3042 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text name_
          _lhsOisSpecial =
-             ({-# LINE 757 "Syntax/UHA_Pretty.ag" #-}
-              True
-              {-# LINE 3047 "Syntax/UHA_Pretty.hs" #-}
-              )
+             True
          _lhsOisIdentifier =
-             ({-# LINE 116 "Syntax/UHA_Pretty.ag" #-}
-              False
-              {-# LINE 3052 "Syntax/UHA_Pretty.hs" #-}
-              )
+             False
          _lhsOisOperator =
-             ({-# LINE 116 "Syntax/UHA_Pretty.ag" #-}
-              False
-              {-# LINE 3057 "Syntax/UHA_Pretty.hs" #-}
-              )
+             False
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3062 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _moduleItext) =
@@ -3090,25 +2447,13 @@ sem_Names_Cons hd_ tl_ =
          _tlIisSpecial :: ( [Bool] )
          _tlItext :: ( [       Doc ] )
          _lhsOisIdentifier =
-             ({-# LINE 120 "Syntax/UHA_Pretty.ag" #-}
-              _hdIisIdentifier  :  _tlIisIdentifier
-              {-# LINE 3096 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdIisIdentifier  :  _tlIisIdentifier
          _lhsOisOperator =
-             ({-# LINE 120 "Syntax/UHA_Pretty.ag" #-}
-              _hdIisOperator  :  _tlIisOperator
-              {-# LINE 3101 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdIisOperator  :  _tlIisOperator
          _lhsOisSpecial =
-             ({-# LINE 120 "Syntax/UHA_Pretty.ag" #-}
-              _hdIisSpecial  :  _tlIisSpecial
-              {-# LINE 3106 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdIisSpecial  :  _tlIisSpecial
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 3111 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdIisIdentifier,_hdIisOperator,_hdIisSpecial,_hdItext) =
              hd_
          ( _tlIisIdentifier,_tlIisOperator,_tlIisSpecial,_tlItext) =
@@ -3121,25 +2466,13 @@ sem_Names_Nil =
          _lhsOisSpecial :: ( [Bool] )
          _lhsOtext :: ( [       Doc ] )
          _lhsOisIdentifier =
-             ({-# LINE 120 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 3127 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
          _lhsOisOperator =
-             ({-# LINE 120 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 3132 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
          _lhsOisSpecial =
-             ({-# LINE 120 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 3137 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 3142 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOisIdentifier,_lhsOisOperator,_lhsOisSpecial,_lhsOtext))
 -- Pattern -----------------------------------------------------
 -- cata
@@ -3190,15 +2523,9 @@ sem_Pattern_As range_ name_ pattern_ =
          _nameItext :: Doc
          _patternItext :: Doc
          _text =
-             ({-# LINE 708 "Syntax/UHA_Pretty.ag" #-}
-              _nameItext <> text "@" <> _patternItext
-              {-# LINE 3196 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _nameItext <> text "@" <> _patternItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3201 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -3219,15 +2546,9 @@ sem_Pattern_Constructor range_ name_ patterns_ =
          _nameItext :: Doc
          _patternsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 680 "Syntax/UHA_Pretty.ag" #-}
-              foldl (<+>) (parensIf _nameIisOperator _nameItext) _patternsItext
-              {-# LINE 3225 "Syntax/UHA_Pretty.hs" #-}
-              )
+             foldl (<+>) (parensIf _nameIisOperator _nameItext) _patternsItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3230 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -3242,15 +2563,9 @@ sem_Pattern_Hole range_ id_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 673 "Syntax/UHA_Pretty.ag" #-}
-              text hole
-              {-# LINE 3248 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text hole
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3253 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -3269,15 +2584,9 @@ sem_Pattern_InfixConstructor range_ leftPattern_ constructorOperator_ rightPatte
          _constructorOperatorItext :: Doc
          _rightPatternItext :: Doc
          _text =
-             ({-# LINE 687 "Syntax/UHA_Pretty.ag" #-}
-              _leftPatternItext <+> _constructorOperatorItext <+> _rightPatternItext
-              {-# LINE 3275 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _leftPatternItext <+> _constructorOperatorItext <+> _rightPatternItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3280 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _leftPatternItext) =
@@ -3295,15 +2604,9 @@ sem_Pattern_Irrefutable range_ pattern_ =
          _rangeItext :: Doc
          _patternItext :: Doc
          _text =
-             ({-# LINE 714 "Syntax/UHA_Pretty.ag" #-}
-              text "~" <> _patternItext
-              {-# LINE 3301 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "~" <> _patternItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3306 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _patternItext) =
@@ -3317,15 +2620,9 @@ sem_Pattern_List range_ patterns_ =
          _rangeItext :: Doc
          _patternsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 692 "Syntax/UHA_Pretty.ag" #-}
-              PPrint.list _patternsItext
-              {-# LINE 3323 "Syntax/UHA_Pretty.hs" #-}
-              )
+             PPrint.list _patternsItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3328 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _patternsItext) =
@@ -3339,15 +2636,9 @@ sem_Pattern_Literal range_ literal_ =
          _rangeItext :: Doc
          _literalItext :: Doc
          _text =
-             ({-# LINE 674 "Syntax/UHA_Pretty.ag" #-}
-              _literalItext
-              {-# LINE 3345 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _literalItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3350 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _literalItext) =
@@ -3361,15 +2652,9 @@ sem_Pattern_Negate range_ literal_ =
          _rangeItext :: Doc
          _literalItext :: Doc
          _text =
-             ({-# LINE 702 "Syntax/UHA_Pretty.ag" #-}
-              text "-" <> _literalItext
-              {-# LINE 3367 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "-" <> _literalItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3372 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _literalItext) =
@@ -3383,15 +2668,9 @@ sem_Pattern_NegateFloat range_ literal_ =
          _rangeItext :: Doc
          _literalItext :: Doc
          _text =
-             ({-# LINE 705 "Syntax/UHA_Pretty.ag" #-}
-              text "-." <> _literalItext
-              {-# LINE 3389 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "-." <> _literalItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3394 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _literalItext) =
@@ -3405,15 +2684,9 @@ sem_Pattern_Parenthesized range_ pattern_ =
          _rangeItext :: Doc
          _patternItext :: Doc
          _text =
-             ({-# LINE 684 "Syntax/UHA_Pretty.ag" #-}
-              parens _patternItext
-              {-# LINE 3411 "Syntax/UHA_Pretty.hs" #-}
-              )
+             parens _patternItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3416 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _patternItext) =
@@ -3432,15 +2705,9 @@ sem_Pattern_Record range_ name_ recordPatternBindings_ =
          _nameItext :: Doc
          _recordPatternBindingsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 698 "Syntax/UHA_Pretty.ag" #-}
-              text "{- !!! record pattern -}"
-              {-# LINE 3438 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "{- !!! record pattern -}"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3443 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -3461,15 +2728,9 @@ sem_Pattern_Successor range_ name_ literal_ =
          _nameItext :: Doc
          _literalItext :: Doc
          _text =
-             ({-# LINE 717 "Syntax/UHA_Pretty.ag" #-}
-              _nameItext <+> text "+" <+> _literalItext
-              {-# LINE 3467 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _nameItext <+> text "+" <+> _literalItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3472 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -3485,15 +2746,9 @@ sem_Pattern_Tuple range_ patterns_ =
          _rangeItext :: Doc
          _patternsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 695 "Syntax/UHA_Pretty.ag" #-}
-              tupled _patternsItext
-              {-# LINE 3491 "Syntax/UHA_Pretty.hs" #-}
-              )
+             tupled _patternsItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3496 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _patternsItext) =
@@ -3510,15 +2765,9 @@ sem_Pattern_Variable range_ name_ =
          _nameIisSpecial :: Bool
          _nameItext :: Doc
          _text =
-             ({-# LINE 677 "Syntax/UHA_Pretty.ag" #-}
-              parensIf _nameIisOperator _nameItext
-              {-# LINE 3516 "Syntax/UHA_Pretty.hs" #-}
-              )
+             parensIf _nameIisOperator _nameItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3521 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -3530,15 +2779,9 @@ sem_Pattern_Wildcard range_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 712 "Syntax/UHA_Pretty.ag" #-}
-              text "_"
-              {-# LINE 3536 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "_"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3541 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -3558,10 +2801,7 @@ sem_Patterns_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 3564 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -3571,10 +2811,7 @@ sem_Patterns_Nil :: T_Patterns
 sem_Patterns_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 3577 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- Position ----------------------------------------------------
 -- cata
@@ -3593,29 +2830,17 @@ sem_Position_Position :: String ->
 sem_Position_Position filename_ line_ column_ =
     (let _lhsOtext :: Doc
          _text =
-             ({-# LINE 773 "Syntax/UHA_Pretty.ag" #-}
-              text filename_ <> tupled [int line_, int column_]
-              {-# LINE 3599 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text filename_ <> tupled [int line_, int column_]
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3604 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
      in  ( _lhsOtext))
 sem_Position_Unknown :: T_Position
 sem_Position_Unknown =
     (let _lhsOtext :: Doc
          _text =
-             ({-# LINE 777 "Syntax/UHA_Pretty.ag" #-}
-              text "Unknown"
-              {-# LINE 3613 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "Unknown"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3618 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
      in  ( _lhsOtext))
 -- Qualifier ---------------------------------------------------
 -- cata
@@ -3637,15 +2862,9 @@ sem_Qualifier_Empty range_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 579 "Syntax/UHA_Pretty.ag" #-}
-              empty
-              {-# LINE 3643 "Syntax/UHA_Pretty.hs" #-}
-              )
+             empty
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3648 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -3659,15 +2878,9 @@ sem_Qualifier_Generator range_ pattern_ expression_ =
          _patternItext :: Doc
          _expressionItext :: Doc
          _text =
-             ({-# LINE 575 "Syntax/UHA_Pretty.ag" #-}
-              _patternItext <+> text "<-" <+> _expressionItext
-              {-# LINE 3665 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _patternItext <+> text "<-" <+> _expressionItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3670 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _patternItext) =
@@ -3683,15 +2896,9 @@ sem_Qualifier_Guard range_ guard_ =
          _rangeItext :: Doc
          _guardItext :: Doc
          _text =
-             ({-# LINE 569 "Syntax/UHA_Pretty.ag" #-}
-              _guardItext
-              {-# LINE 3689 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _guardItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3694 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _guardItext) =
@@ -3705,15 +2912,9 @@ sem_Qualifier_Let range_ declarations_ =
          _rangeItext :: Doc
          _declarationsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 572 "Syntax/UHA_Pretty.ag" #-}
-              text "let" <$> (indent 4 $ vcat _declarationsItext)
-              {-# LINE 3711 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "let" <$> (indent 4 $ vcat _declarationsItext)
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3716 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _declarationsItext) =
@@ -3735,10 +2936,7 @@ sem_Qualifiers_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 3741 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -3748,10 +2946,7 @@ sem_Qualifiers_Nil :: T_Qualifiers
 sem_Qualifiers_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 3754 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- Range -------------------------------------------------------
 -- cata
@@ -3769,15 +2964,9 @@ sem_Range_Range start_ stop_ =
          _startItext :: Doc
          _stopItext :: Doc
          _text =
-             ({-# LINE 768 "Syntax/UHA_Pretty.ag" #-}
-              text "{-" <+> _startItext <+> text ", " <+> _stopItext <+> text "-}"
-              {-# LINE 3775 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "{-" <+> _startItext <+> text ", " <+> _stopItext <+> text "-}"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3780 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _startItext) =
              start_
          ( _stopItext) =
@@ -3804,15 +2993,9 @@ sem_RecordExpressionBinding_RecordExpressionBinding range_ name_ expression_ =
          _nameItext :: Doc
          _expressionItext :: Doc
          _text =
-             ({-# LINE 598 "Syntax/UHA_Pretty.ag" #-}
-              text "{- !!! record expression binding -}"
-              {-# LINE 3810 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "{- !!! record expression binding -}"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3815 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -3836,10 +3019,7 @@ sem_RecordExpressionBindings_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 3842 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -3849,10 +3029,7 @@ sem_RecordExpressionBindings_Nil :: T_RecordExpressionBindings
 sem_RecordExpressionBindings_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 3855 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- RecordPatternBinding ----------------------------------------
 -- cata
@@ -3875,15 +3052,9 @@ sem_RecordPatternBinding_RecordPatternBinding range_ name_ pattern_ =
          _nameItext :: Doc
          _patternItext :: Doc
          _text =
-             ({-# LINE 604 "Syntax/UHA_Pretty.ag" #-}
-              text "{- !!! record pattern binding -}"
-              {-# LINE 3881 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "{- !!! record pattern binding -}"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3886 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -3907,10 +3078,7 @@ sem_RecordPatternBindings_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 3913 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -3920,10 +3088,7 @@ sem_RecordPatternBindings_Nil :: T_RecordPatternBindings
 sem_RecordPatternBindings_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 3926 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- RightHandSide -----------------------------------------------
 -- cata
@@ -3945,26 +3110,17 @@ sem_RightHandSide_Expression range_ expression_ where_ =
          _expressionItext :: Doc
          _whereItext :: ( Maybe [       Doc ] )
          _text =
-             ({-# LINE 633 "Syntax/UHA_Pretty.ag" #-}
-              \assign       -> assign <$> _justText
-              {-# LINE 3951 "Syntax/UHA_Pretty.hs" #-}
-              )
+             \assign       -> assign <$> _justText
          _justText =
-             ({-# LINE 634 "Syntax/UHA_Pretty.ag" #-}
-              indent 4
-                  (  _expressionItext
-                  <> maybe
-                         empty
-                         (\ds -> PPrint.empty <$> text "where" <$> indent 4 (vcat ds))
-                         _whereItext
-                  )
-              {-# LINE 3962 "Syntax/UHA_Pretty.hs" #-}
-              )
+             indent 4
+                 (  _expressionItext
+                 <> maybe
+                        empty
+                        (\ds -> PPrint.empty <$> text "where" <$> indent 4 (vcat ds))
+                        _whereItext
+                 )
          _lhsOtext =
-             ({-# LINE 81 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 3967 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _expressionItext) =
@@ -3982,23 +3138,17 @@ sem_RightHandSide_Guarded range_ guardedexpressions_ where_ =
          _guardedexpressionsItext :: ( [        Doc -> Doc  ] )
          _whereItext :: ( Maybe [       Doc ] )
          _text =
-             ({-# LINE 654 "Syntax/UHA_Pretty.ag" #-}
-              \assign ->
-                  (   PPrint.empty
-                  <$> vsep
-                         (zipWith (\f x -> indent 4 (f x)) _guardedexpressionsItext (repeat assign))
-                  <>  maybe
-                         empty
-                         (\ds -> PPrint.empty <$> indent 4 (text "where" <$> indent 4 (vcat ds)))
-                         _whereItext
-                  )
-              {-# LINE 3996 "Syntax/UHA_Pretty.hs" #-}
-              )
+             \assign ->
+                 (   PPrint.empty
+                 <$> vsep
+                        (zipWith (\f x -> indent 4 (f x)) _guardedexpressionsItext (repeat assign))
+                 <>  maybe
+                        empty
+                        (\ds -> PPrint.empty <$> indent 4 (text "where" <$> indent 4 (vcat ds)))
+                        _whereItext
+                 )
          _lhsOtext =
-             ({-# LINE 81 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 4001 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _guardedexpressionsItext) =
@@ -4030,15 +3180,9 @@ sem_SimpleType_SimpleType range_ name_ typevariables_ =
          _typevariablesIisSpecial :: ( [Bool] )
          _typevariablesItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 399 "Syntax/UHA_Pretty.ag" #-}
-              foldl (<+>) _nameItext _typevariablesItext
-              {-# LINE 4036 "Syntax/UHA_Pretty.hs" #-}
-              )
+             foldl (<+>) _nameItext _typevariablesItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 4041 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -4066,15 +3210,9 @@ sem_Statement_Empty range_ =
     (let _lhsOtext :: Doc
          _rangeItext :: Doc
          _text =
-             ({-# LINE 565 "Syntax/UHA_Pretty.ag" #-}
-              empty
-              {-# LINE 4072 "Syntax/UHA_Pretty.hs" #-}
-              )
+             empty
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 4077 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
      in  ( _lhsOtext))
@@ -4086,15 +3224,9 @@ sem_Statement_Expression range_ expression_ =
          _rangeItext :: Doc
          _expressionItext :: Doc
          _text =
-             ({-# LINE 555 "Syntax/UHA_Pretty.ag" #-}
-              _expressionItext
-              {-# LINE 4092 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _expressionItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 4097 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _expressionItext) =
@@ -4110,15 +3242,9 @@ sem_Statement_Generator range_ pattern_ expression_ =
          _patternItext :: Doc
          _expressionItext :: Doc
          _text =
-             ({-# LINE 561 "Syntax/UHA_Pretty.ag" #-}
-              _patternItext <+> text "<-" <+> _expressionItext
-              {-# LINE 4116 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _patternItext <+> text "<-" <+> _expressionItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 4121 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _patternItext) =
@@ -4134,15 +3260,9 @@ sem_Statement_Let range_ declarations_ =
          _rangeItext :: Doc
          _declarationsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 558 "Syntax/UHA_Pretty.ag" #-}
-              text "let" <$> (indent 4 $ vcat _declarationsItext)
-              {-# LINE 4140 "Syntax/UHA_Pretty.hs" #-}
-              )
+             text "let" <$> (indent 4 $ vcat _declarationsItext)
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 4145 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _declarationsItext) =
@@ -4164,10 +3284,7 @@ sem_Statements_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 4170 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -4177,10 +3294,7 @@ sem_Statements_Nil :: T_Statements
 sem_Statements_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 4183 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- Strings -----------------------------------------------------
 -- cata
@@ -4197,10 +3311,7 @@ sem_Strings_Cons hd_ tl_ =
     (let _lhsOtext :: ( [       Doc ] )
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _tlItext
-              {-# LINE 4203 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _tlItext
          ( _tlItext) =
              tl_
      in  ( _lhsOtext))
@@ -4208,10 +3319,7 @@ sem_Strings_Nil :: T_Strings
 sem_Strings_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 4214 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
 -- Type --------------------------------------------------------
 -- cata
@@ -4244,24 +3352,18 @@ sem_Type_Application range_ prefix_ function_ arguments_ =
          _functionItext :: Doc
          _argumentsItext :: ( [       Doc ] )
          _text =
-             ({-# LINE 360 "Syntax/UHA_Pretty.ag" #-}
-              if prefix_ then
-                  foldl (<+>) _functionItext _argumentsItext
-              else if show _functionItext == "[]" then
-                  PPrint.list _argumentsItext
-              else if isTupleConstructor (show _functionItext) then
-                  tupled _argumentsItext
-              else
-                  case _argumentsItext of
-                      [a, b] -> a <+> _functionItext <+> b
-                      _      -> text "{- error: Unknown special application notation -}"
-              {-# LINE 4259 "Syntax/UHA_Pretty.hs" #-}
-              )
+             if prefix_ then
+                 foldl (<+>) _functionItext _argumentsItext
+             else if show _functionItext == "[]" then
+                 PPrint.list _argumentsItext
+             else if isTupleConstructor (show _functionItext) then
+                 tupled _argumentsItext
+             else
+                 case _argumentsItext of
+                     [a, b] -> a <+> _functionItext <+> b
+                     _      -> text "{- error: Unknown special application notation -}"
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 4264 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _functionItext) =
@@ -4280,15 +3382,9 @@ sem_Type_Constructor range_ name_ =
          _nameIisSpecial :: Bool
          _nameItext :: Doc
          _text =
-             ({-# LINE 377 "Syntax/UHA_Pretty.ag" #-}
-              _nameItext
-              {-# LINE 4286 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _nameItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 4291 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -4307,15 +3403,9 @@ sem_Type_Exists range_ typevariables_ type_ =
          _typevariablesItext :: ( [       Doc ] )
          _typeItext :: Doc
          _text =
-             ({-# LINE 390 "Syntax/UHA_Pretty.ag" #-}
-              foldl (<+>) (text "exists") _typevariablesItext <> text "." <> _typeItext
-              {-# LINE 4313 "Syntax/UHA_Pretty.hs" #-}
-              )
+             foldl (<+>) (text "exists") _typevariablesItext <> text "." <> _typeItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 4318 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _typevariablesIisIdentifier,_typevariablesIisOperator,_typevariablesIisSpecial,_typevariablesItext) =
@@ -4336,15 +3426,9 @@ sem_Type_Forall range_ typevariables_ type_ =
          _typevariablesItext :: ( [       Doc ] )
          _typeItext :: Doc
          _text =
-             ({-# LINE 386 "Syntax/UHA_Pretty.ag" #-}
-              foldl (<+>) (text "forall") _typevariablesItext <> text "." <> _typeItext
-              {-# LINE 4342 "Syntax/UHA_Pretty.hs" #-}
-              )
+             foldl (<+>) (text "forall") _typevariablesItext <> text "." <> _typeItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 4347 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _typevariablesIisIdentifier,_typevariablesIisOperator,_typevariablesIisSpecial,_typevariablesItext) =
@@ -4360,15 +3444,9 @@ sem_Type_Parenthesized range_ type_ =
          _rangeItext :: Doc
          _typeItext :: Doc
          _text =
-             ({-# LINE 394 "Syntax/UHA_Pretty.ag" #-}
-              parens _typeItext
-              {-# LINE 4366 "Syntax/UHA_Pretty.hs" #-}
-              )
+             parens _typeItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 4371 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _typeItext) =
@@ -4384,17 +3462,11 @@ sem_Type_Qualified range_ context_ type_ =
          _contextItext :: ( [       Doc ] )
          _typeItext :: Doc
          _text =
-             ({-# LINE 380 "Syntax/UHA_Pretty.ag" #-}
-              case _contextItext of
-                [ct] -> ct <+> text "=>" <+> _typeItext
-                cts -> parens (commas cts) <+> text "=>" <+> _typeItext
-              {-# LINE 4392 "Syntax/UHA_Pretty.hs" #-}
-              )
+             case _contextItext of
+               [ct] -> ct <+> text "=>" <+> _typeItext
+               cts -> parens (commas cts) <+> text "=>" <+> _typeItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 4397 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _contextItext) =
@@ -4413,15 +3485,9 @@ sem_Type_Variable range_ name_ =
          _nameIisSpecial :: Bool
          _nameItext :: Doc
          _text =
-             ({-# LINE 374 "Syntax/UHA_Pretty.ag" #-}
-              _nameItext
-              {-# LINE 4419 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _nameItext
          _lhsOtext =
-             ({-# LINE 75 "Syntax/UHA_Pretty.ag" #-}
-              _text
-              {-# LINE 4424 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _text
          ( _rangeItext) =
              range_
          ( _nameIisIdentifier,_nameIisOperator,_nameIisSpecial,_nameItext) =
@@ -4443,10 +3509,7 @@ sem_Types_Cons hd_ tl_ =
          _hdItext :: Doc
          _tlItext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              _hdItext  :  _tlItext
-              {-# LINE 4449 "Syntax/UHA_Pretty.hs" #-}
-              )
+             _hdItext  :  _tlItext
          ( _hdItext) =
              hd_
          ( _tlItext) =
@@ -4456,8 +3519,5 @@ sem_Types_Nil :: T_Types
 sem_Types_Nil =
     (let _lhsOtext :: ( [       Doc ] )
          _lhsOtext =
-             ({-# LINE 97 "Syntax/UHA_Pretty.ag" #-}
-              []
-              {-# LINE 4462 "Syntax/UHA_Pretty.hs" #-}
-              )
+             []
      in  ( _lhsOtext))
