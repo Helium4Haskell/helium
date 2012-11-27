@@ -164,10 +164,10 @@ SEM Declaration
                                    Fixity_Infixr _ -> "right"
                                    Fixity_Infixl _ -> "left"
                                    Fixity_Infix  _ -> "none"
-                                   _               -> internalError
-                                                        "ToCoreDecl.ag"
-                                                        "SEM Declaration.Fixity"
-                                                        "unknown fixity"
+                            --       _               -> internalError
+                            --                            "ToCoreDecl.ag"
+                            --                            "SEM Declaration.Fixity"
+                            --                            "unknown fixity"
                               )
                         ]
                     }
@@ -253,8 +253,8 @@ predicateToId (Predicate class_ tp) =
     idFromString $ "$dict" ++ class_ ++ show tp
     
 dictionaryTreeToCore :: DictionaryTree -> Core.Expr
-dictionaryTreeToCore tree = 
-   case tree of
+dictionaryTreeToCore theTree = 
+   case theTree of
       ByPredicate predicate -> 
          Core.Var (predicateToId predicate)
       ByInstance className instanceName trees ->

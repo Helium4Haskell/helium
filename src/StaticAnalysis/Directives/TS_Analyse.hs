@@ -17,11 +17,8 @@ import Syntax.UHA_Range (noRange)
 import StaticAnalysis.Messages.Messages
 import StaticAnalysis.Directives.TS_Messages
 import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
-import StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
 import Utils.Utils (internalError)
 import qualified Syntax.UHA_Pretty as PP
-
-import qualified Data.Map as M
 
 
 import Syntax.UHA_Syntax
@@ -3757,7 +3754,7 @@ sem_TypingStrategy_TypingStrategy typerule_ statements_ =
               _errors =
                   _staticErrors ++ _soundnessErrors
               _staticErrors =
-                  [ InconsistentConstraint _name x | (x, label) <- _solveErrors ] ++
+                  [ InconsistentConstraint _name x | (x, _) <- _solveErrors ] ++
                   [ UndefinedTS _name name entity
                   | (name, entity) <- _typeruleIconclusionAllVariables
                   , show name `notElem` (_allMetaVariables ++ map show _allImportedVariables)

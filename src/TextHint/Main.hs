@@ -29,6 +29,7 @@ import System.Process(system)
 import System.Exit(exitWith, ExitCode(..))
 import Utils.OSSpecific(slash)
 import System.Directory
+import qualified Control.Exception as CE (catch, IOException)
 import TextHint.ConfigFile(Config, readConfig)
 import Main.Args
 
@@ -379,8 +380,10 @@ writeInternalModule contents state =
 writeModule :: String -> String -> IO ()
 writeModule modulePath contents = do
     let hsFile = modulePath ++ ".hs"
+        handler :: CE.IOException -> IO ()
+        handler _ = fatal ("Unable to write to file \"" ++ hsFile ++ "\"")
     writeFile hsFile contents
-        `catch` (\_ -> fatal ("Unable to write to file \"" ++ hsFile ++ "\""))
+        `CE.catch` handler
 
 compileInternalModule :: String -> State -> IO (Bool, String)
 compileInternalModule options state =
@@ -400,12 +403,16 @@ verbose :: String -> Bool
 verbose = isInfixOf "--verbose" 
 
 execCompileModule :: String -> String -> IO (Bool, String)
-execCompileModule invocation outputFilePath = do
+execCompileModule invocation outputFilePath = 
+  let
+    handler :: CE.IOException -> IO String
+    handler _ = fatal ("Unable to read from file \"" ++ outputFilePath ++ "\"")
+  in 
+   do
     when (verbose invocation) $
       putStrLn invocation
     exitCode <- sys (invocation ++ " > " ++ outputFilePath)
-    contents <- readFile outputFilePath
-                `catch` (\_ -> fatal ("Unable to read from file \"" ++ outputFilePath ++ "\""))
+    contents <- readFile outputFilePath `CE.catch` handler                
     return (exitCode == ExitSuccess, contents)
     
 executeInternalModule :: State -> IO ()

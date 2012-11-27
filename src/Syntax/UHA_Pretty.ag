@@ -1,7 +1,9 @@
 INCLUDE "UHA_Syntax.ag"
 
 imports{
-import Text.PrettyPrint.Leijen
+-- Below two imports are to avoid clashes of "list" as used by the AG system.
+-- Effectively, only list from the imported library needs to be qualified.
+import Text.PrettyPrint.Leijen hiding (list)
 import qualified Text.PrettyPrint.Leijen as PPrint
 import Data.Char
 import Top.Types (isTupleConstructor)
@@ -45,7 +47,7 @@ utrechtList :: Doc -> Doc -> [Doc] -> Doc
 utrechtList _     _   []     = empty
 utrechtList start end (d:ds) =
     let utrechtList' []     = end
-        utrechtList' (d:ds) = comma <+> d <$> utrechtList' ds
+        utrechtList' (doc:docs) = comma <+> doc <$> utrechtList' docs
     in
         start <+> d <$> utrechtList' ds
 
@@ -358,7 +360,7 @@ SEM Type                                         {- *** -}
     | Application              loc.text =   if @prefix then
                                                 foldl (<+>) @function.text @arguments.text
                                             else if show @function.text == "[]" then
-                                                list @arguments.text
+                                                PPrint.list @arguments.text
                                             else if isTupleConstructor (show @function.text) then
                                                 tupled @arguments.text
                                             else
@@ -461,7 +463,7 @@ SEM Expression                                   {- *** -}
     --  function                 : Expression
     --  arguments                : Expressions
     | InfixApplication   loc.text =  let f []     m = m
-                                         f (c:cs) m = if isAlpha c && all (\c -> c == '_' || c == '\'' || isAlphaNum c) cs then char '`' <> m <> char '`' else m
+                                         f (c:cs) m = if isAlpha c && all (\ch -> ch == '_' || ch == '\'' || isAlphaNum ch) cs then char '`' <> m <> char '`' else m
                                      in
                                         case (@leftExpression.text, @rightExpression.text) of
                                             (Nothing, Nothing) ->
@@ -510,7 +512,7 @@ SEM Expression                                   {- *** -}
     | Do                 loc.text = text "do" <$> (indent 4 $ vcat @statements.text) <$> empty
     --  range                    : Range
     --  statements               : Statements
-    | List               loc.text = list @expressions.text
+    | List               loc.text = PPrint.list @expressions.text
     --  range                    : Range
     --  expressions              : Expressions
     | Tuple              loc.text = tupled @expressions.text
@@ -687,7 +689,7 @@ SEM Pattern
     --  leftPattern              : Pattern
     --  constructorOperator      : Name
     --  rightPattern             : Pattern
-    | List                  loc.text = list @patterns.text
+    | List                  loc.text = PPrint.list @patterns.text
     --  range                    : Range
     --  patterns                 : Patterns
     | Tuple                 loc.text = tupled @patterns.text

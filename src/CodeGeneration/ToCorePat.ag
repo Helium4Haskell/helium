@@ -32,8 +32,8 @@ patternAlwaysSucceeds p =
     case p of
         Pattern_Variable _ _ -> True
         Pattern_Wildcard _ -> True
-        Pattern_As _ _ p -> patternAlwaysSucceeds p
-        Pattern_Parenthesized _ p -> patternAlwaysSucceeds p
+        Pattern_As _ _ pat -> patternAlwaysSucceeds pat
+        Pattern_Parenthesized _ pat -> patternAlwaysSucceeds pat
         _ -> False
 
 patternMatchFail :: String -> Range -> Core.Expr

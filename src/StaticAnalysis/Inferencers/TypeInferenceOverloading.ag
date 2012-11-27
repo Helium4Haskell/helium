@@ -53,7 +53,7 @@ SEM Declaration
                                              in Just (name, expandPredicates @lhs.orderedTypeSynonyms predicates)
                                           _ -> Nothing
        righthandside . availablePredicates = case @declPredicates of
-                                                Just (n, ps) -> ps ++ @lhs.availablePredicates
+                                                Just (_, ps) -> ps ++ @lhs.availablePredicates
                                                 Nothing      -> @lhs.availablePredicates
        lhs           . dictionaryEnvironment = case @declPredicates of
                                                   Just (n, ps) -> addForDeclaration n ps @righthandside.dictionaryEnvironment
@@ -120,7 +120,7 @@ matchTypeWithScheme synonyms tp scheme =
    in case mguWithTypeSynonyms synonyms itp (freezeVariablesInType tp) of
          Left _ -> internalError "TypeInferenceOverloading.ag" "matchTypeWithScheme" "no unification"
          Right (_, sub) -> 
-            let f (Predicate s tp) = Predicate s (unfreezeVariablesInType $ sub |-> tp)
+            let f (Predicate s typ) = Predicate s (unfreezeVariablesInType $ sub |-> typ)
             in map f ips
             
 resolveOverloading :: ClassEnvironment -> Name -> Predicates -> Predicates ->

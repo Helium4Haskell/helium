@@ -277,24 +277,24 @@ matchConverter1 :: [([String],a)] -> [(a,[String])]
 matchConverter1 = map (\(a,b) -> (b,a))  
                   
 matchConverter2 :: [([String],(a,b))] -> ([(a,[String])],[(b,[String])])
-matchConverter2 = let insert (metas,(a,b)) (as,bs) = ((a,metas):as,(b,metas):bs)
-                  in foldr insert ([],[])                  
+matchConverter2 = let localInsert (metas,(a,b)) (as,bs) = ((a,metas):as,(b,metas):bs)
+                  in foldr localInsert ([],[])                  
 
 matchConverter3 :: [([String],(a,b,c))] -> ([(a,[String])],[(b,[String])],[(c,[String])])
-matchConverter3 = let insert (metas,(a,b,c)) (as,bs,cs) = ((a,metas):as,(b,metas):bs,(c,metas):cs)
-                  in foldr insert ([],[],[]) 
+matchConverter3 = let localInsert (metas,(a,b,c)) (as,bs,cs) = ((a,metas):as,(b,metas):bs,(c,metas):cs)
+                  in foldr localInsert ([],[],[]) 
 
 allMatch :: [Maybe [a]] -> Maybe [a]
 allMatch = rec_ []
   where rec_ xs []             = Just xs
-        rec_ xs (Nothing:_)    = Nothing
+        rec_ _  (Nothing:_)    = Nothing
         rec_ xs (Just ys:rest) = rec_ (ys ++ xs) rest
 
 data Match a = NoMatch | NonTerminalMatch a | MetaVariableMatch String
 
 instance Show (Match a) where
   show (NoMatch) = "NoMatch"
-  show (NonTerminalMatch a) = "NonTerminal ??"
+  show (NonTerminalMatch _) = "NonTerminal ??"
   show (MetaVariableMatch s) = "MetaVariableMatch "++show s
 
 expressionVariableMatcher :: Expression -> Maybe String
@@ -303,15 +303,60 @@ expressionVariableMatcher expr =
       Expression_Variable _ name -> Just (show name)
       _                          -> Nothing
 
+match0 :: MetaVariableInfo -> Int -> (Expression -> Maybe ())
+         -> [(Expression, [String])]
+         -> [((Expression, [String]), Core_TypingStrategy)]
+         -> [[Maybe MetaVariableTable]]
+         -> ((), [Maybe MetaVariableTable], ConstraintSet, Assumptions, Int, IO ())      
 match0 = generalMatch expressionVariableMatcher matchConverter0
+
+match1 :: MetaVariableInfo -> Int -> (Expression -> Maybe a)
+         -> [(Expression, [String])]
+         -> [((Expression, [String]), Core_TypingStrategy)]
+         -> [[Maybe MetaVariableTable]]
+         -> ([(a, [String])], [Maybe MetaVariableTable],
+             ConstraintSet, Assumptions, Int, IO ())
 match1 = generalMatch expressionVariableMatcher matchConverter1
+
+match2 :: MetaVariableInfo -> Int -> (Expression -> Maybe (a, b))
+         -> [(Expression, [String])]
+         -> [((Expression, [String]), Core_TypingStrategy)]
+         -> [[Maybe MetaVariableTable]]
+         -> (([(a, [String])], [(b, [String])]), [Maybe MetaVariableTable],
+             ConstraintSet, Assumptions, Int, IO ())
 match2 = generalMatch expressionVariableMatcher matchConverter2
+
+match3 :: MetaVariableInfo -> Int -> (Expression -> Maybe (a, b, c))
+        -> [(Expression, [String])]
+        -> [((Expression, [String]), Core_TypingStrategy)]
+        -> [[Maybe MetaVariableTable]]
+        -> (([(a, [String])], [(b, [String])], [(c, [String])]),
+            [Maybe MetaVariableTable], ConstraintSet,
+            Assumptions, Int, IO ())
 match3 = generalMatch expressionVariableMatcher matchConverter3
 
+match0' :: (a -> Maybe ()) -> [(a, [String])]
+         -> [((a, [String]), Core_TypingStrategy)]
+         -> [[Maybe MetaVariableTable]]
+         -> ((), [Maybe MetaVariableTable], ConstraintSet,
+             Assumptions, Int, IO ())
 match0' = generalMatch noMatch matchConverter0 noMetaVariableInfo 0
+
+match1' :: (a -> Maybe b) -> [(a, [String])]
+         -> [((a, [String]), Core_TypingStrategy)]
+         -> [[Maybe MetaVariableTable]] -> 
+            ([(b, [String])], [Maybe MetaVariableTable],
+             ConstraintSet, Assumptions, Int, IO ())
 match1' = generalMatch noMatch matchConverter1 noMetaVariableInfo 0
+
+match2' :: (n -> Maybe (a, b)) -> [(n, [String])]
+         -> [((n, [String]), Core_TypingStrategy)]
+         -> [[Maybe MetaVariableTable]]
+         -> (([(a, [String])], [(b, [String])]),
+             [Maybe MetaVariableTable], ConstraintSet, Assumptions, Int, IO ())
 match2' = generalMatch noMatch matchConverter2 noMetaVariableInfo 0
 
+matchOnlyVariable :: MetaVariableInfo -> [(Expression, [String])] -> [Maybe MetaVariableTable]
 matchOnlyVariable infoTuple tryPats = 
        let ((),matches,_,_,_,_) = match0 infoTuple 0 noMatch tryPats [] []
    in matches
@@ -319,6 +364,7 @@ matchOnlyVariable infoTuple tryPats =
 noMatch :: a -> Maybe b
 noMatch = const Nothing
 
+noMetaVariableInfo :: a
 noMetaVariableInfo = internalError "PatternMatching.ag" "noMetaVariableInfo" ""
 
 generalMatch :: (nonTerminal -> Maybe String) 

@@ -7,6 +7,7 @@ import Lvm.Common.Byte(bytesFromString)
 }
 
 {
+makeCoreModule :: Maybe Id -> [Module.Decl v] -> Module.Module v
 makeCoreModule name decls =
     Module.Module
         { Module.moduleName   =
@@ -18,6 +19,7 @@ makeCoreModule name decls =
         , Module.moduleDecls    = decls
         }
 
+interpreterMain :: String
 interpreterMain = "interpreter_main"
 
 -- Unfortunately we need a hack for the interpreter
@@ -74,17 +76,17 @@ SEM Module
 -- set the public bit of all declarations except those that are imported from
 -- Prelude or HeliumLang. I.e. export everything everywhere
 everythingPublicButPrelude :: Core.CoreModule -> Core.CoreModule
-everythingPublicButPrelude mod = mod { Core.moduleDecls = map setPublic (Core.moduleDecls mod) }
+everythingPublicButPrelude theModule = theModule { Core.moduleDecls = map setPublic (Core.moduleDecls theModule) }
   where
-    setPublic decl = 
+    setPublic declaration = 
         let -- accessRecord = Core.declAccess decl
-            public = case Core.declAccess decl of 
+            public = case Core.declAccess declaration of 
                     Core.Defined _ -> True
                     Core.Imported { Core.importModule = m } -> 
                         stringFromId m `notElem` ["Prelude", "HeliumLang"] 
         in 
-        decl{ Core.declAccess = 
-                  (Core.declAccess decl){ Core.accessPublic = public } }
+        declaration{ Core.declAccess = 
+                  (Core.declAccess declaration){ Core.accessPublic = public } }
 }
 
 {-

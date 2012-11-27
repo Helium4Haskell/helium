@@ -40,11 +40,8 @@ import Syntax.UHA_Range (noRange)
 import StaticAnalysis.Messages.Messages
 import StaticAnalysis.Directives.TS_Messages
 import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
-import StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
 import Utils.Utils (internalError)
 import qualified Syntax.UHA_Pretty as PP
-
-import qualified Data.Map as M
 }
 
 ATTR TypingStrategy  [ importEnvironment : ImportEnvironment
@@ -62,7 +59,7 @@ SEM TypingStrategy
        loc . name         = show (PP.sem_Expression @typerule.conclusionExpression)
            . nameMap      = zip @uniqueTypevariables (map TVar [0..])
            . errors       = @staticErrors ++ @soundnessErrors 
-           . staticErrors = [ InconsistentConstraint @name x | (x, label) <- @solveErrors ] ++
+           . staticErrors = [ InconsistentConstraint @name x | (x, _) <- @solveErrors ] ++
                             [ UndefinedTS @name name entity 
                             | (name, entity) <- @typerule.conclusionAllVariables 
                             , show name `notElem` (@allMetaVariables ++ map show @allImportedVariables)

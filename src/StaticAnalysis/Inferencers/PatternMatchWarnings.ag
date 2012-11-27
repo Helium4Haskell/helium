@@ -15,6 +15,7 @@ import Syntax.UHA_Utils
 }
 
 {
+pmError :: String -> String -> a
 pmError = internalError "PatternMatchWarnings"
 }
 
@@ -123,7 +124,7 @@ patternMatchWarnings impenv sub tp strip elementss rng name parens unrwars place
       env                 = importEnvironmentToEnv impenv
       exprtype            = expandTypeFromImportEnvironment impenv $ sub |-> tp
       types               = strip exprtype
-      unreachables        = unreachable impenv types $ map (\((a, b), c) -> (a, c)) $ filter (not.snd.fst) $ zip elementss [0..]
+      unreachables        = unreachable impenv types $ map (\((a, _), c) -> (a, c)) $ filter (not.snd.fst) $ zip elementss [0..]
       missing             = complement  impenv types $ map fst elementss
       unreachablewarnings = map (unrwars !!) unreachables
       missingwarnings
@@ -256,6 +257,8 @@ SEM GuardedExpression
 
 -- environment of constructors [(type, (constructorname, arguments))]
 type Env = [(Tp, (Name, [Tp]))]
+
+importEnvironmentToEnv :: ImportEnvironment -> [(Tp, (Name, [Tp]))]
 importEnvironmentToEnv = map rearrange . M.assocs . valueConstructors
 
 -- return the number of arguments of a constructor
@@ -284,7 +287,7 @@ constructors impenv tp | isTupleConstructor name = [tupleconstructor]
     tupleconstructor = (nameFromString name, snd $ leftSpine tp)
     unTCon :: Tp -> String
     unTCon (TCon c) = c
-    unTCon tp = pmError "unTCon" $ "type " ++ show tp ++ " is not a TCon"
+    unTCon tp' = pmError "unTCon" $ "type " ++ show tp' ++ " is not a TCon"
     expand :: (Name, [Tp]) -> (Name, [Tp])
     expand (n, ts) = (n, map (expandTypeFromImportEnvironment impenv) ts)
 
@@ -355,7 +358,7 @@ nicePattern b env = map (parensPattern b) . nice
     nice :: [PatternElement] -> [Pattern]
     nice []             = []
     nice (WildcardElement    :ps) = Pattern_Wildcard noRange : nice ps
-    nice (InfiniteElement _  :ps) = pmError "nicePattern" "InfiniteElement in pattern!"
+    nice (InfiniteElement _  :_) = pmError "nicePattern" "InfiniteElement in pattern!"
     nice (FiniteElement con:ps) =
       let rest = nice ps
           name = nameFromString con
@@ -363,7 +366,7 @@ nicePattern b env = map (parensPattern b) . nice
       in case name 
          of Name_Identifier _ _ _                          -> Pattern_Constructor noRange name (take n rest) : drop n rest -- !!!Name
             Name_Operator   _ _ _ | con == ":"             -> case head $ tail rest -- !!!Name
-                                                              of Pattern_List _ ps -> Pattern_List noRange (head rest:ps) : (tail $ tail rest)
+                                                              of Pattern_List _ pats -> Pattern_List noRange (head rest:pats) : (tail $ tail rest)
                                                                  _ -> Pattern_InfixConstructor noRange (head rest) name (head $ tail rest) : (tail $ tail rest)
                                   | otherwise              -> Pattern_InfixConstructor noRange (head rest) name (head $ tail rest) : (tail $ tail rest)
             Name_Special    _ _ _ | isTupleConstructor con -> Pattern_Tuple noRange (take n rest) : drop n rest -- !!!Name
@@ -390,6 +393,7 @@ parensPattern b = if b then rap . par else fst . par
     par p@(Pattern_Wildcard         _      ) = (p, False)
     par   (Pattern_Irrefutable      _ _    ) = pmError "parensPattern" "Irrefutable patterns are not supported"  
     par   (Pattern_Successor        _ _ _  ) = pmError "parensPattern" "Successors are not supported" 
+    par   (Pattern_Hole             _ _    ) = error "not supported"
     rap :: (Pattern, Bool) -> Pattern
     rap (p, False) = p
     rap (p, True ) = Pattern_Parenthesized noRange p
@@ -407,8 +411,8 @@ complement env (tp:tps) pss    | null $ unMissing anyComplement                 
                                | otherwise                                                   = finComplement
   where
     patComplement :: [[PatternElement]] -> PatternElement -> [Tp] -> PatternsMissing
-    patComplement []  current tps = PatternsMissing [(current, wildMissing $ length tps)]
-    patComplement pss current tps = case unMissing $ complement env tps $ map tail $ pss
+    patComplement []  current typs = PatternsMissing [(current, wildMissing $ length typs)]
+    patComplement patss current typs = case unMissing $ complement env typs $ map tail $ patss
                                     of []   -> PatternsMissing []
                                        tegs -> PatternsMissing [(current, PatternsMissing tegs)]
     anyComplement :: PatternsMissing
@@ -448,6 +452,7 @@ reachable env (tp:tps) ps
     fill :: PatternElement -> [PatternElement] -> [PatternElement]
     fill e@(FiniteElement c) (WildcardElement : es) = e : replicate (nrOfArguments (importEnvironmentToEnv env) c) WildcardElement ++ es
     fill e                   (_               : es) = e : es
+    fill _                   []                     = error "Pattern match failure in StaticAnalysis.Inferencers.reachable" 
     stop :: [PatternElement] -> [PatternElement]
     stop es | length (constructors env tp) > length es = FiniteElement "[*]" : es
             | length (constructors env tp) == 0        = FiniteElement "[*]" : es
@@ -459,7 +464,7 @@ reachable env (tp:tps) ps
       | otherwise                 = reachable env (arguments (elementString.head.fst.head $ pats) ++ tps) 
                                             $ map (\(es, i) -> (tail es, i)) pats
     arguments :: String -> [Tp]
-    arguments c = maybe [] id $ lookup c $ map (\(n, tps) -> (getNameName n, tps)) $ constructors env tp
+    arguments c = maybe [] id $ lookup c $ map (\(n, typs) -> (getNameName n, typs)) $ constructors env tp
 
 -- remove double occurances and wildcards
 thin :: [PatternElement] -> [PatternElement]
