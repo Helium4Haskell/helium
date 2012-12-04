@@ -53,6 +53,14 @@ sem_Alternative (Alternative_Hole _range _id) =
     (sem_Alternative_Hole (sem_Range _range) _id)
 -- semantic domain
 type T_Alternative = ( OneLineTree,Alternative)
+data Inh_Alternative = Inh_Alternative {}
+data Syn_Alternative = Syn_Alternative {oneLineTree_Syn_Alternative :: OneLineTree,self_Syn_Alternative :: Alternative}
+wrap_Alternative :: T_Alternative ->
+                    Inh_Alternative ->
+                    Syn_Alternative
+wrap_Alternative sem (Inh_Alternative) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Alternative _lhsOoneLineTree _lhsOself))
 sem_Alternative_Alternative :: T_Range ->
                                T_Pattern ->
                                T_RightHandSide ->
@@ -144,6 +152,14 @@ sem_Alternatives list =
     (Prelude.foldr sem_Alternatives_Cons sem_Alternatives_Nil (Prelude.map sem_Alternative list))
 -- semantic domain
 type T_Alternatives = ( ( [ OneLineTree] ),Alternatives)
+data Inh_Alternatives = Inh_Alternatives {}
+data Syn_Alternatives = Syn_Alternatives {oneLineTree_Syn_Alternatives :: ( [ OneLineTree] ),self_Syn_Alternatives :: Alternatives}
+wrap_Alternatives :: T_Alternatives ->
+                     Inh_Alternatives ->
+                     Syn_Alternatives
+wrap_Alternatives sem (Inh_Alternatives) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Alternatives _lhsOoneLineTree _lhsOself))
 sem_Alternatives_Cons :: T_Alternative ->
                          T_Alternatives ->
                          T_Alternatives
@@ -184,6 +200,14 @@ sem_AnnotatedType (AnnotatedType_AnnotatedType _range _strict _type) =
     (sem_AnnotatedType_AnnotatedType (sem_Range _range) _strict (sem_Type _type))
 -- semantic domain
 type T_AnnotatedType = ( AnnotatedType)
+data Inh_AnnotatedType = Inh_AnnotatedType {}
+data Syn_AnnotatedType = Syn_AnnotatedType {self_Syn_AnnotatedType :: AnnotatedType}
+wrap_AnnotatedType :: T_AnnotatedType ->
+                      Inh_AnnotatedType ->
+                      Syn_AnnotatedType
+wrap_AnnotatedType sem (Inh_AnnotatedType) =
+    (let ( _lhsOself) = sem
+     in  (Syn_AnnotatedType _lhsOself))
 sem_AnnotatedType_AnnotatedType :: T_Range ->
                                    Bool ->
                                    T_Type ->
@@ -209,6 +233,14 @@ sem_AnnotatedTypes list =
     (Prelude.foldr sem_AnnotatedTypes_Cons sem_AnnotatedTypes_Nil (Prelude.map sem_AnnotatedType list))
 -- semantic domain
 type T_AnnotatedTypes = ( AnnotatedTypes)
+data Inh_AnnotatedTypes = Inh_AnnotatedTypes {}
+data Syn_AnnotatedTypes = Syn_AnnotatedTypes {self_Syn_AnnotatedTypes :: AnnotatedTypes}
+wrap_AnnotatedTypes :: T_AnnotatedTypes ->
+                       Inh_AnnotatedTypes ->
+                       Syn_AnnotatedTypes
+wrap_AnnotatedTypes sem (Inh_AnnotatedTypes) =
+    (let ( _lhsOself) = sem
+     in  (Syn_AnnotatedTypes _lhsOself))
 sem_AnnotatedTypes_Cons :: T_AnnotatedType ->
                            T_AnnotatedTypes ->
                            T_AnnotatedTypes
@@ -243,6 +275,14 @@ sem_Body (Body_Hole _range _id) =
     (sem_Body_Hole (sem_Range _range) _id)
 -- semantic domain
 type T_Body = ( Body)
+data Inh_Body = Inh_Body {}
+data Syn_Body = Syn_Body {self_Syn_Body :: Body}
+wrap_Body :: T_Body ->
+             Inh_Body ->
+             Syn_Body
+wrap_Body sem (Inh_Body) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Body _lhsOself))
 sem_Body_Body :: T_Range ->
                  T_ImportDeclarations ->
                  T_Declarations ->
@@ -289,6 +329,14 @@ sem_Constructor (Constructor_Record _range _constructor _fieldDeclarations) =
     (sem_Constructor_Record (sem_Range _range) (sem_Name _constructor) (sem_FieldDeclarations _fieldDeclarations))
 -- semantic domain
 type T_Constructor = ( Constructor)
+data Inh_Constructor = Inh_Constructor {}
+data Syn_Constructor = Syn_Constructor {self_Syn_Constructor :: Constructor}
+wrap_Constructor :: T_Constructor ->
+                    Inh_Constructor ->
+                    Syn_Constructor
+wrap_Constructor sem (Inh_Constructor) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Constructor _lhsOself))
 sem_Constructor_Constructor :: T_Range ->
                                T_Name ->
                                T_AnnotatedTypes ->
@@ -373,6 +421,14 @@ sem_Constructors list =
     (Prelude.foldr sem_Constructors_Cons sem_Constructors_Nil (Prelude.map sem_Constructor list))
 -- semantic domain
 type T_Constructors = ( Constructors)
+data Inh_Constructors = Inh_Constructors {}
+data Syn_Constructors = Syn_Constructors {self_Syn_Constructors :: Constructors}
+wrap_Constructors :: T_Constructors ->
+                     Inh_Constructors ->
+                     Syn_Constructors
+wrap_Constructors sem (Inh_Constructors) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Constructors _lhsOself))
 sem_Constructors_Cons :: T_Constructor ->
                          T_Constructors ->
                          T_Constructors
@@ -405,6 +461,14 @@ sem_ContextItem (ContextItem_ContextItem _range _name _types) =
     (sem_ContextItem_ContextItem (sem_Range _range) (sem_Name _name) (sem_Types _types))
 -- semantic domain
 type T_ContextItem = ( ContextItem)
+data Inh_ContextItem = Inh_ContextItem {}
+data Syn_ContextItem = Syn_ContextItem {self_Syn_ContextItem :: ContextItem}
+wrap_ContextItem :: T_ContextItem ->
+                    Inh_ContextItem ->
+                    Syn_ContextItem
+wrap_ContextItem sem (Inh_ContextItem) =
+    (let ( _lhsOself) = sem
+     in  (Syn_ContextItem _lhsOself))
 sem_ContextItem_ContextItem :: T_Range ->
                                T_Name ->
                                T_Types ->
@@ -437,6 +501,14 @@ sem_ContextItems list =
     (Prelude.foldr sem_ContextItems_Cons sem_ContextItems_Nil (Prelude.map sem_ContextItem list))
 -- semantic domain
 type T_ContextItems = ( ContextItems)
+data Inh_ContextItems = Inh_ContextItems {}
+data Syn_ContextItems = Syn_ContextItems {self_Syn_ContextItems :: ContextItems}
+wrap_ContextItems :: T_ContextItems ->
+                     Inh_ContextItems ->
+                     Syn_ContextItems
+wrap_ContextItems sem (Inh_ContextItems) =
+    (let ( _lhsOself) = sem
+     in  (Syn_ContextItems _lhsOself))
 sem_ContextItems_Cons :: T_ContextItem ->
                          T_ContextItems ->
                          T_ContextItems
@@ -491,6 +563,14 @@ sem_Declaration (Declaration_TypeSignature _range _names _type) =
     (sem_Declaration_TypeSignature (sem_Range _range) (sem_Names _names) (sem_Type _type))
 -- semantic domain
 type T_Declaration = ( OneLineTree,Declaration)
+data Inh_Declaration = Inh_Declaration {}
+data Syn_Declaration = Syn_Declaration {oneLineTree_Syn_Declaration :: OneLineTree,self_Syn_Declaration :: Declaration}
+wrap_Declaration :: T_Declaration ->
+                    Inh_Declaration ->
+                    Syn_Declaration
+wrap_Declaration sem (Inh_Declaration) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Declaration _lhsOoneLineTree _lhsOself))
 sem_Declaration_Class :: T_Range ->
                          T_ContextItems ->
                          T_SimpleType ->
@@ -840,6 +920,14 @@ sem_Declarations list =
     (Prelude.foldr sem_Declarations_Cons sem_Declarations_Nil (Prelude.map sem_Declaration list))
 -- semantic domain
 type T_Declarations = ( ( [ OneLineTree] ),Declarations)
+data Inh_Declarations = Inh_Declarations {}
+data Syn_Declarations = Syn_Declarations {oneLineTree_Syn_Declarations :: ( [ OneLineTree] ),self_Syn_Declarations :: Declarations}
+wrap_Declarations :: T_Declarations ->
+                     Inh_Declarations ->
+                     Syn_Declarations
+wrap_Declarations sem (Inh_Declarations) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Declarations _lhsOoneLineTree _lhsOself))
 sem_Declarations_Cons :: T_Declaration ->
                          T_Declarations ->
                          T_Declarations
@@ -886,6 +974,14 @@ sem_Export (Export_Variable _range _name) =
     (sem_Export_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Export = ( Export)
+data Inh_Export = Inh_Export {}
+data Syn_Export = Syn_Export {self_Syn_Export :: Export}
+wrap_Export :: T_Export ->
+               Inh_Export ->
+               Syn_Export
+wrap_Export sem (Inh_Export) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Export _lhsOself))
 sem_Export_Module :: T_Range ->
                      T_Name ->
                      T_Export
@@ -978,6 +1074,14 @@ sem_Exports list =
     (Prelude.foldr sem_Exports_Cons sem_Exports_Nil (Prelude.map sem_Export list))
 -- semantic domain
 type T_Exports = ( Exports)
+data Inh_Exports = Inh_Exports {}
+data Syn_Exports = Syn_Exports {self_Syn_Exports :: Exports}
+wrap_Exports :: T_Exports ->
+                Inh_Exports ->
+                Syn_Exports
+wrap_Exports sem (Inh_Exports) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Exports _lhsOself))
 sem_Exports_Cons :: T_Export ->
                     T_Exports ->
                     T_Exports
@@ -1054,6 +1158,14 @@ sem_Expression (Expression_Variable _range _name) =
     (sem_Expression_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Expression = ( OneLineTree,Expression)
+data Inh_Expression = Inh_Expression {}
+data Syn_Expression = Syn_Expression {oneLineTree_Syn_Expression :: OneLineTree,self_Syn_Expression :: Expression}
+wrap_Expression :: T_Expression ->
+                   Inh_Expression ->
+                   Syn_Expression
+wrap_Expression sem (Inh_Expression) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Expression _lhsOoneLineTree _lhsOself))
 sem_Expression_Case :: T_Range ->
                        T_Expression ->
                        T_Alternatives ->
@@ -1689,6 +1801,14 @@ sem_Expressions list =
     (Prelude.foldr sem_Expressions_Cons sem_Expressions_Nil (Prelude.map sem_Expression list))
 -- semantic domain
 type T_Expressions = ( ( [ OneLineTree] ),Expressions)
+data Inh_Expressions = Inh_Expressions {}
+data Syn_Expressions = Syn_Expressions {oneLineTree_Syn_Expressions :: ( [ OneLineTree] ),self_Syn_Expressions :: Expressions}
+wrap_Expressions :: T_Expressions ->
+                    Inh_Expressions ->
+                    Syn_Expressions
+wrap_Expressions sem (Inh_Expressions) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Expressions _lhsOoneLineTree _lhsOself))
 sem_Expressions_Cons :: T_Expression ->
                         T_Expressions ->
                         T_Expressions
@@ -1729,6 +1849,14 @@ sem_FieldDeclaration (FieldDeclaration_FieldDeclaration _range _names _type) =
     (sem_FieldDeclaration_FieldDeclaration (sem_Range _range) (sem_Names _names) (sem_AnnotatedType _type))
 -- semantic domain
 type T_FieldDeclaration = ( FieldDeclaration)
+data Inh_FieldDeclaration = Inh_FieldDeclaration {}
+data Syn_FieldDeclaration = Syn_FieldDeclaration {self_Syn_FieldDeclaration :: FieldDeclaration}
+wrap_FieldDeclaration :: T_FieldDeclaration ->
+                         Inh_FieldDeclaration ->
+                         Syn_FieldDeclaration
+wrap_FieldDeclaration sem (Inh_FieldDeclaration) =
+    (let ( _lhsOself) = sem
+     in  (Syn_FieldDeclaration _lhsOself))
 sem_FieldDeclaration_FieldDeclaration :: T_Range ->
                                          T_Names ->
                                          T_AnnotatedType ->
@@ -1761,6 +1889,14 @@ sem_FieldDeclarations list =
     (Prelude.foldr sem_FieldDeclarations_Cons sem_FieldDeclarations_Nil (Prelude.map sem_FieldDeclaration list))
 -- semantic domain
 type T_FieldDeclarations = ( FieldDeclarations)
+data Inh_FieldDeclarations = Inh_FieldDeclarations {}
+data Syn_FieldDeclarations = Syn_FieldDeclarations {self_Syn_FieldDeclarations :: FieldDeclarations}
+wrap_FieldDeclarations :: T_FieldDeclarations ->
+                          Inh_FieldDeclarations ->
+                          Syn_FieldDeclarations
+wrap_FieldDeclarations sem (Inh_FieldDeclarations) =
+    (let ( _lhsOself) = sem
+     in  (Syn_FieldDeclarations _lhsOself))
 sem_FieldDeclarations_Cons :: T_FieldDeclaration ->
                               T_FieldDeclarations ->
                               T_FieldDeclarations
@@ -1797,6 +1933,14 @@ sem_Fixity (Fixity_Infixr _range) =
     (sem_Fixity_Infixr (sem_Range _range))
 -- semantic domain
 type T_Fixity = ( Fixity)
+data Inh_Fixity = Inh_Fixity {}
+data Syn_Fixity = Syn_Fixity {self_Syn_Fixity :: Fixity}
+wrap_Fixity :: T_Fixity ->
+               Inh_Fixity ->
+               Syn_Fixity
+wrap_Fixity sem (Inh_Fixity) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Fixity _lhsOself))
 sem_Fixity_Infix :: T_Range ->
                     T_Fixity
 sem_Fixity_Infix range_ =
@@ -1845,6 +1989,14 @@ sem_FunctionBinding (FunctionBinding_Hole _range _id) =
     (sem_FunctionBinding_Hole (sem_Range _range) _id)
 -- semantic domain
 type T_FunctionBinding = ( OneLineTree,FunctionBinding)
+data Inh_FunctionBinding = Inh_FunctionBinding {}
+data Syn_FunctionBinding = Syn_FunctionBinding {oneLineTree_Syn_FunctionBinding :: OneLineTree,self_Syn_FunctionBinding :: FunctionBinding}
+wrap_FunctionBinding :: T_FunctionBinding ->
+                        Inh_FunctionBinding ->
+                        Syn_FunctionBinding
+wrap_FunctionBinding sem (Inh_FunctionBinding) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_FunctionBinding _lhsOoneLineTree _lhsOself))
 sem_FunctionBinding_Feedback :: T_Range ->
                                 String ->
                                 T_FunctionBinding ->
@@ -1919,6 +2071,14 @@ sem_FunctionBindings list =
     (Prelude.foldr sem_FunctionBindings_Cons sem_FunctionBindings_Nil (Prelude.map sem_FunctionBinding list))
 -- semantic domain
 type T_FunctionBindings = ( ( [ OneLineTree] ),FunctionBindings)
+data Inh_FunctionBindings = Inh_FunctionBindings {}
+data Syn_FunctionBindings = Syn_FunctionBindings {oneLineTree_Syn_FunctionBindings :: ( [ OneLineTree] ),self_Syn_FunctionBindings :: FunctionBindings}
+wrap_FunctionBindings :: T_FunctionBindings ->
+                         Inh_FunctionBindings ->
+                         Syn_FunctionBindings
+wrap_FunctionBindings sem (Inh_FunctionBindings) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_FunctionBindings _lhsOoneLineTree _lhsOself))
 sem_FunctionBindings_Cons :: T_FunctionBinding ->
                              T_FunctionBindings ->
                              T_FunctionBindings
@@ -1959,6 +2119,14 @@ sem_GuardedExpression (GuardedExpression_GuardedExpression _range _guard _expres
     (sem_GuardedExpression_GuardedExpression (sem_Range _range) (sem_Expression _guard) (sem_Expression _expression))
 -- semantic domain
 type T_GuardedExpression = ( ( String -> OneLineTree ),GuardedExpression)
+data Inh_GuardedExpression = Inh_GuardedExpression {}
+data Syn_GuardedExpression = Syn_GuardedExpression {oneLineTree_Syn_GuardedExpression :: ( String -> OneLineTree ),self_Syn_GuardedExpression :: GuardedExpression}
+wrap_GuardedExpression :: T_GuardedExpression ->
+                          Inh_GuardedExpression ->
+                          Syn_GuardedExpression
+wrap_GuardedExpression sem (Inh_GuardedExpression) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_GuardedExpression _lhsOoneLineTree _lhsOself))
 sem_GuardedExpression_GuardedExpression :: T_Range ->
                                            T_Expression ->
                                            T_Expression ->
@@ -1994,6 +2162,14 @@ sem_GuardedExpressions list =
     (Prelude.foldr sem_GuardedExpressions_Cons sem_GuardedExpressions_Nil (Prelude.map sem_GuardedExpression list))
 -- semantic domain
 type T_GuardedExpressions = ( ( [ String -> OneLineTree ] ),GuardedExpressions)
+data Inh_GuardedExpressions = Inh_GuardedExpressions {}
+data Syn_GuardedExpressions = Syn_GuardedExpressions {oneLineTree_Syn_GuardedExpressions :: ( [ String -> OneLineTree ] ),self_Syn_GuardedExpressions :: GuardedExpressions}
+wrap_GuardedExpressions :: T_GuardedExpressions ->
+                           Inh_GuardedExpressions ->
+                           Syn_GuardedExpressions
+wrap_GuardedExpressions sem (Inh_GuardedExpressions) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_GuardedExpressions _lhsOoneLineTree _lhsOself))
 sem_GuardedExpressions_Cons :: T_GuardedExpression ->
                                T_GuardedExpressions ->
                                T_GuardedExpressions
@@ -2038,6 +2214,14 @@ sem_Import (Import_Variable _range _name) =
     (sem_Import_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Import = ( Import)
+data Inh_Import = Inh_Import {}
+data Syn_Import = Syn_Import {self_Syn_Import :: Import}
+wrap_Import :: T_Import ->
+               Inh_Import ->
+               Syn_Import
+wrap_Import sem (Inh_Import) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Import _lhsOself))
 sem_Import_TypeOrClass :: T_Range ->
                           T_Name ->
                           T_MaybeNames ->
@@ -2112,6 +2296,14 @@ sem_ImportDeclaration (ImportDeclaration_Import _range _qualified _name _asname 
     (sem_ImportDeclaration_Import (sem_Range _range) _qualified (sem_Name _name) (sem_MaybeName _asname) (sem_MaybeImportSpecification _importspecification))
 -- semantic domain
 type T_ImportDeclaration = ( ImportDeclaration)
+data Inh_ImportDeclaration = Inh_ImportDeclaration {}
+data Syn_ImportDeclaration = Syn_ImportDeclaration {self_Syn_ImportDeclaration :: ImportDeclaration}
+wrap_ImportDeclaration :: T_ImportDeclaration ->
+                          Inh_ImportDeclaration ->
+                          Syn_ImportDeclaration
+wrap_ImportDeclaration sem (Inh_ImportDeclaration) =
+    (let ( _lhsOself) = sem
+     in  (Syn_ImportDeclaration _lhsOself))
 sem_ImportDeclaration_Empty :: T_Range ->
                                T_ImportDeclaration
 sem_ImportDeclaration_Empty range_ =
@@ -2161,6 +2353,14 @@ sem_ImportDeclarations list =
     (Prelude.foldr sem_ImportDeclarations_Cons sem_ImportDeclarations_Nil (Prelude.map sem_ImportDeclaration list))
 -- semantic domain
 type T_ImportDeclarations = ( ImportDeclarations)
+data Inh_ImportDeclarations = Inh_ImportDeclarations {}
+data Syn_ImportDeclarations = Syn_ImportDeclarations {self_Syn_ImportDeclarations :: ImportDeclarations}
+wrap_ImportDeclarations :: T_ImportDeclarations ->
+                           Inh_ImportDeclarations ->
+                           Syn_ImportDeclarations
+wrap_ImportDeclarations sem (Inh_ImportDeclarations) =
+    (let ( _lhsOself) = sem
+     in  (Syn_ImportDeclarations _lhsOself))
 sem_ImportDeclarations_Cons :: T_ImportDeclaration ->
                                T_ImportDeclarations ->
                                T_ImportDeclarations
@@ -2193,6 +2393,14 @@ sem_ImportSpecification (ImportSpecification_Import _range _hiding _imports) =
     (sem_ImportSpecification_Import (sem_Range _range) _hiding (sem_Imports _imports))
 -- semantic domain
 type T_ImportSpecification = ( ImportSpecification)
+data Inh_ImportSpecification = Inh_ImportSpecification {}
+data Syn_ImportSpecification = Syn_ImportSpecification {self_Syn_ImportSpecification :: ImportSpecification}
+wrap_ImportSpecification :: T_ImportSpecification ->
+                            Inh_ImportSpecification ->
+                            Syn_ImportSpecification
+wrap_ImportSpecification sem (Inh_ImportSpecification) =
+    (let ( _lhsOself) = sem
+     in  (Syn_ImportSpecification _lhsOself))
 sem_ImportSpecification_Import :: T_Range ->
                                   Bool ->
                                   T_Imports ->
@@ -2218,6 +2426,14 @@ sem_Imports list =
     (Prelude.foldr sem_Imports_Cons sem_Imports_Nil (Prelude.map sem_Import list))
 -- semantic domain
 type T_Imports = ( Imports)
+data Inh_Imports = Inh_Imports {}
+data Syn_Imports = Syn_Imports {self_Syn_Imports :: Imports}
+wrap_Imports :: T_Imports ->
+                Inh_Imports ->
+                Syn_Imports
+wrap_Imports sem (Inh_Imports) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Imports _lhsOself))
 sem_Imports_Cons :: T_Import ->
                     T_Imports ->
                     T_Imports
@@ -2254,6 +2470,14 @@ sem_LeftHandSide (LeftHandSide_Parenthesized _range _lefthandside _patterns) =
     (sem_LeftHandSide_Parenthesized (sem_Range _range) (sem_LeftHandSide _lefthandside) (sem_Patterns _patterns))
 -- semantic domain
 type T_LeftHandSide = ( OneLineTree,LeftHandSide)
+data Inh_LeftHandSide = Inh_LeftHandSide {}
+data Syn_LeftHandSide = Syn_LeftHandSide {oneLineTree_Syn_LeftHandSide :: OneLineTree,self_Syn_LeftHandSide :: LeftHandSide}
+wrap_LeftHandSide :: T_LeftHandSide ->
+                     Inh_LeftHandSide ->
+                     Syn_LeftHandSide
+wrap_LeftHandSide sem (Inh_LeftHandSide) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_LeftHandSide _lhsOoneLineTree _lhsOself))
 sem_LeftHandSide_Function :: T_Range ->
                              T_Name ->
                              T_Patterns ->
@@ -2362,6 +2586,14 @@ sem_Literal (Literal_String _range _value) =
     (sem_Literal_String (sem_Range _range) _value)
 -- semantic domain
 type T_Literal = ( OneLineTree,Literal)
+data Inh_Literal = Inh_Literal {}
+data Syn_Literal = Syn_Literal {oneLineTree_Syn_Literal :: OneLineTree,self_Syn_Literal :: Literal}
+wrap_Literal :: T_Literal ->
+                Inh_Literal ->
+                Syn_Literal
+wrap_Literal sem (Inh_Literal) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Literal _lhsOoneLineTree _lhsOself))
 sem_Literal_Char :: T_Range ->
                     String ->
                     T_Literal
@@ -2444,6 +2676,14 @@ sem_MaybeDeclarations (MaybeDeclarations_Nothing) =
     (sem_MaybeDeclarations_Nothing)
 -- semantic domain
 type T_MaybeDeclarations = ( ( Maybe [OneLineTree] ),MaybeDeclarations)
+data Inh_MaybeDeclarations = Inh_MaybeDeclarations {}
+data Syn_MaybeDeclarations = Syn_MaybeDeclarations {oneLineTree_Syn_MaybeDeclarations :: ( Maybe [OneLineTree] ),self_Syn_MaybeDeclarations :: MaybeDeclarations}
+wrap_MaybeDeclarations :: T_MaybeDeclarations ->
+                          Inh_MaybeDeclarations ->
+                          Syn_MaybeDeclarations
+wrap_MaybeDeclarations sem (Inh_MaybeDeclarations) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_MaybeDeclarations _lhsOoneLineTree _lhsOself))
 sem_MaybeDeclarations_Just :: T_Declarations ->
                               T_MaybeDeclarations
 sem_MaybeDeclarations_Just declarations_ =
@@ -2485,6 +2725,14 @@ sem_MaybeExports (MaybeExports_Nothing) =
     (sem_MaybeExports_Nothing)
 -- semantic domain
 type T_MaybeExports = ( MaybeExports)
+data Inh_MaybeExports = Inh_MaybeExports {}
+data Syn_MaybeExports = Syn_MaybeExports {self_Syn_MaybeExports :: MaybeExports}
+wrap_MaybeExports :: T_MaybeExports ->
+                     Inh_MaybeExports ->
+                     Syn_MaybeExports
+wrap_MaybeExports sem (Inh_MaybeExports) =
+    (let ( _lhsOself) = sem
+     in  (Syn_MaybeExports _lhsOself))
 sem_MaybeExports_Just :: T_Exports ->
                          T_MaybeExports
 sem_MaybeExports_Just exports_ =
@@ -2515,6 +2763,14 @@ sem_MaybeExpression (MaybeExpression_Nothing) =
     (sem_MaybeExpression_Nothing)
 -- semantic domain
 type T_MaybeExpression = ( ( Maybe OneLineTree ),MaybeExpression)
+data Inh_MaybeExpression = Inh_MaybeExpression {}
+data Syn_MaybeExpression = Syn_MaybeExpression {oneLineTree_Syn_MaybeExpression :: ( Maybe OneLineTree ),self_Syn_MaybeExpression :: MaybeExpression}
+wrap_MaybeExpression :: T_MaybeExpression ->
+                        Inh_MaybeExpression ->
+                        Syn_MaybeExpression
+wrap_MaybeExpression sem (Inh_MaybeExpression) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_MaybeExpression _lhsOoneLineTree _lhsOself))
 sem_MaybeExpression_Just :: T_Expression ->
                             T_MaybeExpression
 sem_MaybeExpression_Just expression_ =
@@ -2556,6 +2812,14 @@ sem_MaybeImportSpecification (MaybeImportSpecification_Nothing) =
     (sem_MaybeImportSpecification_Nothing)
 -- semantic domain
 type T_MaybeImportSpecification = ( MaybeImportSpecification)
+data Inh_MaybeImportSpecification = Inh_MaybeImportSpecification {}
+data Syn_MaybeImportSpecification = Syn_MaybeImportSpecification {self_Syn_MaybeImportSpecification :: MaybeImportSpecification}
+wrap_MaybeImportSpecification :: T_MaybeImportSpecification ->
+                                 Inh_MaybeImportSpecification ->
+                                 Syn_MaybeImportSpecification
+wrap_MaybeImportSpecification sem (Inh_MaybeImportSpecification) =
+    (let ( _lhsOself) = sem
+     in  (Syn_MaybeImportSpecification _lhsOself))
 sem_MaybeImportSpecification_Just :: T_ImportSpecification ->
                                      T_MaybeImportSpecification
 sem_MaybeImportSpecification_Just importspecification_ =
@@ -2586,6 +2850,14 @@ sem_MaybeInt (MaybeInt_Nothing) =
     (sem_MaybeInt_Nothing)
 -- semantic domain
 type T_MaybeInt = ( MaybeInt)
+data Inh_MaybeInt = Inh_MaybeInt {}
+data Syn_MaybeInt = Syn_MaybeInt {self_Syn_MaybeInt :: MaybeInt}
+wrap_MaybeInt :: T_MaybeInt ->
+                 Inh_MaybeInt ->
+                 Syn_MaybeInt
+wrap_MaybeInt sem (Inh_MaybeInt) =
+    (let ( _lhsOself) = sem
+     in  (Syn_MaybeInt _lhsOself))
 sem_MaybeInt_Just :: Int ->
                      T_MaybeInt
 sem_MaybeInt_Just int_ =
@@ -2613,6 +2885,14 @@ sem_MaybeName (MaybeName_Nothing) =
     (sem_MaybeName_Nothing)
 -- semantic domain
 type T_MaybeName = ( MaybeName)
+data Inh_MaybeName = Inh_MaybeName {}
+data Syn_MaybeName = Syn_MaybeName {self_Syn_MaybeName :: MaybeName}
+wrap_MaybeName :: T_MaybeName ->
+                  Inh_MaybeName ->
+                  Syn_MaybeName
+wrap_MaybeName sem (Inh_MaybeName) =
+    (let ( _lhsOself) = sem
+     in  (Syn_MaybeName _lhsOself))
 sem_MaybeName_Just :: T_Name ->
                       T_MaybeName
 sem_MaybeName_Just name_ =
@@ -2647,6 +2927,14 @@ sem_MaybeNames (MaybeNames_Nothing) =
     (sem_MaybeNames_Nothing)
 -- semantic domain
 type T_MaybeNames = ( MaybeNames)
+data Inh_MaybeNames = Inh_MaybeNames {}
+data Syn_MaybeNames = Syn_MaybeNames {self_Syn_MaybeNames :: MaybeNames}
+wrap_MaybeNames :: T_MaybeNames ->
+                   Inh_MaybeNames ->
+                   Syn_MaybeNames
+wrap_MaybeNames sem (Inh_MaybeNames) =
+    (let ( _lhsOself) = sem
+     in  (Syn_MaybeNames _lhsOself))
 sem_MaybeNames_Just :: T_Names ->
                        T_MaybeNames
 sem_MaybeNames_Just names_ =
@@ -2679,6 +2967,14 @@ sem_Module (Module_Module _range _name _exports _body) =
     (sem_Module_Module (sem_Range _range) (sem_MaybeName _name) (sem_MaybeExports _exports) (sem_Body _body))
 -- semantic domain
 type T_Module = ( Module)
+data Inh_Module = Inh_Module {}
+data Syn_Module = Syn_Module {self_Syn_Module :: Module}
+wrap_Module :: T_Module ->
+               Inh_Module ->
+               Syn_Module
+wrap_Module sem (Inh_Module) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Module _lhsOself))
 sem_Module_Module :: T_Range ->
                      T_MaybeName ->
                      T_MaybeExports ->
@@ -2715,6 +3011,14 @@ sem_Name (Name_Special _range _module _name) =
     (sem_Name_Special (sem_Range _range) (sem_Strings _module) _name)
 -- semantic domain
 type T_Name = ( Bool,Bool,Bool,OneLineTree,Name)
+data Inh_Name = Inh_Name {}
+data Syn_Name = Syn_Name {isIdentifier_Syn_Name :: Bool,isOperator_Syn_Name :: Bool,isSpecial_Syn_Name :: Bool,oneLineTree_Syn_Name :: OneLineTree,self_Syn_Name :: Name}
+wrap_Name :: T_Name ->
+             Inh_Name ->
+             Syn_Name
+wrap_Name sem (Inh_Name) =
+    (let ( _lhsOisIdentifier,_lhsOisOperator,_lhsOisSpecial,_lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Name _lhsOisIdentifier _lhsOisOperator _lhsOisSpecial _lhsOoneLineTree _lhsOself))
 sem_Name_Identifier :: T_Range ->
                        T_Strings ->
                        String ->
@@ -2819,6 +3123,14 @@ sem_Names list =
     (Prelude.foldr sem_Names_Cons sem_Names_Nil (Prelude.map sem_Name list))
 -- semantic domain
 type T_Names = ( ( [Bool] ),( [Bool] ),( [Bool] ),( [ OneLineTree] ),Names)
+data Inh_Names = Inh_Names {}
+data Syn_Names = Syn_Names {isIdentifier_Syn_Names :: ( [Bool] ),isOperator_Syn_Names :: ( [Bool] ),isSpecial_Syn_Names :: ( [Bool] ),oneLineTree_Syn_Names :: ( [ OneLineTree] ),self_Syn_Names :: Names}
+wrap_Names :: T_Names ->
+              Inh_Names ->
+              Syn_Names
+wrap_Names sem (Inh_Names) =
+    (let ( _lhsOisIdentifier,_lhsOisOperator,_lhsOisSpecial,_lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Names _lhsOisIdentifier _lhsOisOperator _lhsOisSpecial _lhsOoneLineTree _lhsOself))
 sem_Names_Cons :: T_Name ->
                   T_Names ->
                   T_Names
@@ -2911,6 +3223,14 @@ sem_Pattern (Pattern_Wildcard _range) =
     (sem_Pattern_Wildcard (sem_Range _range))
 -- semantic domain
 type T_Pattern = ( OneLineTree,Pattern)
+data Inh_Pattern = Inh_Pattern {}
+data Syn_Pattern = Syn_Pattern {oneLineTree_Syn_Pattern :: OneLineTree,self_Syn_Pattern :: Pattern}
+wrap_Pattern :: T_Pattern ->
+                Inh_Pattern ->
+                Syn_Pattern
+wrap_Pattern sem (Inh_Pattern) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Pattern _lhsOoneLineTree _lhsOself))
 sem_Pattern_As :: T_Range ->
                   T_Name ->
                   T_Pattern ->
@@ -3303,6 +3623,14 @@ sem_Patterns list =
     (Prelude.foldr sem_Patterns_Cons sem_Patterns_Nil (Prelude.map sem_Pattern list))
 -- semantic domain
 type T_Patterns = ( ( [ OneLineTree] ),Patterns)
+data Inh_Patterns = Inh_Patterns {}
+data Syn_Patterns = Syn_Patterns {oneLineTree_Syn_Patterns :: ( [ OneLineTree] ),self_Syn_Patterns :: Patterns}
+wrap_Patterns :: T_Patterns ->
+                 Inh_Patterns ->
+                 Syn_Patterns
+wrap_Patterns sem (Inh_Patterns) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Patterns _lhsOoneLineTree _lhsOself))
 sem_Patterns_Cons :: T_Pattern ->
                      T_Patterns ->
                      T_Patterns
@@ -3345,6 +3673,14 @@ sem_Position (Position_Unknown) =
     (sem_Position_Unknown)
 -- semantic domain
 type T_Position = ( Position)
+data Inh_Position = Inh_Position {}
+data Syn_Position = Syn_Position {self_Syn_Position :: Position}
+wrap_Position :: T_Position ->
+                 Inh_Position ->
+                 Syn_Position
+wrap_Position sem (Inh_Position) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Position _lhsOself))
 sem_Position_Position :: String ->
                          Int ->
                          Int ->
@@ -3378,6 +3714,14 @@ sem_Qualifier (Qualifier_Let _range _declarations) =
     (sem_Qualifier_Let (sem_Range _range) (sem_Declarations _declarations))
 -- semantic domain
 type T_Qualifier = ( OneLineTree,Qualifier)
+data Inh_Qualifier = Inh_Qualifier {}
+data Syn_Qualifier = Syn_Qualifier {oneLineTree_Syn_Qualifier :: OneLineTree,self_Syn_Qualifier :: Qualifier}
+wrap_Qualifier :: T_Qualifier ->
+                  Inh_Qualifier ->
+                  Syn_Qualifier
+wrap_Qualifier sem (Inh_Qualifier) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Qualifier _lhsOoneLineTree _lhsOself))
 sem_Qualifier_Empty :: T_Range ->
                        T_Qualifier
 sem_Qualifier_Empty range_ =
@@ -3474,6 +3818,14 @@ sem_Qualifiers list =
     (Prelude.foldr sem_Qualifiers_Cons sem_Qualifiers_Nil (Prelude.map sem_Qualifier list))
 -- semantic domain
 type T_Qualifiers = ( ( [ OneLineTree] ),Qualifiers)
+data Inh_Qualifiers = Inh_Qualifiers {}
+data Syn_Qualifiers = Syn_Qualifiers {oneLineTree_Syn_Qualifiers :: ( [ OneLineTree] ),self_Syn_Qualifiers :: Qualifiers}
+wrap_Qualifiers :: T_Qualifiers ->
+                   Inh_Qualifiers ->
+                   Syn_Qualifiers
+wrap_Qualifiers sem (Inh_Qualifiers) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Qualifiers _lhsOoneLineTree _lhsOself))
 sem_Qualifiers_Cons :: T_Qualifier ->
                        T_Qualifiers ->
                        T_Qualifiers
@@ -3514,6 +3866,14 @@ sem_Range (Range_Range _start _stop) =
     (sem_Range_Range (sem_Position _start) (sem_Position _stop))
 -- semantic domain
 type T_Range = ( Range)
+data Inh_Range = Inh_Range {}
+data Syn_Range = Syn_Range {self_Syn_Range :: Range}
+wrap_Range :: T_Range ->
+              Inh_Range ->
+              Syn_Range
+wrap_Range sem (Inh_Range) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Range _lhsOself))
 sem_Range_Range :: T_Position ->
                    T_Position ->
                    T_Range
@@ -3538,6 +3898,14 @@ sem_RecordExpressionBinding (RecordExpressionBinding_RecordExpressionBinding _ra
     (sem_RecordExpressionBinding_RecordExpressionBinding (sem_Range _range) (sem_Name _name) (sem_Expression _expression))
 -- semantic domain
 type T_RecordExpressionBinding = ( RecordExpressionBinding)
+data Inh_RecordExpressionBinding = Inh_RecordExpressionBinding {}
+data Syn_RecordExpressionBinding = Syn_RecordExpressionBinding {self_Syn_RecordExpressionBinding :: RecordExpressionBinding}
+wrap_RecordExpressionBinding :: T_RecordExpressionBinding ->
+                                Inh_RecordExpressionBinding ->
+                                Syn_RecordExpressionBinding
+wrap_RecordExpressionBinding sem (Inh_RecordExpressionBinding) =
+    (let ( _lhsOself) = sem
+     in  (Syn_RecordExpressionBinding _lhsOself))
 sem_RecordExpressionBinding_RecordExpressionBinding :: T_Range ->
                                                        T_Name ->
                                                        T_Expression ->
@@ -3571,6 +3939,14 @@ sem_RecordExpressionBindings list =
     (Prelude.foldr sem_RecordExpressionBindings_Cons sem_RecordExpressionBindings_Nil (Prelude.map sem_RecordExpressionBinding list))
 -- semantic domain
 type T_RecordExpressionBindings = ( RecordExpressionBindings)
+data Inh_RecordExpressionBindings = Inh_RecordExpressionBindings {}
+data Syn_RecordExpressionBindings = Syn_RecordExpressionBindings {self_Syn_RecordExpressionBindings :: RecordExpressionBindings}
+wrap_RecordExpressionBindings :: T_RecordExpressionBindings ->
+                                 Inh_RecordExpressionBindings ->
+                                 Syn_RecordExpressionBindings
+wrap_RecordExpressionBindings sem (Inh_RecordExpressionBindings) =
+    (let ( _lhsOself) = sem
+     in  (Syn_RecordExpressionBindings _lhsOself))
 sem_RecordExpressionBindings_Cons :: T_RecordExpressionBinding ->
                                      T_RecordExpressionBindings ->
                                      T_RecordExpressionBindings
@@ -3603,6 +3979,14 @@ sem_RecordPatternBinding (RecordPatternBinding_RecordPatternBinding _range _name
     (sem_RecordPatternBinding_RecordPatternBinding (sem_Range _range) (sem_Name _name) (sem_Pattern _pattern))
 -- semantic domain
 type T_RecordPatternBinding = ( RecordPatternBinding)
+data Inh_RecordPatternBinding = Inh_RecordPatternBinding {}
+data Syn_RecordPatternBinding = Syn_RecordPatternBinding {self_Syn_RecordPatternBinding :: RecordPatternBinding}
+wrap_RecordPatternBinding :: T_RecordPatternBinding ->
+                             Inh_RecordPatternBinding ->
+                             Syn_RecordPatternBinding
+wrap_RecordPatternBinding sem (Inh_RecordPatternBinding) =
+    (let ( _lhsOself) = sem
+     in  (Syn_RecordPatternBinding _lhsOself))
 sem_RecordPatternBinding_RecordPatternBinding :: T_Range ->
                                                  T_Name ->
                                                  T_Pattern ->
@@ -3636,6 +4020,14 @@ sem_RecordPatternBindings list =
     (Prelude.foldr sem_RecordPatternBindings_Cons sem_RecordPatternBindings_Nil (Prelude.map sem_RecordPatternBinding list))
 -- semantic domain
 type T_RecordPatternBindings = ( RecordPatternBindings)
+data Inh_RecordPatternBindings = Inh_RecordPatternBindings {}
+data Syn_RecordPatternBindings = Syn_RecordPatternBindings {self_Syn_RecordPatternBindings :: RecordPatternBindings}
+wrap_RecordPatternBindings :: T_RecordPatternBindings ->
+                              Inh_RecordPatternBindings ->
+                              Syn_RecordPatternBindings
+wrap_RecordPatternBindings sem (Inh_RecordPatternBindings) =
+    (let ( _lhsOself) = sem
+     in  (Syn_RecordPatternBindings _lhsOself))
 sem_RecordPatternBindings_Cons :: T_RecordPatternBinding ->
                                   T_RecordPatternBindings ->
                                   T_RecordPatternBindings
@@ -3670,6 +4062,14 @@ sem_RightHandSide (RightHandSide_Guarded _range _guardedexpressions _where) =
     (sem_RightHandSide_Guarded (sem_Range _range) (sem_GuardedExpressions _guardedexpressions) (sem_MaybeDeclarations _where))
 -- semantic domain
 type T_RightHandSide = ( ( String -> OneLineTree ),RightHandSide)
+data Inh_RightHandSide = Inh_RightHandSide {}
+data Syn_RightHandSide = Syn_RightHandSide {oneLineTree_Syn_RightHandSide :: ( String -> OneLineTree ),self_Syn_RightHandSide :: RightHandSide}
+wrap_RightHandSide :: T_RightHandSide ->
+                      Inh_RightHandSide ->
+                      Syn_RightHandSide
+wrap_RightHandSide sem (Inh_RightHandSide) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_RightHandSide _lhsOoneLineTree _lhsOself))
 sem_RightHandSide_Expression :: T_Range ->
                                 T_Expression ->
                                 T_MaybeDeclarations ->
@@ -3742,6 +4142,14 @@ sem_SimpleType (SimpleType_SimpleType _range _name _typevariables) =
     (sem_SimpleType_SimpleType (sem_Range _range) (sem_Name _name) (sem_Names _typevariables))
 -- semantic domain
 type T_SimpleType = ( SimpleType)
+data Inh_SimpleType = Inh_SimpleType {}
+data Syn_SimpleType = Syn_SimpleType {self_Syn_SimpleType :: SimpleType}
+wrap_SimpleType :: T_SimpleType ->
+                   Inh_SimpleType ->
+                   Syn_SimpleType
+wrap_SimpleType sem (Inh_SimpleType) =
+    (let ( _lhsOself) = sem
+     in  (Syn_SimpleType _lhsOself))
 sem_SimpleType_SimpleType :: T_Range ->
                              T_Name ->
                              T_Names ->
@@ -3784,6 +4192,14 @@ sem_Statement (Statement_Let _range _declarations) =
     (sem_Statement_Let (sem_Range _range) (sem_Declarations _declarations))
 -- semantic domain
 type T_Statement = ( OneLineTree,Statement)
+data Inh_Statement = Inh_Statement {}
+data Syn_Statement = Syn_Statement {oneLineTree_Syn_Statement :: OneLineTree,self_Syn_Statement :: Statement}
+wrap_Statement :: T_Statement ->
+                  Inh_Statement ->
+                  Syn_Statement
+wrap_Statement sem (Inh_Statement) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Statement _lhsOoneLineTree _lhsOself))
 sem_Statement_Empty :: T_Range ->
                        T_Statement
 sem_Statement_Empty range_ =
@@ -3880,6 +4296,14 @@ sem_Statements list =
     (Prelude.foldr sem_Statements_Cons sem_Statements_Nil (Prelude.map sem_Statement list))
 -- semantic domain
 type T_Statements = ( ( [ OneLineTree] ),Statements)
+data Inh_Statements = Inh_Statements {}
+data Syn_Statements = Syn_Statements {oneLineTree_Syn_Statements :: ( [ OneLineTree] ),self_Syn_Statements :: Statements}
+wrap_Statements :: T_Statements ->
+                   Inh_Statements ->
+                   Syn_Statements
+wrap_Statements sem (Inh_Statements) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Statements _lhsOoneLineTree _lhsOself))
 sem_Statements_Cons :: T_Statement ->
                        T_Statements ->
                        T_Statements
@@ -3920,6 +4344,14 @@ sem_Strings list =
     (Prelude.foldr sem_Strings_Cons sem_Strings_Nil list)
 -- semantic domain
 type T_Strings = ( ( [ OneLineTree] ),Strings)
+data Inh_Strings = Inh_Strings {}
+data Syn_Strings = Syn_Strings {oneLineTree_Syn_Strings :: ( [ OneLineTree] ),self_Syn_Strings :: Strings}
+wrap_Strings :: T_Strings ->
+                Inh_Strings ->
+                Syn_Strings
+wrap_Strings sem (Inh_Strings) =
+    (let ( _lhsOoneLineTree,_lhsOself) = sem
+     in  (Syn_Strings _lhsOoneLineTree _lhsOself))
 sem_Strings_Cons :: String ->
                     T_Strings ->
                     T_Strings
@@ -3968,6 +4400,14 @@ sem_Type (Type_Variable _range _name) =
     (sem_Type_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Type = ( Type)
+data Inh_Type = Inh_Type {}
+data Syn_Type = Syn_Type {self_Syn_Type :: Type}
+wrap_Type :: T_Type ->
+             Inh_Type ->
+             Syn_Type
+wrap_Type sem (Inh_Type) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Type _lhsOself))
 sem_Type_Application :: T_Range ->
                         Bool ->
                         T_Type ->
@@ -4121,6 +4561,14 @@ sem_Types list =
     (Prelude.foldr sem_Types_Cons sem_Types_Nil (Prelude.map sem_Type list))
 -- semantic domain
 type T_Types = ( Types)
+data Inh_Types = Inh_Types {}
+data Syn_Types = Syn_Types {self_Syn_Types :: Types}
+wrap_Types :: T_Types ->
+              Inh_Types ->
+              Syn_Types
+wrap_Types sem (Inh_Types) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Types _lhsOself))
 sem_Types_Cons :: T_Type ->
                   T_Types ->
                   T_Types

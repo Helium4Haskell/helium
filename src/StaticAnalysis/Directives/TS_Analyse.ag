@@ -16,9 +16,11 @@ analyseTypingStrategies list ie =
    let (as, bs) = unzip (map (\ts -> analyseTypingStrategy ts ie) list)
    in (concat as, concat bs)
 
+
 analyseTypingStrategy :: TypingStrategy -> ImportEnvironment -> (TS_Errors, TS_Warnings)
 analyseTypingStrategy ts ie = 
-    let (errs, _, wars) = sem_TypingStrategy ts ie in (errs, wars)
+    let res = wrap_TypingStrategy (sem_TypingStrategy ts) Inh_TypingStrategy { importEnvironment_Inh_TypingStrategy = ie }
+    in (errors_Syn_TypingStrategy res, warnings_Syn_TypingStrategy res)
 }
 
 INCLUDE "UHA_Syntax.ag"
@@ -56,7 +58,7 @@ SEM TypingStrategy
            . warnings     = []
            
   | TypingStrategy  
-       loc . name         = show (PP.sem_Expression @typerule.conclusionExpression)
+       loc . name         = show (PP.text_Syn_Expression $ PP.wrap_Expression (PP.sem_Expression @typerule.conclusionExpression) PP.Inh_Expression)
            . nameMap      = zip @uniqueTypevariables (map TVar [0..])
            . errors       = @staticErrors ++ @soundnessErrors 
            . staticErrors = [ InconsistentConstraint @name x | (x, _) <- @solveErrors ] ++

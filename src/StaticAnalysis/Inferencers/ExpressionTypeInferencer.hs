@@ -10,7 +10,7 @@
 
 module StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer) where
 
-import StaticAnalysis.Inferencers.TypeInferencing (sem_Module)
+import StaticAnalysis.Inferencers.TypeInferencing (sem_Module, wrap_Module, Inh_Module (..), Syn_Module (..))
 import ModuleSystem.ImportEnvironment
 import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions)
 import StaticAnalysis.Messages.TypeErrors
@@ -31,11 +31,12 @@ expressionTypeInferencer importEnvironment expression =
        decl_   = Declaration_PatternBinding noRange pat_ rhs_
        pat_    = Pattern_Variable noRange functionName
        rhs_    = RightHandSide_Expression noRange expression MaybeDeclarations_Nothing
-                         
-       (assumptions, _, _, _, _, _, typeEnv, errors, _) =
-          sem_Module module_ importEnvironment []
-                     
+
+       res = wrap_Module (sem_Module module_) Inh_Module {
+       	         importEnvironment_Inh_Module = importEnvironment,
+		 options_Inh_Module           = [] }
+
        inferredType = let err = internalError "ExpressionTypeInferencer.hs" "expressionTypeInferencer" "cannot find inferred type"
-                      in maybe err id (M.lookup functionName typeEnv)
+                      in maybe err id (M.lookup functionName $ toplevelTypes_Syn_Module res)
                                 
-   in (inferredType, assumptions, errors)
+   in (inferredType, assumptions_Syn_Module res, typeErrors_Syn_Module res)

@@ -279,6 +279,14 @@ type T_Alternative = Names ->
                      (M.Map Name TpScheme) ->
                      ([Warning]) ->
                      ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),([Error]),Alternative,Names,([Warning]))
+data Inh_Alternative = Inh_Alternative {allTypeConstructors_Inh_Alternative :: Names,allValueConstructors_Inh_Alternative :: Names,classEnvironment_Inh_Alternative :: ClassEnvironment,collectScopeInfos_Inh_Alternative :: ([(ScopeInfo, Entity)]),counter_Inh_Alternative :: Int,kindErrors_Inh_Alternative :: ([Error]),miscerrors_Inh_Alternative :: ([Error]),namesInScope_Inh_Alternative :: Names,options_Inh_Alternative :: ([Option]),orderedTypeSynonyms_Inh_Alternative :: OrderedTypeSynonyms,typeConstructors_Inh_Alternative :: (M.Map Name Int),valueConstructors_Inh_Alternative :: (M.Map Name TpScheme),warnings_Inh_Alternative :: ([Warning])}
+data Syn_Alternative = Syn_Alternative {collectInstances_Syn_Alternative :: ([(Name, Instance)]),collectScopeInfos_Syn_Alternative :: ([(ScopeInfo, Entity)]),counter_Syn_Alternative :: Int,kindErrors_Syn_Alternative :: ([Error]),miscerrors_Syn_Alternative :: ([Error]),self_Syn_Alternative :: Alternative,unboundNames_Syn_Alternative :: Names,warnings_Syn_Alternative :: ([Warning])}
+wrap_Alternative :: T_Alternative ->
+                    Inh_Alternative ->
+                    Syn_Alternative
+wrap_Alternative sem (Inh_Alternative _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Alternative _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_Alternative_Alternative :: T_Range ->
                                T_Pattern ->
                                T_RightHandSide ->
@@ -628,6 +636,14 @@ type T_Alternatives = Names ->
                       (M.Map Name TpScheme) ->
                       ([Warning]) ->
                       ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),([Error]),Alternatives,Names,([Warning]))
+data Inh_Alternatives = Inh_Alternatives {allTypeConstructors_Inh_Alternatives :: Names,allValueConstructors_Inh_Alternatives :: Names,classEnvironment_Inh_Alternatives :: ClassEnvironment,collectScopeInfos_Inh_Alternatives :: ([(ScopeInfo, Entity)]),counter_Inh_Alternatives :: Int,kindErrors_Inh_Alternatives :: ([Error]),miscerrors_Inh_Alternatives :: ([Error]),namesInScope_Inh_Alternatives :: Names,options_Inh_Alternatives :: ([Option]),orderedTypeSynonyms_Inh_Alternatives :: OrderedTypeSynonyms,typeConstructors_Inh_Alternatives :: (M.Map Name Int),valueConstructors_Inh_Alternatives :: (M.Map Name TpScheme),warnings_Inh_Alternatives :: ([Warning])}
+data Syn_Alternatives = Syn_Alternatives {collectInstances_Syn_Alternatives :: ([(Name, Instance)]),collectScopeInfos_Syn_Alternatives :: ([(ScopeInfo, Entity)]),counter_Syn_Alternatives :: Int,kindErrors_Syn_Alternatives :: ([Error]),miscerrors_Syn_Alternatives :: ([Error]),self_Syn_Alternatives :: Alternatives,unboundNames_Syn_Alternatives :: Names,warnings_Syn_Alternatives :: ([Warning])}
+wrap_Alternatives :: T_Alternatives ->
+                     Inh_Alternatives ->
+                     Syn_Alternatives
+wrap_Alternatives sem (Inh_Alternatives _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Alternatives _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_Alternatives_Cons :: T_Alternative ->
                          T_Alternatives ->
                          T_Alternatives
@@ -830,6 +846,14 @@ type T_AnnotatedType = Names ->
                        (M.Map Name TpScheme) ->
                        ([Warning]) ->
                        ( Int,([Error]),([Error]),AnnotatedType,Type,Names,Names,([Warning]))
+data Inh_AnnotatedType = Inh_AnnotatedType {allTypeConstructors_Inh_AnnotatedType :: Names,allValueConstructors_Inh_AnnotatedType :: Names,counter_Inh_AnnotatedType :: Int,kindErrors_Inh_AnnotatedType :: ([Error]),miscerrors_Inh_AnnotatedType :: ([Error]),namesInScope_Inh_AnnotatedType :: Names,options_Inh_AnnotatedType :: ([Option]),typeConstructors_Inh_AnnotatedType :: (M.Map Name Int),valueConstructors_Inh_AnnotatedType :: (M.Map Name TpScheme),warnings_Inh_AnnotatedType :: ([Warning])}
+data Syn_AnnotatedType = Syn_AnnotatedType {counter_Syn_AnnotatedType :: Int,kindErrors_Syn_AnnotatedType :: ([Error]),miscerrors_Syn_AnnotatedType :: ([Error]),self_Syn_AnnotatedType :: AnnotatedType,type_Syn_AnnotatedType :: Type,typevariables_Syn_AnnotatedType :: Names,unboundNames_Syn_AnnotatedType :: Names,warnings_Syn_AnnotatedType :: ([Warning])}
+wrap_AnnotatedType :: T_AnnotatedType ->
+                      Inh_AnnotatedType ->
+                      Syn_AnnotatedType
+wrap_AnnotatedType sem (Inh_AnnotatedType _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOtype,_lhsOtypevariables,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_AnnotatedType _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOself _lhsOtype _lhsOtypevariables _lhsOunboundNames _lhsOwarnings))
 sem_AnnotatedType_AnnotatedType :: T_Range ->
                                    Bool ->
                                    T_Type ->
@@ -917,6 +941,14 @@ type T_AnnotatedTypes = Names ->
                         (M.Map Name TpScheme) ->
                         ([Warning]) ->
                         ( Int,([Error]),([Error]),AnnotatedTypes,Types,Names,Names,([Warning]))
+data Inh_AnnotatedTypes = Inh_AnnotatedTypes {allTypeConstructors_Inh_AnnotatedTypes :: Names,allValueConstructors_Inh_AnnotatedTypes :: Names,counter_Inh_AnnotatedTypes :: Int,kindErrors_Inh_AnnotatedTypes :: ([Error]),miscerrors_Inh_AnnotatedTypes :: ([Error]),namesInScope_Inh_AnnotatedTypes :: Names,options_Inh_AnnotatedTypes :: ([Option]),typeConstructors_Inh_AnnotatedTypes :: (M.Map Name Int),valueConstructors_Inh_AnnotatedTypes :: (M.Map Name TpScheme),warnings_Inh_AnnotatedTypes :: ([Warning])}
+data Syn_AnnotatedTypes = Syn_AnnotatedTypes {counter_Syn_AnnotatedTypes :: Int,kindErrors_Syn_AnnotatedTypes :: ([Error]),miscerrors_Syn_AnnotatedTypes :: ([Error]),self_Syn_AnnotatedTypes :: AnnotatedTypes,types_Syn_AnnotatedTypes :: Types,typevariables_Syn_AnnotatedTypes :: Names,unboundNames_Syn_AnnotatedTypes :: Names,warnings_Syn_AnnotatedTypes :: ([Warning])}
+wrap_AnnotatedTypes :: T_AnnotatedTypes ->
+                       Inh_AnnotatedTypes ->
+                       Syn_AnnotatedTypes
+wrap_AnnotatedTypes sem (Inh_AnnotatedTypes _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOtypes,_lhsOtypevariables,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_AnnotatedTypes _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOself _lhsOtypes _lhsOtypevariables _lhsOunboundNames _lhsOwarnings))
 sem_AnnotatedTypes_Cons :: T_AnnotatedType ->
                            T_AnnotatedTypes ->
                            T_AnnotatedTypes
@@ -1104,6 +1136,14 @@ type T_Body = Names ->
               (M.Map Name TpScheme) ->
               ([Warning]) ->
               ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),Int,Names,Names,([Error]),([Error]),([(Name,(Int,Assoc))]),Body,([(Name,TpScheme)]),Names,([Warning]))
+data Inh_Body = Inh_Body {allTypeConstructors_Inh_Body :: Names,allValueConstructors_Inh_Body :: Names,classEnvironment_Inh_Body :: ClassEnvironment,collectScopeInfos_Inh_Body :: ([(ScopeInfo, Entity)]),collectTypeConstructors_Inh_Body :: ([(Name,Int)]),collectTypeSynonyms_Inh_Body :: ([(Name,(Int,Tps -> Tp))]),collectValueConstructors_Inh_Body :: ([(Name,TpScheme)]),counter_Inh_Body :: Int,kindErrors_Inh_Body :: ([Error]),miscerrors_Inh_Body :: ([Error]),namesInScope_Inh_Body :: Names,operatorFixities_Inh_Body :: ([(Name,(Int,Assoc))]),options_Inh_Body :: ([Option]),orderedTypeSynonyms_Inh_Body :: OrderedTypeSynonyms,typeConstructors_Inh_Body :: (M.Map Name Int),valueConstructors_Inh_Body :: (M.Map Name TpScheme),warnings_Inh_Body :: ([Warning])}
+data Syn_Body = Syn_Body {collectInstances_Syn_Body :: ([(Name, Instance)]),collectScopeInfos_Syn_Body :: ([(ScopeInfo, Entity)]),collectTypeConstructors_Syn_Body :: ([(Name,Int)]),collectTypeSynonyms_Syn_Body :: ([(Name,(Int,Tps -> Tp))]),collectValueConstructors_Syn_Body :: ([(Name,TpScheme)]),counter_Syn_Body :: Int,declVarNames_Syn_Body :: Names,importedModules_Syn_Body :: Names,kindErrors_Syn_Body :: ([Error]),miscerrors_Syn_Body :: ([Error]),operatorFixities_Syn_Body :: ([(Name,(Int,Assoc))]),self_Syn_Body :: Body,typeSignatures_Syn_Body :: ([(Name,TpScheme)]),unboundNames_Syn_Body :: Names,warnings_Syn_Body :: ([Warning])}
+wrap_Body :: T_Body ->
+             Inh_Body ->
+             Syn_Body
+wrap_Body sem (Inh_Body _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcollectTypeConstructors _lhsIcollectTypeSynonyms _lhsIcollectValueConstructors _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoperatorFixities _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOcounter,_lhsOdeclVarNames,_lhsOimportedModules,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOself,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcollectTypeConstructors _lhsIcollectTypeSynonyms _lhsIcollectValueConstructors _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoperatorFixities _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Body _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcollectTypeConstructors _lhsOcollectTypeSynonyms _lhsOcollectValueConstructors _lhsOcounter _lhsOdeclVarNames _lhsOimportedModules _lhsOkindErrors _lhsOmiscerrors _lhsOoperatorFixities _lhsOself _lhsOtypeSignatures _lhsOunboundNames _lhsOwarnings))
 sem_Body_Body :: T_Range ->
                  T_ImportDeclarations ->
                  T_Declarations ->
@@ -1364,6 +1404,14 @@ type T_Constructor = Names ->
                      (M.Map Name TpScheme) ->
                      ([Warning]) ->
                      ( ([(Name,TpScheme)]),Int,([Error]),([Error]),Tps,Constructor,Names,Names,([Warning]))
+data Inh_Constructor = Inh_Constructor {allTypeConstructors_Inh_Constructor :: Names,allValueConstructors_Inh_Constructor :: Names,collectValueConstructors_Inh_Constructor :: ([(Name,TpScheme)]),counter_Inh_Constructor :: Int,kindErrors_Inh_Constructor :: ([Error]),miscerrors_Inh_Constructor :: ([Error]),namesInScope_Inh_Constructor :: Names,options_Inh_Constructor :: ([Option]),simpletype_Inh_Constructor :: SimpleType,typeConstructors_Inh_Constructor :: (M.Map Name Int),valueConstructors_Inh_Constructor :: (M.Map Name TpScheme),warnings_Inh_Constructor :: ([Warning])}
+data Syn_Constructor = Syn_Constructor {collectValueConstructors_Syn_Constructor :: ([(Name,TpScheme)]),counter_Syn_Constructor :: Int,kindErrors_Syn_Constructor :: ([Error]),miscerrors_Syn_Constructor :: ([Error]),parameterTypes_Syn_Constructor :: Tps,self_Syn_Constructor :: Constructor,typevariables_Syn_Constructor :: Names,unboundNames_Syn_Constructor :: Names,warnings_Syn_Constructor :: ([Warning])}
+wrap_Constructor :: T_Constructor ->
+                    Inh_Constructor ->
+                    Syn_Constructor
+wrap_Constructor sem (Inh_Constructor _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIcollectValueConstructors _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIsimpletype _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectValueConstructors,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOparameterTypes,_lhsOself,_lhsOtypevariables,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIcollectValueConstructors _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIsimpletype _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Constructor _lhsOcollectValueConstructors _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOparameterTypes _lhsOself _lhsOtypevariables _lhsOunboundNames _lhsOwarnings))
 sem_Constructor_Constructor :: T_Range ->
                                T_Name ->
                                T_AnnotatedTypes ->
@@ -1690,6 +1738,14 @@ type T_Constructors = Names ->
                       (M.Map Name TpScheme) ->
                       ([Warning]) ->
                       ( ([(Name,TpScheme)]),Int,([Error]),([Error]),Tps,Constructors,Names,Names,([Warning]))
+data Inh_Constructors = Inh_Constructors {allTypeConstructors_Inh_Constructors :: Names,allValueConstructors_Inh_Constructors :: Names,collectValueConstructors_Inh_Constructors :: ([(Name,TpScheme)]),counter_Inh_Constructors :: Int,kindErrors_Inh_Constructors :: ([Error]),miscerrors_Inh_Constructors :: ([Error]),namesInScope_Inh_Constructors :: Names,options_Inh_Constructors :: ([Option]),simpletype_Inh_Constructors :: SimpleType,typeConstructors_Inh_Constructors :: (M.Map Name Int),valueConstructors_Inh_Constructors :: (M.Map Name TpScheme),warnings_Inh_Constructors :: ([Warning])}
+data Syn_Constructors = Syn_Constructors {collectValueConstructors_Syn_Constructors :: ([(Name,TpScheme)]),counter_Syn_Constructors :: Int,kindErrors_Syn_Constructors :: ([Error]),miscerrors_Syn_Constructors :: ([Error]),parameterTypes_Syn_Constructors :: Tps,self_Syn_Constructors :: Constructors,typevariables_Syn_Constructors :: Names,unboundNames_Syn_Constructors :: Names,warnings_Syn_Constructors :: ([Warning])}
+wrap_Constructors :: T_Constructors ->
+                     Inh_Constructors ->
+                     Syn_Constructors
+wrap_Constructors sem (Inh_Constructors _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIcollectValueConstructors _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIsimpletype _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectValueConstructors,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOparameterTypes,_lhsOself,_lhsOtypevariables,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIcollectValueConstructors _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIsimpletype _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Constructors _lhsOcollectValueConstructors _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOparameterTypes _lhsOself _lhsOtypevariables _lhsOunboundNames _lhsOwarnings))
 sem_Constructors_Cons :: T_Constructor ->
                          T_Constructors ->
                          T_Constructors
@@ -1887,6 +1943,14 @@ type T_ContextItem = Names ->
                      (M.Map Name Int) ->
                      ([Warning]) ->
                      ( ([Range]),([Name]),([Error]),ContextItem,([Warning]))
+data Inh_ContextItem = Inh_ContextItem {allTypeConstructors_Inh_ContextItem :: Names,miscerrors_Inh_ContextItem :: ([Error]),options_Inh_ContextItem :: ([Option]),typeConstructors_Inh_ContextItem :: (M.Map Name Int),warnings_Inh_ContextItem :: ([Warning])}
+data Syn_ContextItem = Syn_ContextItem {contextRanges_Syn_ContextItem :: ([Range]),contextVars_Syn_ContextItem :: ([Name]),miscerrors_Syn_ContextItem :: ([Error]),self_Syn_ContextItem :: ContextItem,warnings_Syn_ContextItem :: ([Warning])}
+wrap_ContextItem :: T_ContextItem ->
+                    Inh_ContextItem ->
+                    Syn_ContextItem
+wrap_ContextItem sem (Inh_ContextItem _lhsIallTypeConstructors _lhsImiscerrors _lhsIoptions _lhsItypeConstructors _lhsIwarnings) =
+    (let ( _lhsOcontextRanges,_lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsImiscerrors _lhsIoptions _lhsItypeConstructors _lhsIwarnings
+     in  (Syn_ContextItem _lhsOcontextRanges _lhsOcontextVars _lhsOmiscerrors _lhsOself _lhsOwarnings))
 sem_ContextItem_ContextItem :: T_Range ->
                                T_Name ->
                                T_Types ->
@@ -1959,6 +2023,14 @@ type T_ContextItems = Names ->
                       (M.Map Name Int) ->
                       ([Warning]) ->
                       ( ([Range]),([Name]),([Error]),ContextItems,([Warning]))
+data Inh_ContextItems = Inh_ContextItems {allTypeConstructors_Inh_ContextItems :: Names,miscerrors_Inh_ContextItems :: ([Error]),options_Inh_ContextItems :: ([Option]),typeConstructors_Inh_ContextItems :: (M.Map Name Int),warnings_Inh_ContextItems :: ([Warning])}
+data Syn_ContextItems = Syn_ContextItems {contextRanges_Syn_ContextItems :: ([Range]),contextVars_Syn_ContextItems :: ([Name]),miscerrors_Syn_ContextItems :: ([Error]),self_Syn_ContextItems :: ContextItems,warnings_Syn_ContextItems :: ([Warning])}
+wrap_ContextItems :: T_ContextItems ->
+                     Inh_ContextItems ->
+                     Syn_ContextItems
+wrap_ContextItems sem (Inh_ContextItems _lhsIallTypeConstructors _lhsImiscerrors _lhsIoptions _lhsItypeConstructors _lhsIwarnings) =
+    (let ( _lhsOcontextRanges,_lhsOcontextVars,_lhsOmiscerrors,_lhsOself,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsImiscerrors _lhsIoptions _lhsItypeConstructors _lhsIwarnings
+     in  (Syn_ContextItems _lhsOcontextRanges _lhsOcontextVars _lhsOmiscerrors _lhsOself _lhsOwarnings))
 sem_ContextItems_Cons :: T_ContextItem ->
                          T_ContextItems ->
                          T_ContextItems
@@ -2105,6 +2177,14 @@ type T_Declaration = Names ->
                      (M.Map Name TpScheme) ->
                      ([Warning]) ->
                      ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),Int,Names,([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),Names,Declaration,([(Name,Name)]),([(Name,TpScheme)]),Names,([Warning]))
+data Inh_Declaration = Inh_Declaration {allTypeConstructors_Inh_Declaration :: Names,allValueConstructors_Inh_Declaration :: Names,classEnvironment_Inh_Declaration :: ClassEnvironment,collectScopeInfos_Inh_Declaration :: ([(ScopeInfo, Entity)]),collectTypeConstructors_Inh_Declaration :: ([(Name,Int)]),collectTypeSynonyms_Inh_Declaration :: ([(Name,(Int,Tps -> Tp))]),collectValueConstructors_Inh_Declaration :: ([(Name,TpScheme)]),counter_Inh_Declaration :: Int,kindErrors_Inh_Declaration :: ([Error]),miscerrors_Inh_Declaration :: ([Error]),namesInScope_Inh_Declaration :: Names,operatorFixities_Inh_Declaration :: ([(Name,(Int,Assoc))]),options_Inh_Declaration :: ([Option]),orderedTypeSynonyms_Inh_Declaration :: OrderedTypeSynonyms,previousWasAlsoFB_Inh_Declaration :: (Maybe Name),suspiciousFBs_Inh_Declaration :: ([(Name,Name)]),typeConstructors_Inh_Declaration :: (M.Map Name Int),typeSignatures_Inh_Declaration :: ([(Name,TpScheme)]),valueConstructors_Inh_Declaration :: (M.Map Name TpScheme),warnings_Inh_Declaration :: ([Warning])}
+data Syn_Declaration = Syn_Declaration {collectInstances_Syn_Declaration :: ([(Name, Instance)]),collectScopeInfos_Syn_Declaration :: ([(ScopeInfo, Entity)]),collectTypeConstructors_Syn_Declaration :: ([(Name,Int)]),collectTypeSynonyms_Syn_Declaration :: ([(Name,(Int,Tps -> Tp))]),collectValueConstructors_Syn_Declaration :: ([(Name,TpScheme)]),counter_Syn_Declaration :: Int,declVarNames_Syn_Declaration :: Names,kindErrors_Syn_Declaration :: ([Error]),miscerrors_Syn_Declaration :: ([Error]),operatorFixities_Syn_Declaration :: ([(Name,(Int,Assoc))]),previousWasAlsoFB_Syn_Declaration :: (Maybe Name),restrictedNames_Syn_Declaration :: Names,self_Syn_Declaration :: Declaration,suspiciousFBs_Syn_Declaration :: ([(Name,Name)]),typeSignatures_Syn_Declaration :: ([(Name,TpScheme)]),unboundNames_Syn_Declaration :: Names,warnings_Syn_Declaration :: ([Warning])}
+wrap_Declaration :: T_Declaration ->
+                    Inh_Declaration ->
+                    Syn_Declaration
+wrap_Declaration sem (Inh_Declaration _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcollectTypeConstructors _lhsIcollectTypeSynonyms _lhsIcollectValueConstructors _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoperatorFixities _lhsIoptions _lhsIorderedTypeSynonyms _lhsIpreviousWasAlsoFB _lhsIsuspiciousFBs _lhsItypeConstructors _lhsItypeSignatures _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOcounter,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcollectTypeConstructors _lhsIcollectTypeSynonyms _lhsIcollectValueConstructors _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoperatorFixities _lhsIoptions _lhsIorderedTypeSynonyms _lhsIpreviousWasAlsoFB _lhsIsuspiciousFBs _lhsItypeConstructors _lhsItypeSignatures _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Declaration _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcollectTypeConstructors _lhsOcollectTypeSynonyms _lhsOcollectValueConstructors _lhsOcounter _lhsOdeclVarNames _lhsOkindErrors _lhsOmiscerrors _lhsOoperatorFixities _lhsOpreviousWasAlsoFB _lhsOrestrictedNames _lhsOself _lhsOsuspiciousFBs _lhsOtypeSignatures _lhsOunboundNames _lhsOwarnings))
 sem_Declaration_Class :: T_Range ->
                          T_ContextItems ->
                          T_SimpleType ->
@@ -3742,6 +3822,14 @@ type T_Declarations = Names ->
                       (M.Map Name TpScheme) ->
                       ([Warning]) ->
                       ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),([(Name,Int)]),([(Name,(Int,Tps -> Tp))]),([(Name,TpScheme)]),Int,Names,([Error]),([Error]),([(Name,(Int,Assoc))]),(Maybe Name),Names,Declarations,([(Name,Name)]),([(Name,TpScheme)]),Names,([Warning]))
+data Inh_Declarations = Inh_Declarations {allTypeConstructors_Inh_Declarations :: Names,allValueConstructors_Inh_Declarations :: Names,classEnvironment_Inh_Declarations :: ClassEnvironment,collectScopeInfos_Inh_Declarations :: ([(ScopeInfo, Entity)]),collectTypeConstructors_Inh_Declarations :: ([(Name,Int)]),collectTypeSynonyms_Inh_Declarations :: ([(Name,(Int,Tps -> Tp))]),collectValueConstructors_Inh_Declarations :: ([(Name,TpScheme)]),counter_Inh_Declarations :: Int,kindErrors_Inh_Declarations :: ([Error]),miscerrors_Inh_Declarations :: ([Error]),namesInScope_Inh_Declarations :: Names,operatorFixities_Inh_Declarations :: ([(Name,(Int,Assoc))]),options_Inh_Declarations :: ([Option]),orderedTypeSynonyms_Inh_Declarations :: OrderedTypeSynonyms,previousWasAlsoFB_Inh_Declarations :: (Maybe Name),suspiciousFBs_Inh_Declarations :: ([(Name,Name)]),typeConstructors_Inh_Declarations :: (M.Map Name Int),typeSignatures_Inh_Declarations :: ([(Name,TpScheme)]),valueConstructors_Inh_Declarations :: (M.Map Name TpScheme),warnings_Inh_Declarations :: ([Warning])}
+data Syn_Declarations = Syn_Declarations {collectInstances_Syn_Declarations :: ([(Name, Instance)]),collectScopeInfos_Syn_Declarations :: ([(ScopeInfo, Entity)]),collectTypeConstructors_Syn_Declarations :: ([(Name,Int)]),collectTypeSynonyms_Syn_Declarations :: ([(Name,(Int,Tps -> Tp))]),collectValueConstructors_Syn_Declarations :: ([(Name,TpScheme)]),counter_Syn_Declarations :: Int,declVarNames_Syn_Declarations :: Names,kindErrors_Syn_Declarations :: ([Error]),miscerrors_Syn_Declarations :: ([Error]),operatorFixities_Syn_Declarations :: ([(Name,(Int,Assoc))]),previousWasAlsoFB_Syn_Declarations :: (Maybe Name),restrictedNames_Syn_Declarations :: Names,self_Syn_Declarations :: Declarations,suspiciousFBs_Syn_Declarations :: ([(Name,Name)]),typeSignatures_Syn_Declarations :: ([(Name,TpScheme)]),unboundNames_Syn_Declarations :: Names,warnings_Syn_Declarations :: ([Warning])}
+wrap_Declarations :: T_Declarations ->
+                     Inh_Declarations ->
+                     Syn_Declarations
+wrap_Declarations sem (Inh_Declarations _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcollectTypeConstructors _lhsIcollectTypeSynonyms _lhsIcollectValueConstructors _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoperatorFixities _lhsIoptions _lhsIorderedTypeSynonyms _lhsIpreviousWasAlsoFB _lhsIsuspiciousFBs _lhsItypeConstructors _lhsItypeSignatures _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcollectTypeConstructors,_lhsOcollectTypeSynonyms,_lhsOcollectValueConstructors,_lhsOcounter,_lhsOdeclVarNames,_lhsOkindErrors,_lhsOmiscerrors,_lhsOoperatorFixities,_lhsOpreviousWasAlsoFB,_lhsOrestrictedNames,_lhsOself,_lhsOsuspiciousFBs,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcollectTypeConstructors _lhsIcollectTypeSynonyms _lhsIcollectValueConstructors _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoperatorFixities _lhsIoptions _lhsIorderedTypeSynonyms _lhsIpreviousWasAlsoFB _lhsIsuspiciousFBs _lhsItypeConstructors _lhsItypeSignatures _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Declarations _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcollectTypeConstructors _lhsOcollectTypeSynonyms _lhsOcollectValueConstructors _lhsOcounter _lhsOdeclVarNames _lhsOkindErrors _lhsOmiscerrors _lhsOoperatorFixities _lhsOpreviousWasAlsoFB _lhsOrestrictedNames _lhsOself _lhsOsuspiciousFBs _lhsOtypeSignatures _lhsOunboundNames _lhsOwarnings))
 sem_Declarations_Cons :: T_Declaration ->
                          T_Declarations ->
                          T_Declarations
@@ -4072,6 +4160,14 @@ type T_Export = Names ->
                 Names ->
                 Names ->
                 ( ([Error]),Export)
+data Inh_Export = Inh_Export {consInScope_Inh_Export :: Names,modulesInScope_Inh_Export :: Names,namesInScop_Inh_Export :: Names,tyconsInScope_Inh_Export :: Names}
+data Syn_Export = Syn_Export {exportErrors_Syn_Export :: ([Error]),self_Syn_Export :: Export}
+wrap_Export :: T_Export ->
+               Inh_Export ->
+               Syn_Export
+wrap_Export sem (Inh_Export _lhsIconsInScope _lhsImodulesInScope _lhsInamesInScop _lhsItyconsInScope) =
+    (let ( _lhsOexportErrors,_lhsOself) = sem _lhsIconsInScope _lhsImodulesInScope _lhsInamesInScop _lhsItyconsInScope
+     in  (Syn_Export _lhsOexportErrors _lhsOself))
 sem_Export_Module :: T_Range ->
                      T_Name ->
                      T_Export
@@ -4182,6 +4278,14 @@ type T_Exports = Names ->
                  Names ->
                  Names ->
                  ( ([Error]),Exports)
+data Inh_Exports = Inh_Exports {consInScope_Inh_Exports :: Names,modulesInScope_Inh_Exports :: Names,namesInScop_Inh_Exports :: Names,tyconsInScope_Inh_Exports :: Names}
+data Syn_Exports = Syn_Exports {exportErrors_Syn_Exports :: ([Error]),self_Syn_Exports :: Exports}
+wrap_Exports :: T_Exports ->
+                Inh_Exports ->
+                Syn_Exports
+wrap_Exports sem (Inh_Exports _lhsIconsInScope _lhsImodulesInScope _lhsInamesInScop _lhsItyconsInScope) =
+    (let ( _lhsOexportErrors,_lhsOself) = sem _lhsIconsInScope _lhsImodulesInScope _lhsInamesInScop _lhsItyconsInScope
+     in  (Syn_Exports _lhsOexportErrors _lhsOself))
 sem_Exports_Cons :: T_Export ->
                     T_Exports ->
                     T_Exports
@@ -4311,6 +4415,14 @@ type T_Expression = Names ->
                     (M.Map Name TpScheme) ->
                     ([Warning]) ->
                     ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),([Error]),Expression,Names,([Warning]))
+data Inh_Expression = Inh_Expression {allTypeConstructors_Inh_Expression :: Names,allValueConstructors_Inh_Expression :: Names,classEnvironment_Inh_Expression :: ClassEnvironment,collectScopeInfos_Inh_Expression :: ([(ScopeInfo, Entity)]),counter_Inh_Expression :: Int,kindErrors_Inh_Expression :: ([Error]),miscerrors_Inh_Expression :: ([Error]),namesInScope_Inh_Expression :: Names,options_Inh_Expression :: ([Option]),orderedTypeSynonyms_Inh_Expression :: OrderedTypeSynonyms,typeConstructors_Inh_Expression :: (M.Map Name Int),valueConstructors_Inh_Expression :: (M.Map Name TpScheme),warnings_Inh_Expression :: ([Warning])}
+data Syn_Expression = Syn_Expression {collectInstances_Syn_Expression :: ([(Name, Instance)]),collectScopeInfos_Syn_Expression :: ([(ScopeInfo, Entity)]),counter_Syn_Expression :: Int,kindErrors_Syn_Expression :: ([Error]),miscerrors_Syn_Expression :: ([Error]),self_Syn_Expression :: Expression,unboundNames_Syn_Expression :: Names,warnings_Syn_Expression :: ([Warning])}
+wrap_Expression :: T_Expression ->
+                   Inh_Expression ->
+                   Syn_Expression
+wrap_Expression sem (Inh_Expression _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Expression _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_Expression_Case :: T_Range ->
                        T_Expression ->
                        T_Alternatives ->
@@ -7008,6 +7120,14 @@ type T_Expressions = Names ->
                      (M.Map Name TpScheme) ->
                      ([Warning]) ->
                      ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),([Error]),Expressions,Names,([Warning]))
+data Inh_Expressions = Inh_Expressions {allTypeConstructors_Inh_Expressions :: Names,allValueConstructors_Inh_Expressions :: Names,classEnvironment_Inh_Expressions :: ClassEnvironment,collectScopeInfos_Inh_Expressions :: ([(ScopeInfo, Entity)]),counter_Inh_Expressions :: Int,kindErrors_Inh_Expressions :: ([Error]),miscerrors_Inh_Expressions :: ([Error]),namesInScope_Inh_Expressions :: Names,options_Inh_Expressions :: ([Option]),orderedTypeSynonyms_Inh_Expressions :: OrderedTypeSynonyms,typeConstructors_Inh_Expressions :: (M.Map Name Int),valueConstructors_Inh_Expressions :: (M.Map Name TpScheme),warnings_Inh_Expressions :: ([Warning])}
+data Syn_Expressions = Syn_Expressions {collectInstances_Syn_Expressions :: ([(Name, Instance)]),collectScopeInfos_Syn_Expressions :: ([(ScopeInfo, Entity)]),counter_Syn_Expressions :: Int,kindErrors_Syn_Expressions :: ([Error]),miscerrors_Syn_Expressions :: ([Error]),self_Syn_Expressions :: Expressions,unboundNames_Syn_Expressions :: Names,warnings_Syn_Expressions :: ([Warning])}
+wrap_Expressions :: T_Expressions ->
+                    Inh_Expressions ->
+                    Syn_Expressions
+wrap_Expressions sem (Inh_Expressions _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Expressions _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_Expressions_Cons :: T_Expression ->
                         T_Expressions ->
                         T_Expressions
@@ -7204,6 +7324,14 @@ type T_FieldDeclaration = Int ->
                           Names ->
                           ([Option]) ->
                           ( Int,([Error]),FieldDeclaration,Names)
+data Inh_FieldDeclaration = Inh_FieldDeclaration {counter_Inh_FieldDeclaration :: Int,miscerrors_Inh_FieldDeclaration :: ([Error]),namesInScope_Inh_FieldDeclaration :: Names,options_Inh_FieldDeclaration :: ([Option])}
+data Syn_FieldDeclaration = Syn_FieldDeclaration {counter_Syn_FieldDeclaration :: Int,miscerrors_Syn_FieldDeclaration :: ([Error]),self_Syn_FieldDeclaration :: FieldDeclaration,unboundNames_Syn_FieldDeclaration :: Names}
+wrap_FieldDeclaration :: T_FieldDeclaration ->
+                         Inh_FieldDeclaration ->
+                         Syn_FieldDeclaration
+wrap_FieldDeclaration sem (Inh_FieldDeclaration _lhsIcounter _lhsImiscerrors _lhsInamesInScope _lhsIoptions) =
+    (let ( _lhsOcounter,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames) = sem _lhsIcounter _lhsImiscerrors _lhsInamesInScope _lhsIoptions
+     in  (Syn_FieldDeclaration _lhsOcounter _lhsOmiscerrors _lhsOself _lhsOunboundNames))
 sem_FieldDeclaration_FieldDeclaration :: T_Range ->
                                          T_Names ->
                                          T_AnnotatedType ->
@@ -7288,6 +7416,14 @@ type T_FieldDeclarations = Int ->
                            Names ->
                            ([Option]) ->
                            ( Int,([Error]),FieldDeclarations,Names)
+data Inh_FieldDeclarations = Inh_FieldDeclarations {counter_Inh_FieldDeclarations :: Int,miscerrors_Inh_FieldDeclarations :: ([Error]),namesInScope_Inh_FieldDeclarations :: Names,options_Inh_FieldDeclarations :: ([Option])}
+data Syn_FieldDeclarations = Syn_FieldDeclarations {counter_Syn_FieldDeclarations :: Int,miscerrors_Syn_FieldDeclarations :: ([Error]),self_Syn_FieldDeclarations :: FieldDeclarations,unboundNames_Syn_FieldDeclarations :: Names}
+wrap_FieldDeclarations :: T_FieldDeclarations ->
+                          Inh_FieldDeclarations ->
+                          Syn_FieldDeclarations
+wrap_FieldDeclarations sem (Inh_FieldDeclarations _lhsIcounter _lhsImiscerrors _lhsInamesInScope _lhsIoptions) =
+    (let ( _lhsOcounter,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames) = sem _lhsIcounter _lhsImiscerrors _lhsInamesInScope _lhsIoptions
+     in  (Syn_FieldDeclarations _lhsOcounter _lhsOmiscerrors _lhsOself _lhsOunboundNames))
 sem_FieldDeclarations_Cons :: T_FieldDeclaration ->
                               T_FieldDeclarations ->
                               T_FieldDeclarations
@@ -7380,6 +7516,14 @@ sem_Fixity (Fixity_Infixr _range) =
     (sem_Fixity_Infixr (sem_Range _range))
 -- semantic domain
 type T_Fixity = ( Fixity)
+data Inh_Fixity = Inh_Fixity {}
+data Syn_Fixity = Syn_Fixity {self_Syn_Fixity :: Fixity}
+wrap_Fixity :: T_Fixity ->
+               Inh_Fixity ->
+               Syn_Fixity
+wrap_Fixity sem (Inh_Fixity) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Fixity _lhsOself))
 sem_Fixity_Infix :: T_Range ->
                     T_Fixity
 sem_Fixity_Infix range_ =
@@ -7441,6 +7585,14 @@ type T_FunctionBinding = Names ->
                          (M.Map Name TpScheme) ->
                          ([Warning]) ->
                          ( Int,([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),([Error]),Name,FunctionBinding,Names,([Warning]))
+data Inh_FunctionBinding = Inh_FunctionBinding {allTypeConstructors_Inh_FunctionBinding :: Names,allValueConstructors_Inh_FunctionBinding :: Names,classEnvironment_Inh_FunctionBinding :: ClassEnvironment,collectScopeInfos_Inh_FunctionBinding :: ([(ScopeInfo, Entity)]),counter_Inh_FunctionBinding :: Int,kindErrors_Inh_FunctionBinding :: ([Error]),miscerrors_Inh_FunctionBinding :: ([Error]),namesInScope_Inh_FunctionBinding :: Names,options_Inh_FunctionBinding :: ([Option]),orderedTypeSynonyms_Inh_FunctionBinding :: OrderedTypeSynonyms,typeConstructors_Inh_FunctionBinding :: (M.Map Name Int),valueConstructors_Inh_FunctionBinding :: (M.Map Name TpScheme),warnings_Inh_FunctionBinding :: ([Warning])}
+data Syn_FunctionBinding = Syn_FunctionBinding {arity_Syn_FunctionBinding :: Int,collectInstances_Syn_FunctionBinding :: ([(Name, Instance)]),collectScopeInfos_Syn_FunctionBinding :: ([(ScopeInfo, Entity)]),counter_Syn_FunctionBinding :: Int,kindErrors_Syn_FunctionBinding :: ([Error]),miscerrors_Syn_FunctionBinding :: ([Error]),name_Syn_FunctionBinding :: Name,self_Syn_FunctionBinding :: FunctionBinding,unboundNames_Syn_FunctionBinding :: Names,warnings_Syn_FunctionBinding :: ([Warning])}
+wrap_FunctionBinding :: T_FunctionBinding ->
+                        Inh_FunctionBinding ->
+                        Syn_FunctionBinding
+wrap_FunctionBinding sem (Inh_FunctionBinding _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOarity,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOname,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_FunctionBinding _lhsOarity _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOname _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_FunctionBinding_Feedback :: T_Range ->
                                 String ->
                                 T_FunctionBinding ->
@@ -7763,6 +7915,14 @@ type T_FunctionBindings = Names ->
                           (M.Map Name TpScheme) ->
                           ([Warning]) ->
                           ( ( [Int] ),([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),([Error]),Name,FunctionBindings,Names,([Warning]))
+data Inh_FunctionBindings = Inh_FunctionBindings {allTypeConstructors_Inh_FunctionBindings :: Names,allValueConstructors_Inh_FunctionBindings :: Names,classEnvironment_Inh_FunctionBindings :: ClassEnvironment,collectScopeInfos_Inh_FunctionBindings :: ([(ScopeInfo, Entity)]),counter_Inh_FunctionBindings :: Int,kindErrors_Inh_FunctionBindings :: ([Error]),miscerrors_Inh_FunctionBindings :: ([Error]),namesInScope_Inh_FunctionBindings :: Names,options_Inh_FunctionBindings :: ([Option]),orderedTypeSynonyms_Inh_FunctionBindings :: OrderedTypeSynonyms,typeConstructors_Inh_FunctionBindings :: (M.Map Name Int),valueConstructors_Inh_FunctionBindings :: (M.Map Name TpScheme),warnings_Inh_FunctionBindings :: ([Warning])}
+data Syn_FunctionBindings = Syn_FunctionBindings {arities_Syn_FunctionBindings :: ( [Int] ),collectInstances_Syn_FunctionBindings :: ([(Name, Instance)]),collectScopeInfos_Syn_FunctionBindings :: ([(ScopeInfo, Entity)]),counter_Syn_FunctionBindings :: Int,kindErrors_Syn_FunctionBindings :: ([Error]),miscerrors_Syn_FunctionBindings :: ([Error]),name_Syn_FunctionBindings :: Name,self_Syn_FunctionBindings :: FunctionBindings,unboundNames_Syn_FunctionBindings :: Names,warnings_Syn_FunctionBindings :: ([Warning])}
+wrap_FunctionBindings :: T_FunctionBindings ->
+                         Inh_FunctionBindings ->
+                         Syn_FunctionBindings
+wrap_FunctionBindings sem (Inh_FunctionBindings _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOarities,_lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOname,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_FunctionBindings _lhsOarities _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOname _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_FunctionBindings_Cons :: T_FunctionBinding ->
                              T_FunctionBindings ->
                              T_FunctionBindings
@@ -7984,6 +8144,14 @@ type T_GuardedExpression = Names ->
                            (M.Map Name TpScheme) ->
                            ([Warning]) ->
                            ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),([Error]),GuardedExpression,Names,([Warning]))
+data Inh_GuardedExpression = Inh_GuardedExpression {allTypeConstructors_Inh_GuardedExpression :: Names,allValueConstructors_Inh_GuardedExpression :: Names,classEnvironment_Inh_GuardedExpression :: ClassEnvironment,collectScopeInfos_Inh_GuardedExpression :: ([(ScopeInfo, Entity)]),counter_Inh_GuardedExpression :: Int,kindErrors_Inh_GuardedExpression :: ([Error]),miscerrors_Inh_GuardedExpression :: ([Error]),namesInScope_Inh_GuardedExpression :: Names,options_Inh_GuardedExpression :: ([Option]),orderedTypeSynonyms_Inh_GuardedExpression :: OrderedTypeSynonyms,typeConstructors_Inh_GuardedExpression :: (M.Map Name Int),valueConstructors_Inh_GuardedExpression :: (M.Map Name TpScheme),warnings_Inh_GuardedExpression :: ([Warning])}
+data Syn_GuardedExpression = Syn_GuardedExpression {collectInstances_Syn_GuardedExpression :: ([(Name, Instance)]),collectScopeInfos_Syn_GuardedExpression :: ([(ScopeInfo, Entity)]),counter_Syn_GuardedExpression :: Int,kindErrors_Syn_GuardedExpression :: ([Error]),miscerrors_Syn_GuardedExpression :: ([Error]),self_Syn_GuardedExpression :: GuardedExpression,unboundNames_Syn_GuardedExpression :: Names,warnings_Syn_GuardedExpression :: ([Warning])}
+wrap_GuardedExpression :: T_GuardedExpression ->
+                          Inh_GuardedExpression ->
+                          Syn_GuardedExpression
+wrap_GuardedExpression sem (Inh_GuardedExpression _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_GuardedExpression _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_GuardedExpression_GuardedExpression :: T_Range ->
                                            T_Expression ->
                                            T_Expression ->
@@ -8151,6 +8319,14 @@ type T_GuardedExpressions = Names ->
                             (M.Map Name TpScheme) ->
                             ([Warning]) ->
                             ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),([Error]),GuardedExpressions,Names,([Warning]))
+data Inh_GuardedExpressions = Inh_GuardedExpressions {allTypeConstructors_Inh_GuardedExpressions :: Names,allValueConstructors_Inh_GuardedExpressions :: Names,classEnvironment_Inh_GuardedExpressions :: ClassEnvironment,collectScopeInfos_Inh_GuardedExpressions :: ([(ScopeInfo, Entity)]),counter_Inh_GuardedExpressions :: Int,kindErrors_Inh_GuardedExpressions :: ([Error]),miscerrors_Inh_GuardedExpressions :: ([Error]),namesInScope_Inh_GuardedExpressions :: Names,options_Inh_GuardedExpressions :: ([Option]),orderedTypeSynonyms_Inh_GuardedExpressions :: OrderedTypeSynonyms,typeConstructors_Inh_GuardedExpressions :: (M.Map Name Int),valueConstructors_Inh_GuardedExpressions :: (M.Map Name TpScheme),warnings_Inh_GuardedExpressions :: ([Warning])}
+data Syn_GuardedExpressions = Syn_GuardedExpressions {collectInstances_Syn_GuardedExpressions :: ([(Name, Instance)]),collectScopeInfos_Syn_GuardedExpressions :: ([(ScopeInfo, Entity)]),counter_Syn_GuardedExpressions :: Int,kindErrors_Syn_GuardedExpressions :: ([Error]),miscerrors_Syn_GuardedExpressions :: ([Error]),self_Syn_GuardedExpressions :: GuardedExpressions,unboundNames_Syn_GuardedExpressions :: Names,warnings_Syn_GuardedExpressions :: ([Warning])}
+wrap_GuardedExpressions :: T_GuardedExpressions ->
+                           Inh_GuardedExpressions ->
+                           Syn_GuardedExpressions
+wrap_GuardedExpressions sem (Inh_GuardedExpressions _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_GuardedExpressions _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_GuardedExpressions_Cons :: T_GuardedExpression ->
                                T_GuardedExpressions ->
                                T_GuardedExpressions
@@ -8347,6 +8523,14 @@ sem_Import (Import_Variable _range _name) =
     (sem_Import_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Import = ( Import)
+data Inh_Import = Inh_Import {}
+data Syn_Import = Syn_Import {self_Syn_Import :: Import}
+wrap_Import :: T_Import ->
+               Inh_Import ->
+               Syn_Import
+wrap_Import sem (Inh_Import) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Import _lhsOself))
 sem_Import_TypeOrClass :: T_Range ->
                           T_Name ->
                           T_MaybeNames ->
@@ -8410,6 +8594,14 @@ sem_ImportDeclaration (ImportDeclaration_Import _range _qualified _name _asname 
 -- semantic domain
 type T_ImportDeclaration = Names ->
                            ( Names,ImportDeclaration)
+data Inh_ImportDeclaration = Inh_ImportDeclaration {importedModules_Inh_ImportDeclaration :: Names}
+data Syn_ImportDeclaration = Syn_ImportDeclaration {importedModules_Syn_ImportDeclaration :: Names,self_Syn_ImportDeclaration :: ImportDeclaration}
+wrap_ImportDeclaration :: T_ImportDeclaration ->
+                          Inh_ImportDeclaration ->
+                          Syn_ImportDeclaration
+wrap_ImportDeclaration sem (Inh_ImportDeclaration _lhsIimportedModules) =
+    (let ( _lhsOimportedModules,_lhsOself) = sem _lhsIimportedModules
+     in  (Syn_ImportDeclaration _lhsOimportedModules _lhsOself))
 sem_ImportDeclaration_Empty :: T_Range ->
                                T_ImportDeclaration
 sem_ImportDeclaration_Empty range_ =
@@ -8464,6 +8656,14 @@ sem_ImportDeclarations list =
 -- semantic domain
 type T_ImportDeclarations = Names ->
                             ( Names,ImportDeclarations)
+data Inh_ImportDeclarations = Inh_ImportDeclarations {importedModules_Inh_ImportDeclarations :: Names}
+data Syn_ImportDeclarations = Syn_ImportDeclarations {importedModules_Syn_ImportDeclarations :: Names,self_Syn_ImportDeclarations :: ImportDeclarations}
+wrap_ImportDeclarations :: T_ImportDeclarations ->
+                           Inh_ImportDeclarations ->
+                           Syn_ImportDeclarations
+wrap_ImportDeclarations sem (Inh_ImportDeclarations _lhsIimportedModules) =
+    (let ( _lhsOimportedModules,_lhsOself) = sem _lhsIimportedModules
+     in  (Syn_ImportDeclarations _lhsOimportedModules _lhsOself))
 sem_ImportDeclarations_Cons :: T_ImportDeclaration ->
                                T_ImportDeclarations ->
                                T_ImportDeclarations
@@ -8512,6 +8712,14 @@ sem_ImportSpecification (ImportSpecification_Import _range _hiding _imports) =
     (sem_ImportSpecification_Import (sem_Range _range) _hiding (sem_Imports _imports))
 -- semantic domain
 type T_ImportSpecification = ( ImportSpecification)
+data Inh_ImportSpecification = Inh_ImportSpecification {}
+data Syn_ImportSpecification = Syn_ImportSpecification {self_Syn_ImportSpecification :: ImportSpecification}
+wrap_ImportSpecification :: T_ImportSpecification ->
+                            Inh_ImportSpecification ->
+                            Syn_ImportSpecification
+wrap_ImportSpecification sem (Inh_ImportSpecification) =
+    (let ( _lhsOself) = sem
+     in  (Syn_ImportSpecification _lhsOself))
 sem_ImportSpecification_Import :: T_Range ->
                                   Bool ->
                                   T_Imports ->
@@ -8537,6 +8745,14 @@ sem_Imports list =
     (Prelude.foldr sem_Imports_Cons sem_Imports_Nil (Prelude.map sem_Import list))
 -- semantic domain
 type T_Imports = ( Imports)
+data Inh_Imports = Inh_Imports {}
+data Syn_Imports = Syn_Imports {self_Syn_Imports :: Imports}
+wrap_Imports :: T_Imports ->
+                Inh_Imports ->
+                Syn_Imports
+wrap_Imports sem (Inh_Imports) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Imports _lhsOself))
 sem_Imports_Cons :: T_Import ->
                     T_Imports ->
                     T_Imports
@@ -8582,6 +8798,14 @@ type T_LeftHandSide = Names ->
                       (M.Map Name TpScheme) ->
                       ([Warning]) ->
                       ( ([(ScopeInfo, Entity)]),Int,([Error]),Name,Int,Names,LeftHandSide,Names,([Warning]))
+data Inh_LeftHandSide = Inh_LeftHandSide {allTypeConstructors_Inh_LeftHandSide :: Names,allValueConstructors_Inh_LeftHandSide :: Names,collectScopeInfos_Inh_LeftHandSide :: ([(ScopeInfo, Entity)]),counter_Inh_LeftHandSide :: Int,miscerrors_Inh_LeftHandSide :: ([Error]),namesInScope_Inh_LeftHandSide :: Names,typeConstructors_Inh_LeftHandSide :: (M.Map Name Int),valueConstructors_Inh_LeftHandSide :: (M.Map Name TpScheme),warnings_Inh_LeftHandSide :: ([Warning])}
+data Syn_LeftHandSide = Syn_LeftHandSide {collectScopeInfos_Syn_LeftHandSide :: ([(ScopeInfo, Entity)]),counter_Syn_LeftHandSide :: Int,miscerrors_Syn_LeftHandSide :: ([Error]),name_Syn_LeftHandSide :: Name,numberOfPatterns_Syn_LeftHandSide :: Int,patVarNames_Syn_LeftHandSide :: Names,self_Syn_LeftHandSide :: LeftHandSide,unboundNames_Syn_LeftHandSide :: Names,warnings_Syn_LeftHandSide :: ([Warning])}
+wrap_LeftHandSide :: T_LeftHandSide ->
+                     Inh_LeftHandSide ->
+                     Syn_LeftHandSide
+wrap_LeftHandSide sem (Inh_LeftHandSide _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIcollectScopeInfos _lhsIcounter _lhsImiscerrors _lhsInamesInScope _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectScopeInfos,_lhsOcounter,_lhsOmiscerrors,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIcollectScopeInfos _lhsIcounter _lhsImiscerrors _lhsInamesInScope _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_LeftHandSide _lhsOcollectScopeInfos _lhsOcounter _lhsOmiscerrors _lhsOname _lhsOnumberOfPatterns _lhsOpatVarNames _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_LeftHandSide_Function :: T_Range ->
                              T_Name ->
                              T_Patterns ->
@@ -8942,6 +9166,14 @@ sem_Literal (Literal_String _range _value) =
 type T_Literal = ([(ScopeInfo, Entity)]) ->
                  ([Error]) ->
                  ( ([(ScopeInfo, Entity)]),([Error]),Literal)
+data Inh_Literal = Inh_Literal {collectScopeInfos_Inh_Literal :: ([(ScopeInfo, Entity)]),miscerrors_Inh_Literal :: ([Error])}
+data Syn_Literal = Syn_Literal {collectScopeInfos_Syn_Literal :: ([(ScopeInfo, Entity)]),miscerrors_Syn_Literal :: ([Error]),self_Syn_Literal :: Literal}
+wrap_Literal :: T_Literal ->
+                Inh_Literal ->
+                Syn_Literal
+wrap_Literal sem (Inh_Literal _lhsIcollectScopeInfos _lhsImiscerrors) =
+    (let ( _lhsOcollectScopeInfos,_lhsOmiscerrors,_lhsOself) = sem _lhsIcollectScopeInfos _lhsImiscerrors
+     in  (Syn_Literal _lhsOcollectScopeInfos _lhsOmiscerrors _lhsOself))
 sem_Literal_Char :: T_Range ->
                     String ->
                     T_Literal
@@ -9056,6 +9288,14 @@ type T_MaybeDeclarations = Names ->
                            (M.Map Name TpScheme) ->
                            ([Warning]) ->
                            ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),([Error]),Names,MaybeDeclarations,Names,([Warning]))
+data Inh_MaybeDeclarations = Inh_MaybeDeclarations {allTypeConstructors_Inh_MaybeDeclarations :: Names,allValueConstructors_Inh_MaybeDeclarations :: Names,classEnvironment_Inh_MaybeDeclarations :: ClassEnvironment,collectScopeInfos_Inh_MaybeDeclarations :: ([(ScopeInfo, Entity)]),counter_Inh_MaybeDeclarations :: Int,kindErrors_Inh_MaybeDeclarations :: ([Error]),miscerrors_Inh_MaybeDeclarations :: ([Error]),namesInScope_Inh_MaybeDeclarations :: Names,options_Inh_MaybeDeclarations :: ([Option]),orderedTypeSynonyms_Inh_MaybeDeclarations :: OrderedTypeSynonyms,typeConstructors_Inh_MaybeDeclarations :: (M.Map Name Int),unboundNames_Inh_MaybeDeclarations :: Names,valueConstructors_Inh_MaybeDeclarations :: (M.Map Name TpScheme),warnings_Inh_MaybeDeclarations :: ([Warning])}
+data Syn_MaybeDeclarations = Syn_MaybeDeclarations {collectInstances_Syn_MaybeDeclarations :: ([(Name, Instance)]),collectScopeInfos_Syn_MaybeDeclarations :: ([(ScopeInfo, Entity)]),counter_Syn_MaybeDeclarations :: Int,kindErrors_Syn_MaybeDeclarations :: ([Error]),miscerrors_Syn_MaybeDeclarations :: ([Error]),namesInScope_Syn_MaybeDeclarations :: Names,self_Syn_MaybeDeclarations :: MaybeDeclarations,unboundNames_Syn_MaybeDeclarations :: Names,warnings_Syn_MaybeDeclarations :: ([Warning])}
+wrap_MaybeDeclarations :: T_MaybeDeclarations ->
+                          Inh_MaybeDeclarations ->
+                          Syn_MaybeDeclarations
+wrap_MaybeDeclarations sem (Inh_MaybeDeclarations _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIunboundNames _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIunboundNames _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_MaybeDeclarations _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOnamesInScope _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_MaybeDeclarations_Just :: T_Declarations ->
                               T_MaybeDeclarations
 sem_MaybeDeclarations_Just declarations_ =
@@ -9253,6 +9493,14 @@ type T_MaybeExports = Names ->
                       Names ->
                       Names ->
                       ( ([Error]),MaybeExports)
+data Inh_MaybeExports = Inh_MaybeExports {consInScope_Inh_MaybeExports :: Names,modulesInScope_Inh_MaybeExports :: Names,namesInScop_Inh_MaybeExports :: Names,tyconsInScope_Inh_MaybeExports :: Names}
+data Syn_MaybeExports = Syn_MaybeExports {exportErrors_Syn_MaybeExports :: ([Error]),self_Syn_MaybeExports :: MaybeExports}
+wrap_MaybeExports :: T_MaybeExports ->
+                     Inh_MaybeExports ->
+                     Syn_MaybeExports
+wrap_MaybeExports sem (Inh_MaybeExports _lhsIconsInScope _lhsImodulesInScope _lhsInamesInScop _lhsItyconsInScope) =
+    (let ( _lhsOexportErrors,_lhsOself) = sem _lhsIconsInScope _lhsImodulesInScope _lhsInamesInScop _lhsItyconsInScope
+     in  (Syn_MaybeExports _lhsOexportErrors _lhsOself))
 sem_MaybeExports_Just :: T_Exports ->
                          T_MaybeExports
 sem_MaybeExports_Just exports_ =
@@ -9323,6 +9571,14 @@ type T_MaybeExpression = Names ->
                          (M.Map Name TpScheme) ->
                          ([Warning]) ->
                          ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),([Error]),MaybeExpression,Names,([Warning]))
+data Inh_MaybeExpression = Inh_MaybeExpression {allTypeConstructors_Inh_MaybeExpression :: Names,allValueConstructors_Inh_MaybeExpression :: Names,classEnvironment_Inh_MaybeExpression :: ClassEnvironment,collectScopeInfos_Inh_MaybeExpression :: ([(ScopeInfo, Entity)]),counter_Inh_MaybeExpression :: Int,kindErrors_Inh_MaybeExpression :: ([Error]),miscerrors_Inh_MaybeExpression :: ([Error]),namesInScope_Inh_MaybeExpression :: Names,options_Inh_MaybeExpression :: ([Option]),orderedTypeSynonyms_Inh_MaybeExpression :: OrderedTypeSynonyms,typeConstructors_Inh_MaybeExpression :: (M.Map Name Int),valueConstructors_Inh_MaybeExpression :: (M.Map Name TpScheme),warnings_Inh_MaybeExpression :: ([Warning])}
+data Syn_MaybeExpression = Syn_MaybeExpression {collectInstances_Syn_MaybeExpression :: ([(Name, Instance)]),collectScopeInfos_Syn_MaybeExpression :: ([(ScopeInfo, Entity)]),counter_Syn_MaybeExpression :: Int,kindErrors_Syn_MaybeExpression :: ([Error]),miscerrors_Syn_MaybeExpression :: ([Error]),self_Syn_MaybeExpression :: MaybeExpression,unboundNames_Syn_MaybeExpression :: Names,warnings_Syn_MaybeExpression :: ([Warning])}
+wrap_MaybeExpression :: T_MaybeExpression ->
+                        Inh_MaybeExpression ->
+                        Syn_MaybeExpression
+wrap_MaybeExpression sem (Inh_MaybeExpression _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_MaybeExpression _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_MaybeExpression_Just :: T_Expression ->
                             T_MaybeExpression
 sem_MaybeExpression_Just expression_ =
@@ -9467,6 +9723,14 @@ sem_MaybeImportSpecification (MaybeImportSpecification_Nothing) =
     (sem_MaybeImportSpecification_Nothing)
 -- semantic domain
 type T_MaybeImportSpecification = ( MaybeImportSpecification)
+data Inh_MaybeImportSpecification = Inh_MaybeImportSpecification {}
+data Syn_MaybeImportSpecification = Syn_MaybeImportSpecification {self_Syn_MaybeImportSpecification :: MaybeImportSpecification}
+wrap_MaybeImportSpecification :: T_MaybeImportSpecification ->
+                                 Inh_MaybeImportSpecification ->
+                                 Syn_MaybeImportSpecification
+wrap_MaybeImportSpecification sem (Inh_MaybeImportSpecification) =
+    (let ( _lhsOself) = sem
+     in  (Syn_MaybeImportSpecification _lhsOself))
 sem_MaybeImportSpecification_Just :: T_ImportSpecification ->
                                      T_MaybeImportSpecification
 sem_MaybeImportSpecification_Just importspecification_ =
@@ -9497,6 +9761,14 @@ sem_MaybeInt (MaybeInt_Nothing) =
     (sem_MaybeInt_Nothing)
 -- semantic domain
 type T_MaybeInt = ( MaybeInt)
+data Inh_MaybeInt = Inh_MaybeInt {}
+data Syn_MaybeInt = Syn_MaybeInt {self_Syn_MaybeInt :: MaybeInt}
+wrap_MaybeInt :: T_MaybeInt ->
+                 Inh_MaybeInt ->
+                 Syn_MaybeInt
+wrap_MaybeInt sem (Inh_MaybeInt) =
+    (let ( _lhsOself) = sem
+     in  (Syn_MaybeInt _lhsOself))
 sem_MaybeInt_Just :: Int ->
                      T_MaybeInt
 sem_MaybeInt_Just int_ =
@@ -9524,6 +9796,14 @@ sem_MaybeName (MaybeName_Nothing) =
     (sem_MaybeName_Nothing)
 -- semantic domain
 type T_MaybeName = ( MaybeName)
+data Inh_MaybeName = Inh_MaybeName {}
+data Syn_MaybeName = Syn_MaybeName {self_Syn_MaybeName :: MaybeName}
+wrap_MaybeName :: T_MaybeName ->
+                  Inh_MaybeName ->
+                  Syn_MaybeName
+wrap_MaybeName sem (Inh_MaybeName) =
+    (let ( _lhsOself) = sem
+     in  (Syn_MaybeName _lhsOself))
 sem_MaybeName_Just :: T_Name ->
                       T_MaybeName
 sem_MaybeName_Just name_ =
@@ -9554,6 +9834,14 @@ sem_MaybeNames (MaybeNames_Nothing) =
     (sem_MaybeNames_Nothing)
 -- semantic domain
 type T_MaybeNames = ( MaybeNames)
+data Inh_MaybeNames = Inh_MaybeNames {}
+data Syn_MaybeNames = Syn_MaybeNames {self_Syn_MaybeNames :: MaybeNames}
+wrap_MaybeNames :: T_MaybeNames ->
+                   Inh_MaybeNames ->
+                   Syn_MaybeNames
+wrap_MaybeNames sem (Inh_MaybeNames) =
+    (let ( _lhsOself) = sem
+     in  (Syn_MaybeNames _lhsOself))
 sem_MaybeNames_Just :: T_Names ->
                        T_MaybeNames
 sem_MaybeNames_Just names_ =
@@ -9585,6 +9873,14 @@ type T_Module = String ->
                 ImportEnvironments ->
                 ([Option]) ->
                 ( ImportEnvironment,Errors,Module,([(Name,TpScheme)]),Warnings)
+data Inh_Module = Inh_Module {baseName_Inh_Module :: String,importEnvironments_Inh_Module :: ImportEnvironments,options_Inh_Module :: ([Option])}
+data Syn_Module = Syn_Module {collectEnvironment_Syn_Module :: ImportEnvironment,errors_Syn_Module :: Errors,self_Syn_Module :: Module,typeSignatures_Syn_Module :: ([(Name,TpScheme)]),warnings_Syn_Module :: Warnings}
+wrap_Module :: T_Module ->
+               Inh_Module ->
+               Syn_Module
+wrap_Module sem (Inh_Module _lhsIbaseName _lhsIimportEnvironments _lhsIoptions) =
+    (let ( _lhsOcollectEnvironment,_lhsOerrors,_lhsOself,_lhsOtypeSignatures,_lhsOwarnings) = sem _lhsIbaseName _lhsIimportEnvironments _lhsIoptions
+     in  (Syn_Module _lhsOcollectEnvironment _lhsOerrors _lhsOself _lhsOtypeSignatures _lhsOwarnings))
 sem_Module_Module :: T_Range ->
                      T_MaybeName ->
                      T_MaybeExports ->
@@ -9836,6 +10132,14 @@ sem_Name (Name_Special _range _module _name) =
     (sem_Name_Special (sem_Range _range) (sem_Strings _module) _name)
 -- semantic domain
 type T_Name = ( Name)
+data Inh_Name = Inh_Name {}
+data Syn_Name = Syn_Name {self_Syn_Name :: Name}
+wrap_Name :: T_Name ->
+             Inh_Name ->
+             Syn_Name
+wrap_Name sem (Inh_Name) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Name _lhsOself))
 sem_Name_Identifier :: T_Range ->
                        T_Strings ->
                        String ->
@@ -9895,6 +10199,14 @@ sem_Names list =
     (Prelude.foldr sem_Names_Cons sem_Names_Nil (Prelude.map sem_Name list))
 -- semantic domain
 type T_Names = ( Names)
+data Inh_Names = Inh_Names {}
+data Syn_Names = Syn_Names {self_Syn_Names :: Names}
+wrap_Names :: T_Names ->
+              Inh_Names ->
+              Syn_Names
+wrap_Names sem (Inh_Names) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Names _lhsOself))
 sem_Names_Cons :: T_Name ->
                   T_Names ->
                   T_Names
@@ -9965,6 +10277,14 @@ type T_Pattern = Names ->
                  (M.Map Name TpScheme) ->
                  ([Warning]) ->
                  ( ([(ScopeInfo, Entity)]),Int,([Error]),Names,Pattern,Names,([Warning]))
+data Inh_Pattern = Inh_Pattern {allTypeConstructors_Inh_Pattern :: Names,allValueConstructors_Inh_Pattern :: Names,collectScopeInfos_Inh_Pattern :: ([(ScopeInfo, Entity)]),counter_Inh_Pattern :: Int,lhsPattern_Inh_Pattern :: Bool,miscerrors_Inh_Pattern :: ([Error]),namesInScope_Inh_Pattern :: Names,typeConstructors_Inh_Pattern :: (M.Map Name Int),valueConstructors_Inh_Pattern :: (M.Map Name TpScheme),warnings_Inh_Pattern :: ([Warning])}
+data Syn_Pattern = Syn_Pattern {collectScopeInfos_Syn_Pattern :: ([(ScopeInfo, Entity)]),counter_Syn_Pattern :: Int,miscerrors_Syn_Pattern :: ([Error]),patVarNames_Syn_Pattern :: Names,self_Syn_Pattern :: Pattern,unboundNames_Syn_Pattern :: Names,warnings_Syn_Pattern :: ([Warning])}
+wrap_Pattern :: T_Pattern ->
+                Inh_Pattern ->
+                Syn_Pattern
+wrap_Pattern sem (Inh_Pattern _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIcollectScopeInfos _lhsIcounter _lhsIlhsPattern _lhsImiscerrors _lhsInamesInScope _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectScopeInfos,_lhsOcounter,_lhsOmiscerrors,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIcollectScopeInfos _lhsIcounter _lhsIlhsPattern _lhsImiscerrors _lhsInamesInScope _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Pattern _lhsOcollectScopeInfos _lhsOcounter _lhsOmiscerrors _lhsOpatVarNames _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_Pattern_As :: T_Range ->
                   T_Name ->
                   T_Pattern ->
@@ -11008,6 +11328,14 @@ type T_Patterns = Names ->
                   (M.Map Name TpScheme) ->
                   ([Warning]) ->
                   ( ([(ScopeInfo, Entity)]),Int,([Error]),Int,Names,Patterns,Names,([Warning]))
+data Inh_Patterns = Inh_Patterns {allTypeConstructors_Inh_Patterns :: Names,allValueConstructors_Inh_Patterns :: Names,collectScopeInfos_Inh_Patterns :: ([(ScopeInfo, Entity)]),counter_Inh_Patterns :: Int,lhsPattern_Inh_Patterns :: Bool,miscerrors_Inh_Patterns :: ([Error]),namesInScope_Inh_Patterns :: Names,typeConstructors_Inh_Patterns :: (M.Map Name Int),valueConstructors_Inh_Patterns :: (M.Map Name TpScheme),warnings_Inh_Patterns :: ([Warning])}
+data Syn_Patterns = Syn_Patterns {collectScopeInfos_Syn_Patterns :: ([(ScopeInfo, Entity)]),counter_Syn_Patterns :: Int,miscerrors_Syn_Patterns :: ([Error]),numberOfPatterns_Syn_Patterns :: Int,patVarNames_Syn_Patterns :: Names,self_Syn_Patterns :: Patterns,unboundNames_Syn_Patterns :: Names,warnings_Syn_Patterns :: ([Warning])}
+wrap_Patterns :: T_Patterns ->
+                 Inh_Patterns ->
+                 Syn_Patterns
+wrap_Patterns sem (Inh_Patterns _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIcollectScopeInfos _lhsIcounter _lhsIlhsPattern _lhsImiscerrors _lhsInamesInScope _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectScopeInfos,_lhsOcounter,_lhsOmiscerrors,_lhsOnumberOfPatterns,_lhsOpatVarNames,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIcollectScopeInfos _lhsIcounter _lhsIlhsPattern _lhsImiscerrors _lhsInamesInScope _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Patterns _lhsOcollectScopeInfos _lhsOcounter _lhsOmiscerrors _lhsOnumberOfPatterns _lhsOpatVarNames _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_Patterns_Cons :: T_Pattern ->
                      T_Patterns ->
                      T_Patterns
@@ -11177,6 +11505,14 @@ sem_Position (Position_Unknown) =
     (sem_Position_Unknown)
 -- semantic domain
 type T_Position = ( Position)
+data Inh_Position = Inh_Position {}
+data Syn_Position = Syn_Position {self_Syn_Position :: Position}
+wrap_Position :: T_Position ->
+                 Inh_Position ->
+                 Syn_Position
+wrap_Position sem (Inh_Position) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Position _lhsOself))
 sem_Position_Position :: String ->
                          Int ->
                          Int ->
@@ -11224,6 +11560,14 @@ type T_Qualifier = Names ->
                    (M.Map Name TpScheme) ->
                    ([Warning]) ->
                    ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),([Error]),Names,Qualifier,Names,([Warning]))
+data Inh_Qualifier = Inh_Qualifier {allTypeConstructors_Inh_Qualifier :: Names,allValueConstructors_Inh_Qualifier :: Names,classEnvironment_Inh_Qualifier :: ClassEnvironment,collectScopeInfos_Inh_Qualifier :: ([(ScopeInfo, Entity)]),counter_Inh_Qualifier :: Int,kindErrors_Inh_Qualifier :: ([Error]),miscerrors_Inh_Qualifier :: ([Error]),namesInScope_Inh_Qualifier :: Names,options_Inh_Qualifier :: ([Option]),orderedTypeSynonyms_Inh_Qualifier :: OrderedTypeSynonyms,typeConstructors_Inh_Qualifier :: (M.Map Name Int),unboundNames_Inh_Qualifier :: Names,valueConstructors_Inh_Qualifier :: (M.Map Name TpScheme),warnings_Inh_Qualifier :: ([Warning])}
+data Syn_Qualifier = Syn_Qualifier {collectInstances_Syn_Qualifier :: ([(Name, Instance)]),collectScopeInfos_Syn_Qualifier :: ([(ScopeInfo, Entity)]),counter_Syn_Qualifier :: Int,kindErrors_Syn_Qualifier :: ([Error]),miscerrors_Syn_Qualifier :: ([Error]),namesInScope_Syn_Qualifier :: Names,self_Syn_Qualifier :: Qualifier,unboundNames_Syn_Qualifier :: Names,warnings_Syn_Qualifier :: ([Warning])}
+wrap_Qualifier :: T_Qualifier ->
+                  Inh_Qualifier ->
+                  Syn_Qualifier
+wrap_Qualifier sem (Inh_Qualifier _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIunboundNames _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIunboundNames _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Qualifier _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOnamesInScope _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_Qualifier_Empty :: T_Range ->
                        T_Qualifier
 sem_Qualifier_Empty range_ =
@@ -11679,6 +12023,14 @@ type T_Qualifiers = Names ->
                     (M.Map Name TpScheme) ->
                     ([Warning]) ->
                     ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),([Error]),Names,Qualifiers,Names,([Warning]))
+data Inh_Qualifiers = Inh_Qualifiers {allTypeConstructors_Inh_Qualifiers :: Names,allValueConstructors_Inh_Qualifiers :: Names,classEnvironment_Inh_Qualifiers :: ClassEnvironment,collectScopeInfos_Inh_Qualifiers :: ([(ScopeInfo, Entity)]),counter_Inh_Qualifiers :: Int,kindErrors_Inh_Qualifiers :: ([Error]),miscerrors_Inh_Qualifiers :: ([Error]),namesInScope_Inh_Qualifiers :: Names,options_Inh_Qualifiers :: ([Option]),orderedTypeSynonyms_Inh_Qualifiers :: OrderedTypeSynonyms,typeConstructors_Inh_Qualifiers :: (M.Map Name Int),unboundNames_Inh_Qualifiers :: Names,valueConstructors_Inh_Qualifiers :: (M.Map Name TpScheme),warnings_Inh_Qualifiers :: ([Warning])}
+data Syn_Qualifiers = Syn_Qualifiers {collectInstances_Syn_Qualifiers :: ([(Name, Instance)]),collectScopeInfos_Syn_Qualifiers :: ([(ScopeInfo, Entity)]),counter_Syn_Qualifiers :: Int,kindErrors_Syn_Qualifiers :: ([Error]),miscerrors_Syn_Qualifiers :: ([Error]),namesInScope_Syn_Qualifiers :: Names,self_Syn_Qualifiers :: Qualifiers,unboundNames_Syn_Qualifiers :: Names,warnings_Syn_Qualifiers :: ([Warning])}
+wrap_Qualifiers :: T_Qualifiers ->
+                   Inh_Qualifiers ->
+                   Syn_Qualifiers
+wrap_Qualifiers sem (Inh_Qualifiers _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIunboundNames _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIunboundNames _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Qualifiers _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOnamesInScope _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_Qualifiers_Cons :: T_Qualifier ->
                        T_Qualifiers ->
                        T_Qualifiers
@@ -11887,6 +12239,14 @@ sem_Range (Range_Range _start _stop) =
     (sem_Range_Range (sem_Position _start) (sem_Position _stop))
 -- semantic domain
 type T_Range = ( Range)
+data Inh_Range = Inh_Range {}
+data Syn_Range = Syn_Range {self_Syn_Range :: Range}
+wrap_Range :: T_Range ->
+              Inh_Range ->
+              Syn_Range
+wrap_Range sem (Inh_Range) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Range _lhsOself))
 sem_Range_Range :: T_Position ->
                    T_Position ->
                    T_Range
@@ -11917,6 +12277,14 @@ type T_RecordExpressionBinding = ClassEnvironment ->
                                  ([Option]) ->
                                  OrderedTypeSynonyms ->
                                  ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,RecordExpressionBinding,Names)
+data Inh_RecordExpressionBinding = Inh_RecordExpressionBinding {classEnvironment_Inh_RecordExpressionBinding :: ClassEnvironment,collectScopeInfos_Inh_RecordExpressionBinding :: ([(ScopeInfo, Entity)]),counter_Inh_RecordExpressionBinding :: Int,namesInScope_Inh_RecordExpressionBinding :: Names,options_Inh_RecordExpressionBinding :: ([Option]),orderedTypeSynonyms_Inh_RecordExpressionBinding :: OrderedTypeSynonyms}
+data Syn_RecordExpressionBinding = Syn_RecordExpressionBinding {collectInstances_Syn_RecordExpressionBinding :: ([(Name, Instance)]),collectScopeInfos_Syn_RecordExpressionBinding :: ([(ScopeInfo, Entity)]),counter_Syn_RecordExpressionBinding :: Int,self_Syn_RecordExpressionBinding :: RecordExpressionBinding,unboundNames_Syn_RecordExpressionBinding :: Names}
+wrap_RecordExpressionBinding :: T_RecordExpressionBinding ->
+                                Inh_RecordExpressionBinding ->
+                                Syn_RecordExpressionBinding
+wrap_RecordExpressionBinding sem (Inh_RecordExpressionBinding _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOself,_lhsOunboundNames) = sem _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms
+     in  (Syn_RecordExpressionBinding _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOself _lhsOunboundNames))
 sem_RecordExpressionBinding_RecordExpressionBinding :: T_Range ->
                                                        T_Name ->
                                                        T_Expression ->
@@ -12017,6 +12385,14 @@ type T_RecordExpressionBindings = ClassEnvironment ->
                                   ([Option]) ->
                                   OrderedTypeSynonyms ->
                                   ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,RecordExpressionBindings,Names)
+data Inh_RecordExpressionBindings = Inh_RecordExpressionBindings {classEnvironment_Inh_RecordExpressionBindings :: ClassEnvironment,collectScopeInfos_Inh_RecordExpressionBindings :: ([(ScopeInfo, Entity)]),counter_Inh_RecordExpressionBindings :: Int,namesInScope_Inh_RecordExpressionBindings :: Names,options_Inh_RecordExpressionBindings :: ([Option]),orderedTypeSynonyms_Inh_RecordExpressionBindings :: OrderedTypeSynonyms}
+data Syn_RecordExpressionBindings = Syn_RecordExpressionBindings {collectInstances_Syn_RecordExpressionBindings :: ([(Name, Instance)]),collectScopeInfos_Syn_RecordExpressionBindings :: ([(ScopeInfo, Entity)]),counter_Syn_RecordExpressionBindings :: Int,self_Syn_RecordExpressionBindings :: RecordExpressionBindings,unboundNames_Syn_RecordExpressionBindings :: Names}
+wrap_RecordExpressionBindings :: T_RecordExpressionBindings ->
+                                 Inh_RecordExpressionBindings ->
+                                 Syn_RecordExpressionBindings
+wrap_RecordExpressionBindings sem (Inh_RecordExpressionBindings _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOself,_lhsOunboundNames) = sem _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms
+     in  (Syn_RecordExpressionBindings _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOself _lhsOunboundNames))
 sem_RecordExpressionBindings_Cons :: T_RecordExpressionBinding ->
                                      T_RecordExpressionBindings ->
                                      T_RecordExpressionBindings
@@ -12132,6 +12508,14 @@ type T_RecordPatternBinding = ([(ScopeInfo, Entity)]) ->
                               Int ->
                               Names ->
                               ( ([(ScopeInfo, Entity)]),Int,RecordPatternBinding,Names)
+data Inh_RecordPatternBinding = Inh_RecordPatternBinding {collectScopeInfos_Inh_RecordPatternBinding :: ([(ScopeInfo, Entity)]),counter_Inh_RecordPatternBinding :: Int,namesInScope_Inh_RecordPatternBinding :: Names}
+data Syn_RecordPatternBinding = Syn_RecordPatternBinding {collectScopeInfos_Syn_RecordPatternBinding :: ([(ScopeInfo, Entity)]),counter_Syn_RecordPatternBinding :: Int,self_Syn_RecordPatternBinding :: RecordPatternBinding,unboundNames_Syn_RecordPatternBinding :: Names}
+wrap_RecordPatternBinding :: T_RecordPatternBinding ->
+                             Inh_RecordPatternBinding ->
+                             Syn_RecordPatternBinding
+wrap_RecordPatternBinding sem (Inh_RecordPatternBinding _lhsIcollectScopeInfos _lhsIcounter _lhsInamesInScope) =
+    (let ( _lhsOcollectScopeInfos,_lhsOcounter,_lhsOself,_lhsOunboundNames) = sem _lhsIcollectScopeInfos _lhsIcounter _lhsInamesInScope
+     in  (Syn_RecordPatternBinding _lhsOcollectScopeInfos _lhsOcounter _lhsOself _lhsOunboundNames))
 sem_RecordPatternBinding_RecordPatternBinding :: T_Range ->
                                                  T_Name ->
                                                  T_Pattern ->
@@ -12213,6 +12597,14 @@ type T_RecordPatternBindings = ([(ScopeInfo, Entity)]) ->
                                Int ->
                                Names ->
                                ( ([(ScopeInfo, Entity)]),Int,RecordPatternBindings,Names)
+data Inh_RecordPatternBindings = Inh_RecordPatternBindings {collectScopeInfos_Inh_RecordPatternBindings :: ([(ScopeInfo, Entity)]),counter_Inh_RecordPatternBindings :: Int,namesInScope_Inh_RecordPatternBindings :: Names}
+data Syn_RecordPatternBindings = Syn_RecordPatternBindings {collectScopeInfos_Syn_RecordPatternBindings :: ([(ScopeInfo, Entity)]),counter_Syn_RecordPatternBindings :: Int,self_Syn_RecordPatternBindings :: RecordPatternBindings,unboundNames_Syn_RecordPatternBindings :: Names}
+wrap_RecordPatternBindings :: T_RecordPatternBindings ->
+                              Inh_RecordPatternBindings ->
+                              Syn_RecordPatternBindings
+wrap_RecordPatternBindings sem (Inh_RecordPatternBindings _lhsIcollectScopeInfos _lhsIcounter _lhsInamesInScope) =
+    (let ( _lhsOcollectScopeInfos,_lhsOcounter,_lhsOself,_lhsOunboundNames) = sem _lhsIcollectScopeInfos _lhsIcounter _lhsInamesInScope
+     in  (Syn_RecordPatternBindings _lhsOcollectScopeInfos _lhsOcounter _lhsOself _lhsOunboundNames))
 sem_RecordPatternBindings_Cons :: T_RecordPatternBinding ->
                                   T_RecordPatternBindings ->
                                   T_RecordPatternBindings
@@ -12308,6 +12700,14 @@ type T_RightHandSide = Names ->
                        (M.Map Name TpScheme) ->
                        ([Warning]) ->
                        ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),([Error]),RightHandSide,Names,([Warning]))
+data Inh_RightHandSide = Inh_RightHandSide {allTypeConstructors_Inh_RightHandSide :: Names,allValueConstructors_Inh_RightHandSide :: Names,classEnvironment_Inh_RightHandSide :: ClassEnvironment,collectScopeInfos_Inh_RightHandSide :: ([(ScopeInfo, Entity)]),counter_Inh_RightHandSide :: Int,kindErrors_Inh_RightHandSide :: ([Error]),miscerrors_Inh_RightHandSide :: ([Error]),namesInScope_Inh_RightHandSide :: Names,options_Inh_RightHandSide :: ([Option]),orderedTypeSynonyms_Inh_RightHandSide :: OrderedTypeSynonyms,typeConstructors_Inh_RightHandSide :: (M.Map Name Int),valueConstructors_Inh_RightHandSide :: (M.Map Name TpScheme),warnings_Inh_RightHandSide :: ([Warning])}
+data Syn_RightHandSide = Syn_RightHandSide {collectInstances_Syn_RightHandSide :: ([(Name, Instance)]),collectScopeInfos_Syn_RightHandSide :: ([(ScopeInfo, Entity)]),counter_Syn_RightHandSide :: Int,kindErrors_Syn_RightHandSide :: ([Error]),miscerrors_Syn_RightHandSide :: ([Error]),self_Syn_RightHandSide :: RightHandSide,unboundNames_Syn_RightHandSide :: Names,warnings_Syn_RightHandSide :: ([Warning])}
+wrap_RightHandSide :: T_RightHandSide ->
+                      Inh_RightHandSide ->
+                      Syn_RightHandSide
+wrap_RightHandSide sem (Inh_RightHandSide _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOmiscerrors,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_RightHandSide _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOmiscerrors _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_RightHandSide_Expression :: T_Range ->
                                 T_Expression ->
                                 T_MaybeDeclarations ->
@@ -12616,6 +13016,14 @@ sem_SimpleType (SimpleType_SimpleType _range _name _typevariables) =
     (sem_SimpleType_SimpleType (sem_Range _range) (sem_Name _name) (sem_Names _typevariables))
 -- semantic domain
 type T_SimpleType = ( Name,SimpleType,Names)
+data Inh_SimpleType = Inh_SimpleType {}
+data Syn_SimpleType = Syn_SimpleType {name_Syn_SimpleType :: Name,self_Syn_SimpleType :: SimpleType,typevariables_Syn_SimpleType :: Names}
+wrap_SimpleType :: T_SimpleType ->
+                   Inh_SimpleType ->
+                   Syn_SimpleType
+wrap_SimpleType sem (Inh_SimpleType) =
+    (let ( _lhsOname,_lhsOself,_lhsOtypevariables) = sem
+     in  (Syn_SimpleType _lhsOname _lhsOself _lhsOtypevariables))
 sem_SimpleType_SimpleType :: T_Range ->
                              T_Name ->
                              T_Names ->
@@ -12671,6 +13079,14 @@ type T_Statement = Names ->
                    (M.Map Name TpScheme) ->
                    ([Warning]) ->
                    ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),Bool,([Error]),Names,Statement,Names,([Warning]))
+data Inh_Statement = Inh_Statement {allTypeConstructors_Inh_Statement :: Names,allValueConstructors_Inh_Statement :: Names,classEnvironment_Inh_Statement :: ClassEnvironment,collectScopeInfos_Inh_Statement :: ([(ScopeInfo, Entity)]),counter_Inh_Statement :: Int,kindErrors_Inh_Statement :: ([Error]),lastStatementIsExpr_Inh_Statement :: Bool,miscerrors_Inh_Statement :: ([Error]),namesInScope_Inh_Statement :: Names,options_Inh_Statement :: ([Option]),orderedTypeSynonyms_Inh_Statement :: OrderedTypeSynonyms,typeConstructors_Inh_Statement :: (M.Map Name Int),unboundNames_Inh_Statement :: Names,valueConstructors_Inh_Statement :: (M.Map Name TpScheme),warnings_Inh_Statement :: ([Warning])}
+data Syn_Statement = Syn_Statement {collectInstances_Syn_Statement :: ([(Name, Instance)]),collectScopeInfos_Syn_Statement :: ([(ScopeInfo, Entity)]),counter_Syn_Statement :: Int,kindErrors_Syn_Statement :: ([Error]),lastStatementIsExpr_Syn_Statement :: Bool,miscerrors_Syn_Statement :: ([Error]),namesInScope_Syn_Statement :: Names,self_Syn_Statement :: Statement,unboundNames_Syn_Statement :: Names,warnings_Syn_Statement :: ([Warning])}
+wrap_Statement :: T_Statement ->
+                  Inh_Statement ->
+                  Syn_Statement
+wrap_Statement sem (Inh_Statement _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsIlastStatementIsExpr _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIunboundNames _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOlastStatementIsExpr,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsIlastStatementIsExpr _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIunboundNames _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Statement _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOlastStatementIsExpr _lhsOmiscerrors _lhsOnamesInScope _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_Statement_Empty :: T_Range ->
                        T_Statement
 sem_Statement_Empty range_ =
@@ -13143,6 +13559,14 @@ type T_Statements = Names ->
                     (M.Map Name TpScheme) ->
                     ([Warning]) ->
                     ( ([(Name, Instance)]),([(ScopeInfo, Entity)]),Int,([Error]),Bool,([Error]),Names,Statements,Names,([Warning]))
+data Inh_Statements = Inh_Statements {allTypeConstructors_Inh_Statements :: Names,allValueConstructors_Inh_Statements :: Names,classEnvironment_Inh_Statements :: ClassEnvironment,collectScopeInfos_Inh_Statements :: ([(ScopeInfo, Entity)]),counter_Inh_Statements :: Int,kindErrors_Inh_Statements :: ([Error]),lastStatementIsExpr_Inh_Statements :: Bool,miscerrors_Inh_Statements :: ([Error]),namesInScope_Inh_Statements :: Names,options_Inh_Statements :: ([Option]),orderedTypeSynonyms_Inh_Statements :: OrderedTypeSynonyms,typeConstructors_Inh_Statements :: (M.Map Name Int),unboundNames_Inh_Statements :: Names,valueConstructors_Inh_Statements :: (M.Map Name TpScheme),warnings_Inh_Statements :: ([Warning])}
+data Syn_Statements = Syn_Statements {collectInstances_Syn_Statements :: ([(Name, Instance)]),collectScopeInfos_Syn_Statements :: ([(ScopeInfo, Entity)]),counter_Syn_Statements :: Int,kindErrors_Syn_Statements :: ([Error]),lastStatementIsExpr_Syn_Statements :: Bool,miscerrors_Syn_Statements :: ([Error]),namesInScope_Syn_Statements :: Names,self_Syn_Statements :: Statements,unboundNames_Syn_Statements :: Names,warnings_Syn_Statements :: ([Warning])}
+wrap_Statements :: T_Statements ->
+                   Inh_Statements ->
+                   Syn_Statements
+wrap_Statements sem (Inh_Statements _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsIlastStatementIsExpr _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIunboundNames _lhsIvalueConstructors _lhsIwarnings) =
+    (let ( _lhsOcollectInstances,_lhsOcollectScopeInfos,_lhsOcounter,_lhsOkindErrors,_lhsOlastStatementIsExpr,_lhsOmiscerrors,_lhsOnamesInScope,_lhsOself,_lhsOunboundNames,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsIlastStatementIsExpr _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIunboundNames _lhsIvalueConstructors _lhsIwarnings
+     in  (Syn_Statements _lhsOcollectInstances _lhsOcollectScopeInfos _lhsOcounter _lhsOkindErrors _lhsOlastStatementIsExpr _lhsOmiscerrors _lhsOnamesInScope _lhsOself _lhsOunboundNames _lhsOwarnings))
 sem_Statements_Cons :: T_Statement ->
                        T_Statements ->
                        T_Statements
@@ -13367,6 +13791,14 @@ sem_Strings list =
     (Prelude.foldr sem_Strings_Cons sem_Strings_Nil list)
 -- semantic domain
 type T_Strings = ( Strings)
+data Inh_Strings = Inh_Strings {}
+data Syn_Strings = Syn_Strings {self_Syn_Strings :: Strings}
+wrap_Strings :: T_Strings ->
+                Inh_Strings ->
+                Syn_Strings
+wrap_Strings sem (Inh_Strings) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Strings _lhsOself))
 sem_Strings_Cons :: String ->
                     T_Strings ->
                     T_Strings
@@ -13413,6 +13845,14 @@ type T_Type = Names ->
               (M.Map Name Int) ->
               ([Warning]) ->
               ( Range,([Error]),Type,Names,([Warning]))
+data Inh_Type = Inh_Type {allTypeConstructors_Inh_Type :: Names,miscerrors_Inh_Type :: ([Error]),options_Inh_Type :: ([Option]),typeConstructors_Inh_Type :: (M.Map Name Int),warnings_Inh_Type :: ([Warning])}
+data Syn_Type = Syn_Type {contextRange_Syn_Type :: Range,miscerrors_Syn_Type :: ([Error]),self_Syn_Type :: Type,typevariables_Syn_Type :: Names,warnings_Syn_Type :: ([Warning])}
+wrap_Type :: T_Type ->
+             Inh_Type ->
+             Syn_Type
+wrap_Type sem (Inh_Type _lhsIallTypeConstructors _lhsImiscerrors _lhsIoptions _lhsItypeConstructors _lhsIwarnings) =
+    (let ( _lhsOcontextRange,_lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsImiscerrors _lhsIoptions _lhsItypeConstructors _lhsIwarnings
+     in  (Syn_Type _lhsOcontextRange _lhsOmiscerrors _lhsOself _lhsOtypevariables _lhsOwarnings))
 sem_Type_Application :: T_Range ->
                         Bool ->
                         T_Type ->
@@ -13819,6 +14259,14 @@ type T_Types = Names ->
                (M.Map Name Int) ->
                ([Warning]) ->
                ( ([Error]),Types,Names,([Warning]))
+data Inh_Types = Inh_Types {allTypeConstructors_Inh_Types :: Names,miscerrors_Inh_Types :: ([Error]),options_Inh_Types :: ([Option]),typeConstructors_Inh_Types :: (M.Map Name Int),warnings_Inh_Types :: ([Warning])}
+data Syn_Types = Syn_Types {miscerrors_Syn_Types :: ([Error]),self_Syn_Types :: Types,typevariables_Syn_Types :: Names,warnings_Syn_Types :: ([Warning])}
+wrap_Types :: T_Types ->
+              Inh_Types ->
+              Syn_Types
+wrap_Types sem (Inh_Types _lhsIallTypeConstructors _lhsImiscerrors _lhsIoptions _lhsItypeConstructors _lhsIwarnings) =
+    (let ( _lhsOmiscerrors,_lhsOself,_lhsOtypevariables,_lhsOwarnings) = sem _lhsIallTypeConstructors _lhsImiscerrors _lhsIoptions _lhsItypeConstructors _lhsIwarnings
+     in  (Syn_Types _lhsOmiscerrors _lhsOself _lhsOtypevariables _lhsOwarnings))
 sem_Types_Cons :: T_Type ->
                   T_Types ->
                   T_Types

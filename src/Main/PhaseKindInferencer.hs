@@ -18,13 +18,15 @@ import StaticAnalysis.Messages.KindErrors
 phaseKindInferencer :: ImportEnvironment -> Module -> [Option] -> Phase KindError ()
 phaseKindInferencer importEnvironment module_ options =
    do enterNewPhase "Kind inferencing" options
-      let (debugIO, kindEnv, kindErrors, _) = KI.sem_Module module_ importEnvironment options 
+      let res = KI.wrap_Module (KI.sem_Module module_) (KI.Inh_Module {
+                   KI.importEnvironment_Inh_Module = importEnvironment,
+                   KI.options_Inh_Module = options })
       when (DumpTypeDebug `elem` options) $ 
-         do debugIO  
-            putStrLn . unlines . map (\(n,ks) -> show n++" :: "++showKindScheme ks) . M.assocs $ kindEnv
-      case kindErrors of
+         do KI.debugIO_Syn_Module res
+            putStrLn . unlines . map (\(n,ks) -> show n++" :: "++showKindScheme ks) . M.assocs $ KI.kindEnvironment_Syn_Module res
+      case KI.kindErrors_Syn_Module res of
       
          _:_ ->
-            return (Left kindErrors)
+            return (Left $ KI.kindErrors_Syn_Module res)
          [] ->
             return (Right ())

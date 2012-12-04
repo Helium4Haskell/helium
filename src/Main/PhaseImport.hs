@@ -18,7 +18,7 @@ import Syntax.UHA_Range(noRange)
 import Lvm.Path(searchPath)
 import Lvm.Import(lvmImportDecls)
 import ModuleSystem.CoreToImportEnv(getImportEnvironment)
-import qualified ModuleSystem.ExtractImportDecls as ExtractImportDecls
+import qualified ModuleSystem.ExtractImportDecls as EID
 import Data.List(isPrefixOf)
 
 phaseImport :: String -> Module -> [String] -> [Option] -> 
@@ -42,7 +42,7 @@ phaseImport fullName module_ lvmPath options = do
 
 chaseImports :: [String] -> Module -> IO [[Core.CoreDecl]]
 chaseImports lvmPath fromModule = 
-    let (coreImports,_)   = ExtractImportDecls.sem_Module fromModule -- Expand imports
+    let coreImports   = EID.coreImportDecls_Syn_Module $ EID.wrap_Module (EID.sem_Module fromModule) EID.Inh_Module -- Expand imports
         findModule    = searchPath lvmPath ".lvm" . stringFromId
         doImport :: (Core.CoreDecl,[Id]) -> IO [Core.CoreDecl]
         doImport (importDecl,hidings)

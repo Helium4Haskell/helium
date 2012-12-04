@@ -30,11 +30,11 @@ instance PolyTypeConstraintInfo KindError
 -- two "smart" constructors
 mustBeStar :: Range -> String -> Type -> (Kind, Kind) -> KindError
 mustBeStar range location uhaType (kind, _) = 
-   MustBeStar range location (PP.sem_Type uhaType) kind
+   MustBeStar range location (PP.text_Syn_Type $ PP.wrap_Type (PP.sem_Type uhaType) PP.Inh_Type) kind
 
 kindApplication :: Range -> Type -> Type -> (Kind, Kind) -> KindError
 kindApplication range uhaType1 uhaType2 (kind1, kind2) = 
-   KindApplication range (PP.sem_Type uhaType1) (PP.sem_Type uhaType2) kind1 kind2
+   KindApplication range (PP.text_Syn_Type $ PP.wrap_Type (PP.sem_Type uhaType1) PP.Inh_Type) (PP.text_Syn_Type $ PP.wrap_Type (PP.sem_Type uhaType2) PP.Inh_Type) kind1 kind2
 
 instance Show KindError where 
    show _ = "<kindError>"

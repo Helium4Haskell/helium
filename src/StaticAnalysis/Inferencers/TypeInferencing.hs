@@ -58,20 +58,22 @@ import Syntax.UHA_Utils
 typeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (IO (), DictionaryEnvironment, TypeEnvironment, TypeErrors, Warnings)
 typeInferencing options importEnv module_ =
-   let (_, dictionaryEnv, _, logEntries, _, _, toplevelTypes, typeErrors, warnings) =
-            sem_Module module_ importEnv options
-       debugIO = putStrLn (show logEntries)
-   in (debugIO, dictionaryEnv, toplevelTypes, typeErrors, warnings)
+   let res = wrap_Module (sem_Module module_) Inh_Module {
+       	         importEnvironment_Inh_Module = importEnv,
+		 options_Inh_Module = options }
+       debugIO = putStrLn (show $ logEntries_Syn_Module res)
+   in (debugIO, dictionaryEnvironment_Syn_Module res, toplevelTypes_Syn_Module res, typeErrors_Syn_Module res, warnings_Syn_Module res)
 
 proximaTypeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (TypeErrors, Warnings, TypeEnvironment, [(Range, TpScheme)])  
 proximaTypeInferencing options importEnv module_ =
-   let (_, _, infoTree, _, _, solveResult, toplevelTypes, typeErrors, warnings) =
-            sem_Module module_ importEnv options
-       localTypeSchemes = typeSchemesInInfoTree (substitutionFromResult solveResult)
-                                                (qualifiersFromResult solveResult) 
-                                                infoTree
-   in (typeErrors, warnings, toplevelTypes, localTypeSchemes)
+   let res = wrap_Module (sem_Module module_) Inh_Module {
+       	         importEnvironment_Inh_Module = importEnv,
+		 options_Inh_Module = options }
+       localTypeSchemes = typeSchemesInInfoTree (substitutionFromResult $ solveResult_Syn_Module res)
+                                                (qualifiersFromResult $ solveResult_Syn_Module res) 
+                                                (infoTree_Syn_Module res)
+   in (typeErrors_Syn_Module res, warnings_Syn_Module res, toplevelTypes_Syn_Module res, localTypeSchemes)
 
          
 getRequiredDictionaries :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
@@ -629,6 +631,14 @@ type T_Alternative = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (M.Map Int (Scheme Predicates)) ->
                      Int ->
                      ( Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,Int,DictionaryEnvironment,( ([PatternElement], Bool) ),InfoTrees,(IO ()),([Warning]),Alternative,Names,Int,Warning)
+data Inh_Alternative = Inh_Alternative {allPatterns_Inh_Alternative :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_Alternative :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_Alternative :: Predicates,betaLeft_Inh_Alternative :: Tp,betaRight_Inh_Alternative :: Tp,betaUnique_Inh_Alternative :: Int,classEnvironment_Inh_Alternative :: ClassEnvironment,collectErrors_Inh_Alternative :: TypeErrors,collectWarnings_Inh_Alternative :: Warnings,counter_Inh_Alternative :: Int,currentChunk_Inh_Alternative :: Int,dictionaryEnvironment_Inh_Alternative :: DictionaryEnvironment,importEnvironment_Inh_Alternative :: ImportEnvironment,matchIO_Inh_Alternative :: (IO ()),monos_Inh_Alternative :: Monos,namesInScope_Inh_Alternative :: Names,orderedTypeSynonyms_Inh_Alternative :: OrderedTypeSynonyms,parentTree_Inh_Alternative :: InfoTree,patternMatchWarnings_Inh_Alternative :: ([Warning]),substitution_Inh_Alternative :: FixpointSubstitution,typeschemeMap_Inh_Alternative :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_Alternative :: Int}
+data Syn_Alternative = Syn_Alternative {assumptions_Syn_Alternative :: Assumptions,betaUnique_Syn_Alternative :: Int,collectErrors_Syn_Alternative :: TypeErrors,collectInstances_Syn_Alternative :: ([(Name, Instance)]),collectWarnings_Syn_Alternative :: Warnings,constraints_Syn_Alternative :: ConstraintSet,counter_Syn_Alternative :: Int,dictionaryEnvironment_Syn_Alternative :: DictionaryEnvironment,elements_Syn_Alternative :: ( ([PatternElement], Bool) ),infoTrees_Syn_Alternative :: InfoTrees,matchIO_Syn_Alternative :: (IO ()),patternMatchWarnings_Syn_Alternative :: ([Warning]),self_Syn_Alternative :: Alternative,unboundNames_Syn_Alternative :: Names,uniqueChunk_Syn_Alternative :: Int,unrwar_Syn_Alternative :: Warning}
+wrap_Alternative :: T_Alternative ->
+                    Inh_Alternative ->
+                    Syn_Alternative
+wrap_Alternative sem (Inh_Alternative _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaLeft _lhsIbetaRight _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk) =
+    (let ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOelements,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwar) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaLeft _lhsIbetaRight _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk
+     in  (Syn_Alternative _lhsOassumptions _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraints _lhsOcounter _lhsOdictionaryEnvironment _lhsOelements _lhsOinfoTrees _lhsOmatchIO _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk _lhsOunrwar))
 sem_Alternative_Alternative :: T_Range ->
                                T_Pattern ->
                                T_RightHandSide ->
@@ -1199,6 +1209,14 @@ type T_Alternatives = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (M.Map Int (Scheme Predicates)) ->
                       Int ->
                       ( Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSets,Int,DictionaryEnvironment,([([PatternElement], Bool)]),InfoTrees,(IO ()),([Warning]),Alternatives,Names,Int,([Warning]))
+data Inh_Alternatives = Inh_Alternatives {allPatterns_Inh_Alternatives :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_Alternatives :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_Alternatives :: Predicates,betaLeft_Inh_Alternatives :: Tp,betaRight_Inh_Alternatives :: Tp,betaUnique_Inh_Alternatives :: Int,classEnvironment_Inh_Alternatives :: ClassEnvironment,collectErrors_Inh_Alternatives :: TypeErrors,collectWarnings_Inh_Alternatives :: Warnings,counter_Inh_Alternatives :: Int,currentChunk_Inh_Alternatives :: Int,dictionaryEnvironment_Inh_Alternatives :: DictionaryEnvironment,importEnvironment_Inh_Alternatives :: ImportEnvironment,matchIO_Inh_Alternatives :: (IO ()),monos_Inh_Alternatives :: Monos,namesInScope_Inh_Alternatives :: Names,orderedTypeSynonyms_Inh_Alternatives :: OrderedTypeSynonyms,parentTree_Inh_Alternatives :: InfoTree,patternMatchWarnings_Inh_Alternatives :: ([Warning]),substitution_Inh_Alternatives :: FixpointSubstitution,typeschemeMap_Inh_Alternatives :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_Alternatives :: Int}
+data Syn_Alternatives = Syn_Alternatives {assumptions_Syn_Alternatives :: Assumptions,betaUnique_Syn_Alternatives :: Int,collectErrors_Syn_Alternatives :: TypeErrors,collectInstances_Syn_Alternatives :: ([(Name, Instance)]),collectWarnings_Syn_Alternatives :: Warnings,constraintslist_Syn_Alternatives :: ConstraintSets,counter_Syn_Alternatives :: Int,dictionaryEnvironment_Syn_Alternatives :: DictionaryEnvironment,elementss_Syn_Alternatives :: ([([PatternElement], Bool)]),infoTrees_Syn_Alternatives :: InfoTrees,matchIO_Syn_Alternatives :: (IO ()),patternMatchWarnings_Syn_Alternatives :: ([Warning]),self_Syn_Alternatives :: Alternatives,unboundNames_Syn_Alternatives :: Names,uniqueChunk_Syn_Alternatives :: Int,unrwars_Syn_Alternatives :: ([Warning])}
+wrap_Alternatives :: T_Alternatives ->
+                     Inh_Alternatives ->
+                     Syn_Alternatives
+wrap_Alternatives sem (Inh_Alternatives _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaLeft _lhsIbetaRight _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk) =
+    (let ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOelementss,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwars) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaLeft _lhsIbetaRight _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk
+     in  (Syn_Alternatives _lhsOassumptions _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraintslist _lhsOcounter _lhsOdictionaryEnvironment _lhsOelementss _lhsOinfoTrees _lhsOmatchIO _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk _lhsOunrwars))
 sem_Alternatives_Cons :: T_Alternative ->
                          T_Alternatives ->
                          T_Alternatives
@@ -1529,6 +1547,14 @@ sem_AnnotatedType (AnnotatedType_AnnotatedType _range _strict _type) =
 type T_AnnotatedType = Int ->
                        Names ->
                        ( Int,AnnotatedType,Names)
+data Inh_AnnotatedType = Inh_AnnotatedType {counter_Inh_AnnotatedType :: Int,namesInScope_Inh_AnnotatedType :: Names}
+data Syn_AnnotatedType = Syn_AnnotatedType {counter_Syn_AnnotatedType :: Int,self_Syn_AnnotatedType :: AnnotatedType,unboundNames_Syn_AnnotatedType :: Names}
+wrap_AnnotatedType :: T_AnnotatedType ->
+                      Inh_AnnotatedType ->
+                      Syn_AnnotatedType
+wrap_AnnotatedType sem (Inh_AnnotatedType _lhsIcounter _lhsInamesInScope) =
+    (let ( _lhsOcounter,_lhsOself,_lhsOunboundNames) = sem _lhsIcounter _lhsInamesInScope
+     in  (Syn_AnnotatedType _lhsOcounter _lhsOself _lhsOunboundNames))
 sem_AnnotatedType_AnnotatedType :: T_Range ->
                                    Bool ->
                                    T_Type ->
@@ -1564,6 +1590,14 @@ sem_AnnotatedTypes list =
 type T_AnnotatedTypes = Int ->
                         Names ->
                         ( Int,AnnotatedTypes,Names)
+data Inh_AnnotatedTypes = Inh_AnnotatedTypes {counter_Inh_AnnotatedTypes :: Int,namesInScope_Inh_AnnotatedTypes :: Names}
+data Syn_AnnotatedTypes = Syn_AnnotatedTypes {counter_Syn_AnnotatedTypes :: Int,self_Syn_AnnotatedTypes :: AnnotatedTypes,unboundNames_Syn_AnnotatedTypes :: Names}
+wrap_AnnotatedTypes :: T_AnnotatedTypes ->
+                       Inh_AnnotatedTypes ->
+                       Syn_AnnotatedTypes
+wrap_AnnotatedTypes sem (Inh_AnnotatedTypes _lhsIcounter _lhsInamesInScope) =
+    (let ( _lhsOcounter,_lhsOself,_lhsOunboundNames) = sem _lhsIcounter _lhsInamesInScope
+     in  (Syn_AnnotatedTypes _lhsOcounter _lhsOself _lhsOunboundNames))
 sem_AnnotatedTypes_Cons :: T_AnnotatedType ->
                            T_AnnotatedTypes ->
                            T_AnnotatedTypes
@@ -1649,6 +1683,14 @@ type T_Body = ([((Expression, [String]), Core_TypingStrategy)]) ->
               (M.Map Int (Scheme Predicates)) ->
               Int ->
               ( Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,Int,Names,DictionaryEnvironment,InfoTree,(IO ()),([Warning]),Body,TypeEnvironment,Names,Int)
+data Inh_Body = Inh_Body {allPatterns_Inh_Body :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_Body :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_Body :: Predicates,betaUnique_Inh_Body :: Int,classEnvironment_Inh_Body :: ClassEnvironment,collectErrors_Inh_Body :: TypeErrors,collectWarnings_Inh_Body :: Warnings,counter_Inh_Body :: Int,currentChunk_Inh_Body :: Int,dictionaryEnvironment_Inh_Body :: DictionaryEnvironment,importEnvironment_Inh_Body :: ImportEnvironment,matchIO_Inh_Body :: (IO ()),monos_Inh_Body :: Monos,namesInScope_Inh_Body :: Names,orderedTypeSynonyms_Inh_Body :: OrderedTypeSynonyms,patternMatchWarnings_Inh_Body :: ([Warning]),substitution_Inh_Body :: FixpointSubstitution,typeschemeMap_Inh_Body :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_Body :: Int}
+data Syn_Body = Syn_Body {assumptions_Syn_Body :: Assumptions,betaUnique_Syn_Body :: Int,collectErrors_Syn_Body :: TypeErrors,collectInstances_Syn_Body :: ([(Name, Instance)]),collectWarnings_Syn_Body :: Warnings,constraints_Syn_Body :: ConstraintSet,counter_Syn_Body :: Int,declVarNames_Syn_Body :: Names,dictionaryEnvironment_Syn_Body :: DictionaryEnvironment,infoTree_Syn_Body :: InfoTree,matchIO_Syn_Body :: (IO ()),patternMatchWarnings_Syn_Body :: ([Warning]),self_Syn_Body :: Body,toplevelTypes_Syn_Body :: TypeEnvironment,unboundNames_Syn_Body :: Names,uniqueChunk_Syn_Body :: Int}
+wrap_Body :: T_Body ->
+             Inh_Body ->
+             Syn_Body
+wrap_Body sem (Inh_Body _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk) =
+    (let ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOcounter,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOtoplevelTypes,_lhsOunboundNames,_lhsOuniqueChunk) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk
+     in  (Syn_Body _lhsOassumptions _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraints _lhsOcounter _lhsOdeclVarNames _lhsOdictionaryEnvironment _lhsOinfoTree _lhsOmatchIO _lhsOpatternMatchWarnings _lhsOself _lhsOtoplevelTypes _lhsOunboundNames _lhsOuniqueChunk))
 sem_Body_Body :: T_Range ->
                  T_ImportDeclarations ->
                  T_Declarations ->
@@ -1930,6 +1972,14 @@ sem_Constructor (Constructor_Record _range _constructor _fieldDeclarations) =
 type T_Constructor = Int ->
                      Names ->
                      ( Int,Constructor,Names)
+data Inh_Constructor = Inh_Constructor {counter_Inh_Constructor :: Int,namesInScope_Inh_Constructor :: Names}
+data Syn_Constructor = Syn_Constructor {counter_Syn_Constructor :: Int,self_Syn_Constructor :: Constructor,unboundNames_Syn_Constructor :: Names}
+wrap_Constructor :: T_Constructor ->
+                    Inh_Constructor ->
+                    Syn_Constructor
+wrap_Constructor sem (Inh_Constructor _lhsIcounter _lhsInamesInScope) =
+    (let ( _lhsOcounter,_lhsOself,_lhsOunboundNames) = sem _lhsIcounter _lhsInamesInScope
+     in  (Syn_Constructor _lhsOcounter _lhsOself _lhsOunboundNames))
 sem_Constructor_Constructor :: T_Range ->
                                T_Name ->
                                T_AnnotatedTypes ->
@@ -2060,6 +2110,14 @@ sem_Constructors list =
 type T_Constructors = Int ->
                       Names ->
                       ( Int,Constructors,Names)
+data Inh_Constructors = Inh_Constructors {counter_Inh_Constructors :: Int,namesInScope_Inh_Constructors :: Names}
+data Syn_Constructors = Syn_Constructors {counter_Syn_Constructors :: Int,self_Syn_Constructors :: Constructors,unboundNames_Syn_Constructors :: Names}
+wrap_Constructors :: T_Constructors ->
+                     Inh_Constructors ->
+                     Syn_Constructors
+wrap_Constructors sem (Inh_Constructors _lhsIcounter _lhsInamesInScope) =
+    (let ( _lhsOcounter,_lhsOself,_lhsOunboundNames) = sem _lhsIcounter _lhsInamesInScope
+     in  (Syn_Constructors _lhsOcounter _lhsOself _lhsOunboundNames))
 sem_Constructors_Cons :: T_Constructor ->
                          T_Constructors ->
                          T_Constructors
@@ -2124,6 +2182,14 @@ sem_ContextItem (ContextItem_ContextItem _range _name _types) =
     (sem_ContextItem_ContextItem (sem_Range _range) (sem_Name _name) (sem_Types _types))
 -- semantic domain
 type T_ContextItem = ( ContextItem)
+data Inh_ContextItem = Inh_ContextItem {}
+data Syn_ContextItem = Syn_ContextItem {self_Syn_ContextItem :: ContextItem}
+wrap_ContextItem :: T_ContextItem ->
+                    Inh_ContextItem ->
+                    Syn_ContextItem
+wrap_ContextItem sem (Inh_ContextItem) =
+    (let ( _lhsOself) = sem
+     in  (Syn_ContextItem _lhsOself))
 sem_ContextItem_ContextItem :: T_Range ->
                                T_Name ->
                                T_Types ->
@@ -2154,6 +2220,14 @@ sem_ContextItems list =
     (Prelude.foldr sem_ContextItems_Cons sem_ContextItems_Nil (Prelude.map sem_ContextItem list))
 -- semantic domain
 type T_ContextItems = ( ContextItems)
+data Inh_ContextItems = Inh_ContextItems {}
+data Syn_ContextItems = Syn_ContextItems {self_Syn_ContextItems :: ContextItems}
+wrap_ContextItems :: T_ContextItems ->
+                     Inh_ContextItems ->
+                     Syn_ContextItems
+wrap_ContextItems sem (Inh_ContextItems) =
+    (let ( _lhsOself) = sem
+     in  (Syn_ContextItems _lhsOself))
 sem_ContextItems_Cons :: T_ContextItem ->
                          T_ContextItems ->
                          T_ContextItems
@@ -2231,6 +2305,14 @@ type T_Declaration = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      (M.Map Int (Scheme Predicates)) ->
                      Int ->
                      ( Int,BindingGroups,TypeErrors,([(Name, Instance)]),Warnings,Int,Names,DictionaryEnvironment,InfoTrees,(IO ()),([Warning]),Names,Declaration,Names,TypeEnvironment,Names,Int)
+data Inh_Declaration = Inh_Declaration {allPatterns_Inh_Declaration :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_Declaration :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_Declaration :: Predicates,betaUnique_Inh_Declaration :: Int,bindingGroups_Inh_Declaration :: BindingGroups,classEnvironment_Inh_Declaration :: ClassEnvironment,collectErrors_Inh_Declaration :: TypeErrors,collectWarnings_Inh_Declaration :: Warnings,counter_Inh_Declaration :: Int,currentChunk_Inh_Declaration :: Int,dictionaryEnvironment_Inh_Declaration :: DictionaryEnvironment,importEnvironment_Inh_Declaration :: ImportEnvironment,inheritedBDG_Inh_Declaration :: InheritedBDG,matchIO_Inh_Declaration :: (IO ()),monos_Inh_Declaration :: Monos,namesInScope_Inh_Declaration :: Names,orderedTypeSynonyms_Inh_Declaration :: OrderedTypeSynonyms,parentTree_Inh_Declaration :: InfoTree,patternMatchWarnings_Inh_Declaration :: ([Warning]),substitution_Inh_Declaration :: FixpointSubstitution,typeSignatures_Inh_Declaration :: TypeEnvironment,typeschemeMap_Inh_Declaration :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_Declaration :: Int}
+data Syn_Declaration = Syn_Declaration {betaUnique_Syn_Declaration :: Int,bindingGroups_Syn_Declaration :: BindingGroups,collectErrors_Syn_Declaration :: TypeErrors,collectInstances_Syn_Declaration :: ([(Name, Instance)]),collectWarnings_Syn_Declaration :: Warnings,counter_Syn_Declaration :: Int,declVarNames_Syn_Declaration :: Names,dictionaryEnvironment_Syn_Declaration :: DictionaryEnvironment,infoTrees_Syn_Declaration :: InfoTrees,matchIO_Syn_Declaration :: (IO ()),patternMatchWarnings_Syn_Declaration :: ([Warning]),restrictedNames_Syn_Declaration :: Names,self_Syn_Declaration :: Declaration,simplePatNames_Syn_Declaration :: Names,typeSignatures_Syn_Declaration :: TypeEnvironment,unboundNames_Syn_Declaration :: Names,uniqueChunk_Syn_Declaration :: Int}
+wrap_Declaration :: T_Declaration ->
+                    Inh_Declaration ->
+                    Syn_Declaration
+wrap_Declaration sem (Inh_Declaration _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaUnique _lhsIbindingGroups _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsIinheritedBDG _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeSignatures _lhsItypeschemeMap _lhsIuniqueChunk) =
+    (let ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOcounter,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaUnique _lhsIbindingGroups _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsIinheritedBDG _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeSignatures _lhsItypeschemeMap _lhsIuniqueChunk
+     in  (Syn_Declaration _lhsObetaUnique _lhsObindingGroups _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOcounter _lhsOdeclVarNames _lhsOdictionaryEnvironment _lhsOinfoTrees _lhsOmatchIO _lhsOpatternMatchWarnings _lhsOrestrictedNames _lhsOself _lhsOsimplePatNames _lhsOtypeSignatures _lhsOunboundNames _lhsOuniqueChunk))
 sem_Declaration_Class :: T_Range ->
                          T_ContextItems ->
                          T_SimpleType ->
@@ -3852,6 +3934,14 @@ type T_Declarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                       (M.Map Int (Scheme Predicates)) ->
                       Int ->
                       ( Int,BindingGroups,TypeErrors,([(Name, Instance)]),Warnings,Int,Names,DictionaryEnvironment,InfoTrees,(IO ()),([Warning]),Names,Declarations,Names,TypeEnvironment,Names,Int)
+data Inh_Declarations = Inh_Declarations {allPatterns_Inh_Declarations :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_Declarations :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_Declarations :: Predicates,betaUnique_Inh_Declarations :: Int,bindingGroups_Inh_Declarations :: BindingGroups,classEnvironment_Inh_Declarations :: ClassEnvironment,collectErrors_Inh_Declarations :: TypeErrors,collectWarnings_Inh_Declarations :: Warnings,counter_Inh_Declarations :: Int,currentChunk_Inh_Declarations :: Int,dictionaryEnvironment_Inh_Declarations :: DictionaryEnvironment,importEnvironment_Inh_Declarations :: ImportEnvironment,inheritedBDG_Inh_Declarations :: InheritedBDG,matchIO_Inh_Declarations :: (IO ()),monos_Inh_Declarations :: Monos,namesInScope_Inh_Declarations :: Names,orderedTypeSynonyms_Inh_Declarations :: OrderedTypeSynonyms,parentTree_Inh_Declarations :: InfoTree,patternMatchWarnings_Inh_Declarations :: ([Warning]),substitution_Inh_Declarations :: FixpointSubstitution,typeSignatures_Inh_Declarations :: TypeEnvironment,typeschemeMap_Inh_Declarations :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_Declarations :: Int}
+data Syn_Declarations = Syn_Declarations {betaUnique_Syn_Declarations :: Int,bindingGroups_Syn_Declarations :: BindingGroups,collectErrors_Syn_Declarations :: TypeErrors,collectInstances_Syn_Declarations :: ([(Name, Instance)]),collectWarnings_Syn_Declarations :: Warnings,counter_Syn_Declarations :: Int,declVarNames_Syn_Declarations :: Names,dictionaryEnvironment_Syn_Declarations :: DictionaryEnvironment,infoTrees_Syn_Declarations :: InfoTrees,matchIO_Syn_Declarations :: (IO ()),patternMatchWarnings_Syn_Declarations :: ([Warning]),restrictedNames_Syn_Declarations :: Names,self_Syn_Declarations :: Declarations,simplePatNames_Syn_Declarations :: Names,typeSignatures_Syn_Declarations :: TypeEnvironment,unboundNames_Syn_Declarations :: Names,uniqueChunk_Syn_Declarations :: Int}
+wrap_Declarations :: T_Declarations ->
+                     Inh_Declarations ->
+                     Syn_Declarations
+wrap_Declarations sem (Inh_Declarations _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaUnique _lhsIbindingGroups _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsIinheritedBDG _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeSignatures _lhsItypeschemeMap _lhsIuniqueChunk) =
+    (let ( _lhsObetaUnique,_lhsObindingGroups,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOcounter,_lhsOdeclVarNames,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrestrictedNames,_lhsOself,_lhsOsimplePatNames,_lhsOtypeSignatures,_lhsOunboundNames,_lhsOuniqueChunk) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaUnique _lhsIbindingGroups _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsIinheritedBDG _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeSignatures _lhsItypeschemeMap _lhsIuniqueChunk
+     in  (Syn_Declarations _lhsObetaUnique _lhsObindingGroups _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOcounter _lhsOdeclVarNames _lhsOdictionaryEnvironment _lhsOinfoTrees _lhsOmatchIO _lhsOpatternMatchWarnings _lhsOrestrictedNames _lhsOself _lhsOsimplePatNames _lhsOtypeSignatures _lhsOunboundNames _lhsOuniqueChunk))
 sem_Declarations_Cons :: T_Declaration ->
                          T_Declarations ->
                          T_Declarations
@@ -4202,6 +4292,14 @@ sem_Export (Export_Variable _range _name) =
     (sem_Export_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Export = ( Export)
+data Inh_Export = Inh_Export {}
+data Syn_Export = Syn_Export {self_Syn_Export :: Export}
+wrap_Export :: T_Export ->
+               Inh_Export ->
+               Syn_Export
+wrap_Export sem (Inh_Export) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Export _lhsOself))
 sem_Export_Module :: T_Range ->
                      T_Name ->
                      T_Export
@@ -4278,6 +4376,14 @@ sem_Exports list =
     (Prelude.foldr sem_Exports_Cons sem_Exports_Nil (Prelude.map sem_Export list))
 -- semantic domain
 type T_Exports = ( Exports)
+data Inh_Exports = Inh_Exports {}
+data Syn_Exports = Syn_Exports {self_Syn_Exports :: Exports}
+wrap_Exports :: T_Exports ->
+                Inh_Exports ->
+                Syn_Exports
+wrap_Exports sem (Inh_Exports) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Exports _lhsOself))
 sem_Exports_Cons :: T_Export ->
                     T_Exports ->
                     T_Exports
@@ -4376,6 +4482,14 @@ type T_Expression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     Int ->
                     Int ->
                     ( Assumptions,Tp,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,Int,DictionaryEnvironment,InfoTree,(IO ()),([Maybe MetaVariableTable]),([Warning]),Expression,Names,Int,Int)
+data Inh_Expression = Inh_Expression {allPatterns_Inh_Expression :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_Expression :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_Expression :: Predicates,betaUnique_Inh_Expression :: Int,classEnvironment_Inh_Expression :: ClassEnvironment,collectErrors_Inh_Expression :: TypeErrors,collectWarnings_Inh_Expression :: Warnings,counter_Inh_Expression :: Int,currentChunk_Inh_Expression :: Int,dictionaryEnvironment_Inh_Expression :: DictionaryEnvironment,importEnvironment_Inh_Expression :: ImportEnvironment,matchIO_Inh_Expression :: (IO ()),monos_Inh_Expression :: Monos,namesInScope_Inh_Expression :: Names,orderedTypeSynonyms_Inh_Expression :: OrderedTypeSynonyms,parentTree_Inh_Expression :: InfoTree,patternMatchWarnings_Inh_Expression :: ([Warning]),substitution_Inh_Expression :: FixpointSubstitution,tryPatterns_Inh_Expression :: ([(Expression     , [String])]),typeschemeMap_Inh_Expression :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_Expression :: Int,uniqueSecondRound_Inh_Expression :: Int}
+data Syn_Expression = Syn_Expression {assumptions_Syn_Expression :: Assumptions,beta_Syn_Expression :: Tp,betaUnique_Syn_Expression :: Int,collectErrors_Syn_Expression :: TypeErrors,collectInstances_Syn_Expression :: ([(Name, Instance)]),collectWarnings_Syn_Expression :: Warnings,constraints_Syn_Expression :: ConstraintSet,counter_Syn_Expression :: Int,dictionaryEnvironment_Syn_Expression :: DictionaryEnvironment,infoTree_Syn_Expression :: InfoTree,matchIO_Syn_Expression :: (IO ()),matches_Syn_Expression :: ([Maybe MetaVariableTable]),patternMatchWarnings_Syn_Expression :: ([Warning]),self_Syn_Expression :: Expression,unboundNames_Syn_Expression :: Names,uniqueChunk_Syn_Expression :: Int,uniqueSecondRound_Syn_Expression :: Int}
+wrap_Expression :: T_Expression ->
+                   Inh_Expression ->
+                   Syn_Expression
+wrap_Expression sem (Inh_Expression _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItryPatterns _lhsItypeschemeMap _lhsIuniqueChunk _lhsIuniqueSecondRound) =
+    (let ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItryPatterns _lhsItypeschemeMap _lhsIuniqueChunk _lhsIuniqueSecondRound
+     in  (Syn_Expression _lhsOassumptions _lhsObeta _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraints _lhsOcounter _lhsOdictionaryEnvironment _lhsOinfoTree _lhsOmatchIO _lhsOmatches _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk _lhsOuniqueSecondRound))
 sem_Expression_Case :: T_Range ->
                        T_Expression ->
                        T_Alternatives ->
@@ -9370,6 +9484,14 @@ type T_Expressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                      Int ->
                      Int ->
                      ( Assumptions,Int,Tps,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSets,Int,DictionaryEnvironment,InfoTrees,(IO ()),([Maybe MetaVariableTable]),([Warning]),Expressions,Names,Int,Int)
+data Inh_Expressions = Inh_Expressions {allPatterns_Inh_Expressions :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_Expressions :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_Expressions :: Predicates,betaUnique_Inh_Expressions :: Int,classEnvironment_Inh_Expressions :: ClassEnvironment,collectErrors_Inh_Expressions :: TypeErrors,collectWarnings_Inh_Expressions :: Warnings,counter_Inh_Expressions :: Int,currentChunk_Inh_Expressions :: Int,dictionaryEnvironment_Inh_Expressions :: DictionaryEnvironment,importEnvironment_Inh_Expressions :: ImportEnvironment,matchIO_Inh_Expressions :: (IO ()),monos_Inh_Expressions :: Monos,namesInScope_Inh_Expressions :: Names,orderedTypeSynonyms_Inh_Expressions :: OrderedTypeSynonyms,parentTree_Inh_Expressions :: InfoTree,patternMatchWarnings_Inh_Expressions :: ([Warning]),substitution_Inh_Expressions :: FixpointSubstitution,tryPatterns_Inh_Expressions :: ([(Expressions    , [String])]),typeschemeMap_Inh_Expressions :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_Expressions :: Int,uniqueSecondRound_Inh_Expressions :: Int}
+data Syn_Expressions = Syn_Expressions {assumptions_Syn_Expressions :: Assumptions,betaUnique_Syn_Expressions :: Int,betas_Syn_Expressions :: Tps,collectErrors_Syn_Expressions :: TypeErrors,collectInstances_Syn_Expressions :: ([(Name, Instance)]),collectWarnings_Syn_Expressions :: Warnings,constraintslist_Syn_Expressions :: ConstraintSets,counter_Syn_Expressions :: Int,dictionaryEnvironment_Syn_Expressions :: DictionaryEnvironment,infoTrees_Syn_Expressions :: InfoTrees,matchIO_Syn_Expressions :: (IO ()),matches_Syn_Expressions :: ([Maybe MetaVariableTable]),patternMatchWarnings_Syn_Expressions :: ([Warning]),self_Syn_Expressions :: Expressions,unboundNames_Syn_Expressions :: Names,uniqueChunk_Syn_Expressions :: Int,uniqueSecondRound_Syn_Expressions :: Int}
+wrap_Expressions :: T_Expressions ->
+                    Inh_Expressions ->
+                    Syn_Expressions
+wrap_Expressions sem (Inh_Expressions _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItryPatterns _lhsItypeschemeMap _lhsIuniqueChunk _lhsIuniqueSecondRound) =
+    (let ( _lhsOassumptions,_lhsObetaUnique,_lhsObetas,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItryPatterns _lhsItypeschemeMap _lhsIuniqueChunk _lhsIuniqueSecondRound
+     in  (Syn_Expressions _lhsOassumptions _lhsObetaUnique _lhsObetas _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraintslist _lhsOcounter _lhsOdictionaryEnvironment _lhsOinfoTrees _lhsOmatchIO _lhsOmatches _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk _lhsOuniqueSecondRound))
 sem_Expressions_Cons :: T_Expression ->
                         T_Expressions ->
                         T_Expressions
@@ -9704,6 +9826,14 @@ sem_FieldDeclaration (FieldDeclaration_FieldDeclaration _range _names _type) =
 type T_FieldDeclaration = Int ->
                           Names ->
                           ( Int,FieldDeclaration,Names)
+data Inh_FieldDeclaration = Inh_FieldDeclaration {counter_Inh_FieldDeclaration :: Int,namesInScope_Inh_FieldDeclaration :: Names}
+data Syn_FieldDeclaration = Syn_FieldDeclaration {counter_Syn_FieldDeclaration :: Int,self_Syn_FieldDeclaration :: FieldDeclaration,unboundNames_Syn_FieldDeclaration :: Names}
+wrap_FieldDeclaration :: T_FieldDeclaration ->
+                         Inh_FieldDeclaration ->
+                         Syn_FieldDeclaration
+wrap_FieldDeclaration sem (Inh_FieldDeclaration _lhsIcounter _lhsInamesInScope) =
+    (let ( _lhsOcounter,_lhsOself,_lhsOunboundNames) = sem _lhsIcounter _lhsInamesInScope
+     in  (Syn_FieldDeclaration _lhsOcounter _lhsOself _lhsOunboundNames))
 sem_FieldDeclaration_FieldDeclaration :: T_Range ->
                                          T_Names ->
                                          T_AnnotatedType ->
@@ -9752,6 +9882,14 @@ sem_FieldDeclarations list =
 type T_FieldDeclarations = Int ->
                            Names ->
                            ( Int,FieldDeclarations,Names)
+data Inh_FieldDeclarations = Inh_FieldDeclarations {counter_Inh_FieldDeclarations :: Int,namesInScope_Inh_FieldDeclarations :: Names}
+data Syn_FieldDeclarations = Syn_FieldDeclarations {counter_Syn_FieldDeclarations :: Int,self_Syn_FieldDeclarations :: FieldDeclarations,unboundNames_Syn_FieldDeclarations :: Names}
+wrap_FieldDeclarations :: T_FieldDeclarations ->
+                          Inh_FieldDeclarations ->
+                          Syn_FieldDeclarations
+wrap_FieldDeclarations sem (Inh_FieldDeclarations _lhsIcounter _lhsInamesInScope) =
+    (let ( _lhsOcounter,_lhsOself,_lhsOunboundNames) = sem _lhsIcounter _lhsInamesInScope
+     in  (Syn_FieldDeclarations _lhsOcounter _lhsOself _lhsOunboundNames))
 sem_FieldDeclarations_Cons :: T_FieldDeclaration ->
                               T_FieldDeclarations ->
                               T_FieldDeclarations
@@ -9820,6 +9958,14 @@ sem_Fixity (Fixity_Infixr _range) =
     (sem_Fixity_Infixr (sem_Range _range))
 -- semantic domain
 type T_Fixity = ( Fixity)
+data Inh_Fixity = Inh_Fixity {}
+data Syn_Fixity = Syn_Fixity {self_Syn_Fixity :: Fixity}
+wrap_Fixity :: T_Fixity ->
+               Inh_Fixity ->
+               Syn_Fixity
+wrap_Fixity sem (Inh_Fixity) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Fixity _lhsOself))
 sem_Fixity_Infix :: T_Range ->
                     T_Fixity
 sem_Fixity_Infix range_ =
@@ -9890,6 +10036,14 @@ type T_FunctionBinding = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          (M.Map Int (Scheme Predicates)) ->
                          Int ->
                          ( Int,Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,Int,DictionaryEnvironment,( ([PatternElement], Bool) ),InfoTree,(IO ()),Name,Int,([Warning]),FunctionBinding,Names,Int,Warning)
+data Inh_FunctionBinding = Inh_FunctionBinding {allPatterns_Inh_FunctionBinding :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_FunctionBinding :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_FunctionBinding :: Predicates,betaRight_Inh_FunctionBinding :: Tp,betaUnique_Inh_FunctionBinding :: Int,betasLeft_Inh_FunctionBinding :: Tps,classEnvironment_Inh_FunctionBinding :: ClassEnvironment,collectErrors_Inh_FunctionBinding :: TypeErrors,collectWarnings_Inh_FunctionBinding :: Warnings,counter_Inh_FunctionBinding :: Int,currentChunk_Inh_FunctionBinding :: Int,dictionaryEnvironment_Inh_FunctionBinding :: DictionaryEnvironment,importEnvironment_Inh_FunctionBinding :: ImportEnvironment,matchIO_Inh_FunctionBinding :: (IO ()),monos_Inh_FunctionBinding :: Monos,namesInScope_Inh_FunctionBinding :: Names,orderedTypeSynonyms_Inh_FunctionBinding :: OrderedTypeSynonyms,parentTree_Inh_FunctionBinding :: InfoTree,patternMatchWarnings_Inh_FunctionBinding :: ([Warning]),substitution_Inh_FunctionBinding :: FixpointSubstitution,typeschemeMap_Inh_FunctionBinding :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_FunctionBinding :: Int}
+data Syn_FunctionBinding = Syn_FunctionBinding {argcount_Syn_FunctionBinding :: Int,assumptions_Syn_FunctionBinding :: Assumptions,betaUnique_Syn_FunctionBinding :: Int,collectErrors_Syn_FunctionBinding :: TypeErrors,collectInstances_Syn_FunctionBinding :: ([(Name, Instance)]),collectWarnings_Syn_FunctionBinding :: Warnings,constraints_Syn_FunctionBinding :: ConstraintSet,counter_Syn_FunctionBinding :: Int,dictionaryEnvironment_Syn_FunctionBinding :: DictionaryEnvironment,elements_Syn_FunctionBinding :: ( ([PatternElement], Bool) ),infoTree_Syn_FunctionBinding :: InfoTree,matchIO_Syn_FunctionBinding :: (IO ()),name_Syn_FunctionBinding :: Name,numberOfPatterns_Syn_FunctionBinding :: Int,patternMatchWarnings_Syn_FunctionBinding :: ([Warning]),self_Syn_FunctionBinding :: FunctionBinding,unboundNames_Syn_FunctionBinding :: Names,uniqueChunk_Syn_FunctionBinding :: Int,unrwar_Syn_FunctionBinding :: Warning}
+wrap_FunctionBinding :: T_FunctionBinding ->
+                        Inh_FunctionBinding ->
+                        Syn_FunctionBinding
+wrap_FunctionBinding sem (Inh_FunctionBinding _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaRight _lhsIbetaUnique _lhsIbetasLeft _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk) =
+    (let ( _lhsOargcount,_lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOelements,_lhsOinfoTree,_lhsOmatchIO,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwar) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaRight _lhsIbetaUnique _lhsIbetasLeft _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk
+     in  (Syn_FunctionBinding _lhsOargcount _lhsOassumptions _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraints _lhsOcounter _lhsOdictionaryEnvironment _lhsOelements _lhsOinfoTree _lhsOmatchIO _lhsOname _lhsOnumberOfPatterns _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk _lhsOunrwar))
 sem_FunctionBinding_Feedback :: T_Range ->
                                 String ->
                                 T_FunctionBinding ->
@@ -10433,6 +10587,14 @@ type T_FunctionBindings = ([((Expression, [String]), Core_TypingStrategy)]) ->
                           (M.Map Int (Scheme Predicates)) ->
                           Int ->
                           ( Int,Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSets,Int,DictionaryEnvironment,([([PatternElement], Bool)]),InfoTrees,(IO ()),Name,Int,([Warning]),FunctionBindings,Names,Int,([Warning]))
+data Inh_FunctionBindings = Inh_FunctionBindings {allPatterns_Inh_FunctionBindings :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_FunctionBindings :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_FunctionBindings :: Predicates,betaRight_Inh_FunctionBindings :: Tp,betaUnique_Inh_FunctionBindings :: Int,betasLeft_Inh_FunctionBindings :: Tps,classEnvironment_Inh_FunctionBindings :: ClassEnvironment,collectErrors_Inh_FunctionBindings :: TypeErrors,collectWarnings_Inh_FunctionBindings :: Warnings,counter_Inh_FunctionBindings :: Int,currentChunk_Inh_FunctionBindings :: Int,dictionaryEnvironment_Inh_FunctionBindings :: DictionaryEnvironment,importEnvironment_Inh_FunctionBindings :: ImportEnvironment,matchIO_Inh_FunctionBindings :: (IO ()),monos_Inh_FunctionBindings :: Monos,namesInScope_Inh_FunctionBindings :: Names,orderedTypeSynonyms_Inh_FunctionBindings :: OrderedTypeSynonyms,parentTree_Inh_FunctionBindings :: InfoTree,patternMatchWarnings_Inh_FunctionBindings :: ([Warning]),substitution_Inh_FunctionBindings :: FixpointSubstitution,typeschemeMap_Inh_FunctionBindings :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_FunctionBindings :: Int}
+data Syn_FunctionBindings = Syn_FunctionBindings {argcount_Syn_FunctionBindings :: Int,assumptions_Syn_FunctionBindings :: Assumptions,betaUnique_Syn_FunctionBindings :: Int,collectErrors_Syn_FunctionBindings :: TypeErrors,collectInstances_Syn_FunctionBindings :: ([(Name, Instance)]),collectWarnings_Syn_FunctionBindings :: Warnings,constraintslist_Syn_FunctionBindings :: ConstraintSets,counter_Syn_FunctionBindings :: Int,dictionaryEnvironment_Syn_FunctionBindings :: DictionaryEnvironment,elementss_Syn_FunctionBindings :: ([([PatternElement], Bool)]),infoTrees_Syn_FunctionBindings :: InfoTrees,matchIO_Syn_FunctionBindings :: (IO ()),name_Syn_FunctionBindings :: Name,numberOfPatterns_Syn_FunctionBindings :: Int,patternMatchWarnings_Syn_FunctionBindings :: ([Warning]),self_Syn_FunctionBindings :: FunctionBindings,unboundNames_Syn_FunctionBindings :: Names,uniqueChunk_Syn_FunctionBindings :: Int,unrwars_Syn_FunctionBindings :: ([Warning])}
+wrap_FunctionBindings :: T_FunctionBindings ->
+                         Inh_FunctionBindings ->
+                         Syn_FunctionBindings
+wrap_FunctionBindings sem (Inh_FunctionBindings _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaRight _lhsIbetaUnique _lhsIbetasLeft _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk) =
+    (let ( _lhsOargcount,_lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOelementss,_lhsOinfoTrees,_lhsOmatchIO,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOunrwars) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaRight _lhsIbetaUnique _lhsIbetasLeft _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk
+     in  (Syn_FunctionBindings _lhsOargcount _lhsOassumptions _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraintslist _lhsOcounter _lhsOdictionaryEnvironment _lhsOelementss _lhsOinfoTrees _lhsOmatchIO _lhsOname _lhsOnumberOfPatterns _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk _lhsOunrwars))
 sem_FunctionBindings_Cons :: T_FunctionBinding ->
                              T_FunctionBindings ->
                              T_FunctionBindings
@@ -10808,6 +10970,14 @@ type T_GuardedExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            Int ->
                            Int ->
                            ( Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,Int,DictionaryEnvironment,Bool,InfoTrees,(IO ()),([Warning]),Range,GuardedExpression,Names,Int,Int,Warning)
+data Inh_GuardedExpression = Inh_GuardedExpression {allPatterns_Inh_GuardedExpression :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_GuardedExpression :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_GuardedExpression :: Predicates,betaRight_Inh_GuardedExpression :: Tp,betaUnique_Inh_GuardedExpression :: Int,classEnvironment_Inh_GuardedExpression :: ClassEnvironment,collectErrors_Inh_GuardedExpression :: TypeErrors,collectWarnings_Inh_GuardedExpression :: Warnings,counter_Inh_GuardedExpression :: Int,currentChunk_Inh_GuardedExpression :: Int,dictionaryEnvironment_Inh_GuardedExpression :: DictionaryEnvironment,importEnvironment_Inh_GuardedExpression :: ImportEnvironment,matchIO_Inh_GuardedExpression :: (IO ()),monos_Inh_GuardedExpression :: Monos,namesInScope_Inh_GuardedExpression :: Names,numberOfGuards_Inh_GuardedExpression :: Int,orderedTypeSynonyms_Inh_GuardedExpression :: OrderedTypeSynonyms,parentTree_Inh_GuardedExpression :: InfoTree,patternMatchWarnings_Inh_GuardedExpression :: ([Warning]),substitution_Inh_GuardedExpression :: FixpointSubstitution,typeschemeMap_Inh_GuardedExpression :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_GuardedExpression :: Int,uniqueSecondRound_Inh_GuardedExpression :: Int}
+data Syn_GuardedExpression = Syn_GuardedExpression {assumptions_Syn_GuardedExpression :: Assumptions,betaUnique_Syn_GuardedExpression :: Int,collectErrors_Syn_GuardedExpression :: TypeErrors,collectInstances_Syn_GuardedExpression :: ([(Name, Instance)]),collectWarnings_Syn_GuardedExpression :: Warnings,constraints_Syn_GuardedExpression :: ConstraintSet,counter_Syn_GuardedExpression :: Int,dictionaryEnvironment_Syn_GuardedExpression :: DictionaryEnvironment,fallthrough_Syn_GuardedExpression :: Bool,infoTrees_Syn_GuardedExpression :: InfoTrees,matchIO_Syn_GuardedExpression :: (IO ()),patternMatchWarnings_Syn_GuardedExpression :: ([Warning]),range_Syn_GuardedExpression :: Range,self_Syn_GuardedExpression :: GuardedExpression,unboundNames_Syn_GuardedExpression :: Names,uniqueChunk_Syn_GuardedExpression :: Int,uniqueSecondRound_Syn_GuardedExpression :: Int,unrwar_Syn_GuardedExpression :: Warning}
+wrap_GuardedExpression :: T_GuardedExpression ->
+                          Inh_GuardedExpression ->
+                          Syn_GuardedExpression
+wrap_GuardedExpression sem (Inh_GuardedExpression _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaRight _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsInumberOfGuards _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk _lhsIuniqueSecondRound) =
+    (let ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOrange,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound,_lhsOunrwar) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaRight _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsInumberOfGuards _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk _lhsIuniqueSecondRound
+     in  (Syn_GuardedExpression _lhsOassumptions _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraints _lhsOcounter _lhsOdictionaryEnvironment _lhsOfallthrough _lhsOinfoTrees _lhsOmatchIO _lhsOpatternMatchWarnings _lhsOrange _lhsOself _lhsOunboundNames _lhsOuniqueChunk _lhsOuniqueSecondRound _lhsOunrwar))
 sem_GuardedExpression_GuardedExpression :: T_Range ->
                                            T_Expression ->
                                            T_Expression ->
@@ -11114,6 +11284,14 @@ type T_GuardedExpressions = ([((Expression, [String]), Core_TypingStrategy)]) ->
                             Int ->
                             Int ->
                             ( Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSets,Int,DictionaryEnvironment,Bool,InfoTrees,(IO ()),([Warning]),GuardedExpressions,Names,Int,Int)
+data Inh_GuardedExpressions = Inh_GuardedExpressions {allPatterns_Inh_GuardedExpressions :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_GuardedExpressions :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_GuardedExpressions :: Predicates,betaRight_Inh_GuardedExpressions :: Tp,betaUnique_Inh_GuardedExpressions :: Int,classEnvironment_Inh_GuardedExpressions :: ClassEnvironment,collectErrors_Inh_GuardedExpressions :: TypeErrors,collectWarnings_Inh_GuardedExpressions :: Warnings,counter_Inh_GuardedExpressions :: Int,currentChunk_Inh_GuardedExpressions :: Int,dictionaryEnvironment_Inh_GuardedExpressions :: DictionaryEnvironment,importEnvironment_Inh_GuardedExpressions :: ImportEnvironment,matchIO_Inh_GuardedExpressions :: (IO ()),monos_Inh_GuardedExpressions :: Monos,namesInScope_Inh_GuardedExpressions :: Names,numberOfGuards_Inh_GuardedExpressions :: Int,open_Inh_GuardedExpressions :: Bool,orderedTypeSynonyms_Inh_GuardedExpressions :: OrderedTypeSynonyms,parentTree_Inh_GuardedExpressions :: InfoTree,patternMatchWarnings_Inh_GuardedExpressions :: ([Warning]),substitution_Inh_GuardedExpressions :: FixpointSubstitution,typeschemeMap_Inh_GuardedExpressions :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_GuardedExpressions :: Int,uniqueSecondRound_Inh_GuardedExpressions :: Int}
+data Syn_GuardedExpressions = Syn_GuardedExpressions {assumptions_Syn_GuardedExpressions :: Assumptions,betaUnique_Syn_GuardedExpressions :: Int,collectErrors_Syn_GuardedExpressions :: TypeErrors,collectInstances_Syn_GuardedExpressions :: ([(Name, Instance)]),collectWarnings_Syn_GuardedExpressions :: Warnings,constraintslist_Syn_GuardedExpressions :: ConstraintSets,counter_Syn_GuardedExpressions :: Int,dictionaryEnvironment_Syn_GuardedExpressions :: DictionaryEnvironment,fallthrough_Syn_GuardedExpressions :: Bool,infoTrees_Syn_GuardedExpressions :: InfoTrees,matchIO_Syn_GuardedExpressions :: (IO ()),patternMatchWarnings_Syn_GuardedExpressions :: ([Warning]),self_Syn_GuardedExpressions :: GuardedExpressions,unboundNames_Syn_GuardedExpressions :: Names,uniqueChunk_Syn_GuardedExpressions :: Int,uniqueSecondRound_Syn_GuardedExpressions :: Int}
+wrap_GuardedExpressions :: T_GuardedExpressions ->
+                           Inh_GuardedExpressions ->
+                           Syn_GuardedExpressions
+wrap_GuardedExpressions sem (Inh_GuardedExpressions _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaRight _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsInumberOfGuards _lhsIopen _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk _lhsIuniqueSecondRound) =
+    (let ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraintslist,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTrees,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaRight _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsInumberOfGuards _lhsIopen _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk _lhsIuniqueSecondRound
+     in  (Syn_GuardedExpressions _lhsOassumptions _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraintslist _lhsOcounter _lhsOdictionaryEnvironment _lhsOfallthrough _lhsOinfoTrees _lhsOmatchIO _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk _lhsOuniqueSecondRound))
 sem_GuardedExpressions_Cons :: T_GuardedExpression ->
                                T_GuardedExpressions ->
                                T_GuardedExpressions
@@ -11462,6 +11640,14 @@ sem_Import (Import_Variable _range _name) =
     (sem_Import_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Import = ( Import)
+data Inh_Import = Inh_Import {}
+data Syn_Import = Syn_Import {self_Syn_Import :: Import}
+wrap_Import :: T_Import ->
+               Inh_Import ->
+               Syn_Import
+wrap_Import sem (Inh_Import) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Import _lhsOself))
 sem_Import_TypeOrClass :: T_Range ->
                           T_Name ->
                           T_MaybeNames ->
@@ -11524,6 +11710,14 @@ sem_ImportDeclaration (ImportDeclaration_Import _range _qualified _name _asname 
     (sem_ImportDeclaration_Import (sem_Range _range) _qualified (sem_Name _name) (sem_MaybeName _asname) (sem_MaybeImportSpecification _importspecification))
 -- semantic domain
 type T_ImportDeclaration = ( ImportDeclaration)
+data Inh_ImportDeclaration = Inh_ImportDeclaration {}
+data Syn_ImportDeclaration = Syn_ImportDeclaration {self_Syn_ImportDeclaration :: ImportDeclaration}
+wrap_ImportDeclaration :: T_ImportDeclaration ->
+                          Inh_ImportDeclaration ->
+                          Syn_ImportDeclaration
+wrap_ImportDeclaration sem (Inh_ImportDeclaration) =
+    (let ( _lhsOself) = sem
+     in  (Syn_ImportDeclaration _lhsOself))
 sem_ImportDeclaration_Empty :: T_Range ->
                                T_ImportDeclaration
 sem_ImportDeclaration_Empty range_ =
@@ -11569,6 +11763,14 @@ sem_ImportDeclarations list =
     (Prelude.foldr sem_ImportDeclarations_Cons sem_ImportDeclarations_Nil (Prelude.map sem_ImportDeclaration list))
 -- semantic domain
 type T_ImportDeclarations = ( ImportDeclarations)
+data Inh_ImportDeclarations = Inh_ImportDeclarations {}
+data Syn_ImportDeclarations = Syn_ImportDeclarations {self_Syn_ImportDeclarations :: ImportDeclarations}
+wrap_ImportDeclarations :: T_ImportDeclarations ->
+                           Inh_ImportDeclarations ->
+                           Syn_ImportDeclarations
+wrap_ImportDeclarations sem (Inh_ImportDeclarations) =
+    (let ( _lhsOself) = sem
+     in  (Syn_ImportDeclarations _lhsOself))
 sem_ImportDeclarations_Cons :: T_ImportDeclaration ->
                                T_ImportDeclarations ->
                                T_ImportDeclarations
@@ -11601,6 +11803,14 @@ sem_ImportSpecification (ImportSpecification_Import _range _hiding _imports) =
     (sem_ImportSpecification_Import (sem_Range _range) _hiding (sem_Imports _imports))
 -- semantic domain
 type T_ImportSpecification = ( ImportSpecification)
+data Inh_ImportSpecification = Inh_ImportSpecification {}
+data Syn_ImportSpecification = Syn_ImportSpecification {self_Syn_ImportSpecification :: ImportSpecification}
+wrap_ImportSpecification :: T_ImportSpecification ->
+                            Inh_ImportSpecification ->
+                            Syn_ImportSpecification
+wrap_ImportSpecification sem (Inh_ImportSpecification) =
+    (let ( _lhsOself) = sem
+     in  (Syn_ImportSpecification _lhsOself))
 sem_ImportSpecification_Import :: T_Range ->
                                   Bool ->
                                   T_Imports ->
@@ -11626,6 +11836,14 @@ sem_Imports list =
     (Prelude.foldr sem_Imports_Cons sem_Imports_Nil (Prelude.map sem_Import list))
 -- semantic domain
 type T_Imports = ( Imports)
+data Inh_Imports = Inh_Imports {}
+data Syn_Imports = Syn_Imports {self_Syn_Imports :: Imports}
+wrap_Imports :: T_Imports ->
+                Inh_Imports ->
+                Syn_Imports
+wrap_Imports sem (Inh_Imports) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Imports _lhsOself))
 sem_Imports_Cons :: T_Import ->
                     T_Imports ->
                     T_Imports
@@ -11669,6 +11887,14 @@ type T_LeftHandSide = Int ->
                       InfoTree ->
                       ([Warning]) ->
                       ( Int,Int,Tps,ConstraintSet,Int,(  [PatternElement]        ),PatternAssumptions,InfoTrees,Name,Int,Names,([Warning]),LeftHandSide,Names)
+data Inh_LeftHandSide = Inh_LeftHandSide {betaUnique_Inh_LeftHandSide :: Int,counter_Inh_LeftHandSide :: Int,importEnvironment_Inh_LeftHandSide :: ImportEnvironment,monos_Inh_LeftHandSide :: Monos,namesInScope_Inh_LeftHandSide :: Names,parentTree_Inh_LeftHandSide :: InfoTree,patternMatchWarnings_Inh_LeftHandSide :: ([Warning])}
+data Syn_LeftHandSide = Syn_LeftHandSide {argcount_Syn_LeftHandSide :: Int,betaUnique_Syn_LeftHandSide :: Int,betas_Syn_LeftHandSide :: Tps,constraints_Syn_LeftHandSide :: ConstraintSet,counter_Syn_LeftHandSide :: Int,elements_Syn_LeftHandSide :: (  [PatternElement]        ),environment_Syn_LeftHandSide :: PatternAssumptions,infoTrees_Syn_LeftHandSide :: InfoTrees,name_Syn_LeftHandSide :: Name,numberOfPatterns_Syn_LeftHandSide :: Int,patVarNames_Syn_LeftHandSide :: Names,patternMatchWarnings_Syn_LeftHandSide :: ([Warning]),self_Syn_LeftHandSide :: LeftHandSide,unboundNames_Syn_LeftHandSide :: Names}
+wrap_LeftHandSide :: T_LeftHandSide ->
+                     Inh_LeftHandSide ->
+                     Syn_LeftHandSide
+wrap_LeftHandSide sem (Inh_LeftHandSide _lhsIbetaUnique _lhsIcounter _lhsIimportEnvironment _lhsImonos _lhsInamesInScope _lhsIparentTree _lhsIpatternMatchWarnings) =
+    (let ( _lhsOargcount,_lhsObetaUnique,_lhsObetas,_lhsOconstraints,_lhsOcounter,_lhsOelements,_lhsOenvironment,_lhsOinfoTrees,_lhsOname,_lhsOnumberOfPatterns,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames) = sem _lhsIbetaUnique _lhsIcounter _lhsIimportEnvironment _lhsImonos _lhsInamesInScope _lhsIparentTree _lhsIpatternMatchWarnings
+     in  (Syn_LeftHandSide _lhsOargcount _lhsObetaUnique _lhsObetas _lhsOconstraints _lhsOcounter _lhsOelements _lhsOenvironment _lhsOinfoTrees _lhsOname _lhsOnumberOfPatterns _lhsOpatVarNames _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames))
 sem_LeftHandSide_Function :: T_Range ->
                              T_Name ->
                              T_Patterns ->
@@ -12053,6 +12279,14 @@ sem_Literal (Literal_String _range _value) =
     (sem_Literal_String (sem_Range _range) _value)
 -- semantic domain
 type T_Literal = ( (  [PatternElement]        ),Tp,Literal)
+data Inh_Literal = Inh_Literal {}
+data Syn_Literal = Syn_Literal {elements_Syn_Literal :: (  [PatternElement]        ),literalType_Syn_Literal :: Tp,self_Syn_Literal :: Literal}
+wrap_Literal :: T_Literal ->
+                Inh_Literal ->
+                Syn_Literal
+wrap_Literal sem (Inh_Literal) =
+    (let ( _lhsOelements,_lhsOliteralType,_lhsOself) = sem
+     in  (Syn_Literal _lhsOelements _lhsOliteralType _lhsOself))
 sem_Literal_Char :: T_Range ->
                     String ->
                     T_Literal
@@ -12162,6 +12396,14 @@ type T_MaybeDeclarations = ([((Expression, [String]), Core_TypingStrategy)]) ->
                            Names ->
                            Int ->
                            ( Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,Int,DictionaryEnvironment,InfoTrees,(M.Map NameWithRange TpScheme),(IO ()),Names,([Warning]),MaybeDeclarations,Names,Int)
+data Inh_MaybeDeclarations = Inh_MaybeDeclarations {allPatterns_Inh_MaybeDeclarations :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_MaybeDeclarations :: (M.Map NameWithRange TpScheme),assumptions_Inh_MaybeDeclarations :: Assumptions,availablePredicates_Inh_MaybeDeclarations :: Predicates,betaUnique_Inh_MaybeDeclarations :: Int,classEnvironment_Inh_MaybeDeclarations :: ClassEnvironment,collectErrors_Inh_MaybeDeclarations :: TypeErrors,collectWarnings_Inh_MaybeDeclarations :: Warnings,constraints_Inh_MaybeDeclarations :: ConstraintSet,counter_Inh_MaybeDeclarations :: Int,currentChunk_Inh_MaybeDeclarations :: Int,dictionaryEnvironment_Inh_MaybeDeclarations :: DictionaryEnvironment,importEnvironment_Inh_MaybeDeclarations :: ImportEnvironment,matchIO_Inh_MaybeDeclarations :: (IO ()),monos_Inh_MaybeDeclarations :: Monos,namesInScope_Inh_MaybeDeclarations :: Names,orderedTypeSynonyms_Inh_MaybeDeclarations :: OrderedTypeSynonyms,parentTree_Inh_MaybeDeclarations :: InfoTree,patternMatchWarnings_Inh_MaybeDeclarations :: ([Warning]),substitution_Inh_MaybeDeclarations :: FixpointSubstitution,typeschemeMap_Inh_MaybeDeclarations :: (M.Map Int (Scheme Predicates)),unboundNames_Inh_MaybeDeclarations :: Names,uniqueChunk_Inh_MaybeDeclarations :: Int}
+data Syn_MaybeDeclarations = Syn_MaybeDeclarations {assumptions_Syn_MaybeDeclarations :: Assumptions,betaUnique_Syn_MaybeDeclarations :: Int,collectErrors_Syn_MaybeDeclarations :: TypeErrors,collectInstances_Syn_MaybeDeclarations :: ([(Name, Instance)]),collectWarnings_Syn_MaybeDeclarations :: Warnings,constraints_Syn_MaybeDeclarations :: ConstraintSet,counter_Syn_MaybeDeclarations :: Int,dictionaryEnvironment_Syn_MaybeDeclarations :: DictionaryEnvironment,infoTrees_Syn_MaybeDeclarations :: InfoTrees,localTypes_Syn_MaybeDeclarations :: (M.Map NameWithRange TpScheme),matchIO_Syn_MaybeDeclarations :: (IO ()),namesInScope_Syn_MaybeDeclarations :: Names,patternMatchWarnings_Syn_MaybeDeclarations :: ([Warning]),self_Syn_MaybeDeclarations :: MaybeDeclarations,unboundNames_Syn_MaybeDeclarations :: Names,uniqueChunk_Syn_MaybeDeclarations :: Int}
+wrap_MaybeDeclarations :: T_MaybeDeclarations ->
+                          Inh_MaybeDeclarations ->
+                          Syn_MaybeDeclarations
+wrap_MaybeDeclarations sem (Inh_MaybeDeclarations _lhsIallPatterns _lhsIallTypeSchemes _lhsIassumptions _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIconstraints _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIunboundNames _lhsIuniqueChunk) =
+    (let ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOlocalTypes,_lhsOmatchIO,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIassumptions _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIconstraints _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIunboundNames _lhsIuniqueChunk
+     in  (Syn_MaybeDeclarations _lhsOassumptions _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraints _lhsOcounter _lhsOdictionaryEnvironment _lhsOinfoTrees _lhsOlocalTypes _lhsOmatchIO _lhsOnamesInScope _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk))
 sem_MaybeDeclarations_Just :: T_Declarations ->
                               T_MaybeDeclarations
 sem_MaybeDeclarations_Just declarations_ =
@@ -12426,6 +12668,14 @@ sem_MaybeExports (MaybeExports_Nothing) =
     (sem_MaybeExports_Nothing)
 -- semantic domain
 type T_MaybeExports = ( MaybeExports)
+data Inh_MaybeExports = Inh_MaybeExports {}
+data Syn_MaybeExports = Syn_MaybeExports {self_Syn_MaybeExports :: MaybeExports}
+wrap_MaybeExports :: T_MaybeExports ->
+                     Inh_MaybeExports ->
+                     Syn_MaybeExports
+wrap_MaybeExports sem (Inh_MaybeExports) =
+    (let ( _lhsOself) = sem
+     in  (Syn_MaybeExports _lhsOself))
 sem_MaybeExports_Just :: T_Exports ->
                          T_MaybeExports
 sem_MaybeExports_Just exports_ =
@@ -12478,6 +12728,14 @@ type T_MaybeExpression = ([((Expression, [String]), Core_TypingStrategy)]) ->
                          Int ->
                          Int ->
                          ( Assumptions,Tp,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,Int,DictionaryEnvironment,InfoTrees,(IO ()),([Maybe MetaVariableTable]),([Warning]),Bool,MaybeExpression,Names,Int,Int)
+data Inh_MaybeExpression = Inh_MaybeExpression {allPatterns_Inh_MaybeExpression :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_MaybeExpression :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_MaybeExpression :: Predicates,betaUnique_Inh_MaybeExpression :: Int,classEnvironment_Inh_MaybeExpression :: ClassEnvironment,collectErrors_Inh_MaybeExpression :: TypeErrors,collectWarnings_Inh_MaybeExpression :: Warnings,counter_Inh_MaybeExpression :: Int,currentChunk_Inh_MaybeExpression :: Int,dictionaryEnvironment_Inh_MaybeExpression :: DictionaryEnvironment,importEnvironment_Inh_MaybeExpression :: ImportEnvironment,matchIO_Inh_MaybeExpression :: (IO ()),monos_Inh_MaybeExpression :: Monos,namesInScope_Inh_MaybeExpression :: Names,orderedTypeSynonyms_Inh_MaybeExpression :: OrderedTypeSynonyms,parentTree_Inh_MaybeExpression :: InfoTree,patternMatchWarnings_Inh_MaybeExpression :: ([Warning]),substitution_Inh_MaybeExpression :: FixpointSubstitution,tryPatterns_Inh_MaybeExpression :: ([(MaybeExpression, [String])]),typeschemeMap_Inh_MaybeExpression :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_MaybeExpression :: Int,uniqueSecondRound_Inh_MaybeExpression :: Int}
+data Syn_MaybeExpression = Syn_MaybeExpression {assumptions_Syn_MaybeExpression :: Assumptions,beta_Syn_MaybeExpression :: Tp,betaUnique_Syn_MaybeExpression :: Int,collectErrors_Syn_MaybeExpression :: TypeErrors,collectInstances_Syn_MaybeExpression :: ([(Name, Instance)]),collectWarnings_Syn_MaybeExpression :: Warnings,constraints_Syn_MaybeExpression :: ConstraintSet,counter_Syn_MaybeExpression :: Int,dictionaryEnvironment_Syn_MaybeExpression :: DictionaryEnvironment,infoTrees_Syn_MaybeExpression :: InfoTrees,matchIO_Syn_MaybeExpression :: (IO ()),matches_Syn_MaybeExpression :: ([Maybe MetaVariableTable]),patternMatchWarnings_Syn_MaybeExpression :: ([Warning]),section_Syn_MaybeExpression :: Bool,self_Syn_MaybeExpression :: MaybeExpression,unboundNames_Syn_MaybeExpression :: Names,uniqueChunk_Syn_MaybeExpression :: Int,uniqueSecondRound_Syn_MaybeExpression :: Int}
+wrap_MaybeExpression :: T_MaybeExpression ->
+                        Inh_MaybeExpression ->
+                        Syn_MaybeExpression
+wrap_MaybeExpression sem (Inh_MaybeExpression _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItryPatterns _lhsItypeschemeMap _lhsIuniqueChunk _lhsIuniqueSecondRound) =
+    (let ( _lhsOassumptions,_lhsObeta,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmatches,_lhsOpatternMatchWarnings,_lhsOsection,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItryPatterns _lhsItypeschemeMap _lhsIuniqueChunk _lhsIuniqueSecondRound
+     in  (Syn_MaybeExpression _lhsOassumptions _lhsObeta _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraints _lhsOcounter _lhsOdictionaryEnvironment _lhsOinfoTrees _lhsOmatchIO _lhsOmatches _lhsOpatternMatchWarnings _lhsOsection _lhsOself _lhsOunboundNames _lhsOuniqueChunk _lhsOuniqueSecondRound))
 sem_MaybeExpression_Just :: T_Expression ->
                             T_MaybeExpression
 sem_MaybeExpression_Just expression_ =
@@ -12736,6 +12994,14 @@ sem_MaybeImportSpecification (MaybeImportSpecification_Nothing) =
     (sem_MaybeImportSpecification_Nothing)
 -- semantic domain
 type T_MaybeImportSpecification = ( MaybeImportSpecification)
+data Inh_MaybeImportSpecification = Inh_MaybeImportSpecification {}
+data Syn_MaybeImportSpecification = Syn_MaybeImportSpecification {self_Syn_MaybeImportSpecification :: MaybeImportSpecification}
+wrap_MaybeImportSpecification :: T_MaybeImportSpecification ->
+                                 Inh_MaybeImportSpecification ->
+                                 Syn_MaybeImportSpecification
+wrap_MaybeImportSpecification sem (Inh_MaybeImportSpecification) =
+    (let ( _lhsOself) = sem
+     in  (Syn_MaybeImportSpecification _lhsOself))
 sem_MaybeImportSpecification_Just :: T_ImportSpecification ->
                                      T_MaybeImportSpecification
 sem_MaybeImportSpecification_Just importspecification_ =
@@ -12766,6 +13032,14 @@ sem_MaybeInt (MaybeInt_Nothing) =
     (sem_MaybeInt_Nothing)
 -- semantic domain
 type T_MaybeInt = ( MaybeInt)
+data Inh_MaybeInt = Inh_MaybeInt {}
+data Syn_MaybeInt = Syn_MaybeInt {self_Syn_MaybeInt :: MaybeInt}
+wrap_MaybeInt :: T_MaybeInt ->
+                 Inh_MaybeInt ->
+                 Syn_MaybeInt
+wrap_MaybeInt sem (Inh_MaybeInt) =
+    (let ( _lhsOself) = sem
+     in  (Syn_MaybeInt _lhsOself))
 sem_MaybeInt_Just :: Int ->
                      T_MaybeInt
 sem_MaybeInt_Just int_ =
@@ -12793,6 +13067,14 @@ sem_MaybeName (MaybeName_Nothing) =
     (sem_MaybeName_Nothing)
 -- semantic domain
 type T_MaybeName = ( MaybeName)
+data Inh_MaybeName = Inh_MaybeName {}
+data Syn_MaybeName = Syn_MaybeName {self_Syn_MaybeName :: MaybeName}
+wrap_MaybeName :: T_MaybeName ->
+                  Inh_MaybeName ->
+                  Syn_MaybeName
+wrap_MaybeName sem (Inh_MaybeName) =
+    (let ( _lhsOself) = sem
+     in  (Syn_MaybeName _lhsOself))
 sem_MaybeName_Just :: T_Name ->
                       T_MaybeName
 sem_MaybeName_Just name_ =
@@ -12823,6 +13105,14 @@ sem_MaybeNames (MaybeNames_Nothing) =
     (sem_MaybeNames_Nothing)
 -- semantic domain
 type T_MaybeNames = ( MaybeNames)
+data Inh_MaybeNames = Inh_MaybeNames {}
+data Syn_MaybeNames = Syn_MaybeNames {self_Syn_MaybeNames :: MaybeNames}
+wrap_MaybeNames :: T_MaybeNames ->
+                   Inh_MaybeNames ->
+                   Syn_MaybeNames
+wrap_MaybeNames sem (Inh_MaybeNames) =
+    (let ( _lhsOself) = sem
+     in  (Syn_MaybeNames _lhsOself))
 sem_MaybeNames_Just :: T_Names ->
                        T_MaybeNames
 sem_MaybeNames_Just names_ =
@@ -12853,6 +13143,14 @@ sem_Module (Module_Module _range _name _exports _body) =
 type T_Module = ImportEnvironment ->
                 ([Option]) ->
                 ( Assumptions,DictionaryEnvironment,InfoTree,LogEntries,Module,(SolveResult ConstraintInfo),TypeEnvironment,TypeErrors,Warnings)
+data Inh_Module = Inh_Module {importEnvironment_Inh_Module :: ImportEnvironment,options_Inh_Module :: ([Option])}
+data Syn_Module = Syn_Module {assumptions_Syn_Module :: Assumptions,dictionaryEnvironment_Syn_Module :: DictionaryEnvironment,infoTree_Syn_Module :: InfoTree,logEntries_Syn_Module :: LogEntries,self_Syn_Module :: Module,solveResult_Syn_Module :: (SolveResult ConstraintInfo),toplevelTypes_Syn_Module :: TypeEnvironment,typeErrors_Syn_Module :: TypeErrors,warnings_Syn_Module :: Warnings}
+wrap_Module :: T_Module ->
+               Inh_Module ->
+               Syn_Module
+wrap_Module sem (Inh_Module _lhsIimportEnvironment _lhsIoptions) =
+    (let ( _lhsOassumptions,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOlogEntries,_lhsOself,_lhsOsolveResult,_lhsOtoplevelTypes,_lhsOtypeErrors,_lhsOwarnings) = sem _lhsIimportEnvironment _lhsIoptions
+     in  (Syn_Module _lhsOassumptions _lhsOdictionaryEnvironment _lhsOinfoTree _lhsOlogEntries _lhsOself _lhsOsolveResult _lhsOtoplevelTypes _lhsOtypeErrors _lhsOwarnings))
 sem_Module_Module :: T_Range ->
                      T_MaybeName ->
                      T_MaybeExports ->
@@ -13031,6 +13329,14 @@ sem_Name (Name_Special _range _module _name) =
     (sem_Name_Special (sem_Range _range) (sem_Strings _module) _name)
 -- semantic domain
 type T_Name = ( Name)
+data Inh_Name = Inh_Name {}
+data Syn_Name = Syn_Name {self_Syn_Name :: Name}
+wrap_Name :: T_Name ->
+             Inh_Name ->
+             Syn_Name
+wrap_Name sem (Inh_Name) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Name _lhsOself))
 sem_Name_Identifier :: T_Range ->
                        T_Strings ->
                        String ->
@@ -13090,6 +13396,14 @@ sem_Names list =
     (Prelude.foldr sem_Names_Cons sem_Names_Nil (Prelude.map sem_Name list))
 -- semantic domain
 type T_Names = ( Names)
+data Inh_Names = Inh_Names {}
+data Syn_Names = Syn_Names {self_Syn_Names :: Names}
+wrap_Names :: T_Names ->
+              Inh_Names ->
+              Syn_Names
+wrap_Names sem (Inh_Names) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Names _lhsOself))
 sem_Names_Cons :: T_Name ->
                   T_Names ->
                   T_Names
@@ -13157,6 +13471,14 @@ type T_Pattern = Int ->
                  InfoTree ->
                  ([Warning]) ->
                  ( Tp,Int,ConstraintSet,Int,(  [PatternElement]        ),PatternAssumptions,InfoTree,Names,([Warning]),Pattern,Names)
+data Inh_Pattern = Inh_Pattern {betaUnique_Inh_Pattern :: Int,counter_Inh_Pattern :: Int,importEnvironment_Inh_Pattern :: ImportEnvironment,monos_Inh_Pattern :: Monos,namesInScope_Inh_Pattern :: Names,parentTree_Inh_Pattern :: InfoTree,patternMatchWarnings_Inh_Pattern :: ([Warning])}
+data Syn_Pattern = Syn_Pattern {beta_Syn_Pattern :: Tp,betaUnique_Syn_Pattern :: Int,constraints_Syn_Pattern :: ConstraintSet,counter_Syn_Pattern :: Int,elements_Syn_Pattern :: (  [PatternElement]        ),environment_Syn_Pattern :: PatternAssumptions,infoTree_Syn_Pattern :: InfoTree,patVarNames_Syn_Pattern :: Names,patternMatchWarnings_Syn_Pattern :: ([Warning]),self_Syn_Pattern :: Pattern,unboundNames_Syn_Pattern :: Names}
+wrap_Pattern :: T_Pattern ->
+                Inh_Pattern ->
+                Syn_Pattern
+wrap_Pattern sem (Inh_Pattern _lhsIbetaUnique _lhsIcounter _lhsIimportEnvironment _lhsImonos _lhsInamesInScope _lhsIparentTree _lhsIpatternMatchWarnings) =
+    (let ( _lhsObeta,_lhsObetaUnique,_lhsOconstraints,_lhsOcounter,_lhsOelements,_lhsOenvironment,_lhsOinfoTree,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames) = sem _lhsIbetaUnique _lhsIcounter _lhsIimportEnvironment _lhsImonos _lhsInamesInScope _lhsIparentTree _lhsIpatternMatchWarnings
+     in  (Syn_Pattern _lhsObeta _lhsObetaUnique _lhsOconstraints _lhsOcounter _lhsOelements _lhsOenvironment _lhsOinfoTree _lhsOpatVarNames _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames))
 sem_Pattern_As :: T_Range ->
                   T_Name ->
                   T_Pattern ->
@@ -14470,6 +14792,14 @@ type T_Patterns = Int ->
                   InfoTree ->
                   ([Warning]) ->
                   ( Int,Tps,ConstraintSets,Int,([ [PatternElement]       ]),PatternAssumptions,InfoTrees,Int,Names,([Warning]),Patterns,Names)
+data Inh_Patterns = Inh_Patterns {betaUnique_Inh_Patterns :: Int,counter_Inh_Patterns :: Int,importEnvironment_Inh_Patterns :: ImportEnvironment,monos_Inh_Patterns :: Monos,namesInScope_Inh_Patterns :: Names,parentTree_Inh_Patterns :: InfoTree,patternMatchWarnings_Inh_Patterns :: ([Warning])}
+data Syn_Patterns = Syn_Patterns {betaUnique_Syn_Patterns :: Int,betas_Syn_Patterns :: Tps,constraintslist_Syn_Patterns :: ConstraintSets,counter_Syn_Patterns :: Int,elementss_Syn_Patterns :: ([ [PatternElement]       ]),environment_Syn_Patterns :: PatternAssumptions,infoTrees_Syn_Patterns :: InfoTrees,numberOfPatterns_Syn_Patterns :: Int,patVarNames_Syn_Patterns :: Names,patternMatchWarnings_Syn_Patterns :: ([Warning]),self_Syn_Patterns :: Patterns,unboundNames_Syn_Patterns :: Names}
+wrap_Patterns :: T_Patterns ->
+                 Inh_Patterns ->
+                 Syn_Patterns
+wrap_Patterns sem (Inh_Patterns _lhsIbetaUnique _lhsIcounter _lhsIimportEnvironment _lhsImonos _lhsInamesInScope _lhsIparentTree _lhsIpatternMatchWarnings) =
+    (let ( _lhsObetaUnique,_lhsObetas,_lhsOconstraintslist,_lhsOcounter,_lhsOelementss,_lhsOenvironment,_lhsOinfoTrees,_lhsOnumberOfPatterns,_lhsOpatVarNames,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames) = sem _lhsIbetaUnique _lhsIcounter _lhsIimportEnvironment _lhsImonos _lhsInamesInScope _lhsIparentTree _lhsIpatternMatchWarnings
+     in  (Syn_Patterns _lhsObetaUnique _lhsObetas _lhsOconstraintslist _lhsOcounter _lhsOelementss _lhsOenvironment _lhsOinfoTrees _lhsOnumberOfPatterns _lhsOpatVarNames _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames))
 sem_Patterns_Cons :: T_Pattern ->
                      T_Patterns ->
                      T_Patterns
@@ -14647,6 +14977,14 @@ sem_Position (Position_Unknown) =
     (sem_Position_Unknown)
 -- semantic domain
 type T_Position = ( Position)
+data Inh_Position = Inh_Position {}
+data Syn_Position = Syn_Position {self_Syn_Position :: Position}
+wrap_Position :: T_Position ->
+                 Inh_Position ->
+                 Syn_Position
+wrap_Position sem (Inh_Position) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Position _lhsOself))
 sem_Position_Position :: String ->
                          Int ->
                          Int ->
@@ -14704,6 +15042,14 @@ type T_Qualifier = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    Int ->
                    Int ->
                    ( Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,Int,DictionaryEnvironment,InfoTree,(IO ()),Monos,Names,([Warning]),Qualifier,Names,Int,Int)
+data Inh_Qualifier = Inh_Qualifier {allPatterns_Inh_Qualifier :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_Qualifier :: (M.Map NameWithRange TpScheme),assumptions_Inh_Qualifier :: Assumptions,availablePredicates_Inh_Qualifier :: Predicates,betaUnique_Inh_Qualifier :: Int,classEnvironment_Inh_Qualifier :: ClassEnvironment,collectErrors_Inh_Qualifier :: TypeErrors,collectWarnings_Inh_Qualifier :: Warnings,constraints_Inh_Qualifier :: ConstraintSet,counter_Inh_Qualifier :: Int,currentChunk_Inh_Qualifier :: Int,dictionaryEnvironment_Inh_Qualifier :: DictionaryEnvironment,importEnvironment_Inh_Qualifier :: ImportEnvironment,matchIO_Inh_Qualifier :: (IO ()),monos_Inh_Qualifier :: Monos,namesInScope_Inh_Qualifier :: Names,orderedTypeSynonyms_Inh_Qualifier :: OrderedTypeSynonyms,parentTree_Inh_Qualifier :: InfoTree,patternMatchWarnings_Inh_Qualifier :: ([Warning]),substitution_Inh_Qualifier :: FixpointSubstitution,typeschemeMap_Inh_Qualifier :: (M.Map Int (Scheme Predicates)),unboundNames_Inh_Qualifier :: Names,uniqueChunk_Inh_Qualifier :: Int,uniqueSecondRound_Inh_Qualifier :: Int}
+data Syn_Qualifier = Syn_Qualifier {assumptions_Syn_Qualifier :: Assumptions,betaUnique_Syn_Qualifier :: Int,collectErrors_Syn_Qualifier :: TypeErrors,collectInstances_Syn_Qualifier :: ([(Name, Instance)]),collectWarnings_Syn_Qualifier :: Warnings,constraints_Syn_Qualifier :: ConstraintSet,counter_Syn_Qualifier :: Int,dictionaryEnvironment_Syn_Qualifier :: DictionaryEnvironment,infoTree_Syn_Qualifier :: InfoTree,matchIO_Syn_Qualifier :: (IO ()),monos_Syn_Qualifier :: Monos,namesInScope_Syn_Qualifier :: Names,patternMatchWarnings_Syn_Qualifier :: ([Warning]),self_Syn_Qualifier :: Qualifier,unboundNames_Syn_Qualifier :: Names,uniqueChunk_Syn_Qualifier :: Int,uniqueSecondRound_Syn_Qualifier :: Int}
+wrap_Qualifier :: T_Qualifier ->
+                  Inh_Qualifier ->
+                  Syn_Qualifier
+wrap_Qualifier sem (Inh_Qualifier _lhsIallPatterns _lhsIallTypeSchemes _lhsIassumptions _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIconstraints _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIunboundNames _lhsIuniqueChunk _lhsIuniqueSecondRound) =
+    (let ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIassumptions _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIconstraints _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIunboundNames _lhsIuniqueChunk _lhsIuniqueSecondRound
+     in  (Syn_Qualifier _lhsOassumptions _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraints _lhsOcounter _lhsOdictionaryEnvironment _lhsOinfoTree _lhsOmatchIO _lhsOmonos _lhsOnamesInScope _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk _lhsOuniqueSecondRound))
 sem_Qualifier_Empty :: T_Range ->
                        T_Qualifier
 sem_Qualifier_Empty range_ =
@@ -15453,6 +15799,14 @@ type T_Qualifiers = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     Int ->
                     Int ->
                     ( Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,Int,DictionaryEnvironment,InfoTrees,(IO ()),Monos,Names,([Warning]),Qualifiers,Names,Int,Int)
+data Inh_Qualifiers = Inh_Qualifiers {allPatterns_Inh_Qualifiers :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_Qualifiers :: (M.Map NameWithRange TpScheme),assumptions_Inh_Qualifiers :: Assumptions,availablePredicates_Inh_Qualifiers :: Predicates,betaUnique_Inh_Qualifiers :: Int,classEnvironment_Inh_Qualifiers :: ClassEnvironment,collectErrors_Inh_Qualifiers :: TypeErrors,collectWarnings_Inh_Qualifiers :: Warnings,constraints_Inh_Qualifiers :: ConstraintSet,counter_Inh_Qualifiers :: Int,currentChunk_Inh_Qualifiers :: Int,dictionaryEnvironment_Inh_Qualifiers :: DictionaryEnvironment,importEnvironment_Inh_Qualifiers :: ImportEnvironment,matchIO_Inh_Qualifiers :: (IO ()),monos_Inh_Qualifiers :: Monos,namesInScope_Inh_Qualifiers :: Names,orderedTypeSynonyms_Inh_Qualifiers :: OrderedTypeSynonyms,parentTree_Inh_Qualifiers :: InfoTree,patternMatchWarnings_Inh_Qualifiers :: ([Warning]),substitution_Inh_Qualifiers :: FixpointSubstitution,typeschemeMap_Inh_Qualifiers :: (M.Map Int (Scheme Predicates)),unboundNames_Inh_Qualifiers :: Names,uniqueChunk_Inh_Qualifiers :: Int,uniqueSecondRound_Inh_Qualifiers :: Int}
+data Syn_Qualifiers = Syn_Qualifiers {assumptions_Syn_Qualifiers :: Assumptions,betaUnique_Syn_Qualifiers :: Int,collectErrors_Syn_Qualifiers :: TypeErrors,collectInstances_Syn_Qualifiers :: ([(Name, Instance)]),collectWarnings_Syn_Qualifiers :: Warnings,constraints_Syn_Qualifiers :: ConstraintSet,counter_Syn_Qualifiers :: Int,dictionaryEnvironment_Syn_Qualifiers :: DictionaryEnvironment,infoTrees_Syn_Qualifiers :: InfoTrees,matchIO_Syn_Qualifiers :: (IO ()),monos_Syn_Qualifiers :: Monos,namesInScope_Syn_Qualifiers :: Names,patternMatchWarnings_Syn_Qualifiers :: ([Warning]),self_Syn_Qualifiers :: Qualifiers,unboundNames_Syn_Qualifiers :: Names,uniqueChunk_Syn_Qualifiers :: Int,uniqueSecondRound_Syn_Qualifiers :: Int}
+wrap_Qualifiers :: T_Qualifiers ->
+                   Inh_Qualifiers ->
+                   Syn_Qualifiers
+wrap_Qualifiers sem (Inh_Qualifiers _lhsIallPatterns _lhsIallTypeSchemes _lhsIassumptions _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIconstraints _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIunboundNames _lhsIuniqueChunk _lhsIuniqueSecondRound) =
+    (let ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOinfoTrees,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIassumptions _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIconstraints _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIunboundNames _lhsIuniqueChunk _lhsIuniqueSecondRound
+     in  (Syn_Qualifiers _lhsOassumptions _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraints _lhsOcounter _lhsOdictionaryEnvironment _lhsOinfoTrees _lhsOmatchIO _lhsOmonos _lhsOnamesInScope _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk _lhsOuniqueSecondRound))
 sem_Qualifiers_Cons :: T_Qualifier ->
                        T_Qualifiers ->
                        T_Qualifiers
@@ -15805,6 +16159,14 @@ sem_Range (Range_Range _start _stop) =
     (sem_Range_Range (sem_Position _start) (sem_Position _stop))
 -- semantic domain
 type T_Range = ( Range)
+data Inh_Range = Inh_Range {}
+data Syn_Range = Syn_Range {self_Syn_Range :: Range}
+wrap_Range :: T_Range ->
+              Inh_Range ->
+              Syn_Range
+wrap_Range sem (Inh_Range) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Range _lhsOself))
 sem_Range_Range :: T_Position ->
                    T_Position ->
                    T_Range
@@ -15844,6 +16206,14 @@ type T_RecordExpressionBinding = (M.Map NameWithRange TpScheme) ->
                                  (M.Map Int (Scheme Predicates)) ->
                                  Int ->
                                  ( TypeErrors,([(Name, Instance)]),Warnings,Int,DictionaryEnvironment,([Warning]),RecordExpressionBinding,Names,Int)
+data Inh_RecordExpressionBinding = Inh_RecordExpressionBinding {allTypeSchemes_Inh_RecordExpressionBinding :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_RecordExpressionBinding :: Predicates,classEnvironment_Inh_RecordExpressionBinding :: ClassEnvironment,collectErrors_Inh_RecordExpressionBinding :: TypeErrors,collectWarnings_Inh_RecordExpressionBinding :: Warnings,counter_Inh_RecordExpressionBinding :: Int,currentChunk_Inh_RecordExpressionBinding :: Int,dictionaryEnvironment_Inh_RecordExpressionBinding :: DictionaryEnvironment,importEnvironment_Inh_RecordExpressionBinding :: ImportEnvironment,namesInScope_Inh_RecordExpressionBinding :: Names,orderedTypeSynonyms_Inh_RecordExpressionBinding :: OrderedTypeSynonyms,patternMatchWarnings_Inh_RecordExpressionBinding :: ([Warning]),substitution_Inh_RecordExpressionBinding :: FixpointSubstitution,typeschemeMap_Inh_RecordExpressionBinding :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_RecordExpressionBinding :: Int}
+data Syn_RecordExpressionBinding = Syn_RecordExpressionBinding {collectErrors_Syn_RecordExpressionBinding :: TypeErrors,collectInstances_Syn_RecordExpressionBinding :: ([(Name, Instance)]),collectWarnings_Syn_RecordExpressionBinding :: Warnings,counter_Syn_RecordExpressionBinding :: Int,dictionaryEnvironment_Syn_RecordExpressionBinding :: DictionaryEnvironment,patternMatchWarnings_Syn_RecordExpressionBinding :: ([Warning]),self_Syn_RecordExpressionBinding :: RecordExpressionBinding,unboundNames_Syn_RecordExpressionBinding :: Names,uniqueChunk_Syn_RecordExpressionBinding :: Int}
+wrap_RecordExpressionBinding :: T_RecordExpressionBinding ->
+                                Inh_RecordExpressionBinding ->
+                                Syn_RecordExpressionBinding
+wrap_RecordExpressionBinding sem (Inh_RecordExpressionBinding _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk) =
+    (let ( _lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk) = sem _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk
+     in  (Syn_RecordExpressionBinding _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOcounter _lhsOdictionaryEnvironment _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk))
 sem_RecordExpressionBinding_RecordExpressionBinding :: T_Range ->
                                                        T_Name ->
                                                        T_Expression ->
@@ -16014,6 +16384,14 @@ type T_RecordExpressionBindings = (M.Map NameWithRange TpScheme) ->
                                   (M.Map Int (Scheme Predicates)) ->
                                   Int ->
                                   ( TypeErrors,([(Name, Instance)]),Warnings,Int,DictionaryEnvironment,([Warning]),RecordExpressionBindings,Names,Int)
+data Inh_RecordExpressionBindings = Inh_RecordExpressionBindings {allTypeSchemes_Inh_RecordExpressionBindings :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_RecordExpressionBindings :: Predicates,classEnvironment_Inh_RecordExpressionBindings :: ClassEnvironment,collectErrors_Inh_RecordExpressionBindings :: TypeErrors,collectWarnings_Inh_RecordExpressionBindings :: Warnings,counter_Inh_RecordExpressionBindings :: Int,currentChunk_Inh_RecordExpressionBindings :: Int,dictionaryEnvironment_Inh_RecordExpressionBindings :: DictionaryEnvironment,importEnvironment_Inh_RecordExpressionBindings :: ImportEnvironment,namesInScope_Inh_RecordExpressionBindings :: Names,orderedTypeSynonyms_Inh_RecordExpressionBindings :: OrderedTypeSynonyms,patternMatchWarnings_Inh_RecordExpressionBindings :: ([Warning]),substitution_Inh_RecordExpressionBindings :: FixpointSubstitution,typeschemeMap_Inh_RecordExpressionBindings :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_RecordExpressionBindings :: Int}
+data Syn_RecordExpressionBindings = Syn_RecordExpressionBindings {collectErrors_Syn_RecordExpressionBindings :: TypeErrors,collectInstances_Syn_RecordExpressionBindings :: ([(Name, Instance)]),collectWarnings_Syn_RecordExpressionBindings :: Warnings,counter_Syn_RecordExpressionBindings :: Int,dictionaryEnvironment_Syn_RecordExpressionBindings :: DictionaryEnvironment,patternMatchWarnings_Syn_RecordExpressionBindings :: ([Warning]),self_Syn_RecordExpressionBindings :: RecordExpressionBindings,unboundNames_Syn_RecordExpressionBindings :: Names,uniqueChunk_Syn_RecordExpressionBindings :: Int}
+wrap_RecordExpressionBindings :: T_RecordExpressionBindings ->
+                                 Inh_RecordExpressionBindings ->
+                                 Syn_RecordExpressionBindings
+wrap_RecordExpressionBindings sem (Inh_RecordExpressionBindings _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk) =
+    (let ( _lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk) = sem _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk
+     in  (Syn_RecordExpressionBindings _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOcounter _lhsOdictionaryEnvironment _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk))
 sem_RecordExpressionBindings_Cons :: T_RecordExpressionBinding ->
                                      T_RecordExpressionBindings ->
                                      T_RecordExpressionBindings
@@ -16233,6 +16611,14 @@ type T_RecordPatternBinding = Int ->
                               Names ->
                               ([Warning]) ->
                               ( Int,([Warning]),RecordPatternBinding,Names)
+data Inh_RecordPatternBinding = Inh_RecordPatternBinding {counter_Inh_RecordPatternBinding :: Int,namesInScope_Inh_RecordPatternBinding :: Names,patternMatchWarnings_Inh_RecordPatternBinding :: ([Warning])}
+data Syn_RecordPatternBinding = Syn_RecordPatternBinding {counter_Syn_RecordPatternBinding :: Int,patternMatchWarnings_Syn_RecordPatternBinding :: ([Warning]),self_Syn_RecordPatternBinding :: RecordPatternBinding,unboundNames_Syn_RecordPatternBinding :: Names}
+wrap_RecordPatternBinding :: T_RecordPatternBinding ->
+                             Inh_RecordPatternBinding ->
+                             Syn_RecordPatternBinding
+wrap_RecordPatternBinding sem (Inh_RecordPatternBinding _lhsIcounter _lhsInamesInScope _lhsIpatternMatchWarnings) =
+    (let ( _lhsOcounter,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames) = sem _lhsIcounter _lhsInamesInScope _lhsIpatternMatchWarnings
+     in  (Syn_RecordPatternBinding _lhsOcounter _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames))
 sem_RecordPatternBinding_RecordPatternBinding :: T_Range ->
                                                  T_Name ->
                                                  T_Pattern ->
@@ -16311,6 +16697,14 @@ type T_RecordPatternBindings = Int ->
                                Names ->
                                ([Warning]) ->
                                ( Int,([Warning]),RecordPatternBindings,Names)
+data Inh_RecordPatternBindings = Inh_RecordPatternBindings {counter_Inh_RecordPatternBindings :: Int,namesInScope_Inh_RecordPatternBindings :: Names,patternMatchWarnings_Inh_RecordPatternBindings :: ([Warning])}
+data Syn_RecordPatternBindings = Syn_RecordPatternBindings {counter_Syn_RecordPatternBindings :: Int,patternMatchWarnings_Syn_RecordPatternBindings :: ([Warning]),self_Syn_RecordPatternBindings :: RecordPatternBindings,unboundNames_Syn_RecordPatternBindings :: Names}
+wrap_RecordPatternBindings :: T_RecordPatternBindings ->
+                              Inh_RecordPatternBindings ->
+                              Syn_RecordPatternBindings
+wrap_RecordPatternBindings sem (Inh_RecordPatternBindings _lhsIcounter _lhsInamesInScope _lhsIpatternMatchWarnings) =
+    (let ( _lhsOcounter,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames) = sem _lhsIcounter _lhsInamesInScope _lhsIpatternMatchWarnings
+     in  (Syn_RecordPatternBindings _lhsOcounter _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames))
 sem_RecordPatternBindings_Cons :: T_RecordPatternBinding ->
                                   T_RecordPatternBindings ->
                                   T_RecordPatternBindings
@@ -16414,6 +16808,14 @@ type T_RightHandSide = ([((Expression, [String]), Core_TypingStrategy)]) ->
                        (M.Map Int (Scheme Predicates)) ->
                        Int ->
                        ( Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,Int,DictionaryEnvironment,Bool,InfoTree,(IO ()),([Warning]),RightHandSide,Names,Int)
+data Inh_RightHandSide = Inh_RightHandSide {allPatterns_Inh_RightHandSide :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_RightHandSide :: (M.Map NameWithRange TpScheme),availablePredicates_Inh_RightHandSide :: Predicates,betaRight_Inh_RightHandSide :: Tp,betaUnique_Inh_RightHandSide :: Int,classEnvironment_Inh_RightHandSide :: ClassEnvironment,collectErrors_Inh_RightHandSide :: TypeErrors,collectWarnings_Inh_RightHandSide :: Warnings,counter_Inh_RightHandSide :: Int,currentChunk_Inh_RightHandSide :: Int,dictionaryEnvironment_Inh_RightHandSide :: DictionaryEnvironment,importEnvironment_Inh_RightHandSide :: ImportEnvironment,matchIO_Inh_RightHandSide :: (IO ()),monos_Inh_RightHandSide :: Monos,namesInScope_Inh_RightHandSide :: Names,orderedTypeSynonyms_Inh_RightHandSide :: OrderedTypeSynonyms,parentTree_Inh_RightHandSide :: InfoTree,patternMatchWarnings_Inh_RightHandSide :: ([Warning]),substitution_Inh_RightHandSide :: FixpointSubstitution,typeschemeMap_Inh_RightHandSide :: (M.Map Int (Scheme Predicates)),uniqueChunk_Inh_RightHandSide :: Int}
+data Syn_RightHandSide = Syn_RightHandSide {assumptions_Syn_RightHandSide :: Assumptions,betaUnique_Syn_RightHandSide :: Int,collectErrors_Syn_RightHandSide :: TypeErrors,collectInstances_Syn_RightHandSide :: ([(Name, Instance)]),collectWarnings_Syn_RightHandSide :: Warnings,constraints_Syn_RightHandSide :: ConstraintSet,counter_Syn_RightHandSide :: Int,dictionaryEnvironment_Syn_RightHandSide :: DictionaryEnvironment,fallthrough_Syn_RightHandSide :: Bool,infoTree_Syn_RightHandSide :: InfoTree,matchIO_Syn_RightHandSide :: (IO ()),patternMatchWarnings_Syn_RightHandSide :: ([Warning]),self_Syn_RightHandSide :: RightHandSide,unboundNames_Syn_RightHandSide :: Names,uniqueChunk_Syn_RightHandSide :: Int}
+wrap_RightHandSide :: T_RightHandSide ->
+                      Inh_RightHandSide ->
+                      Syn_RightHandSide
+wrap_RightHandSide sem (Inh_RightHandSide _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaRight _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk) =
+    (let ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOfallthrough,_lhsOinfoTree,_lhsOmatchIO,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIavailablePredicates _lhsIbetaRight _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIuniqueChunk
+     in  (Syn_RightHandSide _lhsOassumptions _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraints _lhsOcounter _lhsOdictionaryEnvironment _lhsOfallthrough _lhsOinfoTree _lhsOmatchIO _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk))
 sem_RightHandSide_Expression :: T_Range ->
                                 T_Expression ->
                                 T_MaybeDeclarations ->
@@ -16949,6 +17351,14 @@ sem_SimpleType (SimpleType_SimpleType _range _name _typevariables) =
     (sem_SimpleType_SimpleType (sem_Range _range) (sem_Name _name) (sem_Names _typevariables))
 -- semantic domain
 type T_SimpleType = ( Name,SimpleType,Names)
+data Inh_SimpleType = Inh_SimpleType {}
+data Syn_SimpleType = Syn_SimpleType {name_Syn_SimpleType :: Name,self_Syn_SimpleType :: SimpleType,typevariables_Syn_SimpleType :: Names}
+wrap_SimpleType :: T_SimpleType ->
+                   Inh_SimpleType ->
+                   Syn_SimpleType
+wrap_SimpleType sem (Inh_SimpleType) =
+    (let ( _lhsOname,_lhsOself,_lhsOtypevariables) = sem
+     in  (Syn_SimpleType _lhsOname _lhsOself _lhsOtypevariables))
 sem_SimpleType_SimpleType :: T_Range ->
                              T_Name ->
                              T_Names ->
@@ -17014,6 +17424,14 @@ type T_Statement = ([((Expression, [String]), Core_TypingStrategy)]) ->
                    Int ->
                    Int ->
                    ( Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,Int,DictionaryEnvironment,(Maybe Tp),InfoTree,(IO ()),Monos,Names,([Warning]),Statement,Names,Int,Int)
+data Inh_Statement = Inh_Statement {allPatterns_Inh_Statement :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_Statement :: (M.Map NameWithRange TpScheme),assumptions_Inh_Statement :: Assumptions,availablePredicates_Inh_Statement :: Predicates,betaUnique_Inh_Statement :: Int,classEnvironment_Inh_Statement :: ClassEnvironment,collectErrors_Inh_Statement :: TypeErrors,collectWarnings_Inh_Statement :: Warnings,constraints_Inh_Statement :: ConstraintSet,counter_Inh_Statement :: Int,currentChunk_Inh_Statement :: Int,dictionaryEnvironment_Inh_Statement :: DictionaryEnvironment,generatorBeta_Inh_Statement :: (Maybe Tp),importEnvironment_Inh_Statement :: ImportEnvironment,matchIO_Inh_Statement :: (IO ()),monos_Inh_Statement :: Monos,namesInScope_Inh_Statement :: Names,orderedTypeSynonyms_Inh_Statement :: OrderedTypeSynonyms,parentTree_Inh_Statement :: InfoTree,patternMatchWarnings_Inh_Statement :: ([Warning]),substitution_Inh_Statement :: FixpointSubstitution,typeschemeMap_Inh_Statement :: (M.Map Int (Scheme Predicates)),unboundNames_Inh_Statement :: Names,uniqueChunk_Inh_Statement :: Int,uniqueSecondRound_Inh_Statement :: Int}
+data Syn_Statement = Syn_Statement {assumptions_Syn_Statement :: Assumptions,betaUnique_Syn_Statement :: Int,collectErrors_Syn_Statement :: TypeErrors,collectInstances_Syn_Statement :: ([(Name, Instance)]),collectWarnings_Syn_Statement :: Warnings,constraints_Syn_Statement :: ConstraintSet,counter_Syn_Statement :: Int,dictionaryEnvironment_Syn_Statement :: DictionaryEnvironment,generatorBeta_Syn_Statement :: (Maybe Tp),infoTree_Syn_Statement :: InfoTree,matchIO_Syn_Statement :: (IO ()),monos_Syn_Statement :: Monos,namesInScope_Syn_Statement :: Names,patternMatchWarnings_Syn_Statement :: ([Warning]),self_Syn_Statement :: Statement,unboundNames_Syn_Statement :: Names,uniqueChunk_Syn_Statement :: Int,uniqueSecondRound_Syn_Statement :: Int}
+wrap_Statement :: T_Statement ->
+                  Inh_Statement ->
+                  Syn_Statement
+wrap_Statement sem (Inh_Statement _lhsIallPatterns _lhsIallTypeSchemes _lhsIassumptions _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIconstraints _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIgeneratorBeta _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIunboundNames _lhsIuniqueChunk _lhsIuniqueSecondRound) =
+    (let ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTree,_lhsOmatchIO,_lhsOmonos,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIassumptions _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIconstraints _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIgeneratorBeta _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIunboundNames _lhsIuniqueChunk _lhsIuniqueSecondRound
+     in  (Syn_Statement _lhsOassumptions _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraints _lhsOcounter _lhsOdictionaryEnvironment _lhsOgeneratorBeta _lhsOinfoTree _lhsOmatchIO _lhsOmonos _lhsOnamesInScope _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk _lhsOuniqueSecondRound))
 sem_Statement_Empty :: T_Range ->
                        T_Statement
 sem_Statement_Empty range_ =
@@ -17782,6 +18200,14 @@ type T_Statements = ([((Expression, [String]), Core_TypingStrategy)]) ->
                     Int ->
                     Int ->
                     ( Assumptions,Int,TypeErrors,([(Name, Instance)]),Warnings,ConstraintSet,Int,DictionaryEnvironment,(Maybe Tp),InfoTrees,(IO ()),Names,([Warning]),Statements,Names,Int,Int)
+data Inh_Statements = Inh_Statements {allPatterns_Inh_Statements :: ([((Expression, [String]), Core_TypingStrategy)]),allTypeSchemes_Inh_Statements :: (M.Map NameWithRange TpScheme),assumptions_Inh_Statements :: Assumptions,availablePredicates_Inh_Statements :: Predicates,betaUnique_Inh_Statements :: Int,classEnvironment_Inh_Statements :: ClassEnvironment,collectErrors_Inh_Statements :: TypeErrors,collectWarnings_Inh_Statements :: Warnings,constraints_Inh_Statements :: ConstraintSet,counter_Inh_Statements :: Int,currentChunk_Inh_Statements :: Int,dictionaryEnvironment_Inh_Statements :: DictionaryEnvironment,generatorBeta_Inh_Statements :: (Maybe Tp),importEnvironment_Inh_Statements :: ImportEnvironment,matchIO_Inh_Statements :: (IO ()),monos_Inh_Statements :: Monos,namesInScope_Inh_Statements :: Names,orderedTypeSynonyms_Inh_Statements :: OrderedTypeSynonyms,parentTree_Inh_Statements :: InfoTree,patternMatchWarnings_Inh_Statements :: ([Warning]),substitution_Inh_Statements :: FixpointSubstitution,typeschemeMap_Inh_Statements :: (M.Map Int (Scheme Predicates)),unboundNames_Inh_Statements :: Names,uniqueChunk_Inh_Statements :: Int,uniqueSecondRound_Inh_Statements :: Int}
+data Syn_Statements = Syn_Statements {assumptions_Syn_Statements :: Assumptions,betaUnique_Syn_Statements :: Int,collectErrors_Syn_Statements :: TypeErrors,collectInstances_Syn_Statements :: ([(Name, Instance)]),collectWarnings_Syn_Statements :: Warnings,constraints_Syn_Statements :: ConstraintSet,counter_Syn_Statements :: Int,dictionaryEnvironment_Syn_Statements :: DictionaryEnvironment,generatorBeta_Syn_Statements :: (Maybe Tp),infoTrees_Syn_Statements :: InfoTrees,matchIO_Syn_Statements :: (IO ()),namesInScope_Syn_Statements :: Names,patternMatchWarnings_Syn_Statements :: ([Warning]),self_Syn_Statements :: Statements,unboundNames_Syn_Statements :: Names,uniqueChunk_Syn_Statements :: Int,uniqueSecondRound_Syn_Statements :: Int}
+wrap_Statements :: T_Statements ->
+                   Inh_Statements ->
+                   Syn_Statements
+wrap_Statements sem (Inh_Statements _lhsIallPatterns _lhsIallTypeSchemes _lhsIassumptions _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIconstraints _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIgeneratorBeta _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIunboundNames _lhsIuniqueChunk _lhsIuniqueSecondRound) =
+    (let ( _lhsOassumptions,_lhsObetaUnique,_lhsOcollectErrors,_lhsOcollectInstances,_lhsOcollectWarnings,_lhsOconstraints,_lhsOcounter,_lhsOdictionaryEnvironment,_lhsOgeneratorBeta,_lhsOinfoTrees,_lhsOmatchIO,_lhsOnamesInScope,_lhsOpatternMatchWarnings,_lhsOself,_lhsOunboundNames,_lhsOuniqueChunk,_lhsOuniqueSecondRound) = sem _lhsIallPatterns _lhsIallTypeSchemes _lhsIassumptions _lhsIavailablePredicates _lhsIbetaUnique _lhsIclassEnvironment _lhsIcollectErrors _lhsIcollectWarnings _lhsIconstraints _lhsIcounter _lhsIcurrentChunk _lhsIdictionaryEnvironment _lhsIgeneratorBeta _lhsIimportEnvironment _lhsImatchIO _lhsImonos _lhsInamesInScope _lhsIorderedTypeSynonyms _lhsIparentTree _lhsIpatternMatchWarnings _lhsIsubstitution _lhsItypeschemeMap _lhsIunboundNames _lhsIuniqueChunk _lhsIuniqueSecondRound
+     in  (Syn_Statements _lhsOassumptions _lhsObetaUnique _lhsOcollectErrors _lhsOcollectInstances _lhsOcollectWarnings _lhsOconstraints _lhsOcounter _lhsOdictionaryEnvironment _lhsOgeneratorBeta _lhsOinfoTrees _lhsOmatchIO _lhsOnamesInScope _lhsOpatternMatchWarnings _lhsOself _lhsOunboundNames _lhsOuniqueChunk _lhsOuniqueSecondRound))
 sem_Statements_Cons :: T_Statement ->
                        T_Statements ->
                        T_Statements
@@ -18143,6 +18569,14 @@ sem_Strings list =
     (Prelude.foldr sem_Strings_Cons sem_Strings_Nil list)
 -- semantic domain
 type T_Strings = ( Strings)
+data Inh_Strings = Inh_Strings {}
+data Syn_Strings = Syn_Strings {self_Syn_Strings :: Strings}
+wrap_Strings :: T_Strings ->
+                Inh_Strings ->
+                Syn_Strings
+wrap_Strings sem (Inh_Strings) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Strings _lhsOself))
 sem_Strings_Cons :: String ->
                     T_Strings ->
                     T_Strings
@@ -18184,6 +18618,14 @@ sem_Type (Type_Variable _range _name) =
     (sem_Type_Variable (sem_Range _range) (sem_Name _name))
 -- semantic domain
 type T_Type = ( Type)
+data Inh_Type = Inh_Type {}
+data Syn_Type = Syn_Type {self_Syn_Type :: Type}
+wrap_Type :: T_Type ->
+             Inh_Type ->
+             Syn_Type
+wrap_Type sem (Inh_Type) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Type _lhsOself))
 sem_Type_Application :: T_Range ->
                         Bool ->
                         T_Type ->
@@ -18321,6 +18763,14 @@ sem_Types list =
     (Prelude.foldr sem_Types_Cons sem_Types_Nil (Prelude.map sem_Type list))
 -- semantic domain
 type T_Types = ( Types)
+data Inh_Types = Inh_Types {}
+data Syn_Types = Syn_Types {self_Syn_Types :: Types}
+wrap_Types :: T_Types ->
+              Inh_Types ->
+              Syn_Types
+wrap_Types sem (Inh_Types) =
+    (let ( _lhsOself) = sem
+     in  (Syn_Types _lhsOself))
 sem_Types_Cons :: T_Type ->
                   T_Types ->
                   T_Types

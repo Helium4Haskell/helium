@@ -36,12 +36,13 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
 
         moduleWithName = fixModuleName module_ baseName
 
-        coreModule = fst $
-            CodeGeneration.sem_Module moduleWithName                
-                dictionaryEnv
-                extraDecls
-                afterTypeInferEnv
-                toplevelTypes            
+        coreModule = CodeGeneration.core_Syn_Module $
+            CodeGeneration.wrap_Module (CodeGeneration.sem_Module moduleWithName)
+                CodeGeneration.Inh_Module {
+                    CodeGeneration.dictionaryEnv_Inh_Module = dictionaryEnv,
+                    CodeGeneration.extraDecls_Inh_Module    = extraDecls,
+                    CodeGeneration.importEnv_Inh_Module     = afterTypeInferEnv,
+                    CodeGeneration.toplevelTypes_Inh_Module = toplevelTypes }
 
         strippedCoreModule = coreRemoveDead coreModule
 

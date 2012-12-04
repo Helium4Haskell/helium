@@ -17,7 +17,8 @@ import Syntax.UHA_Utils
 import Top.Types
 import StaticAnalysis.Messages.Messages
 import Data.List    (intercalate)
-import qualified Syntax.UHA_Pretty as PP (sem_Pattern, sem_LeftHandSide, sem_Expression)
+import qualified Syntax.UHA_Pretty as PP (sem_Pattern, wrap_Pattern, Inh_Pattern (..), Syn_Pattern (..), sem_LeftHandSide, wrap_LeftHandSide, Inh_LeftHandSide (..), Syn_LeftHandSide (..), sem_Expression, wrap_Expression, Inh_Expression (..), Syn_Expression (..))
+import qualified Text.PrettyPrint.Leijen as PPrint
 
 -------------------------------------------------------------
 -- (Static) Warnings
@@ -95,36 +96,36 @@ showWarning warning = case warning of
 
    
    MissingPatterns _ Nothing _ pss place sym ->
-      let text = "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
-                 ++ concatMap (("\n  " ++).(++ (sym ++ " ...")).concatMap ((++ " ").show.PP.sem_Pattern)) pss
+      let text   = "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
+                   ++ concatMap (("\n  " ++).(++ (sym ++ " ...")).concatMap ((++ " ").show.semP)) pss
       in (MessageString text, [])
    
    MissingPatterns _ (Just n) _ pss place sym
      | isOperatorName n -> 
           let name = getNameName n 
               text = "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
-                     ++ concatMap (\[l, r] -> "\n  " ++ (show.PP.sem_Pattern) l ++ " " ++ name ++ " " 
-                     ++ (show.PP.sem_Pattern) r ++ " " ++ sym ++ " ...") pss
+                     ++ concatMap (\[l, r] -> "\n  " ++ (show.semP) l ++ " " ++ name ++ " " 
+                     ++ (show.semP) r ++ " " ++ sym ++ " ...") pss
           in (MessageString text, [])
           
      | otherwise -> 
           let name = getNameName n
               text =  "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
-                      ++ concatMap (("\n  " ++).(name ++).(' ' :).(++ (sym ++ " ...")).concatMap ((++ " ").show.PP.sem_Pattern)) pss
+                      ++ concatMap (("\n  " ++).(name ++).(' ' :).(++ (sym ++ " ...")).concatMap ((++ " ").show.semP)) pss
           in (MessageString text, [])
 
    UnreachablePatternLHS  lhs -> 
-      ( MessageString ("Unreachable pattern: " ++ (show.PP.sem_LeftHandSide) lhs)
+      ( MessageString ("Unreachable pattern: " ++ show (PP.text_Syn_LeftHandSide (PP.wrap_LeftHandSide (PP.sem_LeftHandSide lhs) PP.Inh_LeftHandSide)))
       , []
       )
    
    UnreachablePatternCase _ p -> 
-      ( MessageString ("Unreachable pattern: " ++ (show.PP.sem_Pattern ) p)
+      ( MessageString ("Unreachable pattern: " ++ (show.semP ) p)
       , []
       )
 
    UnreachableGuard _ e -> 
-      ( MessageString ("Unreachable guard: | " ++ (show.PP.sem_Expression) e)
+      ( MessageString ("Unreachable guard: | " ++ show (PP.text_Syn_Expression (PP.wrap_Expression (PP.sem_Expression e) PP.Inh_Expression)))
       , []
       )
 
@@ -148,3 +149,6 @@ showWarning warning = case warning of
 plural :: [a] -> String -> String
 plural [_] = id
 plural _   = (++ "s")
+
+semP :: Pattern -> PPrint.Doc
+semP p = PP.text_Syn_Pattern (PP.wrap_Pattern (PP.sem_Pattern p) PP.Inh_Pattern)

@@ -41,13 +41,13 @@ instance HasMessage ResolveError where
         
 resolveOperators :: OperatorTable -> Module -> (Module, [ResolveError])
 resolveOperators opTable m = 
-    let (errs, newModule) = sem_Module m opTable []
-    in (newModule, errs)
+    let res = wrap_Module (sem_Module m) (Inh_Module { opTable_Inh_Module = opTable, resolveErrors_Inh_Module = [] })
+    in (self_Syn_Module res, resolveErrors_Syn_Module res)
 
 expression :: OperatorTable -> Expression -> Expression    
 expression opTable e = -- !!! errors ignored
-    let (_, newE) = sem_Expression e opTable [] 
-    in newE
+    let res = wrap_Expression (sem_Expression e) (Inh_Expression { opTable_Inh_Expression = opTable, resolveErrors_Inh_Expression = [] })
+    in self_Syn_Expression res
 
 operatorsFromModule :: Module -> OperatorTable
 operatorsFromModule m =

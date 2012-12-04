@@ -51,7 +51,7 @@ GHCWARN = -Wall
 HC_OPTS = --make $(GHCWARN) -odir $(OUTDIR) -hidir $(OUTDIR) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@ -P Syntax -P StaticAnalysis/StaticChecks -P StaticAnalysis/Inferencers -P CodeGeneration -P StaticAnalysis/Directives
-AG_OPTS = -mscfr
+AG_OPTS = -mscfrw
 
 # AG sources
 AGSOURCES = \
@@ -190,7 +190,7 @@ StaticAnalysis/Directives/TS_Apply.hs : \
         StaticAnalysis/Directives/TS_CoreSyntax.ag \
         Syntax/UHA_Syntax.ag \
 	# AG TS_Syntax
-	$(AG) -mscf --module=StaticAnalysis.Directives.TS_Apply StaticAnalysis/Directives/TS_Apply.ag
+	$(AG) -mscfw --module=StaticAnalysis.Directives.TS_Apply StaticAnalysis/Directives/TS_Apply.ag
 
 StaticAnalysis/Directives/TS_CoreSyntax.hs : \
 	StaticAnalysis/Directives/TS_CoreSyntax.ag \
@@ -204,7 +204,7 @@ StaticAnalysis/Directives/TS_ToCore.hs : \
         Syntax/UHA_Syntax.ag \
         Syntax/UHA_OneLine.ag 
 	# AG TS_Syntax
-	$(AG) -mscrf --self --module=StaticAnalysis.Directives.TS_ToCore StaticAnalysis/Directives/TS_ToCore.ag                 
+	$(AG) -mscrfw --self --module=StaticAnalysis.Directives.TS_ToCore StaticAnalysis/Directives/TS_ToCore.ag                 
 endif
 
 report:

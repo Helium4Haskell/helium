@@ -39,7 +39,13 @@ import Top.Ordering.Tree
 {
 applyTypingStrategy :: Core_TypingStrategy -> MetaVariableInfo -> MetaVariableTable -> Int 
                           -> (Assumptions, ConstraintSet, IO (), Int)
-applyTypingStrategy = sem_Core_TypingStrategy
+applyTypingStrategy strategy infoTuple metaVar unique =
+  let res = wrap_Core_TypingStrategy (sem_Core_TypingStrategy strategy)
+               Inh_Core_TypingStrategy {
+                   infoTuple_Inh_Core_TypingStrategy         = infoTuple,
+                   metaVariableTable_Inh_Core_TypingStrategy = metaVar,
+                   unique_Inh_Core_TypingStrategy            = unique }
+  in  (assumptions_Syn_Core_TypingStrategy res, constraintSet_Syn_Core_TypingStrategy res, debugIO_Syn_Core_TypingStrategy res, unique_Syn_Core_TypingStrategy res)
 
 matchInformation :: ImportEnvironment -> Core_TypingStrategy -> [(Expression, [String])]
 matchInformation importEnvironment typingStrategy = 

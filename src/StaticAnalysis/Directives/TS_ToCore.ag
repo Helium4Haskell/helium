@@ -15,7 +15,7 @@
 {
 typingStrategyToCore :: ImportEnvironment -> TypingStrategy -> Core_TypingStrategy
 typingStrategyToCore importEnv strategy = 
-   fst (sem_TypingStrategy strategy importEnv)
+   core_Syn_TypingStrategy (wrap_TypingStrategy (sem_TypingStrategy strategy) Inh_TypingStrategy { importEnvironment_Inh_TypingStrategy = importEnv })
 }
 
 INCLUDE "TS_Syntax.ag"
@@ -55,7 +55,7 @@ SEM TypeRule [ | | core : Core_TypeRule ]
 
 SEM Judgement [ | | core : Core_Judgement ]
   | Judgement
-       lhs . core = Judgement (showOneLine 10000 $ fst $ UHA_OneLine.sem_Expression @expression.self) (makeTpFromType @lhs.nameMap @type.self)   
+       lhs . core = Judgement (showOneLine 10000 $ UHA_OneLine.oneLineTree_Syn_Expression $ UHA_OneLine.wrap_Expression (UHA_OneLine.sem_Expression @expression.self) UHA_OneLine.Inh_Expression) (makeTpFromType @lhs.nameMap @type.self)   
 
 SEM SimpleJudgements [ | | core : Core_Judgements ]
   | Cons  lhs . core = @hd.core : @tl.core

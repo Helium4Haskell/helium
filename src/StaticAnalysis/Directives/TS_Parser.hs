@@ -118,4 +118,4 @@ judgementToSimpleJudgement judgement =
                ("the following expression should have been a meta-variable: "++showExpression expression)
       
 showExpression :: Expression -> String
-showExpression = show . PP.sem_Expression
+showExpression e = show $ PP.text_Syn_Expression $ PP.wrap_Expression (PP.sem_Expression e) PP.Inh_Expression

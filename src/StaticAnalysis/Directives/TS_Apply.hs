@@ -30,7 +30,13 @@ import Top.Types
 
 applyTypingStrategy :: Core_TypingStrategy -> MetaVariableInfo -> MetaVariableTable -> Int 
                           -> (Assumptions, ConstraintSet, IO (), Int)
-applyTypingStrategy = sem_Core_TypingStrategy
+applyTypingStrategy strategy infoTuple metaVar unique =
+  let res = wrap_Core_TypingStrategy (sem_Core_TypingStrategy strategy)
+               Inh_Core_TypingStrategy {
+                   infoTuple_Inh_Core_TypingStrategy         = infoTuple,
+                   metaVariableTable_Inh_Core_TypingStrategy = metaVar,
+                   unique_Inh_Core_TypingStrategy            = unique }
+  in  (assumptions_Syn_Core_TypingStrategy res, constraintSet_Syn_Core_TypingStrategy res, debugIO_Syn_Core_TypingStrategy res, unique_Syn_Core_TypingStrategy res)
 
 matchInformation :: ImportEnvironment -> Core_TypingStrategy -> [(Expression, [String])]
 matchInformation importEnvironment typingStrategy = 
@@ -73,6 +79,14 @@ type T_Core_Judgement = MetaVariableInfo ->
                         MetaVariableTable ->
                         MapSubstitution ->
                         ( ([Int]),([(String, Tp)]))
+data Inh_Core_Judgement = Inh_Core_Judgement {infoTuple_Inh_Core_Judgement :: MetaVariableInfo,metaVariableTable_Inh_Core_Judgement :: MetaVariableTable,substitution_Inh_Core_Judgement :: MapSubstitution}
+data Syn_Core_Judgement = Syn_Core_Judgement {ftv_Syn_Core_Judgement :: ([Int]),judgements_Syn_Core_Judgement :: ([(String, Tp)])}
+wrap_Core_Judgement :: T_Core_Judgement ->
+                       Inh_Core_Judgement ->
+                       Syn_Core_Judgement
+wrap_Core_Judgement sem (Inh_Core_Judgement _lhsIinfoTuple _lhsImetaVariableTable _lhsIsubstitution) =
+    (let ( _lhsOftv,_lhsOjudgements) = sem _lhsIinfoTuple _lhsImetaVariableTable _lhsIsubstitution
+     in  (Syn_Core_Judgement _lhsOftv _lhsOjudgements))
 sem_Core_Judgement_Judgement :: String ->
                                 Tp ->
                                 T_Core_Judgement
@@ -98,6 +112,14 @@ type T_Core_Judgements = MetaVariableInfo ->
                          MetaVariableTable ->
                          MapSubstitution ->
                          ( ([Int]),([(String, Tp)]))
+data Inh_Core_Judgements = Inh_Core_Judgements {infoTuple_Inh_Core_Judgements :: MetaVariableInfo,metaVariableTable_Inh_Core_Judgements :: MetaVariableTable,substitution_Inh_Core_Judgements :: MapSubstitution}
+data Syn_Core_Judgements = Syn_Core_Judgements {ftv_Syn_Core_Judgements :: ([Int]),judgements_Syn_Core_Judgements :: ([(String, Tp)])}
+wrap_Core_Judgements :: T_Core_Judgements ->
+                        Inh_Core_Judgements ->
+                        Syn_Core_Judgements
+wrap_Core_Judgements sem (Inh_Core_Judgements _lhsIinfoTuple _lhsImetaVariableTable _lhsIsubstitution) =
+    (let ( _lhsOftv,_lhsOjudgements) = sem _lhsIinfoTuple _lhsImetaVariableTable _lhsIsubstitution
+     in  (Syn_Core_Judgements _lhsOftv _lhsOjudgements))
 sem_Core_Judgements_Cons :: T_Core_Judgement ->
                             T_Core_Judgements ->
                             T_Core_Judgements
@@ -161,6 +183,14 @@ type T_Core_TypeRule = MetaVariableInfo ->
                        MetaVariableTable ->
                        MapSubstitution ->
                        ( (TypeConstraints ConstraintInfo),([Int]),([(String, Tp)]))
+data Inh_Core_TypeRule = Inh_Core_TypeRule {infoTuple_Inh_Core_TypeRule :: MetaVariableInfo,metaVariableTable_Inh_Core_TypeRule :: MetaVariableTable,substitution_Inh_Core_TypeRule :: MapSubstitution}
+data Syn_Core_TypeRule = Syn_Core_TypeRule {constraints_Syn_Core_TypeRule :: (TypeConstraints ConstraintInfo),ftv_Syn_Core_TypeRule :: ([Int]),judgements_Syn_Core_TypeRule :: ([(String, Tp)])}
+wrap_Core_TypeRule :: T_Core_TypeRule ->
+                      Inh_Core_TypeRule ->
+                      Syn_Core_TypeRule
+wrap_Core_TypeRule sem (Inh_Core_TypeRule _lhsIinfoTuple _lhsImetaVariableTable _lhsIsubstitution) =
+    (let ( _lhsOconstraints,_lhsOftv,_lhsOjudgements) = sem _lhsIinfoTuple _lhsImetaVariableTable _lhsIsubstitution
+     in  (Syn_Core_TypeRule _lhsOconstraints _lhsOftv _lhsOjudgements))
 sem_Core_TypeRule_TypeRule :: T_Core_Judgements ->
                               T_Core_Judgement ->
                               T_Core_TypeRule
@@ -232,6 +262,14 @@ type T_Core_TypingStrategy = MetaVariableInfo ->
                              MetaVariableTable ->
                              Int ->
                              ( Assumptions,ConstraintSet,(IO ()),Int)
+data Inh_Core_TypingStrategy = Inh_Core_TypingStrategy {infoTuple_Inh_Core_TypingStrategy :: MetaVariableInfo,metaVariableTable_Inh_Core_TypingStrategy :: MetaVariableTable,unique_Inh_Core_TypingStrategy :: Int}
+data Syn_Core_TypingStrategy = Syn_Core_TypingStrategy {assumptions_Syn_Core_TypingStrategy :: Assumptions,constraintSet_Syn_Core_TypingStrategy :: ConstraintSet,debugIO_Syn_Core_TypingStrategy :: (IO ()),unique_Syn_Core_TypingStrategy :: Int}
+wrap_Core_TypingStrategy :: T_Core_TypingStrategy ->
+                            Inh_Core_TypingStrategy ->
+                            Syn_Core_TypingStrategy
+wrap_Core_TypingStrategy sem (Inh_Core_TypingStrategy _lhsIinfoTuple _lhsImetaVariableTable _lhsIunique) =
+    (let ( _lhsOassumptions,_lhsOconstraintSet,_lhsOdebugIO,_lhsOunique) = sem _lhsIinfoTuple _lhsImetaVariableTable _lhsIunique
+     in  (Syn_Core_TypingStrategy _lhsOassumptions _lhsOconstraintSet _lhsOdebugIO _lhsOunique))
 sem_Core_TypingStrategy_Siblings :: ([String]) ->
                                     T_Core_TypingStrategy
 sem_Core_TypingStrategy_Siblings functions_ =
@@ -379,6 +417,14 @@ type T_Core_UserStatement = (Trees (TypeConstraint ConstraintInfo)) ->
                             ([(String,Tree (TypeConstraint ConstraintInfo))]) ->
                             MapSubstitution ->
                             ( (Trees (TypeConstraint ConstraintInfo)),(Maybe Int),((Int, Int)),([Int]),([(String,Tree (TypeConstraint ConstraintInfo))]))
+data Inh_Core_UserStatement = Inh_Core_UserStatement {collectConstraints_Inh_Core_UserStatement :: (Trees (TypeConstraint ConstraintInfo)),currentPhase_Inh_Core_UserStatement :: (Maybe Int),currentPosition_Inh_Core_UserStatement :: ((Int, Int)),fromAttribute_Inh_Core_UserStatement :: (Attribute -> MessageBlock),infoTuple_Inh_Core_UserStatement :: MetaVariableInfo,metaVariableTable_Inh_Core_UserStatement :: MetaVariableTable,metavarConstraints_Inh_Core_UserStatement :: ([(String,Tree (TypeConstraint ConstraintInfo))]),substitution_Inh_Core_UserStatement :: MapSubstitution}
+data Syn_Core_UserStatement = Syn_Core_UserStatement {collectConstraints_Syn_Core_UserStatement :: (Trees (TypeConstraint ConstraintInfo)),currentPhase_Syn_Core_UserStatement :: (Maybe Int),currentPosition_Syn_Core_UserStatement :: ((Int, Int)),ftv_Syn_Core_UserStatement :: ([Int]),metavarConstraints_Syn_Core_UserStatement :: ([(String,Tree (TypeConstraint ConstraintInfo))])}
+wrap_Core_UserStatement :: T_Core_UserStatement ->
+                           Inh_Core_UserStatement ->
+                           Syn_Core_UserStatement
+wrap_Core_UserStatement sem (Inh_Core_UserStatement _lhsIcollectConstraints _lhsIcurrentPhase _lhsIcurrentPosition _lhsIfromAttribute _lhsIinfoTuple _lhsImetaVariableTable _lhsImetavarConstraints _lhsIsubstitution) =
+    (let ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints) = sem _lhsIcollectConstraints _lhsIcurrentPhase _lhsIcurrentPosition _lhsIfromAttribute _lhsIinfoTuple _lhsImetaVariableTable _lhsImetavarConstraints _lhsIsubstitution
+     in  (Syn_Core_UserStatement _lhsOcollectConstraints _lhsOcurrentPhase _lhsOcurrentPosition _lhsOftv _lhsOmetavarConstraints))
 sem_Core_UserStatement_CorePhase :: Int ->
                                     T_Core_UserStatement
 sem_Core_UserStatement_CorePhase phase_ =
@@ -531,6 +577,14 @@ type T_Core_UserStatements = (Trees (TypeConstraint ConstraintInfo)) ->
                              ([(String,Tree (TypeConstraint ConstraintInfo))]) ->
                              MapSubstitution ->
                              ( (Trees (TypeConstraint ConstraintInfo)),(Maybe Int),((Int, Int)),([Int]),([(String,Tree (TypeConstraint ConstraintInfo))]))
+data Inh_Core_UserStatements = Inh_Core_UserStatements {collectConstraints_Inh_Core_UserStatements :: (Trees (TypeConstraint ConstraintInfo)),currentPhase_Inh_Core_UserStatements :: (Maybe Int),currentPosition_Inh_Core_UserStatements :: ((Int, Int)),fromAttribute_Inh_Core_UserStatements :: (Attribute -> MessageBlock),infoTuple_Inh_Core_UserStatements :: MetaVariableInfo,metaVariableTable_Inh_Core_UserStatements :: MetaVariableTable,metavarConstraints_Inh_Core_UserStatements :: ([(String,Tree (TypeConstraint ConstraintInfo))]),substitution_Inh_Core_UserStatements :: MapSubstitution}
+data Syn_Core_UserStatements = Syn_Core_UserStatements {collectConstraints_Syn_Core_UserStatements :: (Trees (TypeConstraint ConstraintInfo)),currentPhase_Syn_Core_UserStatements :: (Maybe Int),currentPosition_Syn_Core_UserStatements :: ((Int, Int)),ftv_Syn_Core_UserStatements :: ([Int]),metavarConstraints_Syn_Core_UserStatements :: ([(String,Tree (TypeConstraint ConstraintInfo))])}
+wrap_Core_UserStatements :: T_Core_UserStatements ->
+                            Inh_Core_UserStatements ->
+                            Syn_Core_UserStatements
+wrap_Core_UserStatements sem (Inh_Core_UserStatements _lhsIcollectConstraints _lhsIcurrentPhase _lhsIcurrentPosition _lhsIfromAttribute _lhsIinfoTuple _lhsImetaVariableTable _lhsImetavarConstraints _lhsIsubstitution) =
+    (let ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints) = sem _lhsIcollectConstraints _lhsIcurrentPhase _lhsIcurrentPosition _lhsIfromAttribute _lhsIinfoTuple _lhsImetaVariableTable _lhsImetavarConstraints _lhsIsubstitution
+     in  (Syn_Core_UserStatements _lhsOcollectConstraints _lhsOcurrentPhase _lhsOcurrentPosition _lhsOftv _lhsOmetavarConstraints))
 sem_Core_UserStatements_Cons :: T_Core_UserStatement ->
                                 T_Core_UserStatements ->
                                 T_Core_UserStatements

@@ -47,14 +47,14 @@ rangeOfSource source =
 oneLinerSource :: UHA_Source -> OneLineTree
 oneLinerSource source = 
    case source of
-      UHA_Expr  expr  -> fst (PP.sem_Expression expr)
-      UHA_Pat   pat   -> fst (PP.sem_Pattern pat)
-      UHA_Stat  stat  -> fst (PP.sem_Statement stat)
-      UHA_Qual  qual  -> fst (PP.sem_Qualifier qual)
-      UHA_FB    fb    -> fst (PP.sem_FunctionBinding fb)
-      UHA_RHS   rhs   -> fst (PP.sem_RightHandSide rhs) ""
-      UHA_Decl  decl  -> fst (PP.sem_Declaration decl)
-      UHA_Decls decls -> PP.encloseSep "{" "; " "}" (fst (PP.sem_Declarations decls))
+      UHA_Expr  expr  -> PP.oneLineTree_Syn_Expression (PP.wrap_Expression (PP.sem_Expression expr) PP.Inh_Expression)
+      UHA_Pat   pat   -> PP.oneLineTree_Syn_Pattern (PP.wrap_Pattern (PP.sem_Pattern pat) PP.Inh_Pattern)
+      UHA_Stat  stat  -> PP.oneLineTree_Syn_Statement (PP.wrap_Statement (PP.sem_Statement stat) PP.Inh_Statement)
+      UHA_Qual  qual  -> PP.oneLineTree_Syn_Qualifier (PP.wrap_Qualifier (PP.sem_Qualifier qual) PP.Inh_Qualifier)
+      UHA_FB    fb    -> PP.oneLineTree_Syn_FunctionBinding (PP.wrap_FunctionBinding (PP.sem_FunctionBinding fb) PP.Inh_FunctionBinding)
+      UHA_RHS   rhs   -> PP.oneLineTree_Syn_RightHandSide (PP.wrap_RightHandSide (PP.sem_RightHandSide rhs) PP.Inh_RightHandSide) ""
+      UHA_Decl  decl  -> PP.oneLineTree_Syn_Declaration (PP.wrap_Declaration (PP.sem_Declaration decl) PP.Inh_Declaration)
+      UHA_Decls decls -> PP.encloseSep "{" "; " "}" (PP.oneLineTree_Syn_Declarations (PP.wrap_Declarations (PP.sem_Declarations decls) PP.Inh_Declarations))
       UHA_Def   name  -> OneLineText (show name)
 
 descriptionOfSource :: UHA_Source -> String

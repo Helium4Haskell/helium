@@ -10,7 +10,7 @@ module Main.PhaseResolveOperators(phaseResolveOperators) where
 
 import Main.CompileUtils
 import Parser.ResolveOperators(resolveOperators, operatorsFromModule, ResolveError)
-import qualified Syntax.UHA_Pretty as PP(sem_Module)
+import qualified Syntax.UHA_Pretty as PP(sem_Module,wrap_Module,Inh_Module(..),text_Syn_Module)
 import qualified Data.Map as M
 
 phaseResolveOperators :: 
@@ -33,7 +33,7 @@ phaseResolveOperators moduleBeforeResolve importEnvs options = do
           
        [] ->
           do when (DumpUHA `elem` options) $
-                print $ PP.sem_Module module_
+                print $ PP.text_Syn_Module $ PP.wrap_Module (PP.sem_Module module_) PP.Inh_Module
     
              return (Right module_)
 
