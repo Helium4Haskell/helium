@@ -1,6 +1,6 @@
 
 
--- UUAGC 0.9.40.3 (StaticAnalysis/Directives/TS_Syntax.ag)
+-- UUAGC 0.9.42.2 (StaticAnalysis/Directives/TS_Syntax.ag)
 module StaticAnalysis.Directives.TS_Syntax where
 
 import Syntax.UHA_Syntax
@@ -19,8 +19,8 @@ data TypingStrategy = TypingStrategy_Siblings (Names)
                     | TypingStrategy_TypingStrategy (TypeRule) (UserStatements)
 -- UserStatement -----------------------------------------------
 data UserStatement = UserStatement_Equal (Type) (Type) (String)
+                   | UserStatement_Pred (Name) (Type) (String)
                    | UserStatement_MetaVariableConstraints (Name)
                    | UserStatement_Phase (Int)
-                   | UserStatement_Pred (Name) (Type) (String)
 -- UserStatements ----------------------------------------------
 type UserStatements = [UserStatement]

@@ -1,6 +1,6 @@
 
 
--- UUAGC 0.9.40.3 (StaticAnalysis/Directives/TS_CoreSyntax.ag)
+-- UUAGC 0.9.42.2 (StaticAnalysis/Directives/TS_CoreSyntax.ag)
 module StaticAnalysis.Directives.TS_CoreSyntax where
 
 import Top.Types
@@ -19,10 +19,10 @@ data Core_TypingStrategy = Siblings (([String]))
                          | TypingStrategy (([(String, Tp)])) (Core_TypeRule) (Core_UserStatements)
                          deriving ( Read,Show)
 -- Core_UserStatement ------------------------------------------
-data Core_UserStatement = CorePhase (Int)
-                        | Equal (Tp) (Tp) (String)
-                        | MetaVariableConstraints (String)
+data Core_UserStatement = Equal (Tp) (Tp) (String)
                         | Pred (String) (Tp) (String)
+                        | MetaVariableConstraints (String)
+                        | CorePhase (Int)
                         deriving ( Read,Show)
 -- Core_UserStatements -----------------------------------------
 type Core_UserStatements = [Core_UserStatement]

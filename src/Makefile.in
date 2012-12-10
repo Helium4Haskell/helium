@@ -51,7 +51,7 @@ GHCWARN = -Wall
 HC_OPTS = --make $(GHCWARN) -odir $(OUTDIR) -hidir $(OUTDIR) $(EXTRA_HC_OPTS)
 
 AG      = @WithAG@ -P Syntax -P StaticAnalysis/StaticChecks -P StaticAnalysis/Inferencers -P CodeGeneration -P StaticAnalysis/Directives
-AG_OPTS = -mscfrw
+AG_OPTS = -mscfrw --kennedywarren
 
 # AG sources
 AGSOURCES = \

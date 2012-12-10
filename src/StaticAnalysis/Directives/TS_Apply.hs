@@ -1,6 +1,6 @@
 
 
--- UUAGC 0.9.40.3 (StaticAnalysis/Directives/TS_Apply.ag)
+-- UUAGC 0.9.42.2 (StaticAnalysis/Directives/TS_Apply.ag)
 module StaticAnalysis.Directives.TS_Apply where
 
 
@@ -399,14 +399,14 @@ sem_Core_TypingStrategy_TypingStrategy typeEnv_ typerule_ statements_ =
 -- cata
 sem_Core_UserStatement :: Core_UserStatement ->
                           T_Core_UserStatement
-sem_Core_UserStatement (CorePhase _phase) =
-    (sem_Core_UserStatement_CorePhase _phase)
 sem_Core_UserStatement (Equal _leftType _rightType _message) =
     (sem_Core_UserStatement_Equal _leftType _rightType _message)
-sem_Core_UserStatement (MetaVariableConstraints _name) =
-    (sem_Core_UserStatement_MetaVariableConstraints _name)
 sem_Core_UserStatement (Pred _predClass _predType _message) =
     (sem_Core_UserStatement_Pred _predClass _predType _message)
+sem_Core_UserStatement (MetaVariableConstraints _name) =
+    (sem_Core_UserStatement_MetaVariableConstraints _name)
+sem_Core_UserStatement (CorePhase _phase) =
+    (sem_Core_UserStatement_CorePhase _phase)
 -- semantic domain
 type T_Core_UserStatement = (Trees (TypeConstraint ConstraintInfo)) ->
                             (Maybe Int) ->
@@ -425,33 +425,6 @@ wrap_Core_UserStatement :: T_Core_UserStatement ->
 wrap_Core_UserStatement sem (Inh_Core_UserStatement _lhsIcollectConstraints _lhsIcurrentPhase _lhsIcurrentPosition _lhsIfromAttribute _lhsIinfoTuple _lhsImetaVariableTable _lhsImetavarConstraints _lhsIsubstitution) =
     (let ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints) = sem _lhsIcollectConstraints _lhsIcurrentPhase _lhsIcurrentPosition _lhsIfromAttribute _lhsIinfoTuple _lhsImetaVariableTable _lhsImetavarConstraints _lhsIsubstitution
      in  (Syn_Core_UserStatement _lhsOcollectConstraints _lhsOcurrentPhase _lhsOcurrentPosition _lhsOftv _lhsOmetavarConstraints))
-sem_Core_UserStatement_CorePhase :: Int ->
-                                    T_Core_UserStatement
-sem_Core_UserStatement_CorePhase phase_ =
-    (\ _lhsIcollectConstraints
-       _lhsIcurrentPhase
-       _lhsIcurrentPosition
-       _lhsIfromAttribute
-       _lhsIinfoTuple
-       _lhsImetaVariableTable
-       _lhsImetavarConstraints
-       _lhsIsubstitution ->
-         (let _lhsOcurrentPhase :: (Maybe Int)
-              _lhsOftv :: ([Int])
-              _lhsOcollectConstraints :: (Trees (TypeConstraint ConstraintInfo))
-              _lhsOcurrentPosition :: ((Int, Int))
-              _lhsOmetavarConstraints :: ([(String,Tree (TypeConstraint ConstraintInfo))])
-              _lhsOcurrentPhase =
-                  Just phase_
-              _lhsOftv =
-                  []
-              _lhsOcollectConstraints =
-                  _lhsIcollectConstraints
-              _lhsOcurrentPosition =
-                  _lhsIcurrentPosition
-              _lhsOmetavarConstraints =
-                  _lhsImetavarConstraints
-          in  ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints)))
 sem_Core_UserStatement_Equal :: Tp ->
                                 Tp ->
                                 String ->
@@ -495,35 +468,6 @@ sem_Core_UserStatement_Equal leftType_ rightType_ message_ =
               _lhsOmetavarConstraints =
                   _lhsImetavarConstraints
           in  ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints)))
-sem_Core_UserStatement_MetaVariableConstraints :: String ->
-                                                  T_Core_UserStatement
-sem_Core_UserStatement_MetaVariableConstraints name_ =
-    (\ _lhsIcollectConstraints
-       _lhsIcurrentPhase
-       _lhsIcurrentPosition
-       _lhsIfromAttribute
-       _lhsIinfoTuple
-       _lhsImetaVariableTable
-       _lhsImetavarConstraints
-       _lhsIsubstitution ->
-         (let _lhsOmetavarConstraints :: ([(String,Tree (TypeConstraint ConstraintInfo))])
-              _lhsOcollectConstraints :: (Trees (TypeConstraint ConstraintInfo))
-              _lhsOftv :: ([Int])
-              _lhsOcurrentPhase :: (Maybe Int)
-              _lhsOcurrentPosition :: ((Int, Int))
-              _lhsOmetavarConstraints =
-                  filter ((name_ /=) . fst) _lhsImetavarConstraints
-              _lhsOcollectConstraints =
-                  case lookup name_ _lhsImetavarConstraints of
-                      Just tree -> tree : _lhsIcollectConstraints
-                      Nothing   -> internalError "TS_Apply.ag" "n/a" "unknown constraint set"
-              _lhsOftv =
-                  []
-              _lhsOcurrentPhase =
-                  _lhsIcurrentPhase
-              _lhsOcurrentPosition =
-                  _lhsIcurrentPosition
-          in  ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints)))
 sem_Core_UserStatement_Pred :: String ->
                                Tp ->
                                String ->
@@ -556,6 +500,62 @@ sem_Core_UserStatement_Pred predClass_ predType_ message_ =
                   []
               _lhsOcurrentPhase =
                   _lhsIcurrentPhase
+              _lhsOcurrentPosition =
+                  _lhsIcurrentPosition
+              _lhsOmetavarConstraints =
+                  _lhsImetavarConstraints
+          in  ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints)))
+sem_Core_UserStatement_MetaVariableConstraints :: String ->
+                                                  T_Core_UserStatement
+sem_Core_UserStatement_MetaVariableConstraints name_ =
+    (\ _lhsIcollectConstraints
+       _lhsIcurrentPhase
+       _lhsIcurrentPosition
+       _lhsIfromAttribute
+       _lhsIinfoTuple
+       _lhsImetaVariableTable
+       _lhsImetavarConstraints
+       _lhsIsubstitution ->
+         (let _lhsOmetavarConstraints :: ([(String,Tree (TypeConstraint ConstraintInfo))])
+              _lhsOcollectConstraints :: (Trees (TypeConstraint ConstraintInfo))
+              _lhsOftv :: ([Int])
+              _lhsOcurrentPhase :: (Maybe Int)
+              _lhsOcurrentPosition :: ((Int, Int))
+              _lhsOmetavarConstraints =
+                  filter ((name_ /=) . fst) _lhsImetavarConstraints
+              _lhsOcollectConstraints =
+                  case lookup name_ _lhsImetavarConstraints of
+                      Just tree -> tree : _lhsIcollectConstraints
+                      Nothing   -> internalError "TS_Apply.ag" "n/a" "unknown constraint set"
+              _lhsOftv =
+                  []
+              _lhsOcurrentPhase =
+                  _lhsIcurrentPhase
+              _lhsOcurrentPosition =
+                  _lhsIcurrentPosition
+          in  ( _lhsOcollectConstraints,_lhsOcurrentPhase,_lhsOcurrentPosition,_lhsOftv,_lhsOmetavarConstraints)))
+sem_Core_UserStatement_CorePhase :: Int ->
+                                    T_Core_UserStatement
+sem_Core_UserStatement_CorePhase phase_ =
+    (\ _lhsIcollectConstraints
+       _lhsIcurrentPhase
+       _lhsIcurrentPosition
+       _lhsIfromAttribute
+       _lhsIinfoTuple
+       _lhsImetaVariableTable
+       _lhsImetavarConstraints
+       _lhsIsubstitution ->
+         (let _lhsOcurrentPhase :: (Maybe Int)
+              _lhsOftv :: ([Int])
+              _lhsOcollectConstraints :: (Trees (TypeConstraint ConstraintInfo))
+              _lhsOcurrentPosition :: ((Int, Int))
+              _lhsOmetavarConstraints :: ([(String,Tree (TypeConstraint ConstraintInfo))])
+              _lhsOcurrentPhase =
+                  Just phase_
+              _lhsOftv =
+                  []
+              _lhsOcollectConstraints =
+                  _lhsIcollectConstraints
               _lhsOcurrentPosition =
                   _lhsIcurrentPosition
               _lhsOmetavarConstraints =
