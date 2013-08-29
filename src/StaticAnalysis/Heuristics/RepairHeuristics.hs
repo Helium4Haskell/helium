@@ -534,7 +534,7 @@ permutationsForLength 0 = [ [] ]
 permutationsForLength i = [ ys | xs <- permutationsForLength (i-1), ys <- insertSomewhere (i-1) xs ]
   where
    insertSomewhere j []     = [ [j] ]
-   insertSomewhere j (x:xs) = (i:x:xs) : map (x:) (insertSomewhere j xs)
+   insertSomewhere j (x:xs) = (j:x:xs) : map (x:) (insertSomewhere j xs)
          
 deleteIndex :: Int -> [a] -> [a]
 deleteIndex _ []     = []
