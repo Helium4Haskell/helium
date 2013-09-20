@@ -1035,7 +1035,7 @@ sem_Declaration_FunctionBindings arg_range_ arg_bindings_ = T_Declaration (retur
    {-# INLINE rule47 #-}
    rule47 = \ ((_bindingsItext) ::  [       Doc ] ) ->
            case filter ((/= "") . show) _bindingsItext of
-              [] -> empty
+              [] -> text hole
               xs -> foldl1  (<$>) xs
    {-# INLINE rule48 #-}
    rule48 = \ _text ->

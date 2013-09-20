@@ -313,7 +313,7 @@ SEM Declaration                                  {- *** -}
 --    | FunctionBindings  loc.text = foldl1 (<$>) @bindings.text
     | FunctionBindings  loc.text = 
          case filter ((/= "") . show) @bindings.text of -- AG: no eq for doc
-            [] -> empty
+            [] -> text hole -- empty
             xs -> foldl1  (<$>) xs
     --  range                    : Range          {- *** -}
     --  bindings                 : FunctionBindings -- should all be for the same function
