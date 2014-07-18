@@ -25,22 +25,10 @@ import System.Exit(exitWith, ExitCode(..))
 import Utils.OSSpecific(slash)
 import System.Directory
 import qualified Control.Exception as CE (catch, IOException)
-import TextHint.ConfigFile(Config, readConfig)
+import TextHint.ConfigFile(readConfig, extractOptions, configFilename, 
+                           temppathKey, trim)
 import Main.Args
 import Paths_helium
-
--- Constants for configuration files
-configFilename :: String
-configFilename = "hint.conf" 
---basepathKey    :: String
---basepathKey    = "basepath"
-temppathKey    :: String
-temppathKey    = "temppath"
-unknown        :: String
-unknown        = "<unknown>"
-passToHelium   :: [String]
-passToHelium   = ["overloadingon", "loggingon", "host", "port",
-                  "lvmpaths", "additionalheliumparameters"]
 
 data State = 
     State
@@ -51,11 +39,6 @@ data State =
     , compOptions :: [String] -- Contains both options for helium as well as lvmrun. 
             -- For lvmrun only the -P/--lvmpath options are selected to be passed on 
     }
-
-unwordsBy :: String -> [String] -> String
-unwordsBy _   [] = ""
-unwordsBy _   [w] = w
-unwordsBy sep (w:ws) = w ++ sep ++ unwordsBy sep ws
 
 -- The following three definitions are used to support the alert flag
 -- for redoing a compilation and logging the compilation in a special way.
@@ -79,54 +62,9 @@ header = unlines
     , "|_| |_|\\___|_|_|\\__,_|_| |_| |_|   --    or a command (:? for a list)   --"
     ]
 
-extractOptions :: Config -> [String]
-extractOptions []         = []
-extractOptions ((k,v):xs) = 
-  if k `elem` passToHelium then
-      tfm k : rest
-  else
-      rest
-   where
-     rest = extractOptions xs
-     tfm x = case x of 
-               "overloadingon" -> if v == "false" then
-                                    show NoOverloading
-                                  else
-                                    show Overloading
-               "loggingon"     -> if v == "false" then
-                                    show DisableLogging
-                                  else
-                                    show EnableLogging
-               "host"          -> show (Host v)
-               "port"          -> show (Port (read v))
-               "lvmpaths"      -> if trim v == "" then "" else show (LvmPath v)
-               "additionalheliumparameters" -> v
-               _               -> error "Internal error in texthint/Main.hs"
-
 
 slashify :: String -> String
 slashify xs = if last xs == slash then xs else xs ++ [slash]
-
-{--
-DELETE: will be handled in helium compiler proper.
-
--- Adds link to the right Prelude. For that needs to verify Overloading or not.
-addStandardLVMPath :: String -> [String] -> [String]
-addStandardLVMPath basepath config = 
-  addPreludePath basepath (show (LvmPath ".") : config)
-  where
-    addPreludePath bp conf 
-      | bp == unknown = conf
-      | otherwise     = show (LvmPath (bp ++ (slash:"lib") ++ [slash] ++  
-                                      (if reallyOverloading config then "" else "simple"++[slash]))) : config
-    reallyOverloading xs =
-      let 
-        onlyOverloadingFlags = reverse (filter (\x -> x == (show Overloading) || x == (show NoOverloading)) xs)
-      in 
-        case onlyOverloadingFlags of
-           []     -> True
-           (x:_)  -> x == show Overloading
---}
 
 main :: IO ()
 main = do
@@ -149,13 +87,17 @@ main = do
     -- We can now assume the options are correct, and if maybeFileName is a Just, then we load this as file.
     -- This might fail as an ordinary load might. 
 
+    baseLibs <- if overloadingFromOptions options 
+                then getDataFileName "lib/" 
+                else getDataFileName "lib/simple/" -- Where the base libs are.
+
     let initialState = 
          State { tempDir = slashify tempDirFromEnv
                , maybeModName = Nothing
                , maybeFileName = Nothing        
-               , compOptions = map show options
-               }        
-               
+               , compOptions = ("-P"++baseLibs):(map show options) -- -P is needed for lvmrun
+               }                     
+
     stateAfterLoad <-
         case maybeFilename of
           Just filename ->
@@ -426,7 +368,6 @@ lvmOptionsFilter opts =
 executeModule :: String -> State -> IO ()
 executeModule fileName state = do
     let invocation = "\"" ++ "lvmrun\" " ++ lvmOptionsFilter (compOptions state) ++ " \""++ fileName ++ "\""
-    putStrLn invocation
     _ <- sys invocation
     return ()
 
@@ -518,9 +459,6 @@ _  `contains` [] = True
 [] `contains` _  = False
 (large@(_:rest)) `contains` small = 
     small `isPrefixOf` large || rest `contains` small 
-
-trim :: String -> String
-trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
 
 -- Split file name
 -- e.g. /docs/haskell/Hello.hs =>

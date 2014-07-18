@@ -35,7 +35,6 @@ main = do
         filePath' = if null filePath then "." else filePath
         lvmPath   = filter (not.null) . nub
                   $ (filePath' : lvmPathFromOptionsOrEnv) ++ [baseLibs] -- baseLibs always last
-    _ <- mapM putStrLn lvmPath
     
 --        lvmPath = filter (not.null) . nub 
 --                $ (if null filePath then "." else filePath) : lvmPathFromOptionsOrEnv
@@ -77,7 +76,6 @@ main = do
 -}
 
     doneRef <- newIORef []
-    putStrLn "Starting make"
     _ <- make filePath' newFullName lvmPath [moduleName] options doneRef
     return ()
 
@@ -138,7 +136,6 @@ make basedir fullName lvmPath chain options doneRef =
     do
         -- If we already compiled this module, return the result we already now
         done <- readIORef doneRef
-        putStrLn fullName
         
         case lookup fullName done of 
           Just isRecompiled -> return isRecompiled

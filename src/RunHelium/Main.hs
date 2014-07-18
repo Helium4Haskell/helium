@@ -11,28 +11,17 @@
 
 module Main where
 
-import Data.Char
 import Data.Maybe(fromJust)
-import Data.List(isPrefixOf, intercalate)
+import Data.List(intercalate)
 
 import System.Environment(getArgs)
 import System.Process(system)
-import System.Exit(exitWith, ExitCode(..))
+import System.Exit(ExitCode(..))
 import Utils.OSSpecific(slash)
-import TextHint.ConfigFile(Config, readConfig)
+import TextHint.ConfigFile(readConfig, extractOptions, configFilename, 
+                           temppathKey)
 import Main.Args
 import Paths_helium
-
--- Constants for configuration files
-configFilename :: String
-configFilename = "hint.conf" 
-temppathKey    :: String
-temppathKey    = "temppath"
-unknown        :: String
-unknown        = "<unknown>"
-passToHelium   :: [String]
-passToHelium   = ["overloadingon", "loggingon", "host", "port",
-                  "lvmpaths", "additionalheliumparameters"]
 
 data State = 
     State
@@ -43,36 +32,7 @@ data State =
             -- For lvmrun only the -P/--lvmpath options are selected to be passed on 
     }
 
-unwordsBy :: String -> [String] -> String
-unwordsBy _   [] = ""
-unwordsBy _   [w] = w
-unwordsBy sep (w:ws) = w ++ sep ++ unwordsBy sep ws
-
-extractOptions :: Config -> [String]
-extractOptions []         = []
-extractOptions ((k,v):xs) = 
-  if k `elem` passToHelium then
-      tfm k : rest
-  else
-      rest
-   where
-     rest = extractOptions xs
-     tfm x = case x of 
-               "overloadingon" -> if v == "false" then
-                                    show NoOverloading
-                                  else
-                                    show Overloading
-               "loggingon"     -> if v == "false" then
-                                    show DisableLogging
-                                  else
-                                    show EnableLogging
-               "host"          -> show (Host v)
-               "port"          -> show (Port (read v))
-               "lvmpaths"      -> if trim v == "" then "" else show (LvmPath v)
-               "additionalheliumparameters" -> v
-               _               -> error "Internal error in RunHelium/Main.hs"
-
-
+    
 slashify :: String -> String
 slashify xs = if last xs == slash then xs else xs ++ [slash]
 
@@ -116,45 +76,12 @@ main = do
 executeModule :: String -> State -> IO ()
 executeModule fileName state = do
     let invocation = "\"" ++ "lvmrun\" " ++ (intercalate " " (compOptions state)) ++ " \""++ fileName ++ "\""
-    putStrLn invocation
     _ <- sys invocation
     return ()
-    
+
+-- Local sys in case we want to impose additional side effects
 sys :: String -> IO ExitCode
 sys s = do
     -- putStrLn ("System:" ++ s)
     system s
-
-------------------------
--- Utility functions 
-------------------------
-
-fatal :: String -> IO a
-fatal msg = do    
-    putStrLn msg
-    putStrLn "Make sure that the environment variable TEMP points to a valid directory"
-    exitWith (ExitFailure 1)
-
-safeTail :: [a] -> [a]
-safeTail (_:xs) = xs
-safeTail [] = []
-
-contains :: Eq a => [a] -> [a] -> Bool
-_  `contains` [] = True
-[] `contains` _  = False
-(large@(_:rest)) `contains` small = 
-    small `isPrefixOf` large || rest `contains` small 
-
-trim :: String -> String
-trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
-
--- Split file name
--- e.g. /docs/haskell/Hello.hs =>
---   filePath = /docs/haskell  baseName = Hello  ext = hs
-splitFilePath :: String -> (String, String, String)
-splitFilePath filePath = 
-    let slashes = "\\/"
-        (revFileName, revPath) = span (`notElem` slashes) (reverse filePath)
-        (baseName, ext)  = span (/= '.') (reverse revFileName)
-    in (reverse revPath, baseName, dropWhile (== '.') ext)
 

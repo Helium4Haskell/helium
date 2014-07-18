@@ -1,4 +1,12 @@
-module TextHint.ConfigFile (Config, readConfig) where
+module TextHint.ConfigFile (
+        Config, 
+        readConfig, 
+        extractOptions, 
+        configFilename, 
+        temppathKey,
+        unknown,
+        passToHelium,
+        trim) where
 
 
 import Data.Char
@@ -7,9 +15,21 @@ import Data.Char
 import Text.ParserCombinators.Parsec
 --import Data.Either
 import Data.Maybe
+import Main.Args
 
 type Config = [(String,String)]
 
+-- Constants for configuration files
+configFilename :: String
+configFilename = "hint.conf" 
+temppathKey    :: String
+temppathKey    = "temppath"
+unknown        :: String
+unknown        = "<unknown>"
+passToHelium   :: [String]
+passToHelium   = ["overloadingon", "loggingon", "host", "port",
+                  "lvmpaths", "additionalheliumparameters"]
+                 
 -- Thanks to Bryan OÕSullivan, I might upgrade this later to something more in
 -- the style of the Helium parser.
 -- TODO deal with empty lines AT THE END of the config file.
@@ -57,4 +77,33 @@ readConfig name = do{ result <- parseFromFile file name
                                       }
                        Right xs  -> return (reverse xs) 
                     }
+
+extractOptions :: Config -> [String]
+extractOptions []         = []
+extractOptions ((k,v):xs) = 
+  if k `elem` passToHelium then
+      tfm k : rest
+  else
+      rest
+   where
+     rest = extractOptions xs
+     tfm x = case x of 
+               "overloadingon" -> if v == "false" then
+                                    show NoOverloading
+                                  else
+                                    show Overloading
+               "loggingon"     -> if v == "false" then
+                                    show DisableLogging
+                                  else
+                                    show EnableLogging
+               "host"          -> show (Host v)
+               "port"          -> show (Port (read v))
+               "lvmpaths"      -> if trim v == "" then "" else show (LvmPath v)
+               "additionalheliumparameters" -> v
+               _               -> error "Internal error in RunHelium/Main.hs"
+
+
+trim :: String -> String
+trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
+
 
