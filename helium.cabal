@@ -1,0 +1,71 @@
+name:                   helium
+version:                1.8
+synopsis:               The Helium Compiler.
+homepage:               http://www.cs.uu.nl/wiki/bin/view/Helium/WebHome
+description:
+
+  Helium is a compiler for a subset of Haskell that aims at delivering high
+  quality type error messages particularly for beginner programmers. It also
+  includes facilities for specializing type error diagnosis for embedded domain
+  specific languages. The compiler supports Haskell 98, but without the ability
+  to define new type classes and instances.
+
+category:               Compiler
+copyright:              (c) 2014
+license:                GPL
+license-file:           LICENSE.txt
+author:                 Bastiaan Heeren, Jurriaan Hage
+maintainer:             helium@cs.uu.nl
+stability:              provisional
+extra-source-files:     CREDITS.txt
+build-type:             Simple
+cabal-version:          >= 1.10.1.0
+tested-with:            GHC == 7.6.3
+data-files:
+  lib/*.hs
+  lib/*.lvm
+  lib/*.core
+  lib/Makefile
+  lib/Makefile.in
+  lib/simple/*.hs
+  lib/simple/*.lvm
+  lib/simple/*.core
+  lib/simple/Makefile
+  lib/simple/Makefile.in
+  hint.conf
+
+source-repository head
+  type:     svn
+  location: https://subversion.cs.uu.nl/repos/staff.jur.Top/trunk
+  
+--------------------------------------------------------------------------------
+
+Executable helium
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.0
+  ghc-options:       -Wall
+  default-language:  Haskell98
+  hs-source-dirs:    src
+  Main-is:           Main/Main.hs
+  other-modules:     Paths_helium
+  
+--------------------------------------------------------------------------------
+
+Executable texthint
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, directory, process
+  ghc-options:       -Wall
+  default-language:  Haskell98
+  hs-source-dirs:    src
+  Main-is:           TextHint/Main.hs
+  other-modules:     Paths_helium
+  
+--------------------------------------------------------------------------------
+
+Executable runhelium
+  Build-Depends:     base >= 3 && < 5, containers, parsec, process
+  ghc-options:       -Wall
+  default-language:  Haskell98
+  hs-source-dirs:    src
+  Main-is:           RunHelium/Main.hs
+  other-modules:     Paths_helium
+
+ 

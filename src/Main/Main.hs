@@ -17,27 +17,30 @@ import System.Directory(doesFileExist, getModificationTime)
 import Main.Args
 import Main.CompileUtils
 import Data.IORef
-
+import Paths_helium
+         
 main :: IO ()
 main = do
-    args                    <- getArgs
+    args                     <- getArgs
     (options, Just fullName) <- processHeliumArgs args -- Can't fail, because processHeliumArgs checks it.
     
     lvmPathFromOptionsOrEnv <- case lvmPathFromOptions options of 
         Nothing -> getLvmPath
         Just s  -> return (splitPath s)
     
+    -- Choose the right libraries to use based on whether overloading is turned off or on
+    baseLibs <- if overloadingFromOptions options then getDataFileName "lib/" else getDataFileName "lib/simple/" -- Where the base libs are.
+    
     let (filePath, moduleName, _) = splitFilePath fullName
         filePath' = if null filePath then "." else filePath
         lvmPath   = filter (not.null) . nub
-                  $ filePath' : lvmPathFromOptionsOrEnv
+                  $ (filePath' : lvmPathFromOptionsOrEnv) ++ [baseLibs] -- baseLibs always last
+    _ <- mapM putStrLn lvmPath
     
 --        lvmPath = filter (not.null) . nub 
 --                $ (if null filePath then "." else filePath) : lvmPathFromOptionsOrEnv
-
-
-
-    -- File must exist, this test doesn't use the search path
+    
+    -- File that is compiled must exist, this test doesn't use the search path
     fileExists <- doesFileExist fullName
     newFullName <- 
         if fileExists then 
@@ -74,6 +77,7 @@ main = do
 -}
 
     doneRef <- newIORef []
+    putStrLn "Starting make"
     _ <- make filePath' newFullName lvmPath [moduleName] options doneRef
     return ()
 
@@ -134,6 +138,8 @@ make basedir fullName lvmPath chain options doneRef =
     do
         -- If we already compiled this module, return the result we already now
         done <- readIORef doneRef
+        putStrLn fullName
+        
         case lookup fullName done of 
           Just isRecompiled -> return isRecompiled
           Nothing -> do
@@ -146,10 +152,10 @@ make basedir fullName lvmPath chain options doneRef =
                     exitWith (ExitFailure 1)
                 Nothing -> 
                     return ()
-
+                 
             -- Find all imports in the search path
             resolvedImports <- mapM (resolve lvmPath) imports
-            
+                        
             -- For each of the imports...
             compileResults <- forM (zip imports resolvedImports) 
               $ \(importModuleName, maybeImportFullName) -> do

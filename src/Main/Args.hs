@@ -10,6 +10,7 @@
 module Main.Args
     ( Option(..)
     , processHeliumArgs
+    , processRunHeliumArgs
     , processTexthintArgs
     , lvmPathFromOptions
     , loggerDEFAULTHOST
@@ -18,6 +19,7 @@ module Main.Args
     , loggerDEFAULTPORT
     , hostFromOptions
     , portFromOptions
+    , overloadingFromOptions
     , hasAlertOption
     ) where
 
@@ -93,6 +95,15 @@ processHeliumArgs args = do
         Just _ ->
           return (options, maybeFiles)
 
+processRunHeliumArgs :: [String] -> IO ([Option], Maybe String)
+processRunHeliumArgs args = do
+    (options, maybeFiles) <- basicProcessArgs [] args
+    case maybeFiles of
+        Nothing ->
+          terminateWithMessage options "Error in invocation: the name of the lvm file to be run seems to be missing." []
+        Just _ ->
+          return (options, maybeFiles)
+          
 -- Sometimes you know the options are correct. Then you can use this.
 argsToOptions :: [String] -> [Option]
 argsToOptions args =
@@ -101,21 +112,21 @@ argsToOptions args =
     in
       opts
 
--- The Maybe String indicates that a file may be missing
+-- The Maybe String indicates that a file may be missing. Resulting options are simplified
 basicProcessArgs :: [Option] -> [String] ->  IO ([Option], Maybe String)
 basicProcessArgs defaults args =
     let (options, arguments, errors) = getOpt Permute (optionDescription True True) args
     in if not (null errors) then do
           terminateWithMessage options "Error in invocation: list of parameters is erroneous.\nProblem(s):"
                                (map ("  " ++) errors)
-    else
+    else        
         if (length arguments > 1) then
             terminateWithMessage options ("Error in invocation: only one non-option parameter expected, but found instead:\n" ++ (unlines (map ("  "++) arguments))) []
         else
             do
               let simpleOptions = simplifyOptions (defaults ++ options)
               when (Verbose `elem` simpleOptions) $
-                putStrLn ("Options after simplification: " ++ (show simpleOptions)++"\n")
+                mapM_ putStrLn ("Options after simplification: " : (map show simpleOptions))
               let argument = if null arguments then Nothing else Just (head arguments)
               return (simpleOptions, argument)
 
@@ -269,6 +280,12 @@ lvmPathFromOptions [] = Nothing
 lvmPathFromOptions (LvmPath s : _) = Just s
 lvmPathFromOptions (_ : rest) = lvmPathFromOptions rest
 
+-- Assumes removed duplicates!
+overloadingFromOptions :: [Option] -> Bool
+overloadingFromOptions []                = error "Internal error in Args.overloadingFromOptions"
+overloadingFromOptions (Overloading:_)   = True
+overloadingFromOptions (NoOverloading:_) = False
+overloadingFromOptions (_:rest)          = overloadingFromOptions rest
 
 -- Takes the first in the list. Better to remove duplicates!
 hostFromOptions :: [Option] -> Maybe String

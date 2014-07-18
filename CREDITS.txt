@@ -1,0 +1,13 @@
+AUTHORS
+
+Arjan van IJzendoorn, Bastiaan Heeren, Jurriaan Hage
+
+CREDITS
+
+The following people have contributed to the development and testing of the
+Helium compiler and its components:
+
+Daan Leijen, Rijk-Jan van Haaften, Arie Middelkoop, Arjan Oosting, 
+Jurri‘n Stutterheim, Jeroen Fokker, Andres Lšh, Arthur Baars, Remco Burema, 
+Atze Dijkstra, Maarten van Gompel, Doaitse Swierstra, Martijn Lammerts, 
+Martijn Schrage and Stefan Holdermans.

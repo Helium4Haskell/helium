@@ -6,11 +6,6 @@
     Portability :  portable
     
     The textual Helium interpreter
-
-    TODO: 
-       -Pass a .hint.conf as a parameter?
-        Make sure that helium itself does not allow it, explicitly forbids its use.
-        
        
 -}
 
@@ -24,7 +19,7 @@ import System.IO(stdout, hFlush)
 import Data.IORef       ( IORef, readIORef, newIORef, writeIORef )
 import System.IO.Unsafe ( unsafePerformIO )
 
-import System.Environment(getEnv, getArgs)
+import System.Environment(getArgs)
 import System.Process(system)
 import System.Exit(exitWith, ExitCode(..))
 import Utils.OSSpecific(slash)
@@ -32,13 +27,13 @@ import System.Directory
 import qualified Control.Exception as CE (catch, IOException)
 import TextHint.ConfigFile(Config, readConfig)
 import Main.Args
-
+import Paths_helium
 
 -- Constants for configuration files
 configFilename :: String
-configFilename = ".hint.conf" 
-basepathKey    :: String
-basepathKey    = "basepath"
+configFilename = "hint.conf" 
+--basepathKey    :: String
+--basepathKey    = "basepath"
 temppathKey    :: String
 temppathKey    = "temppath"
 unknown        :: String
@@ -52,7 +47,7 @@ data State =
     { maybeModName   :: Maybe String
     , maybeFileName  :: Maybe String
     , tempDir :: String
-    , binDir :: String
+   -- , binDir :: String
     , compOptions :: [String] -- Contains both options for helium as well as lvmrun. 
             -- For lvmrun only the -P/--lvmpath options are selected to be passed on 
     }
@@ -112,6 +107,9 @@ extractOptions ((k,v):xs) =
 slashify :: String -> String
 slashify xs = if last xs == slash then xs else xs ++ [slash]
 
+{--
+DELETE: will be handled in helium compiler proper.
+
 -- Adds link to the right Prelude. For that needs to verify Overloading or not.
 addStandardLVMPath :: String -> [String] -> [String]
 addStandardLVMPath basepath config = 
@@ -128,45 +126,45 @@ addStandardLVMPath basepath config =
         case onlyOverloadingFlags of
            []     -> True
            (x:_)  -> x == show Overloading
-           
+--}
+
 main :: IO ()
 main = do
-    home <- getEnv "HOME" 
+    -- Read all configuration info first
+    configFullname <- getDataFileName configFilename
     configInfo <-
-        readConfig (home ++ (slash : configFilename))
+        readConfig configFullname
     let tempDirFromEnv = case lookup temppathKey configInfo of
                            Nothing -> "."
                            Just xs -> xs
-    let basepath       = case lookup basepathKey configInfo of
-                           Nothing -> unknown
-                           Just xs -> xs
     let configOptions  = extractOptions configInfo
-    -- putStrLn (show configOptions) 
-    let initialState = 
-         State { tempDir = slashify tempDirFromEnv
-               , maybeModName = Nothing
-               , maybeFileName = Nothing
-               , binDir = if basepath == unknown then "" else basepath ++ (slash:"bin") ++ [slash] -- Hope for $PATH
-               , compOptions = []
-               }
-
-    -- Logo
-    putStrLn header
     
     -- Load command-line parameter module
     -- If the final parameter happens to refer to a source name, then that file is loaded.
     args <- getArgs
-    (options, maybeFilename) <- processTexthintArgs args
+    
+    -- Delete empty option strings since they screw things up
+    (options, maybeFilename) <- processTexthintArgs ((filter (/= "") configOptions) ++ args) -- args take precedence over config file
+    
     -- We can now assume the options are correct, and if maybeFileName is a Just, then we load this as file.
     -- This might fail as an ordinary load might. 
-    
+
+    let initialState = 
+         State { tempDir = slashify tempDirFromEnv
+               , maybeModName = Nothing
+               , maybeFileName = Nothing        
+               , compOptions = map show options
+               }        
+               
     stateAfterLoad <-
         case maybeFilename of
           Just filename ->
-            cmdLoadModule filename 
-              (initialState{ compOptions = addStandardLVMPath basepath (configOptions ++ (map show options)) })
+            cmdLoadModule filename initialState
           Nothing ->
-            return initialState{ compOptions = addStandardLVMPath basepath configOptions }
+            return initialState
+
+    -- Logo
+    putStrLn header
     
     -- Enter read-eval-print loop
     _ <- loop stateAfterLoad
@@ -394,7 +392,7 @@ compileModule fileName options state = do
     let outputFilePath = tempDir state ++ outputFileName
     -- putStrLn (fileName ++ "." ++ options ++ "." ++ unwords (compOptions state))
     -- mapM putStrLn (compOptions state)
-    let heliumInvocation = "\"" ++ binDir state ++ "helium\" " ++ " " ++ unwords (compOptions state) 
+    let heliumInvocation = "\"" ++ "helium\" " ++ " " ++ unwords (compOptions state) 
                                 ++ " " ++ options ++ " " ++ fileName
     setPreviousInvocation heliumInvocation outputFilePath
     execCompileModule heliumInvocation outputFilePath
@@ -427,8 +425,8 @@ lvmOptionsFilter opts =
 
 executeModule :: String -> State -> IO ()
 executeModule fileName state = do
-    let invocation = "\"" ++ binDir state ++ "lvmrun\" " ++ lvmOptionsFilter (compOptions state) ++ " \""++ fileName ++ "\""
-    -- putStrLn invocation
+    let invocation = "\"" ++ "lvmrun\" " ++ lvmOptionsFilter (compOptions state) ++ " \""++ fileName ++ "\""
+    putStrLn invocation
     _ <- sys invocation
     return ()
 
