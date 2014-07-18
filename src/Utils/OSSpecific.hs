@@ -8,7 +8,9 @@
 
 module Utils.OSSpecific where
 
+import System.FilePath
+
 slash :: Char
-slash =  '@SLASH@'
+slash =  pathSeparator
 
 
