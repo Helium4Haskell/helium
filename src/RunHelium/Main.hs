@@ -17,6 +17,8 @@ import Data.List(intercalate)
 import System.Environment(getArgs)
 import System.Process(system)
 import System.Exit(ExitCode(..))
+import System.Directory(findExecutable)
+import System.Exit(exitWith, ExitCode(..))
 import Utils.OSSpecific(slash)
 import TextHint.ConfigFile(readConfig, extractOptions, configFilename, 
                            temppathKey)
@@ -32,12 +34,21 @@ data State =
             -- For lvmrun only the -P/--lvmpath options are selected to be passed on 
     }
 
-    
+lvmrun :: String
+lvmrun = "lvmrun"
+
 slashify :: String -> String
 slashify xs = if last xs == slash then xs else xs ++ [slash]
 
 main :: IO ()
 main = do
+    canWeRun <- findExecutable lvmrun
+    case canWeRun of
+      Nothing -> do 
+                   putStrLn "Fatal error: lvmrun cannot be found in your system PATH.\nDid you run `cabal install lvmrun` yet?"
+                   exitWith (ExitFailure 1)
+      Just _ -> return ()
+    
     -- Read all configuration info first
     configFullname <- getDataFileName configFilename
     configInfo <-

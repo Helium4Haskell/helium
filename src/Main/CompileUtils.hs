@@ -80,12 +80,10 @@ makeCoreLib basepath name =
     do
       let bps = [basepath]
       maybeFullName <- searchPathMaybe bps ".lvm" name
-      putStrLn (show maybeFullName)
       case maybeFullName of 
         Just _ -> return ()
         Nothing -> do
                      maybeCoreName <- searchPathMaybe bps ".core" name
-                     putStrLn (show maybeCoreName)
                      case maybeCoreName of
                        Just _ -> sys ("cd " ++ basepath ++" && coreasm " ++ name)
                        Nothing -> do 

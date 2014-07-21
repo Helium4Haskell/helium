@@ -66,8 +66,18 @@ header = unlines
 slashify :: String -> String
 slashify xs = if last xs == slash then xs else xs ++ [slash]
 
+lvmrun :: String
+lvmrun = "lvmrun"
+
 main :: IO ()
 main = do
+    canWeRun <- findExecutable lvmrun
+    case canWeRun of
+      Nothing -> do 
+                   putStrLn "Fatal error: lvmrun cannot be found in your system PATH.\nDid you run `cabal install lvmrun` yet?"
+                   exitWith (ExitFailure 1)
+      Just _ -> return ()
+    
     -- Read all configuration info first
     configFullname <- getDataFileName configFilename
     configInfo <-
@@ -367,7 +377,7 @@ lvmOptionsFilter opts =
 
 executeModule :: String -> State -> IO ()
 executeModule fileName state = do
-    let invocation = "\"" ++ "lvmrun\" " ++ lvmOptionsFilter (compOptions state) ++ " \""++ fileName ++ "\""
+    let invocation = "\"" ++ lvmrun ++ "\" " ++ lvmOptionsFilter (compOptions state) ++ " \""++ fileName ++ "\""
     _ <- sys invocation
     return ()
 
@@ -386,11 +396,11 @@ expressionModule expression state =
     ++ [ interpreterMain ++ " = " ++ expression ]
     )
     
-sys :: String -> IO ExitCode
+sys :: String  -> IO ExitCode
 sys s = do
     -- putStrLn ("System:" ++ s)
     system s
-
+       
 ------------------------
 -- Remove evidence 
 ------------------------

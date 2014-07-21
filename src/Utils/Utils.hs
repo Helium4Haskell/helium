@@ -113,7 +113,7 @@ refToCurrentFileName = unsafePerformIO (newIORef "<no module>")
 -- in case of an internal error
 refToCurrentImported :: IORef [String]
 refToCurrentImported = unsafePerformIO (newIORef [])
-
+   
 internalError :: String -> String -> String -> a
 internalError moduleName functionName message 
   = 

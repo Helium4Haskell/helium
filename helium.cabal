@@ -73,7 +73,7 @@ Executable texthint
 --------------------------------------------------------------------------------
 
 Executable runhelium
-  Build-Depends:     base >= 3 && < 5, containers, filepath, parsec, process
+  Build-Depends:     base >= 3 && < 5, containers, filepath, directory, parsec, process
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src
