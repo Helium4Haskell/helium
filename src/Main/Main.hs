@@ -10,6 +10,7 @@ module Main where
 import Main.Compile(compile)
 import Parser.Parser(parseOnlyImports)
 import Control.Monad
+import System.FilePath(joinPath)
 import Data.List(nub, elemIndex, isSuffixOf, intercalate)
 import Data.Maybe(fromJust)
 import Lvm.Path(getLvmPath, splitPath)
@@ -18,7 +19,14 @@ import Main.Args
 import Main.CompileUtils
 import Data.IORef
 import Paths_helium
-         
+        
+prelude :: String
+prelude = "Prelude.hs"
+
+-- order matters
+coreLibs :: [String]
+coreLibs = ["LvmLang", "LvmIO", "LvmException", "HeliumLang", "PreludePrim"]
+
 main :: IO ()
 main = do
     args                     <- getArgs
@@ -52,9 +60,14 @@ main = do
                 exitWith (ExitFailure 1)
             return filePlusHS
 
-    -- Libraries must exist somewhere in the search path
-    mapM_ (checkExistence lvmPath) 
-        ["Prelude", "PreludePrim", "HeliumLang", "LvmLang", "LvmIO", "LvmException"]
+    -- Ensure .core libs are compiled to .lvm
+    mapM_ (makeCoreLib baseLibs) (coreLibs ++ (map (\file -> joinPath ["simple",file]) coreLibs))    
+    -- And now deal with Prelude
+    preludeRef <- newIORef []
+    _ <- make filePath' (joinPath [baseLibs,prelude]) lvmPath [prelude] options preludeRef
+    
+--    mapM_ (checkExistence lvmPath) 
+--        ["Prelude", "PreludePrim", "HeliumLang", "LvmLang", "LvmIO", "LvmException"]
 
 {-
     verticesRef <- newIORef []
@@ -140,13 +153,14 @@ make basedir fullName lvmPath chain options doneRef =
         case lookup fullName done of 
           Just isRecompiled -> return isRecompiled
           Nothing -> do
+            
             imports <- parseOnlyImports fullName
             
             -- If this module imports a module earlier in the chain, there is a cycle
             case circularityCheck imports chain of
                 Just cycl -> do
-                    putStrLn $ "Circular import chain: \n\t" ++ showImportChain cycl ++ "\n"
-                    exitWith (ExitFailure 1)
+                      putStrLn $ "Circular import chain: \n\t" ++ showImportChain cycl ++ "\n"
+                      exitWith (ExitFailure 1)
                 Nothing -> 
                     return ()
                  
@@ -206,6 +220,10 @@ showImportChain = intercalate " imports "
 
 showSearchPath :: [String] -> String
 showSearchPath = unlines . map ("\t" ++)
+
+preludeImportsPrelude :: [String] -> Bool 
+preludeImportsPrelude [x,y] = x == prelude && y == prelude
+preludeImportsPrelude _ = False
 
 circularityCheck :: [String] -> [String] -> Maybe [String]
 circularityCheck (import_:imports) chain =

@@ -28,6 +28,7 @@ import ModuleSystem.ImportEnvironment
 import Syntax.UHA_Syntax(Module(..))
 import Data.Maybe
 import Lvm.Path(searchPathMaybe)
+import System.Process(system)
 
 type Phase err a = IO (Either [err] a)
 type CompileOptions = ([Option], String, [String]) 
@@ -73,7 +74,33 @@ showErrorsAndExit errors maximumNumber = do
 showMessages :: HasMessage a => [a] -> IO ()
 showMessages =
     putStr . sortAndShowMessages  
-    
+
+makeCoreLib :: String -> String -> IO ()
+makeCoreLib basepath name =
+    do
+      let bps = [basepath]
+      maybeFullName <- searchPathMaybe bps ".lvm" name
+      putStrLn (show maybeFullName)
+      case maybeFullName of 
+        Just _ -> return ()
+        Nothing -> do
+                     maybeCoreName <- searchPathMaybe bps ".core" name
+                     putStrLn (show maybeCoreName)
+                     case maybeCoreName of
+                       Just _ -> sys ("cd " ++ basepath ++" && coreasm " ++ name)
+                       Nothing -> do 
+                                    putStr
+                                      (  "Cannot find "
+                                      ++ name ++ ".core in \n"
+                                      ++ basepath)                                      
+                                    exitWith (ExitFailure 1)
+
+sys :: String -> IO ()
+sys s = do
+    -- putStrLn ("System:" ++ s)
+    _ <- system s
+    return ()
+      
 checkExistence :: [String] -> String -> IO ()
 checkExistence path name =
     do
@@ -94,3 +121,4 @@ resolve path name =
        case maybeFullName of
            Just fullName -> return (Just fullName)
            Nothing       -> searchPathMaybe path ".lvm" name
+           

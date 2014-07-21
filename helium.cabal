@@ -24,36 +24,26 @@ tested-with:            GHC == 7.6.3
 data-files:
   lib/Char.hs
   lib/HeliumLang.core
-  lib/HeliumLang.lvm
   lib/List.hs
   lib/LvmException.core
-  lib/LvmException.lvm
   lib/LvmIO.core
-  lib/LvmIO.lvm
   lib/LvmLang.core
-  lib/LvmLang.lvm
   lib/Makefile
   lib/Maybe.hs
   lib/Prelude.hs
   lib/Prelude.type
   lib/PreludePrim.core
-  lib/PreludePrim.lvm
   lib/simple/Char.hs
   lib/simple/HeliumLang.core
-  lib/simple/HeliumLang.lvm
   lib/simple/List.hs
   lib/simple/LvmException.core
-  lib/simple/LvmException.lvm
   lib/simple/LvmIO.core
-  lib/simple/LvmIO.lvm
   lib/simple/LvmLang.core
-  lib/simple/LvmLang.lvm
   lib/simple/Makefile
   lib/simple/Maybe.hs
   lib/simple/Prelude.hs
   lib/simple/Prelude.type
   lib/simple/PreludePrim.core
-  lib/simple/PreludePrim.lvm
   hint.conf
 
 source-repository head
@@ -63,7 +53,7 @@ source-repository head
 --------------------------------------------------------------------------------
 
 Executable helium
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.0
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.0
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src
