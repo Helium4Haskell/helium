@@ -22,16 +22,38 @@ build-type:             Simple
 cabal-version:          >= 1.10.1.0
 tested-with:            GHC == 7.6.3
 data-files:
-  lib/*.hs
-  lib/*.lvm
-  lib/*.core
+  lib/Char.hs
+  lib/HeliumLang.core
+  lib/HeliumLang.lvm
+  lib/List.hs
+  lib/LvmException.core
+  lib/LvmException.lvm
+  lib/LvmIO.core
+  lib/LvmIO.lvm
+  lib/LvmLang.core
+  lib/LvmLang.lvm
   lib/Makefile
-  lib/Makefile.in
-  lib/simple/*.hs
-  lib/simple/*.lvm
-  lib/simple/*.core
+  lib/Maybe.hs
+  lib/Prelude.hs
+  lib/Prelude.type
+  lib/PreludePrim.core
+  lib/PreludePrim.lvm
+  lib/simple/Char.hs
+  lib/simple/HeliumLang.core
+  lib/simple/HeliumLang.lvm
+  lib/simple/List.hs
+  lib/simple/LvmException.core
+  lib/simple/LvmException.lvm
+  lib/simple/LvmIO.core
+  lib/simple/LvmIO.lvm
+  lib/simple/LvmLang.core
+  lib/simple/LvmLang.lvm
   lib/simple/Makefile
-  lib/simple/Makefile.in
+  lib/simple/Maybe.hs
+  lib/simple/Prelude.hs
+  lib/simple/Prelude.type
+  lib/simple/PreludePrim.core
+  lib/simple/PreludePrim.lvm
   hint.conf
 
 source-repository head

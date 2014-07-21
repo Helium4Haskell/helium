@@ -1,7 +1,6 @@
 
-LVMPATH=@LVMPATH@
-COREASM=@COREASM@
-HELIUM=@HELIUM@
+COREASM=coreasm
+HELIUM=helium
 
 .PHONY : all
 .SUFFIXES : .core .lvm .o
