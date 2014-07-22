@@ -38,7 +38,7 @@ main = do
         Just s  -> return (splitPath s)
     
     -- Choose the right libraries to use based on whether overloading is turned off or on
-    baseLibs <- if overloadingFromOptions options then getDataFileName "lib/" else getDataFileName "lib/simple/" -- Where the base libs are.
+    baseLibs <- if overloadingFromOptions options then getDataFileName "lib" else getDataFileName (joinPath ["lib","simple"])
     
     let (filePath, moduleName, _) = splitFilePath fullName
         filePath' = if null filePath then "." else filePath
@@ -59,7 +59,7 @@ main = do
             return filePlusHS
 
     -- Ensure .core libs are compiled to .lvm
-    mapM_ (makeCoreLib baseLibs) (coreLibs ++ (map (\file -> joinPath ["simple",file]) coreLibs))    
+    mapM_ (makeCoreLib baseLibs) coreLibs    
     -- And now deal with Prelude
     preludeRef <- newIORef []
     _ <- make filePath' (joinPath [baseLibs,prelude]) lvmPath [prelude] options preludeRef
