@@ -80,4 +80,98 @@ Executable runhelium
   Main-is:           RunHelium/Main.hs
   other-modules:     Paths_helium
 
+--------------------------------------------------------------------------------
+
+Library
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.0
+  ghc-options:       -Wall
+  default-language:  Haskell98
+  hs-source-dirs:    src
+
+
+  Exposed-modules:
+    CodeGeneration.CodeGeneration
+    CodeGeneration.CoreToLvm
+    CodeGeneration.CoreUtils
+    CodeGeneration.DerivingEq
+    CodeGeneration.DerivingShow
+    CodeGeneration.PatternMatch
+    Main.Args
+    Main.Compile
+    Main.CompileUtils
+    Main.PhaseCodeGenerator
+    Main.PhaseDesugarer
+    Main.PhaseImport
+    Main.PhaseKindInferencer
+    Main.PhaseLexer
+    Main.PhaseParser
+    Main.PhaseResolveOperators
+    Main.PhaseStaticChecks
+    Main.PhaseTypeInferencer
+    Main.PhaseTypingStrategies
+    Main.Version
+    ModuleSystem.CoreToImportEnv
+    ModuleSystem.DictionaryEnvironment
+    ModuleSystem.ExtractImportDecls
+    ModuleSystem.ImportEnvironment
+    Parser.CollectFunctionBindings
+    Parser.LayoutRule
+    Parser.Lexer
+    Parser.LexerMessage
+    Parser.LexerMonad
+    Parser.LexerToken
+    Parser.OperatorTable
+    Parser.ParseLibrary
+    Parser.ParseMessage
+    Parser.Parser
+    Parser.ResolveOperators
+    StaticAnalysis.Directives.Matchers
+    StaticAnalysis.Directives.TS_Analyse
+    StaticAnalysis.Directives.TS_Apply
+    StaticAnalysis.Directives.TS_Attributes
+    StaticAnalysis.Directives.TS_Compile
+    StaticAnalysis.Directives.TS_CoreSyntax
+    StaticAnalysis.Directives.TS_Messages
+    StaticAnalysis.Directives.TS_Parser
+    StaticAnalysis.Directives.TS_Syntax
+    StaticAnalysis.Directives.TS_ToCore
+    StaticAnalysis.Heuristics.HeuristicsInfo
+    StaticAnalysis.Heuristics.ListOfHeuristics
+    StaticAnalysis.Heuristics.OnlyResultHeuristics
+    StaticAnalysis.Heuristics.RepairHeuristics
+    StaticAnalysis.Heuristics.TieBreakerHeuristics
+    StaticAnalysis.Heuristics.UnifierHeuristics
+    StaticAnalysis.Inferencers.BindingGroupAnalysis
+    StaticAnalysis.Inferencers.ExpressionTypeInferencer
+    StaticAnalysis.Inferencers.KindInferencing
+    StaticAnalysis.Inferencers.SelectConstraintSolver
+    StaticAnalysis.Inferencers.TypeInferencing
+    StaticAnalysis.Messages.HeliumMessages
+    StaticAnalysis.Messages.Information
+    StaticAnalysis.Messages.KindErrors
+    StaticAnalysis.Messages.Messages
+    StaticAnalysis.Messages.StaticErrors
+    StaticAnalysis.Messages.TypeErrors
+    StaticAnalysis.Messages.Warnings
+    StaticAnalysis.Miscellaneous.ConstraintInfo
+    StaticAnalysis.Miscellaneous.DoublyLinkedTree
+    StaticAnalysis.Miscellaneous.TypeConstraints
+    StaticAnalysis.Miscellaneous.TypeConversion
+    StaticAnalysis.Miscellaneous.TypesToAlignedDocs
+    StaticAnalysis.Miscellaneous.UHA_Source
+    StaticAnalysis.StaticChecks.StaticChecks
+    Syntax.UHA_OneLine
+    Syntax.UHA_Pretty
+    Syntax.UHA_Range
+    Syntax.UHA_Syntax
+    Syntax.UHA_Utils
+    TextHint.ConfigFile
+    Utils.Logger
+    Utils.OSSpecific
+    Utils.OneLiner
+    Utils.Similarity
+    Utils.Texts
+    Utils.Utils
+
+
  
