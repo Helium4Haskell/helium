@@ -165,7 +165,6 @@ Library
     Syntax.UHA_Range
     Syntax.UHA_Syntax
     Syntax.UHA_Utils
-    TextHint.ConfigFile
     Utils.Logger
     Utils.OSSpecific
     Utils.OneLiner
