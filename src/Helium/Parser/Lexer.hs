@@ -10,7 +10,7 @@ module Helium.Parser.Lexer
     ( lexer, strategiesLexer
     , Token, Lexeme(..)
     , lexemeLength
-    , module Parser.LexerMessage
+    , module Helium.Parser.LexerMessage
     ) where
 
 

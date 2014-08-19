@@ -81,38 +81,38 @@ imports {
 
 -- types
 import Top.Types
-import StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 
 -- error messages and warnings
-import StaticAnalysis.Messages.Messages
-import StaticAnalysis.Messages.TypeErrors
-import StaticAnalysis.Messages.Warnings
-import StaticAnalysis.Miscellaneous.ConstraintInfo
-import StaticAnalysis.Miscellaneous.DoublyLinkedTree
-import StaticAnalysis.Miscellaneous.UHA_Source
+import Helium.StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Messages.TypeErrors
+import Helium.StaticAnalysis.Messages.Warnings
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
+import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
+import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 
 -- constraints and constraint trees
-import StaticAnalysis.Miscellaneous.TypeConstraints
+import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
 import Top.Ordering.Tree
 
 -- constraint solving
 
-import StaticAnalysis.Inferencers.SelectConstraintSolver (selectConstraintSolver)
+import Helium.StaticAnalysis.Inferencers.SelectConstraintSolver (selectConstraintSolver)
 import Top.Solver (SolveResult(..), LogEntries)
-import StaticAnalysis.Heuristics.HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
-import StaticAnalysis.Inferencers.BindingGroupAnalysis
+import Helium.StaticAnalysis.Heuristics.HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
+import Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis
 
 
 -- UHA syntax
-import Syntax.UHA_Syntax
-import Syntax.UHA_Range                 
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Range                 
          
 -- other
 
-import Utils.Utils (internalError, hole)
-import ModuleSystem.ImportEnvironment  hiding (setTypeSynonyms)
-import ModuleSystem.DictionaryEnvironment
-import Main.Args
+import Helium.Utils.Utils (internalError, hole)
+import Helium.ModuleSystem.ImportEnvironment  hiding (setTypeSynonyms)
+import Helium.ModuleSystem.DictionaryEnvironment
+import Helium.Main.Args
 
 -- standard
 import qualified Data.Map as M

@@ -17,7 +17,7 @@ import System.Environment(getArgs)
 import System.Process(system)
 import System.Exit(ExitCode(..))
 import System.Directory(findExecutable)
-import System.Exit(exitWith, ExitCode(..))
+import System.Exit(exitWith)
 
 import Helium.Utils.OSSpecific(slash)
 import Helium.Main.Args

@@ -17,7 +17,7 @@ import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils (nameFromString)
 import qualified Helium.Syntax.UHA_Pretty as PP
 -- Typing strategies
-import SHelium.taticAnalysis.Directives.TS_Syntax
+import Helium.StaticAnalysis.Directives.TS_Syntax
 import Helium.Parser.Lexer (Token, Lexeme)
 import Helium.Parser.ParseLibrary hiding (satisfy)
 import Helium.Parser.Parser (exp0, type_, atype)

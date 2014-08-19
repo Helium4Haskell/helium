@@ -5,7 +5,7 @@
     Stability   :  experimental
     Portability :  portable
 -}
-module Helium.Main where
+module Main where
 
 import Helium.Main.Compile(compile)
 import Helium.Parser.Parser(parseOnlyImports)

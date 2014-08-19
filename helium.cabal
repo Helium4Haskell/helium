@@ -57,7 +57,7 @@ Executable helium
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src
-  Main-is:           Main/Main.hs
+  Main-is:           Helium/Main.hs
   other-modules:     Paths_helium
   
 --------------------------------------------------------------------------------
